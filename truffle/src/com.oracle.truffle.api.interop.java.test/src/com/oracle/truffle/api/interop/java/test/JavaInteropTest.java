@@ -36,15 +36,20 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.Method;
+import java.util.AbstractList;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import org.hamcrest.CoreMatchers;
@@ -53,6 +58,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -849,11 +855,13 @@ public class JavaInteropTest {
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertFalse(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isRemovable(keyInfo));
         keyInfo = getKeyInfo(d, "toString");
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
         assertTrue(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isRemovable(keyInfo));
     }
 
     @Test
@@ -934,6 +942,196 @@ public class JavaInteropTest {
             ForeignAccess.sendNew(Message.createNew(0).createNode(), hashMapClass, "");
             fail("expected an exception but none was thrown");
         } catch (UnsupportedTypeException ex) {
+        }
+    }
+
+    @Test
+    public void testRemoveMessage() {
+        data.arr = new String[]{"Hello", "World", "!"};
+        TruffleObject truffleList = JavaInterop.asTruffleObject(new ArrayList<>(Arrays.asList(data.arr)));
+        assertEquals(3, message(Message.GET_SIZE, truffleList));
+        assertEquals(true, message(Message.REMOVE, truffleList, 1));
+        assertEquals(2, message(Message.GET_SIZE, truffleList));
+        try {
+            message(Message.REMOVE, truffleList, 10);
+            fail("Out of bounds.");
+        } catch (Exception e) {
+            assertTrue(e.toString(), e instanceof UnknownIdentifierException);
+            assertEquals("10", ((UnknownIdentifierException) e).getUnknownIdentifier());
+        }
+
+        Object arrObj = message(Message.READ, obj, "arr");
+        TruffleObject truffleArr = (TruffleObject) arrObj;
+        try {
+            message(Message.REMOVE, truffleArr, 0);
+            fail("Remove of elements of an array is not supported.");
+        } catch (Exception e) {
+            assertTrue(e.toString(), e instanceof UnsupportedMessageException);
+            assertEquals(Message.REMOVE, ((UnsupportedMessageException) e).getUnsupportedMessage());
+        }
+
+        Map<String, String> map = new HashMap<>();
+        map.put("a", "aa");
+        map.put("b", "bb");
+        TruffleObject truffleMap = JavaInterop.asTruffleObject(map);
+        assertEquals(true, message(Message.REMOVE, truffleMap, "a"));
+        assertEquals(1, map.size());
+        try {
+            message(Message.REMOVE, truffleMap, "a");
+            fail("UnknownIdentifierException");
+        } catch (Exception e) {
+            assertTrue(e.toString(), e instanceof UnknownIdentifierException);
+            assertEquals("a", ((UnknownIdentifierException) e).getUnknownIdentifier());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testRemoveList() {
+        List<Integer> list = JavaInterop.asJavaObject(List.class, new ArrayTruffleObject(100));
+        assertEquals(100, list.size());
+        Integer value = list.remove(10);
+        assertEquals(Integer.valueOf(90), value);
+        assertEquals(99, list.size());
+        boolean success = list.remove((Object) 20);
+        assertTrue(success);
+        assertEquals(98, list.size());
+        // Iterator
+        Iterator<Integer> liter = list.iterator();
+        try {
+            liter.remove();
+            fail("IllegalStateException");
+        } catch (IllegalStateException e) {
+            // O.K.
+        }
+        assertEquals(Integer.valueOf(98), liter.next());
+        assertEquals(Integer.valueOf(97), liter.next());
+        liter.remove();
+        assertEquals(97, list.size());
+        try {
+            liter.remove();
+            fail("IllegalStateException");
+        } catch (IllegalStateException e) {
+            // O.K.
+        }
+        assertEquals(Integer.valueOf(96), liter.next());
+        liter.remove();
+        assertEquals(96, list.size());
+
+        data.arr = new String[]{"Hello", "World", "!"};
+        List<String> arr = xyp.arr();
+        try {
+            assertEquals("World", arr.remove(1));
+            fail("Remove of elements of an array is not supported.");
+        } catch (UnsupportedOperationException e) {
+            // O.K.
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testRemoveMap() {
+        int size = 15;
+        Map<String, String> map = new LinkedHashMap<>();
+        for (int i = 0; i < size; i++) {
+            char c = (char) ('a' + i);
+            map.put(new String(new char[]{c}), new String(new char[]{c, c}));
+        }
+        Map<String, String> jmap = JavaInterop.asJavaObject(Map.class, new RemoveKeysObject(map));
+        assertEquals(size, jmap.size());
+        String value = jmap.remove("a");
+        assertEquals("aa", value);
+        assertEquals(size - 1, jmap.size());
+        boolean success = jmap.remove("b", "c");
+        assertFalse(success);
+        assertEquals(size - 1, jmap.size());
+        success = jmap.remove("b", "bb");
+        assertTrue(success);
+        assertEquals(size - 2, jmap.size());
+        // Set
+        Set<String> keySet = jmap.keySet();
+        success = keySet.remove("c");
+        assertTrue(success);
+        assertEquals(size - 3, jmap.size());
+        success = keySet.remove("xx");
+        assertFalse(success);
+        assertEquals(size - 3, jmap.size());
+        assertEquals(size - 3, keySet.size());
+        // Set Iterator
+        Iterator<String> siter = keySet.iterator();
+        try {
+            siter.remove();
+            fail("IllegalStateException");
+        } catch (IllegalStateException e) {
+            // O.K.
+        }
+        assertEquals("d", siter.next());
+        siter.remove();
+        assertEquals(size - 4, jmap.size());
+        try {
+            siter.remove();
+            fail("IllegalStateException");
+        } catch (IllegalStateException e) {
+            // O.K.
+        }
+        assertEquals("e", siter.next());
+        siter.remove();
+        assertEquals(size - 5, jmap.size());
+        // Entry Set
+        Set<Map.Entry<String, String>> entrySet = jmap.entrySet();
+        success = entrySet.remove(new AbstractMap.SimpleEntry<>("f", "ff"));
+        assertTrue(success);
+        assertEquals(size - 6, jmap.size());
+        success = entrySet.remove(new AbstractMap.SimpleEntry<>("g", "xx"));
+        assertFalse(success);
+        success = entrySet.remove(new AbstractMap.SimpleEntry<>("xx", "gg"));
+        assertFalse(success);
+        assertEquals(size - 6, jmap.size());
+        success = entrySet.remove(new AbstractMap.SimpleEntry<>("g", "gg"));
+        assertTrue(success);
+        assertEquals(size - 7, jmap.size());
+        assertEquals(size - 7, entrySet.size());
+        // Entry Set Iterator
+        Iterator<Map.Entry<String, String>> esiter = entrySet.iterator();
+        try {
+            esiter.remove();
+            fail("IllegalStateException");
+        } catch (IllegalStateException e) {
+            // O.K.
+        }
+        Map.Entry<String, String> nextEntry = esiter.next();
+        assertEquals("h", nextEntry.getKey());
+        assertEquals("hh", nextEntry.getValue());
+        esiter.remove();
+        assertEquals(size - 8, jmap.size());
+        // Values
+        Collection<String> values = jmap.values();
+        success = values.remove("ii");
+        assertTrue(success);
+        assertEquals(size - 9, jmap.size());
+        success = values.remove("xxx");
+        assertFalse(success);
+        assertEquals(size - 9, jmap.size());
+        // Values Iterator
+        Iterator<String> viter = values.iterator();
+        try {
+            viter.remove();
+            fail("IllegalStateException");
+        } catch (IllegalStateException e) {
+            // O.K.
+        }
+        assertEquals("jj", viter.next());
+        viter.remove();
+        assertEquals(size - 10, jmap.size());
+        assertEquals(size - 10, values.size());
+
+        data.map = data;
+        Map<String, Object> dmap = xyp.map();
+        try {
+            dmap.remove("x");
+            fail("Remove of object fields is not supported.");
+        } catch (UnsupportedOperationException e) {
+            // O.K.
         }
     }
 
@@ -1136,9 +1334,91 @@ public class JavaInteropTest {
         }
     }
 
+    static final class RemoveKeysObject implements TruffleObject {
+
+        private final Map<String, ?> keys;
+
+        RemoveKeysObject(Map<String, ?> keys) {
+            this.keys = keys;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return RemoveKeysObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof RemoveKeysObject;
+        }
+
+        @MessageResolution(receiverType = RemoveKeysObject.class)
+        static final class RemoveKeysObjectMessageResolution {
+
+            @Resolve(message = "KEYS")
+            public abstract static class PropertiesKeysOnlyNode extends Node {
+
+                public Object access(RemoveKeysObject receiver) {
+                    List<String> list = new AbstractList<String>() {
+                        final Set<String> keys = receiver.keys.keySet();
+
+                        @Override
+                        public String get(int index) {
+                            Iterator<String> iterator = keys.iterator();
+                            for (int i = 0; i < index; i++) {
+                                iterator.next();
+                            }
+                            return iterator.next();
+                        }
+
+                        @Override
+                        public int size() {
+                            return keys.size();
+                        }
+
+                        @Override
+                        public String remove(int index) {
+                            Iterator<String> iterator = keys.iterator();
+                            for (int i = 0; i < index; i++) {
+                                iterator.next();
+                            }
+                            String removed = iterator.next();
+                            iterator.remove();
+                            return removed;
+                        }
+                    };
+                    return JavaInterop.asTruffleObject(list);
+                }
+            }
+
+            @Resolve(message = "READ")
+            public abstract static class ReadKeyNode extends Node {
+
+                public Object access(RemoveKeysObject receiver, String name) {
+                    if (!receiver.keys.containsKey(name)) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw UnknownIdentifierException.raise(name);
+                    }
+                    return receiver.keys.get(name);
+                }
+            }
+
+            @Resolve(message = "REMOVE")
+            public abstract static class RemoveKeyNode extends Node {
+
+                public Object access(RemoveKeysObject receiver, String name) {
+                    if (!receiver.keys.containsKey(name)) {
+                        return false;
+                    }
+                    receiver.keys.remove(name);
+                    return true;
+                }
+            }
+        }
+    }
+
     static final class ArrayTruffleObject implements TruffleObject {
 
-        private final int size;
+        private int size;
 
         ArrayTruffleObject(int size) {
             this.size = size;
@@ -1181,6 +1461,18 @@ public class JavaInteropTest {
                         throw new ArrayIndexOutOfBoundsException(index);
                     }
                     return receiver.size - index;
+                }
+            }
+
+            @Resolve(message = "REMOVE")
+            public abstract static class ArrayRemoveNode extends Node {
+
+                public Object access(ArrayTruffleObject receiver, int index) {
+                    if (index < 0 || index >= receiver.size) {
+                        throw new ArrayIndexOutOfBoundsException(index);
+                    }
+                    receiver.size--;
+                    return true;
                 }
             }
         }

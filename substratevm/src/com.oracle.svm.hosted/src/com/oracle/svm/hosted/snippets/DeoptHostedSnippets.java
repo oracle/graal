@@ -159,7 +159,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             args.addConst("reason", node.getReason());
             args.addConst("mustNotAllocate", mustNotAllocate(graph.method()));
             args.add("sourcePosition", node.getNodeSourcePosition() != null ? node.getNodeSourcePosition().toString() : null);
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

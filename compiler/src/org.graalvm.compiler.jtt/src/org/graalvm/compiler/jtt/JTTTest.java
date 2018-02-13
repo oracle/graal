@@ -22,25 +22,14 @@
  */
 package org.graalvm.compiler.jtt;
 
-import static java.lang.reflect.Modifier.isStatic;
-
 import java.util.Collections;
 import java.util.Set;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.Builder;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Assert;
 
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -66,26 +55,8 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     @Override
-    protected StructuredGraph parse(Builder builder, PhaseSuite<HighTierContext> graphBuilderSuite) {
-        StructuredGraph graph = super.parse(builder, graphBuilderSuite);
-        if (argsToBind != null) {
-            ResolvedJavaMethod m = graph.method();
-            Object receiver = isStatic(m.getModifiers()) ? null : this;
-            Object[] args = argsWithReceiver(receiver, argsToBind);
-            JavaType[] parameterTypes = m.toParameterTypes();
-            assert parameterTypes.length == args.length;
-            for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), args[param.index()]);
-                ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
-                param.replaceAtUsages(replacement);
-            }
-        }
-        return graph;
-    }
-
-    @Override
-    protected InstalledCode getCode(ResolvedJavaMethod method, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
-        return super.getCode(method, graph, argsToBind != null, installAsDefault, options);
+    protected Object[] getArgumentToBind() {
+        return argsToBind;
     }
 
     Double delta;

@@ -39,6 +39,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -49,6 +50,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
+import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -103,7 +105,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -416,7 +417,7 @@ public class InliningUtil extends ValueMergeUtil {
         assert invokeNode.successors().first() != null : invoke;
         assert invokeNode.predecessor() != null;
 
-        // Do not update the inlining log when adding the duplicates.
+        Mark mark = graph.getMark();
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
         try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
@@ -438,7 +439,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
 
-        updateSourcePositions(invoke, inlineGraph, duplicates, !Objects.equals(inlineGraph.method(), inlineeMethod));
+        updateSourcePositions(invoke, inlineGraph, duplicates, !Objects.equals(inlineGraph.method(), inlineeMethod), mark);
         if (stateAfter != null) {
             processFrameStates(invoke, inlineGraph, duplicates, stateAtExceptionEdge, returnNodes.size() > 1);
             int callerLockDepth = stateAfter.nestedLockDepth();
@@ -661,27 +662,47 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     @SuppressWarnings("try")
-    private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, UnmodifiableEconomicMap<Node, Node> duplicates, boolean isSubstitution) {
-        if (inlineGraph.mayHaveNodeSourcePosition() && invoke.stateAfter() != null) {
-            if (invoke.asNode().getNodeSourcePosition() == null) {
-                // Temporarily ignore the assert below.
-                return;
+    private static void updateSourcePositions(Invoke invoke, StructuredGraph inlineGraph, UnmodifiableEconomicMap<Node, Node> duplicates, boolean isSub, Mark mark) {
+        FixedNode invokeNode = invoke.asNode();
+        boolean isSubstitution = isSub || inlineGraph.method().getAnnotation(MethodSubstitution.class) != null || inlineGraph.method().getAnnotation(Snippet.class) != null;
+        StructuredGraph invokeGraph = invokeNode.graph();
+        assert !invokeGraph.trackNodeSourcePosition() || inlineGraph.trackNodeSourcePosition() ||
+                        isSubstitution : String.format("trackNodeSourcePosition mismatch %s %s != %s %s", invokeGraph, invokeGraph.trackNodeSourcePosition(), inlineGraph,
+                                        inlineGraph.trackNodeSourcePosition());
+        if (invokeGraph.trackNodeSourcePosition() && invoke.stateAfter() != null) {
+            final NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
+            updateSourcePosition(invokeGraph, duplicates, mark, invokePos, isSubstitution);
+        }
+    }
+
+    public static void updateSourcePosition(StructuredGraph invokeGraph, UnmodifiableEconomicMap<Node, Node> duplicates, Mark mark, NodeSourcePosition invokePos, boolean isSubstitution) {
+        /*
+         * Not every duplicate node is newly created, so only update the position of the newly
+         * created nodes.
+         */
+        EconomicSet<Node> newNodes = EconomicSet.create(Equivalence.DEFAULT);
+        newNodes.addAll(invokeGraph.getNewNodes(mark));
+        EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
+        UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
+        while (cursor.advance()) {
+            if (!newNodes.contains(cursor.getValue())) {
+                continue;
             }
-
-            JavaConstant constantReceiver = invoke.getInvokeKind().hasReceiver() && !isSubstitution ? invoke.getReceiver().asJavaConstant() : null;
-            NodeSourcePosition invokePos = invoke.asNode().getNodeSourcePosition();
-            assert invokePos != null : "missing source information";
-
-            EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
-            UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
-            while (cursor.advance()) {
-                NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
-                if (pos != null) {
-                    NodeSourcePosition callerPos = pos.addCaller(constantReceiver, invokePos);
-                    if (!posMap.containsKey(callerPos)) {
-                        posMap.put(callerPos, callerPos);
-                    }
-                    cursor.getValue().setNodeSourcePosition(posMap.get(callerPos));
+            NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
+            if (pos != null) {
+                NodeSourcePosition callerPos = posMap.get(pos);
+                if (callerPos == null) {
+                    callerPos = pos.addCaller(invokePos, isSubstitution);
+                    posMap.put(pos, callerPos);
+                }
+                cursor.getValue().setNodeSourcePosition(callerPos);
+            } else {
+                if (isSubstitution) {
+                    /*
+                     * If no other position is provided at least attribute the substituted node to
+                     * the original invoke.
+                     */
+                    cursor.getValue().setNodeSourcePosition(invokePos);
                 }
             }
         }
@@ -946,8 +967,8 @@ public class InliningUtil extends ValueMergeUtil {
         return replacements.hasSubstitution(target, invokeBci);
     }
 
-    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {
-        return replacements.getSubstitution(target, invokeBci);
+    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci, boolean trackNodeSourcePosition) {
+        return replacements.getSubstitution(target, invokeBci, trackNodeSourcePosition);
     }
 
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalError {

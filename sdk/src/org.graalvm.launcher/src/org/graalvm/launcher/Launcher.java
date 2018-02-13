@@ -738,32 +738,43 @@ public abstract class Launcher {
         printOption(option, description, 2);
     }
 
-    private static void printOption(String option, String description, int indentation) {
-        StringBuilder indent = new StringBuilder(indentation);
-        for (int i = 0; i < indentation; i++) {
-            indent.append(' ');
-        }
-        String desc = description != null ? description : "";
-        desc = wrap(desc);
-        String[] descLines = desc.split(System.lineSeparator());
-        if (option.length() >= 45 && description != null) {
-            System.out.println(String.format("%s%s%n%s%-45s%s", indent, option, indent, "", descLines[0]));
-        } else {
-            System.out.println(String.format("%s%-45s%s", indent, option, descLines[0]));
-        }
-        for (int i = 1; i < descLines.length; i++) {
-            System.out.println(String.format("%s%-45s%s", indent, "", descLines[i]));
-        }
+    private static String spaces(int length) {
+        return new String(new char[length]).replace('\0', ' ');
     }
 
     private static String wrap(String s) {
         final int width = 120;
         StringBuilder sb = new StringBuilder(s);
-        int i = 0;
-        while (i + width < sb.length() && (i = sb.lastIndexOf(" ", i + width)) != -1) {
-            sb.replace(i, i + 1, System.lineSeparator());
+        int cursor = 0;
+        while (cursor + width < sb.length()) {
+            int i = sb.lastIndexOf(" ", cursor + width);
+            if (i == -1 || i < cursor) {
+                i = sb.indexOf(" ", cursor + width);
+            }
+            if (i != -1) {
+                sb.replace(i, i + 1, System.lineSeparator());
+                cursor = i;
+            } else {
+                break;
+            }
         }
         return sb.toString();
+    }
+
+    private static void printOption(String option, String description, int indentation) {
+        String indent = spaces(indentation);
+        String desc = wrap(description != null ? description : "");
+        String nl = System.lineSeparator();
+        String[] descLines = desc.split(nl);
+        int optionWidth = 45;
+        if (option.length() >= optionWidth && description != null) {
+            System.out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
+        } else {
+            System.out.println(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
+        }
+        for (int i = 1; i < descLines.length; i++) {
+            System.out.println(indent + spaces(optionWidth) + descLines[i]);
+        }
     }
 
     private static void printOption(PrintableOption option) {
@@ -999,6 +1010,9 @@ public abstract class Launcher {
         }
 
         private void setGraalStyleRuntimeOption(String arg) {
+            if (arg.startsWith("+") || arg.startsWith("-")) {
+                throw abort("Dgraal option must use <name>=<value> format, not +/- prefix");
+            }
             int eqIdx = arg.indexOf('=');
             String key;
             String value;
@@ -1011,7 +1025,7 @@ public abstract class Launcher {
             }
             OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
             if (descriptor == null) {
-                throw abort("Unknown native option: " + key);
+                throw unknownOption(key);
             }
             try {
                 RuntimeOptions.set(key, descriptor.getKey().getType().convert(value));
@@ -1040,23 +1054,26 @@ public abstract class Launcher {
             String key;
             Object value;
             if (arg.startsWith("+") || arg.startsWith("-")) {
+                key = arg.substring(1);
                 if (eqIdx >= 0) {
                     throw abort("Invalid argument: '--native." + arg + "': Use either +/- or =, but not both");
                 }
-                key = arg.substring(1);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
-                    throw abort("Unknown native option: " + key);
+                    throw unknownOption(key);
                 }
                 if (!isBooleanOption(descriptor)) {
-                    throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=...");
+                    throw abort("Invalid argument: " + key + " is not a boolean option, set it with --native.XX:" + key + "=<value>.");
                 }
                 value = arg.startsWith("+");
             } else if (eqIdx > 0) {
                 key = arg.substring(0, eqIdx);
                 OptionDescriptor descriptor = RuntimeOptions.getOptions().get(key);
                 if (descriptor == null) {
-                    throw abort("Unknown native option: " + key);
+                    throw unknownOption(key);
+                }
+                if (isBooleanOption(descriptor)) {
+                    throw abort("Boolean option '" + key + "' must be set with +/- prefix, not <name>=<value> format.");
                 }
                 try {
                     value = descriptor.getKey().getType().convert(arg.substring(eqIdx + 1));
@@ -1064,13 +1081,17 @@ public abstract class Launcher {
                     throw abort("Invalid argument: '--native." + arg + "': " + iae.getMessage());
                 }
             } else {
-                throw abort("Invalid argument: '--native." + arg + "': prefix boolean options with + or -, suffix other options with =<value>");
+                throw abort("Invalid argument: '--native." + arg + "'. Prefix boolean options with + or -, suffix other options with <name>=<value>");
             }
             RuntimeOptions.set(key, value);
         }
 
         private boolean isBooleanOption(OptionDescriptor descriptor) {
             return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
+        }
+
+        private AbortException unknownOption(String key) {
+            throw abort("Unknown native option: " + key + ". Use --native.help to list available options.");
         }
 
         private void printJvmHelp() {

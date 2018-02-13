@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.jni.nativeapi;
 
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
@@ -32,6 +33,18 @@ import org.graalvm.word.PointerBase;
 @CStruct(value = "JNIInvokeInterface_", addStructKeyword = true)
 public interface JNIInvokeInterface extends PointerBase {
 
+    /**
+     * The {@link Isolate} represented by the {@link JNIJavaVM} to which this
+     * {@link JNIInvokeInterface} function table belongs. Because {@link JNIJavaVM} has no spare
+     * fields itself, we use this field and therefore need a separate function table for each
+     * isolate.
+     */
+    @CField("reserved0")
+    Isolate getIsolate();
+
+    @CField("reserved0")
+    void setIsolate(Isolate isolate);
+
     @CField("AttachCurrentThread")
     void setAttachCurrentThread(CFunctionPointer p);
 
@@ -40,4 +53,13 @@ public interface JNIInvokeInterface extends PointerBase {
 
     @CField("DetachCurrentThread")
     void setDetachCurrentThread(CFunctionPointer p);
+
+    @CField("GetEnv")
+    void setGetEnv(CFunctionPointer p);
+
+    @CField("DestroyJavaVM")
+    void setDestroyJavaVM(CFunctionPointer p);
+
+    @CField("DestroyJavaVM")
+    <T extends CFunctionPointer> T getDestroyJavaVM();
 }

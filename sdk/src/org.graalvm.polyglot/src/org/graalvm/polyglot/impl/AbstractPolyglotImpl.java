@@ -211,7 +211,9 @@ public abstract class AbstractPolyglotImpl {
     public abstract static class AbstractContextImpl {
 
         protected AbstractContextImpl(AbstractPolyglotImpl impl) {
-            Objects.requireNonNull(impl);
+            if (!getClass().getName().equals("com.oracle.truffle.api.vm.PolyglotContextImpl")) {
+                throw new AssertionError("Only one implementation of AbstractContextImpl allowed.");
+            }
         }
 
         public abstract Value lookup(String language, String key);
@@ -391,6 +393,14 @@ public abstract class AbstractPolyglotImpl {
             throw unsupported(receiver, "setArrayElement(long, Object)", "hasArrayElements()");
         }
 
+        public boolean removeArrayElement(Object receiver, long index) {
+            return removeArrayElementUnsupported(receiver);
+        }
+
+        public final boolean removeArrayElementUnsupported(Object receiver) {
+            throw unsupported(receiver, "removeArrayElement(long, Object)", null);
+        }
+
         public long getArraySize(Object receiver) {
             return getArraySizeUnsupported(receiver);
         }
@@ -425,6 +435,14 @@ public abstract class AbstractPolyglotImpl {
 
         public final void putMemberUnsupported(Object receiver) {
             throw unsupported(receiver, "putMember(String, Object)", "hasMembers()");
+        }
+
+        public boolean removeMember(Object receiver, String key) {
+            return removeMemberUnsupported(receiver);
+        }
+
+        public final boolean removeMemberUnsupported(Object receiver) {
+            throw unsupported(receiver, "removeMember(String, Object)", null);
         }
 
         public boolean canExecute(Object receiver) {

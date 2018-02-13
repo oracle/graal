@@ -32,9 +32,11 @@ import java.util.List;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -224,28 +226,31 @@ public class GraphKit implements GraphBuilderTool {
      * Creates and appends an {@link InvokeNode} for a call to a given method with a given set of
      * arguments.
      */
+    @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        assert method.isStatic() == (invokeKind == InvokeKind.Static);
-        Signature signature = method.getSignature();
-        JavaType returnType = signature.getReturnType(null);
-        assert checkArgs(method, args);
-        StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(this, returnType, false);
-        if (returnStamp == null) {
-            returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
-        }
-        MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, returnStamp, bci));
-        InvokeNode invoke = append(new InvokeNode(callTarget, bci));
+        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.placeholder(method))) {
+            assert method.isStatic() == (invokeKind == InvokeKind.Static);
+            Signature signature = method.getSignature();
+            JavaType returnType = signature.getReturnType(null);
+            assert checkArgs(method, args);
+            StampPair returnStamp = graphBuilderPlugins.getOverridingStamp(this, returnType, false);
+            if (returnStamp == null) {
+                returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
+            }
+            MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, returnStamp, bci));
+            InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
-        if (frameStateBuilder != null) {
-            if (invoke.getStackKind() != JavaKind.Void) {
-                frameStateBuilder.push(invoke.getStackKind(), invoke);
+            if (frameStateBuilder != null) {
+                if (invoke.getStackKind() != JavaKind.Void) {
+                    frameStateBuilder.push(invoke.getStackKind(), invoke);
+                }
+                invoke.setStateAfter(frameStateBuilder.create(bci, invoke));
+                if (invoke.getStackKind() != JavaKind.Void) {
+                    frameStateBuilder.pop(invoke.getStackKind());
+                }
             }
-            invoke.setStateAfter(frameStateBuilder.create(bci, invoke));
-            if (invoke.getStackKind() != JavaKind.Void) {
-                frameStateBuilder.pop(invoke.getStackKind());
-            }
+            return invoke;
         }
-        return invoke;
     }
 
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, @SuppressWarnings("unused") int bci) {
@@ -311,6 +316,9 @@ public class GraphKit implements GraphBuilderTool {
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
 
         StructuredGraph calleeGraph = new StructuredGraph.Builder(invoke.getOptions(), invoke.getDebug()).method(method).build();
+        if (invoke.graph().trackNodeSourcePosition()) {
+            calleeGraph.setTrackNodeSourcePosition();
+        }
         IntrinsicContext initialReplacementContext = new IntrinsicContext(method, method, providers.getReplacements().getDefaultReplacementBytecodeProvider(), INLINE_AFTER_PARSING);
         GraphBuilderPhase.Instance instance = new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), config,
                         OptimisticOptimizations.NONE,

@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -211,10 +212,13 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         }
     }
 
+    @SuppressWarnings("try")
     public InvokeNode replaceWithInvoke() {
-        InvokeNode invoke = createInvoke();
-        graph().replaceFixedWithFixed(this, invoke);
-        return invoke;
+        try (DebugCloseable context = withNodeSourcePosition()) {
+            InvokeNode invoke = createInvoke();
+            graph().replaceFixedWithFixed(this, invoke);
+            return invoke;
+        }
     }
 
     protected InvokeNode createInvoke() {

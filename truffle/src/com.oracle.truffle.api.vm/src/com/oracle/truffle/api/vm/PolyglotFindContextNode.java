@@ -39,7 +39,7 @@ final class PolyglotFindContextNode<C> extends com.oracle.truffle.api.impl.FindC
     @SuppressWarnings("unchecked")
     @Override
     public C executeFindContext() {
-        return (C) polyglotLanguage.getCurrentContext();
+        return (C) polyglotLanguage.requireProfile().get();
     }
 
     @SuppressWarnings("unchecked")

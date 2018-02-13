@@ -24,6 +24,9 @@ package com.oracle.svm.jni.access;
 
 // Checkstyle: allow reflection
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -44,14 +47,20 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
+import com.oracle.svm.jni.hosted.JNIFeature.Options;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 import com.oracle.svm.jni.hosted.JNIRuntimeAccess.JNIRuntimeAccessibilitySupport;
@@ -94,28 +103,60 @@ public class JNIAccessFeature implements Feature {
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void afterRegistration(AfterRegistrationAccess arg) {
+        AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
+
         JNIReflectionDictionary.initialize();
 
-        ImageSingletons.add(JNIRuntimeAccessibilitySupport.class, new JNIRuntimeAccessibilitySupport() {
-            @Override
-            public void register(Class<?>... classes) {
-                abortIfSealed();
-                newClasses.addAll(Arrays.asList(classes));
-            }
+        JNIRuntimeAccessibilitySupportImpl registry = new JNIRuntimeAccessibilitySupportImpl();
+        ImageSingletons.add(JNIRuntimeAccessibilitySupport.class, registry);
 
-            @Override
-            public void register(Executable... methods) {
-                abortIfSealed();
-                newMethods.addAll(Arrays.asList(methods));
+        ReflectionConfigurationParser parser = new ReflectionConfigurationParser(registry, access.getImageClassLoader());
+        String configFiles = Options.JNIConfigurationFiles.getValue();
+        if (!configFiles.isEmpty()) {
+            for (String file : configFiles.split(",")) {
+                try {
+                    parser.parseAndRegister(file);
+                } catch (Exception e) {
+                    throw UserError.abort("Could not parse JNI configuration file \"" + file + "\". Verify that the file exists and its contents match the expected schema (see " +
+                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.JNIConfigurationFiles.getName() + ").\n" +
+                                    e.toString());
+                }
             }
+        }
+        String configResources = Options.JNIConfigurationResources.getValue();
+        if (!configResources.isEmpty()) {
+            for (String resource : configResources.split(",")) {
+                InputStream stream = access.getImageClassLoader().findResourceByName(resource);
+                try (Reader reader = new InputStreamReader(stream)) {
+                    parser.parseAndRegister(reader);
+                } catch (Exception e) {
+                    throw UserError.abort("Could not parse JNI configuration resource \"" + resource + "\". Verify that the resource exists and its contents match the expected schema (see " +
+                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.JNIConfigurationResources.getName() + ").\n" +
+                                    e.toString());
+                }
+            }
+        }
+    }
 
-            @Override
-            public void register(Field... fields) {
-                abortIfSealed();
-                newFields.addAll(Arrays.asList(fields));
-            }
-        });
+    private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccessibilitySupport, RuntimeReflection.ReflectionRegistry {
+        @Override
+        public void register(Class<?>... classes) {
+            abortIfSealed();
+            newClasses.addAll(Arrays.asList(classes));
+        }
+
+        @Override
+        public void register(Executable... methods) {
+            abortIfSealed();
+            newMethods.addAll(Arrays.asList(methods));
+        }
+
+        @Override
+        public void register(Field... fields) {
+            abortIfSealed();
+            newFields.addAll(Arrays.asList(fields));
+        }
     }
 
     @Override
@@ -199,7 +240,9 @@ public class JNIAccessFeature implements Feature {
     private static JNIAccessibleClass addClass(Class<?> classObj, DuringAnalysisAccessImpl access) {
         return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
-            analysisClass.registerAsAllocated(null);
+            if (analysisClass.isArray() || (analysisClass.isInstanceClass() && !analysisClass.isAbstract())) {
+                analysisClass.registerAsAllocated(null);
+            }
             return new JNIAccessibleClass(classObj);
         });
     }

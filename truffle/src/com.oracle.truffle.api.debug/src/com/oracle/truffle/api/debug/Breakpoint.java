@@ -108,6 +108,7 @@ public class Breakpoint {
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();
 
     private final SourceSectionFilter filter;
+    private final SuspendAnchor suspendAnchor;
     private final BreakpointLocation locationKey;
     private final boolean oneShot;
 
@@ -131,9 +132,10 @@ public class Breakpoint {
     private EventBinding<? extends ExecutionEventNodeFactory> breakpointBinding;
     private EventBinding<?> sourceBinding;
 
-    Breakpoint(BreakpointLocation key, SourceSectionFilter filter, boolean oneShot) {
+    Breakpoint(BreakpointLocation key, SourceSectionFilter filter, SuspendAnchor suspendAnchor, boolean oneShot) {
         this.locationKey = key;
         this.filter = filter;
+        this.suspendAnchor = suspendAnchor;
         this.oneShot = oneShot;
         this.enabled = true;
     }
@@ -141,6 +143,7 @@ public class Breakpoint {
     private Breakpoint() {
         this.locationKey = null;
         this.filter = null;
+        this.suspendAnchor = SuspendAnchor.BEFORE;
         this.oneShot = false;
     }
 
@@ -340,6 +343,15 @@ public class Breakpoint {
     }
 
     /**
+     * Returns the suspended position within the guest language source location.
+     *
+     * @since 0.32
+     */
+    public SuspendAnchor getSuspendAnchor() {
+        return suspendAnchor;
+    }
+
+    /**
      * Test whether this breakpoint can be modified. When <code>false</code>, methods that change
      * breakpoint state throw {@link IllegalStateException}.
      * <p>
@@ -502,7 +514,7 @@ public class Breakpoint {
 
         if (source != node) {
             // TODO: We're testing the breakpoint condition for a second time (GR-7398).
-            if (!((BreakpointNode) node).shouldBreak(frame)) {
+            if (!((AbstractBreakpointNode) node).shouldBreak(frame)) {
                 return false;
             }
         } else {
@@ -523,7 +535,7 @@ public class Breakpoint {
 
     @TruffleBoundary
     @SuppressWarnings("hiding") // We want to mask "sessions", as we recieve preferred ones
-    private void doBreak(DebuggerNode source, DebuggerSession[] sessions, MaterializedFrame frame, BreakpointConditionFailure failure) {
+    private void doBreak(DebuggerNode source, DebuggerSession[] sessions, MaterializedFrame frame, Object result, BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
@@ -532,7 +544,7 @@ public class Breakpoint {
         }
         for (DebuggerSession session : sessions) {
             if (session.isBreakpointsActive()) {
-                session.notifyCallback(source, frame, null, failure);
+                session.notifyCallback(source, frame, result, failure);
             }
         }
     }
@@ -599,6 +611,7 @@ public class Breakpoint {
         private final Object key;
 
         private int line = -1;
+        private SuspendAnchor anchor = SuspendAnchor.BEFORE;
         private int ignoreCount;
         private boolean oneShot;
         private SourceSection sourceSection;
@@ -640,6 +653,18 @@ public class Breakpoint {
         }
 
         /**
+         * Specify the breakpoint suspension anchor within the guest language source location. By
+         * default, the breakpoint suspends {@link SuspendAnchor#BEFORE before} the source location.
+         *
+         * @param anchor the breakpoint suspension anchor
+         * @since 0.32
+         */
+        public Builder suspendAnchor(@SuppressWarnings("hiding") SuspendAnchor anchor) {
+            this.anchor = anchor;
+            return this;
+        }
+
+        /**
          * Specifies the number of times a breakpoint is ignored until it hits (i.e. suspends
          * execution}.
          *
@@ -677,7 +702,7 @@ public class Breakpoint {
         public Breakpoint build() {
             SourceSectionFilter f = buildFilter();
             BreakpointLocation location = new BreakpointLocation(key, line);
-            Breakpoint breakpoint = new Breakpoint(location, f, oneShot);
+            Breakpoint breakpoint = new Breakpoint(location, f, anchor, oneShot);
             breakpoint.setIgnoreCount(ignoreCount);
             return breakpoint;
         }
@@ -720,12 +745,54 @@ public class Breakpoint {
             if (!isResolved()) {
                 resolveBreakpoint();
             }
-            return new BreakpointNode(Breakpoint.this, context);
+            switch (suspendAnchor) {
+                case BEFORE:
+                    return new BreakpointBeforeNode(Breakpoint.this, context);
+                case AFTER:
+                    return new BreakpointAfterNode(Breakpoint.this, context);
+                default:
+                    throw new IllegalStateException("Unknown suspend anchor: " + suspendAnchor);
+            }
         }
 
     }
 
-    private static class BreakpointNode extends DebuggerNode {
+    private static class BreakpointBeforeNode extends AbstractBreakpointNode {
+
+        BreakpointBeforeNode(Breakpoint breakpoint, EventContext context) {
+            super(breakpoint, context);
+        }
+
+        @Override
+        SteppingLocation getSteppingLocation() {
+            return SteppingLocation.BEFORE_STATEMENT;
+        }
+
+        @Override
+        protected void onEnter(VirtualFrame frame) {
+            onNode(frame, null);
+        }
+    }
+
+    private static class BreakpointAfterNode extends AbstractBreakpointNode {
+
+        BreakpointAfterNode(Breakpoint breakpoint, EventContext context) {
+            super(breakpoint, context);
+        }
+
+        @Override
+        SteppingLocation getSteppingLocation() {
+            return SteppingLocation.AFTER_STATEMENT;
+        }
+
+        @Override
+        protected void onReturnValue(VirtualFrame frame, Object result) {
+            onNode(frame, result);
+        }
+
+    }
+
+    private abstract static class AbstractBreakpointNode extends DebuggerNode {
 
         private final Breakpoint breakpoint;
         private final BranchProfile breakBranch = BranchProfile.create();
@@ -735,7 +802,7 @@ public class Breakpoint {
         @CompilationFinal(dimensions = 1) private DebuggerSession[] sessions;
         @CompilationFinal private Assumption sessionsUnchanged;
 
-        BreakpointNode(Breakpoint breakpoint, EventContext context) {
+        AbstractBreakpointNode(Breakpoint breakpoint, EventContext context) {
             super(context);
             this.breakpoint = breakpoint;
             initializeSessions();
@@ -755,11 +822,6 @@ public class Breakpoint {
         }
 
         @Override
-        SteppingLocation getSteppingLocation() {
-            return SteppingLocation.BEFORE_STATEMENT;
-        }
-
-        @Override
         boolean isStepNode() {
             return false;
         }
@@ -774,9 +836,8 @@ public class Breakpoint {
             return breakpoint.breakpointBinding;
         }
 
-        @Override
         @ExplodeLoop
-        protected void onEnter(VirtualFrame frame) {
+        protected final void onNode(VirtualFrame frame, Object result) {
             if (!sessionsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeSessions();
@@ -810,7 +871,7 @@ public class Breakpoint {
                 conditionError = e;
             }
             breakBranch.enter();
-            breakpoint.doBreak(this, sessions, frame.materialize(), conditionError);
+            breakpoint.doBreak(this, sessions, frame.materialize(), result, conditionError);
         }
 
         boolean shouldBreak(VirtualFrame frame) throws BreakpointConditionFailure {

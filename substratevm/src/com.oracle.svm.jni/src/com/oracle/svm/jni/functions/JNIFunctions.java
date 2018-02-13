@@ -36,7 +36,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -93,6 +92,7 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
+import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -115,7 +115,7 @@ final class JNIFunctions {
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static int GetVersion(JNIEnvironment env) {
-        return 0x00010008;
+        return JNIVersion.JNI_VERSION_1_8();
     }
 
     /*
@@ -950,7 +950,7 @@ final class JNIFunctions {
 
         static class JNIJavaVMEnterAttachThreadPrologue {
             static void enter(JNIJavaVM vm) {
-                CEntryPointActions.enterAttachThread((Isolate) vm);
+                CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate());
             }
         }
 

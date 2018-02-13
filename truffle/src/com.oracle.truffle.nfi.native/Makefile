@@ -39,7 +39,7 @@ OBJECTS=api.o \
 default: bin/${LIBTRUFFLENFI}
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
-CPPFLAGS+= -I${VPATH}/include -I${JAVA_HOME}/include -I${JAVA_HOME}/include/${OS} -Ilibffi-build/include -DOS_${OS}
+CPPFLAGS+=-I${VPATH}/include "-I${JAVA_HOME}/include" "-I${JAVA_HOME}/include/${OS}" -Ilibffi-build/include -DOS_${OS}
 CFLAGS=-g -fPIC
 LDFLAGS=-g -ldl
 LIBFFI_LIB=libffi-build/.libs/libffi.a
@@ -71,7 +71,7 @@ ${LIBFFI_LIB}: libffi-build/Makefile
 libffi-build/Makefile libffi-build/include/ffi.h: libffi-3.2.1/configure
 	$(QUIETLY) echo CONFIGURE libffi
 	$(QUIETLY) mkdir -p libffi-build
-	$(QUIETLY) unset CDPATH && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
+	$(QUIETLY) unset CDPATH CPPFLAGS && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
 
 libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) tar xzf ${LIBFFI_SRC}

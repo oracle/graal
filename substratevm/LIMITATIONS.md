@@ -19,14 +19,14 @@ Reflection
 ----------
 
 ### What:
-Listing methods and fields of a class; invoking methods and accessing fields via reflectively; most classes in the package `java.lang.reflect`.
+Listing methods and fields of a class; invoking methods and accessing fields reflectively; most classes in the package `java.lang.reflect`.
 
 ### Support Status: Partially supported
 
-Specific kinds of reflection access can be enabled for individual classes, methods and fields by providing one or several configuration files via the `-H:ReflectionConfigurationFiles=` option during native image generation. Elements that are not included in a configuration cannot be accessed reflectively.
+Specific kinds of reflection access can be enabled for individual classes, methods and fields by providing one or several configuration files via the `-H:ReflectionConfigurationFiles=` option during native image generation. Elements that are not included in a configuration cannot be accessed reflectively. For more details, read our [documentation on reflection](REFLECTION.md).
 
 ### During native image generation:
-Reflection can be used without restrictions during native image generation, e.g., in static initializers. At this point, you can collect information about methods and fields and fill your own data structures, which are then reflection-free at run time. For example, you can collect a list of field names during native image generation, and store the names in a list so that you have the names available at run time.
+Reflection can be used without restrictions during native image generation, for example in static initializers.
 
 Implicit Exceptions
 -------------------

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
@@ -124,7 +125,7 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
     @Override
     public void onSuspend(SuspendedEvent event) {
         try {
-            logSuspendLocation(event.isLanguageContextInitialized(), event.isHaltedBefore(), event.getSourceSection());
+            logSuspendLocation(event.isLanguageContextInitialized(), event.getSuspendAnchor(), event.getSourceSection());
             logFrames(event.getStackFrames());
         } catch (Throwable t) {
             hasFailed = true;
@@ -151,11 +152,11 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
         }
     }
 
-    private void logSuspendLocation(boolean initialized, boolean before, SourceSection sourceSection) {
+    private void logSuspendLocation(boolean initialized, SuspendAnchor suspendAnchor, SourceSection sourceSection) {
         if (!initialized) {
             logger.print("Uninitialized: ");
         }
-        logger.print(before ? "Before" : "After");
+        logger.print(suspendAnchor);
         if (sourceSection == null) {
             throw new NullPointerException("No source section is available at suspend location.");
         }

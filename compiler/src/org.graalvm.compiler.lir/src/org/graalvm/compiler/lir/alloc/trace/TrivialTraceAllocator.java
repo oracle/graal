@@ -29,9 +29,9 @@ import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
-import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIR;
+import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.StandardOp.JumpOp;
@@ -47,56 +47,66 @@ import jdk.vm.ci.meta.Value;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
+public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
         LIR lir = lirGenRes.getLIR();
-        TraceBuilderResult resultTraces = context.resultTraces;
         assert isTrivialTrace(lir, trace) : "Not a trivial trace! " + trace;
         AbstractBlockBase<?> block = trace.getBlocks()[0];
+        assert TraceAssertions.singleHeadPredecessor(trace) : "Trace head with more than one predecessor?!" + trace;
+        AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
-        AbstractBlockBase<?> pred = TraceUtil.getBestTraceInterPredecessor(resultTraces, block);
-
-        Value[] variableMap = new Value[lir.numVariables()];
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
-        collectMapping(block, pred, livenessInfo, variableMap);
-        assignLocations(lir, block, livenessInfo, variableMap);
+        allocate(block, pred, livenessInfo, lir.numVariables(), SSAUtil.phiOutOrNull(lir, block));
     }
 
-    /**
-     * Collects the mapping from variable to location. Additionally the
-     * {@link GlobalLivenessInfo#setInLocations incoming location array} is set.
-     */
-    private static void collectMapping(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
+    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
+        // exploit that the live sets are sorted
+        assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
+        assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
+
+        // If there are Phis, we need to create a map from variables to locations.
+        boolean hasPhis = jump != null;
+        Value[] variableMap = hasPhis ? new Value[numVariables] : null;
+
+        // setup incoming variables/locations
         final int[] blockIn = livenessInfo.getBlockIn(block);
         final Value[] predLocOut = livenessInfo.getOutLocation(pred);
-        final Value[] locationIn = new Value[blockIn.length];
-        for (int i = 0; i < blockIn.length; i++) {
-            int varNum = blockIn[i];
-            if (varNum >= 0) {
-                Value location = predLocOut[i];
-                variableMap[varNum] = location;
-                locationIn[i] = location;
-            } else {
-                locationIn[i] = Value.ILLEGAL;
+        int inLenght = blockIn.length;
+
+        // setup outgoing variables/locations
+        final int[] blockOut = livenessInfo.getBlockOut(block);
+        int outLength = blockOut.length;
+        final Value[] locationOut = new Value[outLength];
+
+        assert outLength <= inLenght : "Trivial Trace! There cannot be more outgoing values than incoming.";
+        int outIdx = 0;
+        for (int inIdx = 0; inIdx < inLenght; inIdx++) {
+            Value value = predLocOut[inIdx];
+            if (hasPhis) {
+                // collect mapping for Phi resolution
+                variableMap[blockIn[inIdx]] = value;
+            }
+            if (outIdx < outLength && blockOut[outIdx] == blockIn[inIdx]) {
+                // set the outgoing location to the incoming value
+                locationOut[outIdx++] = value;
             }
         }
-        livenessInfo.setInLocations(block, locationIn);
+        assert outIdx == outLength;
+
+        /*
+         * Since we do not change any of the location we can just use the outgoing of the
+         * predecessor.
+         */
+        livenessInfo.setInLocations(block, predLocOut);
+        livenessInfo.setOutLocations(block, locationOut);
+        if (hasPhis) {
+            handlePhiOut(jump, variableMap);
+        }
     }
 
-    /**
-     * Assigns the outgoing locations according to the {@link #collectMapping variable mapping}.
-     */
-    private static void assignLocations(LIR lir, AbstractBlockBase<?> block, GlobalLivenessInfo livenessInfo, Value[] variableMap) {
-        final int[] blockOut = livenessInfo.getBlockOut(block);
-        final Value[] locationOut = new Value[blockOut.length];
-        for (int i = 0; i < blockOut.length; i++) {
-            int varNum = blockOut[i];
-            locationOut[i] = variableMap[varNum];
-        }
-        livenessInfo.setOutLocations(block, locationOut);
-
+    private static void handlePhiOut(LIRInstruction jump, Value[] variableMap) {
         // handle outgoing phi values
         ValueProcedure outputConsumer = new ValueProcedure() {
             @Override
@@ -108,7 +118,6 @@ final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPh
             }
         };
 
-        JumpOp jump = SSAUtil.phiOut(lir, block);
         // Jumps have only alive values (outgoing phi values)
         jump.forEachAlive(outputConsumer);
     }

@@ -374,17 +374,14 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
                               mx.vc_system('binary'))
     ]
 
+    failure_warning = None
     if not version:
         # If no specific version requested use binary import of last recently deployed master version
-        version = 'git-bref:binary'
         repo_suite_name = language_repo_name if language_repo_name else language_suite_name
-        urlinfos.append(
-            mx.SuiteImportURLInfo(
-                mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(repo_suite_name)),
-                'source',
-                mx.vc_system('git')
-            )
-        )
+        repo_url = mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(repo_suite_name))
+        version = mx.SuiteImport.resolve_git_branchref(repo_url, 'binary', abortOnError=False)
+        if not version:
+            failure_warning = 'Resolving \'binary\' against ' + repo_url + ' failed'
 
     language_suite = suite.import_suite(
         language_suite_name,
@@ -395,6 +392,8 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     )
 
     if not language_suite:
+        if failure_warning:
+            mx.warn(failure_warning)
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
 
     language_dir = join('languages', language_flag)

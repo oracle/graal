@@ -57,7 +57,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, ResolvedJavaMethod originalMethod, BytecodeProvider intrinsicBytecodeProvider, boolean trackNodeSourcePosition) {
         /*
          * The EncodedGraph instance also serves as a cache for some information during decoding,
          * e.g., the start offsets of encoded nodes. So it is beneficial to have a cache of the
@@ -65,13 +65,13 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
          */
         EncodedGraph result = graphCache.get(method);
         if (result == null) {
-            result = createGraph(method);
+            result = createGraph(method, trackNodeSourcePosition);
         }
         return result;
     }
 
-    private EncodedGraph createGraph(ResolvedJavaMethod method) {
-        EncodedGraph result = GraalSupport.encodedGraph((SharedRuntimeMethod) method);
+    private EncodedGraph createGraph(ResolvedJavaMethod method, boolean trackNodeSourcePosition) {
+        EncodedGraph result = GraalSupport.encodedGraph((SharedRuntimeMethod) method, trackNodeSourcePosition);
         if (result == null) {
             throw shouldNotReachHere("Graph not available for runtime compilation: " + method.format("%H.%n(%p)"));
         }

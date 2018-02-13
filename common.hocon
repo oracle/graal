@@ -1,5 +1,5 @@
 # overlay version
-overlay = c6dd636911c01b77f267014f138ee99a358ca5f6
+overlay = 6d445f13917f2a6d8094e5fe6d23b68cbd992fb9
 
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
@@ -157,12 +157,16 @@ svm-common-linux: ${svm-common} ${linux-amd64} {
   timelimit: "55:00"
 }
 
+svm-capabilities-fast : {
+  capabilities : [linux, amd64, fast]
+}
+
 svm-capabilities-avx2 : {
   capabilities : [linux, amd64, avx2]
 }
 
 svm-capabilities-manycores : {
-  capabilities : [linux, amd64, manycores]
+  capabilities : [linux, amd64, manycores, fast]
 }
 
 svm-common-darwin: ${svm-common} ${darwin-amd64} {

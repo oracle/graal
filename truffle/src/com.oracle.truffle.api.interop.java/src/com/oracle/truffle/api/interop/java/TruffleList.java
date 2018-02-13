@@ -28,6 +28,7 @@ import static com.oracle.truffle.api.interop.ForeignAccess.sendGetSize;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendHasSize;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendKeyInfo;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendRead;
+import static com.oracle.truffle.api.interop.ForeignAccess.sendRemove;
 import static com.oracle.truffle.api.interop.ForeignAccess.sendWrite;
 
 import java.lang.reflect.Type;
@@ -83,6 +84,12 @@ class TruffleList<T> extends AbstractList<T> {
         return prev;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public T remove(int index) {
+        return (T) cache.remove.call(languageContext, guestObject, index);
+    }
+
     @Override
     public int size() {
         return (Integer) cache.size.call(languageContext, guestObject);
@@ -108,6 +115,7 @@ class TruffleList<T> extends AbstractList<T> {
 
         final CallTarget get;
         final CallTarget set;
+        final CallTarget remove;
         final CallTarget size;
         final CallTarget apply;
 
@@ -118,6 +126,7 @@ class TruffleList<T> extends AbstractList<T> {
             this.get = initializeCall(new Get(this));
             this.size = initializeCall(new Size(this));
             this.set = initializeCall(new Set(this));
+            this.remove = initializeCall(new Remove(this));
             this.apply = initializeCall(new Apply(this));
         }
 
@@ -312,6 +321,53 @@ class TruffleList<T> extends AbstractList<T> {
                     }
                 }
                 throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+            }
+        }
+
+        private static class Remove extends TruffleListNode {
+
+            @Child private Node keyInfo = Message.KEY_INFO.createNode();
+            @Child private Node read = Message.READ.createNode();
+            @Child private Node remove = Message.REMOVE.createNode();
+            @Child private ToJavaNode toHost = ToJavaNode.create();
+            @Child private Node hasSize = Message.HAS_SIZE.createNode();
+
+            Remove(TruffleListCache cache) {
+                super(cache);
+            }
+
+            @Override
+            protected String getOperationName() {
+                return "remove";
+            }
+
+            @Override
+            protected Object executeImpl(Object languageContext, TruffleObject receiver, Object[] args, int offset) {
+                Object key = args[offset];
+                Object result = null;
+                assert key instanceof Integer;
+                if (sendHasSize(hasSize, receiver)) {
+                    if (KeyInfo.isReadable(sendKeyInfo(keyInfo, receiver, key))) {
+                        try {
+                            result = toHost.execute(sendRead(read, receiver, key), cache.valueClass, cache.valueType, languageContext);
+                        } catch (UnknownIdentifierException e) {
+                        } catch (UnsupportedMessageException e) {
+                        }
+                    }
+                    try {
+                        sendRemove(remove, receiver, key);
+                    } catch (UnknownIdentifierException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw JavaInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, (int) key);
+                    } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
+                    }
+                    return cache.valueClass.cast(result);
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw JavaInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
+                }
             }
         }
 

@@ -29,7 +29,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
+import com.oracle.svm.jni.JNILibraryLoadFeature;
 import com.oracle.svm.jni.functions.JNIFunctionTablesFeature;
 
 /**
@@ -43,26 +43,15 @@ public class JNIFeature implements Feature {
         @Option(help = "Enable Java Native Interface (JNI) support.")//
         public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(false);
 
-        @Option(help = "file:doc-files/JNIConfigurationFilesHelp.txt")//
+        @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)")//
         public static final HostedOptionKey<String> JNIConfigurationFiles = new HostedOptionKey<>("");
 
-        @Option(help = "Have JNI_GetCreatedJavaVMs return 0 until JNI_CreateJavaVM is called.")//
-        public static final HostedOptionKey<Boolean> JNICreateJavaVM = new HostedOptionKey<>(false);
+        @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).")//
+        public static final HostedOptionKey<String> JNIConfigurationResources = new HostedOptionKey<>("");
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(JNIFunctionTablesFeature.class, JNICallWrapperFeature.class);
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess arg) {
-        String configFiles = Options.JNIConfigurationFiles.getValue();
-        if (!configFiles.isEmpty()) {
-            AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
-            for (String path : configFiles.split(",")) {
-                JNIConfigurationParser.parseAndRegister(path, access.getImageClassLoader());
-            }
-        }
+        return Arrays.asList(JNIFunctionTablesFeature.class, JNICallWrapperFeature.class, JNILibraryLoadFeature.class);
     }
 }

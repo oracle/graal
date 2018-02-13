@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.nodes;
 
+import static org.graalvm.compiler.graph.Graph.SourcePositionTracking.Default;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -168,6 +170,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
         private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         private boolean useProfilingInfo = true;
+        private SourcePositionTracking trackNodeSourcePosition = Default;
         private final OptionValues options;
         private Cancellable cancellable = null;
         private final DebugContext debug;
@@ -180,6 +183,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             this.options = options;
             this.debug = debug;
             this.assumptions = allowAssumptions == AllowAssumptions.YES ? new Assumptions() : null;
+            this.trackNodeSourcePosition = Graph.trackNodeSourcePositionDefault(options, debug);
         }
 
         /**
@@ -188,7 +192,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         public Builder(OptionValues options, DebugContext debug) {
             this.options = options;
             this.debug = debug;
-            assumptions = null;
+            this.assumptions = null;
+            this.trackNodeSourcePosition = Graph.trackNodeSourcePositionDefault(options, debug);
         }
 
         public String getName() {
@@ -258,13 +263,25 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
+        public Builder trackNodeSourcePosition(SourcePositionTracking tracking) {
+            this.trackNodeSourcePosition = tracking;
+            return this;
+        }
+
+        public Builder trackNodeSourcePosition(boolean flag) {
+            if (flag) {
+                this.trackNodeSourcePosition = SourcePositionTracking.Track;
+            }
+            return this;
+        }
+
         public Builder callerContext(NodeSourcePosition context) {
             this.callerContext = context;
             return this;
         }
 
         public StructuredGraph build() {
-            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, compilationId, options, debug, cancellable, callerContext);
+            return new StructuredGraph(name, rootMethod, entryBCI, assumptions, speculationLog, useProfilingInfo, trackNodeSourcePosition, compilationId, options, debug, cancellable, callerContext);
         }
     }
 
@@ -329,6 +346,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     Assumptions assumptions,
                     SpeculationLog speculationLog,
                     boolean useProfilingInfo,
+                    SourcePositionTracking trackNodeSourcePosition,
                     CompilationIdentifier compilationId,
                     OptionValues options,
                     DebugContext debug,
@@ -343,6 +361,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.assumptions = assumptions;
         this.speculationLog = speculationLog;
         this.useProfilingInfo = useProfilingInfo;
+        this.trackNodeSourcePosition = trackNodeSourcePosition;
+        assert trackNodeSourcePosition != null;
         this.cancellable = cancellable;
         this.inliningLog = new InliningLog(rootMethod, options);
         this.callerContext = context;
@@ -487,6 +507,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         assumptions == null ? null : new Assumptions(),
                         speculationLog,
                         useProfilingInfo,
+                        trackNodeSourcePosition,
                         newCompilationId,
                         getOptions(), debugForCopy, null, callerContext);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {

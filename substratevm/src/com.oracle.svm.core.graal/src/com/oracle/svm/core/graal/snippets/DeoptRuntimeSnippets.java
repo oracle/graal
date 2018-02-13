@@ -82,7 +82,7 @@ public final class DeoptRuntimeSnippets extends SubstrateTemplates implements Sn
             Arguments args = new Arguments(deopt, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("actionAndReason", node.getActionAndReason(tool.getMetaAccess()));
             args.add("speculation", node.getSpeculation(tool.getMetaAccess()));
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }

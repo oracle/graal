@@ -137,7 +137,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
 
         ResolvedJavaType[] skippedExceptionTypes = getSkippedExceptionTypes(runtime);
 
-        boolean needSourcePositions = runtime.enableInfopoints() || TruffleCompilerOptions.getValue(TruffleEnableInfopoints) ||
+        boolean needSourcePositions = TruffleCompilerOptions.getValue(TruffleEnableInfopoints) ||
                         TruffleCompilerOptions.getValue(TruffleInstrumentBranches) || TruffleCompilerOptions.getValue(TruffleInstrumentBoundaries);
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(plugins)).withNodeSourcePosition(needSourcePositions);
         this.config = baseConfig.withSkippedExceptionTypes(skippedExceptionTypes).withOmitAssertions(TruffleCompilerOptions.getValue(TruffleExcludeAssertions)).withBytecodeExceptionMode(

@@ -28,5 +28,7 @@ import org.graalvm.word.PointerBase;
 @CPointerTo(JNIJavaVM.class)
 public interface JNIJavaVMPointer extends PointerBase {
 
+    JNIJavaVM read();
+
     void write(JNIJavaVM value);
 }

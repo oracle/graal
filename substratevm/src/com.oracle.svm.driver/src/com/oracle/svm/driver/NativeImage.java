@@ -84,7 +84,9 @@ class NativeImage {
     static final String oHCLibraryPath = oH + "CLibraryPath=";
     static final String oHOptimize = oH + "Optimize=";
     static final String oHDebug = oH + "Debug=";
-    static final String oHRuntimeAssertions = oH + "RuntimeAssertions=";
+
+    /* Boolean arguments */
+    static final String RuntimeAssertions = "RuntimeAssertions";
 
     /* List arguments */
     static final String oHFeatures = oH + "Features=";

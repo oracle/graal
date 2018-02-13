@@ -44,7 +44,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -65,7 +64,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.StackTraceBuilder;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.ParkEvent.WaitResult;
@@ -75,11 +74,6 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class JavaThreads {
-
-    public static class Options {
-        @Option(help = "How large should the default thread stack be? (0 implies platform default size).")//
-        static final RuntimeOptionKey<Integer> DefaultThreadStackSize = new RuntimeOptionKey<>(1024 * 1024);
-    }
 
     @Fold
     public static JavaThreads singleton() {
@@ -171,42 +165,75 @@ public abstract class JavaThreads {
     }
 
     /**
-     * This method must be called from the main thread (which is not counted in the number of
-     * non-daemon threads).
+     * Joins all non-daemon threads. If the current thread is itself a non-daemon thread, it does
+     * not attempt to join itself.
      */
     @SuppressWarnings("try")
     public void joinAllNonDaemons() {
+        int expected = 0;
+        if (currentThread.get() != null && !currentThread.get().isDaemon()) {
+            expected = 1;
+        }
         try (VMMutex ignored = VMThreads.THREAD_MUTEX.lock()) {
-            while (nonDaemonThreads.get() > 0) {
+            while (nonDaemonThreads.get() > expected) {
                 VMThreads.THREAD_LIST_CONDITION.block();
             }
         }
     }
 
-    @NeverInline("Truffle compilation must not inline this method")
     private static Thread createThread(IsolateThread isolateThread) {
         /*
          * Either the main thread, or VMThread was started a different way. Create a new Thread
          * object and remember it for future calls, so that currentThread always returns the same
          * object.
          */
-        final Thread result = JavaThreads.fromTarget(new Target_java_lang_Thread(true));
 
-        /* necessary to be here as it breaks the infinite recursion */
-        boolean status = currentThread.compareAndSet(isolateThread, null, result);
-        if (!status) {
-            /*
-             * We lost the race. The constructor does not register the new instance anywhere, so we
-             * can discard the Thread we created.
-             */
+        // The thread has not been launched as java.lang.Thread, so we consider it a daemon thread.
+        boolean isDaemon = true;
+
+        final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(null, null, isDaemon));
+        if (!assignJavaThread(isolateThread, thread)) {
             return currentThread.get(isolateThread);
         }
+        return thread;
+    }
 
-        ThreadGroup group = result.getThreadGroup();
+    /**
+     * Create a {@link Thread} object for the current thread. The current thread must have already
+     * been attached {@link VMThreads} as an {@link IsolateThread}.
+     *
+     * @param name the thread's name, or {@code null} for a default name.
+     * @param group the thread group, or {@code null} for the default thread group.
+     * @return true if successful; false if a {@link Thread} object has already been assigned.
+     */
+    public boolean assignJavaThread(String name, ThreadGroup group, boolean asDaemon) {
+        final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
+        return assignJavaThread(KnownIntrinsics.currentVMThread(), thread);
+    }
+
+    /**
+     * Assign a {@link Thread} object to the current thread, which must have already been attached
+     * {@link VMThreads} as an {@link IsolateThread}.
+     * 
+     * @return true if successful; false if a {@link Thread} object has already been assigned.
+     */
+    public boolean assignJavaThread(Thread thread) {
+        return assignJavaThread(KnownIntrinsics.currentVMThread(), thread);
+    }
+
+    @NeverInline("Truffle compilation must not inline this method")
+    private static boolean assignJavaThread(IsolateThread isolateThread, Thread thread) {
+        if (!currentThread.compareAndSet(isolateThread, null, thread)) {
+            return false;
+        }
+        ThreadGroup group = thread.getThreadGroup();
         toTarget(group).addUnstarted();
-        toTarget(group).add(result);
-
-        return result;
+        toTarget(group).add(thread);
+        if (!thread.isDaemon()) {
+            assert isolateThread.equal(KnownIntrinsics.currentVMThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
+            singleton().nonDaemonThreads.incrementAndGet();
+        }
+        return true;
     }
 
     /**
@@ -256,6 +283,9 @@ public abstract class JavaThreads {
 
         detachParkEvent(getUnsafeParkEvent(thread));
         detachParkEvent(getSleepParkEvent(thread));
+        if (!thread.isDaemon()) {
+            singleton().nonDaemonThreads.decrementAndGet();
+        }
     }
 
     /** Have each thread, except this one, tear itself down. */
@@ -530,11 +560,10 @@ final class Target_java_lang_Thread {
     @Alias
     public native void exit();
 
-    Target_java_lang_Thread(boolean marker) {
+    Target_java_lang_Thread(String withName, ThreadGroup withGroup, boolean asDaemon) {
         /*
          * Raw creation of a thread without calling init(). Used to create a Thread object for an
-         * already running thread. The "marker" parameter is necessary to distinguish this
-         * constructor from the no-argument constructor in Thread.
+         * already running thread.
          */
 
         this.unsafeParkEvent = new AtomicReference<>();
@@ -542,10 +571,11 @@ final class Target_java_lang_Thread {
 
         tid = nextThreadID();
         threadStatus = ThreadStatus.RUNNABLE;
-        name = ("System-" + nextThreadNum());
-        group = JavaThreads.singleton().rootGroup;
+        name = (withName != null) ? withName : ("System-" + nextThreadNum());
+        group = (withGroup != null) ? withGroup : JavaThreads.singleton().rootGroup;
         priority = Thread.NORM_PRIORITY;
         blockerLock = new Object();
+        daemon = asDaemon;
     }
 
     @Substitute
@@ -605,8 +635,8 @@ final class Target_java_lang_Thread {
             /* If the user set a thread stack size at thread creation, then use that. */
             chosenStackSize = stackSize;
         } else {
-            /* If the user set a default thread stack size on the command line, then use that. */
-            final int defaultThreadStackSize = JavaThreads.Options.DefaultThreadStackSize.getValue();
+            /* If the user set a thread stack size on the command line, then use that. */
+            final int defaultThreadStackSize = (int) XOptions.getXss().getValue();
             if (defaultThreadStackSize != 0L) {
                 chosenStackSize = defaultThreadStackSize;
             }

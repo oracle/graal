@@ -131,7 +131,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String enableRuntimeAssertions = "-ea";
         if (headArg.equals(enableRuntimeAssertions)) {
             args.poll();
-            nativeImage.addImageBuilderArg(NativeImage.oHRuntimeAssertions + true);
+            nativeImage.addImageBuilderArg(NativeImage.oH + '+' + NativeImage.RuntimeAssertions);
             return true;
         }
         return false;

@@ -59,7 +59,11 @@ public final class RuntimeReflection {
         return ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
-    public interface RuntimeReflectionSupport {
+    public interface RuntimeReflectionSupport extends ReflectionRegistry {
+        // specific to java.lang.reflect reflection
+    }
+
+    public interface ReflectionRegistry {
         void register(Class<?>... classes);
 
         void register(Executable... methods);

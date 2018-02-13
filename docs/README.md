@@ -15,6 +15,8 @@ Further details can be found on the [OTN site](http://www.oracle.com/technetwork
 
 [Truffle](../truffle) and its dependency [Graal SDK](../sdk) are licensed under the [GPL 2 with Classpath exception](../truffle/LICENSE.GPL.md).
 
+The [Tools](../tools) project is licensed under the [GPL 2 with Classpath exception](../tools/LICENSE.GPL.md).
+
 The [Graal compiler](../compiler) is licensed under the [GPL 2](../compiler/LICENSE.md).
 
 The [Substrate VM](../substratevm) is licensed under the [GPL 2](../substratevm/LICENSE.md).

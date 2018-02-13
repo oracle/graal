@@ -150,7 +150,8 @@ abstract class MessageGenerator extends InteropNodeGenerator {
 
         Object currentMessage = Utils.getMessage(processingEnv, messageName);
         if (currentMessage != null) {
-            if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName)) {
+            if (Message.READ.toString().equalsIgnoreCase(messageName) || Message.KEY_INFO.toString().equalsIgnoreCase(messageName) ||
+                            Message.REMOVE.toString().equalsIgnoreCase(messageName)) {
                 return new ReadGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
             } else if (Message.WRITE.toString().equalsIgnoreCase(messageName)) {
                 return new WriteGenerator(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);

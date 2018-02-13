@@ -24,18 +24,24 @@ package com.oracle.truffle.api.benchmark;
 
 import java.util.Collections;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -59,6 +65,8 @@ public class EngineBenchmark extends TruffleBenchmark {
 
     private static final String TEST_LANGUAGE = "benchmark-test-language";
 
+    private static final String CONTEXT_LOOKUP_SOURCE = "contextLookup";
+
     @Benchmark
     public Object createEngine() {
         return Engine.create();
@@ -67,6 +75,126 @@ public class EngineBenchmark extends TruffleBenchmark {
     @Benchmark
     public Object createContext() {
         return Context.create();
+    }
+
+    @State(org.openjdk.jmh.annotations.Scope.Thread)
+    public static class ContextLookupSingleContext {
+        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Context context = Context.create(TEST_LANGUAGE);
+        final Value value = context.eval(source);
+
+        public ContextLookupSingleContext() {
+        }
+
+        @TearDown
+        public void tearDown() {
+            context.close();
+        }
+    }
+
+    private static final int CONTEXT_LOOKUP_ITERATIONS = 1000;
+
+    @Benchmark
+    public void lookupContextSingleContext(ContextLookupSingleContext state) {
+        state.context.enter();
+        for (int i = 0; i < CONTEXT_LOOKUP_ITERATIONS; i++) {
+            state.value.executeVoid();
+        }
+        state.context.leave();
+    }
+
+    @State(org.openjdk.jmh.annotations.Scope.Thread)
+    public static class ContextLookupMultiContext {
+        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Engine engine = Engine.create();
+        final Context context1 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
+        final Context context2 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
+        final Context context3 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
+        final Value value1 = context1.eval(source);
+        final Value value2 = context2.eval(source);
+        final Value value3 = context3.eval(source);
+
+        public ContextLookupMultiContext() {
+        }
+
+        @TearDown()
+        public void tearDown() {
+            context1.close();
+            context2.close();
+            context3.close();
+        }
+    }
+
+    @Benchmark
+    public void lookupContextMultiContext(ContextLookupMultiContext state) {
+        state.context1.enter();
+        for (int i = 0; i < CONTEXT_LOOKUP_ITERATIONS; i++) {
+            state.value1.executeVoid();
+        }
+        state.context1.leave();
+    }
+
+    @State(org.openjdk.jmh.annotations.Scope.Benchmark)
+    public static class ContextLookupMultiThread {
+
+        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Context context = Context.create(TEST_LANGUAGE);
+        final Value value = context.eval(source);
+
+        public ContextLookupMultiThread() {
+        }
+
+        @TearDown
+        public void tearDown() {
+            context.close();
+        }
+
+    }
+
+    @Benchmark
+    @Threads(10)
+    public void lookupContextMultiThread(ContextLookupMultiThread state) {
+        state.context.enter();
+        for (int i = 0; i < CONTEXT_LOOKUP_ITERATIONS; i++) {
+            state.value.executeVoid();
+        }
+        state.context.leave();
+    }
+
+    @State(org.openjdk.jmh.annotations.Scope.Benchmark)
+    public static class ContextLookupMultiThreadMultiContext {
+        final Source source = Source.create(TEST_LANGUAGE, CONTEXT_LOOKUP_SOURCE);
+        final Engine engine = Engine.create();
+        final Context context1 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
+        final Context context2 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
+        final Context context3 = Context.newBuilder(TEST_LANGUAGE).engine(engine).build();
+        final Value value1 = context1.eval(source);
+        final Value value2 = context2.eval(source);
+        final Value value3 = context3.eval(source);
+
+        public ContextLookupMultiThreadMultiContext() {
+        }
+
+        @Setup(Level.Trial)
+        public void enterThread() {
+        }
+
+        @TearDown
+        public void tearDown() {
+            context1.close();
+            context2.close();
+            context3.close();
+        }
+    }
+
+    @Benchmark
+    @Threads(10)
+    public void lookupContextMultiThreadMultiContext(ContextLookupMultiThreadMultiContext state) {
+        state.context1.enter();
+        for (int i = 0; i < CONTEXT_LOOKUP_ITERATIONS; i++) {
+            state.value1.executeVoid();
+        }
+        state.context1.leave();
     }
 
     @State(org.openjdk.jmh.annotations.Scope.Thread)
@@ -246,8 +374,26 @@ public class EngineBenchmark extends TruffleBenchmark {
         }
 
         @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(getCurrentContext(BenchmarkTestLanguage.class).object));
+            if (request.getSource().getCharacters().equals(CONTEXT_LOOKUP_SOURCE)) {
+                BenchmarkObject object = new BenchmarkObject();
+                object.runOnExecute = new Supplier<Object>() {
+                    final ContextReference<BenchmarkContext> context = getContextReference();
+
+                    public Object get() {
+                        return context.get();
+                    }
+
+                };
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(object));
+            } else {
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(getCurrentContext(BenchmarkTestLanguage.class).object));
+            }
         }
 
         @Override
@@ -290,8 +436,13 @@ public class EngineBenchmark extends TruffleBenchmark {
 
     public static class BenchmarkObject implements TruffleObject {
 
+        private static final Integer constant = 42;
+
         Object value = 42;
         long longValue = 42L;
+        Supplier<Object> runOnExecute = () -> {
+            return constant;
+        };
 
         public ForeignAccess getForeignAccess() {
             return BenchmarkObjectMRForeign.ACCESS;
@@ -369,10 +520,14 @@ public class EngineBenchmark extends TruffleBenchmark {
         @Resolve(message = "EXECUTE")
         abstract static class ExecuteNode extends Node {
 
-            private final Integer constant = 42;
+            @CompilationFinal private Supplier<Object> runOnExecute;
 
             public Object access(Object obj, Object[] args) {
-                return constant;
+                if (runOnExecute == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    runOnExecute = ((BenchmarkObject) obj).runOnExecute;
+                }
+                return runOnExecute.get();
             }
         }
 

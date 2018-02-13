@@ -46,7 +46,7 @@ class HostedOptionProviderHelper {
     static void addArguments(List<String> result, String prefix, EconomicMap<OptionKey<?>, Object> values) {
         MapCursor<OptionKey<?>, Object> cursor = values.getEntries();
         while (cursor.advance()) {
-            result.add(prefix + cursor.getKey().getDescriptor().getName() + "=" + cursor.getValue());
+            result.add(prefix + cursor.getKey().getName() + "=" + cursor.getValue());
         }
     }
 }

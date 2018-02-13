@@ -6,33 +6,16 @@ JNI is a native API that enables Java code to interact with native code and vice
 By default, the JNI implementation is not enabled and not built into Substrate VM images. It can be enabled explicitly with `-H:+JNI`, or implicitly by providing a JNI configuration with `-H:JNIConfigurationFiles` (read more below).
 
 ## Linking
-Java code can load native code from a shared object with `System.loadLibrary()`. Alternatively, native code can load the JVM's native library and attach to its Java environment using JNI's *invocation API*. The Substrate VM JNI implementation supports both approaches. When using the invocation API, `JNI_GetCreatedJavaVMs` returns a single existing VM instance from the beginning, unless `-H:+JNICreateJavaVM` is specified during the image build, in which case `JNI_CreateJavaVM` must be called first.
+Java code can load native code from a shared object with `System.loadLibrary()`. Alternatively, native code can load the JVM's native library and attach to its Java environment using JNI's *invocation API*. The Substrate VM JNI implementation supports both approaches.
 
 ## Reflection
 JNI supports looking up classes by their names, and looking up methods and fields by their names and signatures. This requires keeping the necessary metadata for these lookups around. The image build must know beforehand which items will be looked up in case they might not be reachable otherwise and therefore would not be included in the native image. Moreover, the image build must generate call wrapper code ahead of time for any method that can be called via JNI. Therefore, specifying a concise list of items that need to be accessible via JNI guarantees their availability and allows for a smaller footprint. Such a list can be specified with the following image build argument:
 
     -H:JNIConfigurationFiles=/path/to/jniconfig
 
-where `jniconfig` is a JSON file in the following format (use `-H:+PrintFlags` for more details):
+where `jniconfig` is a JSON configuration file. The syntax is the same as for reflection configuration files, which are described in the [documentation on reflection](REFLECTION.md).
 
-    [
-      {
-        "name" : "java.lang.String",
-        "methods" : [
-          { "name" : "substring", "parameterTypes" : ["int", "int"] }
-        ],
-        "fields" : [
-          { "name" : "value" },
-          { "name" : "hash" }
-        ]
-      },
-      {
-        "name" : "java.lang.String$CaseInsensitiveComparator",
-        "methods" : [ { "name" : "compare" } ]
-      }
-    ]
-
-The image build generates JNI reflection metadata for all classes, methods and fields referenced in that file. More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`.
+The image build generates JNI reflection metadata for all classes, methods and fields referenced in the configuration file. More than one JNI configuration can be used by specifying multiple paths for `JNIConfigurationFiles` and separating them with `,`. Also, `-H:JNIConfigurationResources` can be specified to load one or several configuration files from the image build's class path, such as from a JAR file.
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `JNIRuntimeAccess` class. For example:
 
@@ -41,9 +24,13 @@ Alternatively, a custom `Feature` implementation can register program elements b
       public void beforeAnalysis(BeforeAnalysisAccess access) {
         try {
           JNIRuntimeAccess.register(String.class);
-          JNIRuntimeAccess.register(String.class.getDeclaredMethod("substring", int.class, int.class));
           JNIRuntimeAccess.register(String.class.getDeclaredField("value"));
           JNIRuntimeAccess.register(String.class.getDeclaredField("hash"));
+          JNIRuntimeAccess.register(String.class.getDeclaredConstructor(char[].class));
+          JNIRuntimeAccess.register(String.class.getDeclaredMethod("charAt", int.class));
+          JNIRuntimeAccess.register(String.class.getDeclaredMethod("format", String.class, Object[].class));
+          JNIRuntimeAccess.register(String.CaseInsensitiveComparator.class);
+          JNIRuntimeAccess.register(String.CaseInsensitiveComparator.class.getDeclaredMethod("compare", String.class, String.class));
         } catch (NoSuchMethodException | NoSuchFieldException e) { ... }
       }
     }

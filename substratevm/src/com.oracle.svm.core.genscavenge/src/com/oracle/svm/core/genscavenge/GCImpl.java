@@ -47,7 +47,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.MustNotAllocate;
-import com.oracle.svm.core.genscavenge.CollectionPolicy.NeverIncrementally;
 import com.oracle.svm.core.heap.AllocationFreeList;
 import com.oracle.svm.core.heap.AllocationFreeList.PreviouslyRegisteredElementException;
 import com.oracle.svm.core.heap.CollectionWatcher;
@@ -103,7 +102,7 @@ public class GCImpl implements GC {
     /**
      * A policy instance for collectCompletely(String).
      */
-    private final CollectionPolicy neverIncrementallyInstance;
+    private final CollectionPolicy alwaysCompletelyInstance;
 
     /** Accounting for this collection. */
     private final Accounting accounting;
@@ -131,7 +130,7 @@ public class GCImpl implements GC {
      */
 
     private CollectionPolicy policy;
-    private boolean incremental;
+    private boolean completeCollection;
     private UnsignedWord sizeBefore;
 
     /** Constructor for subclasses. */
@@ -146,7 +145,7 @@ public class GCImpl implements GC {
         this.collectionWatcherList = AllocationFreeList.factory();
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
         this.discoveredReferenceList = null;
-        this.incremental = false;
+        this.completeCollection = false;
         this.sizeBefore = Word.zero();
 
         /* Choose an incremental versus full collection policy. */
@@ -154,7 +153,7 @@ public class GCImpl implements GC {
         this.greyToBlackObjRefVisitor = GreyToBlackObjRefVisitor.factory();
         this.frameWalker = FramePointerMapWalker.factory(greyToBlackObjRefVisitor);
         this.greyToBlackObjectVisitor = GreyToBlackObjectVisitor.factory(greyToBlackObjRefVisitor);
-        this.neverIncrementallyInstance = new NeverIncrementally();
+        this.alwaysCompletelyInstance = new CollectionPolicy.OnlyCompletely();
         this.collectionInProgress = Latch.factory("Collection in progress");
         this.oldGenerationSizeExceeded = new OutOfMemoryError("Old generation size exceeded.");
         this.unpinnedObjectReferenceWalkerException = new UnpinnedObjectReferenceWalkerException();
@@ -185,17 +184,17 @@ public class GCImpl implements GC {
 
     @Override
     public void collect(String cause) {
-        final UnsignedWord gcEpoch = possibleCollectionPrologue();
+        final UnsignedWord requestingEpoch = possibleCollectionPrologue();
         /* Collect without allocating. */
         collectWithoutAllocating(cause);
         /* Do anything necessary now that allocation, etc., is allowed. */
-        possibleCollectionEpilogue(gcEpoch);
+        possibleCollectionEpilogue(requestingEpoch);
     }
 
     @MustNotAllocate(reason = "Must not allocate in the implementation of garbage collection.")
     void collectWithoutAllocating(String cause) {
         /* Queue a VMOperation to do the collection. */
-        collectVMOperation.enqueue(cause);
+        collectVMOperation.enqueue(cause, getCollectionEpoch());
         OutOfMemoryError result = collectVMOperation.getResult();
         if (result != null) {
             throw result;
@@ -204,9 +203,19 @@ public class GCImpl implements GC {
 
     /** The body of the VMOperation to do the collection. */
     @SuppressWarnings("try")
-    private OutOfMemoryError collectOperation(String cause) {
-        final Log trace = Log.noopLog().string("[GCImpl.collectOperation:").newline().string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause).newline();
+    private OutOfMemoryError collectOperation(String cause, UnsignedWord requestingEpoch) {
+        final Log trace = Log.noopLog().string("[GCImpl.collectOperation:").newline()
+                        .string("  epoch: ").unsigned(getCollectionEpoch())
+                        .string("  cause: ").string(cause)
+                        .string("  requestingEpoch: ").unsigned(requestingEpoch)
+                        .newline();
         VMOperation.guaranteeInProgress("Collection should be a VMOperation.");
+
+        /* if there has been a collection since the requesting epoch, then just return. */
+        if (getCollectionEpoch().aboveThan(requestingEpoch)) {
+            trace.string("  epoch has moved on]").newline();
+            return null;
+        }
 
         /* Stop the mutator timer. */
         mutatorTimer.close();
@@ -259,7 +268,6 @@ public class GCImpl implements GC {
         VMOperation.guaranteeInProgress("Collection should be a VMOperation.");
 
         final HeapImpl heap = HeapImpl.getHeapImpl();
-        incremental = getPolicy().collectIncrementally();
 
         precondition();
 
@@ -284,8 +292,11 @@ public class GCImpl implements GC {
                  * find them on the free list.
                  *
                  */
-                scavenge(true);
-                if (!incremental) {
+                if (getPolicy().collectIncrementally()) {
+                    scavenge(true);
+                }
+                completeCollection = getPolicy().collectCompletely();
+                if (completeCollection) {
                     scavenge(false);
                 }
             }
@@ -294,7 +305,7 @@ public class GCImpl implements GC {
             DiscoverableReferenceProcessing.Scatterer.distributeReferences();
         }
 
-        getAccounting().afterCollection(incremental, collectionTimer);
+        getAccounting().afterCollection(completeCollection, collectionTimer);
 
         trace.string("  Verify after: ");
         try (Timer vat = verifyAfterTimer.open()) {
@@ -317,9 +328,9 @@ public class GCImpl implements GC {
         if (SubstrateOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
             /* Print the command line options that shape the heap. */
             verboseGCLog.string("[Heap policy parameters: ").newline();
-            verboseGCLog.string("  YoungGenerationSize: ").unsigned(HeapPolicy.getYoungGenerationSize()).newline();
-            verboseGCLog.string("    OldGenerationSize: ").unsigned(HeapPolicy.getOldGenerationSize()).newline();
-            verboseGCLog.string("        FreeSpaceSize: ").unsigned(HeapPolicy.getFreeSpaceSize()).newline();
+            verboseGCLog.string("  YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
+            verboseGCLog.string("      MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
+            verboseGCLog.string("      MinimumHeapSize: ").unsigned(HeapPolicy.getMinimumHeapSize()).newline();
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapPolicy.getLargeArrayThreshold()).string("]").newline();
             if (HeapOptions.PrintHeapShape.getValue()) {
@@ -356,7 +367,7 @@ public class GCImpl implements GC {
                     final long finishNanos = collectionTimer.getFinish();
                     printGCLog.unsigned(TimeUtils.roundNanosToMillis(Timer.getTimeSinceFirstAllocation(finishNanos))).string(" msec: ");
                 }
-                printGCLog.string(incremental ? "Incremental GC" : "Full GC");
+                printGCLog.string(completeCollection ? "Full GC" : "Incremental GC");
                 printGCLog.string(" (").string(cause).string(") ");
                 printGCLog.unsigned(sizeBefore.unsignedDivide(1024));
                 printGCLog.string("K->");
@@ -376,7 +387,7 @@ public class GCImpl implements GC {
                 verboseGCLog.string(" GC:").string(" after ").string("  epoch: ").unsigned(getCollectionEpoch()).string("  cause: ").string(cause);
                 verboseGCLog.string("  policy: ");
                 getPolicy().nameToLog(verboseGCLog);
-                verboseGCLog.string("  type: ").string(incremental ? "incremental" : "complete");
+                verboseGCLog.string("  type: ").string(completeCollection ? "complete" : "incremental");
                 if (HeapOptions.PrintHeapShape.getValue()) {
                     heap.report(verboseGCLog);
                 }
@@ -468,7 +479,8 @@ public class GCImpl implements GC {
 
     private OutOfMemoryError checkIfOutOfMemory() {
         OutOfMemoryError result = null;
-        final UnsignedWord allowed = HeapPolicy.getOldGenerationSize();
+        final UnsignedWord allowed = HeapPolicy.getMaximumHeapSize();
+        /* Only the old generation has objects in it because the young generation is empty. */
         final UnsignedWord inUse = getAccounting().getOldGenerationAfterChunkBytes();
         if (allowed.belowThan(inUse)) {
             result = oldGenerationSizeExceeded;
@@ -485,7 +497,7 @@ public class GCImpl implements GC {
     public void collectCompletely(final String cause) {
         final CollectionPolicy oldPolicy = getPolicy();
         try {
-            setPolicy(neverIncrementallyInstance);
+            setPolicy(alwaysCompletelyInstance);
             collect(cause);
         } finally {
             setPolicy(oldPolicy);
@@ -663,7 +675,7 @@ public class GCImpl implements GC {
         final Log trace = Log.noopLog().string("[GCImpl.promoteAllPinnedObjects:").newline();
         try (Timer ppot = promotePinnedObjectsTimer.open()) {
             promoteIndividualPinnedObjects();
-            promotePinnedAllocatorObjects(incremental);
+            promotePinnedAllocatorObjects(completeCollection);
         }
         trace.string("]").newline();
     }
@@ -688,11 +700,11 @@ public class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    private static void promotePinnedAllocatorObjects(final boolean isIncremental) {
+    private static void promotePinnedAllocatorObjects(final boolean completeCollection) {
         final Log trace = Log.noopLog().string("[GCImpl.promotePinnedAllocatorObjects:").newline();
         final HeapImpl heap = HeapImpl.getHeapImpl();
         final OldGeneration oldGeneration = heap.getOldGeneration();
-        oldGeneration.promotePinnedAllocatorChunks(isIncremental);
+        oldGeneration.promotePinnedAllocatorChunks(completeCollection);
         trace.string("]").newline();
     }
 
@@ -837,7 +849,7 @@ public class GCImpl implements GC {
         final Log trace = Log.noopLog().string("[GCImpl.releaseSpaces:");
         final HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getYoungGeneration().releaseSpaces();
-        if (!incremental) {
+        if (completeCollection) {
             heap.getOldGeneration().releaseSpaces();
         }
         trace.string("]").newline();
@@ -868,14 +880,13 @@ public class GCImpl implements GC {
      *
      * Note that this method may get called by several threads for the same collection. For example,
      * if several threads arrive at {@link #possibleCollectionPrologue()} before any particular
-     * collection, they will each present the sampled epoch number to
-     * {@link #possibleCollectionEpilogue(UnsignedWord)}, and cause any collection watchers to
-     * report. That is mostly a problem for collection watchers to be aware of. For example,
-     * watchers could keep track of the collections they have run in and reported on, and only put
-     * out one report per collection.
+     * collection, they will each present the sampled epoch number to this method, and cause any
+     * collection watchers to report. That is mostly a problem for collection watchers to be aware
+     * of. For example, watchers could keep track of the collections they have run in and reported
+     * on, and only put out one report per collection.
      */
-    void possibleCollectionEpilogue(UnsignedWord previousEpoch) {
-        if (previousEpoch.belowThan(getCollectionEpoch())) {
+    void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
+        if (requestingEpoch.belowThan(getCollectionEpoch())) {
             visitWatchersReport();
         }
     }
@@ -1366,15 +1377,16 @@ public class GCImpl implements GC {
             trace.string("]").newline();
         }
 
-        void afterCollection(boolean incremental, Timer collectionTimer) {
-            if (incremental) {
-                afterIncrementalCollection(collectionTimer);
-            } else {
+        void afterCollection(boolean completeCollection, Timer collectionTimer) {
+            if (completeCollection) {
                 afterCompleteCollection(collectionTimer);
+            } else {
+                afterIncrementalCollection(collectionTimer);
             }
         }
 
         private void afterIncrementalCollection(Timer collectionTimer) {
+            final Log trace = Log.noopLog().string("[GCImpl.Accounting.afterIncrementalCollection:");
             /*
              * Aggregating collection information is needed because any given collection policy may
              * not be called for all collections, but may want to make decisions based on the
@@ -1386,9 +1398,16 @@ public class GCImpl implements GC {
             setHistoryOf(promotedUnpinnedChunkBytes, oldChunkBytesAfter.subtract(oldChunkBytesBefore));
             promotedTotalChunkBytes = promotedTotalChunkBytes.add(getHistoryOf(promotedUnpinnedChunkBytes)).add(getHistoryOf(promotedPinnedChunkBytes));
             incrementalCollectionTotalNanos += collectionTimer.getCollectedNanos();
+            trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
+                            .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
+                            .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore)
+                            .string("  promotedUnpinnedChunkBytes: ").unsigned(getHistoryOf(promotedUnpinnedChunkBytes))
+                            .string("  promotedPinnedChunkBytes: ").unsigned(getHistoryOf(promotedPinnedChunkBytes));
+            trace.string("]").newline();
         }
 
         private void afterCompleteCollection(Timer collectionTimer) {
+            final Log trace = Log.noopLog().string("[GCImpl.Accounting.afterCompleteCollection:");
             completeCollectionCount += 1;
             afterCollectionCommon();
             /* Complete collections only copy, and they copy everything. */
@@ -1396,6 +1415,10 @@ public class GCImpl implements GC {
             setHistoryOf(copiedPinnedChunkBytes, pinnedChunkBytesAfter);
             copiedTotalChunkBytes = copiedTotalChunkBytes.add(oldChunkBytesAfter).add(pinnedChunkBytesAfter);
             completeCollectionTotalNanos += collectionTimer.getCollectedNanos();
+            trace.string("  completeCollectionCount: ").signed(completeCollectionCount)
+                            .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
+                            .string("  pinnedChunkBytesAfter: ").unsigned(pinnedChunkBytesAfter);
+            trace.string("]").newline();
         }
 
         /** Shared after collection processing. */
@@ -1563,6 +1586,7 @@ public class GCImpl implements GC {
 
         /* State. */
         private String cause;
+        private UnsignedWord requestingEpoch;
         private OutOfMemoryError result;
 
         /** Constructor. */
@@ -1570,12 +1594,14 @@ public class GCImpl implements GC {
         CollectionVMOperation() {
             super("GarbageCollection", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
             this.cause = "TooSoonToTell";
+            this.requestingEpoch = WordFactory.zero();
             this.result = null;
         }
 
-        /** A convenience "enqueue" method that sets "cause" first. */
-        void enqueue(String value) {
-            cause = value;
+        /** A convenience "enqueue" method that sets "cause" and "requestingEpoch" first. */
+        void enqueue(String causeArg, UnsignedWord requestingEpochArg) {
+            cause = causeArg;
+            requestingEpoch = requestingEpochArg;
             result = null;
             enqueue();
         }
@@ -1584,7 +1610,7 @@ public class GCImpl implements GC {
         @Override
         @MustNotAllocate(reason = "Must not allocate while collecting")
         public void operate() {
-            result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause);
+            result = HeapImpl.getHeapImpl().getGCImpl().collectOperation(cause, requestingEpoch);
         }
 
         OutOfMemoryError getResult() {
@@ -1598,8 +1624,9 @@ public class GCImpl implements GC {
         final String prefix = "PrintGCSummary: ";
 
         /* Print GC configuration. */
-        log.string(prefix).string("YoungGenerationSize: ").unsigned(HeapPolicy.getYoungGenerationSize()).newline();
-        log.string(prefix).string("OldGenerationSize: ").unsigned(HeapPolicy.getOldGenerationSize()).newline();
+        log.string(prefix).string("YoungGenerationSize: ").unsigned(HeapPolicy.getMaximumYoungGenerationSize()).newline();
+        log.string(prefix).string("MinimumHeapSize: ").unsigned(HeapPolicy.getMinimumHeapSize()).newline();
+        log.string(prefix).string("MaximumHeapSize: ").unsigned(HeapPolicy.getMaximumHeapSize()).newline();
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
 
         /* Add in any young and pinned objects allocated since the last collection. */

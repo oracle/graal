@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.137.0",
+    "mxversion": "5.138.0",
     "name": "substratevm",
 
     "defaultLicense" : "GPLv2-CPE",

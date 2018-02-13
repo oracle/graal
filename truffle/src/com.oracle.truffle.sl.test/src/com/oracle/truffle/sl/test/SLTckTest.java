@@ -134,6 +134,7 @@ public class SLTckTest extends TruffleTCK {
                     "  obj = new();\n" +
                     "  obj.rw = \"rw\";\n" +
                     "  obj.invocable = anInvocable;\n" +
+                    "  obj.rm = \"rm\";\n" +
                     "  return obj;\n" +
                     "}\n" +
                     "function callFunction(f) {\n" +

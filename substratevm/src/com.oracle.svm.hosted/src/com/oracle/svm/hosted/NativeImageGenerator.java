@@ -594,7 +594,7 @@ public class NativeImageGenerator {
 
                         entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
 
-                        for (StructuredGraph graph : aReplacements.getSnippetGraphs()) {
+                        for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options))) {
                             MethodTypeFlowBuilder.registerUsedElements(bigbang, graph, null);
                         }
                     }

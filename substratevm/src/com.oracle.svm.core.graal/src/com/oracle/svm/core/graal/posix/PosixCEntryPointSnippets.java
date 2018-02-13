@@ -22,8 +22,8 @@
  */
 package com.oracle.svm.core.graal.posix;
 
-import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
+import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
@@ -38,9 +38,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FullInfopointNode;
-import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -53,6 +50,9 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -62,20 +62,19 @@ import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
-import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posix.thread.PosixVMThreads;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -84,7 +83,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.UserError;
 
 /**
  * Snippets for calling from C to Java. This is the inverse of {@link CFunctionSnippets}.
@@ -124,18 +122,21 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static final SubstrateForeignCallDescriptor DETACH_THREAD = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "detachThread", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor REPORT_EXCEPTION = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "reportException", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor TEAR_DOWN_ISOLATE = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "tearDownIsolate", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor IS_ATTACHED = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "isAttached", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor FAIL_FATALLY = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "failFatally", false, LocationIdentity.any());
 
-    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_ST = {REPORT_EXCEPTION};
-    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_MT = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE, ENTER, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE};
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
-
-    @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, int vmThreadSize);
+    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_ST = {REPORT_EXCEPTION, FAIL_FATALLY};
+    public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS_MT = {CREATE_ISOLATE, ATTACH_THREAD, ENTER_ISOLATE,
+                    ENTER, DETACH_THREAD, REPORT_EXCEPTION, TEAR_DOWN_ISOLATE, IS_ATTACHED, FAIL_FATALLY};
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native IsolateThread runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, CEntryPointCreateIsolateParameters parameters, int vmThreadSize);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate, int vmThreadSize);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native int runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, IsolateThread thread);
@@ -144,10 +145,16 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static native void runtimeCall(@ConstantNodeParameter ForeignCallDescriptor descriptor, Throwable exception);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
-    public static native int tearDownIsolateForeignCall(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+    public static native int runtimeCallTearDownIsolate(@ConstantNodeParameter ForeignCallDescriptor descriptor);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native boolean runtimeCallIsAttached(@ConstantNodeParameter ForeignCallDescriptor descriptor, Isolate isolate);
 
     public static final String HEAP_BASE = "__svm_heap_base";
     private static final CGlobalData<PointerBase> heapBaseAccess = CGlobalDataFactory.forSymbol(HEAP_BASE);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    public static native void runtimeCallFailFatally(@ConstantNodeParameter ForeignCallDescriptor descriptor, int code, CCharPointer message);
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     static PointerBase heapBase() {
@@ -200,9 +207,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters, @ConstantParameter int vmThreadSize) {
         writeCurrentVMThread(VMThreads.nullThread());
-        IsolateThread thread = runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
-        writeCurrentVMThread(thread);
-        return 0;
+        return runtimeCall(CREATE_ISOLATE, parameters, vmThreadSize);
     }
 
     /**
@@ -210,7 +215,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
      */
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
-    private static IsolateThread createIsolate(@SuppressWarnings("unused") CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
+    private static int createIsolate(@SuppressWarnings("unused") CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
         /*
          * TODO: Create a heap for the isolate, write it to the heap base register, pass it as an
          * Isolate to attachThread
@@ -227,9 +232,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int attachThreadSnippet(Isolate isolate, @ConstantParameter int vmThreadSize) {
         writeCurrentVMThread(VMThreads.nullThread());
-        IsolateThread thread = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
-        writeCurrentVMThread(thread);
-        return 0;
+        return runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
     }
 
     /**
@@ -240,14 +243,14 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
      */
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
-    private static IsolateThread attachThread(@SuppressWarnings("unused") Isolate isolate, int vmThreadSize) {
+    private static int attachThread(@SuppressWarnings("unused") Isolate isolate, int vmThreadSize) {
         /* TODO: Use isolate as a heap base here, write it to the created IsolateThread */
         setHeapBase();
 
         if (!PosixVMThreads.isInitialized()) {
-            Log.log().string("VM is not initialized").newline();
-            LibC.abort();
+            return -1;
         }
+
         /* Check if the thread is already attached. */
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
         if (VMThreads.isNullThread(thread)) {
@@ -259,7 +262,8 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
         VMThreads.StatusSupport.setStatusJavaUnguarded(thread);
         postAttachThread(thread);
-        return thread;
+        writeCurrentVMThread(thread);
+        return 0;
     }
 
     /** Things to be done to the current thread <em>after</em> attachThread. */
@@ -330,7 +334,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @Snippet
     public static int tearDownIsolateSnippet() {
-        return tearDownIsolateForeignCall(TEAR_DOWN_ISOLATE);
+        return runtimeCallTearDownIsolate(TEAR_DOWN_ISOLATE);
     }
 
     /**
@@ -343,7 +347,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
         /* Let someone who can do all the work do all the work. */
-        return JavaThreads.singleton().tearDownVM() ? 0 : 1;
+        return JavaThreads.singleton().tearDownVM() ? 0 : -1;
     }
 
     /** Call from C to Java with IsolateThread coming from Posix thread-local storage. */
@@ -351,33 +355,38 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static int enterIsolateSnippet(Isolate isolate) {
         // Get IsolateThread from Posix thread-local storage.
         writeCurrentVMThread(VMThreads.nullThread());
-        IsolateThread thread = runtimeCall(ENTER_ISOLATE, isolate);
-        writeCurrentVMThread(thread);
-        transitionCtoJava();
-        return 0;
+        int result = runtimeCall(ENTER_ISOLATE, isolate);
+        if (result == 0) {
+            transitionCtoJava();
+        }
+        return result;
     }
 
     /** Foreign call: {@link #ENTER_ISOLATE}. */
     @Uninterruptible(reason = "Thread register not set up yet")
     @SubstrateForeignCallTarget
-    private static IsolateThread enterIsolate(@SuppressWarnings("unused") Isolate isolate) {
+    private static int enterIsolate(@SuppressWarnings("unused") Isolate isolate) {
+        if (!PosixVMThreads.isInitialized()) {
+            return -2;
+        }
         /* Get thread from pthread thread-local variable. */
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
         if (VMThreads.isNullThread(thread)) {
-            /* There is not much we can do when we fail this way. */
-            Log.log().string("No thread found").newline();
-            LibC.abort();
+            return -1;
         }
-
         // TODO: Use isolate as a heap base
         setHeapBase();
-        return thread;
+        writeCurrentVMThread(thread);
+        return 0;
     }
 
     /** Call from C to Java with IsolateThread coming from the parameter. */
     @Snippet
     public static int enterSnippet(IsolateThread thread) {
         // Get IsolateThread from parameter.
+        if (thread.isNull()) {
+            return -1;
+        }
         writeCurrentVMThread(thread);
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             // TODO: read heap base from the thread
@@ -426,6 +435,39 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     }
 
     @Snippet
+    public static boolean isAttachedSnippet(Isolate isolate) {
+        return runtimeCallIsAttached(IS_ATTACHED, isolate);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    @SubstrateForeignCallTarget
+    private static boolean isAttached(@SuppressWarnings("unused") Isolate isolate) {
+        return PosixVMThreads.isInitialized() && PosixVMThreads.VMThreadTL.get().isNonNull();
+    }
+
+    @Snippet
+    public static void failFatallySnippet(int code, CCharPointer message) {
+        runtimeCallFailFatally(FAIL_FATALLY, code, message);
+    }
+
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
+
+    @CFunction(value = "fdopen", transition = Transition.NO_TRANSITION)
+    public static native FILE fdopen(int fd, CCharPointer mode);
+
+    @CFunction(value = "fprintf", transition = Transition.NO_TRANSITION)
+    public static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
+
+    @Uninterruptible(reason = "Unknown thread state.")
+    @SubstrateForeignCallTarget
+    private static void failFatally(int code, CCharPointer message) {
+        FILE stderr = fdopen(2, FAIL_FATALLY_FDOPEN_MODE.get());
+        fprintfSD(stderr, FAIL_FATALLY_MESSAGE_FORMAT.get(), message, code);
+        LibC.exit(code);
+    }
+
+    @Snippet
     public static int enterSingleThreadedSnippet() {
         return 0;
     }
@@ -433,6 +475,11 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int leaveSingleThreadedSnippet() {
         return 0;
+    }
+
+    @Snippet
+    public static boolean isAttachedSingleThreadedSnippet(@SuppressWarnings("unused") Isolate isolate) {
+        return true;
     }
 
     private final int vmThreadSize;
@@ -465,35 +512,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         if (SubstrateOptions.MultiThreaded.getValue()) {
             lowerings.put(CEntryPointEnterNode.class, new EnterMTLowering());
             lowerings.put(CEntryPointLeaveNode.class, new LeaveMTLowering());
+            lowerings.put(CEntryPointUtilityNode.class, new UtilityMTLowering());
         } else {
             lowerings.put(CEntryPointEnterNode.class, new EnterSTLowering());
             lowerings.put(CEntryPointLeaveNode.class, new LeaveSTLowering());
+            lowerings.put(CEntryPointUtilityNode.class, new UtilitySTLowering());
         }
-    }
-
-    private static void checkEntryBeforeLowering(CEntryPointEnterNode node) {
-        if (node.graph().method().getAnnotation(Uninterruptible.class) != null) {
-            return;
-        }
-        /* only struct accesses may come before an CEntryPointActions entry call. */
-        Node predecessor = node.predecessor();
-        while (predecessor.getClass() == CInterfaceReadNode.class || predecessor.getClass() == FullInfopointNode.class) {
-            predecessor = predecessor.predecessor();
-        }
-        UserError.guarantee(predecessor == node.graph().start(), CEntryPointActions.class.getSimpleName() +
-                        " entry method call must be the first statement in the method: " + node.graph().method().format("%H.%n(%p)"));
-    }
-
-    private static void checkExitBeforeLowering(CEntryPointLeaveNode node) {
-        if (node.graph().method().getAnnotation(Uninterruptible.class) != null) {
-            return;
-        }
-        FixedNode successor = node.next();
-        while (successor instanceof FullInfopointNode) {
-            successor = ((FullInfopointNode) successor).next();
-        }
-        UserError.guarantee(successor.getClass() == ReturnNode.class || successor.getClass() == DeadEndNode.class,
-                        "Calls to " + CEntryPointActions.class.getSimpleName() + " exit methods must immediately precede a return: " + node.graph().method().format("%H.%n(%p)"));
     }
 
     protected class EnterMTLowering implements NodeLoweringProvider<CEntryPointEnterNode> {
@@ -505,8 +529,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointEnterNode node, LoweringTool tool) {
-            checkEntryBeforeLowering(node);
-
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
@@ -531,7 +553,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -540,8 +562,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointEnterNode node, LoweringTool tool) {
-            checkEntryBeforeLowering(node);
-
             Arguments args;
             switch (node.getEnterAction()) {
                 case CreateIsolate:
@@ -553,7 +573,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
@@ -565,8 +585,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
-            checkExitBeforeLowering(node);
-
             Arguments args;
             switch (node.getLeaveAction()) {
                 case Leave:
@@ -589,7 +607,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
 
     }
@@ -601,8 +619,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
         @Override
         public void lower(CEntryPointLeaveNode node, LoweringTool tool) {
-            checkExitBeforeLowering(node);
-
             Arguments args;
             switch (node.getLeaveAction()) {
                 case ExceptionAbort:
@@ -617,7 +633,54 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 default:
                     throw shouldNotReachHere();
             }
-            template(node.getDebug(), args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+    }
+
+    protected class UtilityMTLowering implements NodeLoweringProvider<CEntryPointUtilityNode> {
+        private final SnippetInfo isAttached = snippet(PosixCEntryPointSnippets.class, "isAttachedSnippet");
+        private final SnippetInfo failFatally = snippet(PosixCEntryPointSnippets.class, "failFatallySnippet");
+
+        @Override
+        public void lower(CEntryPointUtilityNode node, LoweringTool tool) {
+            Arguments args;
+            switch (node.getUtilityAction()) {
+                case IsAttached:
+                    args = new Arguments(isAttached, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args.add("isolate", node.getParameter0());
+                    break;
+                case FailFatally:
+                    args = new Arguments(failFatally, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args.add("code", node.getParameter0());
+                    args.add("message", node.getParameter1());
+                    break;
+                default:
+                    throw shouldNotReachHere();
+            }
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+    }
+
+    protected class UtilitySTLowering implements NodeLoweringProvider<CEntryPointUtilityNode> {
+        private final SnippetInfo isAttachedSingleThreaded = snippet(PosixCEntryPointSnippets.class, "isAttachedSingleThreadedSnippet");
+        private final SnippetInfo failFatally = snippet(PosixCEntryPointSnippets.class, "failFatallySnippet");
+
+        @Override
+        public void lower(CEntryPointUtilityNode node, LoweringTool tool) {
+            Arguments args;
+            switch (node.getUtilityAction()) {
+                case IsAttached:
+                    args = new Arguments(isAttachedSingleThreaded, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    break;
+                case FailFatally:
+                    args = new Arguments(failFatally, node.graph().getGuardsStage(), tool.getLoweringStage());
+                    args.add("code", node.getParameter0());
+                    args.add("message", node.getParameter1());
+                    break;
+                default:
+                    throw shouldNotReachHere();
+            }
+            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 }
