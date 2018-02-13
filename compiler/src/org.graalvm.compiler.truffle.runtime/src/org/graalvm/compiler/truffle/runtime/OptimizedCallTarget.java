@@ -209,13 +209,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return callBoundary(args);
     }
 
-    /**
-     * Intrinsifiable compiler directive to tighten the type information for {@code args}.
-     *
-     */
-    void callBoundaryEntry() {
-    }
-
     @TruffleCallBoundary
     protected final Object callBoundary(Object[] args) {
         if (CompilerDirectives.inInterpreter()) {

@@ -36,7 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link GraphEncoder} for a description of the encoding format. Use {@link GraphDecoder} for
  * decoding.
  */
-public class EncodedGraph {
+public final class EncodedGraph {
 
     private final byte[] encoding;
     private final int startOffset;
