@@ -275,6 +275,7 @@ class NativeImage {
 
         Path graalvmDir = getRootDir().resolve("lib/graalvm");
         getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
     protected static boolean replaceArg(Collection<String> args, String argPrefix, String argSuffix) {
