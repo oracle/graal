@@ -553,7 +553,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    native_image(['--js'])
+    native_image(['--js', '--tool.chromeinspector'])
 
 def test_js(benchmarks):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -577,7 +577,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    native_image(['--python'])
+    native_image(['--python', '--tool.profiler'])
 
 def test_python_smoke(args):
     """
