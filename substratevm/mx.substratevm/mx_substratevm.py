@@ -248,6 +248,10 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join('tools', 'nfi', 'builder'), ['truffle:TRUFFLE_NFI'])
     native_image_extract_dists(join('tools', 'nfi'), ['truffle:TRUFFLE_NFI_NATIVE'])
     native_image_option_properties('tools', 'nfi', native_image_root)
+    native_image_layout_dists(join('tools', 'chromeinspector'), ['tools:CHROMEINSPECTOR'])
+    native_image_option_properties('tools', 'chromeinspector', native_image_root)
+    native_image_layout_dists(join('tools', 'profiler'), ['tools:TRUFFLE_PROFILER'])
+    native_image_option_properties('tools', 'profiler', native_image_root)
 
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
@@ -421,7 +425,7 @@ def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
 
 def substratevm_version_args():
-    return ['-Dsubstratevm.version=' + ','.join(s.version() for s in svmSuites)]
+    return ['-Dsubstratevm.version=' + ','.join(s.version() + ':' + s.name for s in svmSuites)]
 
 class Tags(set):
     def __getattr__(self, name):
@@ -549,7 +553,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    native_image(['--js'])
+    native_image(['--js', '--tool.chromeinspector'])
 
 def test_js(benchmarks):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -573,7 +577,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    native_image(['--python'])
+    native_image(['--python', '--tool.profiler'])
 
 def test_python_smoke(args):
     """
