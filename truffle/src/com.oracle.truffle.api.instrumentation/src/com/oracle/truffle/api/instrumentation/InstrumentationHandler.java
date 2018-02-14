@@ -1372,10 +1372,17 @@ final class InstrumentationHandler {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
             verifySourceOnly(filter);
             verifyFilter(filter);
             return InstrumentationHandler.this.attachSourceListener(this, filter, listener, notifyLoaded);
+        }
+
+        @Override
+        public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceFilter filter, T listener, boolean notifyLoaded) {
+            SourceSectionFilter sectionsFilter = SourceSectionFilter.newBuilder().sourceFilter(filter).build();
+            return attachLoadSourceListener(sectionsFilter, listener, notifyLoaded);
         }
 
         @Override

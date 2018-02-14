@@ -171,6 +171,16 @@ public final class SourceSectionFilter {
         }
 
         /**
+         * Add a source filter.
+         *
+         * @since 0.32
+         */
+        public Builder sourceFilter(SourceFilter sourceFilter) {
+            expressions.addAll(Arrays.asList(sourceFilter.expressions));
+            return this;
+        }
+
+        /**
          * Add a filter for all source sections that reference one of the given sources.
          *
          * @since 0.12
@@ -459,17 +469,17 @@ public final class SourceSectionFilter {
             return new SourceSectionFilter(expressions.toArray(new EventFilterExpression[0]));
         }
 
-        private void verifyNotNull(Object[] values) {
-            if (values == null) {
-                throw new IllegalArgumentException("Given arguments must not be null.");
-            }
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] == null) {
-                    throw new IllegalArgumentException("None of the given argument values must be null.");
-                }
+    }
+
+    static void verifyNotNull(Object[] values) {
+        if (values == null) {
+            throw new IllegalArgumentException("Given arguments must not be null.");
+        }
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == null) {
+                throw new IllegalArgumentException("None of the given argument values must be null.");
             }
         }
-
     }
 
     /**
@@ -562,7 +572,7 @@ public final class SourceSectionFilter {
 
     }
 
-    private abstract static class EventFilterExpression implements Comparable<EventFilterExpression> {
+    abstract static class EventFilterExpression implements Comparable<EventFilterExpression> {
 
         protected abstract int getOrder();
 
@@ -594,11 +604,11 @@ public final class SourceSectionFilter {
             }
         }
 
-        private static final class SourceFilterIs extends EventFilterExpression {
+        static final class SourceFilterIs extends EventFilterExpression {
 
-            private final SourcePredicate predicate;
+            private final Predicate<Source> predicate;
 
-            SourceFilterIs(SourcePredicate predicate) {
+            SourceFilterIs(Predicate<Source> predicate) {
                 this.predicate = predicate;
             }
 
@@ -681,7 +691,7 @@ public final class SourceSectionFilter {
             }
         }
 
-        private static final class SourceIs extends EventFilterExpression {
+        static final class SourceIs extends EventFilterExpression {
 
             private final Source[] sources;
 
