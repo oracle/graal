@@ -169,7 +169,6 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 flag_suitename_map = {
     'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
     'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
-    'sulong' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']), # temporary, until Graal.Python is updated
     'llvm' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
 }
@@ -507,16 +506,14 @@ def gate_sulong(native_image, tasks):
 
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
-            truffle_language_ensure('llvm')
-            sulong = truffle_language_ensure('sulong')
-            native_image(['--sulong', '--llvm'])
+            sulong = truffle_language_ensure('llvm')
+            native_image(['--llvm'])
             sulong.extensions.testLLVMImage(join(svmbuild_dir(), 'lli'), unittestArgs=['--enable-timing'])
 
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            sulong = truffle_language_ensure('sulong')
-            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--sulong', '--llvm']))
+            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--llvm']))
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None):
     jsruncmd = [binary, join(bench_location, 'harness.js'), '--',
@@ -574,7 +571,6 @@ def test_run(cmds, expected_stdout, timeout=10):
     return (returncode, stdoutdata, stderrdata)
 
 def build_python(native_image):
-    truffle_language_ensure('sulong') # python depends on sulong
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
     native_image(['--python'])
