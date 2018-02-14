@@ -178,7 +178,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Double> TruffleSplittingGrowthLimit = new OptionKey<>(1.5);
 
     @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", type = OptionType.Debug)
-    public static final OptionKey<Integer> TruffleSplittingMaxNumberOfSplits = new OptionKey<>(500_000);
+    public static final OptionKey<Integer> TruffleSplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
 
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);
