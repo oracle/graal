@@ -1,5 +1,6 @@
-GraalVM is a project based in Oracle Labs developing a new JIT Compiler and Polyglot Runtime for the JVM.
-Further details can be found on the [OTN site](http://www.oracle.com/technetwork/oracle-labs/program-languages/overview/index.html).
+# [GraalVM](https://graalvm.org/)
+
+GraalVM is a wide-ranging project from [Oracle Labs](https://labs.oracle.com/pls/apex/f?p=LABS:10::::::) developing a new JIT Compiler and Polyglot Runtime for the JVM. It removes the isolation between programming languages and enables interoperability in a high-performance runtime.
 
 * [Graal SDK](../sdk) contains long term supported APIs of GraalVM.
 
@@ -12,6 +13,11 @@ Further details can be found on the [OTN site](http://www.oracle.com/technetwork
 * [Substrate VM](../substratevm) is a framework that allows ahead-of-time (AOT) compilation of Java applications under closed-world assumption into executable images or shared objects.
 
 * [TRegex](../regex) is an implementation of regular expressions which leverages Graal and Truffle for efficient compilation of automata.
+
+## Documentation
+
+A comprehensive GraalVM documentation can be found on the website.
+It is divided into several sections:
 
 ## License
 
