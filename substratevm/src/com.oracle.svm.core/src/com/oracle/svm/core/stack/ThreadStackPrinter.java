@@ -25,8 +25,8 @@ package com.oracle.svm.core.stack;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.AbstractCodeInfo;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -52,7 +52,7 @@ public class ThreadStackPrinter {
                 fired = false;
             }
 
-            @MustNotAllocate(reason = "Provide allocation-free StackFrameVisitor")
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
             @Override
             public FrameInfoQueryResult newFrameInfoQueryResult() {
                 if (fired) {
@@ -65,25 +65,25 @@ public class ThreadStackPrinter {
         }
 
         private static class DummyValueInfoAllocator implements ValueInfoAllocator {
-            @MustNotAllocate(reason = "Provide allocation-free StackFrameVisitor")
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
             @Override
             public ValueInfo newValueInfo() {
                 return null;
             }
 
-            @MustNotAllocate(reason = "Provide allocation-free StackFrameVisitor")
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
             @Override
             public ValueInfo[] newValueInfoArray(int len) {
                 return null;
             }
 
-            @MustNotAllocate(reason = "Provide allocation-free StackFrameVisitor")
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
             @Override
             public ValueInfo[][] newValueInfoArrayArray(int len) {
                 return null;
             }
 
-            @MustNotAllocate(reason = "Provide allocation-free StackFrameVisitor")
+            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
             @Override
             public void decodeConstant(ValueInfo valueInfo, Object[] frameInfoObjectConstants) {
             }
@@ -123,7 +123,7 @@ public class ThreadStackPrinter {
     }
 
     public static class Stage0StackFrameVisitor implements StackFrameVisitor {
-        @MustNotAllocate(reason = "Provide allocation-free StackFrameVisitor")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
         @Override
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptFrame) {
             Log log = Log.log();
@@ -185,7 +185,7 @@ public class ThreadStackPrinter {
 
     public static final StackFrameVisitor AllocationFreeStackFrameVisitor = new AllocationFreeStackFrameVisitor();
 
-    @MustNotAllocate(reason = "Provide allocation-free Stacktrace printing")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free Stacktrace printing")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints", calleeMustBe = false)
     public static void printStacktrace(Pointer startSP, CodePointer startIP) {
         JavaStackWalker.walkCurrentThread(startSP, startIP, AllocationFreeStackFrameVisitor);

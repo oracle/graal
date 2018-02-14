@@ -39,7 +39,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -140,7 +140,7 @@ public final class ThreadLocalAllocation {
         return result;
     }
 
-    @MustNotAllocate(reason = "Must not allocate in the implementation of allocation.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
         ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.regularTLAB.getAddress();
         return allocateNewInstance(hub, tlab, false);
@@ -191,7 +191,8 @@ public final class ThreadLocalAllocation {
     @SubstrateForeignCallTarget
     private static Object slowPathNewArray(DynamicHub hub, int length) {
         /*
-         * Length check allocates an exception and so must be hoisted away from MustNotAllocate code
+         * Length check allocates an exception and so must be hoisted away from RestrictHeapAccess
+         * code
          */
         if (length < 0) {
             throw new NegativeArraySizeException();
@@ -206,7 +207,7 @@ public final class ThreadLocalAllocation {
         return result;
     }
 
-    @MustNotAllocate(reason = "Must not allocation in the implementation of allocation.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocation in the implementation of allocation.")
     private static Object slowPathNewArrayWithoutAllocating(DynamicHub hub, int length) {
         ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.regularTLAB.getAddress();
         return allocateNewArray(hub, length, tlab, false);

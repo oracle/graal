@@ -26,7 +26,7 @@ package com.oracle.svm.core.log;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 public class StringBuilderLog extends RealLog {
@@ -35,7 +35,7 @@ public class StringBuilderLog extends RealLog {
     public StringBuilderLog() {
     }
 
-    @MustNotAllocate(list = MustNotAllocate.WHITELIST, reason = "This implementation allocates.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "This implementation allocates.")
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
     @Override
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {

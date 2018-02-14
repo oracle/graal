@@ -34,7 +34,7 @@ import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -158,7 +158,7 @@ class ThreadingSupportImpl implements ThreadingSupport {
          * allocation-free.
          */
         @Uninterruptible(reason = "Required by caller, but does not apply to callee.", calleeMustBe = false)
-        @MustNotAllocate(reason = "Callee may allocate", list = MustNotAllocate.WHITELIST)
+        @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         private void invokeCallback() {
             Safepoint.setSafepointRequested(SafepointRequestValues.RESET);
             callback.run(CALLBACK_ACCESS);

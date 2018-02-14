@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.thread.VMOperation;
@@ -62,7 +62,7 @@ public class MemoryWalkerImpl extends MemoryWalker {
         }
 
         @Override
-        @MustNotAllocate(reason = "Allocation would change the memory being visited.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Allocation would change the memory being visited.")
         public void operate() {
             ThreadLocalAllocation.disableThreadLocalAllocation();
             boolean continueVisiting = true;

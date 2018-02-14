@@ -206,8 +206,8 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
-import com.oracle.svm.hosted.code.MustNotAllocateCallees;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
+import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -775,7 +775,7 @@ public class NativeImageGenerator {
             }
 
             recordMethodsWithStackValues();
-            recordMustNotAllocateCallees(aUniverse.getMethods());
+            recordRestrictHeapAccessCallees(aUniverse.getMethods());
 
             /*
              * After this point, all TypeFlow (and therefore also TypeState) objects are unreachable
@@ -893,8 +893,8 @@ public class NativeImageGenerator {
     /**
      * Record callees of methods that must not allocate.
      */
-    private static void recordMustNotAllocateCallees(Collection<AnalysisMethod> methods) {
-        ImageSingletons.lookup(MustNotAllocateCallees.class).aggregateMethods(methods);
+    private static void recordRestrictHeapAccessCallees(Collection<AnalysisMethod> methods) {
+        ImageSingletons.lookup(RestrictHeapAccessCallees.class).aggregateMethods(methods);
     }
 
     static class SubstitutionInvocationPlugins extends InvocationPlugins {

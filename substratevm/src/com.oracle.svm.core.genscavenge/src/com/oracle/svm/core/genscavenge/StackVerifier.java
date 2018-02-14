@@ -27,7 +27,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -107,7 +107,7 @@ public final class StackVerifier {
     private static class StackFrameVerifierVisitor implements StackFrameVisitor {
 
         @Override
-        @MustNotAllocate(reason = "Must not allocate while verifying the stack.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the stack.")
         public boolean visitFrame(Pointer currentSP, CodePointer currentIP, DeoptimizedFrame deoptimizedFrame) {
             final Log trace = getTraceLog();
             long totalFrameSize = CodeInfoTable.lookupTotalFrameSize(currentIP);

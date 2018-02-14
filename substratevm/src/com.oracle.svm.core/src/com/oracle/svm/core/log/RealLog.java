@@ -37,13 +37,13 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.Math;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.Integer;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.Math;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -389,7 +389,7 @@ public class RealLog extends Log {
         return (byte) (d + (d < 10 ? '0' : 'a' - 10));
     }
 
-    @MustNotAllocate(list = MustNotAllocate.WHITELIST, reason = "Some implementations allocate.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
     @Uninterruptible(reason = "bytes can be a raw pointer into an array.", calleeMustBe = false)
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
         if (!ConfigurationValues.getOSInterface().writeBytesUninterruptibly(getOutputFile(), bytes, length)) {

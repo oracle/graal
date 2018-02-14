@@ -45,7 +45,7 @@ import org.graalvm.options.OptionType;
 
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 
@@ -179,6 +179,6 @@ class OptionAccessFeature implements Feature {
 final class Target_org_graalvm_compiler_options_OptionKey {
 
     @AnnotateOriginal
-    @MustNotAllocate(list = MustNotAllocate.WHITELIST, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")
     native Object getValue(OptionValues values);
 }

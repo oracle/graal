@@ -104,7 +104,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.FrameInfoEncoder;
@@ -305,8 +305,9 @@ public class CompileQueue {
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
             UninterruptibleAnnotationChecker.check(debug, universe.getMethods());
-            // Checking @MustNotAllocate annotations does not take long enough to justify a timer.
-            MustNotAllocateAnnotationChecker.check(debug, universe, universe.getMethods());
+            // Checking @RestrictHeapAccess annotations does not take long enough to justify a
+            // timer.
+            RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
             // Checking @MustNotSynchronize annotations does not take long enough to justify a
             // timer.
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
@@ -841,7 +842,7 @@ public class CompileQueue {
         if (method.getAnnotation(Uninterruptible.class) != null) {
             return false;
         }
-        if (method.getAnnotation(MustNotAllocate.class) != null) {
+        if (method.getAnnotation(RestrictHeapAccess.class) != null) {
             return false;
         }
         if (universe.getMethodsWithStackValues().contains(method.wrapped)) {

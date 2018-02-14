@@ -31,12 +31,12 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.hosted.code.AnalysisMethodCalleeWalker.CallPathVisitor.VisitResult;
 
 /**
  * Gather a list of the transitive blacklisted callees from methods annotated with
- * {@link MustNotAllocate} that allocate.
+ * {@link RestrictHeapAccess} that allocate.
  */
 public class AnalysisMethodCalleeWalker {
 

@@ -205,7 +205,8 @@ public final class PinnedAllocatorImpl extends PinnedAllocator {
     @SubstrateForeignCallTarget
     private static Object slowPathNewArray(PinnedAllocatorImpl pinnedAllocator, DynamicHub hub, int length) {
         /*
-         * Length check allocates an exception and so must be hoisted away from MustNotAllocate code
+         * Length check allocates an exception and so must be hoisted away from RestrictHeapAccess
+         * code
          */
         if (length < 0) {
             throw new NegativeArraySizeException();

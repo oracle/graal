@@ -49,7 +49,7 @@ import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.hosted.code.MustNotAllocateCallees;
+import com.oracle.svm.hosted.code.RestrictHeapAccessCallees;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -124,7 +124,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
     }
 
     private static boolean mustNotAllocate(ResolvedJavaMethod method) {
-        return ImageSingletons.lookup(MustNotAllocateCallees.class).mustNotAllocate(method);
+        return ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
     }
 
     protected class DeoptimizeLowering implements NodeLoweringProvider<DeoptimizeNode> {

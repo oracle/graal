@@ -36,7 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -232,11 +232,11 @@ public class AlignedHeapChunk extends HeapChunk {
     /** Construct the remembered set for all the objects in this chunk. */
     /*
      * This method must not allocate because I might be in the middle of a collection, or in the
-     * middle of detaching a thread, but the @MustNotAllocate checker can not prove that because I
-     * use an ObjectVisitor which, in other cases, might allocate. Therefore, I whitelist this
+     * middle of detaching a thread, but the @RestrictHeapAccess checker can not prove that because
+     * I use an ObjectVisitor which, in other cases, might allocate. Therefore, I whitelist this
      * method.
      */
-    @MustNotAllocate(list = MustNotAllocate.WHITELIST, reason = "Whitelisted because other ObjectVisitors are allowed to allocate.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Whitelisted because other ObjectVisitors are allowed to allocate.")
     static void constructRememberedSetOfAlignedHeapChunk(AlignedHeader that) {
         final GCImpl.RememberedSetConstructor constructor = getRememberedSetConstructor();
         constructor.initialize(that);

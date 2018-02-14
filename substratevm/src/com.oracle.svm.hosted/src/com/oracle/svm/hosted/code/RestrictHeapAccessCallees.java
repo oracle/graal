@@ -36,7 +36,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -46,15 +47,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Construct a list of all the methods that are, or are called from, methods annotated with
- * {@link MustNotAllocate} or {@link Uninterruptible}.
+ * {@link RestrictHeapAccess} or {@link Uninterruptible}.
  */
-public class MustNotAllocateCallees {
+public class RestrictHeapAccessCallees {
 
     /**
      * A map from a callee to a caller on a path to an annotated caller. The keys are the set of
      * callees that must not allocate. The values are for printing a call path for error messages.
      */
-    private Map<AnalysisMethod, InvocationInfo> calleeToCallerMap;
+    private Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap;
 
     /** AssertionErrors are cut points, because their allocations are removed. */
     private List<ResolvedJavaMethod> assertionErrorConstructorList;
@@ -63,7 +64,7 @@ public class MustNotAllocateCallees {
     private boolean initialized;
 
     /** Constructor for the singleton instance. */
-    public MustNotAllocateCallees() {
+    public RestrictHeapAccessCallees() {
         calleeToCallerMap = Collections.emptyMap();
         this.assertionErrorConstructorList = Collections.emptyList();
         initialized = false;
@@ -76,45 +77,39 @@ public class MustNotAllocateCallees {
         }
     }
 
-    /** Is the method on the list of methods that must not allocate? */
+    public RestrictionInfo getRestrictionInfo(ResolvedJavaMethod method) {
+        return calleeToCallerMap.get(methodToKey(method));
+    }
+
     public boolean mustNotAllocate(ResolvedJavaMethod method) {
-        return calleeToCallerMap.containsKey(methodToKey(method));
+        RestrictionInfo info = getRestrictionInfo(method);
+        return info != null && (info.getAccess() == Access.NO_ALLOCATION || info.getAccess().isMoreRestrictiveThan(Access.NO_ALLOCATION));
     }
 
     /** Get the map from a callee to a caller. */
-    public Map<AnalysisMethod, InvocationInfo> getCallerMap() {
+    public Map<AnalysisMethod, RestrictionInfo> getCallerMap() {
         return calleeToCallerMap;
     }
 
     /**
-     * Aggregate a set of methods that are annotated with {@link MustNotAllocate}, or are called
-     * from those methods.
+     * Aggregate a set of methods that are annotated with {@link RestrictHeapAccess} or with
+     * {@link Uninterruptible}, or methods that are called from those methods.
      */
-    public Map<AnalysisMethod, InvocationInfo> aggregateMethods(Collection<AnalysisMethod> methods) {
-        /* Build the list of allocating methods. */
-        assert !initialized : "MustNotAllocateCallees.aggregateMethods: Should only initialize once.";
-        final Map<AnalysisMethod, InvocationInfo> aggregation = new HashMap<>();
+    public void aggregateMethods(Collection<AnalysisMethod> methods) {
+        assert !initialized : "RestrictHeapAccessCallees.aggregateMethods: Should only initialize once.";
+        final Map<AnalysisMethod, RestrictionInfo> aggregation = new HashMap<>();
         final MethodAggregator visitor = new MethodAggregator(aggregation, assertionErrorConstructorList);
         final AnalysisMethodCalleeWalker walker = new AnalysisMethodCalleeWalker();
         for (AnalysisMethod method : methods) {
-            /*
-             * Find methods annotated with with either MustNotAllocate(list = BLACKLIST) or
-             * Uninterruptible.
-             */
-            final MustNotAllocate mustNotAllocateAnnotation = method.getAnnotation(MustNotAllocate.class);
-            final Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
-            if (((mustNotAllocateAnnotation != null) && (mustNotAllocateAnnotation.list() == MustNotAllocate.BLACKLIST)) ||
-                            (uninterruptibleAnnotation != null)) {
-                /* Walk all the implementations of the annotated method. */
+            final RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
+            if ((annotation != null && annotation.access() != Access.UNRESTRICTED) || method.isAnnotationPresent(Uninterruptible.class)) {
                 for (AnalysisMethod calleeImpl : method.getImplementations()) {
                     walker.walkMethod(calleeImpl, visitor);
                 }
             }
         }
-        /* Assign the set to the visible state. */
         calleeToCallerMap = Collections.unmodifiableMap(aggregation);
         initialized = true;
-        return calleeToCallerMap;
     }
 
     /**
@@ -129,7 +124,7 @@ public class MustNotAllocateCallees {
         } else if (method instanceof HostedMethod) {
             result = ((HostedMethod) method).getWrapped();
         } else {
-            throw VMError.shouldNotReachHere("MustNotAllocateCallees.methodToKey: ResolvedJavaMethod is neither an AnalysisMethod nor a HostedMethod: " + method);
+            throw VMError.shouldNotReachHere("RestrictHeapAccessCallees.methodToKey: ResolvedJavaMethod is neither an AnalysisMethod nor a HostedMethod: " + method);
         }
         return result;
     }
@@ -138,13 +133,13 @@ public class MustNotAllocateCallees {
     static class MethodAggregator extends AnalysisMethodCalleeWalker.CallPathVisitor {
 
         /** The map from a callee to a caller that is being constructed. */
-        private final Map<AnalysisMethod, InvocationInfo> calleeToCallerMap;
+        private final Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap;
 
         /** The constructor {@link AssertionError#AssertionError()}. */
         private final List<ResolvedJavaMethod> assertionErrorConstructorList;
 
         /** Constructor. */
-        MethodAggregator(Map<AnalysisMethod, InvocationInfo> calleeToCallerMap, List<ResolvedJavaMethod> assertionErrorConstructorList) {
+        MethodAggregator(Map<AnalysisMethod, RestrictionInfo> calleeToCallerMap, List<ResolvedJavaMethod> assertionErrorConstructorList) {
             this.calleeToCallerMap = calleeToCallerMap;
             this.assertionErrorConstructorList = assertionErrorConstructorList;
         }
@@ -152,50 +147,63 @@ public class MustNotAllocateCallees {
         /** Visit a method and add it to the set of methods that should not allocate. */
         @Override
         public VisitResult visitMethod(AnalysisMethod callee, AnalysisMethod caller, Invoke invoke, int depth) {
-            if ((assertionErrorConstructorList != null) && assertionErrorConstructorList.contains(callee)) {
-                /*
-                 * Pretend that an AssertionError constructor is annotated
-                 * with @MustNotAllocate(list = MustNotAllocate.WHITELIST). Allocations of
-                 * AssertionError instances are taken out later, in
-                 * ImplicitExceptionsPlugin.handleNewInstance(GraphBuilderContext, ResolvedJavaType)
-                 */
+            Access access = Access.UNRESTRICTED;
+            boolean overridesCallers = false;
+            if (callee.isAnnotationPresent(Uninterruptible.class)) {
+                access = Access.NO_ALLOCATION;
+            }
+            RestrictHeapAccess annotation = callee.getAnnotation(RestrictHeapAccess.class);
+            if (annotation != null) {
+                access = annotation.access();
+                overridesCallers = annotation.overridesCallers();
+            }
+            if (overridesCallers || caller == null) {
+                if (access == Access.UNRESTRICTED) {
+                    return VisitResult.CUT;
+                }
+            } else {
+                Access callerAccess = calleeToCallerMap.get(caller).getAccess();
+                if (callerAccess.isMoreRestrictiveThan(access)) {
+                    access = callerAccess;
+                }
+            }
+            if (access == Access.NO_ALLOCATION && assertionErrorConstructorList != null && assertionErrorConstructorList.contains(callee)) {
+                /* Ignore AssertionError allocations: ImplicitExceptionsPlugin will replace them */
                 return VisitResult.CUT;
             }
-            final MustNotAllocate mustNotAllocateAnnotation = callee.getAnnotation(MustNotAllocate.class);
-            if ((mustNotAllocateAnnotation != null) && (mustNotAllocateAnnotation.list() == MustNotAllocate.WHITELIST)) {
-                /* The method is annotated as being on the white list, so cut the traversal. */
+            RestrictionInfo restrictionInfo = calleeToCallerMap.get(callee);
+            if (restrictionInfo != null && !access.isMoreRestrictiveThan(restrictionInfo.getAccess())) {
+                /* Earlier traversal with same or higher level of restriction, so stop here. */
                 return VisitResult.CUT;
             }
-            if (calleeToCallerMap.containsKey(callee)) {
-                /* The method is already a known callee, so cut the traversal. */
-                return VisitResult.CUT;
-            }
-            /* A new callee: link it on to the map of callers. */
-            final InvocationInfo invocationInfo = (caller != null
-                            ? new InvocationInfo(caller, caller.asStackTraceElement(invoke.bci()), callee)
-                            : InvocationInfo.nullInstance());
-            calleeToCallerMap.put(callee, invocationInfo);
+            StackTraceElement callerStackTraceElement = (caller != null) ? caller.asStackTraceElement(invoke.bci()) : null;
+            restrictionInfo = new RestrictionInfo(access, caller, callerStackTraceElement, callee);
+            calleeToCallerMap.put(callee, restrictionInfo);
             return VisitResult.CONTINUE;
         }
     }
 
-    /** Information about an invocation, for error messages. */
-    public static class InvocationInfo {
+    /** Information about a restricted method, for error messages. */
+    public static class RestrictionInfo {
 
-        /** The caller in the invocation. */
+        /** The transitively determined level of restricted access. */
+        private final RestrictHeapAccess.Access access;
+        /** The caller in the invocation, if any. */
         private final AnalysisMethod caller;
-        /** The stack trace element of the invocation. */
+        /** The stack trace element of the invocation, if any. */
         private final StackTraceElement invocationStackTraceElement;
-        /* The callee in the invocation. */
-        private final AnalysisMethod callee;
+        /** The method to which the restriction applies. */
+        private final AnalysisMethod method;
 
-        /** The singleton null instance. */
-        private static final InvocationInfo nullCallerInfo = new InvocationInfo(null, null, null);
-
-        InvocationInfo(AnalysisMethod caller, StackTraceElement stackTraceElement, AnalysisMethod callee) {
+        RestrictionInfo(Access access, AnalysisMethod caller, StackTraceElement stackTraceElement, AnalysisMethod method) {
+            this.access = access;
             this.caller = caller;
             this.invocationStackTraceElement = stackTraceElement;
-            this.callee = callee;
+            this.method = method;
+        }
+
+        public Access getAccess() {
+            return access;
         }
 
         public AnalysisMethod getCaller() {
@@ -206,34 +214,26 @@ public class MustNotAllocateCallees {
             return invocationStackTraceElement;
         }
 
-        public AnalysisMethod getCallee() {
-            return callee;
-        }
-
-        public static InvocationInfo nullInstance() {
-            return nullCallerInfo;
-        }
-
-        public boolean isNullInstance() {
-            return (this == nullCallerInfo);
+        public AnalysisMethod getMethod() {
+            return method;
         }
     }
 }
 
 @AutomaticFeature
-class MustNotAllocateCalleesFeature implements Feature {
+class RestrictHeapAccessCalleesFeature implements Feature {
 
     /** This is called early, to register in the VMConfiguration. */
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(MustNotAllocateCallees.class, new MustNotAllocateCallees());
+        ImageSingletons.add(RestrictHeapAccessCallees.class, new RestrictHeapAccessCallees());
     }
 
     /** This is called during analysis, to find the AssertionError constructors. */
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         List<ResolvedJavaMethod> assertionErrorConstructorList = initializeAssertionErrorConstructors(access);
-        ImageSingletons.lookup(MustNotAllocateCallees.class).setAssertionErrorConstructors(assertionErrorConstructorList);
+        ImageSingletons.lookup(RestrictHeapAccessCallees.class).setAssertionErrorConstructors(assertionErrorConstructorList);
     }
 
     private static List<ResolvedJavaMethod> initializeAssertionErrorConstructors(DuringAnalysisAccess access) {

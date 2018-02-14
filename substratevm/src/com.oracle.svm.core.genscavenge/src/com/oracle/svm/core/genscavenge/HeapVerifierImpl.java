@@ -26,7 +26,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReferenceVisitor;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
 import com.oracle.svm.core.heap.DiscoverableReference;
@@ -187,7 +187,7 @@ public class HeapVerifierImpl implements HeapVerifier {
         }
 
         @Override
-        @MustNotAllocate(reason = "Must not allocate while verifying the heap.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the heap.")
         public void operate() {
             /* Install the provided verifier as the verifier for the duration of this operation. */
             final HeapVerifierImpl previousVerifier = HeapImpl.getHeapImpl().getHeapVerifierImpl();

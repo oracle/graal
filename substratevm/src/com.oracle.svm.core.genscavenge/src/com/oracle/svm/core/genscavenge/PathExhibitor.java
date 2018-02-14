@@ -34,7 +34,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.annotate.MustNotAllocate;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.NativeImageInfo;
@@ -250,7 +250,7 @@ public class PathExhibitor {
         }
 
         @Override
-        @MustNotAllocate(reason = "Must not allocate while verifying the heap.")
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while verifying the heap.")
         public boolean visitFrame(Pointer sp, CodePointer ip, DeoptimizedFrame deoptimizedFrame) {
             final Log trace = Log.noopLog();
             trace.string("[PathExhibitor.FrameVisitor.visitFrame:").newline();
