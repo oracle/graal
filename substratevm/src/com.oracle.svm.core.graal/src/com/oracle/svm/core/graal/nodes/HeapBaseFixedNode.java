@@ -23,11 +23,6 @@
 
 package com.oracle.svm.core.graal.nodes;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
-
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -37,12 +32,15 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-/**
- * Gets the heap base address.
- *
- * This is a floating node that uses the heap base register directly as the result.
- */
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.amd64.FrameAccess;
+import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.util.VMError;
 
+/**
+ * Gets the heap base address. This is a fixed node for the same reasons as
+ * {@link CurrentVMThreadFixedNode}.
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
 public class HeapBaseFixedNode extends FixedWithNextNode implements LIRLowerable {
     public static final NodeClass<HeapBaseFixedNode> TYPE = NodeClass.create(HeapBaseFixedNode.class);
@@ -57,6 +55,6 @@ public class HeapBaseFixedNode extends FixedWithNextNode implements LIRLowerable
 
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
-        gen.setResult(this, registerConfig.getHeapBaseRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp())));
+        gen.setResult(this, tool.emitMove(registerConfig.getHeapBaseRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp()))));
     }
 }

@@ -50,6 +50,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
 import com.oracle.svm.core.graal.nodes.CurrentVMThreadFixedNode;
+import com.oracle.svm.core.graal.nodes.HeapBaseFixedNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -156,7 +157,11 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("getCurrentIsolate", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
+                if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+                    b.addPush(JavaKind.Object, new HeapBaseFixedNode());
+                } else {
+                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
+                }
                 return true;
             }
         });

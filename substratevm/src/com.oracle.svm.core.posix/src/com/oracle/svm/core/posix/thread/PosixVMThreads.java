@@ -24,6 +24,7 @@ package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -32,10 +33,13 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.posix.pthread.PthreadThreadLocal;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
 public final class PosixVMThreads extends VMThreads {
 
     public static final PthreadThreadLocal<IsolateThread> VMThreadTL = new PthreadThreadLocal<>();
+    public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
     private static final int STATE_UNINITIALIZED = 1;
     private static final int STATE_INITIALIZING = 2;
     private static final int STATE_INITIALIZED = 3;
