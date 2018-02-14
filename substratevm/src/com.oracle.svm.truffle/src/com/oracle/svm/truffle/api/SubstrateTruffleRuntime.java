@@ -28,6 +28,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
@@ -47,7 +48,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.log.Log;
@@ -79,7 +79,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleRuntime() {
-        super(() -> ImageSingletons.lookup(GraalRuntime.class));
+        super(() -> ImageSingletons.lookup(GraalRuntime.class), Collections.emptyList());
         /* Ensure the factory class gets initialized. */
         super.getLoopNodeFactory();
     }
@@ -173,7 +173,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
+    public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
 
         if (!SubstrateUtil.HOSTED && !initialized) {
@@ -253,11 +253,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         return false;
-    }
-
-    @Override
-    public void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        CodeInfoTable.invalidateInstalledCode(optimizedCallTarget);
     }
 
     @Override

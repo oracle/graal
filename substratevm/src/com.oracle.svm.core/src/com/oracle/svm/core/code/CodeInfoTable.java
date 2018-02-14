@@ -154,7 +154,7 @@ public class CodeInfoTable {
         return methodInfo != null ? methodInfo.installedCode.get() : null;
     }
 
-    public static void invalidateInstalledCode(InstalledCode installedCode) {
+    public static void invalidateInstalledCode(SubstrateInstalledCode installedCode) {
         /* Captures "installedCode" for the VMOperation. */
         VMOperation.enqueueBlockingSafepoint("CodeInfoTable.invalidateInstalledCode", () -> {
             counters().invalidateInstalledCodeCount.inc();

@@ -2050,6 +2050,15 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(dst, src, 0);
     }
 
+    /**
+     * @param wide use 4 byte encoding for displacements that would normally fit in a byte
+     */
+    public final void movl(Register dst, AMD64Address src, boolean wide) {
+        prefix(src, dst);
+        emitByte(0x8B);
+        emitOperandHelper(dst, src, wide, 0);
+    }
+
     public final void movl(AMD64Address dst, int imm32) {
         prefix(dst);
         emitByte(0xC7);

@@ -108,6 +108,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -753,6 +754,32 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         int firstArgumentNodeId = inlineScope.maxFixedNodeOrderId + 1;
         for (int i = 0; i < arguments.length; i++) {
             inlineLoopScope.createdNodes[firstArgumentNodeId + i] = arguments[i];
+        }
+
+        // Copy assumptions from inlinee to caller
+        Assumptions assumptions = graph.getAssumptions();
+        Assumptions inlinedAssumptions = graphToInline.getAssumptions();
+        if (assumptions != null) {
+            if (inlinedAssumptions != null) {
+                assumptions.record(inlinedAssumptions);
+            }
+        } else {
+            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", inlineMethod, graph);
+        }
+
+        // Copy inlined methods from inlinee to caller
+        List<ResolvedJavaMethod> inlinedMethods = graphToInline.getInlinedMethods();
+        if (inlinedMethods != null) {
+            graph.getMethods().addAll(inlinedMethods);
+        }
+
+        if (graphToInline.getFields() != null) {
+            for (ResolvedJavaField field : graphToInline.getFields()) {
+                graph.recordField(field);
+            }
+        }
+        if (graphToInline.hasUnsafeAccess()) {
+            graph.markUnsafeAccess();
         }
 
         /*

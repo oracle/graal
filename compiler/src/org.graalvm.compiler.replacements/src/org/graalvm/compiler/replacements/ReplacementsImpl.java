@@ -310,7 +310,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
 
     /**
      * Creates a preprocessed graph for a snippet or method substitution.
-     * 
+     *
      * @param bytecodeProvider how to access the bytecode of {@code method}
      * @param method the snippet or method substitution for which a graph will be created
      * @param args

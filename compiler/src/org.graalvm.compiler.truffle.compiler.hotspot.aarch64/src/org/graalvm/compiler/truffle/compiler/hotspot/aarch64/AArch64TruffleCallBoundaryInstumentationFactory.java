@@ -33,6 +33,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
@@ -43,7 +44,6 @@ import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrume
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 
 import jdk.vm.ci.code.CodeCacheProvider;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
 
 @ServiceProvider(TruffleCallBoundaryInstrumentationFactory.class)
@@ -52,17 +52,20 @@ public class AArch64TruffleCallBoundaryInstumentationFactory extends TruffleCall
     @Override
     public CompilationResultBuilder createBuilder(CodeCacheProvider codeCache, ForeignCallsProvider foreignCalls, FrameMap frameMap, Assembler asm, DataBuilder dataBuilder, FrameContext frameContext,
                     OptionValues options, DebugContext debug, CompilationResult compilationResult) {
-        return new TruffleCallBoundaryInstrumentation(codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
+        return new TruffleCallBoundaryInstrumentation(metaAccess, codeCache, foreignCalls, frameMap, asm, dataBuilder, frameContext, options, debug, compilationResult, config, registers) {
             @Override
-            protected void injectTailCallCode() {
+            protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
                 AArch64MacroAssembler masm = (AArch64MacroAssembler) this.asm;
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
                     Register spillRegister = scratch.getRegister();
                     Label doProlog = new Label();
-                    AArch64Address entryPointAddress = AArch64Address.createPairUnscaledImmediateAddress(thisRegister, getFieldOffset("entryPoint", InstalledCode.class));
-
-                    masm.ldr(64, spillRegister, entryPointAddress);
+                    if (config.useCompressedOops) {
+                        throw GraalError.unimplemented("need to implement load-and-uncompress HotSpotOptimizedCallTarget.installedCode");
+                    } else {
+                        masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(thisRegister, installedCodeOffset));
+                    }
+                    masm.ldr(64, spillRegister, AArch64Address.createPairUnscaledImmediateAddress(spillRegister, entryPointOffset));
                     masm.cbz(64, spillRegister, doProlog);
                     masm.jmp(spillRegister);
                     masm.nop();

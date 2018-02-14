@@ -1300,7 +1300,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.truffle.compiler.hotspot",
-        "org.graalvm.compiler.asm.sparc",
+        "org.graalvm.compiler.hotspot.sparc",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",

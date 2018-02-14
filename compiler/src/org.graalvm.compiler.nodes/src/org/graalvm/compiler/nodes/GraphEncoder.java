@@ -154,7 +154,7 @@ public class GraphEncoder {
         encoder.prepare(graph);
         encoder.finishPrepare();
         int startOffset = encoder.encode(graph);
-        return new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph.getAssumptions(), graph.getMethods(), graph.trackNodeSourcePosition());
+        return new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph);
     }
 
     public GraphEncoder(Architecture architecture) {
@@ -288,8 +288,7 @@ public class GraphEncoder {
         }
 
         /* Check that the decoding of the encode graph is the same as the input. */
-        assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph.getAssumptions(), graph.getMethods(), graph.trackNodeSourcePosition()),
-                        architecture);
+        assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph), architecture);
 
         return metadataStart;
     }

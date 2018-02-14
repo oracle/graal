@@ -30,7 +30,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -164,7 +163,13 @@ public interface TruffleCompilerRuntime {
      */
     JavaConstant getCallTargetForCallNode(JavaConstant callNode);
 
-    Consumer<InstalledCode> registerInstalledCodeEntryForAssumption(JavaConstant optimizedAssumptionConstant);
+    /**
+     * Registers a (pending) dependency on an assumption.
+     *
+     * @param optimizedAssumption compiler constant representing an {@code OptimizedAssumption}
+     * @return a consumer that will be supplied the dependency once it materializes
+     */
+    Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumption);
 
     /**
      * {@linkplain #formatEvent(String, int, String, int, String, int, Map, int) Formats} a Truffle

@@ -24,7 +24,6 @@ package org.graalvm.compiler.truffle.common;
 
 import java.util.function.Supplier;
 
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -38,8 +37,6 @@ public interface CompilableTruffleAST {
     JavaConstant asJavaConstant();
 
     SpeculationLog getSpeculationLog();
-
-    InstalledCode getInstalledCode();
 
     /**
      * Notifies this object that a compilation of the AST it represents failed.

@@ -143,7 +143,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         for (int j = 1; j < 100; j++) {
 
-            target.invalidate();
+            target.invalidate(this, "test");
             for (int i = 0; i < reprofileCount; i++) {
                 assertNotCompiled(target);
                 target.call();

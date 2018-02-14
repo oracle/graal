@@ -82,6 +82,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleOptions
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
+import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceCallTreeListener;
@@ -128,7 +129,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.stack.InspectedFrame;
 import jdk.vm.ci.code.stack.InspectedFrameVisitor;
 import jdk.vm.ci.code.stack.StackIntrospection;
@@ -196,8 +196,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntimeSupplier) {
+    private final EconomicMap<String, Class<?>> lookupTypes;
+
+    public GraalTruffleRuntime(Supplier<GraalRuntime> graalRuntimeSupplier, Iterable<Class<?>> extraLookupTypes) {
         this.graalRuntimeSupplier = graalRuntimeSupplier;
+        this.lookupTypes = initLookupTypes(extraLookupTypes);
     }
 
     protected GraalTVMCI getTvmci() {
@@ -239,10 +242,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public Consumer<InstalledCode> registerInstalledCodeEntryForAssumption(JavaConstant optimizedAssumptionConstant) {
+    public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
         SnippetReflectionProvider snippetReflection = getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         OptimizedAssumption optimizedAssumption = snippetReflection.asObject(OptimizedAssumption.class, optimizedAssumptionConstant);
-        return optimizedAssumption.registerInstalledCodeEntry();
+        return optimizedAssumption.registerDependency();
     }
 
     private static <T extends PrioritizedServiceProvider> T loadPrioritizedServiceProvider(Class<T> clazz) {
@@ -338,9 +341,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    private final EconomicMap<String, Class<?>> lookupTypes = initLookupTypes();
-
-    private static EconomicMap<String, Class<?>> initLookupTypes() {
+    private static EconomicMap<String, Class<?>> initLookupTypes(Iterable<Class<?>> extraTypes) {
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
                         Node.class,
@@ -361,6 +362,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         AbstractAssumption.class,
                         MaterializedFrame.class
         }) {
+            m.put(c.getName(), c);
+        }
+        for (Class<?> c : extraTypes) {
             m.put(c.getName(), c);
         }
         for (TruffleTypes s : GraalServices.load(TruffleTypes.class)) {
@@ -651,7 +655,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return target;
     }
 
-    protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
+    public abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
 
     public void addListener(GraalTruffleRuntimeListener listener) {
         listeners.add(listener);
@@ -863,8 +867,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return false;
     }
 
-    public abstract void invalidateInstalledCode(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason);
-
     /**
      * Notifies this runtime when a Truffle AST is being executed in the Truffle interpreter even
      * though compiled code is available for the AST.
@@ -873,7 +875,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * means the code with the special entry point was deoptimized or otherwise removed from the
      * code cache and needs to be re-installed.
      */
-    public void bypassedCompiledCode() {
+    public void bypassedInstalledCode() {
     }
 
     protected CallMethods getCallMethods() {

@@ -68,12 +68,15 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleInstalledCode;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
+import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotNmethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -151,7 +154,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     @SuppressWarnings("try")
     public void installTruffleCallBoundaryMethods() {
-        final HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
+        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
         for (ResolvedJavaMethod method : runtime.getTruffleCallBoundaryMethods()) {
             HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) backend.getCompilationIdentifier(method);
             OptionValues options = getOptions();
@@ -181,10 +184,10 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return hotspotGraalRuntime.getCompilationProblemsPerAction();
     }
 
-    private CompilationResultBuilderFactory getOptimizedCallTargetInstrumentationFactory(String arch) {
+    private CompilationResultBuilderFactory getTruffleCallBoundaryInstrumentationFactory(String arch) {
         for (TruffleCallBoundaryInstrumentationFactory factory : GraalServices.load(TruffleCallBoundaryInstrumentationFactory.class)) {
             if (factory.getArchitecture().equals(arch)) {
-                factory.init(hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
+                factory.init(providers.getMetaAccess(), hotspotGraalRuntime.getVMConfig(), hotspotGraalRuntime.getHostProviders().getRegisters());
                 return factory;
             }
         }
@@ -211,9 +214,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         GraphBuilderConfiguration newConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true).withNodeSourcePosition(infoPoints);
         new GraphBuilderPhase.Instance(metaAccess, providers.getStampProvider(), providers.getConstantReflection(), providers.getConstantFieldProvider(), newConfig, OptimisticOptimizations.ALL,
                         null).apply(graph);
-
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, backend.getSuites());
-        CompilationResultBuilderFactory factory = getOptimizedCallTargetInstrumentationFactory(backend.getTarget().arch.getName());
+        CompilationResultBuilderFactory factory = getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName());
         return compileGraph(graph, javaMethod, providers, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, lirSuites, new CompilationResult(compilationId),
                         factory);
     }
@@ -231,5 +233,36 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         if (inliningPhase != null) {
             inliningPhase.remove();
         }
+    }
+
+    @Override
+    protected InstalledCode createInstalledCode(CompilableTruffleAST compilable) {
+        return new HotSpotTruffleInstalledCode(compilable);
+    }
+
+    @Override
+    protected void afterCodeInstallation(InstalledCode installedCode) {
+        if (installedCode instanceof HotSpotTruffleInstalledCode) {
+            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
+            HotSpotTruffleInstalledCode hotspotTruffleInstalledCode = (HotSpotTruffleInstalledCode) installedCode;
+            runtime.onCodeInstallation(hotspotTruffleInstalledCode);
+        }
+    }
+
+    /**
+     * {@link HotSpotNmethod#isDefault() Default} nmethods installed by Graal remain valid and can
+     * still be executed once the associated {@link HotSpotNmethod} object becomes unreachable. As
+     * such, these objects must remain strongly reachable from {@code OptimizedAssumption}s they
+     * depend on.
+     */
+    @Override
+    protected boolean reachabilityDeterminesValidity(InstalledCode installedCode) {
+        if (installedCode instanceof HotSpotNmethod) {
+            HotSpotNmethod nmethod = (HotSpotNmethod) installedCode;
+            if (nmethod.isDefault()) {
+                return false;
+            }
+        }
+        return true;
     }
 }
