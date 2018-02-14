@@ -248,6 +248,10 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join('tools', 'nfi', 'builder'), ['truffle:TRUFFLE_NFI'])
     native_image_extract_dists(join('tools', 'nfi'), ['truffle:TRUFFLE_NFI_NATIVE'])
     native_image_option_properties('tools', 'nfi', native_image_root)
+    native_image_layout_dists(join('tools', 'inspect'), ['tools:CHROMEINSPECTOR'])
+    native_image_option_properties('tools', 'inspect', native_image_root)
+    native_image_layout_dists(join('tools', 'profile'), ['tools:TRUFFLE_PROFILER'])
+    native_image_option_properties('tools', 'profile', native_image_root)
 
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
