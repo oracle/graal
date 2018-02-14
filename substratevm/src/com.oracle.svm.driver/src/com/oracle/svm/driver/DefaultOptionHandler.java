@@ -46,6 +46,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showMessage(NativeImage.buildContext().helpText);
                 System.exit(0);
                 return true;
+            case "-version":
+                args.poll();
+                nativeImage.showMessage("SubstrateVM Version Info");
+                nativeImage.showMessage(NativeImage.buildContext().svmVersion.replace(',', '\n'));
+                nativeImage.showMessage("GraalVM Version " + NativeImage.buildContext().graalvmVersion);
+                System.exit(0);
+                return true;
             case "-X":
                 args.poll();
                 nativeImage.showMessage(NativeImage.buildContext().helpTextX);

@@ -421,7 +421,7 @@ def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
 
 def substratevm_version_args():
-    return ['-Dsubstratevm.version=' + ','.join(s.version() for s in svmSuites)]
+    return ['-Dsubstratevm.version=' + ','.join(s.version() + ':' + s.name for s in svmSuites)]
 
 class Tags(set):
     def __getattr__(self, name):
