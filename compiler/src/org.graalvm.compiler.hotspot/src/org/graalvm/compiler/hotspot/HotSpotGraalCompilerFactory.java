@@ -26,8 +26,8 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.io.PrintStream;
-import java.util.Map;
 import java.util.Collections;
+import java.util.Map;
 
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.options.Option;
@@ -169,8 +169,31 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         if (compileGraalWithC1Only) {
             if (level.ordinal() > CompilationLevel.Simple.ordinal()) {
                 String declaringClassName = declaringClass.getName();
-                if (declaringClassName.startsWith("jdk.vm.ci") || declaringClassName.startsWith("org.graalvm") || declaringClassName.startsWith("com.oracle.graal")) {
+                // JVMCI classes are always on the bootclasspath so match based on the package.
+                if (declaringClassName.startsWith("jdk.vm.ci")) {
                     return CompilationLevel.Simple;
+                }
+                // When running with +UseJVMCIClassLoader all classes in this loader should be
+                // compiled with C1.
+                if (HotSpotGraalRuntime.class.getClassLoader() != null) {
+                    if (declaringClass.getClassLoader() == HotSpotGraalRuntime.class.getClassLoader()) {
+                        return CompilationLevel.Simple;
+                    }
+                } else {
+                    // Graal is on the bootclasspath so just try matching on the packages.
+                    if (declaringClassName.startsWith("org.graalvm.") &&
+                                    (declaringClassName.startsWith("org.graalvm.compiler.") ||
+                                                    declaringClassName.startsWith("org.graalvm.collections.") ||
+                                                    declaringClassName.startsWith("org.graalvm.compiler.word.") ||
+                                                    declaringClassName.startsWith("org.graalvm.graphio."))) {
+                        return CompilationLevel.Simple;
+                    }
+                    if (declaringClassName.startsWith("com.oracle.graal") &&
+                                    (declaringClassName.startsWith("com.oracle.graal.enterprise") ||
+                                                    declaringClassName.startsWith("com.oracle.graal.vector") ||
+                                                    declaringClassName.startsWith("com.oracle.graal.asm"))) {
+                        return CompilationLevel.Simple;
+                    }
                 }
             }
         }
