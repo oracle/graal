@@ -47,7 +47,7 @@ public final class VectorType extends AggregateType {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new AssertionError("Invalid ElementType of Vector: " + elementType);
         }
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption();
+        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("VectorType.elementType");
         this.elementType = elementType;
         this.length = length;
     }
@@ -76,7 +76,7 @@ public final class VectorType extends AggregateType {
         }
         this.elementTypeAssumption.invalidate();
         this.elementType = elementType;
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption();
+        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("VectorType.elementType");
     }
 
     @Override
