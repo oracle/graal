@@ -69,7 +69,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import sun.misc.Unsafe;
 
 public final class LLVMContext {
-
     private final List<Path> libraryPaths = new ArrayList<>();
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
 
@@ -100,11 +99,12 @@ public final class LLVMContext {
 
     private final List<ContextExtension> contextExtension;
 
-    private final ThreadLocal<LLVMAddress> tls = ThreadLocal.withInitial(LLVMAddress::nullPointer);
-    private final ThreadLocal<LLVMAddress> clearChildTid = ThreadLocal.withInitial(LLVMAddress::nullPointer);
-
     private final MaterializedFrame globalFrame = Truffle.getRuntime().createMaterializedFrame(new Object[0]);
     private final FrameDescriptor globalFrameDescriptor = globalFrame.getFrameDescriptor();
+
+    // we are not able to clean up a thread local properly, so we are using a map instead
+    private final Map<Thread, Object> tls = new HashMap<>();
+    private final Map<Thread, LLVMAddress> clearChildTid = new HashMap<>();
 
     // #define SIG_DFL ((__sighandler_t) 0) /* Default action. */
     private final LLVMAddress sigDfl;
@@ -351,12 +351,32 @@ public final class LLVMContext {
         return globalScope;
     }
 
-    public ThreadLocal<LLVMAddress> getThreadLocalStorage() {
-        return tls;
+    @TruffleBoundary
+    public Object getThreadLocalStorage() {
+        Object value = tls.get(Thread.currentThread());
+        if (value != null) {
+            return value;
+        }
+        return LLVMAddress.nullPointer();
     }
 
-    public ThreadLocal<LLVMAddress> getClearChildTid() {
-        return clearChildTid;
+    @TruffleBoundary
+    public void setThreadLocalStorage(Object value) {
+        tls.put(Thread.currentThread(), value);
+    }
+
+    @TruffleBoundary
+    public LLVMAddress getClearChildTid() {
+        LLVMAddress value = clearChildTid.get(Thread.currentThread());
+        if (value != null) {
+            return value;
+        }
+        return LLVMAddress.nullPointer();
+    }
+
+    @TruffleBoundary
+    public void setClearChildTid(LLVMAddress value) {
+        clearChildTid.put(Thread.currentThread(), value);
     }
 
     @TruffleBoundary

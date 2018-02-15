@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
@@ -44,15 +45,15 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMAMD64SyscallO
     }
 
     @Specialization
-    protected long doI64(long clkId, LLVMAddress tp,
+    protected long doI64(@SuppressWarnings("unused") VirtualFrame frame, long clkId, LLVMAddress tp,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return clockGetTime(memory, (int) clkId, tp);
     }
 
     @Specialization
-    protected long doI64(long clkId, long tp,
+    protected long doI64(VirtualFrame frame, long clkId, long tp,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doI64(clkId, LLVMAddress.fromLong(tp), memory);
+        return doI64(frame, clkId, LLVMAddress.fromLong(tp), memory);
     }
 
     @TruffleBoundary

@@ -296,4 +296,17 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         }
         return null;
     }
+
+    @Specialization
+    @ExplodeLoop
+    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFunctionVector value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        assert value.getLength() == vectorLength;
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < vectorLength; i++) {
+            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES, currentPtr.getType());
+        }
+        return null;
+    }
 }

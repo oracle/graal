@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -43,12 +44,12 @@ public abstract class LLVMAMD64SyscallGetdents64Node extends LLVMAMD64SyscallOpe
     }
 
     @Specialization
-    protected long execute(long fd, LLVMAddress dirp, long count) {
+    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, long fd, LLVMAddress dirp, long count) {
         return (int) getdents64.execute((int) fd, dirp.getVal(), (int) count);
     }
 
     @Specialization
-    protected long execute(long fd, long dirp, long count) {
-        return execute(fd, LLVMAddress.fromLong(dirp), count);
+    protected long execute(VirtualFrame frame, long fd, long dirp, long count) {
+        return execute(frame, fd, LLVMAddress.fromLong(dirp), count);
     }
 }

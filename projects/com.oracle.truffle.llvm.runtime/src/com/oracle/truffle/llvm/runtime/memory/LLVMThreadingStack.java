@@ -38,16 +38,14 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * Holds the (lazily allocated) stacks of all threads that are active in one particular LLVMContext.
  */
 public final class LLVMThreadingStack {
-
+    // we are not able to clean up a thread local properly, so we are using a map instead
     private final Map<Thread, LLVMStack> threadMap;
-    private final ThreadLocal<LLVMStack> stack;
     private final int stackSize;
     private final Thread mainThread;
 
     public LLVMThreadingStack(Thread mainTread, int stackSize) {
         this.mainThread = mainTread;
         this.stackSize = stackSize;
-        this.stack = new ThreadLocal<>();
         this.threadMap = new HashMap<>();
     }
 
@@ -61,13 +59,12 @@ public final class LLVMThreadingStack {
 
     @TruffleBoundary
     private LLVMStack getCurrentStack() {
-        return stack.get();
+        return threadMap.get(Thread.currentThread());
     }
 
     @TruffleBoundary
     private synchronized LLVMStack createNewStack() {
         LLVMStack s = new LLVMStack(stackSize);
-        stack.set(s);
         threadMap.put(Thread.currentThread(), s);
         return s;
     }

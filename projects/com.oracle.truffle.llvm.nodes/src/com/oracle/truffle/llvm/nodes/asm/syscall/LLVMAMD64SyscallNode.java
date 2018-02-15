@@ -39,6 +39,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
@@ -183,19 +184,19 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
-    protected long cachedSyscall(@SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
+    protected long cachedSyscall(VirtualFrame frame, @SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
                     @Cached("createNode(rax)") LLVMAMD64SyscallOperationNode node, @SuppressWarnings("unused") @Cached("rax") long cachedRax) {
         if (traceEnabled()) {
             trace(node);
         }
-        return node.execute(rdi, rsi, rdx, r10, r8, r9);
+        return node.execute(frame, rdi, rsi, rdx, r10, r8, r9);
     }
 
     @Specialization(replaces = "cachedSyscall")
-    protected long doI64(long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    protected long doI64(VirtualFrame frame, long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         // TODO: implement big switch with type casts + logic + ...?
         CompilerDirectives.transferToInterpreter();
-        return createNode(rax).execute(rdi, rsi, rdx, r10, r8, r9);
+        return createNode(rax).execute(frame, rdi, rsi, rdx, r10, r8, r9);
     }
 
     @CompilationFinal private boolean traceEnabledFlag;

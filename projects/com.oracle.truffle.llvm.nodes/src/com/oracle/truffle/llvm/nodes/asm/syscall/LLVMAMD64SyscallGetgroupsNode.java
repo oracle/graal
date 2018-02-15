@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -43,12 +44,12 @@ public abstract class LLVMAMD64SyscallGetgroupsNode extends LLVMAMD64SyscallOper
     }
 
     @Specialization
-    protected long execute(long gidsetsize, LLVMAddress grouplist) {
+    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, long gidsetsize, LLVMAddress grouplist) {
         return (int) getgroups.execute((int) gidsetsize, grouplist.getVal());
     }
 
     @Specialization
-    protected long execute(long gidsetsize, long grouplist) {
-        return execute(gidsetsize, LLVMAddress.fromLong(grouplist));
+    protected long execute(VirtualFrame frame, long gidsetsize, long grouplist) {
+        return execute(frame, gidsetsize, LLVMAddress.fromLong(grouplist));
     }
 }
