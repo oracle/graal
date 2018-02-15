@@ -763,7 +763,7 @@ public class AMD64Move {
 
         @Def({REG, HINT}) private AllocatableValue result;
         @Use({REG, CONST}) private Value input;
-        @Alive({REG, ILLEGAL}) private AllocatableValue baseRegister;
+        @Alive({REG, ILLEGAL, UNINITIALIZED}) private AllocatableValue baseRegister;
 
         protected PointerCompressionOp(LIRInstructionClass<? extends PointerCompressionOp> type, AllocatableValue result, Value input,
                         AllocatableValue baseRegister, CompressEncoding encoding, boolean nonNull, LIRKindTool lirKindTool) {

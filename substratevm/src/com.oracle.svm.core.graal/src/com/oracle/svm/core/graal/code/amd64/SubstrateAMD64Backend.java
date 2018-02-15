@@ -28,7 +28,6 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
-import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.asm.Assembler;
@@ -631,26 +630,35 @@ public class SubstrateAMD64Backend extends Backend {
 
         private AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
             if (!constant.isCompressed() && ReferenceAccess.singleton().haveCompressedReferences()) {
-                assert !constant.isNull();
-                Constant compressed = constant.compress();
-                ConstantValue input = new ConstantValue(lirKindTool.getNarrowOopKind(), compressed);
                 RegisterValue heapBase = registerConfig.getHeapBaseRegister().asValue();
-                return new LoadCompressedObjectConstantOp(dst, input, heapBase, getCompressEncoding(), lirKindTool);
+                return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
             }
             return new MoveFromConstOp(dst, constant);
         }
 
+        /*
+         * The constant denotes the result produced by this node. Thus if the constant is
+         * compressed, the result must be compressed and vice versa. Both compressed and
+         * uncompressed constants can be loaded by compiled code.
+         *
+         * Method getConstant() could uncompress the constant value from the node input. That would
+         * require a few indirections and an allocation of an uncompressed constant. The allocation
+         * could be eliminated if we stored uncompressed ConstantValue as input. But as this method
+         * looks performance-critical, it is still faster to memorize the original constant in the
+         * node.
+         */
         public static class LoadCompressedObjectConstantOp extends UncompressPointerOp implements LoadConstantOp {
             public static final LIRInstructionClass<LoadCompressedObjectConstantOp> TYPE = LIRInstructionClass.create(LoadCompressedObjectConstantOp.class);
+            private final SubstrateObjectConstant constant;
 
-            LoadCompressedObjectConstantOp(AllocatableValue result, ConstantValue input, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
-                super(TYPE, result, input, baseRegister, encoding, true, lirKindTool);
-                assert input.getJavaConstant().isNonNull() && SubstrateObjectConstant.isCompressed(input.getJavaConstant());
+            LoadCompressedObjectConstantOp(AllocatableValue result, SubstrateObjectConstant constant, AllocatableValue baseRegister, CompressEncoding encoding, LIRKindTool lirKindTool) {
+                super(TYPE, result, new ConstantValue(lirKindTool.getNarrowOopKind(), constant.compress()), baseRegister, encoding, true, lirKindTool);
+                this.constant = constant;
             }
 
             @Override
             public Constant getConstant() {
-                return asConstantValue(getInput()).getConstant();
+                return constant;
             }
         }
     }
