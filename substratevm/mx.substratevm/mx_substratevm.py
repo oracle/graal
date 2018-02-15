@@ -125,6 +125,8 @@ def relsymlink(target_path, dest_path):
     os.symlink(os.path.relpath(target_path, dirname(dest_path)), dest_path)
 
 def native_image_layout(dists, subdir, native_image_root):
+    if not dists:
+        return
     dest_path = join(native_image_root, subdir)
     # Cleanup leftovers from previous call
     if exists(dest_path):
@@ -171,6 +173,20 @@ flag_suitename_map = {
     'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
     'llvm' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
+}
+
+class ToolDescriptor:
+    def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
+        self.image_deps = image_deps if image_deps else []
+        self.builder_deps = builder_deps if builder_deps else []
+        self.native_deps = native_deps if native_deps else []
+
+tools_map = {
+    'truffle' : ToolDescriptor(),
+    'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
+    'nfi' : ToolDescriptor(builder_deps=['truffle:TRUFFLE_NFI'], native_deps=['truffle:TRUFFLE_NFI_NATIVE']),
+    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
+    'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
 
 def native_image_path(native_image_root):
@@ -242,16 +258,12 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
 
     # Create native-image layout for tools parts
-    native_image_layout_dists(join('tools', 'junit', 'builder'), ['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST'])
-    native_image_option_properties('tools', 'junit', native_image_root)
-    native_image_option_properties('tools', 'truffle', native_image_root)
-    native_image_layout_dists(join('tools', 'nfi', 'builder'), ['truffle:TRUFFLE_NFI'])
-    native_image_extract_dists(join('tools', 'nfi'), ['truffle:TRUFFLE_NFI_NATIVE'])
-    native_image_option_properties('tools', 'nfi', native_image_root)
-    native_image_layout_dists(join('tools', 'chromeinspector'), ['tools:CHROMEINSPECTOR'])
-    native_image_option_properties('tools', 'chromeinspector', native_image_root)
-    native_image_layout_dists(join('tools', 'profiler'), ['tools:TRUFFLE_PROFILER'])
-    native_image_option_properties('tools', 'profiler', native_image_root)
+    for tool_name in tools_map:
+        tool_descriptor = tools_map[tool_name]
+        native_image_layout_dists(join('tools', tool_name, 'builder'), tool_descriptor.builder_deps)
+        native_image_layout_dists(join('tools', tool_name), tool_descriptor.image_deps)
+        native_image_extract_dists(join('tools', tool_name), tool_descriptor.native_deps)
+        native_image_option_properties('tools', tool_name, native_image_root)
 
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
