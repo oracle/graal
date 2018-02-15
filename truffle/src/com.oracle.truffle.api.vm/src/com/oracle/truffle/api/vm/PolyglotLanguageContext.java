@@ -273,7 +273,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             Env createdEnv = env = LANGUAGE.createEnv(this, language.info,
                                             context.out,
                                             context.err,
-                                            context.in, config, getOptionValues(), applicationArguments);
+                                            context.in, config, getOptionValues(), applicationArguments, context.fileSystem);
                             LANGUAGE.createEnvContext(createdEnv);
                             language.requireProfile().notifyContextCreate(createdEnv);
                         } finally {
@@ -397,7 +397,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         setApplicationArguments(newApplicationArguments);
         if (preInitialized) {
             try {
-                final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments);
+                final Env newEnv = LANGUAGE.patchEnvContext(env, context.out, context.err, context.in, config, getOptionValues(), newApplicationArguments, context.fileSystem);
                 if (newEnv != null) {
                     env = newEnv;
                     return true;

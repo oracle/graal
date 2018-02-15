@@ -75,6 +75,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.ComputeInExecutor.Info;
 import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * @since 0.9
@@ -948,7 +949,7 @@ public class PolyglotEngine {
                     localEnv = env;
                     if (localEnv == null && create) {
                         localEnv = VMAccessor.LANGUAGE.createEnv(this, shared.getLanguageEnsureInitialized(), engine().out, engine().err, engine().in,
-                                        getArgumentsForLanguage(), new OptionValuesImpl(null, shared.options), new String[0]);
+                                        getArgumentsForLanguage(), new OptionValuesImpl(null, shared.options), new String[0], FileSystems.newNoIOFileSystem(null));
                         this.env = localEnv;
                         context = VMAccessor.LANGUAGE.createEnvContext(localEnv);
                         VMAccessor.LANGUAGE.postInitEnv(localEnv);
@@ -1474,6 +1475,11 @@ public class PolyglotEngine {
         @Override
         public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
             return ((PolyglotRuntime.LanguageShared) VMAccessor.NODES.getEngineObject(language)).cache.getLanguageClass();
+        }
+
+        @Override
+        public boolean isDefaultFileSystem(FileSystem fs) {
+            return false;
         }
     }
 }

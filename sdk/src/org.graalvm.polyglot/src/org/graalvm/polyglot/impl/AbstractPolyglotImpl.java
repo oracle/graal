@@ -51,6 +51,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -260,7 +261,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract OptionDescriptors getOptions();
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                        boolean allowCreateThread, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
+                        boolean allowCreateThread, boolean allowHostIO, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages,
+                        FileSystem fileSystem);
 
         public abstract String getImplementationName();
 

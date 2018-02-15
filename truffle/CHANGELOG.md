@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Deprecated TruffleTCK. Use the [new TCK](https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md) instead.
 	* Deprecated Debugger#find(PolyglotEngine)
 	* Added Debugger#find(TruffleInstrument.Env) and Debugger#find(Engine)
+* Added [FileSystem](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html) SPI to allow embedder to virtualize TruffleLanguage Input/Output operations.
 
 ## Version 0.33
 

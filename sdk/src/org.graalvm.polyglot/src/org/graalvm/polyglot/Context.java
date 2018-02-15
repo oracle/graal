@@ -35,6 +35,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.proxy.Proxy;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * A polyglot context for Graal guest languages that allows to {@link #eval(Source) evaluate} code.
@@ -673,6 +674,8 @@ public final class Context implements AutoCloseable {
         private Boolean allowHostAccess;
         private Boolean allowCreateThread;
         private boolean allowAllAccess;
+        private Boolean allowIO;
+        private FileSystem customFileSystem;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -777,6 +780,7 @@ public final class Context implements AutoCloseable {
          * <li>The access to public {@link #allowHostAccess(boolean) host classes}.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
+         * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
@@ -875,6 +879,33 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * If <code>true</code> allows guest language to perform unrestricted IO operations on host
+         * system. Default is <code>false</code>. If {@link #allowAllAccess(boolean) all access} is
+         * set to <code>true</code> then IO is enabled if not allowed explicitly.
+         *
+         * @param enabled {@code true} to enable Input/Output
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder allowIO(final boolean enabled) {
+            allowIO = enabled;
+            return this;
+        }
+
+        /**
+         * Installs a new {@link FileSystem}.
+         *
+         * @param fileSystem the file system to be installed
+         * @return the {@link Builder}
+         * @since 1.0
+         */
+        public Builder fileSystem(final FileSystem fileSystem) {
+            Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
+            this.customFileSystem = fileSystem;
+            return this;
+        }
+
+        /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
          *
@@ -886,6 +917,12 @@ public final class Context implements AutoCloseable {
             }
             if (allowCreateThread == null) {
                 allowCreateThread = allowAllAccess;
+            }
+            if (allowIO == null) {
+                allowIO = allowAllAccess;
+            }
+            if (!allowIO && customFileSystem != null) {
+                throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
             Engine engine = this.sharedEngine;
             if (engine == null) {
@@ -901,13 +938,13 @@ public final class Context implements AutoCloseable {
                 }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, allowHostAccess, allowCreateThread,
+                return engine.impl.createContext(null, null, null, allowHostAccess, allowCreateThread, allowIO,
                                 hostClassFilter,
-                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages);
+                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             } else {
-                return engine.impl.createContext(out, err, in, allowHostAccess, allowCreateThread,
+                return engine.impl.createContext(out, err, in, allowHostAccess, allowCreateThread, allowIO,
                                 hostClassFilter,
-                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages);
+                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             }
         }
 

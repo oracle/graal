@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -289,6 +290,7 @@ public abstract class Accessor {
 
         public abstract Object findMetaObjectForLanguage(Object vmObject, Object value);
 
+        public abstract boolean isDefaultFileSystem(FileSystem fs);
     }
 
     public abstract static class LanguageSupport {
@@ -296,7 +298,7 @@ public abstract class Accessor {
         public abstract void initializeLanguage(LanguageInfo language, TruffleLanguage<?> impl, boolean legacyLanguage);
 
         public abstract Env createEnv(Object vmObject, LanguageInfo info, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments);
+                        String[] applicationArguments, FileSystem fileSystem);
 
         public abstract Object createEnvContext(Env localEnv);
 
@@ -360,7 +362,8 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 
-        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
+        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
+                        FileSystem fileSystem);
 
     }
 

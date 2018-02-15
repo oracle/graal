@@ -174,6 +174,7 @@ public final class PolyglotLauncher extends Launcher {
             contextBuilder.allowHostAccess(true);
         }
         contextBuilder.allowCreateThread(true);
+        contextBuilder.allowIO(true);
 
         if (version) {
             printVersion(engine);

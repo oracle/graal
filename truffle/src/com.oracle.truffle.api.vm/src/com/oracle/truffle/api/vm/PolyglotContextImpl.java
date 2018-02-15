@@ -61,6 +61,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import org.graalvm.polyglot.io.FileSystem;
 
 @SuppressWarnings("deprecation")
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -116,6 +117,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     Map<String, String[]> applicationArguments;  // effectively final
     private final Set<PolyglotContextImpl> childContexts = new LinkedHashSet<>();
     boolean inContextPreInitialization; // effectively final
+    FileSystem fileSystem;  // effectively final
 
     /* Constructor for testing. */
     private PolyglotContextImpl() {
@@ -139,10 +141,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     Predicate<String> classFilter,
                     Map<String, String> options,
                     Map<String, String[]> applicationArguments,
-                    Set<String> allowedPublicLanguages) {
+                    Set<String> allowedPublicLanguages,
+                    FileSystem fileSystem) {
         super(engine.impl);
         this.parent = null;
         this.engine = engine;
+        this.fileSystem = fileSystem;
         patchInstance(out, err, in, hostAccessAllowed, createThreadAllowed, classFilter, applicationArguments, allowedPublicLanguages);
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
@@ -987,9 +991,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     boolean patch(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
                     boolean newCreateThreadAllowed, Predicate<String> newClassFilter,
-                    Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages) {
+                    Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem) {
         CompilerAsserts.neverPartOfCompilation();
         patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newCreateThreadAllowed, newClassFilter, newApplicationArguments, newAllowedPublicLanguages);
+        ((FileSystems.PreInitializeContextFileSystem) fileSystem).patchDelegate(newFileSystem);
         final Map<String, Map<String, String>> optionsByLanguage = new HashMap<>();
         for (String optionKey : newOptions.keySet()) {
             final PolyglotLanguage language = findLanguageForOption(optionKey);
@@ -1058,7 +1063,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     static PolyglotContextImpl preInitialize(final PolyglotEngineImpl engine) {
-        PolyglotContextImpl context = new PolyglotContextImpl(
+        final FileSystems.PreInitializeContextFileSystem fs = new FileSystems.PreInitializeContextFileSystem();
+        final PolyglotContextImpl context = new PolyglotContextImpl(
                         engine,
                         null,
                         null,
@@ -1068,7 +1074,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         null,
                         Collections.emptyMap(),
                         Collections.emptyMap(),
-                        engine.getLanguages().keySet());
+                        engine.getLanguages().keySet(),
+                        fs);
         final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
         if (optionValue != null && !optionValue.isEmpty()) {
             final Set<String> languagesToPreinitialize = new HashSet<>();
@@ -1090,6 +1097,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 }
             } finally {
                 context.inContextPreInitialization = false;
+                fs.patchDelegate(FileSystems.newNoIOFileSystem(null));
             }
         }
         // Need to clean up Threads before storing SVM image
