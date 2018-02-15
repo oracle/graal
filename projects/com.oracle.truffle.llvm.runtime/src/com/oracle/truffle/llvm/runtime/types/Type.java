@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public abstract class Type {
 
-    @CompilationFinal private Assumption sourceTypeAssumption = Truffle.getRuntime().createAssumption();
+    @CompilationFinal private Assumption sourceTypeAssumption = Truffle.getRuntime().createAssumption("Type.sourceType");
     @CompilationFinal private LLVMSourceType sourceType = null;
 
     public static final Type[] EMPTY_ARRAY = {};
@@ -76,7 +76,7 @@ public abstract class Type {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.sourceTypeAssumption.invalidate();
             this.sourceType = sourceType;
-            this.sourceTypeAssumption = Truffle.getRuntime().createAssumption();
+            this.sourceTypeAssumption = Truffle.getRuntime().createAssumption("Type.sourceType");
         }
     }
 

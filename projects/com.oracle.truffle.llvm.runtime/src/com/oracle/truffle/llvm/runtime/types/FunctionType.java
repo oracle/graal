@@ -48,7 +48,7 @@ public final class FunctionType extends Type {
     private final boolean isVarargs;
 
     public FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
-        this.returnTypeAssumption = Truffle.getRuntime().createAssumption();
+        this.returnTypeAssumption = Truffle.getRuntime().createAssumption("FunctionType.returnType");
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
         this.isVarargs = isVarargs;
@@ -69,7 +69,7 @@ public final class FunctionType extends Type {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         this.returnTypeAssumption.invalidate();
         this.returnType = returnType;
-        this.returnTypeAssumption = Truffle.getRuntime().createAssumption();
+        this.returnTypeAssumption = Truffle.getRuntime().createAssumption("FunctionType.returnType");
     }
 
     public boolean isVarargs() {

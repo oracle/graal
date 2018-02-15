@@ -276,7 +276,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         CompilerDirectives.transferToInterpreterAndInvalidate();
         functionAssumption.invalidate();
         this.function = newFunction;
-        this.functionAssumption = Truffle.getRuntime().createAssumption();
+        this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
     }
 
     public Function getFunction() {
@@ -293,7 +293,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         this.functionName = name;
         this.type = type;
         this.functionId = functionId;
-        this.functionAssumption = Truffle.getRuntime().createAssumption();
+        this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
         this.function = function;
     }
 

@@ -43,7 +43,7 @@ public final class ArrayType extends AggregateType {
     private final int length;
 
     public ArrayType(Type type, int length) {
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption();
+        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("ArrayType.elementType");
         this.elementType = type;
         this.length = length;
     }
@@ -52,7 +52,7 @@ public final class ArrayType extends AggregateType {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         this.elementTypeAssumption.invalidate();
         this.elementType = elementType;
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption();
+        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("ArrayType.elementType");
     }
 
     @Override
