@@ -484,6 +484,18 @@ final class DITypeExtractor implements MetadataVisitor {
         }
     }
 
+    @Override
+    public void visit(MDVoidNode md) {
+        if (!parsedTypes.containsKey(md)) {
+            parsedTypes.put(md, new LLVMSourceType(() -> "void", 0, 0, 0, null) {
+                @Override
+                public LLVMSourceType getOffset(long newOffset) {
+                    return this;
+                }
+            });
+        }
+    }
+
     private void getElements(MDBaseNode elemList, List<LLVMSourceType> elemTypes, boolean includeUnknowns) {
         if (elemList instanceof MDNode) {
             final MDNode elemListNode = (MDNode) elemList;
