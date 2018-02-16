@@ -34,6 +34,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMStackAllocationNode extends LLVMNode {
 
-    public abstract Object executeWithTarget(VirtualFrame frame, long numberOfElements);
+    public abstract Object executeWithTarget(VirtualFrame frame, long size);
 
 }
