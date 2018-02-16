@@ -115,6 +115,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleStringAsCStri
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleUnboxNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToIndexNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteFactory.LLVMTruffleWriteToNameNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleWriteManagedToGlobalNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMVirtualMallocNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMCallocNodeGen;
@@ -928,6 +929,14 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@truffle_is_handle_to_managed", LLVMTruffleIsHandleToManagedNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        });
+
+        factories.put("@truffle_managed_to_global", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@truffle_managed_to_global", LLVMTruffleWriteManagedToGlobalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 

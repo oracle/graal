@@ -30,6 +30,16 @@
 package com.oracle.truffle.llvm.test.interop;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import java.io.File;
 import java.nio.file.Path;
@@ -905,6 +915,62 @@ public final class LLVMInteropTest {
         Runner runner = new Runner("isHandle");
         Object a = new Object();
         runner.export(a, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    static class ForeignObject implements TruffleObject {
+        protected int foo;
+
+        ForeignObject(int i) {
+            this.foo = i;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return ForeignObjectMessageResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject o) {
+            return o instanceof ForeignObject;
+        }
+    }
+
+    @MessageResolution(receiverType = ForeignObject.class)
+    static class ForeignObjectMessageResolution {
+        @Resolve(message = "READ")
+        abstract static class ReadNode extends Node {
+            int access(ForeignObject object, Object key) {
+                Assert.assertEquals(0, key);
+                return object.foo;
+            }
+        }
+
+        @Resolve(message = "WRITE")
+        abstract static class WriteNode extends Node {
+            int access(ForeignObject object, Object key, int value) {
+                Assert.assertEquals(0, key);
+                return object.foo = value * 2;
+            }
+        }
+
+        @Resolve(message = "TO_NATIVE")
+        abstract static class ToNativeNode extends Node {
+            Object access(Object object) {
+                TruffleObject function = (TruffleObject) Sulong.getLLVMContextReference().get().getEnv().importSymbol("test_to_native");
+                try {
+                    return ForeignAccess.sendExecute(Message.createExecute(1).createNode(), function, object);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    Assert.fail("TO_NATIVE should have created a handle");
+                    return null;
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testRegisterHandle() {
+        Runner runner = new Runner("registerHandle");
+        runner.export(new ForeignObject(1), "global_object");
         Assert.assertEquals(0, runner.run());
     }
 
