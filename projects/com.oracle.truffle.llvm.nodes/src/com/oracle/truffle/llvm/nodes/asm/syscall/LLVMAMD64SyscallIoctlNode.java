@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -43,12 +44,12 @@ public abstract class LLVMAMD64SyscallIoctlNode extends LLVMAMD64SyscallOperatio
     }
 
     @Specialization
-    protected long doI64(long fd, long request, LLVMAddress argp) {
+    protected long doI64(@SuppressWarnings("unused") VirtualFrame frame, long fd, long request, LLVMAddress argp) {
         return (int) ioctl.execute((int) fd, request, argp.getVal());
     }
 
     @Specialization
-    protected long doI64(long fd, long request, long argp) {
-        return doI64(fd, request, LLVMAddress.fromLong(argp));
+    protected long doI64(VirtualFrame frame, long fd, long request, long argp) {
+        return doI64(frame, fd, request, LLVMAddress.fromLong(argp));
     }
 }

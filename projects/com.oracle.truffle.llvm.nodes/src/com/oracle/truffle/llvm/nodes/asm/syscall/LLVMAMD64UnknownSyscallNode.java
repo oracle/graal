@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class LLVMAMD64UnknownSyscallNode extends LLVMAMD64SyscallOperationNode {
     private final int nr;
@@ -40,7 +41,7 @@ public class LLVMAMD64UnknownSyscallNode extends LLVMAMD64SyscallOperationNode {
     }
 
     @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    public long execute(VirtualFrame frame, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         CompilerDirectives.transferToInterpreter();
         throw new RuntimeException("unknown syscall " + nr);
     }

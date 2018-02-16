@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -43,12 +44,12 @@ public abstract class LLVMAMD64SyscallStatfsNode extends LLVMAMD64SyscallOperati
     }
 
     @Specialization
-    protected long execute(LLVMAddress path, LLVMAddress buf) {
+    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress path, LLVMAddress buf) {
         return (int) statfs.execute(path.getVal(), buf.getVal());
     }
 
     @Specialization
-    protected long execute(long path, long buf) {
-        return execute(LLVMAddress.fromLong(path), LLVMAddress.fromLong(buf));
+    protected long execute(VirtualFrame frame, long path, long buf) {
+        return execute(frame, LLVMAddress.fromLong(path), LLVMAddress.fromLong(buf));
     }
 }

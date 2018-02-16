@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode {
@@ -61,6 +62,11 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         @Specialization
         protected long doLLVMAddress(long base) {
             return base + displacement;
+        }
+
+        @Specialization
+        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base) {
+            return base.increment(displacement, base.getType());
         }
     }
 
@@ -96,6 +102,16 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         @Specialization
         protected LLVMAddress doLLVMAddress(LLVMAddress base, long offset) {
             return base.increment(displacement + (offset << shift));
+        }
+
+        @Specialization
+        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, int offset) {
+            return base.increment(displacement + (offset << shift), base.getType());
+        }
+
+        @Specialization
+        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, long offset) {
+            return base.increment(displacement + (offset << shift), base.getType());
         }
     }
 

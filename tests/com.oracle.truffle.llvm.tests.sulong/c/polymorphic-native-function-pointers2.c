@@ -3,7 +3,7 @@
 
 typedef int (*test_type)(int c);
 
-#define SIZE 4
+#define SIZE 11
 
 test_type getFunction(int i) {
   int val = i % SIZE;
@@ -34,22 +34,8 @@ test_type getFunction(int i) {
   return 0;
 }
 
-int callFunction() {
-  double val;
-  int i;
-  test_type func;
-  double currentVal = 0;
-  for (i = 0; i < 1000; i++) {
-    currentVal += getFunction(i)(i % 2 == 0 ? 'a' : ' ');
-  }
-  return currentVal;
-}
-
 int main() {
-  int i;
-  int sum = 0;
-  for (i = 0; i < 1000; i++) {
-    sum += callFunction();
+  for (int i = 0; i < 100; i++) {
+    printf("%i\n", getFunction(i)(i % 2 == 0 ? 'a' : ' ') != 0);
   }
-  return sum == 2000000;
 }
