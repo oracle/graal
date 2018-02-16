@@ -61,6 +61,7 @@ public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider, Truf
     }
 
     public LLVMAddress increment(long incr) {
+        assert val >= 0 : "LLVMAddress#increment() should never be called on a negative address";
         return new LLVMAddress(val + incr);
     }
 
