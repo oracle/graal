@@ -318,7 +318,9 @@ class BootstrapNativeImage(mx.Project):
         self.buildDependencies = kwargs.pop('buildDependencies', [])
         self.graalDistribution = kwargs.pop('graal', [])
         self.svmDistribution = kwargs.pop('svm', [])
+        self.buildDependencies += self.svmDistribution
         self.librarySupportDistribution = kwargs.pop('svmSupport', [])
+        self.buildDependencies += self.librarySupportDistribution
 
     def getResults(self):
         return None

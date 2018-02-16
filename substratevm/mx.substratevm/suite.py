@@ -391,8 +391,8 @@ suite = {
             "class" : "BootstrapNativeImage",
             "buildDependencies": [
                 "SVM_DRIVER",
-                "SVM",
-                "LIBRARY_SUPPORT"
+                'tools:CHROMEINSPECTOR',
+                'tools:TRUFFLE_PROFILER',
             ],
             "svm" : [
                 "SVM"
