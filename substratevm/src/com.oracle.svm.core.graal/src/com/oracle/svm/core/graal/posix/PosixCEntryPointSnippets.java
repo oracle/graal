@@ -64,7 +64,9 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -116,6 +118,18 @@ import com.oracle.svm.core.thread.VMThreads;
  * allowed into Java code until the safepoint has finished.
  */
 public final class PosixCEntryPointSnippets extends SubstrateTemplates implements Snippets {
+    /**
+     * Errors returned by snippets and foreign calls below and in turn by {@link CEntryPointActions}
+     * and {@link CEntryPointNativeFunctions}. These are non-API, with the exception of 0 = success.
+     */
+    interface Errors {
+        int NO_ERROR = 0;
+        int UNSPECIFIED = 1;
+        int NULL_ARGUMENT = 2;
+        int HEAP_CLONE_FAILED = 3;
+        int UNATTACHED_THREAD = 4;
+        int UNINITIALIZED_ISOLATE = 5;
+    }
 
     public static final SubstrateForeignCallDescriptor CREATE_ISOLATE = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "createIsolate", false, LocationIdentity.any());
     public static final SubstrateForeignCallDescriptor ATTACH_THREAD = SnippetRuntime.findForeignCall(PosixCEntryPointSnippets.class, "attachThread", false, LocationIdentity.any());
@@ -204,7 +218,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         WordPointer isolate = StackValue.get(SizeOf.get(WordPointer.class));
         isolate.write(Word.nullPointer());
         int error = PosixIsolates.create(isolate, parameters);
-        if (error != 0) {
+        if (error != Errors.NO_ERROR) {
             return error;
         }
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
@@ -232,12 +246,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     private static int attachThread(Isolate isolate, int vmThreadSize) {
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             if (isolate.isNull()) {
-                return -1;
+                return Errors.NULL_ARGUMENT;
             }
             setHeapBase(isolate);
         }
         if (!PosixVMThreads.isInitialized()) {
-            return -1;
+            return Errors.UNINITIALIZED_ISOLATE;
         }
         /* Check if the thread is already attached. */
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
@@ -251,14 +265,14 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
         writeCurrentVMThread(thread);
         VMThreads.StatusSupport.setStatusJavaUnguarded(thread);
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     @Snippet
     public static int detachThreadSnippet() {
         IsolateThread thread = KnownIntrinsics.currentVMThread();
         runtimeCall(DETACH_THREAD, thread);
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     /**
@@ -311,7 +325,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Calling out from uninterruptible code with lock held.", calleeMustBe = false)
     private static int detachJavaThread(IsolateThread thread) {
         JavaThreads.detachThread(thread);
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     @Snippet
@@ -319,26 +333,19 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         return runtimeCallTearDownIsolate(TEAR_DOWN_ISOLATE);
     }
 
-    /**
-     * Foreign call: {@link #TEAR_DOWN_ISOLATE}.
-     * <p>
-     * Exit action that tears down the isolate.
-     * <p>
-     * Returns 0 if the isolate was torn down, 1 otherwise.
-     */
+    /** Foreign call: {@link #TEAR_DOWN_ISOLATE}. */
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
         /* Let someone who can do all the work do all the work. */
-        return JavaThreads.singleton().tearDownVM() ? 0 : -1;
+        return JavaThreads.singleton().tearDownVM() ? Errors.NO_ERROR : Errors.UNSPECIFIED;
     }
 
     /** Call from C to Java with IsolateThread coming from Posix thread-local storage. */
     @Snippet
     public static int enterIsolateSnippet(Isolate isolate) {
-        // Get IsolateThread from Posix thread-local storage.
         writeCurrentVMThread(VMThreads.nullThread());
         int result = runtimeCall(ENTER_ISOLATE, isolate);
-        if (result == 0) {
+        if (result == Errors.NO_ERROR) {
             transitionCtoJava();
         }
         return result;
@@ -350,27 +357,27 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     private static int enterIsolate(Isolate isolate) {
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             if (isolate.isNull()) {
-                return -1;
+                return Errors.NULL_ARGUMENT;
             }
             setHeapBase(isolate);
         }
         if (!PosixVMThreads.isInitialized()) {
-            return -2;
+            return Errors.UNINITIALIZED_ISOLATE;
         }
         /* Get thread from pthread thread-local variable. */
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
         if (VMThreads.isNullThread(thread)) {
-            return -1;
+            return Errors.UNATTACHED_THREAD;
         }
         writeCurrentVMThread(thread);
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     /** Call from C to Java with IsolateThread coming from the parameter. */
     @Snippet
     public static int enterSnippet(IsolateThread thread) {
         if (thread.isNull()) {
-            return -1;
+            return Errors.NULL_ARGUMENT;
         }
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             Isolate isolate = PosixVMThreads.IsolateTL.get(thread);
@@ -378,7 +385,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
         writeCurrentVMThread(thread);
         transitionCtoJava();
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     private static void transitionCtoJava() {
@@ -390,7 +397,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Snippet
     public static int reportExceptionSnippet(Throwable exception) {
         runtimeCall(REPORT_EXCEPTION, exception);
-        return -1; // unreachable
+        return Errors.UNSPECIFIED; // unreachable
     }
 
     /** Foreign call: {@link #REPORT_EXCEPTION}. */
@@ -411,7 +418,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static int returnFromJavaToCSnippet() {
         assert VMThreads.StatusSupport.isStatusJava() : "Should be coming from Java to native.";
         VMThreads.StatusSupport.setStatusNative();
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     @Snippet
@@ -452,12 +459,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @Snippet
     public static int enterSingleThreadedSnippet() {
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     @Snippet
     public static int leaveSingleThreadedSnippet() {
-        return 0;
+        return Errors.NO_ERROR;
     }
 
     @Snippet

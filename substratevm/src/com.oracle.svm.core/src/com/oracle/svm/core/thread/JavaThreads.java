@@ -255,8 +255,7 @@ public abstract class JavaThreads {
             return true;
         }
         /* Tell all the threads that the VM is being torn down. */
-        final boolean result = tearDownIsolateThreads();
-        return result;
+        return tearDownIsolateThreads();
     }
 
     private static void detachParkEvent(AtomicReference<ParkEvent> ref) {

@@ -36,6 +36,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.graal.posix.PosixCEntryPointSnippets.Errors;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Mman;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -86,10 +87,10 @@ public class PosixIsolates {
         long pageSize = Unistd.NoTransitions.sysconf(Unistd._SC_PAGE_SIZE());
         Pointer heap = Mman.NoTransitions.mmap(Word.pointer(pageSize), size, PROT_READ() | PROT_WRITE(), MAP_ANON() | MAP_PRIVATE(), -1, 0);
         if (heap.equal(MAP_FAILED())) {
-            return -1;
+            return Errors.HEAP_CLONE_FAILED;
         }
         LibC.memcpy(heap, begin, size);
         isolatePointer.write(heap);
-        return -2;
+        return Errors.NO_ERROR;
     }
 }
