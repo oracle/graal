@@ -31,6 +31,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
@@ -167,6 +168,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             initialize();
             return compilationProfile;
         }
+    }
+
+    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
+        return getCompilationProfile().getProfiledTypesAssumptions();
     }
 
     protected Class<?>[] getProfiledArgumentTypes() {
