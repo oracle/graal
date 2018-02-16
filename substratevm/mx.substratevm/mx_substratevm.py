@@ -185,6 +185,7 @@ class ToolDescriptor:
 
 tools_map = {
     'truffle' : ToolDescriptor(),
+    'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'nfi' : ToolDescriptor(builder_deps=['truffle:TRUFFLE_NFI'], native_deps=['truffle:TRUFFLE_NFI_NATIVE']),
     'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
