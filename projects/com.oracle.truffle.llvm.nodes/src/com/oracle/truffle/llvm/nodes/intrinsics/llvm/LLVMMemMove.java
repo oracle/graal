@@ -92,5 +92,19 @@ public abstract class LLVMMemMove {
             memMove.executeWithTarget(frame, dest, source, length);
             return null;
         }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        protected Object doVoid(VirtualFrame frame, LLVMTruffleObject dest, LLVMAddress source, long length, int align, boolean isVolatile) {
+            memMove.executeWithTarget(frame, dest, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        protected Object doVoid(VirtualFrame frame, LLVMAddress dest, LLVMTruffleObject source, long length, int align, boolean isVolatile) {
+            memMove.executeWithTarget(frame, dest, source, length);
+            return null;
+        }
     }
 }

@@ -44,18 +44,18 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
 
     @CompilationFinal private boolean inJava = true;
 
-    @Child private LLVMToNativeNode convert1 = LLVMToNativeNode.createToNativeWithTarget();
-    @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.createToNativeWithTarget();
+    @Child private LLVMToNativeNode convertTarget = LLVMToNativeNode.createToNativeWithTarget();
+    @Child private LLVMToNativeNode convertSource = LLVMToNativeNode.createToNativeWithTarget();
     private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
     protected Object case1(VirtualFrame frame, Object target, Object source, int length) {
-        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
     }
 
     @Specialization
     protected Object case2(VirtualFrame frame, Object target, Object source, long length) {
-        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
     }
 
     private Object memmove(LLVMAddress target, LLVMAddress source, long length) {

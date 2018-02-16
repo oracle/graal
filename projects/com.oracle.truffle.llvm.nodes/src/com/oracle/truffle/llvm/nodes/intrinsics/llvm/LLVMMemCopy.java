@@ -186,6 +186,20 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
         return null;
     }
 
+    @SuppressWarnings("unused")
+    @Specialization
+    protected Object doVoid(VirtualFrame frame, LLVMTruffleObject target, LLVMAddress source, Object length, int align, boolean isVolatile) {
+        memMove.executeWithTarget(frame, target, source, length);
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected Object doVoid(VirtualFrame frame, LLVMAddress target, LLVMTruffleObject source, Object length, int align, boolean isVolatile) {
+        memMove.executeWithTarget(frame, target, source, length);
+        return null;
+    }
+
     public static void copy(UnsafeIntArrayAccess arrayAccess, LLVMMemory memory, LLVMVirtualAllocationAddress target, long source, long length) {
         long sourcePointer = source;
         LLVMVirtualAllocationAddress targetAddress = target;

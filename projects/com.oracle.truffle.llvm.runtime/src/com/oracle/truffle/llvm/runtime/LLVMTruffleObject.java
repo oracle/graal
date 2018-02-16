@@ -99,6 +99,10 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         return type;
     }
 
+    public LLVMTruffleObject increment(long incr) {
+        return new LLVMTruffleObject(object, offset + incr, type, baseType);
+    }
+
     public LLVMTruffleObject increment(long incr, Type newType) {
         return new LLVMTruffleObject(object, offset + incr, newType, baseType);
     }
