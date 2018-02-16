@@ -194,6 +194,36 @@ def native_image_path(native_image_root):
     native_image_dir = join(native_image_root, platform_subdir(), 'bin')
     return join(native_image_dir, native_image_name)
 
+def remove_option_prefix(text, prefix):
+    if text.startswith(prefix):
+        return True, text[len(prefix):]
+    return False, text
+
+def native_image_extract_dependencies(args):
+    deps = []
+    for arg in args:
+        macro, option = remove_option_prefix(arg, '--')
+        if not macro:
+            continue
+        tool, option = remove_option_prefix(option, 'tool.')
+        if tool:
+            tool_name = option.partition('=')[0]
+            if tool_name in tools_map:
+                tool_descriptor = tools_map[tool_name]
+                deps += tool_descriptor.builder_deps
+                deps += tool_descriptor.image_deps
+                deps += tool_descriptor.native_deps
+        else:
+            language_flag = option
+            if language_flag in flag_suitename_map:
+                language_entry = flag_suitename_map[language_flag]
+                language_suite_name = language_entry[0]
+                language_deps = language_entry[1]
+                deps += [language_suite_name + ':' + dep for dep in language_deps]
+                language_native_deps = language_entry[2]
+                deps += [language_suite_name + ':' + dep for dep in language_native_deps]
+    return deps
+
 def native_image_symlink_path(native_image_root, platform_specific=True):
     symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
     if platform_specific:
@@ -718,12 +748,14 @@ def fetch_languages(args):
     if args:
         requested = dict()
         for arg in args:
-            arg = arg[len('--'):]
-            before, sep, after = arg.partition('.version=')
-            if sep:
-                requested[before] = after
-            else:
-                requested[arg] = None
+            macro, option = remove_option_prefix(arg, '--')
+            if not macro:
+                continue
+            tool, option = remove_option_prefix(option, 'tool.')
+            if tool:
+                continue
+            option, _, version = option.partition('.version=')
+            requested[option] = version
     else:
         requested = dict((lang, None) for lang in flag_suitename_map)
 
