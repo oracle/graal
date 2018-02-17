@@ -133,6 +133,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private boolean isInstantiated;
 
     /**
+     * Does this represent a static class?
+     */
+    private boolean isStatic;
+
+    /**
      * The hub for the superclass, or null if an interface or primitive type.
      *
      * @see Class#getSuperclass()
@@ -219,7 +224,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private GenericInfo genericInfo;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName) {
+    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic) {
         /* Class names must be interned strings according to the Java spec. */
         this.name = name.intern();
         this.isLocalClass = isLocalClass;
@@ -227,6 +232,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
         this.genericInfo = GenericInfo.forEmpty();
+        this.isStatic = isStatic;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -395,7 +401,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     public int getModifiers() {
         /* We do not have detailed access level information, so we make every class public. */
-        return Modifier.PUBLIC | (LayoutEncoding.isAbstract(getLayoutEncoding()) ? Modifier.ABSTRACT : 0);
+        return Modifier.PUBLIC |
+                        (LayoutEncoding.isAbstract(getLayoutEncoding()) ? Modifier.ABSTRACT : 0) |
+                        (isStatic ? Modifier.STATIC : 0) |
+                        (isInterface() ? Modifier.INTERFACE : 0);
     }
 
     @Substitute
@@ -882,6 +891,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @KeepOriginal
     public native Package getPackage();
+
+    @Substitute
+    public Object getProtectionDomain() {
+        throw VMError.unimplemented();
+    }
 
     @Override
     @Substitute
