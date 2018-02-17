@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -450,6 +451,14 @@ final class TruffleSplittingStrategy {
             properties.put("LEAF?", node.edge == null);
             properties.putAll(node.node.getDebugProperties());
             properties.put("SourceSection", node.node.getSourceSection());
+            if (Introspection.isIntrospectable(node.node)) {
+                final List<Introspection.SpecializationInfo> specializations = Introspection.getSpecializations(node.node);
+                for (Introspection.SpecializationInfo specialization : specializations) {
+                    properties.put(specialization.getMethodName() + ".isActive", specialization.isActive());
+                    properties.put(specialization.getMethodName() + ".isExcluded", specialization.isExcluded());
+                    properties.put(specialization.getMethodName() + ".instances", specialization.getInstances());
+                }
+            }
         }
 
         @Override
