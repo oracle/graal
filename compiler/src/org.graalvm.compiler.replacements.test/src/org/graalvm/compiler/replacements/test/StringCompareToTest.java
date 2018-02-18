@@ -35,9 +35,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class StringCompareToTest extends MethodSubstitutionTest {
 
-    private final ResolvedJavaMethod realMethod;
-    private final ResolvedJavaMethod testMethod;
-    private final InstalledCode testCode;
+    private ResolvedJavaMethod realMethod = null;
+    private ResolvedJavaMethod testMethod = null;
+    private InstalledCode testCode = null;
 
     private final String[] testData = new String[]{
                     "A", "\uFF21", "AB", "A", "a", "Ab", "AA", "\uFF21",
@@ -48,10 +48,12 @@ public class StringCompareToTest extends MethodSubstitutionTest {
                     "crazy dog jumps over laszy fox"
     };
 
-    /**
-     * Initialize variables
-     */
     public StringCompareToTest() {
+        if (Java8OrEarlier) {
+            // This test is disabled in 1.8
+            return;
+        }
+
         realMethod = getResolvedJavaMethod(String.class, "compareTo", String.class);
         testMethod = getResolvedJavaMethod("stringCompareTo");
         StructuredGraph graph = testGraph("stringCompareTo");
@@ -68,6 +70,11 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     private void executeStringCompareTo(String s0, String s1) {
+        if (Java8OrEarlier) {
+            // This test is disabled in 1.8
+            return;
+        }
+
         Object expected = invokeSafe(realMethod, s0, s1);
         // Verify that the original method and the substitution produce the same value
         assertDeepEquals(expected, invokeSafe(testMethod, null, s0, s1));
