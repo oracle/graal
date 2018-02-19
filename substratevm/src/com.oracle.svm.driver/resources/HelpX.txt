@@ -1,4 +1,4 @@
-   -no-server           do not use image-build server
+   -no-server             do not use image-build server
 
    -server-list           lists current image-build servers
    -server-list-details   same as -server-list with more details
@@ -7,11 +7,12 @@
    -server-shutdown-all   shutdown all image-build servers
 
    -server-session=<custom-session-name>
-                       use custom session name instead of system provided
-                       session ID of the calling process
+                          use custom session name instead of system provided
+                          session ID of the calling process
 
-   -debug-attach[=<port>]
-                       attach to debugger during image building (default
-                       port is 8000)
+   -debug-attach[=<port>] attach to debugger during image building (default
+                          port is 8000)
+
+   -dry-run               output the command line that would be used for building
 
 The non-standard options are subject to change without notice.

@@ -122,6 +122,7 @@ class NativeImage {
     private final Path homeDir;
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
+    private boolean dryRun = false;
 
     final Registry optionRegistry;
     private final MacroOption truffleOption;
@@ -431,18 +432,20 @@ class NativeImage {
         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
         command.addAll(imageArgs);
 
-        showVerboseMessage(verbose, "Executing [");
-        showVerboseMessage(verbose, command.stream().collect(Collectors.joining(" \\\n")));
-        showVerboseMessage(verbose, "]");
+        showVerboseMessage(verbose || dryRun, "Executing [");
+        showVerboseMessage(verbose || dryRun, command.stream().collect(Collectors.joining(" \\\n")));
+        showVerboseMessage(verbose || dryRun, "]");
 
-        try {
-            Process p = pb.inheritIO().start();
-            int exitStatus = p.waitFor();
-            if (exitStatus != 0) {
-                showError("Image building with exit status " + exitStatus);
+        if (!dryRun) {
+            try {
+                Process p = pb.inheritIO().start();
+                int exitStatus = p.waitFor();
+                if (exitStatus != 0) {
+                    showError("Image building with exit status " + exitStatus);
+                }
+            } catch (IOException | InterruptedException e) {
+                showError(e.getMessage());
             }
-        } catch (IOException | InterruptedException e) {
-            showError(e.getMessage());
         }
     }
 
@@ -545,6 +548,14 @@ class NativeImage {
 
     boolean isVerbose() {
         return verbose;
+    }
+
+    protected void setDryRun(boolean val) {
+        dryRun = val;
+    }
+
+    boolean isDryRun() {
+        return dryRun;
     }
 
     void showVerboseMessage(boolean show, String message) {
