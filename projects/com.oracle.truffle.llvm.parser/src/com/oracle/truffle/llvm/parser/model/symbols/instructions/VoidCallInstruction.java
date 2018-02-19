@@ -29,31 +29,22 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
 import com.oracle.truffle.llvm.parser.model.IRScope;
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-public final class VoidCallInstruction extends VoidInstruction implements Call {
+public final class VoidCallInstruction extends VoidInstruction implements FunctionStart {
 
     private SymbolImpl target;
 
-    private final List<SymbolImpl> arguments;
+    private final SymbolImpl[] arguments;
 
     private final AttributesCodeEntry paramAttr;
 
-    private VoidCallInstruction(AttributesCodeEntry paramAtt) {
-        arguments = new ArrayList<>();
+    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount) {
+        this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
         this.paramAttr = paramAtt;
     }
 
@@ -63,13 +54,8 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
-    public SymbolImpl getArgument(int index) {
-        return arguments.get(index);
-    }
-
-    @Override
-    public int getArgumentCount() {
-        return arguments.size();
+    public SymbolImpl[] getArguments() {
+        return arguments;
     }
 
     @Override
@@ -97,39 +83,22 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
         if (target == original) {
             target = replacement;
         }
-        for (int i = 0; i < arguments.size(); i++) {
-            if (arguments.get(i) == original) {
-                arguments.set(i, replacement);
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i] == original) {
+                arguments[i] = replacement;
             }
         }
     }
 
     public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
-        final SymbolTable symbols = scope.getSymbols();
-        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr);
-        inst.target = symbols.getForwardReferenced(targetIndex, inst);
-        final Type[] argTypes;
-        if (inst.target instanceof FunctionDefinition) {
-            argTypes = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();
-        } else if (inst.target instanceof FunctionDeclaration) {
-            argTypes = ((FunctionDeclaration) (inst.target)).getType().getArgumentTypes();
-        } else {
-            argTypes = null;
-        }
-        if (argTypes != null) {
-            for (int i = 0; i < arguments.length; i++) {
-                // TODO: why is it possible to have more arguments than argument types?
-                if (argTypes.length > i && argTypes[i] == MetaType.METADATA) {
-                    inst.arguments.add(MetadataSymbol.create(scope.getMetadata(), arguments[i]));
-                } else {
-                    inst.arguments.add(symbols.getForwardReferenced(arguments[i], inst));
-                }
-            }
-        } else {
-            for (final int argument : arguments) {
-                inst.arguments.add(symbols.getForwardReferenced(argument, inst));
-            }
-        }
+        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length);
+        inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
+        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
+    }
+
+    @Override
+    public String toString() {
+        return FunctionStart.asString(target, arguments);
     }
 }
