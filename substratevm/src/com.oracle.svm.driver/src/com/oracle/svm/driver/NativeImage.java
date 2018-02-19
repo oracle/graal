@@ -96,6 +96,7 @@ class NativeImage {
     static final String oHReflectionConfigurationFiles = oH + "ReflectionConfigurationFiles=";
     static final String oHReflectionConfigurationResources = oH + "ReflectionConfigurationResources=";
     static final String oHJNIConfigurationFiles = oH + "JNIConfigurationFiles=";
+    static final String oHJNIConfigurationResources = oH + "JNIConfigurationResources=";
 
     static final String oHMaxRuntimeCompileMethods = oH + "MaxRuntimeCompileMethods=";
     static final String oHInspectServerContentPath = oH + "InspectServerContentPath=";
@@ -356,6 +357,7 @@ class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", s -> canonicalize(Paths.get(s)).toString());
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", s -> canonicalize(Paths.get(s)).toString());
+        consolidateListArgs(imageBuilderArgs, oHJNIConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
