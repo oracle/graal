@@ -220,7 +220,7 @@ public final class LLVMDebugTest {
             final int currentLine = event.getSourceSection().getStartLine();
 
             if (currentLine == info.getLastStop()) {
-                // since we are stepping on IR-instructions rather than source-statements it cllvman
+                // since we are stepping on IR-instructions rather than source-statements it can
                 // happen that we step at the same line multiple times, so we simply try the last
                 // action again. The exact stops differ between LLVM versions and optimization
                 // levels which would make it difficult to record an exact trace.
