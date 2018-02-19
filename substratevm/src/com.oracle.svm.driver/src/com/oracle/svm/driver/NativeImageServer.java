@@ -746,6 +746,12 @@ final class NativeImageServer extends NativeImage {
         useServer = val;
     }
 
+    @Override
+    protected void setDryRun(boolean val) {
+        super.setDryRun(val);
+        useServer = !val;
+    }
+
     void setVerboseServer(boolean val) {
         verboseServer = val;
     }

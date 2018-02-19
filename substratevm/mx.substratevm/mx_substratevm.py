@@ -92,6 +92,8 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def classpath(args):
+    if not args:
+        return [] # safeguard against mx.classpath(None) behaviour
     return mx.classpath(args, jdk=mx_compiler.jdk)
 
 def clibrary_paths():
@@ -125,6 +127,8 @@ def relsymlink(target_path, dest_path):
     os.symlink(os.path.relpath(target_path, dirname(dest_path)), dest_path)
 
 def native_image_layout(dists, subdir, native_image_root):
+    if not dists:
+        return
     dest_path = join(native_image_root, subdir)
     # Cleanup leftovers from previous call
     if exists(dest_path):
@@ -173,10 +177,55 @@ flag_suitename_map = {
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
 }
 
+class ToolDescriptor:
+    def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
+        self.image_deps = image_deps if image_deps else []
+        self.builder_deps = builder_deps if builder_deps else []
+        self.native_deps = native_deps if native_deps else []
+
+tools_map = {
+    'truffle' : ToolDescriptor(),
+    'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
+    'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
+    'nfi' : ToolDescriptor(builder_deps=['truffle:TRUFFLE_NFI'], native_deps=['truffle:TRUFFLE_NFI_NATIVE']),
+    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
+    'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
+}
+
 def native_image_path(native_image_root):
     native_image_name = 'native-image'
     native_image_dir = join(native_image_root, platform_subdir(), 'bin')
     return join(native_image_dir, native_image_name)
+
+def remove_option_prefix(text, prefix):
+    if text.startswith(prefix):
+        return True, text[len(prefix):]
+    return False, text
+
+def native_image_extract_dependencies(args):
+    deps = []
+    for arg in args:
+        macro, option = remove_option_prefix(arg, '--')
+        if not macro:
+            continue
+        tool, option = remove_option_prefix(option, 'tool.')
+        if tool:
+            tool_name = option.partition('=')[0]
+            if tool_name in tools_map:
+                tool_descriptor = tools_map[tool_name]
+                deps += tool_descriptor.builder_deps
+                deps += tool_descriptor.image_deps
+                deps += tool_descriptor.native_deps
+        else:
+            language_flag = option
+            if language_flag in flag_suitename_map:
+                language_entry = flag_suitename_map[language_flag]
+                language_suite_name = language_entry[0]
+                language_deps = language_entry[1]
+                deps += [language_suite_name + ':' + dep for dep in language_deps]
+                language_native_deps = language_entry[2]
+                deps += [language_suite_name + ':' + dep for dep in language_native_deps]
+    return deps
 
 def native_image_symlink_path(native_image_root, platform_specific=True):
     symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
@@ -242,16 +291,12 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
 
     # Create native-image layout for tools parts
-    native_image_layout_dists(join('tools', 'junit', 'builder'), ['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST'])
-    native_image_option_properties('tools', 'junit', native_image_root)
-    native_image_option_properties('tools', 'truffle', native_image_root)
-    native_image_layout_dists(join('tools', 'nfi', 'builder'), ['truffle:TRUFFLE_NFI'])
-    native_image_extract_dists(join('tools', 'nfi'), ['truffle:TRUFFLE_NFI_NATIVE'])
-    native_image_option_properties('tools', 'nfi', native_image_root)
-    native_image_layout_dists(join('tools', 'chromeinspector'), ['tools:CHROMEINSPECTOR'])
-    native_image_option_properties('tools', 'chromeinspector', native_image_root)
-    native_image_layout_dists(join('tools', 'profiler'), ['tools:TRUFFLE_PROFILER'])
-    native_image_option_properties('tools', 'profiler', native_image_root)
+    for tool_name in tools_map:
+        tool_descriptor = tools_map[tool_name]
+        native_image_layout_dists(join('tools', tool_name, 'builder'), tool_descriptor.builder_deps)
+        native_image_layout_dists(join('tools', tool_name), tool_descriptor.image_deps)
+        native_image_extract_dists(join('tools', tool_name), tool_descriptor.native_deps)
+        native_image_option_properties('tools', tool_name, native_image_root)
 
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
@@ -274,7 +319,9 @@ class BootstrapNativeImage(mx.Project):
         self.buildDependencies = kwargs.pop('buildDependencies', [])
         self.graalDistribution = kwargs.pop('graal', [])
         self.svmDistribution = kwargs.pop('svm', [])
+        self.buildDependencies += self.svmDistribution
         self.librarySupportDistribution = kwargs.pop('svmSupport', [])
+        self.buildDependencies += self.librarySupportDistribution
 
     def getResults(self):
         return None
@@ -706,12 +753,14 @@ def fetch_languages(args):
     if args:
         requested = dict()
         for arg in args:
-            arg = arg[len('--'):]
-            before, sep, after = arg.partition('.version=')
-            if sep:
-                requested[before] = after
-            else:
-                requested[arg] = None
+            macro, option = remove_option_prefix(arg, '--')
+            if not macro:
+                continue
+            tool, option = remove_option_prefix(option, 'tool.')
+            if tool:
+                continue
+            option, _, version = option.partition('.version=')
+            requested[option] = version
     else:
         requested = dict((lang, None) for lang in flag_suitename_map)
 

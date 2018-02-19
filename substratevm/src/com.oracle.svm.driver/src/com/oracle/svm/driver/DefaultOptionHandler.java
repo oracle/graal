@@ -30,6 +30,8 @@ import java.util.Queue;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
+import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
+
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     DefaultOptionHandler(NativeImage nativeImage) {
@@ -81,6 +83,22 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.setVerbose(true);
                 return true;
+            case "-dry-run":
+                args.poll();
+                nativeImage.setDryRun(true);
+                return true;
+            case "-shared":
+                args.poll();
+                nativeImage.addImageBuilderArg(NativeImage.oHKind + NativeImageKind.SHARED_LIBRARY.name());
+                return true;
+            case "-ea":
+                args.poll();
+                nativeImage.addImageBuilderArg(NativeImage.oH + '+' + NativeImage.RuntimeAssertions);
+                return true;
+            case "-g":
+                args.poll();
+                nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
+                return true;
         }
 
         String debugAttach = "-debug-attach";
@@ -119,12 +137,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             return true;
         }
-        String debugOption = "-g";
-        if (headArg.equals(debugOption)) {
-            args.poll();
-            nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
-            return true;
-        }
         String optimizeOption = "-O";
         if (headArg.startsWith(optimizeOption)) {
             args.poll();
@@ -133,12 +145,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             } else {
                 nativeImage.addImageBuilderArg(NativeImage.oHOptimize + headArg.substring(2));
             }
-            return true;
-        }
-        String enableRuntimeAssertions = "-ea";
-        if (headArg.equals(enableRuntimeAssertions)) {
-            args.poll();
-            nativeImage.addImageBuilderArg(NativeImage.oH + '+' + NativeImage.RuntimeAssertions);
             return true;
         }
         return false;
