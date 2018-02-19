@@ -27,7 +27,6 @@ import static com.oracle.svm.core.option.RuntimeOptionParser.GRAAL_OPTION_PREFIX
 import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.NAME_VALUE;
 import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat.PLUS_MINUS;
 
-import java.lang.invoke.MethodHandle;
 //Checkstyle: allow reflection
 import java.lang.reflect.Method;
 import java.util.ArrayList;
