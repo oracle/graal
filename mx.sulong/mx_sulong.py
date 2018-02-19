@@ -113,6 +113,8 @@ def _sulong_gate_runner(args, tasks):
         if t: mx_unittest.unittest(['SulongSuite'])
     with Task("TestInterop", tasks, tags=['interop', 'sulongBasic']) as t:
         if t: mx_unittest.unittest(['LLVMInteropTest'])
+    with Task("TestDebug", tasks, tags=['debug', 'sulongMisc']) as t:
+        if t: mx_unittest.unittest(['LLVMDebugTest'])
     with Task('TestAssembly', tasks, tags=['assembly', 'sulongMisc']) as t:
         if t: mx_testsuites.runSuite('assembly')
     with Task('TestArgs', tasks, tags=['args', 'sulongMisc']) as t:

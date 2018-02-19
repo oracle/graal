@@ -29,17 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
 public abstract class LLVMSourceLocation {
+
+    private static final int DEFAULT_SCOPE_CAPACITY = 2;
 
     private static final SourceSection UNAVAILABLE_SECTION;
 
@@ -250,30 +254,32 @@ public abstract class LLVMSourceLocation {
 
     private static class DefaultScope extends LineScope {
 
-        private final List<LLVMSourceSymbol> symbols;
+        @CompilationFinal private List<LLVMSourceSymbol> symbols;
 
         DefaultScope(LLVMSourceLocation parent, Kind kind, String name, SourceSection sourceSection) {
             super(parent, kind, name, sourceSection);
-            this.symbols = new LinkedList<>();
+            this.symbols = null;
         }
 
         @TruffleBoundary
         @Override
         public void addSymbol(LLVMSourceSymbol symbol) {
-            if (symbol != null) {
-                symbols.add(symbol);
+            CompilerAsserts.neverPartOfCompilation("Source-Scope may only grow when parsing!");
+            if (symbols == null) {
+                symbols = new ArrayList<>(DEFAULT_SCOPE_CAPACITY);
             }
+            symbols.add(symbol);
         }
 
         @TruffleBoundary
         @Override
         public boolean hasSymbols() {
-            return !symbols.isEmpty();
+            return symbols != null && !symbols.isEmpty();
         }
 
         @Override
         public List<LLVMSourceSymbol> getSymbols() {
-            return symbols;
+            return symbols != null ? symbols : NO_SYMBOLS;
         }
     }
 
@@ -303,12 +309,35 @@ public abstract class LLVMSourceLocation {
         private final String file;
         private final int line;
         private final int col;
+        @CompilationFinal private List<LLVMSourceSymbol> symbols;
 
         UnavailableScope(LLVMSourceLocation parent, Kind kind, String name, String file, int line, int col) {
             super(parent, kind, name);
             this.file = file;
             this.line = line;
             this.col = col;
+            this.symbols = null;
+        }
+
+        @TruffleBoundary
+        @Override
+        public void addSymbol(LLVMSourceSymbol symbol) {
+            CompilerAsserts.neverPartOfCompilation("Source-Scope may only grow when parsing!");
+            if (symbols == null) {
+                symbols = new ArrayList<>(2);
+            }
+            symbols.add(symbol);
+        }
+
+        @TruffleBoundary
+        @Override
+        public boolean hasSymbols() {
+            return symbols != null && !symbols.isEmpty();
+        }
+
+        @Override
+        public List<LLVMSourceSymbol> getSymbols() {
+            return symbols != null ? symbols : NO_SYMBOLS;
         }
 
         @Override

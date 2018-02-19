@@ -55,20 +55,34 @@ import java.util.stream.Collectors;
 
 public final class LLVMSourceScope {
 
+    private static LLVMNode findStatementNode(Node suspendedNode) {
+        for (Node node = suspendedNode; node != null; node = node.getParent()) {
+            if (node instanceof LLVMNode) {
+                final LLVMNode llvmNode = (LLVMNode) node;
+                if (llvmNode.getSourceLocation() != null) {
+                    return llvmNode;
+                }
+            } else if (node instanceof RootNode) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
     @TruffleBoundary
     public static Iterable<Scope> create(Node node, Frame frame, LLVMContext context) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
 
-        if (rootNode == null || !(node instanceof LLVMNode)) {
+        LLVMNode llvmNode = findStatementNode(node);
+
+        if (rootNode == null || llvmNode == null) {
             return Collections.singleton(new LLVMSourceScope(sourceContext, node).toScope(frame));
         }
 
-        LLVMSourceLocation scope = ((LLVMNode) node).getSourceLocation();
-        if (scope == null) {
-            return Collections.singleton(new LLVMSourceScope(sourceContext, rootNode).toScope(frame));
-        }
-        final SourceSection sourceSection = node.getSourceSection();
+        LLVMSourceLocation scope = llvmNode.getSourceLocation();
+        final SourceSection sourceSection = llvmNode.getSourceSection();
 
         LLVMSourceScope baseScope = new LLVMSourceScope(sourceContext, new LinkedList<>(), rootNode);
         LLVMSourceScope staticScope = null;
