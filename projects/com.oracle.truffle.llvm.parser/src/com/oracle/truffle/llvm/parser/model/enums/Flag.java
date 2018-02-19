@@ -95,14 +95,19 @@ public enum Flag {
     }
 
     private static Flag[] create(long flagbits, Flag... options) {
-        int i = 0;
-        int count = Long.bitCount(flagbits);
-        Flag[] flags = count == 0 ? EMPTY_ARRAY : new Flag[count];
-        for (Flag option : options) {
-            if (option.test(flagbits)) {
-                flags[i++] = option;
+        final int count = Long.bitCount(flagbits);
+        if (count != 0) {
+            int i = 0;
+            final Flag[] flags = new Flag[count];
+            for (Flag option : options) {
+                if (option.test(flagbits)) {
+                    flags[i++] = option;
+                }
             }
+            return flags;
+
+        } else {
+            return EMPTY_ARRAY;
         }
-        return flags;
     }
 }
