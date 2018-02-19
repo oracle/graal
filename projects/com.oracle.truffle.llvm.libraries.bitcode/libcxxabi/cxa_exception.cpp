@@ -15,9 +15,9 @@
 
 #include <exception>        // for std::terminate
 #include <cstring>          // for memset
+#include <cstdlib>          // for malloc/free
 #include "cxa_exception.hpp"
 #include "cxa_handlers.hpp"
-#include "fallback_malloc.h"
 
 // +---------------------------+-----------------------------+---------------+
 // | __cxa_exception           | _Unwind_Exception CLNGC++\0 | thrown object |
@@ -143,7 +143,7 @@ extern "C" {
 void *__cxa_allocate_exception(size_t thrown_size) throw() {
     size_t actual_size = cxa_exception_size_from_exception_thrown_size(thrown_size);
     __cxa_exception *exception_header =
-        static_cast<__cxa_exception *>(__aligned_malloc_with_fallback(actual_size));
+        static_cast<__cxa_exception *>(malloc(actual_size));
     if (NULL == exception_header)
         std::terminate();
     std::memset(exception_header, 0, actual_size);
@@ -153,7 +153,7 @@ void *__cxa_allocate_exception(size_t thrown_size) throw() {
 
 //  Free a __cxa_exception object allocated with __cxa_allocate_exception.
 void __cxa_free_exception(void *thrown_object) throw() {
-    __aligned_free_with_fallback(cxa_exception_from_thrown_object(thrown_object));
+    free(cxa_exception_from_thrown_object(thrown_object));
 }
 
 
@@ -162,7 +162,7 @@ void __cxa_free_exception(void *thrown_object) throw() {
 //  Otherwise, it will work like __cxa_allocate_exception.
 void * __cxa_allocate_dependent_exception () {
     size_t actual_size = sizeof(__cxa_dependent_exception);
-    void *ptr = __aligned_malloc_with_fallback(actual_size);
+    void *ptr = malloc(actual_size);
     if (NULL == ptr)
         std::terminate();
     std::memset(ptr, 0, actual_size);
@@ -173,7 +173,7 @@ void * __cxa_allocate_dependent_exception () {
 //  This function shall free a dependent_exception.
 //  It does not affect the reference count of the primary exception.
 void __cxa_free_dependent_exception (void * dependent_exception) {
-    __aligned_free_with_fallback(dependent_exception);
+    free(dependent_exception);
 }
 
 

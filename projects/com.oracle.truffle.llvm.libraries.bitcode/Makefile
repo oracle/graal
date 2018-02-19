@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -26,17 +26,33 @@
 .PHONY: default
 default: bin/libsulong.bc
 
-SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
-SOURCES=${SOURCE_FILES:${VPATH}/%=%}
+C_SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
+CXX_SOURCE_FILES=$(wildcard ${VPATH}/libcxxabi/*.cpp)
+BC_FILES=${C_SOURCE_FILES:${VPATH}/src/%.c=bin/%.bc} ${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
+
 OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-simplify -reassociate -licm -gvn
 
+CXXFLAGS=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
 
-bin/libsulong.bc: ${SOURCES:src/%.c=bin/%.bc}
+DEPFLAGS = -MT $@ -MMD -MP -MF deps/$*.Td
+POSTCOMPILE = @mv -f deps/$*.Td deps/$*.d && touch $@
+$(shell mkdir -p deps bin >/dev/null)
+
+bin/libsulong.bc: ${BC_FILES}
 	llvm-link -o $@ $+
 
 bin/%.bc: bin/%.noopt.bc
 	opt -o $@ $+ ${OPT_FLAGS}
 
-bin/%.noopt.bc: src/%.c
-	@mkdir -p bin
-	clang -c -emit-llvm -o $@ ${CFLAGS} ${CPPFLAGS} $+
+bin/%.noopt.bc: src/%.c deps/%.d
+	clang -c -emit-llvm -o $@ ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} $<
+	${POSTCOMPILE}
+
+bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
+	clang++ -c -emit-llvm -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${CPPFLAGS} ${DEPFLAGS} $<
+	${POSTCOMPILE}
+
+deps/%.d: ;
+.PRECIOUS: deps/%.d
+
+include $(wildcard $(patsubst %,deps/%.d,$(basename $(BC_FILES))))
