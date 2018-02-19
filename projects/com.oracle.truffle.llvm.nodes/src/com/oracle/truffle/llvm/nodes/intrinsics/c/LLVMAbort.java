@@ -35,10 +35,8 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
 public abstract class LLVMAbort extends LLVMIntrinsic {
 
-    public static final int UNIX_SIGABORT = 134;
-
     @Specialization
     protected Object doOp() {
-        throw new LLVMExitException(UNIX_SIGABORT);
+        throw LLVMExitException.abort();
     }
 }

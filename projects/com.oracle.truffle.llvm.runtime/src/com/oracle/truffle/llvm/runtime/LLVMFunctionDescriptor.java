@@ -54,11 +54,11 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
 
     private final String functionName;
-    private final ExternalLibrary library;
     private final FunctionType type;
     private final LLVMContext context;
-
     private final int functionId;
+
+    private ExternalLibrary library;
 
     @CompilationFinal private Function function;
     @CompilationFinal private Assumption functionAssumption;
@@ -368,6 +368,10 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     public ExternalLibrary getLibrary() {
         return library;
+    }
+
+    public void setLibrary(ExternalLibrary library) {
+        this.library = library;
     }
 
     public FunctionType getType() {

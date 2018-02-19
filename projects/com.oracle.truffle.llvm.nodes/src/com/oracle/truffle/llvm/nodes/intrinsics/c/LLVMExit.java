@@ -40,6 +40,6 @@ public abstract class LLVMExit extends LLVMIntrinsic {
 
     @Specialization
     protected Object doOp(int value) {
-        throw new LLVMExitException(value);
+        throw LLVMExitException.exit(value);
     }
 }

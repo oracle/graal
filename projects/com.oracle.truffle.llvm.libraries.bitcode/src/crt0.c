@@ -27,28 +27,87 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <truffle.h>
 #ifdef __linux__
 #include <elf.h>
 #else
 #define AT_NULL 0
+#define AT_PLATFORM 15
+#define AT_EXECFN 31
 typedef struct {
-  long a_type;
+  uint64_t a_type;
   union {
-    long a_val;
+    uint64_t a_val;
   } a_un;
 } Elf64_auxv_t;
 #endif
 
 extern char **environ;
+static Elf64_auxv_t *__auxv;
+long *__sulong_start_arguments = NULL;
 
 int main(int argc, char **argv, char **envp);
 
-static Elf64_auxv_t *__auxv;
+char *__sulong_byte_array_to_native(void *java_byte_array) {
+  int length = truffle_get_size(java_byte_array);
+  char *result = malloc(sizeof(char) * length + 1);
+  for (int i = 0; i < length; i++) {
+    result[i] = truffle_read_idx_c(java_byte_array, i);
+  }
+  result[length] = '\0';
+  return result;
+}
 
-__attribute__((weak)) int _start(long *p, int type) {
+void __sulong_byte_arrays_to_native(char **dest, void **java_byte_arrays) {
+  int length = truffle_get_size(java_byte_arrays);
+  for (int i = 0; i < length; i++) {
+    dest[i] = __sulong_byte_array_to_native(truffle_read_idx(java_byte_arrays, i));
+  }
+}
+
+void __sulong_init_libc(char **envp, char *pn) {
+  // nothing to do
+}
+
+void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_arrays) {
+  int argc = truffle_get_size(argv_java_byte_arrays);
+  int envc = truffle_get_size(envp_java_byte_arrays);
+  int auxc = 3;
+
+  size_t total_argument_size = sizeof(void *) + (argc + 1) * sizeof(char *) + (envc + 1) * sizeof(char *) + auxc * sizeof(Elf64_auxv_t);
+  long *p = __sulong_start_arguments = malloc(total_argument_size);
+  p[0] = argc;
+
+  char **argv = (char **)(p + 1);
+  __sulong_byte_arrays_to_native(argv, argv_java_byte_arrays);
+  argv[argc] = NULL;
+
+  char **envp = argv + argc + 1;
+  __sulong_byte_arrays_to_native(envp, envp_java_byte_arrays);
+  envp[envc] = NULL;
+
+  Elf64_auxv_t *aux = (Elf64_auxv_t *)(envp + envc + 1);
+  aux[0].a_type = AT_EXECFN;
+  aux[0].a_un.a_val = (uint64_t)argv[0];
+  aux[1].a_type = AT_PLATFORM;
+  aux[1].a_un.a_val = (uint64_t) "x86_64";
+  aux[2].a_type = AT_NULL;
+  aux[2].a_un.a_val = 0;
+
+  __sulong_init_libc(envp, argv[0]);
+}
+
+void __sulong_update_application_path(char *application_path, char **argv, Elf64_auxv_t *auxv) {
+  argv[0] = application_path;
+  auxv[0].a_un.a_val = (uint64_t)application_path;
+}
+
+int _start(int type, char *application_path_java_byte_array) {
+  long *p = __sulong_start_arguments;
   int argc = p[0];
   char **argv = (void *)(p + 1);
   char **envp = argv + argc + 1;
@@ -61,6 +120,10 @@ __attribute__((weak)) int _start(long *p, int type) {
 
   environ = envp;
   __auxv = (Elf64_auxv_t *)(envp + envc + 1);
+
+  // update the application path now that we know it
+  char *application_path = __sulong_byte_array_to_native(application_path_java_byte_array);
+  __sulong_update_application_path(application_path, argv, __auxv);
 
   switch (type) {
   /* C/C++/... */
@@ -104,7 +167,7 @@ __attribute__((weak)) int _start(long *p, int type) {
 }
 
 #ifdef __linux__
-__attribute__((weak)) unsigned long getauxval(unsigned long type) {
+unsigned long getauxval(unsigned long type) {
   Elf64_auxv_t *auxv;
   for (auxv = __auxv; auxv->a_type != AT_NULL; auxv++) {
     if (auxv->a_type == type) {

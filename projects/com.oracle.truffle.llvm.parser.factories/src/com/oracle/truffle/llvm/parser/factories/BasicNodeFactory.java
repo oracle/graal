@@ -38,7 +38,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -1501,7 +1500,6 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable) {
         return allocateGlobalIntern(runtime, globalVariable);
-
     }
 
     private static Object allocateGlobalIntern(LLVMParserRuntime runtime, final GlobalValueSymbol globalVariable) {
@@ -1509,28 +1507,12 @@ public class BasicNodeFactory implements NodeFactory {
         final String name = globalVariable.getName();
 
         LLVMContext context = runtime.getContext();
-
-        final LLVMGlobal descriptor;
-
         if (globalVariable.getInitialiser() == 0 && Linkage.isExtern(globalVariable.getLinkage())) {
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             return LLVMGlobal.external(context, globalVariable, name, resolvedType, LLVMAddress.fromLong(nfiContextExtension.getNativeHandle(context, name)));
         } else {
-            descriptor = LLVMGlobal.internal(context, globalVariable, name, resolvedType);
-            runtime.addDestructor(new LLVMExpressionNode() {
-
-                private final LLVMGlobal global = descriptor;
-                private final LLVMContext c = context;
-
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    LLVMGlobal.free(c, global);
-                    return null;
-                }
-            });
-            return descriptor;
+            return LLVMGlobal.internal(context, globalVariable, name, resolvedType);
         }
-
     }
 
     @Override
@@ -1880,8 +1862,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Source sourceFile, Type mainReturnType, Type[] mainTypes) {
-        return new LLVMGlobalRootNode(runtime.getLanguage(), runtime.getGlobalFrameDescriptor(), sourceFile, mainReturnType, mainTypes, mainCallTarget);
+    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, LLVMFunctionDescriptor mainFunctionDescriptor, String applicationPath) {
+        return new LLVMGlobalRootNode(runtime.getLanguage(), runtime.getGlobalFrameDescriptor(), mainFunctionDescriptor, mainCallTarget, applicationPath);
     }
 
     @Override

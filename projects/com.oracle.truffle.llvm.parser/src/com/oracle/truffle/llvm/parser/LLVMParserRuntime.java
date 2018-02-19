@@ -41,6 +41,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
@@ -70,7 +71,6 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class LLVMParserRuntime {
     private static final String CONSTRUCTORS_VARNAME = "@llvm.global_ctors";
@@ -126,17 +126,16 @@ public final class LLVMParserRuntime {
             }));
         }
 
-        RootCallTarget mainFunctionCallTarget;
+        RootCallTarget mainFunctionCallTarget = null;
         if (runtime.getScope().functionExists("@main")) {
             LLVMFunctionDescriptor mainDescriptor = runtime.getScope().getFunctionDescriptor("@main");
             LLVMFunctionDescriptor startDescriptor = runtime.getScope().getFunctionDescriptor("@_start");
             RootCallTarget startCallTarget = startDescriptor.getLLVMIRFunction();
-            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, startCallTarget, source, mainDescriptor.getType().getReturnType(), mainDescriptor.getType().getArgumentTypes());
+            String applicationPath = source.getPath() == null ? "" : source.getPath().toString();
+            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, startCallTarget, mainDescriptor, applicationPath);
             RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
             RootNode globalRootNode = nodeFactory.createGlobalRootNodeWrapping(runtime, globalFunctionRoot, startDescriptor.getType().getReturnType());
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
-        } else {
-            mainFunctionCallTarget = null;
         }
         return new LLVMParserResult(mainFunctionCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions);
     }
@@ -182,17 +181,24 @@ public final class LLVMParserRuntime {
     }
 
     private boolean checkReplaceExistingFunction(String functionName, LLVMFunctionDescriptor functionDescriptor) {
-        if (functionDescriptor.getLibrary().equals(library.getLibraryToReplace())) {
-            // We already have a symbol defined in another library but now we are overwriting it. We
-            // rename the already existing symbol by prefixing it with "__libName_", e.g.,
-            // "@__clock_gettime" would be renamed to "@__libc___clock_gettime".
-            assert functionName.charAt(0) == '@';
-            String newFunctionName = "@__" + functionDescriptor.getLibrary().getName() + "_" + functionName.substring(1);
-            LLVMFunctionDescriptor libcFunctionDescriptor = scope.lookupOrCreateFunction(functionDescriptor.getContext(), newFunctionName, true,
-                            index -> LLVMFunctionDescriptor.createDescriptor(functionDescriptor.getContext(), functionDescriptor.getLibrary(), newFunctionName, functionDescriptor.getType(),
-                                            index));
-            libcFunctionDescriptor.declareInSulong(functionDescriptor.getFunction(), false);
-            return true;
+        if (library.getLibrariesToReplace() != null) {
+            for (ExternalLibrary lib : library.getLibrariesToReplace()) {
+                if (functionDescriptor.getLibrary().equals(lib)) {
+                    // We already have a symbol defined in another library but now we are
+                    // overwriting it. We rename the already existing symbol by prefixing it with
+                    // "__libName_", e.g., "@__clock_gettime" would be renamed to
+                    // "@__libc___clock_gettime".
+                    assert functionName.charAt(0) == '@';
+                    String renamedFunctionName = "@__" + functionDescriptor.getLibrary().getName() + "_" + functionName.substring(1);
+                    LLVMFunctionDescriptor renamedFunctionDescriptor = scope.lookupOrCreateFunction(functionDescriptor.getContext(), renamedFunctionName, true,
+                                    index -> LLVMFunctionDescriptor.createDescriptor(functionDescriptor.getContext(), functionDescriptor.getLibrary(), renamedFunctionName,
+                                                    functionDescriptor.getType(),
+                                                    index));
+                    renamedFunctionDescriptor.declareInSulong(functionDescriptor.getFunction(), false);
+                    functionDescriptor.setLibrary(library);
+                    return true;
+                }
+            }
         }
         return false;
     }

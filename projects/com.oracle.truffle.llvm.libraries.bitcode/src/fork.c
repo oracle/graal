@@ -32,6 +32,6 @@
 
 #include "unsupported.h"
 
-__attribute__((weak)) pid_t fork(void) { ERR_UNSUPPORTED(fork); }
+pid_t fork(void) { ERR_UNSUPPORTED(fork); }
 
-__attribute__((weak)) pid_t vfork(void) { ERR_UNSUPPORTED(vfork); }
+pid_t vfork(void) { ERR_UNSUPPORTED(vfork); }
