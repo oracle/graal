@@ -25,7 +25,7 @@
 package com.oracle.truffle.tools.chromeinspector.instrument;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 import com.oracle.truffle.tools.chromeinspector.ScriptsHandler;
@@ -58,7 +58,7 @@ public final class SourceLoadInstrument extends TruffleInstrument implements Ena
     public void enable() {
         if (slh == null) {
             slh = new ScriptsHandler();
-            binding = env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.ANY, slh, true);
+            binding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, slh, true);
         }
     }
 

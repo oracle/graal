@@ -76,7 +76,7 @@ public abstract class Instrumenter {
      * {@link SourceSectionFilter.Builder#sourceIs(Source...) sources} or
      * {@link SourceSectionFilter.Builder#mimeTypeIs(String...) mime types}.
      *
-     * @param filter a filter on which sources trigger events. Only filters are allowed.
+     * @param filter a filter on which sources trigger events. Only source filters are allowed.
      * @param listener a listener that gets notified if a source was loaded
      * @param includeExistingSources whether or not this listener should be notified for sources
      *            which were already loaded at the time when this listener was attached.
@@ -85,8 +85,28 @@ public abstract class Instrumenter {
      * @see LoadSourceListener#onLoad(LoadSourceEvent)
      *
      * @since 0.15
+     * @deprecated Use {@link #attachLoadSourceListener(SourceFilter, LoadSourceListener, boolean)}
      */
+    @Deprecated
     public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources);
+
+    /**
+     * Starts notifications for each newly loaded {@link Source} and returns a
+     * {@linkplain EventBinding binding} that can be used to terminate notifications. Only
+     * subsequent loads will be notified unless {@code includeExistingSources} is true, in which
+     * case a notification for each previous load will be delivered before this method returns.
+     *
+     * @param filter a filter on which sources events are triggered.
+     * @param listener a listener that gets notified if a source was loaded
+     * @param includeExistingSources whether or not this listener should be notified for sources
+     *            which were already loaded at the time when this listener was attached.
+     * @return a handle for stopping the notification stream
+     *
+     * @see LoadSourceListener#onLoad(LoadSourceEvent)
+     *
+     * @since 0.32
+     */
+    public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceFilter filter, T listener, boolean includeExistingSources);
 
     /**
      * Starts notifications for each {@link SourceSection} in every newly loaded {@link Source} and

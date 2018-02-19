@@ -46,6 +46,7 @@ import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
@@ -168,7 +169,7 @@ public class InstrumentationMultiThreadingTest {
         };
         bindings[bi++] = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), dummyListener);
         bindings[bi++] = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), dummyListener);
-        bindings[bi++] = instrumenter.attachLoadSourceListener(SourceSectionFilter.ANY, new LoadSourceListener() {
+        bindings[bi++] = instrumenter.attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
 
             public void onLoad(LoadSourceEvent event) {
 
