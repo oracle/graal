@@ -22,10 +22,11 @@
  */
 package org.graalvm.compiler.jtt.lang;
 
-import org.junit.Ignore;
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
-import org.graalvm.compiler.jtt.JTTTest;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /*
  */
@@ -65,9 +66,39 @@ public class Math_exp extends JTTTest {
         runTest("test", 0.0D);
     }
 
-    @Ignore("java.lang.AssertionError: expected:<2.718281828459045> but was:<2.7182818284590455>")
     @Test
     public void run6() {
         runTest("test", 1.0D);
+    }
+
+    @Test
+    public void run7() {
+        runTest("test", -1024D);
+    }
+
+    private static final long STEP = Long.MAX_VALUE / 1_000_000;
+
+    /**
+     * Tests a wider range of values.
+     */
+    @Test
+    public void run8() {
+        OptionValues options = getInitialOptions();
+        ResolvedJavaMethod method = getResolvedJavaMethod("test");
+        Object receiver = null;
+        long testIteration = 0;
+        for (long l = Long.MIN_VALUE;; l += STEP) {
+            double d = Double.longBitsToDouble(l);
+            Result expect = executeExpected(method, receiver, d);
+            try {
+                testAgainstExpected(options, method, expect, EMPTY, receiver, d);
+                testIteration++;
+            } catch (AssertionError e) {
+                throw new AssertionError(String.format("%d: While testing %g [long: %d, hex: %x]", testIteration, d, l, l), e);
+            }
+            if (Long.MAX_VALUE - STEP < l) {
+                break;
+            }
+        }
     }
 }

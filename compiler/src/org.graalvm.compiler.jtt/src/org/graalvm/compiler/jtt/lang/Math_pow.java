@@ -22,9 +22,11 @@
  */
 package org.graalvm.compiler.jtt.lang;
 
+import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
-import org.graalvm.compiler.jtt.JTTTest;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /*
  */
@@ -87,5 +89,35 @@ public class Math_pow extends JTTTest {
     @Test
     public void run10() throws Throwable {
         runTest("test", 0.999998, 1500000.0);
+    }
+
+    private static final long STEP = Long.MAX_VALUE / 1_000_000;
+
+    @Test
+    public void run11() {
+        OptionValues options = getInitialOptions();
+        ResolvedJavaMethod method = getResolvedJavaMethod("test");
+        Object receiver = null;
+        long testIteration = 0;
+        for (long l = Long.MIN_VALUE;; l += STEP) {
+            double x = Double.longBitsToDouble(l);
+            double y = x;
+            run11Helper(options, method, receiver, testIteration, l, x, y);
+            y = l < 0 ? Double.longBitsToDouble(Long.MAX_VALUE + l) : Double.longBitsToDouble(Long.MAX_VALUE - l);
+            run11Helper(options, method, receiver, testIteration, l, x, y);
+            if (Long.MAX_VALUE - STEP < l) {
+                break;
+            }
+            testIteration++;
+        }
+    }
+
+    private void run11Helper(OptionValues options, ResolvedJavaMethod method, Object receiver, long tested, long l, double x, double y) throws AssertionError {
+        Result expect = executeExpected(method, receiver, x, y);
+        try {
+            testAgainstExpected(options, method, expect, EMPTY, receiver, x, y);
+        } catch (AssertionError e) {
+            throw new AssertionError(String.format("%d: While testing %g [long: %d, hex: %x]", tested, x, l, l), e);
+        }
     }
 }
