@@ -56,7 +56,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
 
     @Specialization
     @TruffleBoundary
-    protected LLVMTruffleObject doIntrinsic(LLVMTruffleObject address, LLVMTruffleObject value,
+    protected Object doIntrinsic(Object address, Object value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         // TODO: (timfel) This is so slow :(
         MaterializedFrame globalFrame = context.get().getGlobalFrame();
@@ -72,6 +72,6 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
                 }
             }
         }
-        throw new UnsupportedOperationException("target is not associated with the global frame");
+        return address;
     }
 }
