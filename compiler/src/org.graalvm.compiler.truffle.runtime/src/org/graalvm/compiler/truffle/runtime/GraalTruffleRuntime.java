@@ -1014,12 +1014,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public InlineInfo getInlineInfo(ResolvedJavaMethod original) {
         TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
         if (truffleBoundary != null) {
-            if (!truffleBoundary.allowInlining()) {
-                if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
-                    return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
-                } else {
-                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-                }
+            if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
+                return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
+            } else {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
         } else if (original.getAnnotation(TruffleCallBoundary.class) != null) {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
