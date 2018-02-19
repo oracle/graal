@@ -16,7 +16,7 @@ The Chrome Inspector can be used with both the precompiled GraalVM and Sulong bu
 
 #### GraalVM
 
-The easiest way to use Sulongs source-level debugging capabilities is to run it from GraalVM.
+The easiest way to use Sulong's source-level debugging capabilities is to run it from GraalVM.
 To start debugging simply run the following in GraalVM's `bin` directory:
 
     lli --inspect --llvm.enableLVI=true <bitcode file>
@@ -25,9 +25,9 @@ To start debugging simply run the following in GraalVM's `bin` directory:
 
 The source code of Chrome Inspector is available as part of the
 [Tools suite in the Graal repository](https://github.com/oracle/graal/tree/master/tools).
-If you followed the instructions in the [README](../README.md) and already built Sulong the Tools suite
+If you followed the instructions in [Sulong's README](../README.md) and already built Sulong the Tools suite
 should be available at `sulong-dev/graal/tools`. Please follow the
-[build instructions in the suite's README](https://github.com/oracle/graal/blob/master/tools/README.md)
+[build instructions in Tools's README](https://github.com/oracle/graal/blob/master/tools/README.md)
 to compile the code. If you have not yet built Sulong you can download its dependencies, including the
 Graal repository, by running `mx sforceimports` from `sulong-dev/sulong`. If you were able to build the
 tools correctly you should find `chromeinspector.jar` and `truffle-profiler.jar` in the directory
@@ -139,5 +139,5 @@ and attach the Netbeans debugger to this process.
 
 ### Limitations
 
-It is currently not possible to set breakpoints in non-Java source files. This
-is a limitation of the Netbeas IDE and will likely never be fixed.
+In Netbeans it is currently not possible to set breakpoints in non-Java source files.
+This is a limitation of the Netbeans IDE and will likely never be fixed.
