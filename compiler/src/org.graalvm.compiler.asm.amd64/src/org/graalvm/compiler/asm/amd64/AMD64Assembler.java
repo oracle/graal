@@ -3852,4 +3852,11 @@ public class AMD64Assembler extends Assembler {
         emitByte(0x0f);
         emitByte(0x0b);
     }
+
+    public void lfence() {
+        emitByte(0x0f);
+        emitByte(0xae);
+        emitByte(0xe8);
+
+    }
 }

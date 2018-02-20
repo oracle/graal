@@ -990,6 +990,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
         "GRAAL_COMPILER_MATCH_PROCESSOR",
+        "GRAAL_OPTIONS_PROCESSOR",
       ],
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,AMD64",
