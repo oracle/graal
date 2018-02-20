@@ -1,10 +1,49 @@
 # Source-Level Debugging
 
 Sulong supports source-level debugging on the Netbeans IDE via the
-[Truffle Debugging Support plugin](http://plugins.netbeans.org/plugin/68647/truffle-debugging-support).
-This includes support for single-stepping and inspection of local and global variables.
+[Truffle Debugging Support plugin](http://plugins.netbeans.org/plugin/68647/truffle-debugging-support)
+and on the [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) using
+GraalVM's Chrome Inspector. This includes support for single-stepping, breakpoints and inspection of
+local and global variables.
 
-This feature is still a work in progress and not yet fully available in GraalVM.
+## Chrome Inspector
+
+Sulong supports source-level debugging with the Chrome Developer Tools.
+
+### Setup
+
+The Chrome Inspector can be used with both the precompiled GraalVM and Sulong built from source.
+
+#### GraalVM
+
+The easiest way to use Sulong's source-level debugging capabilities is to run it from GraalVM.
+To start debugging simply run the following in GraalVM's `bin` directory:
+
+    lli --inspect --llvm.enableLVI=true <bitcode file>
+
+#### Built from source
+
+The source code of Chrome Inspector is available as part of the
+[Tools suite in the Graal repository](https://github.com/oracle/graal/tree/master/tools).
+If you followed the instructions in [Sulong's README](../README.md) and already built Sulong the Tools suite
+should be available at `sulong-dev/graal/tools`. Please follow the
+[build instructions in Tools's README](https://github.com/oracle/graal/blob/master/tools/README.md)
+to compile the code. If you have not yet built Sulong you can download its dependencies, including the
+Graal repository, by running `mx sforceimports` from `sulong-dev/sulong`. If you were able to build the
+tools correctly you should find `chromeinspector.jar` and `truffle-profiler.jar` in the directory
+`sulong-dev/graal/tools/mxbuild/dists`.
+
+To debug a program you can then use the following command in `sulong-dev/sulong`:
+
+    mx --cp-sfx <path to truffle-profiler.jar>:<path to chromeinspector.jar> lli -Dpolyglot.llvm.enableLVI=true -Dpolyglot.inspect=true <bitcode file>
+
+This can also be used in conjunction with the `-d` option to `mx`, allowing you to attach a Java
+Debugger for debugging Sulong itself in addition to the source-level debugger.
+
+### Usage
+
+When launched, the inspector will suspend execution at the first instruction of the program and print
+a link to the console. Pasting this link into Chrome's address bar will open the developer tools for you.
 
 ## Netbeans
 
@@ -100,16 +139,5 @@ and attach the Netbeans debugger to this process.
 
 ### Limitations
 
-It is currently not possible to set breakpoints in C/C++ source files.
-
-## Chrome Inspector
-
-As an alternative to Netbeans, GraalVM also supports debugging using the
-Chrome developer tools. This option is much easier to setup. To start
-debugging simply run the following in GraalVM's `bin` directory:
-
-    lli --inspect --llvm.enableLVI=true file.bc
-
-While this is in some instances superior to debugging with Netbeans, e.g.
-it is possible to set breakpoints, this feature is currently only
-available in GraalVM.
+In Netbeans it is currently not possible to set breakpoints in non-Java source files.
+This is a limitation of the Netbeans IDE and will likely never be fixed.
