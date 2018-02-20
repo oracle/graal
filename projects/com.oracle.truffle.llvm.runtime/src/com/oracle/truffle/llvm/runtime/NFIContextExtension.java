@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -86,7 +87,11 @@ public final class NFIContextExtension implements ContextExtension {
         try {
             TruffleObject dataObject = getNativeDataObject(context, name);
             if (dataObject == null) {
-                return 0;
+                if (env.getOptions().get(SulongEngineOption.PARSE_ONLY)) {
+                    return 0;
+                } else {
+                    throw new UnsatisfiedLinkError(name);
+                }
             }
             return ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), dataObject);
         } catch (UnsupportedMessageException e) {
