@@ -105,6 +105,7 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         Node prev = this.predecessor();
         while (tool.allUsagesAvailable() && prev instanceof BeginNode && prev.hasNoUsages()) {
             AbstractBeginNode begin = (AbstractBeginNode) prev;
+            this.setNodeSourcePosition(begin.getNodeSourcePosition());
             prev = prev.predecessor();
             graph().removeFixed(begin);
         }
