@@ -398,7 +398,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         @Override
         public Object[] getKeysSafe() {
             final LLVMDebugObject target = dereference();
-            return target == null ? null : target.getKeys();
+            return target == null ? NO_KEYS : target.getKeys();
         }
 
         @Override
