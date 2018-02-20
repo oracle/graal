@@ -1014,6 +1014,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public InlineInfo getInlineInfo(ResolvedJavaMethod original) {
         TruffleBoundary truffleBoundary = original.getAnnotation(TruffleBoundary.class);
         if (truffleBoundary != null) {
+            // Since this method is invoked by the bytecode parser plugins, which can be invoked
+            // by the partial evaluator, we want to prevent inlining across the boundary during partial evaluation,
+            // even if the TruffleBoundary allows inlining after partial evaluation.
             if (!truffleBoundary.throwsControlFlowException() && truffleBoundary.transferToInterpreterOnException()) {
                 return InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
             } else {
