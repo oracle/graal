@@ -174,7 +174,7 @@ public class TruffleCompilerOptions {
     @Option(help = "Disable call target splitting if tree size exceeds this limit", type = OptionType.Debug)
     public static final OptionKey<Integer> TruffleSplittingMaxCalleeSize = new OptionKey<>(100);
 
-    @Option(help = "Allow the number of nodes created by splitting to be this factor times node count", type = OptionType.Debug)
+    @Option(help = "Disable call target splitting if the number of nodes created by splitting exceeds this factor times node count", type = OptionType.Debug)
     public static final OptionKey<Double> TruffleSplittingGrowthLimit = new OptionKey<>(1.5);
 
     @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", type = OptionType.Debug)
