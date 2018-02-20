@@ -102,9 +102,9 @@ public class Math_pow extends JTTTest {
         for (long l = Long.MIN_VALUE;; l += STEP) {
             double x = Double.longBitsToDouble(l);
             double y = x;
-            run11Helper(options, method, receiver, testIteration, l, x, y);
+            testOne(options, method, receiver, testIteration, l, x, y);
             y = l < 0 ? Double.longBitsToDouble(Long.MAX_VALUE + l) : Double.longBitsToDouble(Long.MAX_VALUE - l);
-            run11Helper(options, method, receiver, testIteration, l, x, y);
+            testOne(options, method, receiver, testIteration, l, x, y);
             if (Long.MAX_VALUE - STEP < l) {
                 break;
             }
@@ -112,12 +112,22 @@ public class Math_pow extends JTTTest {
         }
     }
 
-    private void run11Helper(OptionValues options, ResolvedJavaMethod method, Object receiver, long tested, long l, double x, double y) throws AssertionError {
+    @Test
+    public void run12() {
+        long l = 4355599093822972882L;
+        double x = Double.longBitsToDouble(l);
+        OptionValues options = getInitialOptions();
+        ResolvedJavaMethod method = getResolvedJavaMethod("test");
+        Object receiver = null;
+        testOne(options, method, receiver, 1, l, x, x);
+    }
+
+    private void testOne(OptionValues options, ResolvedJavaMethod method, Object receiver, long testIteration, long l, double x, double y) throws AssertionError {
         Result expect = executeExpected(method, receiver, x, y);
         try {
             testAgainstExpected(options, method, expect, EMPTY, receiver, x, y);
         } catch (AssertionError e) {
-            throw new AssertionError(String.format("%d: While testing %g [long: %d, hex: %x]", tested, x, l, l), e);
+            throw new AssertionError(String.format("%d: While testing %g [long: %d, hex: %x]", testIteration, x, l, l), e);
         }
     }
 }
