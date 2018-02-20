@@ -1510,6 +1510,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             if (!genericParameter.getSpecification().isSignature()) {
                 polymorphicType = genericParameter.getType();
             } else {
+                NodeExecutionData execution = genericParameter.getSpecification().getExecution();
                 Collection<TypeMirror> usedTypes = new HashSet<>();
                 for (SpecializationData specialization : node.getSpecializations()) {
                     if (specialization.isUninitialized()) {
@@ -1522,6 +1523,15 @@ public class NodeParser extends AbstractParser<NodeData> {
                     if (parameter == null) {
                         throw new AssertionError("Parameter existed in generic specialization but not in specialized. param = " + genericParameter.getLocalName());
                     }
+                    if (isReturnParameter && specialization.hasUnexpectedResultRewrite()) {
+                        if (!ElementUtils.isSubtypeBoxed(context, context.getType(Object.class), node.getGenericType(execution))) {
+                            specialization.addError("Implicit 'Object' return type from UnexpectedResultException not compatible with generic type '%s'.", node.getGenericType(execution));
+                        } else {
+                            // if any specialization throws UnexpectedResultException, Object could
+                            // be returned
+                            usedTypes.add(context.getType(Object.class));
+                        }
+                    }
                     usedTypes.add(parameter.getType());
                 }
                 usedTypes = ElementUtils.uniqueSortedTypes(usedTypes, false);
@@ -1532,7 +1542,6 @@ public class NodeParser extends AbstractParser<NodeData> {
                     polymorphicType = ElementUtils.getCommonSuperType(context, usedTypes);
                 }
 
-                NodeExecutionData execution = genericParameter.getSpecification().getExecution();
                 if (execution != null && !ElementUtils.isSubtypeBoxed(context, polymorphicType, node.getGenericType(execution))) {
                     throw new AssertionError(String.format("Polymorphic types %s not compatible to generic type %s.", polymorphicType, node.getGenericType(execution)));
                 }

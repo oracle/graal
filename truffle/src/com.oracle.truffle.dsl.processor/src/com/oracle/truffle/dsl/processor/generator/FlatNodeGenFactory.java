@@ -2822,7 +2822,24 @@ class FlatNodeGenFactory {
         builder.end().startFinallyBlock();
         builder.statement("lock.unlock()");
         builder.end();
-        builder.tree(createCallExecuteAndSpecialize(forType, frameState));
+        boolean hasUnexpectedResultRewrite = specialization.hasUnexpectedResultRewrite();
+        boolean hasReexecutingRewrite = !hasUnexpectedResultRewrite || specialization.getExceptions().size() > 1;
+
+        if (hasReexecutingRewrite) {
+            if (hasUnexpectedResultRewrite) {
+                builder.startIf().string("ex").instanceOf(context.getType(UnexpectedResultException.class)).end().startBlock();
+                builder.tree(createReturnUnexpectedResult(forType, true));
+                builder.end().startElseBlock();
+                builder.tree(createCallExecuteAndSpecialize(forType, frameState));
+                builder.end();
+            } else {
+                builder.tree(createCallExecuteAndSpecialize(forType, frameState));
+            }
+        } else {
+            assert hasUnexpectedResultRewrite;
+            builder.tree(createReturnUnexpectedResult(forType, false));
+        }
+
         builder.end();
         return builder.build();
     }
@@ -2950,6 +2967,25 @@ class FlatNodeGenFactory {
         builder.startCall("executeAndSpecialize");
         frameState.addReferencesTo(builder, frame);
         builder.end();
+        CodeTree call = builder.build();
+
+        builder = builder.create();
+        if (isVoid(forType.getReturnType())) {
+            builder.statement(call);
+            builder.returnStatement();
+        } else {
+            builder.startReturn();
+            builder.tree(expectOrCast(returnType, forType, call));
+            builder.end();
+        }
+        return builder.build();
+    }
+
+    private CodeTree createReturnUnexpectedResult(ExecutableTypeData forType, boolean needsCast) {
+        TypeMirror returnType = context.getType(Object.class);
+
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startCall(needsCast ? "((UnexpectedResultException) ex)" : "ex", "getResult").end();
         CodeTree call = builder.build();
 
         builder = builder.create();
