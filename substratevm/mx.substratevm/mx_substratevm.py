@@ -448,6 +448,9 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
 
     language_dir = join('languages', language_flag)
+    if exists(join(native_image_root, language_dir)):
+        mx.logv('Language subdir \'' + language_flag + '\' exists. Skip truffle_language_ensure.')
+        return language_suite
 
     language_suite_depnames = language_entry[1]
     language_deps = language_suite.dists + language_suite.libs
