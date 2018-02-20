@@ -29,28 +29,25 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-public final class CallInstruction extends ValueInstruction implements Call {
+public final class CallInstruction extends ValueInstruction implements FunctionStart {
 
     private SymbolImpl target;
 
-    private final List<SymbolImpl> arguments = new ArrayList<>();
+    private final SymbolImpl[] arguments;
 
     private final AttributesCodeEntry paramAttr;
 
-    private CallInstruction(Type type, AttributesCodeEntry paramAttr) {
+    private CallInstruction(Type type, AttributesCodeEntry paramAttr, int argCount) {
         super(type);
         this.paramAttr = paramAttr;
+        this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
     }
 
     @Override
@@ -59,13 +56,8 @@ public final class CallInstruction extends ValueInstruction implements Call {
     }
 
     @Override
-    public SymbolImpl getArgument(int index) {
-        return arguments.get(index);
-    }
-
-    @Override
-    public int getArgumentCount() {
-        return arguments.size();
+    public SymbolImpl[] getArguments() {
+        return arguments;
     }
 
     @Override
@@ -93,38 +85,22 @@ public final class CallInstruction extends ValueInstruction implements Call {
         if (target == original) {
             target = replacement;
         }
-        for (int i = 0; i < arguments.size(); i++) {
-            if (arguments.get(i) == original) {
-                arguments.set(i, replacement);
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i] == original) {
+                arguments[i] = replacement;
             }
         }
     }
 
-    public static CallInstruction fromSymbols(SymbolTable symbols, Type type, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
-        final CallInstruction inst = new CallInstruction(type, paramAttr);
-        inst.target = symbols.getForwardReferenced(targetIndex, inst);
-        for (int argument : arguments) {
-            inst.arguments.add(symbols.getForwardReferenced(argument, inst));
-        }
+    public static CallInstruction fromSymbols(IRScope scope, Type type, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
+        final CallInstruction inst = new CallInstruction(type, paramAttr, arguments.length);
+        inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
+        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        if (target instanceof FunctionDeclaration) {
-            sb.append(((FunctionDeclaration) target).getName());
-        } else {
-            sb.append(target);
-        }
-        sb.append('(');
-        for (int i = 0; i < arguments.size(); i++) {
-            if (i != 0) {
-                sb.append(", ");
-            }
-            sb.append(arguments.get(i));
-        }
-        sb.append(')');
-        return sb.toString();
+        return FunctionStart.asString(target, arguments);
     }
 }
