@@ -38,62 +38,62 @@ import org.junit.Test;
 import java.util.Iterator;
 
 public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
-	private TruffleRuntime runtime;
+    private TruffleRuntime runtime;
 
-	public TruffleBoundaryInliningTest() {
-		this.runtime = Truffle.getRuntime();
-	}
+    public TruffleBoundaryInliningTest() {
+        this.runtime = Truffle.getRuntime();
+    }
 
-	private static RootNode createRootNodeAllowInline() {
-		return new RootNode(null) {
-			@Override
-			public Object execute(VirtualFrame frame) {
-				testMethod();
-				return null;
-			}
+    private static RootNode createRootNodeAllowInline() {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                testMethod();
+                return null;
+            }
 
-			@CompilerDirectives.TruffleBoundary(allowInlining = true)
-			void testMethod() {
-				CompilerAsserts.neverPartOfCompilation("But I'm behind boundary: TruffleBoundary(allowInlining = true)");
-			}
-		};
-	}
+            @CompilerDirectives.TruffleBoundary(allowInlining = true)
+            void testMethod() {
+                CompilerAsserts.neverPartOfCompilation("But I'm behind boundary: TruffleBoundary(allowInlining = true)");
+            }
+        };
+    }
 
-	private static RootNode createRootNodeNoInline() {
-		return new RootNode(null) {
-			@Override
-			public Object execute(VirtualFrame frame) {
-				testMethod();
-				return null;
-			}
+    private static RootNode createRootNodeNoInline() {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                testMethod();
+                return null;
+            }
 
-			@CompilerDirectives.TruffleBoundary(allowInlining = false)
-			void testMethod() {
-				CompilerAsserts.neverPartOfCompilation("But I'm behind boundary: TruffleBoundary(allowInlining = false)");
-			}
-		};
-	}
+            @CompilerDirectives.TruffleBoundary(allowInlining = false)
+            void testMethod() {
+                CompilerAsserts.neverPartOfCompilation("But I'm behind boundary: TruffleBoundary(allowInlining = false)");
+            }
+        };
+    }
 
-	private void runTest() {
-		RootNode n1 = createRootNodeAllowInline();
-		RootCallTarget c1 = runtime.createCallTarget(n1);
-        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[] {}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
-		RootNode n2 = createRootNodeNoInline();
-		RootCallTarget c2 = runtime.createCallTarget(n2);
-        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[] {}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+    private void runTest() {
+        RootNode n1 = createRootNodeAllowInline();
+        RootCallTarget c1 = runtime.createCallTarget(n1);
+        StructuredGraph allowInline = partialEval((OptimizedCallTarget) c1, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        RootNode n2 = createRootNodeNoInline();
+        RootCallTarget c2 = runtime.createCallTarget(n2);
+        StructuredGraph noInline = partialEval((OptimizedCallTarget) c2, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
         checkHasTestMethod(allowInline);
         checkHasTestMethod(noInline);
-	}
+    }
 
-    private void checkHasTestMethod(StructuredGraph graph) {
+    private static void checkHasTestMethod(StructuredGraph graph) {
         Iterator<Invoke> invokes = graph.getInvokes().iterator();
         assertTrue(invokes.hasNext());
         assertTrue("testMethod".equals(invokes.next().getTargetMethod().getName()));
     }
 
     @Test
-	public void testBoundaryInlining() {
-		TruffleBoundaryInliningTest test = new TruffleBoundaryInliningTest();
-		test.runTest();
-	}
+    public void testBoundaryInlining() {
+        TruffleBoundaryInliningTest test = new TruffleBoundaryInliningTest();
+        test.runTest();
+    }
 }

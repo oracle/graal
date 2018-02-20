@@ -274,7 +274,7 @@ public interface TruffleCompilerRuntime {
      * directives.
      *
      * @param original candidate for inlining
-     * @param duringPartialEvaluation whether the info applies during partial evaluation
+     * @param duringPartialEvaluation whether the inlining context is partial evaluation
      */
     InlineInfo getInlineInfo(ResolvedJavaMethod original, boolean duringPartialEvaluation);
 
