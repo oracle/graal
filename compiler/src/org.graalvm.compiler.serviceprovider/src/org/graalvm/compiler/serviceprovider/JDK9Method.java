@@ -78,7 +78,6 @@ public final class JDK9Method {
      */
     private static final MethodHandle getPackages;
 
-    @SuppressWarnings("unchecked")
     public static Set<String> getPackages(Object module) {
         try {
             return (Set<String>) getPackages.invoke(module);
