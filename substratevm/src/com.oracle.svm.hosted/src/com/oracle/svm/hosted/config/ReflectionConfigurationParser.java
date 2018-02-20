@@ -22,51 +22,40 @@
  */
 package com.oracle.svm.hosted.config;
 
+import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
+
+import java.io.File;
+
 // Checkstyle: allow reflection
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Reader;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.util.Map.Entry;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.shadowed.com.google.gson.JsonArray;
-import com.oracle.shadowed.com.google.gson.JsonElement;
-import com.oracle.shadowed.com.google.gson.JsonObject;
 import com.oracle.shadowed.com.google.gson.JsonParseException;
-import com.oracle.shadowed.com.google.gson.JsonParser;
-import com.oracle.shadowed.com.google.gson.JsonPrimitive;
+import com.oracle.shadowed.com.google.gson.stream.JsonReader;
+import com.oracle.shadowed.com.google.gson.stream.JsonToken;
 import com.oracle.svm.core.RuntimeReflection.ReflectionRegistry;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 
 import jdk.vm.ci.meta.MetaUtil;
 
 /**
- * Parses a reflection configuration with classes, methods and fields and registers them wth
- * {@link ReflectionRegistry} so they are accessible via JNI at runtime.
+ * Parses JSON describing classes, methods and fields and registers them with a
+ * {@link ReflectionRegistry}.
  */
 public final class ReflectionConfigurationParser {
     private static final String CONSTRUCTOR_NAME = "<init>";
-
-    private static class ParseContext {
-        String className;
-        String memberName;
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            if (className != null) {
-                sb.append("class ").append(className).append(": ");
-                if (memberName != null) {
-                    sb.append("member ").append(memberName).append(": ");
-                }
-            }
-            return sb.toString();
-        }
-    }
 
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
@@ -76,153 +65,241 @@ public final class ReflectionConfigurationParser {
         this.classLoader = classLoader;
     }
 
-    public void parseAndRegister(String file) throws IOException {
-        try (Reader reader = new FileReader(file)) {
-            parseAndRegister(reader);
+    /**
+     * Parses configurations in files specified by {@code configFilesOption} and resources specified
+     * by {@code configResourcesOption} and registers the parsed classes, methods and fields with
+     * the {@link ReflectionRegistry} associated with this object.
+     *
+     * @param featureName name of the feature using the configuration (e.g., "JNI")
+     */
+    public void parseAndRegisterConfigurations(String featureName, HostedOptionKey<String> configFilesOption, HostedOptionKey<String> configResourcesOption) {
+        String configFiles = configFilesOption.getValue();
+        if (!configFiles.isEmpty()) {
+            for (String path : configFiles.split(",")) {
+                File file = new File(path).getAbsoluteFile();
+                if (!file.exists()) {
+                    throw UserError.abort("The " + featureName + " configuration file \"" + file + "\" does not exist.");
+                }
+                try (Reader reader = new FileReader(file)) {
+                    parseAndRegister(reader, featureName, file, configFilesOption);
+                } catch (IOException e) {
+                    throw UserError.abort("Could not open " + file + ": " + e.getMessage());
+                }
+            }
+        }
+        String configResources = configResourcesOption.getValue();
+        if (!configResources.isEmpty()) {
+            for (String resource : configResources.split(",")) {
+                URL url = classLoader.findResourceByName(resource);
+                if (url == null) {
+                    throw UserError.abort("Could not find " + featureName + " configuration resource \"" + resource + "\".");
+                }
+                try (Reader reader = new InputStreamReader(url.openStream())) {
+                    parseAndRegister(reader, featureName, url, configResourcesOption);
+                } catch (IOException e) {
+                    throw UserError.abort("Could not open " + url + ": " + e.getMessage());
+                }
+            }
         }
     }
 
-    public void parseAndRegister(Reader reader) {
-        ParseContext context = new ParseContext();
+    private void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String> option) {
+        // Calling toString() on an anonymous subclass of
+        // JsonReader will return " at line <n> column <c>"
+        // which is useful for error messages.
+        JsonReader json = new JsonReader(reader) {
+        };
+        assert json.toString().equals(" at line 1 column 1");
         try {
-            JsonParser parser = new JsonParser();
-            JsonElement root = parser.parse(reader);
-            handleRoot(context, root);
+            parseClassArray(json);
         } catch (Exception e) {
-            throw new JsonParseException(context.toString() + e.getMessage(), e);
+            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + json + ":\n" + e.getMessage() +
+                            "\nVerify that the configuration matches the schema described in the " +
+                            HostedOptionParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
         }
     }
 
-    private static JsonParseException bailout(String message) {
-        throw new JsonParseException(message);
+    private void parseClassArray(JsonReader reader) throws IOException {
+        reader.beginArray();
+        while (reader.peek() == JsonToken.BEGIN_OBJECT) {
+            parseClass(reader);
+        }
+        reader.endArray();
     }
 
-    private static void expectMembers(JsonObject object, String required, String... optionals) {
-        if (!object.has(required)) {
-            throw bailout("missing required element: \"" + required + '"');
+    private static boolean parseBoolean(JsonReader reader) throws IOException {
+        if (reader.peek() == JsonToken.STRING) {
+            String s = reader.nextString();
+            if (s.equals("true")) {
+                return true;
+            }
+            if (!s.equals("false")) {
+                throw new JsonParseException("Invalid boolean value \"" + s + "\"");
+            }
+            return false;
         }
-        for (Entry<String, JsonElement> elements : object.entrySet()) {
-            String elementName = elements.getKey();
-            if (!required.equals(elementName) && Stream.of(optionals).noneMatch(elementName::equals)) {
-                throw bailout("unexpected element: \"" + elementName + "\" (valid elements: \"" + String.join("\", \"", optionals) + "\")");
+        return reader.nextBoolean();
+    }
+
+    private void parseClass(JsonReader reader) throws IOException {
+        reader.beginObject();
+        Class<?> clazz = null;
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            if (name.equals("name")) {
+                if (clazz != null) {
+                    throw new JsonParseException("Class 'name' attribute cannot be repeated");
+                }
+                String className = reader.nextString();
+                clazz = classLoader.findClassByName(className, false);
+                if (clazz == null) {
+                    throw new JsonParseException("Class " + className + " not found");
+                }
+            } else {
+                if (clazz == null) {
+                    throw new JsonParseException("Class 'name' attribute must preceed '" + name + "' attribute");
+                }
+                if (name.equals("allDeclaredMethods")) {
+                    if (parseBoolean(reader)) {
+                        registry.register(clazz.getDeclaredMethods());
+                    }
+                } else if (name.equals("allPublicMethods")) {
+                    if (parseBoolean(reader)) {
+                        registry.register(clazz.getMethods());
+                    }
+                } else if (name.equals("allDeclaredFields")) {
+                    if (parseBoolean(reader)) {
+                        registry.register(clazz.getDeclaredFields());
+                    }
+                } else if (name.equals("allPublicFields")) {
+                    if (parseBoolean(reader)) {
+                        registry.register(clazz.getFields());
+                    }
+                } else if (name.equals("methods")) {
+                    parseMethods(reader, clazz);
+                } else if (name.equals("fields")) {
+                    parseFields(reader, clazz);
+                } else {
+                    throw new JsonParseException("Unknown class attribute '" + name + "'");
+                }
             }
         }
+        reader.endObject();
     }
 
-    private void handleRoot(ParseContext context, JsonElement root) {
-        for (JsonElement classElement : root.getAsJsonArray()) {
-            handleClass(context, classElement);
+    private void parseFields(JsonReader reader, Class<?> clazz) throws IOException {
+        reader.beginArray();
+        while (reader.peek() == JsonToken.BEGIN_OBJECT) {
+            parseField(reader, clazz);
         }
+        reader.endArray();
     }
 
-    private void handleClass(ParseContext context, JsonElement classElement) {
-        JsonObject classObject = classElement.getAsJsonObject();
-        String name = classObject.get("name").getAsString();
-        context.className = name;
-        expectMembers(classObject, "name", "methods", "fields", "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields");
-        Class<?> clazz = classLoader.findClassByName(name, false);
-        if (clazz == null) {
-            throw new JsonParseException("class not found");
-        }
-        registry.register(clazz);
-        if (getAsBoolean(classObject, "allDeclaredMethods", false)) {
-            registry.register(clazz.getDeclaredMethods());
-        }
-        if (getAsBoolean(classObject, "allPublicMethods", false)) {
-            registry.register(clazz.getMethods());
-        }
-        if (getAsBoolean(classObject, "allDeclaredFields", false)) {
-            registry.register(clazz.getDeclaredFields());
-        }
-        if (getAsBoolean(classObject, "allPublicFields", false)) {
-            registry.register(clazz.getFields());
-        }
-        handleFields(context, classObject.get("fields"), clazz);
-        handleMethods(context, classObject.get("methods"), clazz);
-        context.className = null;
-    }
-
-    private static boolean getAsBoolean(JsonObject object, String name, boolean forNull) {
-        JsonPrimitive primitive = object.getAsJsonPrimitive(name);
-        return (primitive == null) ? forNull : primitive.getAsBoolean();
-    }
-
-    private void handleFields(ParseContext context, JsonElement fieldsElement, Class<?> clazz) {
-        if (fieldsElement != null) { // optional
-            for (JsonElement fieldElement : fieldsElement.getAsJsonArray()) {
-                handleField(context, fieldElement, clazz);
+    private void parseField(JsonReader reader, Class<?> clazz) throws IOException {
+        reader.beginObject();
+        String fieldName = null;
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            if (name.equals("name")) {
+                fieldName = reader.nextString();
+            } else {
+                throw new JsonParseException("Unknown field attribute '" + name + "'");
             }
         }
-    }
-
-    private void handleField(ParseContext context, JsonElement fieldElement, Class<?> clazz) {
-        JsonObject fieldObject = fieldElement.getAsJsonObject();
-        expectMembers(fieldObject, "name");
-        String fieldName = fieldObject.get("name").getAsString();
-        context.memberName = fieldName;
+        reader.endObject();
+        if (fieldName == null) {
+            throw new JsonParseException("Missing field 'name' attribute");
+        }
         try {
-            Field field = clazz.getDeclaredField(fieldName);
-            registry.register(field);
+            registry.register(clazz.getDeclaredField(fieldName));
         } catch (NoSuchFieldException e) {
-            throw bailout("field not found");
-        }
-        context.memberName = null;
-    }
-
-    private void handleMethods(ParseContext context, JsonElement methodsElement, Class<?> clazz) {
-        if (methodsElement != null) { // optional
-            for (JsonElement methodElement : methodsElement.getAsJsonArray()) {
-                handleMethod(context, methodElement, clazz);
-            }
+            throw new JsonParseException("Field " + clazz.getName() + "." + fieldName + " not found");
         }
     }
 
-    private void handleMethod(ParseContext context, JsonElement methodElement, Class<?> clazz) {
-        JsonObject methodObject = methodElement.getAsJsonObject();
-        String name = methodObject.get("name").getAsString();
-        context.memberName = name;
-        expectMembers(methodObject, "name", "parameterTypes");
-        JsonElement parameterTypesElement = methodObject.get("parameterTypes");
-        if (parameterTypesElement != null) {
-            JsonArray array = parameterTypesElement.getAsJsonArray();
-            Class<?>[] parameterTypes = new Class<?>[array.size()];
-            for (int i = 0; i < array.size(); i++) {
-                String originalTypeName = array.get(i).getAsString();
-                String typeName = originalTypeName;
-                if (typeName.indexOf('[') != -1) { // accept "int[][]", "java.lang.String[]"
-                    typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(originalTypeName), true, true);
+    private void parseMethods(JsonReader reader, Class<?> clazz) throws IOException {
+        reader.beginArray();
+        while (reader.peek() == JsonToken.BEGIN_OBJECT) {
+            parseMethod(reader, clazz);
+        }
+        reader.endArray();
+    }
+
+    private void parseMethod(JsonReader reader, Class<?> clazz) throws IOException {
+        reader.beginObject();
+        String methodName = null;
+        Class<?>[] methodParameterTypes = null;
+        while (reader.hasNext()) {
+            String name = reader.nextName();
+            if (name.equals("name")) {
+                if (methodName != null) {
+                    throw new JsonParseException("Method 'name' attribute cannot be repeated");
                 }
-                parameterTypes[i] = classLoader.findClassByName(typeName, false);
-                if (parameterTypes[i] == null) {
-                    throw bailout("parameter type " + originalTypeName + " not found");
+                methodName = reader.nextString();
+            } else {
+                if (methodName == null) {
+                    throw new JsonParseException("Method 'name' attribute must be preceed '" + name + "' attribute");
+                }
+                if (name.equals("parameterTypes")) {
+                    if (methodParameterTypes != null) {
+                        throw new JsonParseException("Method 'parameterTypes' attribute cannot be repeated");
+                    }
+                    methodParameterTypes = parseTypes(reader);
+                } else {
+                    throw new JsonParseException("Unknown method attribute '" + name + "'");
                 }
             }
+        }
+        reader.endObject();
+        if (methodName == null) {
+            throw new JsonParseException("Missing method 'name' attribute");
+        }
+
+        if (methodParameterTypes != null) {
             try {
                 Executable method;
-                if (CONSTRUCTOR_NAME.equals(name)) {
-                    method = clazz.getDeclaredConstructor(parameterTypes);
+                if (CONSTRUCTOR_NAME.equals(methodName)) {
+                    method = clazz.getDeclaredConstructor(methodParameterTypes);
                 } else {
-                    method = clazz.getDeclaredMethod(name, parameterTypes);
+                    method = clazz.getDeclaredMethod(methodName, methodParameterTypes);
                 }
                 registry.register(method);
             } catch (NoSuchMethodException e) {
-                String parameterTypeNames = Stream.of(parameterTypes).map(Class::getSimpleName).collect(Collectors.joining(", "));
-                throw bailout("method with parameter types (" + parameterTypeNames + ") not found");
+                String parameterTypeNames = Stream.of(methodParameterTypes).map(Class::getSimpleName).collect(Collectors.joining(", "));
+                throw new JsonParseException("Method " + clazz.getName() + "." + methodName + "(" + parameterTypeNames + ") not found");
             }
         } else {
             boolean found = false;
-            boolean isConstructor = CONSTRUCTOR_NAME.equals(name);
+            boolean isConstructor = CONSTRUCTOR_NAME.equals(methodName);
             Executable[] methods = isConstructor ? clazz.getDeclaredConstructors() : clazz.getDeclaredMethods();
             for (Executable method : methods) {
-                if (isConstructor || method.getName().equals(name)) {
+                if (isConstructor || method.getName().equals(methodName)) {
                     registry.register(method);
                     found = true;
                 }
             }
             if (!found) {
-                throw bailout("method not found");
+                throw new JsonParseException("Method " + clazz.getName() + "." + methodName + " not found");
             }
         }
-        context.memberName = null;
+    }
+
+    private Class<?>[] parseTypes(JsonReader reader) throws IOException {
+        reader.beginArray();
+        List<Class<?>> types = new ArrayList<>();
+        while (reader.peek() == JsonToken.STRING) {
+            String originalTypeName = reader.nextString();
+            String typeName = originalTypeName;
+            if (typeName.indexOf('[') != -1) { // accept "int[][]", "java.lang.String[]"
+                typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(originalTypeName), true, true);
+            }
+            Class<?> clazz = classLoader.findClassByName(typeName, false);
+            if (clazz == null) {
+                throw new JsonParseException("Class " + typeName + " not found");
+            }
+            types.add(clazz);
+        }
+        reader.endArray();
+        return types.toArray(new Class<?>[types.size()]);
     }
 }
