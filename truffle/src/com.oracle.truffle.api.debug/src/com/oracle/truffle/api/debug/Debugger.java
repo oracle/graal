@@ -41,6 +41,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -216,10 +217,12 @@ public final class Debugger {
      *
      * @return an unmodifiable list of sources
      * @since 0.17
+     * @deprecated not very flexible, polls all sources without any notification about changes.
      */
+    @Deprecated
     public List<Source> getLoadedSources() {
         final List<Source> sources = new ArrayList<>();
-        EventBinding<?> binding = env.getInstrumenter().attachLoadSourceListener(SourceSectionFilter.ANY, new LoadSourceListener() {
+        EventBinding<?> binding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
             public void onLoad(LoadSourceEvent event) {
                 sources.add(event.getSource());
             }

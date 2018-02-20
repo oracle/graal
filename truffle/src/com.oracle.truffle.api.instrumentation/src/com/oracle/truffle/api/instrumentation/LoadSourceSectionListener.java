@@ -43,7 +43,7 @@ public interface LoadSourceSectionListener {
      * notified for one source section multiple times but never with the same instrumented node. The
      * order in which multiple source section event listeners are notified matches the order they
      * are
-     * {@link Instrumenter#attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter, com.oracle.truffle.api.instrumentation.LoadSourceListener, boolean)
+     * {@link Instrumenter#attachLoadSourceSectionListener(SourceSectionFilter, LoadSourceSectionListener, boolean)
      * attached}.
      *
      * <b>Implementation Note:</b> Source load events are notified when the guest language

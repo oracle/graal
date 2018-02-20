@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptors;
@@ -256,15 +257,20 @@ public abstract class TVMCI {
     private static volatile Object fallbackEngineData;
 
     protected <T> T getOrCreateRuntimeData(RootNode rootNode, Supplier<T> constructor) {
-        try {
-            if (rootNode == null) {
-                return getOrCreateFallbackEngineData(constructor);
+        Objects.requireNonNull(constructor);
+        final Accessor.Nodes nodesAccess = Accessor.nodesAccess();
+        final EngineSupport engineAccess = Accessor.engineAccess();
+        if (rootNode != null && nodesAccess != null && engineAccess != null) {
+            final Object sourceVM = nodesAccess.getSourceVM(rootNode);
+            if (sourceVM != null) {
+                final T runtimeData = engineAccess.getOrCreateRuntimeData(sourceVM, constructor);
+                if (runtimeData != null) {
+                    return runtimeData;
+                }
             }
-            final Object sourceVM = Accessor.nodesAccess().getSourceVM(rootNode);
-            return Accessor.engineAccess().getOrCreateRuntimeData(sourceVM, constructor);
-        } catch (IllegalArgumentException | NullPointerException | UnsupportedOperationException e) {
-            return getOrCreateFallbackEngineData(constructor);
+
         }
+        return getOrCreateFallbackEngineData(constructor);
     }
 
     @SuppressWarnings("unchecked")

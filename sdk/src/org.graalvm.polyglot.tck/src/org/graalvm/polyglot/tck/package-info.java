@@ -29,7 +29,9 @@
  */
 /**
  * Provide an implementation of the {@link org.graalvm.polyglot.tck.LanguageProvider} to test
- * language inter-operability.
+ * language inter-operability. See
+ * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md" target="_top">Test
+ * Compatibility Kit</a> for details how to add a new language provider and execute tests.
  *
  * @since 0.30
  */
