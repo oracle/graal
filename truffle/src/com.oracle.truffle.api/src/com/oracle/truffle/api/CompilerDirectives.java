@@ -271,6 +271,8 @@ public final class CompilerDirectives {
         /**
          * Considers this Truffle boundary invoke as an inlining candidate.
          *
+         * Partial evaluation cannot inline a boundary, but a later inlining pass can.
+         *
          * @since 0.27
          */
         boolean allowInlining() default false;
