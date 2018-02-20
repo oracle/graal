@@ -79,6 +79,7 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class NativeBootImage extends AbstractBootImage {
@@ -175,8 +176,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.append(sep);
             sep = ", ";
             writer.append(CSourceCodeWriter.findCTypeName(metaAccess, nativeLibs, (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass())));
-            writer.append(" ");
-            writer.append(m.getParameters()[i].getName());
+            Parameter param = m.getParameters()[i];
+            if (param.isNamePresent()) {
+                writer.append(" ");
+                writer.append(param.getName());
+            }
         }
         writer.appendln(");");
         writer.appendln();
