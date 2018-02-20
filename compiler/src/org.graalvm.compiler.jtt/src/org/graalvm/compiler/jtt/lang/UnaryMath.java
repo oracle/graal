@@ -22,60 +22,33 @@
  */
 package org.graalvm.compiler.jtt.lang;
 
+import org.graalvm.compiler.jtt.JTTTest;
 import org.graalvm.compiler.options.OptionValues;
-import org.junit.Test;
 
-/*
- */
-public class Math_exp extends UnaryMath {
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-    public static double test(double arg) {
-        return Math.exp(arg);
-    }
+public abstract class UnaryMath extends JTTTest {
 
-    @Test
-    public void run0() {
-        runTest("test", java.lang.Double.NaN);
-    }
+    private static final long STEP = Long.MAX_VALUE / 1_000_000;
 
-    @Test
-    public void run1() {
-        runTest("test", java.lang.Double.NEGATIVE_INFINITY);
-    }
-
-    @Test
-    public void run2() {
-        runTest("test", java.lang.Double.POSITIVE_INFINITY);
-    }
-
-    @Test
-    public void run3() {
-        runTest("test", -1D);
-    }
-
-    @Test
-    public void run4() {
-        runTest("test", -0.0D);
-    }
-
-    @Test
-    public void run5() {
-        runTest("test", 0.0D);
-    }
-
-    @Test
-    public void run6() {
-        runTest("test", 1.0D);
-    }
-
-    @Test
-    public void run7() {
-        runTest("test", -1024D);
-    }
-
-    @Test
-    public void run8() {
-        OptionValues options = getInitialOptions();
-        testManyValues(options, getResolvedJavaMethod("test"));
+    /**
+     * Tests a unary {@link Math} method on a wide range of values.
+     */
+    void testManyValues(OptionValues options, ResolvedJavaMethod method) throws AssertionError {
+        Object receiver = null;
+        long testIteration = 0;
+        for (long l = Long.MIN_VALUE;; l += STEP) {
+            double d = Double.longBitsToDouble(l);
+            Result expect = executeExpected(method, receiver, d);
+            try {
+                testAgainstExpected(options, method, expect, EMPTY, receiver, d);
+                testIteration++;
+            } catch (AssertionError e) {
+                throw new AssertionError(String.format("%d: While testing %g [long: %d, hex: %x]", testIteration, d, l, l), e);
+            }
+            if (Long.MAX_VALUE - STEP < l) {
+                break;
+            }
+        }
     }
 }
