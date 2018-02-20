@@ -272,8 +272,11 @@ public interface TruffleCompilerRuntime {
     /**
      * Gets an object describing whether and how a method can be inlined based on Truffle
      * directives.
+     *
+     * @param original candidate for inlining
+     * @param duringPartialEvaluation whether the info applies during partial evaluation
      */
-    InlineInfo getInlineInfo(ResolvedJavaMethod original);
+    InlineInfo getInlineInfo(ResolvedJavaMethod original, boolean duringPartialEvaluation);
 
     /**
      * Determines if {@code type} is a value type. Reference comparisons (==) between value type
