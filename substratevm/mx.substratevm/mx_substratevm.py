@@ -417,7 +417,7 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
     def newestOutput(self):
         return mx.TimeStampFile(native_image_path(self.subject.native_image_root))
 
-def truffle_language_ensure(language_flag, version=None, native_image_root=None):
+def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False):
     """
     Ensures that we have a valid suite for the given language_flag, by downloading a binary if necessary
     and providing the suite distribution artifacts in the native-image directory hierachy (via symlinks).
@@ -435,6 +435,11 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
 
     if language_flag not in flag_suitename_map:
         mx.abort('No truffle-language uses language_flag \'' + language_flag + '\'')
+
+    language_dir = join('languages', language_flag)
+    if early_exit and exists(join(native_image_root, language_dir)):
+        mx.logv('Early exit mode: Language subdir \'' + language_flag + '\' exists. Skip suite.import_suite.')
+        return None
 
     language_entry = flag_suitename_map[language_flag]
 
@@ -469,11 +474,6 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
             mx.warn(failure_warning)
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
 
-    language_dir = join('languages', language_flag)
-    if exists(join(native_image_root, language_dir)):
-        mx.logv('Language subdir \'' + language_flag + '\' exists. Skip truffle_language_ensure.')
-        return language_suite
-
     language_suite_depnames = language_entry[1]
     language_deps = language_suite.dists + language_suite.libs
     language_deps = [dep for dep in language_deps if dep.name in language_suite_depnames]
@@ -491,7 +491,6 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
     return language_suite
-
 
 def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
@@ -791,7 +790,7 @@ def fetch_languages(args):
 
     for language_flag in requested:
         version = requested[language_flag]
-        truffle_language_ensure(language_flag, version)
+        truffle_language_ensure(language_flag, version, early_exit=True)
 
 mx.update_commands(suite, {
     'build': [build, ''],
