@@ -160,6 +160,7 @@ public final class ReflectionConfigurationParser {
                 if (clazz == null) {
                     throw new JsonParseException("Class " + className + " not found");
                 }
+                registry.register(clazz);
             } else {
                 if (clazz == null) {
                     throw new JsonParseException("Class 'name' attribute must precede '" + name + "' attribute");
