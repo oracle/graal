@@ -440,16 +440,8 @@ public final class LLVMContext {
         return sigErr;
     }
 
-    public static boolean mayBeHandle(LLVMAddress address) {
-        return address.getVal() < 0;
-    }
-
-    public boolean isHandle(LLVMAddress address) {
-        return mayBeHandle(address) && isReallyHandle(address);
-    }
-
     @TruffleBoundary
-    private boolean isReallyHandle(LLVMAddress address) {
+    public boolean isHandle(LLVMAddress address) {
         synchronized (handlesLock) {
             return toManaged.containsKey(address);
         }
@@ -479,7 +471,7 @@ public final class LLVMContext {
 
             toManaged.remove(address);
             toNative.remove(object);
-            memory.free(-address.getVal());
+            memory.free(address);
         }
     }
 
@@ -489,9 +481,8 @@ public final class LLVMContext {
             return toNative.computeIfAbsent(object, (k) -> {
                 LLVMAddress allocatedMemory = memory.allocateMemory(Long.BYTES);
                 memory.putI64(allocatedMemory, 0xdeadbeef);
-                LLVMAddress handle = LLVMAddress.fromLong(-allocatedMemory.getVal());
-                toManaged.put(handle, object);
-                return handle;
+                toManaged.put(allocatedMemory, object);
+                return allocatedMemory;
             });
         }
     }

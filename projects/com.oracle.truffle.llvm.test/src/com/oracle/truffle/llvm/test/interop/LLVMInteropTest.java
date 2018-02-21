@@ -975,20 +975,6 @@ public final class LLVMInteropTest {
     }
 
     @Test
-    public void testOutvars() {
-        Runner runner = new Runner("testOutArg");
-        runner.export(new ForeignObject(1), "global_object");
-        Assert.assertEquals(0, runner.run());
-    }
-
-    @Test
-    public void testStructuredHandleAccess() {
-        Runner runner = new Runner("structAccessHandle");
-        runner.export(new ForeignObject(2), "local_object");
-        Assert.assertEquals(0, runner.run());
-    }
-
-    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         runner.run();

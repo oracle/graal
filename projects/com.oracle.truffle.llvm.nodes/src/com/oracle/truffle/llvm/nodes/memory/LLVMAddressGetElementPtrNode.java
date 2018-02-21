@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -42,7 +41,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -52,7 +50,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeFields({@NodeField(type = long.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
@@ -62,39 +59,28 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
 
     public abstract Type getTargetType();
 
+    protected LLVMIncrementPointerNode getIncrementPointerNode() {
+        return LLVMIncrementPointerNodeGen.create();
+    }
+
     @Specialization
     protected Object intIncrement(VirtualFrame frame, Object addr, int val,
-                    @Cached("create()") LLVMIncrementPointerNode incrementNode) {
+                    @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(frame, addr, incr, getTargetType());
     }
 
     @Specialization
     protected Object longIncrement(VirtualFrame frame, Object addr, long val,
-                    @Cached("create()") LLVMIncrementPointerNode incrementNode) {
+                    @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(frame, addr, incr, getTargetType());
     }
 
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
-        public static LLVMIncrementPointerNode create() {
-            return LLVMIncrementPointerNodeGen.create();
-        }
-
-        protected boolean mayBeHandle(LLVMAddress addr) {
-            return LLVMContext.mayBeHandle(addr);
-        }
-
         public abstract Object executeWithTarget(VirtualFrame frame, Object addr, Object val, Type targetType);
 
-        @Specialization(guards = "mayBeHandle(addr)")
-        protected Object doHandle(LLVMAddress addr, int incr, Type targetType,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                        @Cached("create()") LLVMIncrementPointerNode incrementNode) {
-            return incrementNode.executeWithTarget(null, new LLVMTruffleObject(context.get().getManagedObjectForHandle(addr), new PointerType(VoidType.INSTANCE)), incr, targetType);
-        }
-
-        @Specialization(guards = "!mayBeHandle(addr)")
+        @Specialization
         protected LLVMAddress doPointee(LLVMAddress addr, int incr, @SuppressWarnings("unused") Type targetType) {
             return addr.increment(incr);
         }
@@ -138,14 +124,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
             }
         }
 
-        @Specialization(guards = "mayBeHandle(addr)")
-        protected Object doHandle(LLVMAddress addr, long incr, Type targetType,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                        @Cached("create()") LLVMIncrementPointerNode incrementNode) {
-            return incrementNode.executeWithTarget(null, new LLVMTruffleObject(context.get().getManagedObjectForHandle(addr), new PointerType(VoidType.INSTANCE)), incr, targetType);
-        }
-
-        @Specialization(guards = "!mayBeHandle(addr)")
+        @Specialization
         protected LLVMAddress doPointee(LLVMAddress addr, long incr, @SuppressWarnings("unused") Type targetType) {
             return addr.increment(incr);
         }
