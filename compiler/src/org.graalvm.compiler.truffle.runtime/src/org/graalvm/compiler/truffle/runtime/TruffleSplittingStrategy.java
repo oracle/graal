@@ -449,6 +449,7 @@ final class TruffleSplittingStrategy {
             properties.put("label", node.node.toString());
             properties.put("ROOT?", node.node instanceof RootNode);
             properties.put("LEAF?", node.edge == null);
+            properties.put("RootNode", node.node.getRootNode());
             properties.putAll(node.node.getDebugProperties());
             properties.put("SourceSection", node.node.getSourceSection());
             if (Introspection.isIntrospectable(node.node)) {
