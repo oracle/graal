@@ -593,7 +593,7 @@ public class CompileQueue {
     }
 
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, @SuppressWarnings("unused") HostedMethod method) {
-        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
+        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
         return gbConf;
     }
 

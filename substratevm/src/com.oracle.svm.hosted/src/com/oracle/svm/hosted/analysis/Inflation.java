@@ -233,6 +233,8 @@ public class Inflation extends BigBang {
         Class<?> javaClass = type.getJavaClass();
 
         TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
+        /* The bounds are lazily initialized. Initialize them eagerly in the native image. */
+        Arrays.stream(typeParameters).forEach(TypeVariable::getBounds);
         Type[] genericInterfaces = Arrays.stream(javaClass.getGenericInterfaces()).filter(this::filterGenericInterfaces).toArray(Type[]::new);
         Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
         Type genericSuperClass = javaClass.getGenericSuperclass();
