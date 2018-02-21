@@ -181,17 +181,25 @@ class ToolDescriptor:
     def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
         """
         By adding a new ToolDescriptor entry in the tools_map a new --tool.<keyname>
-        becomes available to native-image.  The tool is represented in the
-        <native_image_root>/tools/<keyname> directory. If a corresponding
-        tools-<keyname>.properties file exists in mx.substratevm it will get symlinked as
-        <native_image_root>/tools/<keyname>/native-image.properties so that native-image
-        will use these options whenever the tool is requested. Image_deps and builder_deps
-        (see below) are also represented as symlinks to JAR files in
+        option is made available to native-image and also makes the tool available as
+        Tool:<keyname> in a native-image properties file Requires statement.  The tool is
+        represented in the <native_image_root>/tools/<keyname> directory. If a
+        corresponding tools-<keyname>.properties file exists in mx.substratevm it will get
+        symlinked as <native_image_root>/tools/<keyname>/native-image.properties so that
+        native-image will use these options whenever the tool is requested. Image_deps and
+        builder_deps (see below) are also represented as symlinks to JAR files in
         <native_image_root>/tools/<keyname> (<native_image_root>/tools/<keyname>/builder).
 
-        :param image_deps: list dependencies that get added to the image cp when using the tool.
-        :param builder_deps: list dependencies that get added to the image builder cp when using the tool.
-        :param native_deps: list native dependencies that should be extracted to <native_image_root>/tools/<keyname>.
+        :param image_deps: list dependencies that get added to the image-cp (the classpath
+        of the application you want to compile into an image) when using the tool.
+        :param builder_deps: list dependencies that get added to the image builder-cp when
+        using the tool. Builder-cp adds to the classpath that contains the image-generator
+        itself. This might be necessary, e.g. when custom substitutions are needed to be
+        able to compile classes on the image-cp. Another possible reason is when the image
+        builder needs to prepare things prior to image building and doing so needs
+        additional classes (see junit tool).
+        :param native_deps: list native dependencies that should be extracted to
+        <native_image_root>/tools/<keyname>.
         """
         self.image_deps = image_deps if image_deps else []
         self.builder_deps = builder_deps if builder_deps else []
