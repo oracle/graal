@@ -96,6 +96,11 @@ final class ToPrimitiveNode extends Node {
                 if (str.length() == 1) {
                     return str.charAt(0);
                 }
+            } else {
+                Object safeChar = toShort(value);
+                if (safeChar instanceof Short) {
+                    return (char) (short) safeChar;
+                }
             }
         } else if (requestedType == String.class || requestedType == CharSequence.class) {
             if (attr instanceof String) {
