@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URL;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -218,7 +219,11 @@ public final class ImageClassLoader {
         return true;
     }
 
-    public InputStream findResourceByName(String resource) {
+    public URL findResourceByName(String resource) {
+        return classLoader.getResource(resource);
+    }
+
+    public InputStream findResourceAsStreamByName(String resource) {
         return classLoader.getResourceAsStream(resource);
     }
 
