@@ -98,10 +98,7 @@ Build Dependencies
 Sulong is mostly implemented in Java. However, parts of Sulong are
 implemented in C/C++ and will be compiled to a shared library or a bitcode
 file. For a successful build you need to have LLVM (incl. `CLANG` and `OPT`
-tool) 3.8 - v6.0 installed. Sulong also depends on `libc++` and `libc++abi`
-(on Ubuntu, install `libc++1`, `libc++abi1`, `libc++-dev`, `libc++abi-dev`).
-For a full list of external dependencies on Ubuntu you can look at our
-Travis configuration.
+tool) v3.8 - v6.0 installed.
 
 MacOS: Apple's default LLVM does not contain the `opt` tool, which a Sulong
 build needs. We recommend installing LLVM via `homebrew` and appending the
@@ -109,6 +106,16 @@ bin path to the `PATH`. For best experience we suggest to install LLVM 4.0.
 
     brew install llvm@4
     export PATH="/usr/local/opt/llvm@4/bin:$PATH"
+
+Runtime Dependencies
+--------------------
+
+LLVM is only needed for compiling the bitcode files. For running compiled
+bitcode files, there are no special runtime dependencies, but additional
+libraries might be needed if the user code has external dependencies.
+
+In particular, for running C++ code, you need libc++ (the C++ standard
+library from the LLVM project).
 
 How to get started?
 -------------------
