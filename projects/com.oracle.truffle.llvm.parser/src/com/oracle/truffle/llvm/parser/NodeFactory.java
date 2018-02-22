@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -183,7 +183,7 @@ public interface NodeFactory {
     Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant);
 
     LLVMExpressionNode createLandingPad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds,
-                    LLVMExpressionNode[] entries);
+                    LLVMExpressionNode[] entries, LLVMExpressionNode getStack);
 
     LLVMControlFlowNode createResumeInstruction(LLVMParserRuntime runtime, FrameSlot exceptionSlot, LLVMSourceLocation sourceSection);
 

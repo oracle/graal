@@ -19,6 +19,9 @@
 #include "cxa_exception.hpp"
 #include "cxa_handlers.hpp"
 
+#include "private_typeinfo.h"
+#include "abort_message.h"
+
 // +---------------------------+-----------------------------+---------------+
 // | __cxa_exception           | _Unwind_Exception CLNGC++\0 | thrown object |
 // +---------------------------+-----------------------------+---------------+
@@ -692,6 +695,25 @@ __cxa_uncaught_exceptions() throw()
     if (globals == 0)
         return 0;
     return globals->uncaughtExceptions;
+}
+
+
+// helper routine for Sulong
+extern "C"
+unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
+    __cxa_exception *ex = cxa_exception_from_exception_unwind_exception(unwindHeader);
+    void *p = thrown_object_from_cxa_exception(ex);
+    __shim_type_info *et = dynamic_cast<__shim_type_info*>(ex->exceptionType);
+    __shim_type_info *ct = dynamic_cast<__shim_type_info*>(catchType);
+    if (et == NULL || ct == NULL) {
+        abort_message("Type error in sulong_eh_canCatch(...).\n");
+    }
+    if (ct->can_catch(et, p)) {
+        ex->adjustedPtr = p;
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 }  // extern "C"

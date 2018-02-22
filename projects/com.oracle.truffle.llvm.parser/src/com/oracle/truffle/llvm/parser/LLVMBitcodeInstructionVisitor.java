@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -269,8 +269,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
         }
+        LLVMExpressionNode getStack = nodeFactory.createFrameRead(runtime, PointerType.VOID, getStackSlot());
         LLVMExpressionNode landingPad = nodeFactory.createLandingPad(runtime, allocateLandingPadValue, getExceptionSlot(), landingpadInstruction.isCleanup(), landingpadInstruction.getClauseTypes(),
-                        entries);
+                        entries, getStack);
         createFrameWrite(landingPad, landingpadInstruction);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,64 +64,9 @@ public final class LLVMNativeFunctions {
         return new DynamicCastNode(dynamicCastFunction);
     }
 
-    public SulongCanCatchNode createSulongCanCatch(LLVMContext context) {
-        TruffleObject canCatchFunction = getNativeFunction(context, "@sulong_eh_canCatch", "(POINTER,POINTER,POINTER):UINT32");
-        return new SulongCanCatchNode(canCatchFunction);
-    }
-
-    public SulongThrowNode createSulongThrow(LLVMContext context) {
-        TruffleObject throwFunction = getNativeFunction(context, "@sulong_eh_throw", "(POINTER,POINTER,POINTER,POINTER,POINTER):VOID");
-        return new SulongThrowNode(throwFunction);
-    }
-
-    public SulongGetThrownObjectNode createGetThrownObject(LLVMContext context) {
-        TruffleObject getThrownObjectFunction = getNativeFunction(context, "@sulong_eh_getThrownObject", "(POINTER):POINTER");
-        return new SulongGetThrownObjectNode(getThrownObjectFunction);
-    }
-
-    public SulongGetExceptionPointerNode createGetExceptionPointer(LLVMContext context) {
-        TruffleObject getExceptionPointerFunction = getNativeFunction(context, "@sulong_eh_getExceptionPointer", "(POINTER):POINTER");
-        return new SulongGetExceptionPointerNode(getExceptionPointerFunction);
-    }
-
-    public SulongGetUnwindHeaderNode createGetUnwindHeader(LLVMContext context) {
-        TruffleObject getUnwindHeaderFunction = getNativeFunction(context, "@sulong_eh_unwindHeader", "(POINTER):POINTER");
-        return new SulongGetUnwindHeaderNode(getUnwindHeaderFunction);
-    }
-
     public SulongFreeExceptionNode createFreeException(LLVMContext context) {
         TruffleObject freeFunction = getNativeFunction(context, "@__cxa_free_exception", "(POINTER):VOID");
         return new SulongFreeExceptionNode(freeFunction);
-    }
-
-    public SulongGetDestructorNode createGetDestructor(LLVMContext context) {
-        TruffleObject getDestructorFunction = getNativeFunction(context, "@sulong_eh_getDestructor", "(POINTER):POINTER");
-        return new SulongGetDestructorNode(getDestructorFunction);
-    }
-
-    public SulongGetExceptionTypeNode createGetExceptionType(LLVMContext context) {
-        TruffleObject getExceptionTypeFunction = getNativeFunction(context, "@sulong_eh_getType", "(POINTER):POINTER");
-        return new SulongGetExceptionTypeNode(getExceptionTypeFunction);
-    }
-
-    public SulongDecrementHandlerCountNode createDecrementHandlerCount(LLVMContext context) {
-        TruffleObject decrementHandlerCountFunction = getNativeFunction(context, "@sulong_eh_decrementHandlerCount", "(POINTER):VOID");
-        return new SulongDecrementHandlerCountNode(decrementHandlerCountFunction);
-    }
-
-    public SulongIncrementHandlerCountNode createIncrementHandlerCount(LLVMContext context) {
-        TruffleObject incrementHandlerCountFunction = getNativeFunction(context, "@sulong_eh_incrementHandlerCount", "(POINTER):VOID");
-        return new SulongIncrementHandlerCountNode(incrementHandlerCountFunction);
-    }
-
-    public SulongGetHandlerCountNode createGetHandlerCount(LLVMContext context) {
-        TruffleObject getHandlerCountFunction = getNativeFunction(context, "@sulong_eh_getHandlerCount", "(POINTER):SINT32");
-        return new SulongGetHandlerCountNode(getHandlerCountFunction);
-    }
-
-    public SulongSetHandlerCountNode createSetHandlerCount(LLVMContext context) {
-        TruffleObject setHandlerCountFunction = getNativeFunction(context, "@sulong_eh_setHandlerCount", "(POINTER,SINT32):VOID");
-        return new SulongSetHandlerCountNode(setHandlerCountFunction);
     }
 
     protected abstract static class HeapFunctionNode extends Node {
@@ -143,47 +88,6 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static final class SulongIncrementHandlerCountNode extends HeapFunctionNode {
-        private SulongIncrementHandlerCountNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public void inc(LLVMAddress ptr) {
-            execute(ptr.getVal());
-        }
-    }
-
-    public static final class SulongDecrementHandlerCountNode extends HeapFunctionNode {
-        private SulongDecrementHandlerCountNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public void dec(LLVMAddress ptr) {
-            execute(ptr.getVal());
-        }
-    }
-
-    public static final class SulongGetHandlerCountNode extends HeapFunctionNode {
-
-        private SulongGetHandlerCountNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public int get(LLVMAddress ptr) {
-            return (int) execute(ptr.getVal());
-        }
-    }
-
-    public static final class SulongSetHandlerCountNode extends HeapFunctionNode {
-        private SulongSetHandlerCountNode(TruffleObject function) {
-            super(function, 2);
-        }
-
-        public void set(LLVMAddress ptr, int value) {
-            execute(ptr.getVal(), value);
-        }
-    }
-
     public static final class SulongFreeExceptionNode extends HeapFunctionNode {
         private SulongFreeExceptionNode(TruffleObject function) {
             super(function, 1);
@@ -191,113 +95,6 @@ public final class LLVMNativeFunctions {
 
         public void free(LLVMAddress ptr) {
             execute(ptr.getVal());
-        }
-    }
-
-    public static final class SulongGetDestructorNode extends HeapFunctionNode {
-        @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-        private SulongGetDestructorNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public LLVMAddress get(LLVMAddress ptr) {
-            try {
-                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, (TruffleObject) execute(ptr.getVal())));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-    }
-
-    public static final class SulongGetExceptionTypeNode extends HeapFunctionNode {
-        @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-        private SulongGetExceptionTypeNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public LLVMAddress get(LLVMAddress ptr) {
-            try {
-                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, (TruffleObject) execute(ptr.getVal())));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-    }
-
-    public static final class SulongGetUnwindHeaderNode extends HeapFunctionNode {
-
-        @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-        private SulongGetUnwindHeaderNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public LLVMAddress getUnwind(LLVMAddress ptr) {
-            try {
-                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, (TruffleObject) execute(ptr.getVal())));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-    }
-
-    public static final class SulongGetThrownObjectNode extends HeapFunctionNode {
-        @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-        private SulongGetThrownObjectNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public LLVMAddress getThrownObject(LLVMAddress ptr) {
-            try {
-                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, (TruffleObject) execute(ptr.getVal())));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-    }
-
-    public static final class SulongGetExceptionPointerNode extends HeapFunctionNode {
-        @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-        private SulongGetExceptionPointerNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public LLVMAddress getExceptionPointer(LLVMAddress ptr) {
-            try {
-                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, (TruffleObject) execute(ptr.getVal())));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
-        }
-    }
-
-    public static final class SulongCanCatchNode extends HeapFunctionNode {
-        private SulongCanCatchNode(TruffleObject function) {
-            super(function, 3);
-        }
-
-        public int canCatch(LLVMAddress adjustedPtr, LLVMAddress excpType, LLVMAddress catchType) {
-            return (int) execute(adjustedPtr.getVal(), excpType.getVal(), catchType.getVal());
-        }
-    }
-
-    public static final class SulongThrowNode extends HeapFunctionNode {
-        private SulongThrowNode(TruffleObject function) {
-            super(function, 5);
-        }
-
-        public void throvv(LLVMAddress ptr, LLVMAddress type, LLVMAddress destructor, LLVMAddress unexpectedHandler, LLVMAddress terminateHandler) {
-            execute(ptr.getVal(), type.getVal(), destructor == null ? 0 : destructor.getVal(), unexpectedHandler == null ? 0 : unexpectedHandler.getVal(),
-                            terminateHandler == null ? 0 : terminateHandler.getVal());
         }
     }
 
