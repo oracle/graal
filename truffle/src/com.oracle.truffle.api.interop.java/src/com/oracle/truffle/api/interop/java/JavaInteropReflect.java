@@ -136,23 +136,22 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaMethodDesc findMethod(JavaObject object, String name) {
+    static JavaMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
         if (TruffleOptions.AOT) {
             return null;
         }
 
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, object.isClass());
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
+        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
-            foundMethod = classDesc.lookupMethodByJNIName(name, object.isClass());
+            foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
         }
         return foundMethod;
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaFieldDesc findField(JavaObject receiver, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
-        final boolean onlyStatic = receiver.isClass();
+    static JavaFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
         return classDesc.lookupField(name, onlyStatic);
     }
 

@@ -426,10 +426,6 @@ final class JavaClassDesc {
         return getMembers().functionalMethod;
     }
 
-    public boolean implementsFunctionalInterface() {
-        return getFunctionalMethod() != null;
-    }
-
     @Override
     public String toString() {
         return "JavaClass[" + type.getCanonicalName() + "]";
