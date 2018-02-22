@@ -49,6 +49,7 @@ public final class SpecializationData extends TemplateMethod {
     private final NodeData node;
     private SpecializationKind kind;
     private final List<SpecializationThrowsData> exceptions;
+    private final boolean hasUnexpectedResultRewrite;
     private List<GuardExpression> guards = Collections.emptyList();
     private List<CacheExpression> caches = Collections.emptyList();
     private List<AssumptionExpression> assumptionExpressions = Collections.emptyList();
@@ -62,11 +63,12 @@ public final class SpecializationData extends TemplateMethod {
     private int index;
     private DSLExpression limitExpression;
 
-    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions) {
+    public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite) {
         super(template);
         this.node = node;
         this.kind = kind;
         this.exceptions = exceptions;
+        this.hasUnexpectedResultRewrite = hasUnexpectedResultRewrite;
         this.index = template.getNaturalOrder();
 
         for (SpecializationThrowsData exception : exceptions) {
@@ -203,7 +205,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind) {
-        this(node, template, kind, new ArrayList<SpecializationThrowsData>());
+        this(node, template, kind, new ArrayList<SpecializationThrowsData>(), false);
     }
 
     public Set<SpecializationData> getReplaces() {
@@ -329,6 +331,10 @@ public final class SpecializationData extends TemplateMethod {
 
     public List<SpecializationThrowsData> getExceptions() {
         return exceptions;
+    }
+
+    public boolean hasUnexpectedResultRewrite() {
+        return hasUnexpectedResultRewrite;
     }
 
     public List<GuardExpression> getGuards() {

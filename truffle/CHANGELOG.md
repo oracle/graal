@@ -8,6 +8,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated `SuspendedEvent.isHaltedBefore()`, [SuspendedEvent.getSuspendAnchor()](http://graalvm.github.io/graal/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getSuspendAnchor--) is to be used instead.
 * Added new interop message [REMOVE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#REMOVE) with the appropriate foreign access methods [ForeignAccess.sendRemove](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/ForeignAccess.html#sendRemove-com.oracle.truffle.api.nodes.Node-com.oracle.truffle.api.interop.TruffleObject-java.lang.Object-) and [KeyInfo.isRemovable flag](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/KeyInfo.html#isRemovable-int-).
 * Added [SourceFilter](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceFilter.html) for source-only based filtering in instrumentation.
+* Changed semantics of [UnexpectedResultException](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/UnexpectedResultException.html) when used in [Specialization#rewriteOn](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization.html#rewriteOn--) to indicate that a result is already available and no other specialization methods need to be invoked in Truffle DSL.
 
 ## Version 0.31
 
