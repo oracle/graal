@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,6 +56,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 @TypeSystemReference(LLVMTypes.class)
 @Instrumentable(factory = LLVMExpressionNodeWrapper.class)
 public abstract class LLVMExpressionNode extends LLVMNode {
+
+    public static final LLVMExpressionNode[] NO_EXPRESSIONS = {};
 
     public abstract Object executeGeneric(VirtualFrame frame);
 

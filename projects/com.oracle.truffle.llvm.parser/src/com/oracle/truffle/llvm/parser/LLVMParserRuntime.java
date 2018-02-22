@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -306,6 +306,11 @@ public final class LLVMParserRuntime {
     }
 
     private LLVMExpressionNode[] resolveStructor(GlobalValueSymbol globalVar, Comparator<Pair<Integer, ?>> priorityComparator) {
+        if (!(globalVar.getValue() instanceof ArrayConstant)) {
+            // array globals of length 0 may be initialized with scalar null
+            return LLVMExpressionNode.NO_EXPRESSIONS;
+        }
+
         final Object globalVariableDescriptor = scope.getGlobalVariable(globalVar.getName());
         final ArrayConstant arrayConstant = (ArrayConstant) globalVar.getValue();
         final int elemCount = arrayConstant.getElementCount();
