@@ -53,22 +53,88 @@ An SVM image can be built as a standalone executable or as a shared library. The
 
 For executables, SVM supports Java main methods with a signature that takes the command-line arguments as an array of strings:
 
-    public static void main(String[] arg) { /* ... */ }
+```java
+public static void main(String[] arg) { /* ... */ }
+```
 
 For shared libraries, SVM provides the `@CEntryPoint` annotation to specify entry point methods that should be exported and callable from C. Entry point methods must be static and may only have non-object parameters and return types – this includes Java primitives, but also Word types (including pointers). The first parameter of an entry point method has to be of type `IsolateThread` or `Isolate`. This parameter provides the current thread's execution context for the call. For example:
 
-    @CEntryPoint static int add(IsolateThread thread, int a, int b) {
-        return a + b;
-    }
+```java
+@CEntryPoint static int add(IsolateThread thread, int a, int b) {
+    return a + b;
+}
+```
 
 To initialize an isolate or attach a thread from C, the following API is available:
 
-    int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate);
-    int graal_attach_thread(graal_isolate_t* isolate, graal_isolatethread_t** thread);
-    graal_isolate_t* graal_current_isolate(graal_isolatethread_t* thread);
-    graal_isolatethread_t* graal_current_thread(graal_isolate_t* isolate);
-    int graal_detach_thread(graal_isolatethread_t* thread);
-    int graal_tear_down_isolate(graal_isolate_t* isolate);
+```c
+/*
+ * Structure representing an isolate. A pointer to such a structure can be
+ * passed to an entry point as the execution context.
+ */
+struct __graal_isolate_t;
+typedef struct _graal_isolate_t graal_isolate_t;
+
+/*
+ * Structure representing a thread that is attached to an isolate. A pointer to
+ * such a structure can be passed to an entry point as the execution context,
+ * requiring that the calling thread has been attached to that isolate.
+ */
+struct __graal_isolatethread_t;
+typedef struct __graal_isolatethread_t graal_isolatethread_t;
+
+/* Parameters for the creation of a new isolate. */
+struct __graal_create_isolate_params_t {
+    /* for future use */
+};
+typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
+
+/*
+ * Create a new isolate, considering the passed parameters (which may be NULL).
+ * Returns 0 on success, or a non-zero value on failure.
+ * On success, the current thread is attached to the created isolate, and the
+ * address of the isolate structure is written to the passed pointer.
+ */
+int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate);
+
+/*
+ * Attaches the current thread to the passed isolate.
+ * On failure, returns a non-zero value. On success, writes the address of the
+ * created isolate thread structure to the passed pointer and returns 0.
+ * If the thread has already been attached, the call succeeds and also provides
+ * the thread's isolate thread structure.
+ */
+int graal_attach_thread(graal_isolate_t* isolate, graal_isolatethread_t** thread);
+
+/*
+ * Returns the address of the current thread's associated isolate thread structure
+ * within the passed isolate. If the current thread is not attached to the passed
+ * isolate or if another error occurs, returns NULL.
+ */
+graal_isolatethread_t* graal_current_thread(graal_isolate_t* isolate);
+
+/*
+ * Determines the isolate to which the passed isolate thread belongs and returns
+ * the address of its isolate structure. If an error occurs, returns NULL instead.
+ */
+graal_isolate_t* graal_current_isolate(graal_isolatethread_t* thread);
+
+/*
+ * Detaches the passed isolate thread from its isolate and discards any state or
+ * context that is associated with it. At the time of the call, no code may still
+ * be executing in the isolate thread's context.
+ * Returns 0 on success, or a non-zero value on failure.
+ */
+int graal_detach_thread(graal_isolatethread_t* thread);
+
+/*
+ * Tears down the passed isolate, waiting for any attached threads to detach from
+ * it, then discards the isolate's objects, threads, and any other state or context
+ * that is associated with it.
+ * Returns 0 on success, or a non-zero value on failure.
+ */
+int graal_tear_down_isolate(graal_isolate_t* isolate);
+```
 
 Both executable images and shared library images can have an arbitrary number of entry points, for example to implement callbacks or APIs.
 
@@ -80,7 +146,7 @@ More information about options, and the important distinction of hosted vs. runt
 ## Using the Ideal Graph Visualizer (igv)
 
 Occasionally your image will fail to build because of some issue with Graal.  One can watch the transformations Graal makes during compilation with the Ideal Graph Visualizer:
-```
+```bash
 mx igv &
 ./native-image -no-server HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 ```
@@ -121,21 +187,21 @@ The Eclipse projects are configured with quite restrictive error rules and check
 The preconfigured rules have grown over time and proved to be useful - but when you bring convincing arguments they can be changed.  The configuration includes some magic comments which can be used to relax checking in particular regions of code.
 
 Source code formatting can be disabled with magic comments:
-```
+```java
 //@formatter:off
 
 //@formatter:on
 ```
 
 You can also disable comment-reformatting using
-```
+```java
 /*-
  *
  */
 ```
 
 The default checkstyle rules are defined in `src/com.oracle.svm.core/.checkstyle_checks.xml` and define various magic comments, including
-```
+```java
 //Checkstyle: stop method name check
 
 //Checkstyle: resume method name check
@@ -145,7 +211,9 @@ and analogously for other checks that can be disabled (including a general "stop
 If a project requires its own set of checkstyle rules, this can be specified in the mx/projects file by changing the value of the project's checkstyle attribute (which, by default, references com.oracle.svm.core).
 If specific files should be excluded from checkstyle, this can be done, but (apparently) only at whole-directory granularity. To do so, add a file
 
+```
 src/<project name>/.checkstyle.exclude
+```
 
 to the project. The format is one directory name per line, with directories named relative to the project root. Don't forget to 'git add' the file, since it will be ignored by default.
 
