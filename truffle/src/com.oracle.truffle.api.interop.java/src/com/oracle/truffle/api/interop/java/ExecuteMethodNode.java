@@ -227,6 +227,9 @@ abstract class ExecuteMethodNode extends Node {
                     if (other == selected) {
                         continue;
                     }
+                    if (other.isVarArgs() != varArgs) {
+                        continue;
+                    }
                     Class<?> paramType = getParameterType(other.getParameterTypes(), i, varArgs);
                     if (paramType == targetType) {
                         continue;
