@@ -35,14 +35,24 @@ These options enable additional checks in the generated executable. This helps w
 
 ### Garbage Collection Options
 
-* `-R:YoungGenerationSize=`
-  Set the size of the young generation (the amount of memory that can be allocated without triggering a GC in between). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling.
-* `-R:OldGenerationSize=`
-  Set the size of the old generation (the maximum heap size). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory.
+* `-Xmn=`
+  Set the size of the young generation (the amount of memory that can be allocated without triggering a GC). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling.
+* `-Xmx=`
+  Set the maximum heap size in bytes. Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory.
+* `-Xms=`
+  Set the minimum heap size in bytes. Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. Heap space that is unused will be retained for future heap usage, rather than being returned to the operating system.
 * `-R:[+|-]PrintGC`
   Print summary GC information after each collection.
 * `-R:[+|-]VerboseGC`
-  Print more information about the heap before and after each collection.
+  Print more information about the heap before and after each
+  collection.
+* Deprecated Garbage Collection options:
+    * `-R:YoungGenerationSize=`
+  Set the size of the young generation (the amount of memory that can be allocated without triggering a GC in between). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. 
+  Replaced by `-Xmn`.
+    * `-R:OldGenerationSize=`
+  Set the size of the old generation (the maximum heap size). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory.
+  Replaced by `-Xmx`.
 
 
 ### Control the main entry points

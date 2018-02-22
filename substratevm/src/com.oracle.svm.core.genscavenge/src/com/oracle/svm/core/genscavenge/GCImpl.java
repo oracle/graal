@@ -155,7 +155,7 @@ public class GCImpl implements GC {
         this.greyToBlackObjectVisitor = GreyToBlackObjectVisitor.factory(greyToBlackObjRefVisitor);
         this.alwaysCompletelyInstance = new CollectionPolicy.OnlyCompletely();
         this.collectionInProgress = Latch.factory("Collection in progress");
-        this.oldGenerationSizeExceeded = new OutOfMemoryError("Old generation size exceeded.");
+        this.oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
         this.unpinnedObjectReferenceWalkerException = new UnpinnedObjectReferenceWalkerException();
         this.gcManagementFactory = new GarbageCollectorManagementFactory();
 
