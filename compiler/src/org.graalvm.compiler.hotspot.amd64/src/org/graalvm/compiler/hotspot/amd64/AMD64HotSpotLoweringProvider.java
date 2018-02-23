@@ -24,8 +24,10 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import static org.graalvm.compiler.hotspot.HotSpotBackend.Options.GraalArithmeticStubs;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_COS_STUB;
+import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_EXP_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG10_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_LOG_STUB;
+import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_POW_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_SIN_STUB;
 import static org.graalvm.compiler.hotspot.amd64.AMD64HotSpotForeignCallsProvider.ARITHMETIC_TAN_STUB;
 
@@ -96,9 +98,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                 case TAN:
                     return ARITHMETIC_TAN_STUB;
                 case EXP:
-                    // GR-8276
-                    // return ARITHMETIC_EXP_STUB;
-                    return operation.foreignCallDescriptor;
+                    return ARITHMETIC_EXP_STUB;
             }
         } else if (operation == UnaryOperation.EXP) {
             return operation.foreignCallDescriptor;
@@ -112,9 +112,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
         if (GraalArithmeticStubs.getValue(runtime.getOptions())) {
             switch (operation) {
                 case POW:
-                    // GR-8276
-                    // return ARITHMETIC_POW_STUB;
-                    return operation.foreignCallDescriptor;
+                    return ARITHMETIC_POW_STUB;
             }
         } else if (operation == BinaryOperation.POW) {
             return operation.foreignCallDescriptor;
