@@ -263,6 +263,20 @@ public abstract class LoopFragment {
             this.usages = n.usages().iterator();
             this.isLoopNode = loopNodes.isMarked(n);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof WorkListEntry)) {
+                return false;
+            }
+            WorkListEntry other = (WorkListEntry) obj;
+            return this.n == other.n;
+        }
+
+        @Override
+        public int hashCode() {
+            return n.hashCode();
+        }
     }
 
     static TriState isLoopNode(Node n, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
@@ -293,11 +307,17 @@ public abstract class LoopFragment {
         return TriState.UNKNOWN;
     }
 
+    private static void pushWorkList(Deque<WorkListEntry> workList, Node node, NodeBitMap loopNodes) {
+        WorkListEntry entry = new WorkListEntry(node, loopNodes);
+        assert !workList.contains(entry) : "node " + node + " added to worklist twice";
+        workList.push(entry);
+    }
+
     private static void markFloating(Deque<WorkListEntry> workList, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (isLoopNode(start, loopNodes, nonLoopNodes).isKnown()) {
             return;
         }
-        workList.push(new WorkListEntry(start, loopNodes));
+        pushWorkList(workList, start, loopNodes);
         while (!workList.isEmpty()) {
             WorkListEntry currentEntry = workList.peek();
             if (currentEntry.usages.hasNext()) {
@@ -308,7 +328,7 @@ public abstract class LoopFragment {
                         currentEntry.isLoopNode = true;
                     }
                 } else {
-                    workList.push(new WorkListEntry(current, loopNodes));
+                    pushWorkList(workList, current, loopNodes);
                 }
             } else {
                 workList.pop();
