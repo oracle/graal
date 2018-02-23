@@ -366,15 +366,22 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         prefix = "Bootstrapping " if self._allow_bootstrapping() else "Skip bootstrapping "
         return prefix + self.subject.name
 
-    def build(self):
+    def _shouldRebuildNativeImage(self):
         # Only bootstrap native-image for the most-specific svm_suite
         if not self._allow_bootstrapping():
-            return
+            return False, 'Skip bootstrapping'
 
         # Only bootstrap if it doesn't already exist
         symlink_path = native_image_symlink_path(self.subject.native_image_root)
         if exists(symlink_path):
             mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
+            return False, 'Already bootstrapped'
+
+        return True, ''
+
+    def build(self):
+        shouldRebuild = self._shouldRebuildNativeImage()[0]
+        if not shouldRebuild:
             return
 
         bootstrap_native_image(
@@ -395,15 +402,9 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
 
     def needsBuild(self, newestInput):
-        # Only bootstrap native-image for the most-specific svm_suite
-        if not self._allow_bootstrapping():
-            return False, 'Skip bootstrapping'
-
-        # Only bootstrap if it doesn't already exist
-        symlink_path = native_image_symlink_path(self.subject.native_image_root)
-        if exists(symlink_path):
-            mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
-            return False, 'Already bootstrapped'
+        shouldRebuild, reason = self._shouldRebuildNativeImage()
+        if not shouldRebuild:
+            return False, reason
 
         witness = self.newestOutput()
         if not self._newestOutput or witness.isNewerThan(self._newestOutput):
