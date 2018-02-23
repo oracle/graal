@@ -203,7 +203,7 @@ public class AMD64Assembler extends Assembler {
     }
 
     private static class VexOpcode {
-        // private static final int VEX_OPCODE_NONE = 0x0;
+        private static final int VEX_OPCODE_NONE = 0x0;
         private static final int VEX_OPCODE_0F = 0x1;
         private static final int VEX_OPCODE_0F_38 = 0x2;
         private static final int VEX_OPCODE_0F_3A = 0x3;
@@ -216,21 +216,21 @@ public class AMD64Assembler extends Assembler {
         public static final int AVX_NoVec = 0x4;
     }
 
-    private static class EvexTupleType {
+    public static class EvexTupleType {
         public static final int EVEX_FV = 0;
-        // public static final int EVEX_HV = 4;
+        public static final int EVEX_HV = 4;
         public static final int EVEX_FVM = 6;
-        // public static final int EVEX_T1S = 7;
-        // public static final int EVEX_T1F = 11;
-        // public static final int EVEX_T2 = 13;
-        // public static final int EVEX_T4 = 15;
-        // public static final int EVEX_T8 = 17;
+        public static final int EVEX_T1S = 7;
+        public static final int EVEX_T1F = 11;
+        public static final int EVEX_T2 = 13;
+        public static final int EVEX_T4 = 15;
+        public static final int EVEX_T8 = 17;
         public static final int EVEX_HVM = 18;
-        // public static final int EVEX_QVM = 19;
-        // public static final int EVEX_OVM = 20;
-        // public static final int EVEX_M128 = 21;
-        // public static final int EVEX_DUP = 22;
-        // public static final int EVEX_ETUP = 23;
+        public static final int EVEX_QVM = 19;
+        public static final int EVEX_OVM = 20;
+        public static final int EVEX_M128 = 21;
+        public static final int EVEX_DUP = 22;
+        public static final int EVEX_ETUP = 23;
     }
 
     public static class EvexInputSizeInBits {
@@ -901,6 +901,7 @@ public class AMD64Assembler extends Assembler {
                         opc = VexOpcode.VEX_OPCODE_0F_3A;
                         break;
                     default:
+                        opc = VexOpcode.VEX_OPCODE_NONE;
                         isSimd = false;
                         break;
                 }
