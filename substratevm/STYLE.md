@@ -4,7 +4,7 @@
 
 The IDE projects generated with `mx ideinit` are configured with strict formatting rules. In Eclipse, when a file is saved, it is automatically formatted according to these rules.
 
-The rule set has grown over time and proved to be useful, but rules are open for discussion. The configuration includes special comments which can be used to relax checks in particular regions of code.
+The rule set has grown over time and proved to be useful, but the rules are open for discussion. The configuration includes special comments which can be used to relax checks in particular regions of code.
 
 Source code formatting can be disabled with special comments:
 ```java

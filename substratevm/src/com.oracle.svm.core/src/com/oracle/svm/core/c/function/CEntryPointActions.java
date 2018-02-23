@@ -142,7 +142,7 @@ public final class CEntryPointActions {
      * for situations in which recovery is not possible, or in which reporting a severe error in any
      * other way is not possible. This method does not return.
      * 
-     * @param code An integer representing at the cause (should be non-zero by convention).
+     * @param code An integer representing the cause (should be non-zero by convention).
      * @param message A message describing the cause (may be omitted by passing
      *            {@link Word#nullPointer() null}).
      */

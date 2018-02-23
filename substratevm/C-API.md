@@ -1,6 +1,6 @@
 # Substrate VM C API
 
-Substrate VM provides an API for the C language for initializing isolates and attaching threads, complementing the entry point feature that is demonstrated in the [README](README.md). The C API is available when Substrate VM is built as a shared library and is included in the header file that is generated during the build:
+Substrate VM provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated in the [README](README.md). The C API is available when Substrate VM is built as a shared library and its declarations are included in the header file that is generated during the build:
 
 ```c
 /*
@@ -42,15 +42,16 @@ int graal_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t*
 int graal_attach_thread(graal_isolate_t* isolate, graal_isolatethread_t** thread);
 
 /*
- * Returns the address of the current thread's associated isolate thread structure
- * within the passed isolate. If the current thread is not attached to the passed
- * isolate or if another error occurs, returns NULL.
+ * Given an isolate to which the current thread is attached, returns the address of
+ * the thread's associated isolate thread structure.  If the current thread is not
+ * attached to the passed isolate or if another error occurs, returns NULL.
  */
 graal_isolatethread_t* graal_current_thread(graal_isolate_t* isolate);
 
 /*
- * Determines the isolate to which the passed isolate thread belongs and returns
- * the address of its isolate structure. If an error occurs, returns NULL instead.
+ * Given an isolate thread structure for the current thread, determines to which
+ * isolate it belongs and returns the address of its isolate structure.  If an
+ * error occurs, returns NULL instead.
  */
 graal_isolate_t* graal_current_isolate(graal_isolatethread_t* thread);
 

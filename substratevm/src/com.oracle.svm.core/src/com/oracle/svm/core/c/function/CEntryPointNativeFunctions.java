@@ -93,9 +93,9 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "current_thread", documentation = {
-                    "Returns the address of the current thread's associated isolate thread structure",
-                    "within the passed isolate. If the current thread is not attached to the passed",
-                    "isolate or if another error occurs, returns NULL."})
+                    "Given an isolate to which the current thread is attached, returns the address of",
+                    "the thread's associated isolate thread structure.  If the current thread is not",
+                    "attached to the passed isolate or if another error occurs, returns NULL."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static IsolateThread getCurrentThread(Isolate isolate) {
         int result = CEntryPointActions.enterIsolate(isolate);
@@ -111,8 +111,9 @@ public final class CEntryPointNativeFunctions {
 
     @Uninterruptible(reason = UNINTERRUPTIBLE_REASON)
     @CEntryPoint(name = "current_isolate", documentation = {
-                    "Determines the isolate to which the passed isolate thread belongs and returns",
-                    "the address of its isolate structure. If an error occurs, returns NULL instead."})
+                    "Given an isolate thread structure for the current thread, determines to which",
+                    "isolate it belongs and returns the address of its isolate structure.  If an",
+                    "error occurs, returns NULL instead."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static Isolate getCurrentIsolate(IsolateThread thread) {
         int result = CEntryPointActions.enter(thread);
