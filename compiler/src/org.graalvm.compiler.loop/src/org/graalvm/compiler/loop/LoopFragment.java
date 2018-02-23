@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -208,6 +209,12 @@ public abstract class LoopFragment {
                     NodeWithState withState = (NodeWithState) n;
                     withState.states().forEach(state -> state.applyToVirtual(node -> nodes.mark(node)));
                 }
+                if (n instanceof AbstractMergeNode) {
+                    // if a merge is in the loop, all of its phis are also in the loop
+                    for (PhiNode phi : ((AbstractMergeNode) n).phis()) {
+                        nodes.mark(phi);
+                    }
+                }
                 nodes.mark(n);
             }
         }
@@ -245,6 +252,17 @@ public abstract class LoopFragment {
                 }
                 if (n instanceof MonitorEnterNode) {
                     markFloating(worklist, ((MonitorEnterNode) n).getMonitorId(), nodes, nonLoopNodes);
+                }
+                if (n instanceof AbstractMergeNode) {
+                    /*
+                     * Since we already marked all phi nodes as being in the loop to break cycles,
+                     * we also have to iterate over their usages here.
+                     */
+                    for (PhiNode phi : ((AbstractMergeNode) n).phis()) {
+                        for (Node usage : phi.usages()) {
+                            markFloating(worklist, usage, nodes, nonLoopNodes);
+                        }
+                    }
                 }
                 for (Node usage : n.usages()) {
                     markFloating(worklist, usage, nodes, nonLoopNodes);
@@ -286,23 +304,9 @@ public abstract class LoopFragment {
         if (nonLoopNodes.isMarked(n)) {
             return TriState.FALSE;
         }
-        if (n instanceof FixedNode) {
+        if (n instanceof FixedNode || n instanceof PhiNode) {
+            // phi nodes are treated the same as fixed nodes in this algorithm to break cycles
             return TriState.FALSE;
-        }
-        boolean mark = false;
-        if (n instanceof PhiNode) {
-            PhiNode phi = (PhiNode) n;
-            mark = loopNodes.isMarked(phi.merge());
-            if (mark) {
-                /*
-                 * This Phi is a loop node but the inputs might not be so they must be processed by
-                 * the caller.
-                 */
-                loopNodes.mark(n);
-            } else {
-                nonLoopNodes.mark(n);
-                return TriState.FALSE;
-            }
         }
         return TriState.UNKNOWN;
     }
