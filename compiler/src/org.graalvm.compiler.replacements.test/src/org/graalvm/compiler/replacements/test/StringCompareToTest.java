@@ -25,6 +25,7 @@ package org.graalvm.compiler.replacements.test;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -49,10 +50,7 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     };
 
     public StringCompareToTest() {
-        if (Java8OrEarlier) {
-            // This test is disabled in 1.8
-            return;
-        }
+        Assume.assumeFalse(Java8OrEarlier);
 
         realMethod = getResolvedJavaMethod(String.class, "compareTo", String.class);
         testMethod = getResolvedJavaMethod("stringCompareTo");
@@ -70,10 +68,7 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     private void executeStringCompareTo(String s0, String s1) {
-        if (Java8OrEarlier) {
-            // This test is disabled in 1.8
-            return;
-        }
+        Assume.assumeFalse(Java8OrEarlier);
 
         Object expected = invokeSafe(realMethod, s0, s1);
         // Verify that the original method and the substitution produce the same value
