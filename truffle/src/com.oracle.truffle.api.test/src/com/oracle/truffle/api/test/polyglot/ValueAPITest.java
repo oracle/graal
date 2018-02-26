@@ -66,7 +66,6 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -104,11 +103,12 @@ public class ValueAPITest {
                     "", 'a', "a", "foo",
     };
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testString() {
         for (Object string : STRINGS) {
             assertValue(context, context.asValue(string), STRING);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
+            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> string), STRING, PROXY_OBJECT);
         }
     }
 
@@ -121,11 +121,12 @@ public class ValueAPITest {
                     0d, 0.24d, -0d, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.MIN_NORMAL,
     };
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testNumbers() {
         for (Object number : NUMBERS) {
             assertValue(context, context.asValue(number), NUMBER);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
+            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> number), NUMBER, PROXY_OBJECT);
         }
     }
 
@@ -133,11 +134,12 @@ public class ValueAPITest {
                     false, true,
     };
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testBooleans() {
         for (Object bool : BOOLEANS) {
             assertValue(context, context.asValue(bool), BOOLEAN);
-            assertValue(context, context.asValue((ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
+            assertValue(context, context.asValue((org.graalvm.polyglot.proxy.ProxyPrimitive) () -> bool), BOOLEAN, PROXY_OBJECT);
         }
     }
 
@@ -934,8 +936,7 @@ public class ValueAPITest {
                         "Invalid array index 1 for array '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> v.removeArrayElement(0), UnsupportedOperationException.class,
                         "Unsupported operation Value.removeArrayElement(long, Object) for '[asdf]'(language: Java, type: java.lang.String[]).");
-        assertFails(() -> v.removeMember("a"), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for '[asdf]'(language: Java, type: java.lang.String[]).");
+        assertFalse(v.removeMember("a"));
 
         List<Object> list = v.as(List.class);
         assertFails(() -> list.get(1), IndexOutOfBoundsException.class,
@@ -973,8 +974,7 @@ public class ValueAPITest {
         Value rv = context.asValue(new ArrayList<>(Arrays.asList(new String[]{"a", "b", "c"})));
         assertFails(() -> rv.removeArrayElement(3), IndexOutOfBoundsException.class,
                         "Invalid array index 3 for array '[a, b, c]'(language: Java, type: java.util.ArrayList).");
-        assertFails(() -> rv.removeMember("a"), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for '[a, b, c]'(language: Java, type: java.util.ArrayList).");
+        assertFalse(v.removeMember("a"));
     }
 
     private static final TypeLiteral<Map<String, String>> STRING_MAP = new TypeLiteral<Map<String, String>>() {
@@ -1022,10 +1022,9 @@ public class ValueAPITest {
         assertFails(() -> v.putMember("notAMember", ""), IllegalArgumentException.class,
                         "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
-        assertFails(() -> v.getMember("notAMember"), IllegalArgumentException.class,
-                        "Invalid member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
-        assertFails(() -> v.removeMember("notAMember"), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+        assertNull(v.getMember("notAMember"));
+
+        assertFalse(v.removeMember("notAMember"));
 
         @SuppressWarnings("unchecked")
         Map<Object, Object> map = v.as(Map.class);
@@ -1059,8 +1058,7 @@ public class ValueAPITest {
         Map<Object, Object> rmap = new HashMap<>();
         rmap.put("value", 43);
         Value rv = context.asValue(rmap);
-        assertFails(() -> rv.removeMember("notAMember"), IllegalArgumentException.class,
-                        "Invalid member key 'notAMember' for object '{value=43}'(language: Java, type: java.util.HashMap).");
+        assertFalse(rv.removeMember("notAMember"));
     }
 
     @FunctionalInterface
@@ -1177,6 +1175,36 @@ public class ValueAPITest {
                 throw f;
             }
         }
+    }
+
+    @Test
+    public void testList() {
+        List<String> list = new ArrayList<>();
+        list.add("foo");
+        list.add("bar");
+        Value v = context.asValue(list);
+
+        assertTrue(v.hasArrayElements());
+        assertTrue(v.hasMembers());
+        assertEquals("foo", v.getArrayElement(0).asString());
+        assertEquals("bar", v.getArrayElement(1).asString());
+
+        ValueAssert.assertFails(() -> v.getArrayElement(2), ArrayIndexOutOfBoundsException.class);
+        // append to the list
+        v.setArrayElement(2, "baz");
+        assertEquals("foo", v.getArrayElement(0).asString());
+        assertEquals("bar", v.getArrayElement(1).asString());
+        assertEquals("baz", v.getArrayElement(2).asString());
+
+        assertTrue(v.removeArrayElement(1));
+        assertEquals("foo", v.getArrayElement(0).asString());
+        assertEquals("baz", v.getArrayElement(1).asString());
+
+        assertTrue(v.removeArrayElement(0));
+        assertEquals("baz", v.getArrayElement(0).asString());
+
+        assertTrue(v.removeArrayElement(0));
+        assertTrue(v.getArraySize() == 0);
     }
 
 }
