@@ -172,29 +172,22 @@ final class JavaInteropReflect {
         return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
     }
 
-    static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
-        if (!functionalType.isInterface()) {
+    static Method functionalInterfaceMethod(Class<?> functionalInterface) {
+        if (!functionalInterface.isInterface()) {
             return null;
         }
-        final Method[] arr = functionalType.getMethods();
-        if (arr.length == 1) {
-            return arr[0];
+        final Method[] methods = functionalInterface.getMethods();
+        if (methods.length == 1) {
+            return methods[0];
         }
         Method found = null;
-        for (Method m : arr) {
-            if ((m.getModifiers() & Modifier.ABSTRACT) == 0) {
-                continue;
+        for (Method m : methods) {
+            if (Modifier.isAbstract(m.getModifiers()) && !JavaClassDesc.isObjectMethodOverride(m)) {
+                if (found != null) {
+                    return null;
+                }
+                found = m;
             }
-            try {
-                Object.class.getMethod(m.getName(), m.getParameterTypes());
-                continue;
-            } catch (NoSuchMethodException ex) {
-                // OK, not an object method
-            }
-            if (found != null) {
-                return null;
-            }
-            found = m;
         }
         return found;
     }

@@ -105,7 +105,7 @@ public class SLJavaInteropTest {
     }
 
     @FunctionalInterface
-    interface PassInValues {
+    public interface PassInValues {
         void call(Object a, Object b);
     }
 
@@ -354,33 +354,33 @@ public class SLJavaInteropTest {
     }
 
     @FunctionalInterface
-    interface Values {
+    public interface Values {
         Sum values(Sum sum, String key, int value);
     }
 
     @FunctionalInterface
-    interface ValuesRaw {
+    public interface ValuesRaw {
         Object values(Object sum, String key, int value);
     }
 
-    interface DoSums {
+    public interface DoSums {
         Object doSum1(Sum sum, String key, int value);
 
         Sum doSum2(Sum sum, String key, Integer value);
     }
 
     @FunctionalInterface
-    interface PassInArray {
+    public interface PassInArray {
         void call(Object[] arr);
     }
 
     @FunctionalInterface
-    interface PassInVarArg {
+    public interface PassInVarArg {
         void call(Object... arr);
     }
 
     @FunctionalInterface
-    interface PassInArgAndVarArg {
+    public interface PassInArgAndVarArg {
         void call(Object first, Object... arr);
     }
 

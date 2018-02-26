@@ -136,6 +136,7 @@ public class JavaFunctionTest {
         }
     }
 
+    @FunctionalInterface
     public interface Hashable {
         @Override
         int hashCode();
