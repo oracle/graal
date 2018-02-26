@@ -1130,7 +1130,7 @@ public final class ProbeNode extends Node {
         private void verifyIndex(int inputIndex) {
             if (inputIndex >= inputCount || inputIndex < 0) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalArgumentException("Invalid input input index.");
+                throw new IllegalArgumentException("Invalid input index.");
             }
         }
 
