@@ -133,6 +133,7 @@ public class InitializationTest {
     @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
     public static final class TestLanguage extends AbstractLanguage {
 
+        @SuppressWarnings("deprecation")
         @Override
         protected MyEnv createContext(Env env) {
             assertNull("Not defined symbol", env.importSymbol("unknown"));
@@ -149,11 +150,6 @@ public class InitializationTest {
         @Override
         protected CallTarget parse(ParsingRequest env) {
             return Truffle.getRuntime().createCallTarget(new MMRootNode(this, env.getSource().createSection(1)));
-        }
-
-        @Override
-        protected Object getLanguageGlobal(MyEnv context) {
-            throw new UnsupportedOperationException();
         }
 
         @Override

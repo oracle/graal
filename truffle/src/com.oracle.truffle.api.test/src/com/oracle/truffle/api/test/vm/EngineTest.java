@@ -549,11 +549,6 @@ public class EngineTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(CachingLanguageChannel context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
@@ -653,41 +648,6 @@ public class EngineTest {
 
         channel.language.forkSupported = false;
         channel.fork();
-    }
-
-    @Test
-    public void forkedSymbolsNotSharedButCopied() throws Exception {
-        final Builder builder = createBuilderInternal();
-        ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
-        builder.config(ForkingLanguage.MIME_TYPE, "channel", channel);
-        PolyglotEngine vm = register(builder.build());
-        channel.symbols.put("sym1", "symvalue1");
-        vm.getLanguages().get(ForkingLanguage.MIME_TYPE).getGlobalObject(); // initialize language
-
-        assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
-
-        PolyglotEngine fork = channel.fork();
-
-        assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
-        assertEquals("symvalue1", fork.findGlobalSymbol("sym1").as(String.class));
-
-        final ForkingLanguageChannel forkChannel = channel.forks.get(0);
-        forkChannel.symbols.put("sym2", "symvalue2");
-
-        assertNull(vm.findGlobalSymbol("sym2"));
-        assertEquals("symvalue2", fork.findGlobalSymbol("sym2").as(String.class));
-
-        channel.symbols.put("sym2", "symvalue3");
-
-        assertEquals("symvalue3", vm.findGlobalSymbol("sym2").as(String.class));
-        assertEquals("symvalue2", fork.findGlobalSymbol("sym2").as(String.class));
-
-        assertEquals("symvalue1", vm.findGlobalSymbol("sym1").as(String.class));
-        assertEquals("symvalue1", fork.findGlobalSymbol("sym1").as(String.class));
-
-        PolyglotEngine forkfork = forkChannel.fork();
-        assertEquals("symvalue1", forkfork.findGlobalSymbol("sym1").as(String.class));
-        assertEquals("symvalue2", forkfork.findGlobalSymbol("sym2").as(String.class));
     }
 
     @Test
@@ -850,9 +810,13 @@ public class EngineTest {
             constructorInvocationCount++;
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected ForkingLanguageChannel createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             ForkingLanguageChannel channel = (ForkingLanguageChannel) env.getConfig().get("channel");
+            for (String key : channel.symbols.keySet()) {
+                env.exportSymbol(key, channel.symbols.get(key));
+            }
             if (channel.toFork != null) {
                 ForkingLanguageChannel forking = channel.toFork;
                 channel.toFork = null;
@@ -912,7 +876,6 @@ public class EngineTest {
                         assertEquals(prevForkContextCount + 1, forkContextCount);
                         ForkingLanguageChannel forkedContext = eng.findGlobalSymbol("thisContext").as(ForkingLanguageChannel.class);
                         getContextReference().get().languageForks.add(forkedContext);
-                        assertEquals(getContextReference().get(), forkedContext.parent);
                     }
 
                     int prevForkContextCount = forkContextCount;
@@ -928,11 +891,7 @@ public class EngineTest {
             });
         }
 
-        @Override
-        protected Object findExportedSymbol(ForkingLanguageChannel context, String globalName, boolean onlyExplicit) {
-            return context.symbols.get(globalName);
-        }
-
+        @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(ForkingLanguageChannel context) {
             return context.globalObject;
