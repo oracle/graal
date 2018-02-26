@@ -133,7 +133,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupMethod = insert(LookupMethodNode.create());
             }
-            return lookupMethod.execute(object.clazz, name, object.isClass());
+            return lookupMethod.execute(object.getLookupClass(), name, object.isClass());
         }
 
         private Object executeMethod(JavaMethodDesc foundMethod, JavaObject object, Object[] args) {
@@ -157,7 +157,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupField = insert(LookupFieldNode.create());
             }
-            return lookupField.execute(object.clazz, name, object.isClass());
+            return lookupField.execute(object.getLookupClass(), name, object.isClass());
         }
 
         private Object readField(JavaFieldDesc field, JavaObject object) {
@@ -185,7 +185,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupConstructor = insert(LookupConstructorNode.create());
             }
-            return lookupConstructor.execute(receiver.clazz);
+            return lookupConstructor.execute(receiver.getLookupClass());
         }
     }
 
@@ -202,7 +202,7 @@ class JavaObjectMessageResolution {
             }
 
             if (receiver.isClass()) {
-                if (receiver.getClazz().isArray()) {
+                if (receiver.getLookupClass().isArray()) {
                     return newArray(receiver, args);
                 }
 
@@ -233,7 +233,7 @@ class JavaObjectMessageResolution {
                 // conversion failed by ToJavaNode
                 throw UnsupportedTypeException.raise(e, args);
             }
-            return JavaInterop.asTruffleObject(Array.newInstance(receiver.getClazz().getComponentType(), length), receiver.languageContext);
+            return JavaInterop.asTruffleObject(Array.newInstance(receiver.getLookupClass().getComponentType(), length), receiver.languageContext);
         }
 
         private JavaMethodDesc lookupConstructor(JavaObject receiver) {
@@ -241,7 +241,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupConstructor = insert(LookupConstructorNode.create());
             }
-            return lookupConstructor.execute(receiver.clazz);
+            return lookupConstructor.execute(receiver.getLookupClass());
         }
     }
 
@@ -328,7 +328,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupField = insert(LookupFieldNode.create());
             }
-            return lookupField.execute(object.clazz, name, object.isClass());
+            return lookupField.execute(object.getLookupClass(), name, object.isClass());
         }
 
         private JavaMethodDesc lookupMethod(JavaObject object, String name) {
@@ -336,7 +336,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupMethod = insert(LookupMethodNode.create());
             }
-            return lookupMethod.execute(object.clazz, name, object.isClass());
+            return lookupMethod.execute(object.getLookupClass(), name, object.isClass());
         }
 
         private Class<?> lookupInnerClass(JavaObject object, String name) {
@@ -344,7 +344,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupInnerClass = insert(LookupInnerClassNode.create());
             }
-            return lookupInnerClass.execute(object.clazz, name);
+            return lookupInnerClass.execute(object.getLookupClass(), name);
         }
     }
 
@@ -389,7 +389,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupField = insert(LookupFieldNode.create());
             }
-            return lookupField.execute(object.clazz, name, object.isClass());
+            return lookupField.execute(object.getLookupClass(), name, object.isClass());
         }
 
         private void writeField(JavaFieldDesc field, JavaObject object, Object value) {
@@ -435,7 +435,7 @@ class JavaObjectMessageResolution {
     abstract static class PropertiesNode extends Node {
         @TruffleBoundary
         public Object access(JavaObject receiver, boolean includeInternal) {
-            String[] fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.clazz, !receiver.isClass(), includeInternal);
+            String[] fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), !receiver.isClass(), includeInternal);
             return JavaInterop.asTruffleObject(fields);
         }
     }
@@ -502,7 +502,7 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 return false;
             }
-            return receiver.obj != null && lookupFunctionalInterfaceMethod(receiver) != null;
+            return receiver.obj != null && !receiver.isClass() && lookupFunctionalInterfaceMethod(receiver) != null;
         }
 
         private JavaMethodDesc lookupFunctionalInterfaceMethod(JavaObject receiver) {
@@ -510,7 +510,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupMethod = insert(LookupFunctionalMethodNode.create());
             }
-            return lookupMethod.execute(receiver.clazz);
+            return lookupMethod.execute(receiver.getLookupClass());
         }
     }
 
@@ -524,8 +524,7 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 throw UnsupportedMessageException.raise(EXECUTE);
             }
-            if (receiver.obj != null) {
-                assert !receiver.isClass();
+            if (receiver.obj != null && !receiver.isClass()) {
                 JavaMethodDesc method = lookupFunctionalInterfaceMethod(receiver);
                 if (method != null) {
                     if (doExecute == null) {
@@ -543,7 +542,7 @@ class JavaObjectMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 lookupMethod = insert(LookupFunctionalMethodNode.create());
             }
-            return lookupMethod.execute(receiver.clazz);
+            return lookupMethod.execute(receiver.getLookupClass());
         }
     }
 }

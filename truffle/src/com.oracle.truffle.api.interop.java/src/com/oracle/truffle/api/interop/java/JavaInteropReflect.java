@@ -80,19 +80,19 @@ final class JavaInteropReflect {
     }
 
     static boolean isField(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
         final boolean onlyStatic = object.isClass();
         return classDesc.lookupField(name, onlyStatic) != null;
     }
 
     static boolean isMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
         final boolean onlyStatic = object.isClass();
         return classDesc.lookupMethod(name, onlyStatic) != null;
     }
 
     static boolean isInternalMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
         final boolean onlyStatic = object.isClass();
         JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
         return method != null && method.isInternal();
@@ -104,7 +104,7 @@ final class JavaInteropReflect {
             // no support for non-static members now
             return false;
         }
-        Class<?> clazz = object.clazz;
+        Class<?> clazz = object.getLookupClass();
         if (Modifier.isPublic(clazz.getModifiers())) {
             for (Class<?> t : clazz.getClasses()) {
                 if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {

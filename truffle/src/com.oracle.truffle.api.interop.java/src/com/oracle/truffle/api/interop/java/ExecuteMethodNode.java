@@ -241,7 +241,7 @@ abstract class ExecuteMethodNode extends Node {
 
                 argType = new PrimitiveType(currentTargetType, otherPossibleTypes.toArray(EMPTY_CLASS_ARRAY));
             } else if (arg instanceof JavaObject) {
-                argType = new JavaObjectType(((JavaObject) arg).clazz);
+                argType = new JavaObjectType(((JavaObject) arg).getObjectClass());
             } else {
                 argType = arg.getClass();
             }
@@ -273,7 +273,7 @@ abstract class ExecuteMethodNode extends Node {
                         return false;
                     }
                 } else if (argType instanceof JavaObjectType) {
-                    if (!(arg instanceof JavaObject && ((JavaObject) arg).clazz == ((JavaObjectType) argType).clazz)) {
+                    if (!(arg instanceof JavaObject && ((JavaObject) arg).getObjectClass() == ((JavaObjectType) argType).clazz)) {
                         return false;
                     }
                 } else if (argType instanceof PrimitiveType) {

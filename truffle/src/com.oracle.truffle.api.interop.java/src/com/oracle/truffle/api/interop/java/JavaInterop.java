@@ -176,7 +176,7 @@ public final class JavaInterop {
      */
     public static Object asJavaObject(TruffleObject foreignObject) {
         JavaObject javaObject = (JavaObject) foreignObject;
-        return javaObject.isClass() ? javaObject.clazz : javaObject.obj;
+        return javaObject.obj;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -450,10 +450,10 @@ public final class JavaInterop {
     public static TruffleObject toJavaClass(TruffleObject obj) {
         if (obj instanceof JavaObject) {
             JavaObject receiver = (JavaObject) obj;
-            if (receiver.isClass()) {
-                return JavaObject.forClass(Class.class, receiver.languageContext);
+            if (receiver.obj == null) {
+                return JavaObject.NULL;
             } else {
-                return JavaObject.forClass(receiver.clazz, receiver.languageContext);
+                return JavaObject.forClass(receiver.obj.getClass(), receiver.languageContext);
             }
         } else {
             return null;
