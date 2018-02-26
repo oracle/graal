@@ -1526,7 +1526,7 @@ final class InstrumentationHandler {
         public <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources) {
             verifySourceOnly(filter);
             verifyFilter(filter);
-            return InstrumentationHandler.this.attachSourceListener(this, filter, listener, includeExistingSources);
+            return InstrumentationHandler.this.attachSourceListener(this, filter, listener, notifyLoaded);
         }
 
         @Override
