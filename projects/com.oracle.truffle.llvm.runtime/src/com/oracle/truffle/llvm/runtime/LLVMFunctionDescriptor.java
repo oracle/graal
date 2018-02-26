@@ -58,6 +58,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     private final LLVMContext context;
     private final int functionId;
 
+    private boolean weak;
     private ExternalLibrary library;
 
     @CompilationFinal private Function function;
@@ -127,13 +128,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     abstract static class Function {
-
-        final boolean weak;
-
-        Function(boolean weak) {
-            this.weak = weak;
-        }
-
         void resolve(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor) {
             // nothing to do
         }
@@ -142,11 +136,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     abstract static class ManagedFunction extends Function {
-
-        ManagedFunction(boolean weak) {
-            super(weak);
-        }
-
         @Override
         TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
             CompilerAsserts.neverPartOfCompilation();
@@ -178,32 +167,25 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     static final class LazyLLVMIRFunction extends ManagedFunction {
         private final LazyToTruffleConverter converter;
 
-        LazyLLVMIRFunction(LazyToTruffleConverter converter, boolean weak) {
-            super(weak);
+        LazyLLVMIRFunction(LazyToTruffleConverter converter) {
             this.converter = converter;
         }
 
         @Override
         void resolve(LLVMFunctionDescriptor descriptor) {
-            descriptor.setFunction(new LLVMIRFunction(converter.convert(), weak));
+            descriptor.setFunction(new LLVMIRFunction(converter.convert()));
         }
     }
 
     static final class LLVMIRFunction extends ManagedFunction {
         private final RootCallTarget callTarget;
 
-        LLVMIRFunction(RootCallTarget callTarget, boolean weak) {
-            super(weak);
+        LLVMIRFunction(RootCallTarget callTarget) {
             this.callTarget = callTarget;
         }
     }
 
     static final class UnresolvedFunction extends Function {
-
-        UnresolvedFunction() {
-            super(true);
-        }
-
         @Override
         void resolve(LLVMFunctionDescriptor descriptor) {
             if (descriptor.isNullFunction()) {
@@ -241,7 +223,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         private final Intrinsic intrinsic;
 
         NativeIntrinsicFunction(Intrinsic intrinsic) {
-            super(false);
             this.intrinsic = intrinsic;
         }
     }
@@ -250,7 +231,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         private final TruffleObject nativeFunction;
 
         NativeFunction(TruffleObject nativeFunction) {
-            super(false);
             this.nativeFunction = nativeFunction;
         }
 
@@ -261,11 +241,6 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     static final class NullFunction extends Function {
-
-        NullFunction() {
-            super(false);
-        }
-
         @Override
         TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
             return new LLVMTruffleAddress(LLVMAddress.nullPointer(), descriptor.type, descriptor.context);
@@ -286,7 +261,11 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         return function;
     }
 
-    private LLVMFunctionDescriptor(LLVMContext context, ExternalLibrary library, String name, FunctionType type, int functionId, Function function) {
+    public boolean isWeak() {
+        return weak;
+    }
+
+    private LLVMFunctionDescriptor(LLVMContext context, ExternalLibrary library, String name, FunctionType type, int functionId, Function function, boolean weak) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
         this.library = library;
@@ -295,10 +274,11 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         this.functionId = functionId;
         this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
         this.function = function;
+        this.weak = weak;
     }
 
     public static LLVMFunctionDescriptor createDescriptor(LLVMContext context, ExternalLibrary library, String name, FunctionType type, int functionId) {
-        return new LLVMFunctionDescriptor(context, library, name, type, functionId, new UnresolvedFunction());
+        return new LLVMFunctionDescriptor(context, library, name, type, functionId, new UnresolvedFunction(), true);
     }
 
     public interface LazyToTruffleConverter {
@@ -319,24 +299,25 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         return getFunction() instanceof NativeFunction;
     }
 
-    public void declareInSulong(Function newFunction, boolean replaceExistingFunction) {
-        if (function.weak || replaceExistingFunction) {
+    public void declareInSulong(Function newFunction, boolean newWeak, boolean replaceExistingFunction) {
+        if (weak || replaceExistingFunction) {
             // existing function is weak, undefined, or we are allowed to replace it
             setFunction(newFunction);
+            weak = newWeak;
         } else {
             // existing function is strong
-            if (!newFunction.weak) {
+            if (!newWeak) {
                 throw new AssertionError("Found multiple strong declarations of function " + getName() + ".");
             }
         }
     }
 
-    public void declareInSulong(LazyToTruffleConverter converter, boolean weak, boolean replaceExistingFunction) {
-        declareInSulong(new LazyLLVMIRFunction(converter, weak), replaceExistingFunction);
+    public void declareInSulong(LazyToTruffleConverter converter, boolean newWeak, boolean replaceExistingFunction) {
+        declareInSulong(new LazyLLVMIRFunction(converter), newWeak, replaceExistingFunction);
     }
 
-    public void declareInSulong(RootCallTarget callTarget, boolean weak) {
-        declareInSulong(new LLVMIRFunction(callTarget, weak), false);
+    public void declareInSulong(RootCallTarget callTarget, boolean newWeak) {
+        declareInSulong(new LLVMIRFunction(callTarget), newWeak, false);
     }
 
     public RootCallTarget getLLVMIRFunction() {
