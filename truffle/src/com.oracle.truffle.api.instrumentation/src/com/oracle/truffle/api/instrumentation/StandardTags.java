@@ -47,17 +47,18 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Debugger:</b> Marks program locations where ordinary stepping should halt. The debugger
-     * will halt just <em>before</em> a code location is executed that is marked with this tag.
+     * <li><b>Debugger:</b> Marks program locations where ordinary stepping should halt. The
+     * debugger will halt just <em>before</em> a code location is executed that is marked with this
+     * tag.
      * <p>
      * In most languages, this means statements are distinct from expressions and only one node
-     * representing the statement should be tagged. Subexpressions are typically not tagged so that for
-     * example a step-over operation will stop at the next independent statement to get the desired
-     * behavior.</li>
+     * representing the statement should be tagged. Subexpressions are typically not tagged so that
+     * for example a step-over operation will stop at the next independent statement to get the
+     * desired behavior.</li>
      * </ul>
-     * The StatemenTag has uses the {@link Tag.Identifier identifier} <code>"STATEMENT"</code>. A node
-     * tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
-     * root node provides a source section.
+     * The StatemenTag uses the {@link Tag.Identifier identifier} <code>"STATEMENT"</code>. A node
+     * tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if
+     * its root node provides a source section.
      *
      * @since 0.12
      */
@@ -74,14 +75,14 @@ public final class StandardTags {
      * <p>
      * Use case descriptions:
      * <ul>
-     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or <em>stepping out</em>
-     * from a method/procedure/closure call should halt. The debugger will halt at the code location
-     * that has just executed the call that returned.</li>
+     * <li><b>Debugger:</b> Marks program locations where <em>returning</em> or <em>stepping
+     * out</em> from a method/procedure/closure call should halt. The debugger will halt at the code
+     * location that has just executed the call that returned.</li>
      * </ul>
      *
-     * The CallTag has uses the {@link Tag.Identifier identifier} <code>"CALL"</code>. A node tagged
-     * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its root
-     * node provides a source section.
+     * The CallTag uses the {@link Tag.Identifier identifier} <code>"CALL"</code>. A node tagged
+     * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
+     * root node provides a source section.
      *
      * @since 0.12
      */
@@ -94,17 +95,18 @@ public final class StandardTags {
 
     /**
      * Marks program locations as root of a function, method or closure. The root prolog should be
-     * executed by this node. In particular, when the implementation copies {@link Frame#getArguments()}
-     * into {@link FrameSlot}s, it should do it here for the instrumentation to work correctly.
+     * executed by this node. In particular, when the implementation copies
+     * {@link Frame#getArguments()} into {@link FrameSlot}s, it should do it here for the
+     * instrumentation to work correctly.
      * <p>
      * Use case descriptions:
      * <ul>
      * <li><b>Profiler:</b> Marks every root that should be profiled.</li>
      * </ul>
      *
-     * The RootTag has uses the {@link Tag.Identifier identifier} <code>"ROOT"</code>. A node tagged
-     * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its root
-     * node provides a source section.
+     * The RootTag uses the {@link Tag.Identifier identifier} <code>"ROOT"</code>. A node tagged
+     * with {@link RootTag} must provide a {@link Node#getSourceSection() source section}, if its
+     * root node provides a source section.
      *
      * @since 0.12
      */
@@ -133,9 +135,9 @@ public final class StandardTags {
      * expression tag to support debuggers.</li>
      * </ul>
      *
-     * The ExpressionTag has uses the {@link Tag.Identifier identifier} <code>"EXPRESSION"</code>. A
-     * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source section},
-     * if its root node provides a source section.
+     * The ExpressionTag uses the {@link Tag.Identifier identifier} <code>"EXPRESSION"</code>. A
+     * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source
+     * section}, if its root node provides a source section.
      *
      * @since 0.32
      */
