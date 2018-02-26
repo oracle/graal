@@ -6,6 +6,6 @@ struct test {
 };
 
 int main() {
-  struct test t = { .a = { 1 }, .d = 4 };
+  struct test t = {.a = { 1 }, .d = 4 };
   return t.a[0]; // + t.a[1] + t.a[2] + t.c + t.d + t.b;
 }

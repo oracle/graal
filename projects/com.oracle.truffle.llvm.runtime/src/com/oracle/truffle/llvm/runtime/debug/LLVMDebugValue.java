@@ -29,33 +29,29 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+
 public abstract class LLVMDebugValue {
 
-    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
-        return new DefaultImpl(builder, value);
-    }
+    public static final LLVMDebugValue UNAVAILABLE = new LLVMDebugValue() {
+
+        @Override
+        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValueProvider.UNAVAILABLE, declaration);
+        }
+
+    };
 
     protected LLVMDebugValue() {
     }
 
-    public abstract LLVMDebugObject getValue(LLVMSourceSymbol symbol);
-
-    private static final class DefaultImpl extends LLVMDebugValue {
-
-        private final LLVMDebugValueProvider.Builder builder;
-        private final Object value;
-
-        private DefaultImpl(LLVMDebugValueProvider.Builder builder, Object value) {
-            super();
-            this.builder = builder;
-            this.value = value;
-        }
-
-        @Override
-        public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
-            final LLVMDebugValueProvider valueProvider = builder.build(value);
-            return LLVMDebugObject.instantiate(symbol.getType(), 0L, valueProvider, symbol.getLocation());
+    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
+        if (symbol != null) {
+            return getValue(symbol.getType(), symbol.getLocation());
+        } else {
+            return getValue(LLVMSourceType.UNKNOWN, null);
         }
     }
 
+    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
 }

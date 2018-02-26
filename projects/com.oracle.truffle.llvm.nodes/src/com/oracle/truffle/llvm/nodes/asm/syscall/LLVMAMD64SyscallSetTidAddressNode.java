@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
 public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMAMD64SyscallOperationNode {
@@ -38,16 +39,19 @@ public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMAMD64Syscall
         super("set_tid_address");
     }
 
-    @TruffleBoundary
     @Specialization
-    protected long execute(LLVMAddress tidptr) {
-        ThreadLocal<LLVMAddress> clearChildTid = getContextReference().get().getClearChildTid();
-        clearChildTid.set(tidptr);
-        return Thread.currentThread().getId();
+    protected long doOp(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress tidptr) {
+        return exec(tidptr);
     }
 
     @Specialization
-    protected long execute(long tidptr) {
-        return execute(LLVMAddress.fromLong(tidptr));
+    protected long doOp(VirtualFrame frame, long tidptr) {
+        return doOp(frame, LLVMAddress.fromLong(tidptr));
+    }
+
+    @TruffleBoundary
+    private long exec(LLVMAddress tidptr) {
+        getContextReference().get().setClearChildTid(tidptr);
+        return Thread.currentThread().getId();
     }
 }

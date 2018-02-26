@@ -32,23 +32,24 @@ package com.oracle.truffle.llvm.nodes.control;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.wrappers.LLVMConditionalBranchNodeWrapper;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
 @Instrumentable(factory = LLVMConditionalBranchNodeWrapper.class)
 public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
     public static LLVMConditionalBranchNode create(int trueSuccessor, int falseSuccessor, LLVMExpressionNode truePhi, LLVMExpressionNode falsePhi, LLVMExpressionNode condition,
-                    SourceSection sourceSection) {
+                    LLVMSourceLocation sourceSection) {
         return new LLVMConditionalBranchNodeImpl(trueSuccessor, falseSuccessor, truePhi, falsePhi, condition, sourceSection);
     }
 
     public static final int TRUE_SUCCESSOR = 0;
     public static final int FALSE_SUCCESSOR = 1;
 
-    public LLVMConditionalBranchNode(SourceSection sourceSection) {
+    public LLVMConditionalBranchNode(LLVMSourceLocation sourceSection) {
         super(sourceSection);
     }
 
@@ -67,7 +68,7 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         private final int falseSuccessor;
 
         private LLVMConditionalBranchNodeImpl(int trueSuccessor, int falseSuccessor, LLVMExpressionNode truePhi, LLVMExpressionNode falsePhi, LLVMExpressionNode condition,
-                        SourceSection sourceSection) {
+                        LLVMSourceLocation sourceSection) {
             super(sourceSection);
             this.trueSuccessor = trueSuccessor;
             this.falseSuccessor = falseSuccessor;
@@ -94,7 +95,7 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
 
         @Override
         public boolean executeCondition(VirtualFrame frame) {
-            return condition.executeI1(frame);
+            return LLVMTypesGen.asBoolean(condition.executeGeneric(frame));
         }
 
         @Override
@@ -106,6 +107,5 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         public int getFalseSuccessor() {
             return falseSuccessor;
         }
-
     }
 }

@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class BinaryOperationInstruction extends ValueInstruction {
 
@@ -43,9 +43,9 @@ public final class BinaryOperationInstruction extends ValueInstruction {
 
     private final Flag[] flags;
 
-    private Symbol lhs;
+    private SymbolImpl lhs;
 
-    private Symbol rhs;
+    private SymbolImpl rhs;
 
     private BinaryOperationInstruction(Type type, BinaryOperator operator, Flag[] flags) {
         super(type);
@@ -54,7 +54,7 @@ public final class BinaryOperationInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -62,7 +62,7 @@ public final class BinaryOperationInstruction extends ValueInstruction {
         return flags;
     }
 
-    public Symbol getLHS() {
+    public SymbolImpl getLHS() {
         return lhs;
     }
 
@@ -70,12 +70,12 @@ public final class BinaryOperationInstruction extends ValueInstruction {
         return operator;
     }
 
-    public Symbol getRHS() {
+    public SymbolImpl getRHS() {
         return rhs;
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
             lhs = replacement;
         }
@@ -84,12 +84,12 @@ public final class BinaryOperationInstruction extends ValueInstruction {
         }
     }
 
-    public static BinaryOperationInstruction fromSymbols(Symbols symbols, Type type, int opcode, int flags, int lhs, int rhs) {
+    public static BinaryOperationInstruction fromSymbols(SymbolTable symbols, Type type, int opcode, int flags, int lhs, int rhs) {
         final boolean isFloatingPoint = Type.isFloatingpointType(type) || (type instanceof VectorType && Type.isFloatingpointType(((VectorType) type).getElementType()));
         final BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
         final BinaryOperationInstruction inst = new BinaryOperationInstruction(type, operator, Flag.decode(operator, flags));
-        inst.lhs = symbols.getSymbol(lhs, inst);
-        inst.rhs = symbols.getSymbol(rhs, inst);
+        inst.lhs = symbols.getForwardReferenced(lhs, inst);
+        inst.rhs = symbols.getForwardReferenced(rhs, inst);
         return inst;
     }
 }

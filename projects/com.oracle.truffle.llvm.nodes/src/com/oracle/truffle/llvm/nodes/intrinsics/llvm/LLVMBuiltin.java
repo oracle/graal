@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
@@ -39,8 +38,9 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-@NodeField(name = "sourceSection", type = SourceSection.class)
+@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
 public abstract class LLVMBuiltin extends LLVMIntrinsic {
 
     protected static LLVMStoreNode createStoreI1() {
@@ -68,6 +68,5 @@ public abstract class LLVMBuiltin extends LLVMIntrinsic {
     }
 
     @Override
-    public abstract SourceSection getSourceSection();
-
+    public abstract LLVMSourceLocation getSourceLocation();
 }

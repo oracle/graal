@@ -29,18 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-
 import java.util.Arrays;
 import java.util.function.BiFunction;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 
 @ValueType
 public final class LLVMI1Vector {
 
-    private static final int I1_SIZE = 1;
     private final boolean[] vector;
 
     public static LLVMI1Vector create(boolean[] vector) {
@@ -49,24 +46,6 @@ public final class LLVMI1Vector {
 
     private LLVMI1Vector(boolean[] vector) {
         this.vector = vector;
-    }
-
-    public static LLVMI1Vector readVectorFromMemory(LLVMAddress address, int size) {
-        boolean[] vector = new boolean[size];
-        long currentPtr = address.getVal();
-        for (int i = 0; i < size; i++) {
-            vector[i] = LLVMMemory.getI1(currentPtr);
-            currentPtr += I1_SIZE;
-        }
-        return create(vector);
-    }
-
-    public static void writeVectorToMemory(LLVMAddress address, LLVMI1Vector vector) {
-        long currentPtr = address.getVal();
-        for (int i = 0; i < vector.getLength(); i++) {
-            LLVMMemory.putI1(currentPtr, vector.getValue(i));
-            currentPtr += I1_SIZE;
-        }
     }
 
     // We do not want to use lambdas because of bad startup
@@ -251,5 +230,4 @@ public final class LLVMI1Vector {
 
         return LLVMI1Vector.create(values);
     }
-
 }

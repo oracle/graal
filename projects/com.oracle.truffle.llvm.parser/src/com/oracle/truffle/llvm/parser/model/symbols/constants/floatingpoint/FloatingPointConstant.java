@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -59,5 +60,9 @@ public abstract class FloatingPointConstant extends AbstractConstant {
             default:
                 throw new UnsupportedOperationException("Unsupported Floating Point Type: " + type);
         }
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
     }
 }

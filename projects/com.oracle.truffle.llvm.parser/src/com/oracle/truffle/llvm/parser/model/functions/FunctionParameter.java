@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.functions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.runtime.types.symbols.ValueSymbol;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 
 public final class FunctionParameter implements ValueSymbol {
 
@@ -74,6 +76,15 @@ public final class FunctionParameter implements ValueSymbol {
 
     public void setSourceVariable(boolean isSourceVariable) {
         this.isSourceVariable = isSourceVariable;
+    }
+
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
     }
 
     @Override

@@ -31,11 +31,13 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
@@ -45,15 +47,35 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, LLVM80BitFloat value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        LLVMMemory.put80BitFloat(globalAccess.getNativeLocation(address), value);
+    protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVM80BitFloat value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.put80BitFloat(globalAccess.executeWithTarget(frame, address), value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, LLVM80BitFloat value) {
-        LLVMMemory.put80BitFloat(address, value);
+    protected Object doOp(LLVMAddress address, LLVM80BitFloat value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.put80BitFloat(address, value);
         return null;
     }
 
+    // TODO (chaeubl): we could store this in a more efficient way (short + long)
+    @Specialization
+    protected Object doForeign(VirtualFrame frame, LLVMTruffleObject address, LLVM80BitFloat value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+        byte[] bytes = value.getBytes();
+        LLVMTruffleObject currentPtr = address;
+        for (int i = 0; i < bytes.length; i++) {
+            foreignWrite.execute(frame, currentPtr, bytes[i]);
+            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+        }
+        return null;
+    }
+
+    @Override
+    protected LLVMForeignWriteNode createForeignWrite() {
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS), I8_SIZE_IN_BYTES);
+    }
 }

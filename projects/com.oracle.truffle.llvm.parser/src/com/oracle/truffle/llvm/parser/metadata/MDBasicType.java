@@ -116,5 +116,4 @@ public final class MDBasicType extends MDType implements MDBaseNode {
         basicType.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, basicType, md));
         return basicType;
     }
-
 }

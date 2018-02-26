@@ -57,7 +57,7 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
+    protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
         checkLLVMTruffleObject(value);
         return doUnbox(frame, value.getObject());
     }
@@ -86,5 +86,4 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
             throw new IllegalStateException(e);
         }
     }
-
 }

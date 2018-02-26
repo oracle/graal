@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstructi
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 
-public abstract class ValueInstructionVisitor implements InstructionVisitorAdapter {
+public abstract class ValueInstructionVisitor implements SymbolVisitor {
 
     public abstract void visitValueInstruction(ValueInstruction valueInstruction);
 

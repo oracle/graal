@@ -69,7 +69,6 @@ public class LLVMAMD64UpdateFlagsNode extends Node {
             frame.setBoolean(zf, value == 0);
             frame.setBoolean(pf, getParity((byte) value));
         }
-
     }
 
     public static class LLVMAMD64UpdatePZSOFlagsNode extends LLVMAMD64UpdateFlagsNode {

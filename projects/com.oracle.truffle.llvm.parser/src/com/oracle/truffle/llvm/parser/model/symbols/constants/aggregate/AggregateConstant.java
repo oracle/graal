@@ -29,26 +29,26 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public abstract class AggregateConstant extends AbstractConstant {
 
-    private final Symbol[] elements;
+    private final SymbolImpl[] elements;
 
     AggregateConstant(Type type, int size) {
         super(type);
-        this.elements = new Symbol[size];
+        this.elements = new SymbolImpl[size];
     }
 
-    public Symbol getElement(int idx) {
+    public SymbolImpl getElement(int idx) {
         return elements[idx];
     }
 
@@ -56,11 +56,16 @@ public abstract class AggregateConstant extends AbstractConstant {
         return elements.length;
     }
 
-    public void replaceElement(int index, Symbol replacement) {
-        if (!(replacement instanceof Constant || replacement instanceof GlobalValueSymbol)) {
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+        if (!(newValue instanceof Constant || newValue instanceof GlobalValueSymbol)) {
             throw new IllegalStateException("Values can only be replaced by Constants or Globals!");
         }
-        elements[index] = replacement;
+        for (int i = 0; i < elements.length; i++) {
+            if (elements[i] == oldValue) {
+                elements[i] = newValue;
+            }
+        }
     }
 
     @Override
@@ -70,7 +75,7 @@ public abstract class AggregateConstant extends AbstractConstant {
             if (i > 0) {
                 sb.append(", ");
             }
-            Symbol value = getElement(i);
+            SymbolImpl value = getElement(i);
             sb.append(value.getType()).append(" ").append(value);
         }
         return sb.toString();
@@ -92,13 +97,13 @@ public abstract class AggregateConstant extends AbstractConstant {
         }
 
         for (int i = 0; i < data.length; i++) {
-            aggregateConstant.replaceElement(i, Constant.createFromData(elementType, data[i]));
+            aggregateConstant.elements[i] = Constant.createFromData(elementType, data[i]);
         }
 
         return aggregateConstant;
     }
 
-    public static AggregateConstant fromSymbols(Symbols symbols, Type type, int[] valueIndices) {
+    public static AggregateConstant fromSymbols(SymbolTable symbols, Type type, int[] valueIndices) {
         final AggregateConstant aggregateConstant;
         if (type instanceof ArrayType) {
             aggregateConstant = new ArrayConstant((ArrayType) type, valueIndices.length);
@@ -111,7 +116,7 @@ public abstract class AggregateConstant extends AbstractConstant {
         }
 
         for (int elementIndex = 0; elementIndex < valueIndices.length; elementIndex++) {
-            aggregateConstant.replaceElement(elementIndex, symbols.getSymbol(valueIndices[elementIndex], aggregateConstant, elementIndex));
+            aggregateConstant.elements[elementIndex] = symbols.getForwardReferenced(valueIndices[elementIndex], aggregateConstant);
         }
 
         return aggregateConstant;

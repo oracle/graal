@@ -124,7 +124,7 @@ public final class LLVMNativeFunctions {
         return new SulongSetHandlerCountNode(setHandlerCountFunction);
     }
 
-    protected static class HeapFunctionNode extends Node {
+    protected abstract static class HeapFunctionNode extends Node {
 
         private final TruffleObject function;
         @Child private Node nativeExecute;
@@ -143,8 +143,8 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongIncrementHandlerCountNode extends HeapFunctionNode {
-        SulongIncrementHandlerCountNode(TruffleObject function) {
+    public static final class SulongIncrementHandlerCountNode extends HeapFunctionNode {
+        private SulongIncrementHandlerCountNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -153,8 +153,8 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongDecrementHandlerCountNode extends HeapFunctionNode {
-        SulongDecrementHandlerCountNode(TruffleObject function) {
+    public static final class SulongDecrementHandlerCountNode extends HeapFunctionNode {
+        private SulongDecrementHandlerCountNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -163,9 +163,9 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongGetHandlerCountNode extends HeapFunctionNode {
+    public static final class SulongGetHandlerCountNode extends HeapFunctionNode {
 
-        SulongGetHandlerCountNode(TruffleObject function) {
+        private SulongGetHandlerCountNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -174,8 +174,8 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongSetHandlerCountNode extends HeapFunctionNode {
-        SulongSetHandlerCountNode(TruffleObject function) {
+    public static final class SulongSetHandlerCountNode extends HeapFunctionNode {
+        private SulongSetHandlerCountNode(TruffleObject function) {
             super(function, 2);
         }
 
@@ -184,8 +184,8 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongFreeExceptionNode extends HeapFunctionNode {
-        SulongFreeExceptionNode(TruffleObject function) {
+    public static final class SulongFreeExceptionNode extends HeapFunctionNode {
+        private SulongFreeExceptionNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -194,10 +194,10 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongGetDestructorNode extends HeapFunctionNode {
+    public static final class SulongGetDestructorNode extends HeapFunctionNode {
         @Child private Node asPointer = Message.AS_POINTER.createNode();
 
-        SulongGetDestructorNode(TruffleObject function) {
+        private SulongGetDestructorNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -211,10 +211,10 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongGetExceptionTypeNode extends HeapFunctionNode {
+    public static final class SulongGetExceptionTypeNode extends HeapFunctionNode {
         @Child private Node asPointer = Message.AS_POINTER.createNode();
 
-        SulongGetExceptionTypeNode(TruffleObject function) {
+        private SulongGetExceptionTypeNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -228,11 +228,11 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongGetUnwindHeaderNode extends HeapFunctionNode {
+    public static final class SulongGetUnwindHeaderNode extends HeapFunctionNode {
 
         @Child private Node asPointer = Message.AS_POINTER.createNode();
 
-        SulongGetUnwindHeaderNode(TruffleObject function) {
+        private SulongGetUnwindHeaderNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -246,10 +246,10 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongGetThrownObjectNode extends HeapFunctionNode {
+    public static final class SulongGetThrownObjectNode extends HeapFunctionNode {
         @Child private Node asPointer = Message.AS_POINTER.createNode();
 
-        SulongGetThrownObjectNode(TruffleObject function) {
+        private SulongGetThrownObjectNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -263,10 +263,10 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongGetExceptionPointerNode extends HeapFunctionNode {
+    public static final class SulongGetExceptionPointerNode extends HeapFunctionNode {
         @Child private Node asPointer = Message.AS_POINTER.createNode();
 
-        SulongGetExceptionPointerNode(TruffleObject function) {
+        private SulongGetExceptionPointerNode(TruffleObject function) {
             super(function, 1);
         }
 
@@ -280,8 +280,8 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongCanCatchNode extends HeapFunctionNode {
-        SulongCanCatchNode(TruffleObject function) {
+    public static final class SulongCanCatchNode extends HeapFunctionNode {
+        private SulongCanCatchNode(TruffleObject function) {
             super(function, 3);
         }
 
@@ -290,8 +290,8 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class SulongThrowNode extends HeapFunctionNode {
-        SulongThrowNode(TruffleObject function) {
+    public static final class SulongThrowNode extends HeapFunctionNode {
+        private SulongThrowNode(TruffleObject function) {
             super(function, 5);
         }
 
@@ -301,11 +301,11 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class DynamicCastNode extends HeapFunctionNode {
+    public static final class DynamicCastNode extends HeapFunctionNode {
 
         @Child private Node asPointer = Message.AS_POINTER.createNode();
 
-        DynamicCastNode(TruffleObject function) {
+        private DynamicCastNode(TruffleObject function) {
             super(function, 4);
         }
 
@@ -319,9 +319,9 @@ public final class LLVMNativeFunctions {
         }
     }
 
-    public static class NullPointerNode extends HeapFunctionNode {
+    public static final class NullPointerNode extends HeapFunctionNode {
 
-        NullPointerNode(TruffleObject function) {
+        private NullPointerNode(TruffleObject function) {
             super(function, 0);
         }
 
@@ -329,5 +329,4 @@ public final class LLVMNativeFunctions {
             return (TruffleObject) execute();
         }
     }
-
 }

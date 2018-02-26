@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMGetStackNode extends Node {
+public abstract class LLVMGetStackNode extends LLVMNode {
 
     public static LLVMGetStackNode create() {
         return LLVMGetStackNodeGen.create();
@@ -44,7 +44,7 @@ public abstract class LLVMGetStackNode extends Node {
 
     public abstract LLVMStack executeWithTarget(LLVMThreadingStack threadingStack, Thread currentThread);
 
-    protected synchronized LLVMStack getStack(LLVMThreadingStack threadingStack, Thread cachedThread) {
+    protected LLVMStack getStack(LLVMThreadingStack threadingStack, Thread cachedThread) {
         if (Thread.currentThread() == cachedThread) {
             return threadingStack.getStack();
         }
@@ -54,13 +54,15 @@ public abstract class LLVMGetStackNode extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "3", guards = "currentThread == cachedThread")
-    public LLVMStack cached(LLVMThreadingStack stack, Thread currentThread, @Cached("currentThread") Thread cachedThread, @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
+    protected LLVMStack cached(LLVMThreadingStack stack, Thread currentThread,
+                    @Cached("currentThread") Thread cachedThread,
+                    @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
         return cachedStack;
     }
 
     @SuppressWarnings("unused")
     @Specialization(replaces = "cached")
-    public LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
+    protected LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
         return stack.getStack();
     }
 }

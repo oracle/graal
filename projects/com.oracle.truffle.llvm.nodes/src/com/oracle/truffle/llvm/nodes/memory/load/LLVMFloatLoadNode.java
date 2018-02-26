@@ -38,28 +38,32 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadFloatNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 
 public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
 
     private final FloatValueProfile profile = FloatValueProfile.createRawIdentityProfile();
 
     @Specialization
-    public float executeFloat(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return profile.profile(globalAccess.getFloat(addr));
+    protected float doFloat(LLVMGlobal addr,
+                    @Cached("create()") ReadFloatNode globalAccess) {
+        return profile.profile(globalAccess.execute(addr));
     }
 
     @Specialization
-    public float executeFloat(LLVMVirtualAllocationAddress address) {
-        return address.getFloat();
+    protected float doFloat(LLVMVirtualAllocationAddress address,
+                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+        return address.getFloat(memory);
     }
 
     @Specialization
-    public float executeFloat(LLVMAddress addr) {
-        float val = LLVMMemory.getFloat(addr);
+    protected float doFloat(LLVMAddress addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        float val = memory.getFloat(addr);
         return profile.profile(val);
     }
 
@@ -68,14 +72,16 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public float executeFloat(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected float doFloat(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (float) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public float executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected float doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getFloat((long) addr.getValue());
+            return memory.getFloat((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

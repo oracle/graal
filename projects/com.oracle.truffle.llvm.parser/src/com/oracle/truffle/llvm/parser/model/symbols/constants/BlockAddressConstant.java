@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class BlockAddressConstant extends AbstractConstant {
 
@@ -48,7 +48,7 @@ public final class BlockAddressConstant extends AbstractConstant {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -61,7 +61,7 @@ public final class BlockAddressConstant extends AbstractConstant {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (function == original) {
             if (replacement instanceof FunctionDefinition) {
                 function = (FunctionDefinition) replacement;
@@ -71,9 +71,9 @@ public final class BlockAddressConstant extends AbstractConstant {
         }
     }
 
-    public static BlockAddressConstant fromSymbols(Symbols symbols, Type type, int function, int block) {
+    public static BlockAddressConstant fromSymbols(SymbolTable symbols, Type type, int function, int block) {
         final BlockAddressConstant constant = new BlockAddressConstant(type, block);
-        constant.function = (FunctionDefinition) symbols.getSymbol(function, constant);
+        constant.function = (FunctionDefinition) symbols.getForwardReferenced(function, constant);
         return constant;
     }
 }

@@ -43,6 +43,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext.FunctionFactory;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
@@ -52,7 +53,7 @@ public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMFunctionDescriptor> functions;
     private final LLVMScope parent;
-    private final LLVMGlobalVariableRegistry globalVariableRegistry;
+    private final LLVMGlobalRegistry globalVariableRegistry;
 
     public static synchronized LLVMScope createFileScope(LLVMContext context) {
         return new LLVMScope(context.getGlobalScope());
@@ -61,14 +62,15 @@ public final class LLVMScope implements TruffleObject {
     public static synchronized LLVMScope createGlobalScope(LLVMContext context) {
         LLVMScope scope = new LLVMScope(null);
         scope.lookupOrCreateFunction(context, "<zero function>", true,
-                        idx -> LLVMFunctionDescriptor.createDescriptor(context, "default", "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), idx));
+                        idx -> LLVMFunctionDescriptor.createDescriptor(context, new ExternalLibrary("default"), "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false),
+                                        idx));
         return scope;
     }
 
     private LLVMScope(LLVMScope parent) {
         this.functions = new HashMap<>();
         this.parent = parent;
-        this.globalVariableRegistry = new LLVMGlobalVariableRegistry();
+        this.globalVariableRegistry = new LLVMGlobalRegistry();
     }
 
     @TruffleBoundary
@@ -85,11 +87,6 @@ public final class LLVMScope implements TruffleObject {
     @TruffleBoundary
     public synchronized boolean functionExists(String name) {
         return functions.containsKey(name) || (parent != null && parent.functionExists(name));
-    }
-
-    @TruffleBoundary
-    public synchronized boolean globalExists(String name) {
-        return globalVariableRegistry.exists(name) || (parent != null && parent.globalExists(name));
     }
 
     @TruffleBoundary
@@ -131,7 +128,7 @@ public final class LLVMScope implements TruffleObject {
         }
     }
 
-    private static final class LLVMGlobalVariableRegistry {
+    private static final class LLVMGlobalRegistry {
         private final Map<String, Object> globals = new HashMap<>();
 
         synchronized boolean exists(String name) {
@@ -191,7 +188,6 @@ public final class LLVMScope implements TruffleObject {
                 List<String> keys = scope.functions.keySet().stream().map(s -> s.length() > 0 && s.charAt(0) == '@' ? s.substring(1) : s).collect(Collectors.toList());
                 return JavaInterop.asTruffleObject(keys.toArray(new String[keys.size()]));
             }
-
         }
 
         @Resolve(message = "READ")
@@ -207,8 +203,6 @@ public final class LLVMScope implements TruffleObject {
                 }
                 return null;
             }
-
         }
     }
-
 }

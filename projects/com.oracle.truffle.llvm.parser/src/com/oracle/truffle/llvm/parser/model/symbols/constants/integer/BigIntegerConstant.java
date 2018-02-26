@@ -31,8 +31,9 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants.integer;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.AbstractConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.ConstantVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class BigIntegerConstant extends AbstractConstant {
@@ -45,7 +46,11 @@ public final class BigIntegerConstant extends AbstractConstant {
     }
 
     @Override
-    public void accept(ConstantVisitor visitor) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -60,5 +65,4 @@ public final class BigIntegerConstant extends AbstractConstant {
         }
         return value.toString();
     }
-
 }

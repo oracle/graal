@@ -49,11 +49,11 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
-    public LLVMTruffleObject executeIntrinsic(VirtualFrame frame, Object rawHandle, @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("createToNativeNode()") LLVMToNativeNode forceAddressNode) {
+    protected LLVMTruffleObject doIntrinsic(VirtualFrame frame, Object rawHandle,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode forceAddressNode) {
         LLVMAddress handle = forceAddressNode.executeWithTarget(frame, rawHandle);
         TruffleObject object = context.get().getManagedObjectForHandle(handle);
         return new LLVMTruffleObject(object, new PointerType(VoidType.INSTANCE));
     }
-
 }

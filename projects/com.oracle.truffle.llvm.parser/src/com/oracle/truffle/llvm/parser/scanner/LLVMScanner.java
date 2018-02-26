@@ -40,10 +40,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
 import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
-import com.oracle.truffle.llvm.parser.listeners.Module;
+import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 
@@ -85,7 +86,7 @@ public final class LLVMScanner {
         this.offset = 0;
     }
 
-    public static ModelModule parse(ByteBuffer bytes) {
+    public static ModelModule parse(Source source, ByteBuffer bytes) {
         final ModelModule model = new ModelModule();
 
         ByteBuffer b = bytes.duplicate();
@@ -126,9 +127,8 @@ public final class LLVMScanner {
             throw new RuntimeException("Not a valid input file!");
         }
 
-        final BitStream bitstream = BitStream.create(bitcode);
-        final LLVMScanner scanner = new LLVMScanner(bitstream, new Module(model));
-        parseBitcodeBlock(scanner);
+        parseBitcodeBlock(source, bitcode, model);
+
         return model;
     }
 
@@ -139,7 +139,10 @@ public final class LLVMScanner {
         return magicWord == BC_MAGIC_WORD || magicWord == WRAPPER_MAGIC_WORD || magicWord == ELF_MAGIC_WORD;
     }
 
-    private static void parseBitcodeBlock(LLVMScanner scanner) {
+    private static void parseBitcodeBlock(Source source, ByteBuffer bitcode, ModelModule model) {
+        final BitStream bitstream = BitStream.create(bitcode);
+        final BCFileRoot fileParser = new BCFileRoot(source, model);
+        final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
         final long actualMagicWord = scanner.read(Integer.SIZE);
         if (actualMagicWord != BC_MAGIC_WORD) {
             throw new RuntimeException("Not a valid Bitcode File!");
@@ -148,6 +151,10 @@ public final class LLVMScanner {
         while (scanner.offset < scanner.bitstream.size()) {
             scanner.scanNext();
         }
+
+        // the root block does not exist in the LLVM file and is therefore never exited by the
+        // scanner
+        fileParser.exit();
     }
 
     private static <V> List<V> subList(List<V> original, int from) {
@@ -293,7 +300,6 @@ public final class LLVMScanner {
                     default:
                         throw new IllegalStateException("Unexpected Record Type Id: " + recordType);
                 }
-
             }
 
             i++;
@@ -371,7 +377,6 @@ public final class LLVMScanner {
                     }
                 };
             }
-
         }
     }
 

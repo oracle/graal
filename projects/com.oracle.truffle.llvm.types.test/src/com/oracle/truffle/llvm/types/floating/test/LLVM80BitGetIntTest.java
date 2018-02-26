@@ -87,5 +87,4 @@ public class LLVM80BitGetIntTest extends LLVM80BitTest {
             assertEquals(nextInt, LLVM80BitFloat.fromInt(nextInt).getLongValue());
         }
     }
-
 }

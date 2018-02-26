@@ -38,10 +38,10 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
@@ -60,8 +60,9 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobalVariable global, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return writeDouble(frame, globalAccess.getNativeLocation(global));
+    protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+        return writeDouble(frame, globalAccess.executeWithTarget(frame, global));
     }
 
     @Specialization
@@ -87,7 +88,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
 
     @Specialization(guards = {"noOffset(addr)"})
     @ExplodeLoop
-    public Object executeVoid(VirtualFrame frame, LLVMTruffleObject addr) {
+    protected Object doVoid(VirtualFrame frame, LLVMTruffleObject addr) {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             LLVMTruffleObject currentValue = (LLVMTruffleObject) values[i].executeGeneric(frame);
@@ -96,5 +97,4 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         }
         return addr;
     }
-
 }

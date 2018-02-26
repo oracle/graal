@@ -36,11 +36,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
-@NeedsStack
 public final class LLVMComplexDivSC extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode aNode;
@@ -65,21 +63,30 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         return stackPointer;
     }
 
+    @CompilationFinal private LLVMMemory memory;
+
+    private LLVMMemory getMemory() {
+        if (memory == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memory = getLLVMMemory();
+        }
+        return memory;
+    }
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        float a = aNode.executeFloat(frame);
-        float b = bNode.executeFloat(frame);
-        float c = cNode.executeFloat(frame);
-        float d = dNode.executeFloat(frame);
+        float a = LLVMTypesGen.asFloat(aNode.executeGeneric(frame));
+        float b = LLVMTypesGen.asFloat(bNode.executeGeneric(frame));
+        float c = LLVMTypesGen.asFloat(cNode.executeGeneric(frame));
+        float d = LLVMTypesGen.asFloat(dNode.executeGeneric(frame));
 
         float denom = c * c + d * d;
         float zReal = (a * c + b * d) / denom;
         float zImag = (b * c - a * d) / denom;
 
-        long allocatedMemory = LLVMStack.allocateStackMemory(frame, getStackPointerSlot(), 2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
-        LLVMMemory.putFloat(allocatedMemory, zReal);
-        LLVMMemory.putFloat(allocatedMemory + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
-        return LLVMFloatVector.readVectorFromMemory(LLVMAddress.fromLong(allocatedMemory), 2);
+        long allocatedMemory = LLVMStack.allocateStackMemory(frame, getMemory(), getStackPointerSlot(), 2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
+        getMemory().putFloat(allocatedMemory, zReal);
+        getMemory().putFloat(allocatedMemory + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
+        return getMemory().getFloatVector(LLVMAddress.fromLong(allocatedMemory), 2);
     }
-
 }

@@ -29,13 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class LLVMAMD64SyscallGettidNode extends LLVMAMD64SyscallOperationNode {
     public LLVMAMD64SyscallGettidNode() {
         super("gettid");
     }
 
     @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    public long execute(VirtualFrame frame, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         // TODO: once multithreading is supported, this must return the TID
         // instead of the PID. Returning the PID means that the process is
         // single-threaded.

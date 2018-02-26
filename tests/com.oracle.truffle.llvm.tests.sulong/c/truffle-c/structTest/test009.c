@@ -5,6 +5,6 @@ struct test {
 };
 
 int main() {
-  struct test t = { .y = 3 };
+  struct test t = {.y = 3 };
   return t.y;
 }

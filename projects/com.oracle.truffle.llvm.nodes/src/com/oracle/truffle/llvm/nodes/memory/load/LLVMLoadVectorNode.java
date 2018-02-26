@@ -33,12 +33,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
@@ -48,207 +49,268 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-public class LLVMLoadVectorNode {
+@NodeField(name = "size", type = int.class)
+public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI1VectorNode extends LLVMLoadNode {
+    public abstract int getSize();
 
-        public abstract int getSize();
+    LLVMForeignReadNode[] createForeignReads(ForeignToLLVMType type, int readSize) {
+        LLVMForeignReadNode[] result = new LLVMForeignReadNode[getSize()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = new LLVMForeignReadNode(type, readSize);
+        }
+        return result;
+    }
 
+    public abstract static class LLVMLoadI1VectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMI1Vector executeI1Vector(LLVMAddress addr) {
-            return LLVMMemory.getI1Vector(addr, getSize());
+        protected LLVMI1Vector doI1Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI1Vector(addr, getSize());
         }
 
         @Specialization
-        public LLVMI1Vector executeI1Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI1Vector(globalAccess.getNativeLocation(addr), getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMI1Vector doI1Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI1Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMI1Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            boolean[] vector = new boolean[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Boolean) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMI1Vector.create(vector);
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.I1, I1_SIZE_IN_BYTES);
         }
     }
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI8VectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
+    public abstract static class LLVMLoadI8VectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMI8Vector executeI8Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI8Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI8Vector doI8Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI8Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public LLVMI8Vector executeI8Vector(LLVMAddress addr) {
-            return LLVMMemory.getI8Vector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMI8Vector doI8Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI8Vector(addr, getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMI8Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            byte[] vector = new byte[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Byte) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMI8Vector.create(vector);
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.I8, I8_SIZE_IN_BYTES);
         }
     }
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI16VectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
+    public abstract static class LLVMLoadI16VectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMI16Vector executeI16Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI16Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI16Vector doI16Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI16Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public LLVMI16Vector executeI16Vector(LLVMAddress addr) {
-            return LLVMMemory.getI16Vector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMI16Vector doI16Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI16Vector(addr, getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMI16Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            short[] vector = new short[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Short) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMI16Vector.create(vector);
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.I16, I16_SIZE_IN_BYTES);
         }
     }
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI32VectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
+    public abstract static class LLVMLoadI32VectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMI32Vector executeI32Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI32Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI32Vector doI32Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI32Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public LLVMI32Vector executeI32Vector(LLVMAddress addr) {
-            return LLVMMemory.getI32Vector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMI32Vector doI32Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI32Vector(addr, getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMI32Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            int[] vector = new int[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Integer) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMI32Vector.create(vector);
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.I32, I32_SIZE_IN_BYTES);
         }
     }
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadI64VectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
+    public abstract static class LLVMLoadI64VectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMI64Vector executeI64Vector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getI64Vector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMI64Vector doI64Vector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI64Vector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public LLVMI64Vector executeI64Vector(LLVMAddress addr) {
-            return LLVMMemory.getI64Vector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMI64Vector doI64Vector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getI64Vector(addr, getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMI64Vector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            long[] vector = new long[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Long) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMI64Vector.create(vector);
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.I64, I64_SIZE_IN_BYTES);
         }
     }
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadFloatVectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
+    public abstract static class LLVMLoadFloatVectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMFloatVector executeFloatVector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getFloatVector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMFloatVector doFloatVector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getFloatVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public LLVMFloatVector executeFloatVector(LLVMAddress addr) {
-            return LLVMMemory.getFloatVector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMFloatVector doFloatVector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getFloatVector(addr, getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMFloatVector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            float[] vector = new float[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Float) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMFloatVector.create(vector);
         }
 
-    }
-
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadDoubleVectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
-        @Specialization
-        public LLVMDoubleVector executeDoubleVector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getDoubleVector(globalAccess.getNativeLocation(addr), getSize());
-        }
-
-        @Specialization
-        public LLVMDoubleVector executeDoubleVector(LLVMAddress addr) {
-            return LLVMMemory.getDoubleVector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
-        }
-
-        @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.FLOAT, FLOAT_SIZE_IN_BYTES);
         }
     }
 
-    @NodeField(name = "size", type = int.class)
-    public abstract static class LLVMLoadAddressVectorNode extends LLVMLoadNode {
-
-        public abstract int getSize();
-
+    public abstract static class LLVMLoadDoubleVectorNode extends LLVMLoadVectorNode {
         @Specialization
-        public LLVMAddressVector executeAddressVector(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return LLVMMemory.getAddressVector(globalAccess.getNativeLocation(addr), getSize());
+        protected LLVMDoubleVector doDoubleVector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getDoubleVector(globalAccess.executeWithTarget(frame, addr), getSize());
         }
 
         @Specialization
-        public LLVMAddressVector executeAddressVector(LLVMAddress addr) {
-            return LLVMMemory.getAddressVector(addr, getSize());
-        }
-
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VECTOR, getSize());
+        protected LLVMDoubleVector doDoubleVector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getDoubleVector(addr, getSize());
         }
 
         @Specialization
-        public Object executeForeign(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+        @ExplodeLoop
+        protected LLVMDoubleVector doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            double[] vector = new double[getSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < vector.length; i++) {
+                vector[i] = (Double) foreignReads[i].execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMDoubleVector.create(vector);
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.DOUBLE, DOUBLE_SIZE_IN_BYTES);
         }
     }
 
+    public abstract static class LLVMLoadAddressVectorNode extends LLVMLoadVectorNode {
+        @Specialization
+        protected LLVMAddressVector doAddressVector(VirtualFrame frame, LLVMGlobal addr,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAddressVector(globalAccess.executeWithTarget(frame, addr), getSize());
+        }
+
+        @Specialization
+        protected LLVMAddressVector doAddressVector(LLVMAddress addr,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAddressVector(addr, getSize());
+        }
+
+        @Specialization
+        @ExplodeLoop
+        @SuppressWarnings("unused")
+        protected Object doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            // TODO (chaeubl): this one is more tricky as LLVMTruffleObjects can also be addresses
+            throw new IllegalStateException("not yet implemented");
+        }
+
+        protected LLVMForeignReadNode[] createForeignReads() {
+            return createForeignReads(ForeignToLLVMType.POINTER, ADDRESS_SIZE_IN_BYTES);
+        }
+    }
 }

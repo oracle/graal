@@ -29,8 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class BranchInstruction extends VoidInstruction implements TerminatingInstruction {
 
@@ -41,7 +42,11 @@ public final class BranchInstruction extends VoidInstruction implements Terminat
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+    }
+
+    @Override
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 

@@ -29,35 +29,34 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.sulong;
 
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 
 public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
 
     @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
-    @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
 
     @Specialization
-    public Object execute(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        if (targets == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<RootCallTarget> destructorFunctions = context.get().getDestructorFunctions();
-            targets = destructorFunctions.toArray(new RootCallTarget[destructorFunctions.size()]);
-        }
-        for (RootCallTarget target : targets) {
-            callNode.call(target, new Object[]{});
-        }
+    protected Object doOp() {
+        runDestructorFunctions();
         return null;
     }
 
+    @TruffleBoundary
+    private void runDestructorFunctions() {
+        // is only executed once per context so it will be executed in the interpreter only
+        LLVMContext context = getContextReference().get();
+        RootCallTarget[] targets = context.getDestructorFunctions().toArray(new RootCallTarget[0]);
+        for (RootCallTarget target : targets) {
+            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                callNode.call(target, new Object[]{stackPointer});
+            }
+        }
+    }
 }

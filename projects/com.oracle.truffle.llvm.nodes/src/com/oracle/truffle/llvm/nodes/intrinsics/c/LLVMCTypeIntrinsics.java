@@ -53,17 +53,17 @@ public abstract class LLVMCTypeIntrinsics extends LLVMIntrinsic {
     public abstract static class LLVMToUpper extends LLVMCTypeIntrinsics {
 
         @Specialization(guards = "isLowercaseLetter(value)")
-        public int fromLower(int value) {
+        protected int fromLower(int value) {
             return value - 0x20;
         }
 
         @Specialization(guards = "isUppercaseLetter(value)")
-        public int fromUpper(int value) {
+        protected int fromUpper(int value) {
             return value;
         }
 
         @Specialization(guards = "isAsciiCharacter(value)")
-        public int fromCharacter(int value) {
+        protected int fromCharacter(int value) {
             if (isLowercaseLetter(value)) {
                 return fromLower(value);
             }
@@ -72,26 +72,25 @@ public abstract class LLVMCTypeIntrinsics extends LLVMIntrinsic {
 
         @Specialization(replaces = {"fromLower", "fromUpper", "fromCharacter"})
         @TruffleBoundary
-        public int executeIntrinsic(int value) {
+        protected int doIntrinsic(int value) {
             return Character.toUpperCase(value);
         }
-
     }
 
     public abstract static class LLVMTolower extends LLVMCTypeIntrinsics {
 
         @Specialization(guards = "isLowercaseLetter(value)")
-        public int fromLower(int value) {
+        protected int fromLower(int value) {
             return value;
         }
 
         @Specialization(guards = "isUppercaseLetter(value)")
-        public int fromUpper(int value) {
+        protected int fromUpper(int value) {
             return value + 0x20;
         }
 
         @Specialization(guards = "isAsciiCharacter(value)")
-        public int fromCharacter(int value) {
+        protected int fromCharacter(int value) {
             if (isUppercaseLetter(value)) {
                 return fromUpper(value);
             }
@@ -100,46 +99,43 @@ public abstract class LLVMCTypeIntrinsics extends LLVMIntrinsic {
 
         @Specialization(replaces = {"fromLower", "fromUpper", "fromCharacter"})
         @TruffleBoundary
-        public int executeIntrinsic(int value) {
+        protected int doIntrinsic(int value) {
             return Character.toLowerCase(value);
         }
-
     }
 
     public abstract static class LLVMIsalpha extends LLVMCTypeIntrinsics {
 
         @Specialization
         @TruffleBoundary
-        public int executeIntrinsic(int value) {
+        protected int doIntrinsic(int value) {
             return Character.isAlphabetic(value) ? 1 : 0;
         }
-
     }
 
     public abstract static class LLVMIsspace extends LLVMCTypeIntrinsics {
 
         @Specialization
         @TruffleBoundary
-        public int executeIntrinsic(int value) {
+        protected int doIntrinsic(int value) {
             return Character.isWhitespace(value) ? 1 : 0;
         }
-
     }
 
     public abstract static class LLVMIsupper extends LLVMCTypeIntrinsics {
 
         @Specialization(guards = "isLowercaseLetter(value)")
-        public int fromLower(@SuppressWarnings("unused") int value) {
+        protected int fromLower(@SuppressWarnings("unused") int value) {
             return 0;
         }
 
         @Specialization(guards = "isUppercaseLetter(value)")
-        public int fromUpper(@SuppressWarnings("unused") int value) {
+        protected int fromUpper(@SuppressWarnings("unused") int value) {
             return 1;
         }
 
         @Specialization(guards = "isAsciiCharacter(value)")
-        public int fromCharacter(int value) {
+        protected int fromCharacter(int value) {
             if (isUppercaseLetter(value)) {
                 return 1;
             }
@@ -148,9 +144,8 @@ public abstract class LLVMCTypeIntrinsics extends LLVMIntrinsic {
 
         @Specialization(replaces = {"fromLower", "fromUpper", "fromCharacter"})
         @TruffleBoundary
-        public int executeIntrinsic(int value) {
+        protected int doIntrinsic(int value) {
             return Character.isUpperCase(value) ? 1 : 0;
         }
-
     }
 }

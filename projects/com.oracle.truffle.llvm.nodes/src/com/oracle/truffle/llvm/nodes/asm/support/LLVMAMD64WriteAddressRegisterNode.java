@@ -35,46 +35,59 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild("value")
 @NodeField(name = "slot", type = FrameSlot.class)
 public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMExpressionNode {
+
+    public LLVMAMD64WriteAddressRegisterNode(LLVMSourceLocation source) {
+        this.source = source;
+    }
+
     public abstract FrameSlot getSlot();
 
+    private final LLVMSourceLocation source;
+
     @Specialization
-    protected Object executeI8(VirtualFrame frame, byte value) {
+    protected Object doI8(VirtualFrame frame, byte value) {
         getSlot().setKind(FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
         return null;
     }
 
     @Specialization
-    protected Object executeI16(VirtualFrame frame, short value) {
+    protected Object doI16(VirtualFrame frame, short value) {
         getSlot().setKind(FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
         return null;
     }
 
     @Specialization
-    protected Object executeI32(VirtualFrame frame, int value) {
+    protected Object doI32(VirtualFrame frame, int value) {
         getSlot().setKind(FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
         return null;
     }
 
     @Specialization
-    protected Object executeI64(VirtualFrame frame, long value) {
+    protected Object doI64(VirtualFrame frame, long value) {
         getSlot().setKind(FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
         return null;
     }
 
     @Specialization
-    protected Object executeAddress(VirtualFrame frame, LLVMAddress value) {
+    protected Object doAddress(VirtualFrame frame, LLVMAddress value) {
         getSlot().setKind(FrameSlotKind.Object);
         frame.setObject(getSlot(), value);
         return null;
+    }
+
+    @Override
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 }

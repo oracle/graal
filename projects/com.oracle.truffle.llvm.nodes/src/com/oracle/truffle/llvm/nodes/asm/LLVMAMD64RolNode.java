@@ -39,7 +39,7 @@ public abstract class LLVMAMD64RolNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64RolbNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI8(byte left, byte right) {
+        protected byte doI8(byte left, byte right) {
             return LLVMAMD64BarrelShifter.rol(left, right);
         }
     }
@@ -47,7 +47,7 @@ public abstract class LLVMAMD64RolNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64RolwNode extends LLVMExpressionNode {
         @Specialization
-        protected short executeI16(short left, byte right) {
+        protected short doI16(short left, byte right) {
             return LLVMAMD64BarrelShifter.rol(left, right);
         }
     }
@@ -55,7 +55,7 @@ public abstract class LLVMAMD64RolNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64RollNode extends LLVMExpressionNode {
         @Specialization
-        protected int executeI32(int left, byte right) {
+        protected int doI32(int left, byte right) {
             return LLVMAMD64BarrelShifter.rol(left, right);
         }
     }
@@ -63,7 +63,7 @@ public abstract class LLVMAMD64RolNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64RolqNode extends LLVMExpressionNode {
         @Specialization
-        protected long executeI64(long left, byte right) {
+        protected long doI64(long left, byte right) {
             return LLVMAMD64BarrelShifter.rol(left, right);
         }
     }

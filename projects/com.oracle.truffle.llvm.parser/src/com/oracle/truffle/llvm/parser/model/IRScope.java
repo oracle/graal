@@ -29,32 +29,36 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
+import com.oracle.truffle.llvm.parser.ValueList;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
-import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class IRScope implements MetadataAttachmentHolder {
+public final class IRScope {
 
-    private final Symbols symbols = new Symbols();
-    private final List<Type> valueTypes = new ArrayList<>();
+    private static final int GLOBAL_SCOPE_START = -1;
+
+    private final SymbolTable symbols;
+    private final List<Type> valueTypes;
     private final MetadataValueList metadata;
 
-    protected IRScope() {
+    private FunctionDefinition currentFunction;
+    private int valueTypesScopeStart;
+
+    public IRScope() {
+        symbols = new SymbolTable();
+        valueTypes = new ArrayList<>();
         metadata = new MetadataValueList();
+        currentFunction = null;
+        valueTypesScopeStart = GLOBAL_SCOPE_START;
     }
 
-    protected IRScope(IRScope parent) {
-        metadata = new MetadataValueList(parent.metadata);
-    }
-
-    public void addSymbol(Symbol symbol, Type type) {
-        symbols.addSymbol(symbol);
+    public void addSymbol(SymbolImpl symbol, Type type) {
+        symbols.add(symbol);
         valueTypes.add(type);
     }
 
@@ -75,19 +79,37 @@ public abstract class IRScope implements MetadataAttachmentHolder {
     }
 
     public void nameSymbol(int index, String argName) {
-        symbols.setSymbolName(index, argName);
+        symbols.nameSymbol(index, argName);
     }
 
-    public Symbols getSymbols() {
+    public SymbolTable getSymbols() {
         return symbols;
     }
 
-    public void initialize(IRScope other) {
-        valueTypes.addAll(other.valueTypes);
-        symbols.addSymbols(other.symbols);
+    public void nameBlock(int index, String name) {
+        if (currentFunction != null) {
+            currentFunction.nameBlock(index, name);
+        }
     }
 
-    public abstract void nameBlock(int index, String name);
+    public void startLocalScope(FunctionDefinition function) {
+        this.currentFunction = function;
+        metadata.startScope();
+        symbols.startScope();
+        valueTypesScopeStart = valueTypes.size();
+    }
+
+    public void exitLocalScope() {
+        if (currentFunction != null) {
+            currentFunction.exitLocalScope();
+        }
+
+        metadata.endScope();
+        symbols.endScope();
+
+        ValueList.dropLocalScope(valueTypesScopeStart, valueTypes);
+        valueTypesScopeStart = GLOBAL_SCOPE_START;
+    }
 
     public MetadataValueList getMetadata() {
         return metadata;
@@ -95,5 +117,11 @@ public abstract class IRScope implements MetadataAttachmentHolder {
 
     public void attachSymbolMetadata(int index, MDAttachment attachment) {
         symbols.attachMetadata(index, attachment);
+    }
+
+    public void attachMetadata(MDAttachment attachment) {
+        if (currentFunction != null) {
+            currentFunction.attachMetadata(attachment);
+        }
     }
 }

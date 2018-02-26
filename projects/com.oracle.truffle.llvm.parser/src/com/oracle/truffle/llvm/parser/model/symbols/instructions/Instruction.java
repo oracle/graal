@@ -32,13 +32,12 @@ package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Instruction implements Symbol, MetadataAttachmentHolder {
+public abstract class Instruction implements SymbolImpl, MetadataAttachmentHolder {
 
     private MDLocation debugLocation = null;
     private List<MDAttachment> mdAttachments = null;
@@ -50,8 +49,6 @@ public abstract class Instruction implements Symbol, MetadataAttachmentHolder {
     public void setDebugLocation(MDLocation debugLocation) {
         this.debugLocation = debugLocation;
     }
-
-    public abstract void accept(InstructionVisitor visitor);
 
     @Override
     public boolean hasAttachedMetadata() {

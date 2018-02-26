@@ -92,6 +92,5 @@ public class LLVMGlobalVariableMessageResolution {
             String message = String.format("Identifier %s is currently unsupported. Please use a numeric index to access a C pointer.", name);
             throw UnknownIdentifierException.raise(message);
         }
-
     }
 }

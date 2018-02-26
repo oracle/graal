@@ -1,4 +1,1 @@
-short main(void)
-{
-	return 42;
-}
+short main(void) { return 42; }

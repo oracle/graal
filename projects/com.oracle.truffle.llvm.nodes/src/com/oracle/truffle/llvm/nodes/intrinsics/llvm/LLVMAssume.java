@@ -37,8 +37,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMAssume extends LLVMBuiltin {
 
     @Specialization
-    public Object execute(@SuppressWarnings("unused") boolean cond) {
+    protected Object doOp(@SuppressWarnings("unused") boolean cond) {
         return null;
     }
-
 }

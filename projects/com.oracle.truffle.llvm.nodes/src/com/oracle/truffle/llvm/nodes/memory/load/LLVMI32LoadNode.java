@@ -38,29 +38,33 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI32Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 
 public abstract class LLVMI32LoadNode extends LLVMLoadNode {
 
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
     @Specialization
-    public int executeI32(LLVMAddress addr) {
-        int val = LLVMMemory.getI32(addr);
+    protected int doI32(LLVMAddress addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        int val = memory.getI32(addr);
         return profile.profile(val);
     }
 
     @Specialization
-    public int executeI32(LLVMVirtualAllocationAddress address) {
-        return address.getI32();
+    protected int doI32(LLVMVirtualAllocationAddress address,
+                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+        return address.getI32(memory);
     }
 
     @Specialization
-    public int executeI32(LLVMGlobalVariable addr, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return profile.profile(globalAccess.getI32(addr));
+    protected int doI32(LLVMGlobal addr,
+                    @Cached("create()") ReadI32Node globalAccess) {
+        return profile.profile(globalAccess.execute(addr));
     }
 
     static LLVMForeignReadNode createForeignRead() {
@@ -68,14 +72,16 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    public int executeI32(VirtualFrame frame, LLVMTruffleObject addr, @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+    protected int doI32(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (int) foreignRead.execute(frame, addr);
     }
 
     @Specialization
-    public int executeLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
+    protected int doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (addr.getValue() instanceof Long) {
-            return LLVMMemory.getI32((long) addr.getValue());
+            return memory.getI32((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

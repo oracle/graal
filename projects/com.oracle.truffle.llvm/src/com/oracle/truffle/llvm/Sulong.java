@@ -40,8 +40,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -56,13 +58,13 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 @TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "0.01", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
 // TODO: remove Sulong.SULONG_LIBRARY_MIME_TYPE after GR-5904 is closed.
-@ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class})
+@ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
 public final class Sulong extends LLVMLanguage {
 
     private static final List<Configuration> configurations = new ArrayList<>();
@@ -74,21 +76,43 @@ public final class Sulong extends LLVMLanguage {
         }
     }
 
+    @TruffleBoundary
+    @Override
+    public <E> E getCapability(Class<E> type) {
+        String config = findLLVMContext().getEnv().getOptions().get(SulongEngineOption.CONFIGURATION);
+        E capability = null;
+        for (Configuration c : configurations) {
+            if (config.equals(c.getConfigurationName())) {
+                capability = c.getCapability(type);
+            }
+        }
+        return capability;
+    }
+
+    private LLVMContext mainContext = null;
+
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        return new LLVMContext(env, getContextExtensions(env));
+        LLVMContext newContext = new LLVMContext(env, getContextExtensions(env));
+        if (mainContext == null) {
+            mainContext = newContext;
+        } else {
+            LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION.invalidate();
+        }
+        return newContext;
     }
 
     @Override
     protected void disposeContext(LLVMContext context) {
-        context.printNativeCallStatistic();
-        Runner.disposeContext(context);
+        LLVMMemory memory = getCapability(LLVMMemory.class);
+        context.dispose(memory);
     }
 
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return (new Runner(getNodeFactory())).parse(this, findLLVMContext(), source);
+        LLVMContext context = findLLVMContext();
+        return (new Runner(getNodeFactory())).parse(this, context, source);
     }
 
     @Override
@@ -116,10 +140,6 @@ public final class Sulong extends LLVMLanguage {
     @Override
     public LLVMContext findLLVMContext() {
         return getContextReference().get();
-    }
-
-    public static ContextReference<LLVMContext> getCurrentLanguage() {
-        return getCurrentLanguage(LLVMLanguage.class).getContextReference();
     }
 
     public static void main(String[] args) throws Exception {
@@ -191,12 +211,9 @@ public final class Sulong extends LLVMLanguage {
     }
 
     @Override
-    protected void initializeThread(LLVMContext context, Thread thread) {
-        super.initializeThread(context, thread);
-        LLVMThreadingStack threadingStack = context.getThreadingStack();
-        if (thread != threadingStack.getDefaultThread()) {
-            threadingStack.initializeThread();
-        }
+    protected void disposeThread(LLVMContext context, Thread thread) {
+        super.disposeThread(context, thread);
+        context.getThreadingStack().freeStack(getCapability(LLVMMemory.class), thread);
     }
 
     @Override
@@ -215,6 +232,10 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
-        return LLVMSourceScope.create(node, frame, context);
+        if (!context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            return super.findLocalScopes(context, node, frame);
+        } else {
+            return LLVMSourceScope.create(node, frame, context);
+        }
     }
 }

@@ -80,5 +80,4 @@ public class BasicNFIAPITest extends NFIAPITest {
             super(sulongObject, "functionPointer", "((sint32,sint32):sint32):sint32", 0);
         }
     }
-
 }

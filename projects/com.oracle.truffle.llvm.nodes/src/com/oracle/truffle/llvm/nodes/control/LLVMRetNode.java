@@ -29,15 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
@@ -45,12 +42,13 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -62,12 +60,12 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 @Instrumentable(factory = LLVMRetNodeWrapper.class)
 public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
-    public LLVMRetNode(SourceSection sourceSection) {
+    public LLVMRetNode(LLVMSourceLocation sourceSection) {
         super(sourceSection);
     }
 
     public LLVMRetNode(LLVMRetNode delegate) {
-        super(delegate.getSourceSection());
+        super(delegate.getSourceLocation());
     }
 
     @Override
@@ -90,162 +88,152 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI1RetNode extends LLVMRetNode {
 
-        public LLVMI1RetNode(SourceSection sourceSection) {
+        public LLVMI1RetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(boolean retResult) {
+        protected Object doOp(boolean retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI8RetNode extends LLVMRetNode {
 
-        public LLVMI8RetNode(SourceSection sourceSection) {
+        public LLVMI8RetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(byte retResult) {
+        protected Object doOp(byte retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI16RetNode extends LLVMRetNode {
 
-        public LLVMI16RetNode(SourceSection sourceSection) {
+        public LLVMI16RetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(short retResult) {
+        protected Object doOp(short retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI32RetNode extends LLVMRetNode {
 
-        public LLVMI32RetNode(SourceSection sourceSection) {
+        public LLVMI32RetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(int retResult) {
+        protected Object doOp(int retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMI64RetNode extends LLVMRetNode {
 
-        public LLVMI64RetNode(SourceSection sourceSection) {
+        public LLVMI64RetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(long retResult) {
+        protected Object doOp(long retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMIVarBitRetNode extends LLVMRetNode {
 
-        public LLVMIVarBitRetNode(SourceSection sourceSection) {
+        public LLVMIVarBitRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(LLVMIVarBit retResult) {
+        protected Object doOp(LLVMIVarBit retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFloatRetNode extends LLVMRetNode {
 
-        public LLVMFloatRetNode(SourceSection sourceSection) {
+        public LLVMFloatRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(float retResult) {
+        protected Object doOp(float retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMDoubleRetNode extends LLVMRetNode {
 
-        public LLVMDoubleRetNode(SourceSection sourceSection) {
+        public LLVMDoubleRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(double retResult) {
+        protected Object doOp(double retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVM80BitFloatRetNode extends LLVMRetNode {
 
-        public LLVM80BitFloatRetNode(SourceSection sourceSection) {
+        public LLVM80BitFloatRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(LLVM80BitFloat retResult) {
+        protected Object doOp(LLVM80BitFloat retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMAddressRetNode extends LLVMRetNode {
 
-        public LLVMAddressRetNode(SourceSection sourceSection) {
+        public LLVMAddressRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(Object retResult) {
+        protected Object doOp(Object retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMFunctionRetNode extends LLVMRetNode {
 
-        public LLVMFunctionRetNode(SourceSection sourceSection) {
+        public LLVMFunctionRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(LLVMAddress retResult) {
+        protected Object doOp(LLVMAddress retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMFunctionDescriptor retResult) {
+        protected Object doOp(LLVMFunctionDescriptor retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMTruffleObject retResult) {
+        protected Object doOp(LLVMTruffleObject retResult) {
             return retResult;
         }
     }
@@ -253,45 +241,44 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
     public abstract static class LLVMVectorRetNode extends LLVMRetNode {
 
-        public LLVMVectorRetNode(SourceSection sourceSection) {
+        public LLVMVectorRetNode(LLVMSourceLocation sourceSection) {
             super(sourceSection);
         }
 
         @Specialization
-        public Object execute(LLVMDoubleVector retResult) {
+        protected Object doOp(LLVMDoubleVector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMFloatVector retResult) {
+        protected Object doOp(LLVMFloatVector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI16Vector retResult) {
+        protected Object doOp(LLVMI16Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI1Vector retResult) {
+        protected Object doOp(LLVMI1Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI32Vector retResult) {
+        protected Object doOp(LLVMI32Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI64Vector retResult) {
+        protected Object doOp(LLVMI64Vector retResult) {
             return retResult;
         }
 
         @Specialization
-        public Object execute(LLVMI8Vector retResult) {
+        protected Object doOp(LLVMI8Vector retResult) {
             return retResult;
         }
-
     }
 
     @NodeChild(value = "retResult", type = LLVMExpressionNode.class)
@@ -303,44 +290,43 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
 
         public abstract long getStructSize();
 
-        public LLVMStructRetNode(SourceSection sourceSection, LLVMMemMoveNode memMove) {
-            super(sourceSection);
+        public LLVMStructRetNode(LLVMSourceLocation source, LLVMMemMoveNode memMove) {
+            super(source);
             this.memMove = memMove;
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMAddress retResult) {
+        protected Object doOp(VirtualFrame frame, LLVMAddress retResult) {
             return returnStruct(frame, retResult);
         }
 
-        private Object returnStruct(VirtualFrame frame, LLVMAddress retResult) {
-            try {
-                LLVMAddress retStructAddress = argIdx1.executeLLVMAddress(frame);
-                memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
-                return retStructAddress;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+        @Specialization
+        protected Object doOp(VirtualFrame frame, LLVMTruffleObject retResult) {
+            return returnStruct(frame, retResult);
         }
 
         @Specialization
-        public Object execute(VirtualFrame frame, LLVMGlobalVariable retResult, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            return returnStruct(frame, globalAccess.getNativeLocation(retResult));
+        protected Object doOp(VirtualFrame frame, LLVMGlobal retResult,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+            return returnStruct(frame, globalAccess.executeWithTarget(frame, retResult));
         }
 
+        private Object returnStruct(VirtualFrame frame, Object retResult) {
+            Object retStructAddress = argIdx1.executeGeneric(frame);
+            memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
+            return retStructAddress;
+        }
     }
 
     public abstract static class LLVMVoidReturnNode extends LLVMRetNode {
 
-        public LLVMVoidReturnNode(SourceSection sourceSection) {
-            super(sourceSection);
+        public LLVMVoidReturnNode(LLVMSourceLocation source) {
+            super(source);
         }
 
         @Specialization
-        public Object execute() {
+        protected Object doOp() {
             return null;
         }
     }
-
 }

@@ -69,17 +69,22 @@ import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public final class Metadata implements ParserListener {
 
     public Type getTypeById(long id) {
         return types.get(id);
     }
 
-    public IRScope getContainer() {
-        return container;
+    public IRScope getScope() {
+        return scope;
     }
 
-    private final IRScope container;
+    private final IRScope scope;
+
+    private final Set<MDCompositeType> compositeTypes;
 
     protected final Types types;
 
@@ -87,10 +92,11 @@ public final class Metadata implements ParserListener {
 
     private String lastParsedName = null;
 
-    Metadata(Types types, IRScope container) {
+    Metadata(Types types, IRScope scope) {
         this.types = types;
-        this.container = container;
-        this.metadata = container.getMetadata();
+        this.scope = scope;
+        this.metadata = scope.getMetadata();
+        this.compositeTypes = new HashSet<>();
     }
 
     // https://github.com/llvm-mirror/llvm/blob/release_38/include/llvm/Bitcode/LLVMBitCodes.h#L191
@@ -103,7 +109,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case VALUE:
-                metadata.add(MDValue.create(args, this));
+                metadata.add(MDValue.create(args, scope));
                 break;
 
             case DISTINCT_NODE:
@@ -130,7 +136,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case OLD_FN_NODE:
-                metadata.add(MDValue.create(args, this));
+                metadata.add(MDValue.create(args, scope));
                 break;
 
             case NAMED_NODE:
@@ -177,9 +183,12 @@ public final class Metadata implements ParserListener {
                 metadata.add(MDLexicalBlockFile.create38(args, metadata));
                 break;
 
-            case LOCAL_VAR:
-                metadata.add(MDLocalVariable.create38(args, metadata));
+            case LOCAL_VAR: {
+                final MDLocalVariable md = MDLocalVariable.create38(args, metadata);
+                metadata.add(md);
+                metadata.registerLocal(md);
                 break;
+            }
 
             case NAMESPACE:
                 metadata.add(MDNamespace.create38(args, metadata));
@@ -193,9 +202,12 @@ public final class Metadata implements ParserListener {
                 metadata.add(MDDerivedType.create38(args, metadata));
                 break;
 
-            case COMPOSITE_TYPE:
-                metadata.add(MDCompositeType.create38(args, metadata));
+            case COMPOSITE_TYPE: {
+                final MDCompositeType type = MDCompositeType.create38(args, metadata);
+                metadata.add(type);
+                compositeTypes.add(type);
                 break;
+            }
 
             case COMPILE_UNIT:
                 metadata.add(MDCompileUnit.create38(args, metadata));
@@ -278,9 +290,9 @@ public final class Metadata implements ParserListener {
                 final MDKind kind = metadata.getKind(args[i]);
                 final MDAttachment attachment = MDAttachment.create(kind, args[i + 1], metadata);
                 if (offset != 0) {
-                    container.attachSymbolMetadata(targetIndex, attachment);
+                    scope.attachSymbolMetadata(targetIndex, attachment);
                 } else {
-                    container.attachMetadata(attachment);
+                    scope.attachMetadata(attachment);
                 }
             }
         }
@@ -341,9 +353,12 @@ public final class Metadata implements ParserListener {
                 case DW_TAG_UNION_TYPE:
                 case DW_TAG_VECTOR_TYPE:
                 case DW_TAG_INHERITANCE:
-                case DW_TAG_SUBROUTINE_TYPE:
-                    metadata.add(MDCompositeType.create32(args, this));
+                case DW_TAG_SUBROUTINE_TYPE: {
+                    final MDCompositeType type = MDCompositeType.create32(args, this);
+                    metadata.add(type);
+                    compositeTypes.add(type);
                     break;
+                }
 
                 case DW_TAG_SUBRANGE_TYPE:
                     metadata.add(MDSubrange.create32(args, this));
@@ -355,9 +370,12 @@ public final class Metadata implements ParserListener {
 
                 case DW_TAG_AUTO_VARIABLE:
                 case DW_TAG_ARG_VARIABLE:
-                case DW_TAG_RETURN_VARIABLE:
-                    metadata.add(MDLocalVariable.create32(args, this));
+                case DW_TAG_RETURN_VARIABLE: {
+                    final MDLocalVariable md = MDLocalVariable.create32(args, this);
+                    metadata.registerLocal(md);
+                    metadata.add(md);
                     break;
+                }
 
                 case DW_TAG_UNKNOWN:
                     metadata.add(MDNode.create32(args, this));
@@ -378,7 +396,6 @@ public final class Metadata implements ParserListener {
                 default:
                     metadata.add(MDNode.create32(args, this));
             }
-
         } else {
             metadata.add(MDNode.create32(args, this));
         }
@@ -393,6 +410,14 @@ public final class Metadata implements ParserListener {
         } else {
             // lexical block file
             return MDLexicalBlockFile.create32(args, this);
+        }
+    }
+
+    @Override
+    public void exit() {
+        for (MDCompositeType type : compositeTypes) {
+            final String identifier = MDString.getIfInstance(type.getIdentifier());
+            metadata.registerType(identifier, type);
         }
     }
 }

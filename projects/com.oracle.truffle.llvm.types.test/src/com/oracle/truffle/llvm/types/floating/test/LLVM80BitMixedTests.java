@@ -48,5 +48,4 @@ public class LLVM80BitMixedTests extends LLVM80BitTest {
         double oneLong = LLVM80BitFloat.fromLong(-1).getDoubleValue();
         assertBitEquals(-1.0, oneLong);
     }
-
 }

@@ -1,6 +1,6 @@
 #ifndef __clang__
 #include <stdbool.h>
-bool __builtin_sub_overflow(signed short, signed short, signed short*);
+bool __builtin_sub_overflow(signed short, signed short, signed short *);
 #endif
 
 int main(int argc, const char **argv) {

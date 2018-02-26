@@ -73,5 +73,4 @@ public final class LLVMFreeExceptionNode extends LLVMExpressionNode {
             throw new IllegalStateException(e);
         }
     }
-
 }

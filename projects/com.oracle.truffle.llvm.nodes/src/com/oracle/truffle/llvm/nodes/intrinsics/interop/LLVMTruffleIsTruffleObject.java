@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleIsTruffleObject extends LLVMIntrinsic {
 
     @Specialization
-    public boolean isLLVMTruffleObject(LLVMTruffleObject object) {
+    protected boolean isLLVMTruffleObject(LLVMTruffleObject object) {
         return object.getOffset() == 0;
     }
 
@@ -50,5 +50,4 @@ public abstract class LLVMTruffleIsTruffleObject extends LLVMIntrinsic {
     public boolean fallback(Object object) {
         return false;
     }
-
 }

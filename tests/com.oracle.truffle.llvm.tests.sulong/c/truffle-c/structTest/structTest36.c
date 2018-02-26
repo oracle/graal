@@ -3,6 +3,6 @@ struct test {
 };
 
 int main() {
-  static struct test t = { .a = 3 };
+  static struct test t = {.a = 3 };
   return t.a;
 }

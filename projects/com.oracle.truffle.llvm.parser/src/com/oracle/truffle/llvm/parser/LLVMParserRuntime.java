@@ -39,7 +39,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
@@ -55,10 +57,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -68,7 +70,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class LLVMParserRuntime {
     private static final String CONSTRUCTORS_VARNAME = "@llvm.global_ctors";
@@ -78,7 +80,8 @@ public final class LLVMParserRuntime {
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() >= p2.getFirst() ? 1 : -1;
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p1.getFirst() < p2.getFirst() ? 1 : -1;
 
-    public static LLVMParserResult parse(Source source, String libraryName, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory) {
+    public static LLVMParserResult parse(Source source, ExternalLibrary library, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context,
+                    NodeFactory nodeFactory) {
         ModelModule model = parserResult.getModel();
         StackAllocation stack = parserResult.getStackAllocation();
         LLVMPhiManager phiManager = parserResult.getPhis();
@@ -91,7 +94,7 @@ public final class LLVMParserRuntime {
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         context.setDataLayoutConverter(targetDataLayout);
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, libraryName, language, context, stack, nodeFactory, module.getAliases());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, stack, nodeFactory, module.getAliases());
 
         runtime.initializeFunctions(phiManager, labels, module.getFunctions());
 
@@ -106,45 +109,51 @@ public final class LLVMParserRuntime {
         RootCallTarget constructorFunctions = runtime.getConstructors(module.getGlobals());
         RootCallTarget destructorFunctions = runtime.getDestructors(module.getGlobals());
 
-        Map<LLVMSourceSymbol, GlobalValueSymbol> sourceGlobals = parserResult.getSourceModel().getGlobals();
-        if (!sourceGlobals.isEmpty() && context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            LLVMSourceContext sourceContext = context.getSourceContext();
-            for (LLVMSourceSymbol symbol : sourceGlobals.keySet()) {
-                final LLVMExpressionNode symbolNode = runtime.getGlobalVariable(symbolResolver, sourceGlobals.get(symbol));
-                final LLVMDebugValue value = nodeFactory.createGlobalVariableDebug(symbolNode);
-                sourceContext.registerGlobal(symbol, value);
-            }
+        if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            final SourceModel sourceModel = model.getSourceModel();
+            final LLVMSourceContext sourceContext = context.getSourceContext();
+
+            sourceModel.getGlobals().forEach((symbol, irValue) -> {
+                final LLVMExpressionNode node = symbolResolver.resolve(irValue);
+                final LLVMDebugValue value = nodeFactory.createDebugStaticValue(node);
+                sourceContext.registerStatic(symbol, value);
+            });
+
+            sourceModel.getStaticMembers().forEach(((type, symbol) -> {
+                final LLVMExpressionNode node = symbolResolver.resolve(symbol);
+                final LLVMDebugValue value = nodeFactory.createDebugStaticValue(node);
+                type.setValue(value);
+            }));
         }
 
-        RootCallTarget mainFunctionCallTarget;
+        RootCallTarget mainFunctionCallTarget = null;
         if (runtime.getScope().functionExists("@main")) {
             LLVMFunctionDescriptor mainDescriptor = runtime.getScope().getFunctionDescriptor("@main");
             LLVMFunctionDescriptor startDescriptor = runtime.getScope().getFunctionDescriptor("@_start");
             RootCallTarget startCallTarget = startDescriptor.getLLVMIRFunction();
-            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, startCallTarget, source, mainDescriptor.getType().getReturnType(), mainDescriptor.getType().getArgumentTypes());
+            String applicationPath = source.getPath() == null ? "" : source.getPath().toString();
+            RootNode globalFunction = nodeFactory.createGlobalRootNode(runtime, startCallTarget, mainDescriptor, applicationPath);
             RootCallTarget globalFunctionRoot = Truffle.getRuntime().createCallTarget(globalFunction);
             RootNode globalRootNode = nodeFactory.createGlobalRootNodeWrapping(runtime, globalFunctionRoot, startDescriptor.getType().getReturnType());
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(globalRootNode);
-        } else {
-            mainFunctionCallTarget = null;
         }
         return new LLVMParserResult(mainFunctionCallTarget, globalVarInitsTarget, globalVarDeallocsTarget, constructorFunctions, destructorFunctions);
     }
 
     private final Source source;
-    private final String libraryName;
+    private final ExternalLibrary library;
     private final LLVMLanguage language;
     private final LLVMContext context;
     private final StackAllocation stack;
     private final NodeFactory nodeFactory;
-    private final Map<GlobalAlias, Symbol> aliases;
+    private final Map<GlobalAlias, SymbolImpl> aliases;
     private final List<LLVMExpressionNode> deallocations;
     private final LLVMScope scope;
 
-    private LLVMParserRuntime(Source source, String libraryName, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
-                    Map<GlobalAlias, Symbol> aliases) {
+    private LLVMParserRuntime(Source source, ExternalLibrary library, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
+                    Map<GlobalAlias, SymbolImpl> aliases) {
         this.source = source;
-        this.libraryName = libraryName;
+        this.library = library;
         this.context = context;
         this.stack = stack;
         this.nodeFactory = nodeFactory;
@@ -154,19 +163,44 @@ public final class LLVMParserRuntime {
         this.scope = LLVMScope.createFileScope(context);
     }
 
-    public String getLibraryName() {
-        return libraryName;
+    public ExternalLibrary getLibrary() {
+        return library;
     }
 
     private void initializeFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
         for (FunctionDefinition function : functions) {
             String functionName = function.getName();
             LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, functionName, !Linkage.isFileLocal(function.getLinkage()),
-                            index -> LLVMFunctionDescriptor.createDescriptor(context, libraryName, functionName, function.getType(), index));
+                            index -> LLVMFunctionDescriptor.createDescriptor(context, library, functionName, function.getType(), index));
             LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
                             labels.labels(functionName));
-            functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()));
+
+            boolean replaceExistingFunction = checkReplaceExistingFunction(functionName, functionDescriptor);
+            functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
         }
+    }
+
+    private boolean checkReplaceExistingFunction(String functionName, LLVMFunctionDescriptor functionDescriptor) {
+        if (library.getLibrariesToReplace() != null) {
+            for (ExternalLibrary lib : library.getLibrariesToReplace()) {
+                if (functionDescriptor.getLibrary().equals(lib)) {
+                    // We already have a symbol defined in another library but now we are
+                    // overwriting it. We rename the already existing symbol by prefixing it with
+                    // "__libName_", e.g., "@__clock_gettime" would be renamed to
+                    // "@__libc___clock_gettime".
+                    assert functionName.charAt(0) == '@';
+                    String renamedFunctionName = "@__" + functionDescriptor.getLibrary().getName() + "_" + functionName.substring(1);
+                    LLVMFunctionDescriptor renamedFunctionDescriptor = scope.lookupOrCreateFunction(functionDescriptor.getContext(), renamedFunctionName, true,
+                                    index -> LLVMFunctionDescriptor.createDescriptor(functionDescriptor.getContext(), functionDescriptor.getLibrary(), renamedFunctionName,
+                                                    functionDescriptor.getType(),
+                                                    index));
+                    renamedFunctionDescriptor.declareInSulong(functionDescriptor.getFunction(), false);
+                    functionDescriptor.setLibrary(library);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private LLVMExpressionNode[] createGlobalVariableInitializationNodes(LLVMSymbolReadResolver symbolResolver, List<GlobalValueSymbol> globals) {
@@ -208,7 +242,7 @@ public final class LLVMParserRuntime {
     }
 
     private LLVMExpressionNode getGlobalVariable(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol global) {
-        Symbol g = global;
+        SymbolImpl g = global;
         while (g instanceof GlobalAlias) {
             g = aliases.get(g);
         }
@@ -272,11 +306,12 @@ public final class LLVMParserRuntime {
             final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(this, 1, PrimitiveType.I32);
             final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(this, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(this, functionType, functionLoadTarget);
-            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{nodeFactory.createFrameRead(this, PrimitiveType.I64, stack.getRootFrame().findFrameSlot(LLVMStack.FRAME_ID))};
+            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
+                            nodeFactory.createFrameRead(this, new PointerType(VoidType.INSTANCE), stack.getRootFrame().findFrameSlot(LLVMStack.FRAME_ID))};
             final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
-            final Symbol prioritySymbol = structorDefinition.getElement(0);
+            final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
             final Integer priority = LLVMSymbolReadResolver.evaluateIntegerConstant(prioritySymbol);
             structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
         }

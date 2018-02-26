@@ -35,12 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -56,17 +57,20 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable panicLocVar, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess, @Cached("createPanicLocation()") PanicLocType panicLoc) {
-        LLVMAddress addr = globalAccess.getNativeLocation(panicLocVar);
+    protected Object doOp(VirtualFrame frame, LLVMGlobal panicLocVar,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                    @Cached("createPanicLocation()") PanicLocType panicLoc,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        LLVMAddress addr = globalAccess.executeWithTarget(frame, panicLocVar);
         CompilerDirectives.transferToInterpreter();
-        throw panicLoc.read(addr.getVal());
+        throw panicLoc.read(memory, addr.getVal());
     }
 
     static final class PanicLocType {
 
         private final StrSliceType strslice;
-        private final int offsetFilename;
-        private final int offsetLineNr;
+        private final long offsetFilename;
+        private final long offsetLineNr;
 
         private PanicLocType(DataSpecConverter dataLayout, Type type, StrSliceType strslice) {
             this.strslice = strslice;
@@ -75,11 +79,11 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             this.offsetLineNr = structureType.getOffsetOf(2, dataLayout);
         }
 
-        RustPanicException read(long address) {
+        RustPanicException read(LLVMMemory memory, long address) {
             CompilerAsserts.neverPartOfCompilation();
-            String desc = strslice.read(address);
-            String filename = strslice.read(address + offsetFilename);
-            int linenr = LLVMMemory.getI32(address + offsetLineNr);
+            String desc = strslice.read(memory, address);
+            String filename = strslice.read(memory, address + offsetFilename);
+            int linenr = memory.getI32(address + offsetLineNr);
             return new RustPanicException(desc, filename, linenr);
         }
 
@@ -89,12 +93,11 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             Type type = new PointerType((new StructureType(false, new Type[]{strslice.getType(), strslice.getType(), PrimitiveType.I32})));
             return new PanicLocType(dataLayout, type, strslice);
         }
-
     }
 
     private static final class StrSliceType {
 
-        private final int lengthOffset;
+        private final long lengthOffset;
         private final Type type;
 
         private StrSliceType(DataSpecConverter dataLayout, Type type) {
@@ -103,12 +106,12 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         }
 
         @TruffleBoundary
-        String read(long address) {
-            long strAddr = LLVMMemory.getAddress(address).getVal();
-            int strLen = LLVMMemory.getI32(address + lengthOffset);
+        String read(LLVMMemory memory, long address) {
+            long strAddr = memory.getAddress(address).getVal();
+            int strLen = memory.getI32(address + lengthOffset);
             StringBuilder strBuilder = new StringBuilder();
             for (int i = 0; i < strLen; i++) {
-                strBuilder.append((char) Byte.toUnsignedInt(LLVMMemory.getI8(strAddr)));
+                strBuilder.append((char) Byte.toUnsignedInt(memory.getI8(strAddr)));
                 strAddr += Byte.BYTES;
             }
             return strBuilder.toString();
@@ -122,7 +125,5 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             Type type = new StructureType(false, new Type[]{new PointerType(PrimitiveType.I8), PrimitiveType.I64});
             return new StrSliceType(dataLayout, type);
         }
-
     }
-
 }

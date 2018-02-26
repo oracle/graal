@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+/**
+ * Context extensions encapsulate optional functionality that has a state and which therefore needs
+ * to live on the context-level.
+ */
 public interface ContextExtension {
 
     default Class<?> extensionClass() {

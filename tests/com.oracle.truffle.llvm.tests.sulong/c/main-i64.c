@@ -1,4 +1,1 @@
-long main(void)
-{
-	return 42;
-}
+long main(void) { return 42; }

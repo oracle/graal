@@ -71,9 +71,9 @@ abstract class LLVMObjectNativeFactory {
 
     private static class FallbackLibrary extends LLVMObjectNativeLibrary {
 
-        @Child Node isPointer;
-        @Child Node asPointer;
-        @Child Node toNative;
+        @Child private Node isPointer;
+        @Child private Node asPointer;
+        @Child private Node toNative;
 
         @Override
         public boolean guard(Object obj) {
@@ -140,9 +140,9 @@ abstract class LLVMObjectNativeFactory {
 
     private static class CachingLibrary extends LLVMObjectNativeLibrary {
 
-        @Child CachedIsPointerNode isPointer;
-        @Child CachedAsPointerNode asPointer;
-        @Child CachedToNativeNode toNative;
+        @Child private CachedIsPointerNode isPointer;
+        @Child private CachedAsPointerNode asPointer;
+        @Child private CachedToNativeNode toNative;
 
         @Override
         public boolean guard(Object obj) {
@@ -184,13 +184,13 @@ abstract class LLVMObjectNativeFactory {
         abstract boolean execute(VirtualFrame frame, Object obj);
 
         @Specialization(limit = "TYPE_LIMIT", guards = "lib.guard(obj)")
-        boolean isPointer(VirtualFrame frame, Object obj,
+        protected boolean isPointer(VirtualFrame frame, Object obj,
                         @Cached("createCached(obj)") LLVMObjectNativeLibrary lib) {
             return lib.isPointer(frame, obj);
         }
 
         @Specialization(replaces = "isPointer")
-        boolean slowpath(VirtualFrame frame, Object obj) {
+        protected boolean slowpath(VirtualFrame frame, Object obj) {
             LLVMObjectNativeLibrary lib = createCached(obj);
             return isPointer(frame, obj, lib);
         }
@@ -203,7 +203,7 @@ abstract class LLVMObjectNativeFactory {
         abstract long execute(VirtualFrame frame, Object obj) throws InteropException;
 
         @Specialization(limit = "TYPE_LIMIT", guards = "lib.guard(obj)")
-        long asPointer(VirtualFrame frame, Object obj,
+        protected long asPointer(VirtualFrame frame, Object obj,
                         @Cached("createCached(obj)") LLVMObjectNativeLibrary lib) {
             try {
                 return lib.asPointer(frame, obj);
@@ -214,7 +214,7 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Specialization(replaces = "asPointer")
-        long slowpath(VirtualFrame frame, Object obj) {
+        protected long slowpath(VirtualFrame frame, Object obj) {
             LLVMObjectNativeLibrary lib = createCached(obj);
             return asPointer(frame, obj, lib);
         }
@@ -227,7 +227,7 @@ abstract class LLVMObjectNativeFactory {
         abstract Object execute(VirtualFrame frame, Object obj) throws InteropException;
 
         @Specialization(limit = "TYPE_LIMIT", guards = "lib.guard(obj)")
-        Object toNative(VirtualFrame frame, Object obj,
+        protected Object toNative(VirtualFrame frame, Object obj,
                         @Cached("createCached(obj)") LLVMObjectNativeLibrary lib) {
             try {
                 return lib.toNative(frame, obj);
@@ -238,7 +238,7 @@ abstract class LLVMObjectNativeFactory {
         }
 
         @Specialization(replaces = "toNative")
-        Object slowpath(VirtualFrame frame, Object obj) {
+        protected Object slowpath(VirtualFrame frame, Object obj) {
             LLVMObjectNativeLibrary lib = createCached(obj);
             return toNative(frame, obj, lib);
         }

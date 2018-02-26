@@ -32,73 +32,80 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class, value = "valueNode")
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
 
-    protected final LLVMGlobalVariable descriptor;
-    private final SourceSection source;
+    protected final LLVMGlobal descriptor;
+    private final LLVMSourceLocation source;
 
-    public LLVMGlobalVariableStoreNode(LLVMGlobalVariable descriptor, SourceSection source) {
+    public LLVMGlobalVariableStoreNode(LLVMGlobal descriptor, LLVMSourceLocation source) {
         this.descriptor = descriptor;
         this.source = source;
     }
 
     @Specialization
-    public Object executeNative(LLVMVirtualAllocationAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putManaged(descriptor, value);
+    protected Object doNative(VirtualFrame frame, LLVMVirtualAllocationAddress value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putAddress(descriptor, value);
+    protected Object doNative(VirtualFrame frame, LLVMAddress value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMTruffleAddress value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putAddress(descriptor, value.getAddress());
+    protected Object doNative(VirtualFrame frame, LLVMTruffleAddress value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value.getAddress());
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMFunctionDescriptor value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putFunction(descriptor, value);
+    protected Object doNative(VirtualFrame frame, LLVMFunctionDescriptor value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMGlobalVariable value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putGlobal(descriptor, value);
+    protected Object doNative(VirtualFrame frame, LLVMGlobal value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeNative(LLVMTruffleObject value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putLLVMTruffleObject(descriptor, value);
+    protected Object doNative(VirtualFrame frame, LLVMTruffleObject value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Specialization
-    public Object executeLLVMBoxedPrimitive(LLVMBoxedPrimitive value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putBoxedPrimitive(descriptor, value);
+    protected Object doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive value,
+                    @Cached("create()") WriteObjectNode globalAccess) {
+        globalAccess.execute(frame, descriptor, value);
         return null;
     }
 
     @Override
-    public SourceSection getSourceSection() {
+    public LLVMSourceLocation getSourceLocation() {
         return source;
     }
-
 }

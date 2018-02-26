@@ -92,7 +92,7 @@ public final class LLVMTruffleWrite {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
-        public Object cached(VirtualFrame frame, LLVMTruffleObject value, Object id, Object v,
+        protected Object cached(VirtualFrame frame, LLVMTruffleObject value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("readStr.executeWithTarget(frame, id)") String cachedId,
                         @Cached("getContextReference()") ContextReference<LLVMContext> context) {
@@ -102,7 +102,7 @@ public final class LLVMTruffleWrite {
         }
 
         @Specialization
-        public Object executeIntrinsic(VirtualFrame frame, LLVMTruffleObject value, Object id, Object v,
+        protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("getContextReference()") ContextReference<LLVMContext> context) {
             checkLLVMTruffleObject(value);
@@ -117,7 +117,6 @@ public final class LLVMTruffleWrite {
             System.err.println("Invalid arguments to write-builtin.");
             throw new IllegalArgumentException();
         }
-
     }
 
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -131,7 +130,8 @@ public final class LLVMTruffleWrite {
         }
 
         @Specialization
-        public Object executeIntrinsic(LLVMTruffleObject value, int id, Object v, @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        protected Object doIntrinsic(LLVMTruffleObject value, int id, Object v,
+                        @Cached("getContextReference()") ContextReference<LLVMContext> context) {
             checkLLVMTruffleObject(value);
             doWriteIdx(foreignWrite, value.getObject(), id, prepareValueForEscape.executeWithTarget(v, context.get()));
             return null;
@@ -144,6 +144,5 @@ public final class LLVMTruffleWrite {
             System.err.println("Invalid arguments to write-builtin.");
             throw new IllegalArgumentException();
         }
-
     }
 }

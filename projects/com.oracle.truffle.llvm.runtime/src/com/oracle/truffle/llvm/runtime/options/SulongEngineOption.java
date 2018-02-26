@@ -92,6 +92,10 @@ public final class SulongEngineOption {
     public static final String STACKTRACE_ON_ABORT_NAME = "llvm.printStackTraceOnAbort";
     public static final String STACKTRACE_ON_ABORT_INFO = "Prints a C stack trace when abort() is called.";
 
+    public static final OptionKey<String> USE_LIBC_BITCODE = new OptionKey<>(String.valueOf(false));
+    public static final String USE_LIBC_BITCODE_NAME = "llvm.useLibcBitcode";
+    public static final String USE_LIBC_BITCODE_INFO = "Determines if LLVM bitcode should be used for libc functions.";
+
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.CONFIGURATION, SulongEngineOption.CONFIGURATION_NAME).help(SulongEngineOption.CONFIGURATION_INFO).category(
@@ -114,6 +118,8 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.PARSE_ONLY, SulongEngineOption.PARSE_ONLY_NAME).help(
                         SulongEngineOption.PARSE_ONLY_INFO).category(
                                         OptionCategory.EXPERT).build());
+        options.add(OptionDescriptor.newBuilder(SulongEngineOption.USE_LIBC_BITCODE, SulongEngineOption.USE_LIBC_BITCODE_NAME).help(SulongEngineOption.USE_LIBC_BITCODE_INFO).category(
+                        OptionCategory.EXPERT).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_LVI, SulongEngineOption.ENABLE_LVI_NAME).help(SulongEngineOption.ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.STACKTRACE_ON_ABORT, SulongEngineOption.STACKTRACE_ON_ABORT_NAME).help(SulongEngineOption.STACKTRACE_ON_ABORT_INFO).category(
                         OptionCategory.DEBUG).build());
@@ -153,5 +159,4 @@ public final class SulongEngineOption {
         String[] userLibraries = librariesOption.equals("") ? new String[0] : librariesOption.split(OPTION_ARRAY_SEPARATOR);
         return Arrays.asList(userLibraries);
     }
-
 }

@@ -49,7 +49,7 @@ public class LLVMSwitchNodeWrapper implements InstrumentableFactory<LLVMSwitchNo
         @Child private LLVMSwitchNode delegateNode;
 
         LLVMSwitchNodeWrapper0(ProbeNode probeNode, LLVMSwitchNode delegateNode) {
-            super(delegateNode.getSourceSection());
+            super(delegateNode.getSourceLocation());
             this.probeNode = probeNode;
             this.delegateNode = delegateNode;
         }
@@ -66,15 +66,27 @@ public class LLVMSwitchNodeWrapper implements InstrumentableFactory<LLVMSwitchNo
 
         @Override
         public Object executeCondition(VirtualFrame frame) {
-            try {
-                probeNode.onEnter(frame);
-                Object result = delegateNode.executeCondition(frame);
-                probeNode.onReturnValue(frame, result);
-                return result;
-            } catch (Throwable t) {
-                probeNode.onReturnExceptional(frame, t);
-                throw t;
+            Object returnValue;
+            for (;;) {
+                boolean wasOnReturnExecuted = false;
+                try {
+                    probeNode.onEnter(frame);
+                    returnValue = delegateNode.executeCondition(frame);
+                    wasOnReturnExecuted = true;
+                    probeNode.onReturnValue(frame, returnValue);
+                    break;
+                } catch (Throwable t) {
+                    Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
+                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                        continue;
+                    } else if (result != null) {
+                        returnValue = result;
+                        break;
+                    }
+                    throw t;
+                }
             }
+            return returnValue;
         }
 
         @Override

@@ -29,6 +29,8 @@
  */
 #include <sys/syscall.h>
 
+#define __SYSCALL_0(result, id) __asm__ volatile("syscall" : "=a"(result) : "a"(id) : "memory", "rcx", "r11");
+
 #define __SYSCALL_1(result, id, a1) __asm__ volatile("syscall" : "=a"(result) : "a"(id), "D"(a1) : "memory", "rcx", "r11");
 
 #define __SYSCALL_2(result, id, a1, a2) __asm__ volatile("syscall" : "=a"(result) : "a"(id), "D"(a1), "S"(a2) : "memory", "rcx", "r11");

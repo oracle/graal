@@ -39,8 +39,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMExit extends LLVMIntrinsic {
 
     @Specialization
-    public Object execute(int value) {
-        throw new LLVMExitException(value);
+    protected Object doOp(int value) {
+        throw LLVMExitException.exit(value);
     }
-
 }

@@ -29,14 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class SwitchOldInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    private Symbol condition;
+    private SymbolImpl condition;
 
     private final InstructionBlock defaultBlock;
 
@@ -51,7 +52,7 @@ public final class SwitchOldInstruction extends VoidInstruction implements Termi
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -67,7 +68,7 @@ public final class SwitchOldInstruction extends VoidInstruction implements Termi
         return cases[index];
     }
 
-    public Symbol getCondition() {
+    public SymbolImpl getCondition() {
         return condition;
     }
 
@@ -91,20 +92,20 @@ public final class SwitchOldInstruction extends VoidInstruction implements Termi
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (condition == original) {
             condition = replacement;
         }
     }
 
-    public static SwitchOldInstruction generate(FunctionDefinition function, int condition, int defaultBlock, long[] cases, int[] targetBlocks) {
+    public static SwitchOldInstruction generate(FunctionDefinition function, SymbolTable symbols, int condition, int defaultBlock, long[] cases, int[] targetBlocks) {
         final InstructionBlock[] blocks = new InstructionBlock[targetBlocks.length];
         for (int i = 0; i < blocks.length; i++) {
             blocks[i] = function.getBlock(targetBlocks[i]);
         }
 
         final SwitchOldInstruction inst = new SwitchOldInstruction(function.getBlock(defaultBlock), cases, blocks);
-        inst.condition = function.getSymbols().getSymbol(condition, inst);
+        inst.condition = symbols.getForwardReferenced(condition, inst);
         return inst;
     }
 }

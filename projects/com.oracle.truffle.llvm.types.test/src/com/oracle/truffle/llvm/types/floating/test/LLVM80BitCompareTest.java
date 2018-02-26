@@ -94,5 +94,4 @@ public class LLVM80BitCompareTest extends LLVM80BitTest {
         assertTrue(LLVM80BitFloat.compare(minusOne(), negativeInfinity()) > 0);
         assertTrue(LLVM80BitFloat.compare(val(Long.MIN_VALUE), negativeInfinity()) > 0);
     }
-
 }

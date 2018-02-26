@@ -44,7 +44,7 @@ public class LLVMAMD64ToI8Node {
         }
 
         @Specialization
-        public byte executeI8(long from) {
+        protected byte doI8(long from) {
             return (byte) (from >> shift);
         }
     }

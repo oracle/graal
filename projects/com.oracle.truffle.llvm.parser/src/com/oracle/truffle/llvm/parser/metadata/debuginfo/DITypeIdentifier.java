@@ -50,7 +50,6 @@ final class DITypeIdentifier {
                 identifiedTypes.put(identifier, mdCompositeType);
             }
         }
-
     };
 
     private MetadataValueList metadata = null;

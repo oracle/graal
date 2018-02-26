@@ -31,6 +31,9 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
+/**
+ * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
+ */
 public final class LLVMException extends ControlFlowException {
 
     public static final String FRAME_SLOT_ID = "<function exception value>";
@@ -46,5 +49,4 @@ public final class LLVMException extends ControlFlowException {
     public LLVMAddress getPointer() {
         return LLVMAddress.fromLong(ptr);
     }
-
 }

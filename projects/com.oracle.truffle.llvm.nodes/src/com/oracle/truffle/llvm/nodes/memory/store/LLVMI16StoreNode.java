@@ -37,9 +37,10 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI16Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMI16StoreNode extends LLVMStoreNode {
@@ -49,33 +50,38 @@ public abstract class LLVMI16StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    public Object execute(LLVMGlobalVariable address, short value, @Cached(value = "createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        globalAccess.putI16(address, value);
+    protected Object doOp(LLVMGlobal address, short value,
+                    @Cached("create()") WriteI16Node globalAccess) {
+        globalAccess.execute(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMVirtualAllocationAddress address, short value) {
-        address.writeI16(value);
+    protected Object doOp(LLVMVirtualAllocationAddress address, short value,
+                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+        address.writeI16(memory, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMAddress address, short value) {
-        LLVMMemory.putI16(address, value);
+    protected Object doOp(LLVMAddress address, short value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.putI16(address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(VirtualFrame frame, LLVMTruffleObject address, short value, @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(frame, address, value);
         return null;
     }
 
     @Specialization
-    public Object execute(LLVMBoxedPrimitive address, short value) {
+    protected Object doOp(LLVMBoxedPrimitive address, short value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (address.getValue() instanceof Long) {
-            LLVMMemory.putI16((long) address.getValue(), value);
+            memory.putI16((long) address.getValue(), value);
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();

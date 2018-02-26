@@ -43,19 +43,27 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-abstract class LLVMForeignCallNode extends LLVMNode {
+/**
+ * Used when an LLVM bitcode method is called from another language.
+ */
+abstract class LLVMForeignCallNode extends Node {
 
     @Child protected LLVMDataEscapeNode prepareValueForEscape;
+
+    protected LLVMMemory getLLVMMemory() {
+        return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
+    }
 
     protected LLVMForeignCallNode(Type returnType) {
         this.prepareValueForEscape = LLVMDataEscapeNodeGen.create(returnType);
@@ -75,7 +83,7 @@ abstract class LLVMForeignCallNode extends LLVMNode {
         }
 
         @ExplodeLoop
-        Object[] pack(VirtualFrame frame, Object[] arguments, long stackPointer) {
+        Object[] pack(VirtualFrame frame, Object[] arguments, StackPointer stackPointer) {
             assert arguments.length == toLLVM.length;
             final Object[] packedArguments = new Object[1 + toLLVM.length];
             packedArguments[0] = stackPointer;
@@ -92,17 +100,17 @@ abstract class LLVMForeignCallNode extends LLVMNode {
     }
 
     protected static class SlowPackForeignArgumentsNode extends Node {
-        @Child SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
+        @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
-        Object[] pack(LLVMFunctionDescriptor function, Object[] arguments, long stackPointer) {
+        Object[] pack(LLVMFunctionDescriptor function, LLVMMemory memory, LLVMContext context, Object[] arguments, StackPointer stackPointer) {
             int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
             final Object[] packedArguments = new Object[1 + actualArgumentsLength];
             packedArguments[0] = stackPointer;
             for (int i = 0; i < function.getType().getArgumentTypes().length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(function.getType().getArgumentTypes()[i], arguments[i]);
+                packedArguments[i + 1] = slowConvert.convert(function.getType().getArgumentTypes()[i], memory, context, arguments[i]);
             }
             for (int i = function.getType().getArgumentTypes().length; i < arguments.length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(ForeignToLLVMType.ANY, arguments[i]);
+                packedArguments[i + 1] = slowConvert.convert(memory, ForeignToLLVMType.ANY, context, arguments[i]);
             }
             return packedArguments;
         }
@@ -126,48 +134,50 @@ abstract class LLVMForeignCallNode extends LLVMNode {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "3", guards = {"function == cachedFunction", "cachedLength == arguments.length"})
-    public Object callDirectCached(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments,
+    protected Object callDirectCached(VirtualFrame frame, LLVMFunctionDescriptor function, Object[] arguments,
                     @Cached("function") LLVMFunctionDescriptor cachedFunction,
                     @Cached("create(getCallTarget(cachedFunction))") DirectCallNode callNode,
                     @Cached("createFastPackArguments(cachedFunction, arguments.length)") PackForeignArgumentsNode packNode,
                     @Cached("arguments.length") int cachedLength,
                     @Cached("cachedFunction.getContext()") LLVMContext context,
-                    @Cached("cachedFunction.needsStackPointer()") boolean needsStackPointer,
                     @Cached("create()") LLVMGetStackNode getStack) {
         assert !(cachedFunction.getType().getReturnType() instanceof StructureType);
-        return directCall(frame, arguments, callNode, packNode, getStack, context, needsStackPointer);
+        return directCall(frame, arguments, callNode, packNode, getStack, context);
     }
 
-    private Object directCall(VirtualFrame frame, Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMGetStackNode getStack, LLVMContext context,
-                    boolean needsStackPointer) {
+    private Object directCall(VirtualFrame frame, Object[] arguments, DirectCallNode callNode, PackForeignArgumentsNode packNode, LLVMGetStackNode getStack, LLVMContext context) {
         Object result;
-        if (needsStackPointer) {
-            assert getThreadingStack(context).checkThread();
-            LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
-            try (StackPointer stackPointer = stack.takeStackPointer()) {
-                result = callNode.call(packNode.pack(frame, arguments, stackPointer.get()));
-            }
-        } else {
-            result = callNode.call(packNode.pack(frame, arguments, 0));
+        LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
+        try (StackPointer stackPointer = stack.newFrame()) {
+            result = callNode.call(packNode.pack(frame, arguments, stackPointer));
         }
         return prepareValueForEscape.executeWithTarget(result, context);
     }
 
     @Specialization(replaces = "callDirectCached")
-    public Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
-                    @Cached("create()") IndirectCallNode callNode, @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack, @Cached("create()") LLVMGetStackNode getStack) {
+    protected Object callIndirect(LLVMFunctionDescriptor function, Object[] arguments,
+                    @Cached("create()") IndirectCallNode callNode,
+                    @Cached("createSlowPackArguments()") SlowPackForeignArgumentsNode slowPack,
+                    @Cached("create()") LLVMGetStackNode getStack,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         assert !(function.getType().getReturnType() instanceof StructureType);
-        assert function.getContext().getThreadingStack().checkThread();
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
         Object result;
-        try (StackPointer stackPointer = stack.takeStackPointer()) {
-            result = callNode.call(getCallTarget(function), slowPack.pack(function, arguments, stackPointer.get()));
+        try (StackPointer stackPointer = stack.newFrame()) {
+            result = callNode.call(getCallTarget(function), slowPack.pack(function, memory, function.getContext(), arguments, stackPointer));
         }
         return prepareValueForEscape.executeWithTarget(result, function.getContext());
     }
 
     protected CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-        return function.getLLVMIRFunction();
+        if (function.isLLVMIRFunction()) {
+            return function.getLLVMIRFunction();
+        } else if (function.isNativeIntrinsicFunction()) {
+            return function.getNativeIntrinsic().cachedCallTarget(function.getType());
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("native function not supported at this point");
+        }
     }
 
     private static void checkArgLength(int minLength, int actualLength) {

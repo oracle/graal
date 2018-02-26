@@ -43,8 +43,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMForeignWriteNode extends LLVMNode {
 
-    @Child LLVMOffsetToNameNode offsetToName;
-    @Child LLVMObjectWriteNode write;
+    @Child private LLVMOffsetToNameNode offsetToName;
+    @Child private LLVMObjectWriteNode write;
 
     protected LLVMForeignWriteNode(Type valueType, int elementAccessSize) {
         this.offsetToName = LLVMOffsetToNameNodeGen.create(elementAccessSize);
@@ -54,7 +54,7 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
     public abstract void execute(VirtualFrame frame, LLVMTruffleObject addr, Object value);
 
     @Specialization
-    void doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr, Object value) {
+    protected void doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr, Object value) {
         Object key = offsetToName.execute(addr.getBaseType(), addr.getOffset());
         try {
             write.executeWrite(frame, addr.getObject(), key, addr.getOffset(), value);

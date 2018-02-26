@@ -42,79 +42,79 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 abstract class ToAnyLLVM extends ForeignToLLVM {
 
     @Specialization
-    public int fromInt(int value) {
+    protected int fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public char fromChar(char value) {
+    protected char fromChar(char value) {
         return value;
     }
 
     @Specialization
-    public long fromLong(long value) {
+    protected long fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public byte fromByte(byte value) {
+    protected byte fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public short fromShort(short value) {
+    protected short fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public float fromFloat(float value) {
+    protected float fromFloat(float value) {
         return value;
     }
 
     @Specialization
-    public double fromDouble(double value) {
+    protected double fromDouble(double value) {
         return value;
     }
 
     @Specialization
-    public boolean fromBoolean(boolean value) {
+    protected boolean fromBoolean(boolean value) {
         return value;
     }
 
     @Specialization
-    public String fromString(String obj) {
+    protected String fromString(String obj) {
         return obj;
     }
 
     @Specialization
-    public LLVMBoxedPrimitive fromBoxedPrimitive(LLVMBoxedPrimitive boxed) {
+    protected LLVMBoxedPrimitive fromBoxedPrimitive(LLVMBoxedPrimitive boxed) {
         return boxed;
     }
 
     @Specialization
-    public LLVMAddress fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected LLVMAddress fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return obj.getAddress();
     }
 
     @Specialization
-    public LLVMFunctionDescriptor fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
+    protected LLVMFunctionDescriptor fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
         return fd;
     }
 
     @Specialization
-    public LLVMGlobalVariable fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
+    protected LLVMGlobal fromSharedDescriptor(LLVMSharedGlobalVariable shared) {
         return shared.getDescriptor();
     }
 
     @Specialization(guards = {"checkIsPointer(obj)", "notLLVM(obj)"})
-    public LLVMAddress fromNativePointer(TruffleObject obj) {
+    protected LLVMAddress fromNativePointer(TruffleObject obj) {
         try {
             long raw = ForeignAccess.sendAsPointer(asPointer, obj);
             return LLVMAddress.fromLong(raw);
@@ -125,7 +125,7 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization(guards = {"!checkIsPointer(obj)", "notLLVM(obj)"})
-    public LLVMTruffleObject fromTruffleObject(TruffleObject obj) {
+    protected LLVMTruffleObject fromTruffleObject(TruffleObject obj) {
         return new LLVMTruffleObject(obj, new PointerType(VoidType.INSTANCE));
     }
 

@@ -29,25 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
 public final class VoidInvokeInstruction extends VoidInstruction implements Invoke {
 
-    private Symbol target;
+    private SymbolImpl target;
 
-    private final List<Symbol> arguments = new ArrayList<>();
+    private final SymbolImpl[] arguments;
 
     private final InstructionBlock normalSuccessor;
 
@@ -55,29 +48,25 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
 
     private final AttributesCodeEntry paramAttr;
 
-    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
+    private VoidInvokeInstruction(InstructionBlock normalSuccessor, InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr, int argCount) {
         this.normalSuccessor = normalSuccessor;
         this.unwindSuccessor = unwindSuccessor;
         this.paramAttr = paramAttr;
+        this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
-    public Symbol getArgument(int index) {
-        return arguments.get(index);
+    public SymbolImpl[] getArguments() {
+        return arguments;
     }
 
     @Override
-    public int getArgumentCount() {
-        return arguments.size();
-    }
-
-    @Override
-    public Symbol getCallTarget() {
+    public SymbolImpl getCallTarget() {
         return target;
     }
 
@@ -97,36 +86,22 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
         }
-        for (int i = 0; i < arguments.size(); i++) {
-            if (arguments.get(i) == original) {
-                arguments.set(i, replacement);
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i] == original) {
+                arguments[i] = replacement;
             }
         }
     }
 
-    public static VoidInvokeInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
+    public static VoidInvokeInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, InstructionBlock normalSuccessor,
                     InstructionBlock unwindSuccessor, AttributesCodeEntry paramAttr) {
-        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor, paramAttr);
-        inst.target = symbols.getSymbol(targetIndex, inst);
-        if (inst.target instanceof FunctionDefinition) {
-            Type[] types = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();
-            for (int i = 0; i < arguments.length; i++) {
-                // TODO: why it's possible to have more arguments than argument types?
-                if (types.length > i && types[i] instanceof MetaType) {
-                    inst.arguments.add(new MetadataConstant(arguments[i]));
-                } else {
-                    inst.arguments.add(symbols.getSymbol(arguments[i], inst));
-                }
-            }
-        } else {
-            for (final int argument : arguments) {
-                inst.arguments.add(symbols.getSymbol(argument, inst));
-            }
-        }
+        final VoidInvokeInstruction inst = new VoidInvokeInstruction(normalSuccessor, unwindSuccessor, paramAttr, arguments.length);
+        inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
+        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
     }
 
@@ -153,5 +128,10 @@ public final class VoidInvokeInstruction extends VoidInstruction implements Invo
             assert index == 1;
             return unwindSuccessor;
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s -> %s : %s", FunctionStart.asString(target, arguments), normalSuccessor.getName(), unwindSuccessor.getName());
     }
 }

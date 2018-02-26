@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class LLVMEndCatchNode extends LLVMExpressionNode {
-
     @Child private LLVMExpressionNode stackPointer;
     @Child private LLVMLookupDispatchNode dispatch;
     @Child private LLVMNativeFunctions.SulongDecrementHandlerCountNode decHandlerCount;
@@ -141,7 +140,7 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
             getDecHandlerCount().dec(ptr);
             LLVMAddress destructorAddress = getGetDestructor().get(ptr);
             if (getGetHandlerCount().get(ptr) <= 0 && destructorAddress.getVal() != 0) {
-                dispatch.executeDispatch(frame, destructorAddress, new Object[]{stackPointer.executeI64(frame), getGetThrownObject().getThrownObject(ptr)});
+                dispatch.executeDispatch(frame, destructorAddress, new Object[]{stackPointer.executeGeneric(frame), getGetThrownObject().getThrownObject(ptr)});
             }
             return null;
         } catch (Throwable e) {
@@ -154,5 +153,4 @@ public final class LLVMEndCatchNode extends LLVMExpressionNode {
     private LLVMAddress popExceptionToStack() {
         return getCaughtExceptionStack().pop();
     }
-
 }

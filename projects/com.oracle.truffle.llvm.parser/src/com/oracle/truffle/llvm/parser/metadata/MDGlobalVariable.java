@@ -38,7 +38,7 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
 
     private MDBaseNode displayName;
     private MDBaseNode linkageName;
-    private MDBaseNode staticMembers;
+    private MDBaseNode staticMemberDeclaration;
     private MDBaseNode variable;
     private MDBaseNode compileUnit;
 
@@ -49,7 +49,7 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
 
         this.displayName = MDVoidNode.INSTANCE;
         this.linkageName = MDVoidNode.INSTANCE;
-        this.staticMembers = MDVoidNode.INSTANCE;
+        this.staticMemberDeclaration = MDVoidNode.INSTANCE;
         this.variable = MDVoidNode.INSTANCE;
         this.compileUnit = MDVoidNode.INSTANCE;
     }
@@ -75,8 +75,8 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         return isDefinedInCompileUnit;
     }
 
-    public MDBaseNode getStaticMembers() {
-        return staticMembers;
+    public MDBaseNode getStaticMemberDeclaration() {
+        return staticMemberDeclaration;
     }
 
     public MDBaseNode getVariable() {
@@ -100,8 +100,8 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         if (linkageName == oldValue) {
             linkageName = newValue;
         }
-        if (staticMembers == oldValue) {
-            staticMembers = newValue;
+        if (staticMemberDeclaration == oldValue) {
+            staticMemberDeclaration = newValue;
         }
         if (variable == oldValue) {
             variable = newValue;
@@ -120,7 +120,7 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
     private static final int ARGINDEX_38_LOCALTOCOMPILEUNIT = 7;
     private static final int ARGINDEX_38_DEFINEDINCOMPILEUNIT = 8;
     private static final int ARGINDEX_38_VARIABLE = 9;
-    private static final int ARGINDEX_38_STATICMEMBERS = 10;
+    private static final int ARGINDEX_38_STATICMEMBERDECLARATION = 10;
 
     public static MDGlobalVariable create38(long[] args, MetadataValueList md) {
         final long line = args[ARGINDEX_38_LINE];
@@ -138,7 +138,7 @@ public final class MDGlobalVariable extends MDVariable implements MDBaseNode {
         globalVariable.displayName = name;
 
         globalVariable.linkageName = md.getNullable(args[ARGINDEX_38_LINKAGENAME], globalVariable);
-        globalVariable.staticMembers = md.getNullable(args[ARGINDEX_38_STATICMEMBERS], globalVariable);
+        globalVariable.staticMemberDeclaration = md.getNullable(args[ARGINDEX_38_STATICMEMBERDECLARATION], globalVariable);
         globalVariable.variable = md.getNullable(args[ARGINDEX_38_VARIABLE], globalVariable);
 
         return globalVariable;

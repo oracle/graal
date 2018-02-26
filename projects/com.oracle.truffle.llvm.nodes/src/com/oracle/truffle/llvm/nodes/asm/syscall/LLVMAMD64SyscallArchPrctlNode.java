@@ -31,9 +31,18 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.IntValueProfile;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOperationNode {
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
@@ -42,27 +51,46 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMAMD64SyscallOper
         super("arch_prctl");
     }
 
-    @TruffleBoundary
-    private void setTLS(LLVMAddress addr) {
-        ThreadLocal<LLVMAddress> tls = getContextReference().get().getThreadLocalStorage();
-        tls.set(addr);
+    @Specialization
+    protected long doOp(VirtualFrame frame, long code, long addr,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("createAddressStoreNode()") LLVMAddressStoreNode store) {
+        return exec(frame, code, addr, context, store);
     }
 
     @Specialization
-    protected long execute(long code, LLVMAddress addr) {
+    protected long doOp(VirtualFrame frame, long code, LLVMAddress addr,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("createAddressStoreNode()") LLVMAddressStoreNode store) {
+        return exec(frame, code, addr, context, store);
+    }
+
+    @Specialization
+    protected long doOp(VirtualFrame frame, long code, LLVMTruffleObject addr,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("createAddressStoreNode()") LLVMAddressStoreNode store) {
+        return exec(frame, code, addr, context, store);
+    }
+
+    @TruffleBoundary
+    protected LLVMAddressStoreNode createAddressStoreNode() {
+        return LLVMAddressStoreNodeGen.create(new PointerType(VoidType.INSTANCE));
+    }
+
+    private long exec(VirtualFrame frame, long code, Object addr, ContextReference<LLVMContext> context, LLVMAddressStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
             case LLVMAMD64ArchPrctl.ARCH_SET_FS:
-                setTLS(addr);
+                context.get().setThreadLocalStorage(addr);
                 break;
+            case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
+                Object tls = getContextReference().get().getThreadLocalStorage();
+                store.executeWithTarget(frame, addr, tls);
+                break;
+            }
             default:
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(String.format("not implemented: arch_prcntl(0x%04x)", code));
         }
         return 0;
-    }
-
-    @Specialization
-    protected long execute(long code, long addr) {
-        return execute(code, LLVMAddress.fromLong(addr));
     }
 }

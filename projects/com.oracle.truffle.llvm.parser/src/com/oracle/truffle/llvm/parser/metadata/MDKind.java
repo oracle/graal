@@ -73,5 +73,4 @@ public final class MDKind implements MDBaseNode {
     public static MDKind create(long id, String name) {
         return new MDKind(id, name);
     }
-
 }

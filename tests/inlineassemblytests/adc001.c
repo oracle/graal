@@ -6,17 +6,14 @@ void test_adc(int a, int b, int cf) {
   long out_flags;
   int out;
   __asm__ volatile("pushf\n"
-		   "push %%rax\n"
-		   "popf\n"
-		   "adcl %[a], %[b]\n"
-		   "pushf\n"
-		   "pop %%rax\n"
-		   "popf\n"
-		   :     "=a"(out_flags),
-		     [b] "=r" (out)
-		   : [a] "r"(a),
-		         "1"(b),
-		         "a"(flags));
+                   "push %%rax\n"
+                   "popf\n"
+                   "adcl %[a], %[b]\n"
+                   "pushf\n"
+                   "pop %%rax\n"
+                   "popf\n"
+                   : "=a"(out_flags), [b] "=r"(out)
+                   : [a] "r"(a), "1"(b), "a"(flags));
   printf("%08x:%08x:%x:%08x:%x:%x\n", a, b, cf, out, (out_flags & CC_C) ? 1 : 0, (out_flags & CC_O) ? 1 : 0);
 }
 

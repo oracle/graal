@@ -34,16 +34,14 @@
 #define ABORT_STATUS 134
 
 void __sulong_print_stacktrace();
-void __clear_exit_handlers();
 int __sulong_should_print_stacktrace_on_abort();
 
-__attribute__((weak)) void abort() {
+void abort() {
   int64_t result;
   if (__sulong_should_print_stacktrace_on_abort()) {
     fprintf(stderr, "abort()\n\n");
     __sulong_print_stacktrace();
   }
-  __clear_exit_handlers();
   __SYSCALL_1(result, SYS_exit, ABORT_STATUS);
   for (;;) {
     __SYSCALL_1(result, SYS_exit, ABORT_STATUS);

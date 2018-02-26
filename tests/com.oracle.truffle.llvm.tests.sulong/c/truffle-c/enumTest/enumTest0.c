@@ -1,8 +1,4 @@
-enum TEST {
-  A,
-  B,
-  C
-};
+enum TEST { A, B, C };
 
 int main() {
   enum TEST t = B;

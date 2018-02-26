@@ -37,10 +37,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToFloat extends ForeignToLLVM {
@@ -48,72 +50,74 @@ abstract class ToFloat extends ForeignToLLVM {
     @Child private ToFloat toFloat;
 
     @Specialization
-    public float fromInt(int value) {
+    protected float fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public float fromLong(long value) {
+    protected float fromLong(long value) {
         return value;
     }
 
     @Specialization
-    public float fromChar(char value) {
+    protected float fromChar(char value) {
         return value;
     }
 
     @Specialization
-    public float fromShort(short value) {
+    protected float fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public float fromByte(byte value) {
+    protected float fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public float fromFloat(float value) {
+    protected float fromFloat(float value) {
         return value;
     }
 
     @Specialization
-    public float fromDouble(double value) {
+    protected float fromDouble(double value) {
         return (float) value;
     }
 
     @Specialization
-    public float fromBoolean(boolean value) {
+    protected float fromBoolean(boolean value) {
         return (value ? 1.0f : 0.0f);
     }
 
     @Specialization
-    public float fromString(String value) {
+    protected float fromString(String value) {
         return getSingleStringCharacter(value);
     }
 
     @Specialization
-    public float fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected float fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    public float fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected float fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return obj.getAddress().getVal();
     }
 
     @Specialization
-    public float fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return access.getNativeLocation(shared.getDescriptor()).getVal();
+    protected float fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
+        return access.executeWithTarget(frame, shared.getDescriptor()).getVal();
     }
 
     @Specialization
-    public float fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected float fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public float fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected float fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
@@ -126,7 +130,7 @@ abstract class ToFloat extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static float slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) {
+    static float slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, LLVMContext context, Object value) {
         if (value instanceof Number) {
             return ((Number) value).floatValue();
         } else if (value instanceof Boolean) {
@@ -138,16 +142,15 @@ abstract class ToFloat extends ForeignToLLVM {
         } else if (value instanceof LLVMFunctionDescriptor) {
             return ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
-            return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
+            return slowPathPrimitiveConvert(memory, thiz, context, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {
             return ((LLVMTruffleAddress) value).getAddress().getVal();
         } else if (value instanceof LLVMSharedGlobalVariable) {
-            return createGlobalAccess().getNativeLocation(((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
+            return LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return slowPathPrimitiveConvert(thiz, thiz.fromForeign((TruffleObject) value));
+            return slowPathPrimitiveConvert(memory, thiz, context, thiz.fromForeign((TruffleObject) value));
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }
     }
-
 }

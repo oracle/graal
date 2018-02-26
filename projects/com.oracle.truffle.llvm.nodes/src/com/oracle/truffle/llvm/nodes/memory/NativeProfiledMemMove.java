@@ -36,24 +36,26 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
-public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
+public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemMoveNode {
     protected static final long MAX_JAVA_LEN = 256;
 
     @CompilationFinal private boolean inJava = true;
 
-    @Child private LLVMToNativeNode convert1 = LLVMToNativeNode.toNative();
-    @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.toNative();
+    @Child private LLVMToNativeNode convertTarget = LLVMToNativeNode.createToNativeWithTarget();
+    @Child private LLVMToNativeNode convertSource = LLVMToNativeNode.createToNativeWithTarget();
+    private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
-    public Object case1(VirtualFrame frame, Object target, Object source, int length) {
-        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    protected Object case1(VirtualFrame frame, Object target, Object source, int length) {
+        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
     }
 
     @Specialization
-    public Object case2(VirtualFrame frame, Object target, Object source, long length) {
-        return memmove(convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    protected Object case2(VirtualFrame frame, Object target, Object source, long length) {
+        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
     }
 
     private Object memmove(LLVMAddress target, LLVMAddress source, long length) {
@@ -65,9 +67,9 @@ public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, targetPointer == sourcePointer)) {
                     // nothing todo
                 } else if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, Long.compareUnsigned(targetPointer - sourcePointer, length) >= 0)) {
-                    copyForward(targetPointer, sourcePointer, length);
+                    copyForward(memory, targetPointer, sourcePointer, length);
                 } else {
-                    copyBackward(targetPointer, sourcePointer, length);
+                    copyBackward(memory, targetPointer, sourcePointer, length);
                 }
                 return null;
             } else {
@@ -76,52 +78,52 @@ public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
             }
         }
 
-        nativeMemCopy(target, source, length);
+        nativeMemCopy(memory, target, source, length);
         return null;
     }
 
-    private static void copyForward(long target, long source, long length) {
+    private static void copyForward(LLVMMemory memory, long target, long source, long length) {
         long targetPointer = target;
         long sourcePointer = source;
         long i64ValuesToWrite = length >> 3;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
-            long v64 = LLVMMemory.getI64(sourcePointer);
-            LLVMMemory.putI64(targetPointer, v64);
+            long v64 = memory.getI64(sourcePointer);
+            memory.putI64(targetPointer, v64);
             targetPointer += 8;
             sourcePointer += 8;
         }
 
         long i8ValuesToWrite = length & 0x07;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
-            byte value = LLVMMemory.getI8(sourcePointer);
-            LLVMMemory.putI8(targetPointer, value);
+            byte value = memory.getI8(sourcePointer);
+            memory.putI8(targetPointer, value);
             targetPointer++;
             sourcePointer++;
         }
     }
 
-    private static void copyBackward(long target, long source, long length) {
+    private static void copyBackward(LLVMMemory memory, long target, long source, long length) {
         long targetPointer = target + length;
         long sourcePointer = source + length;
         long i64ValuesToWrite = length >> 3;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
             targetPointer -= 8;
             sourcePointer -= 8;
-            long v64 = LLVMMemory.getI64(sourcePointer);
-            LLVMMemory.putI64(targetPointer, v64);
+            long v64 = memory.getI64(sourcePointer);
+            memory.putI64(targetPointer, v64);
         }
 
         long i8ValuesToWrite = length & 0x07;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
             targetPointer--;
             sourcePointer--;
-            byte value = LLVMMemory.getI8(sourcePointer);
-            LLVMMemory.putI8(targetPointer, value);
+            byte value = memory.getI8(sourcePointer);
+            memory.putI8(targetPointer, value);
         }
     }
 
     @SuppressWarnings("deprecation")
-    private static void nativeMemCopy(LLVMAddress target, LLVMAddress source, long length) {
-        LLVMMemory.copyMemory(source.getVal(), target.getVal(), length);
+    private static void nativeMemCopy(LLVMMemory memory, LLVMAddress target, LLVMAddress source, long length) {
+        memory.copyMemory(source.getVal(), target.getVal(), length);
     }
 }

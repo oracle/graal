@@ -37,10 +37,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 abstract class ToI32 extends ForeignToLLVM {
@@ -48,73 +50,75 @@ abstract class ToI32 extends ForeignToLLVM {
     @Child private ToI32 toI32;
 
     @Specialization
-    public int fromInt(int value) {
+    protected int fromInt(int value) {
         return value;
     }
 
     @Specialization
-    public int fromChar(char value) {
+    protected int fromChar(char value) {
         return value;
     }
 
     @Specialization
-    public int fromShort(short value) {
+    protected int fromShort(short value) {
         return value;
     }
 
     @Specialization
-    public int fromLong(long value) {
+    protected int fromLong(long value) {
         return (int) value;
     }
 
     @Specialization
-    public int fromByte(byte value) {
+    protected int fromByte(byte value) {
         return value;
     }
 
     @Specialization
-    public int fromFloat(float value) {
+    protected int fromFloat(float value) {
         return (int) value;
     }
 
     @Specialization
-    public int fromDouble(double value) {
+    protected int fromDouble(double value) {
         return (int) value;
     }
 
     @Specialization
-    public int fromBoolean(boolean value) {
+    protected int fromBoolean(boolean value) {
         return value ? 1 : 0;
     }
 
     @Specialization
-    public int fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
+    protected int fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
         return recursiveConvert(frame, boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    public int fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
+    protected int fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
         return recursiveConvert(frame, fromForeign(obj));
     }
 
     @Specialization
-    public int fromString(String value) {
+    protected int fromString(String value) {
         return getSingleStringCharacter(value);
     }
 
     @Specialization
-    public int fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
+    protected int fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
         return (int) obj.getAddress().getVal();
     }
 
     @Specialization
-    public int fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected int fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (int) toNative.executeWithTarget(frame, fd).getVal();
     }
 
     @Specialization
-    public int fromSharedDescriptor(LLVMSharedGlobalVariable shared, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess access) {
-        return (int) access.getNativeLocation(shared.getDescriptor()).getVal();
+    protected int fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
+        return (int) access.executeWithTarget(frame, shared.getDescriptor()).getVal();
     }
 
     private int recursiveConvert(VirtualFrame frame, Object o) {
@@ -126,7 +130,7 @@ abstract class ToI32 extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static int slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) {
+    static int slowPathPrimitiveConvert(LLVMMemory memory, ForeignToLLVM thiz, LLVMContext context, Object value) {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         } else if (value instanceof Boolean) {
@@ -138,13 +142,13 @@ abstract class ToI32 extends ForeignToLLVM {
         } else if (value instanceof LLVMFunctionDescriptor) {
             return (int) ((LLVMFunctionDescriptor) value).toNative().asPointer();
         } else if (value instanceof LLVMBoxedPrimitive) {
-            return slowPathPrimitiveConvert(thiz, ((LLVMBoxedPrimitive) value).getValue());
+            return slowPathPrimitiveConvert(memory, thiz, context, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMTruffleAddress) {
             return (int) ((LLVMTruffleAddress) value).getAddress().getVal();
         } else if (value instanceof LLVMSharedGlobalVariable) {
-            return (int) createGlobalAccess().getNativeLocation(((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
+            return (int) LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
-            return slowPathPrimitiveConvert(thiz, thiz.fromForeign((TruffleObject) value));
+            return slowPathPrimitiveConvert(memory, thiz, context, thiz.fromForeign((TruffleObject) value));
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

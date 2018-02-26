@@ -35,25 +35,20 @@ import java.util.Map;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.ValueFragment;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.InlineAsmConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BranchInstruction;
@@ -62,6 +57,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.CastInstruction
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareExchangeInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.CompareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ConditionalBranchInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractElementInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ExtractValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.FenceInstruction;
@@ -86,27 +83,26 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMException;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.runtime.types.VoidType;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
-final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
+final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private final FrameDescriptor frame;
     private final Map<String, Integer> labels;
@@ -117,7 +113,9 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     private final LLVMParserRuntime runtime;
     private final ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos;
     private final List<? extends FrameSlot> frameSlots;
-    private final SourceModel.Function sourceFunction;
+    private final SourceFunction sourceFunction;
+    private final List<FrameSlot> notNullable;
+    private final LLVMRuntimeDebugInformation dbgInfoHandler;
 
     private final List<LLVMExpressionNode> blockInstructions;
     private int instructionIndex;
@@ -125,7 +123,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     LLVMBitcodeInstructionVisitor(FrameDescriptor frame, Map<String, Integer> labels,
                     List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime,
-                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceModel.Function sourceFunction) {
+                    ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceFunction sourceFunction, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
         this.frame = frame;
         this.labels = labels;
         this.blockPhis = blockPhis;
@@ -136,6 +134,8 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         this.nullerInfos = nullerInfos;
         this.frameSlots = frame.getSlots();
         this.sourceFunction = sourceFunction;
+        this.notNullable = notNullable;
+        this.dbgInfoHandler = dbgInfoHandler;
 
         this.blockInstructions = new ArrayList<>();
     }
@@ -153,6 +153,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     }
 
     @Override
+    public void defaultAction(SymbolImpl symbol) {
+        throw new IllegalStateException("Instruction not implemented: " + symbol.getClass().getSimpleName());
+    }
+
+    @Override
     public void visit(AllocateInstruction allocate) {
         final Type type = allocate.getPointeeType();
         int alignment;
@@ -166,7 +171,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         }
 
         final int size = runtime.getContext().getByteSize(type);
-        final Symbol count = allocate.getCount();
+        final SymbolImpl count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
             result = nodeFactory.createAlloca(runtime, type, size, alignment);
@@ -211,7 +216,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     @Override
     public void visit(BranchInstruction branch) {
         LLVMControlFlowNode unconditionalBranchNode = nodeFactory.createUnconditionalBranch(runtime, labels.get(branch.getSuccessor().getName()),
-                        getPhiWriteNodes(branch)[0], sourceFunction.getSourceSection(branch));
+                        getPhiWriteNodes(branch)[0], sourceFunction.getSourceLocation(branch));
         setControlFlowNode(unconditionalBranchNode);
     }
 
@@ -223,7 +228,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
         // stack pointer
-        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, getStackSlot());
+        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -244,17 +249,17 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             argIndex++;
         }
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
-        final Symbol target = call.getCallTarget();
-        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, sourceSection);
+        final LLVMSourceLocation source = sourceFunction.getSourceLocation(call);
+        final SymbolImpl target = call.getCallTarget();
+        LLVMExpressionNode result = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, source);
         if (result == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType, sourceSection);
+                result = createInlineAssemblerNode(inlineAsmConstant, argNodes, argTypes, targetType, source);
 
             } else {
                 LLVMExpressionNode function = symbols.resolve(target);
-                result = nodeFactory.createFunctionCall(runtime, function, argNodes, new FunctionType(targetType, argTypes, false), sourceSection);
+                result = nodeFactory.createFunctionCall(runtime, function, argNodes, new FunctionType(targetType, argTypes, false), source);
             }
         }
 
@@ -279,7 +284,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
     @Override
     public void visit(ResumeInstruction resumeInstruction) {
-        LLVMControlFlowNode resume = nodeFactory.createResumeInstruction(runtime, getExceptionSlot(), sourceFunction.getSourceSection(resumeInstruction));
+        LLVMControlFlowNode resume = nodeFactory.createResumeInstruction(runtime, getExceptionSlot(), sourceFunction.getSourceLocation(resumeInstruction));
         setControlFlowNode(resume);
     }
 
@@ -293,154 +298,48 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         createFrameWrite(nodeFactory.createCompareExchangeInstruction(runtime, cmpxchg.getType(), elementType, ptrNode, cmpNode, newNode), cmpxchg);
     }
 
-    private static final int[] CLEAR_NONE = new int[0];
-
-    private void visitDebugIntrinsic(VoidCallInstruction call, boolean isDeclaration) {
-        final Symbol sourceVariableSymbol;
-        if (isDeclaration) {
-            sourceVariableSymbol = call.getArgument(SourceModel.LLVM_DBG_DECLARE_LOCALREF_ARGINDEX);
-        } else {
-            sourceVariableSymbol = call.getArgument(SourceModel.LLVM_DBG_VALUE_LOCALREF_ARGINDEX);
-        }
-
-        final SourceModel.Variable var;
-        if (sourceVariableSymbol instanceof SourceModel.Variable) {
-            var = (SourceModel.Variable) sourceVariableSymbol;
-        } else {
-            handleNullerInfo();
-            return;
-        }
-
-        final Symbol valueSymbol = call.getArgument(SourceModel.LLVM_DBG_INTRINSICS_VALUE_ARGINDEX);
+    private void visitDebugIntrinsic(SymbolImpl value, SourceVariable variable, MDExpression expression, long index, boolean isDeclaration) {
         FrameSlot valueSlot = null;
-        if (valueSymbol instanceof ValueInstruction) {
-            valueSlot = frame.findFrameSlot(((ValueInstruction) valueSymbol).getName());
+        if (value instanceof ValueInstruction) {
+            valueSlot = frame.findFrameSlot(((ValueInstruction) value).getName());
 
-        } else if (valueSymbol instanceof FunctionParameter) {
-            valueSlot = frame.findFrameSlot(((FunctionParameter) valueSymbol).getName());
+        } else if (value instanceof FunctionParameter) {
+            valueSlot = frame.findFrameSlot(((FunctionParameter) value).getName());
         }
 
         if (valueSlot != null) {
-            final LLVMExpressionNode typeNode = nodeFactory.registerSourceType(valueSlot, var.getSourceType());
+            final LLVMExpressionNode typeNode = nodeFactory.registerSourceType(valueSlot, variable.getSourceType());
             if (typeNode != null) {
                 addInstructionUnchecked(typeNode);
             }
         }
 
-        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
-            handleNullerInfo();
-            return;
+        final LLVMExpressionNode dbgIntrinsic = dbgInfoHandler.handleDebugIntrinsic(value, variable, expression, index, isDeclaration);
+        if (dbgIntrinsic != null) {
+            addInstructionUnchecked(dbgIntrinsic);
         }
 
-        LLVMExpressionNode valueRead = null;
-        int exprIndex;
-        if (isDeclaration) {
-            if (valueSymbol instanceof UndefinedConstant || valueSymbol instanceof NullConstant) {
-                valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
-            } else if (valueSymbol instanceof GlobalValueSymbol || valueSymbol.getType() instanceof PointerType) {
-                valueRead = symbols.resolve(valueSymbol);
-            }
-
-            exprIndex = SourceModel.LLVM_DBG_DECLARE_EXPR_ARGINDEX;
-
-        } else {
-            final Symbol valueOffsetSymbol = call.getArgument(LLVM_DBG_VALUE_OFFSET_INDEX);
-            final Integer valueOffset = LLVMSymbolReadResolver.evaluateIntegerConstant(valueOffsetSymbol);
-            valueRead = symbols.resolve(valueSymbol);
-            exprIndex = SourceModel.LLVM_DBG_VALUE_EXPR_ARGINDEX;
-
-            if (valueOffset != null && valueOffset != 0) {
-                // this is unsupported, it doesn't appear in LLVM 3.8+
-                handleNullerInfo();
-                return;
-            }
-        }
-
-        if (valueRead == null) {
-            handleNullerInfo();
-            return;
-        }
-
-        int partIndex = -1;
-        int[] clearParts = null;
-
-        final Symbol exprSymbol = call.getArgument(exprIndex);
-        if (exprSymbol instanceof MDExpression) {
-            final MDExpression expression = (MDExpression) exprSymbol;
-            if (ValueFragment.describesFragment(expression)) {
-                final ValueFragment fragment = ValueFragment.parse(expression);
-                final List<ValueFragment> siblings = var.getFragments();
-                final List<Integer> clearSiblings = new ArrayList<>(siblings.size());
-                partIndex = ValueFragment.getPartIndex(fragment, siblings, clearSiblings);
-                if (clearSiblings.isEmpty()) {
-                    // this will be the case most of the time
-                    clearParts = CLEAR_NONE;
-                } else {
-                    clearParts = clearSiblings.stream().mapToInt(Integer::intValue).toArray();
-                }
-            }
-        }
-
-        if (partIndex < 0 && var.hasFragments()) {
-            partIndex = var.getFragmentIndex(0, (int) var.getSymbol().getType().getSize());
-            if (partIndex < 0) {
-                throw new IllegalStateException("Cannot find index of value fragment!");
-            }
-
-            clearParts = new int[var.getFragments().size() - 1];
-            for (int i = 0; i < partIndex; i++) {
-                clearParts[i] = i;
-            }
-            for (int i = partIndex; i < clearParts.length; i++) {
-                clearParts[i] = i + 1;
-            }
-        }
-
-        final FrameSlot targetSlot = getDebugValueSlot(var.getSymbol());
-        final LLVMExpressionNode dbgWrite;
-        if (partIndex < 0) {
-            dbgWrite = nodeFactory.createDebugWrite(isDeclaration, valueRead, targetSlot);
-
-        } else {
-            final LLVMExpressionNode aggregateRead = nodeFactory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
-            dbgWrite = nodeFactory.createDebugFragmentWrite(isDeclaration, valueRead, targetSlot, aggregateRead, partIndex, clearParts);
-        }
-
-        addInstructionUnchecked(dbgWrite);
         handleNullerInfo();
     }
 
-    private FrameSlot getDebugValueSlot(LLVMSourceSymbol symbol) {
-        return frame.findOrAddFrameSlot(symbol, MetaType.DEBUG, FrameSlotKind.Object);
+    @Override
+    public void visit(DbgDeclareInstruction inst) {
+        visitDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), 0L, true);
     }
 
-    private static final int LLVM_DBG_VALUE_OFFSET_INDEX = 1;
+    @Override
+    public void visit(DbgValueInstruction inst) {
+        visitDebugIntrinsic(inst.getValue(), inst.getVariable(), inst.getExpression(), inst.getIndex(), false);
+    }
 
     @Override
     public void visit(VoidCallInstruction call) {
-        final Symbol target = call.getCallTarget();
-
-        if (target instanceof FunctionDeclaration) {
-            final String name = ((FunctionDeclaration) target).getName();
-            switch (name) {
-                case SourceModel.LLVM_DBG_DECLARE_NAME: {
-                    visitDebugIntrinsic(call, true);
-                    return;
-                }
-
-                case SourceModel.LLVM_DBG_VALUE_NAME: {
-                    visitDebugIntrinsic(call, false);
-                    return;
-                }
-            }
-        }
-
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, getStackSlot());
+        args[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -454,16 +353,17 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             argIndex++;
         }
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
-        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, sourceSection);
+        final LLVMSourceLocation source = sourceFunction.getSourceLocation(call);
+        final SymbolImpl target = call.getCallTarget();
+        LLVMExpressionNode node = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, source);
         if (node == null) {
             if (target instanceof InlineAsmConstant) {
                 final InlineAsmConstant inlineAsmConstant = (InlineAsmConstant) target;
-                node = createInlineAssemblerNode(inlineAsmConstant, args, argsType, call.getType(), sourceSection);
+                node = createInlineAssemblerNode(inlineAsmConstant, args, argsType, call.getType(), source);
             } else {
                 final LLVMExpressionNode function = symbols.resolve(target);
                 final FunctionType functionType = new FunctionType(call.getType(), argsType, false);
-                node = nodeFactory.createFunctionCall(runtime, function, args, functionType, sourceSection);
+                node = nodeFactory.createFunctionCall(runtime, function, args, functionType, source);
             }
         }
         addInstruction(node);
@@ -476,7 +376,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
-        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, getStackSlot());
+        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
         if (targetType instanceof StructureType) {
@@ -495,7 +395,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        final Symbol target = call.getCallTarget();
+        final SymbolImpl target = call.getCallTarget();
         int regularIndex = labels.get(call.normalSuccessor().getName());
         int unwindIndex = labels.get(call.unwindSuccessor().getName());
 
@@ -521,33 +421,33 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 }
             }
         }
-        LLVMExpressionNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
-                        normalType.toArray(new Type[normalType.size()]));
-        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
-                        unwindType.toArray(new Type[unwindType.size()]));
+        LLVMExpressionNode normalPhi = nodeFactory.createPhi(runtime, normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
+                        normalType.toArray(Type.EMPTY_ARRAY));
+        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(runtime, unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
+                        unwindType.toArray(Type.EMPTY_ARRAY));
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
+        final LLVMSourceLocation source = sourceFunction.getSourceLocation(call);
         LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(runtime, target, argNodes, argCount, null);
         if (function == null) {
             function = symbols.resolve(target);
         }
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, getSlot(call.getName()), function, argNodes, new FunctionType(targetType, argTypes, false),
                         regularIndex, unwindIndex, normalPhi,
-                        unwindPhi, sourceSection);
+                        unwindPhi, source);
 
         setControlFlowNode(result);
     }
 
     @Override
     public void visit(VoidInvokeInstruction call) {
-        final Symbol target = call.getCallTarget();
+        final SymbolImpl target = call.getCallTarget();
 
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(runtime, PrimitiveType.I64, getStackSlot());
+        args[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -586,18 +486,18 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 }
             }
         }
-        LLVMExpressionNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
-                        normalType.toArray(new Type[normalType.size()]));
-        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
-                        unwindType.toArray(new Type[unwindType.size()]));
+        LLVMExpressionNode normalPhi = nodeFactory.createPhi(runtime, normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
+                        normalType.toArray(Type.EMPTY_ARRAY));
+        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(runtime, unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
+                        unwindType.toArray(Type.EMPTY_ARRAY));
 
-        final SourceSection sourceSection = sourceFunction.getSourceSection(call);
+        final LLVMSourceLocation source = sourceFunction.getSourceLocation(call);
         LLVMExpressionNode function = nodeFactory.createLLVMBuiltin(runtime, target, args, argCount, null);
         if (function == null) {
             function = symbols.resolve(target);
         }
         LLVMControlFlowNode result = nodeFactory.createFunctionInvoke(runtime, null, function, args, new FunctionType(call.getType(), argsType, false),
-                        regularIndex, unwindIndex, normalPhi, unwindPhi, sourceSection);
+                        regularIndex, unwindIndex, normalPhi, unwindPhi, source);
 
         setControlFlowNode(result);
 
@@ -641,7 +541,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
         int falseIndex = labels.get(branch.getFalseSuccessor().getName());
 
         LLVMExpressionNode[] phiWriteNodes = getPhiWriteNodes(branch);
-        LLVMControlFlowNode node = nodeFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1], sourceFunction.getSourceSection(branch));
+        LLVMControlFlowNode node = nodeFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1], sourceFunction.getSourceLocation(branch));
 
         setControlFlowNode(node);
     }
@@ -671,7 +571,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final AggregateType aggregateType = (AggregateType) baseType;
 
-        int offset = runtime.getContext().getIndexOffset(targetIndex, aggregateType);
+        long offset = runtime.getContext().getIndexOffset(targetIndex, aggregateType);
 
         final Type targetType = aggregateType.getElementType(targetIndex);
         if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
@@ -702,12 +602,12 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
             LLVMExpressionNode value = symbols.resolve(branch.getAddress());
 
-            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(runtime, value, labelTargets, getPhiWriteNodes(branch), sourceFunction.getSourceSection(branch));
+            LLVMControlFlowNode node = nodeFactory.createIndirectBranch(runtime, value, labelTargets, getPhiWriteNodes(branch), sourceFunction.getSourceLocation(branch));
             setControlFlowNode(node);
         } else {
             assert branch.getSuccessorCount() == 1;
             LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(runtime, labels.get(branch.getSuccessor(0).getName()), getPhiWriteNodes(branch)[0],
-                            sourceFunction.getSourceSection(branch));
+                            sourceFunction.getSourceLocation(branch));
             setControlFlowNode(node);
         }
     }
@@ -737,7 +637,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         final LLVMExpressionNode resultAggregate = nodeFactory.createAlloca(runtime, sourceType, size, alignment);
 
-        final int offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
+        final long offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(runtime, resultAggregate, sourceAggregate,
                         runtime.getContext().getByteSize(sourceType), offset, valueToInsert, valueType);
 
@@ -763,11 +663,11 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     public void visit(ReturnInstruction ret) {
         LLVMControlFlowNode node;
         if (ret.getValue() == null) {
-            node = nodeFactory.createRetVoid(runtime, sourceFunction.getSourceSection(ret));
+            node = nodeFactory.createRetVoid(runtime, sourceFunction.getSourceLocation(ret));
         } else {
             final Type type = ret.getValue().getType();
             final LLVMExpressionNode value = symbols.resolve(ret.getValue());
-            node = nodeFactory.createNonVoidRet(runtime, value, type, sourceFunction.getSourceSection(ret));
+            node = nodeFactory.createNonVoidRet(runtime, value, type, sourceFunction.getSourceLocation(ret));
         }
         setControlFlowNode(node);
     }
@@ -803,13 +703,13 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
 
         Type type = store.getSource().getType();
 
-        SourceSection sourceSection = null;
+        LLVMSourceLocation source = null;
         if (!(store.getSource() instanceof CallInstruction)) {
             // otherwise the debugger would stop on both the call and the store of the return value
-            sourceSection = sourceFunction.getSourceSection(store);
+            source = sourceFunction.getSourceLocation(store);
         }
 
-        final LLVMExpressionNode node = nodeFactory.createStore(runtime, pointerNode, valueNode, type, sourceSection);
+        final LLVMExpressionNode node = nodeFactory.createStore(runtime, pointerNode, valueNode, type, source);
 
         addInstruction(node);
     }
@@ -848,7 +748,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             cases[i] = symbols.resolve(zwitch.getCaseValue(i));
         }
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), sourceFunction.getSourceSection(zwitch));
+        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), sourceFunction.getSourceLocation(zwitch));
         setControlFlowNode(node);
     }
 
@@ -872,7 +772,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 from[j] = symbols.resolve(phi.getValue());
                 types[j] = phi.getValue().getType();
             }
-            result[i] = nodeFactory.createPhi(from, to, types);
+            result[i] = nodeFactory.createPhi(runtime, from, to, types);
         }
         return result;
     }
@@ -907,7 +807,7 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
             }
         }
 
-        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), sourceFunction.getSourceSection(zwitch));
+        LLVMControlFlowNode node = nodeFactory.createSwitch(runtime, cond, successors, cases, llvmType, getPhiWriteNodes(zwitch), sourceFunction.getSourceLocation(zwitch));
         setControlFlowNode(node);
     }
 
@@ -917,22 +817,22 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
     }
 
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source) {
-        createFrameWrite(result, source, sourceFunction.getSourceSection(source));
+        createFrameWrite(result, source, sourceFunction.getSourceLocation(source));
     }
 
-    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, SourceSection sourceSection) {
-        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceSection);
+    private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, LLVMSourceLocation sourceLocation) {
+        final LLVMExpressionNode node = nodeFactory.createFrameWrite(runtime, source.getType(), result, getSlot(source.getName()), sourceLocation);
         addInstruction(node);
     }
 
-    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, SourceSection sourceSection) {
+    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, Type[] argsType, Type retType, LLVMSourceLocation sourceLocation) {
         if (inlineAsmConstant.needsAlignedStack()) {
             throw new UnsupportedOperationException("Assembly Expressions that require an aligned Stack are not supported yet!");
         }
         if (inlineAsmConstant.getDialect() != AsmDialect.AT_T) {
             throw new UnsupportedOperationException("Unsupported Assembly Dialect: " + inlineAsmConstant.getDialect());
         }
-        return nodeFactory.createInlineAssemblerExpression(runtime, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType, sourceSection);
+        return nodeFactory.createInlineAssemblerExpression(runtime, inlineAsmConstant.getAsmExpression(), inlineAsmConstant.getAsmFlags(), argNodes, argsType, retType, sourceLocation);
     }
 
     private FrameSlot getSlot(String name) {
@@ -964,8 +864,10 @@ final class LLVMBitcodeInstructionVisitor implements InstructionVisitor {
                 break;
             } else if (nuller.getInstructionIndex() == instructionIndex) {
                 FrameSlot frameSlot = frameSlots.get(nuller.getFrameSlotIndex());
-                LLVMExpressionNode nullerNode = nodeFactory.createFrameNuller(frameSlot);
-                blockInstructions.add(nullerNode);
+                if (!notNullable.contains(frameSlot)) {
+                    LLVMExpressionNode nullerNode = nodeFactory.createFrameNuller(frameSlot);
+                    blockInstructions.add(nullerNode);
+                }
                 nullerInfos.remove(i);
             } else {
                 assert false : "we either missed an instruction or the nuller information is not sorted correctly";

@@ -34,8 +34,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.wrappers.LLVMIndirectBranchNodeWrapper;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -43,11 +43,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 @Instrumentable(factory = LLVMIndirectBranchNodeWrapper.class)
 public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
-    public static LLVMIndirectBranchNode create(LLVMBranchAddressNode branchAddress, int[] indices, LLVMExpressionNode[] phiWriteNodes, SourceSection sourceSection) {
+    public static LLVMIndirectBranchNode create(LLVMBranchAddressNode branchAddress, int[] indices, LLVMExpressionNode[] phiWriteNodes, LLVMSourceLocation sourceSection) {
         return new LLVMIndirectBranchNodeImpl(branchAddress, indices, phiWriteNodes, sourceSection);
     }
 
-    public LLVMIndirectBranchNode(SourceSection sourceSection) {
+    public LLVMIndirectBranchNode(LLVMSourceLocation sourceSection) {
         super(sourceSection);
     }
 
@@ -61,7 +61,7 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
         @Children private final LLVMExpressionNode[] phiWriteNodes;
         @CompilationFinal(dimensions = 1) private final int[] successors;
 
-        private LLVMIndirectBranchNodeImpl(LLVMBranchAddressNode branchAddress, int[] indices, LLVMExpressionNode[] phiWriteNodes, SourceSection sourceSection) {
+        private LLVMIndirectBranchNodeImpl(LLVMBranchAddressNode branchAddress, int[] indices, LLVMExpressionNode[] phiWriteNodes, LLVMSourceLocation sourceSection) {
             super(sourceSection);
             assert indices.length > 1;
             this.successors = indices;
@@ -111,6 +111,5 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
                 throw new IllegalStateException("should not reach here", e);
             }
         }
-
     }
 }

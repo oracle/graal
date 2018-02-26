@@ -29,151 +29,117 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-import java.lang.reflect.Field;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-import sun.misc.Unsafe;
-
 /**
- * Implements a stack that grows from the top to the bottom.
+ * Implements a stack that grows from the top to the bottom. The stack is allocated lazily when it
+ * is accessed for the first time.
  */
 public final class LLVMStack {
 
-    /**
-     * Nodes that access (e.g. alloca) or need (e.g. calls) the stack must be annotated
-     * with @StackNode.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target({ElementType.TYPE})
-    public @interface NeedsStack {
-
-    }
-
     public static final String FRAME_ID = "<stackpointer>";
 
-    static final Unsafe UNSAFE = getUnsafe();
+    private final int stackSize;
 
-    @SuppressWarnings("restriction")
-    private static Unsafe getUnsafe() {
-        CompilerAsserts.neverPartOfCompilation();
-        try {
-            Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
-            singleoneInstanceField.setAccessible(true);
-            return (Unsafe) singleoneInstanceField.get(null);
-        } catch (Exception e) {
-            throw new AssertionError();
-        }
-    }
-
-    @CompilationFinal private long lowerBounds;
-    @CompilationFinal private long upperBounds;
-    private boolean isFreed = true;
+    private long lowerBounds;
+    private long upperBounds;
+    private boolean isAllocated;
 
     private long stackPointer;
 
     public LLVMStack(int stackSize) {
-        allocate(stackSize);
-    }
+        this.stackSize = stackSize;
 
-    @TruffleBoundary
-    private void allocate(final int stackSize) {
-        if (!isFreed) {
-            throw new AssertionError("previously not deallocated");
-        }
-        final long stackAllocation = UNSAFE.allocateMemory(stackSize * 1024);
-        lowerBounds = stackAllocation;
-        upperBounds = stackAllocation + stackSize * 1024;
-        isFreed = false;
-        stackPointer = upperBounds;
-    }
-
-    public boolean isFreed() {
-        return isFreed;
+        lowerBounds = 0;
+        upperBounds = 0;
+        stackPointer = 0;
+        isAllocated = false;
     }
 
     public final class StackPointer implements AutoCloseable {
 
-        private final long pointer;
+        private long basePointer;
 
-        private StackPointer() {
-            this.pointer = getStackPointer();
+        private StackPointer(long basePointer) {
+            this.basePointer = basePointer;
         }
 
-        public long get() {
-            return pointer;
+        public long get(LLVMMemory memory) {
+            if (basePointer == 0) {
+                basePointer = getStackPointer(memory);
+                stackPointer = basePointer;
+            }
+            return stackPointer;
+        }
+
+        public void set(long sp) {
+            stackPointer = sp;
         }
 
         @Override
         public void close() {
-            setStackPointer(pointer);
+            if (basePointer != 0) {
+                stackPointer = basePointer;
+            }
         }
-    }
 
-    private long getStackPointer() {
-        long sp = this.stackPointer;
-        assert assertStackPointer();
-        return sp;
-    }
-
-    public StackPointer takeStackPointer() {
-        return new StackPointer();
-    }
-
-    private boolean assertStackPointer() {
-        boolean azzert = stackPointer != 0;
-        stackPointer = 0;
-        return azzert;
-    }
-
-    public void setStackPointer(long pointer) {
-        this.stackPointer = pointer;
+        public StackPointer newFrame() {
+            return new StackPointer(stackPointer);
+        }
     }
 
     @TruffleBoundary
-    public void free() {
-        if (isFreed) {
-            throw new AssertionError("already freed");
+    private void allocate(LLVMMemory memory) {
+        final long stackAllocation = memory.allocateMemory(stackSize * 1024).getVal();
+        lowerBounds = stackAllocation;
+        upperBounds = stackAllocation + stackSize * 1024;
+        isAllocated = true;
+        stackPointer = upperBounds;
+    }
+
+    private long getStackPointer(LLVMMemory memory) {
+        if (!isAllocated) {
+            allocate(memory);
         }
-        UNSAFE.freeMemory(lowerBounds);
-        lowerBounds = 0;
-        upperBounds = 0;
-        stackPointer = 0;
-        isFreed = true;
+        return this.stackPointer;
+    }
+
+    public StackPointer newFrame() {
+        return new StackPointer(stackPointer);
+    }
+
+    @TruffleBoundary
+    public void free(LLVMMemory memory) {
+        if (isAllocated) {
+            /*
+             * It can be that the stack was never allocated.
+             */
+            memory.free(lowerBounds);
+            lowerBounds = 0;
+            upperBounds = 0;
+            stackPointer = 0;
+            isAllocated = false;
+        }
     }
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
-    public static long allocateStackMemory(VirtualFrame frame, FrameSlot stackPointerSlot, final long size, final int alignment) {
+    public static long allocateStackMemory(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot, final long size, final int alignment) {
         assert size >= 0;
         assert alignment != 0 && powerOfTwo(alignment);
-        long stackPointer = FrameUtil.getLongSafe(frame, stackPointerSlot);
+        StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+        long stackPointer = basePointer.get(memory);
         assert stackPointer != 0;
         final long alignedAllocation = (stackPointer - size) & -alignment;
         assert alignedAllocation <= stackPointer;
-        frame.setLong(stackPointerSlot, alignedAllocation);
+        basePointer.set(alignedAllocation);
         return alignedAllocation;
     }
 
     private static boolean powerOfTwo(int value) {
         return (value & -value) == value;
     }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        if (!isFreed) {
-            throw new AssertionError("Did not free stack memory!");
-        }
-    }
-
 }

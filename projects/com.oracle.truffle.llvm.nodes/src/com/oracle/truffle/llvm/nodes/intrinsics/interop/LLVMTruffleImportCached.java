@@ -55,7 +55,7 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
     @Specialization(limit = "10", guards = {"src.equals(readStr.executeWithTarget(frame, value))"})
-    public Object cached(VirtualFrame frame, Object value,
+    protected Object cached(VirtualFrame frame, Object value,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("readStr.executeWithTarget(frame, value)") String src,
                     @Cached("resolve(frame, src)") Object symbol) {
@@ -63,9 +63,8 @@ public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
     }
 
     @Specialization(replaces = "cached")
-    public Object uncached(VirtualFrame frame, Object value,
+    protected Object uncached(VirtualFrame frame, Object value,
                     @Cached("createReadString()") LLVMReadStringNode readStr) {
         return resolve(frame, readStr.executeWithTarget(frame, value));
     }
-
 }

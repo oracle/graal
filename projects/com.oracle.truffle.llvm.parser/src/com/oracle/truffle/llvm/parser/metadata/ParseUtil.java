@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerCon
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class ParseUtil {
 
@@ -49,7 +49,7 @@ public final class ParseUtil {
         }
 
         final int valueIndex = typeIndex + 1;
-        final Symbol value = md.getContainer().getSymbols().getOrNull((int) args[valueIndex]);
+        final SymbolImpl value = md.getScope().getSymbols().getOrNull((int) args[valueIndex]);
 
         return value instanceof IntegerConstant || value instanceof BigIntegerConstant || value instanceof NullConstant || value instanceof UndefinedConstant;
     }
@@ -69,7 +69,7 @@ public final class ParseUtil {
         }
 
         final int valueIndex = typeIndex + 1;
-        final Symbol value = md.getContainer().getSymbols().getOrNull((int) args[valueIndex]);
+        final SymbolImpl value = md.getScope().getSymbols().getOrNull((int) args[valueIndex]);
 
         if (value instanceof IntegerConstant) {
             return ((IntegerConstant) value).getValue();
@@ -103,10 +103,10 @@ public final class ParseUtil {
         final Type type = md.getTypeById(args[typeIndex]);
         final long value = args[valueIndex];
         if (type == MetaType.METADATA) {
-            return md.getContainer().getMetadata().getNonNullable(value, dependent);
+            return md.getScope().getMetadata().getNonNullable(value, dependent);
 
         } else if (type != VoidType.INSTANCE) {
-            return MDValue.create(type, value, md.getContainer());
+            return MDValue.create(value, md.getScope());
 
         } else {
             return MDVoidNode.INSTANCE;
@@ -123,7 +123,7 @@ public final class ParseUtil {
         final Type type = md.getTypeById(args[typeIndex]);
         final long value = (int) args[valueIndex];
         if (type != MetaType.METADATA && !VoidType.INSTANCE.equals(type)) {
-            return MDValue.create(type, value, md.getContainer());
+            return MDValue.create(value, md.getScope());
         } else {
             return MDVoidNode.INSTANCE;
         }
@@ -143,5 +143,4 @@ public final class ParseUtil {
     static long unrotateSign(long u) {
         return (u & 1) == 1 ? ~(u >> 1) : u >> 1;
     }
-
 }

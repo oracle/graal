@@ -83,7 +83,7 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
-        Object doRead(VirtualFrame frame, Object obj, Object identifier, long offset,
+        protected Object doRead(VirtualFrame frame, Object obj, Object identifier, long offset,
                         @Cached("createReadNode(obj)") LLVMObjectReadNode impl) {
             try {
                 return impl.executeRead(frame, obj, identifier, offset);
@@ -93,7 +93,7 @@ public abstract class LLVMObjectAccessFactory {
             }
         }
 
-        LLVMObjectReadNode createReadNode(Object obj) {
+        protected LLVMObjectReadNode createReadNode(Object obj) {
             if (obj instanceof LLVMObjectAccess) {
                 return ((LLVMObjectAccess) obj).createReadNode(type);
             } else if (obj instanceof DynamicObject) {
@@ -120,14 +120,14 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(guards = "object.getShape() == cachedShape")
-        Object doCachedShape(VirtualFrame frame, DynamicObject object, Object identifier, long offset,
+        protected Object doCachedShape(VirtualFrame frame, DynamicObject object, Object identifier, long offset,
                         @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached("createReadNode(cachedShape)") LLVMObjectReadNode impl) {
             return doRead(frame, object, identifier, offset, impl);
         }
 
         @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        Object doRead(VirtualFrame frame, DynamicObject object, Object identifier, long offset,
+        protected Object doRead(VirtualFrame frame, DynamicObject object, Object identifier, long offset,
                         @Cached("createReadNode(object.getShape())") LLVMObjectReadNode impl) {
             try {
                 return impl.executeRead(frame, object, identifier, offset);
@@ -149,8 +149,8 @@ public abstract class LLVMObjectAccessFactory {
 
     static class FallbackReadNode extends LLVMObjectReadNode {
 
-        @Child Node read = Message.READ.createNode();
-        @Child ForeignToLLVM toLLVM;
+        @Child private Node read = Message.READ.createNode();
+        @Child private ForeignToLLVM toLLVM;
 
         private final boolean acceptDynamicObject;
 
@@ -191,7 +191,7 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
-        void doWrite(VirtualFrame frame, Object obj, Object identifier, long offset, Object value,
+        protected void doWrite(VirtualFrame frame, Object obj, Object identifier, long offset, Object value,
                         @Cached("createWriteNode(obj)") LLVMObjectWriteNode impl) {
             try {
                 impl.executeWrite(frame, obj, identifier, offset, value);
@@ -228,14 +228,14 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(guards = "object.getShape() == cachedShape")
-        void doCachedShape(VirtualFrame frame, DynamicObject object, Object identifier, long offset, Object value,
+        protected void doCachedShape(VirtualFrame frame, DynamicObject object, Object identifier, long offset, Object value,
                         @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached("createWriteNode(cachedShape)") LLVMObjectWriteNode impl) {
             doWrite(frame, object, identifier, offset, value, impl);
         }
 
         @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        void doWrite(VirtualFrame frame, DynamicObject object, Object identifier, long offset, Object value,
+        protected void doWrite(VirtualFrame frame, DynamicObject object, Object identifier, long offset, Object value,
                         @Cached("createWriteNode(object.getShape())") LLVMObjectWriteNode impl) {
             try {
                 impl.executeWrite(frame, object, identifier, offset, value);
@@ -257,8 +257,8 @@ public abstract class LLVMObjectAccessFactory {
 
     static class FallbackWriteNode extends LLVMObjectWriteNode {
 
-        @Child Node write = Message.WRITE.createNode();
-        @Child LLVMDataEscapeNode dataEscape;
+        @Child private Node write = Message.WRITE.createNode();
+        @Child private LLVMDataEscapeNode dataEscape;
 
         private final ContextReference<LLVMContext> ctxRef;
         private final boolean acceptDynamicObject;
@@ -283,7 +283,5 @@ public abstract class LLVMObjectAccessFactory {
             Object escaped = dataEscape.executeWithTarget(value, ctxRef.get());
             ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
         }
-
     }
-
 }

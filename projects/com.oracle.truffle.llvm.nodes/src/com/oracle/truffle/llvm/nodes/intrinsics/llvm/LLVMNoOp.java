@@ -34,8 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 public abstract class LLVMNoOp extends LLVMBuiltin {
 
     @Specialization
-    public Object executeVoid() {
+    protected Object doVoid() {
         return null;
     }
-
 }

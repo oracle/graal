@@ -38,7 +38,7 @@ public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64SarbNode extends LLVMExpressionNode {
         @Specialization
-        protected byte executeI8(byte left, byte right) {
+        protected byte doI8(byte left, byte right) {
             return (byte) (left >> right);
         }
     }
@@ -46,7 +46,7 @@ public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64SarwNode extends LLVMExpressionNode {
         @Specialization
-        protected short executeI16(short left, byte right) {
+        protected short doI16(short left, byte right) {
             return (short) (left >> right);
         }
     }
@@ -54,7 +54,7 @@ public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64SarlNode extends LLVMExpressionNode {
         @Specialization
-        protected int executeI32(int left, byte right) {
+        protected int doI32(int left, byte right) {
             return left >> right;
         }
     }
@@ -62,7 +62,7 @@ public abstract class LLVMAMD64SarNode extends LLVMExpressionNode {
     @NodeChildren({@NodeChild("left"), @NodeChild("right")})
     public abstract static class LLVMAMD64SarqNode extends LLVMExpressionNode {
         @Specialization
-        protected long executeI64(long left, byte right) {
+        protected long doI64(long left, byte right) {
             return left >> right;
         }
     }

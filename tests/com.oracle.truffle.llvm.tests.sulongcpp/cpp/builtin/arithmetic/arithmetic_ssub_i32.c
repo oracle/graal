@@ -1,6 +1,6 @@
 #ifndef __clang__
 #include <stdbool.h>
-bool __builtin_sub_overflow(signed int, signed int, signed int*);
+bool __builtin_sub_overflow(signed int, signed int, signed int *);
 #endif
 
 int main(int argc, const char **argv) {

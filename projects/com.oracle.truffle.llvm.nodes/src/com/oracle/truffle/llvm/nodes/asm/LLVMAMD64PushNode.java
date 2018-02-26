@@ -38,10 +38,9 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.NeedsStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NeedsStack
 @NodeChild("value")
 public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
     protected FrameSlot getStackPointerSlot() {
@@ -51,33 +50,42 @@ public abstract class LLVMAMD64PushNode extends LLVMExpressionNode {
 
     public abstract static class LLVMAMD64PushwNode extends LLVMAMD64PushNode {
         @Specialization
-        protected Object executeVoid(VirtualFrame frame, short value, @Cached("getStackPointerSlot()") FrameSlot slot) {
-            long sp = FrameUtil.getLongSafe(frame, slot);
+        protected Object doVoid(VirtualFrame frame, short value,
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
+            long sp = basePointer.get(memory);
             sp -= LLVMExpressionNode.I16_SIZE_IN_BYTES;
-            frame.setLong(slot, sp);
-            LLVMMemory.putI16(sp, value);
+            basePointer.set(sp);
+            memory.putI16(sp, value);
             return null;
         }
     }
 
     public abstract static class LLVMAMD64PushlNode extends LLVMAMD64PushNode {
         @Specialization
-        protected Object executeVoid(VirtualFrame frame, int value, @Cached("getStackPointerSlot()") FrameSlot slot) {
-            long sp = FrameUtil.getLongSafe(frame, slot);
+        protected Object doVoid(VirtualFrame frame, int value,
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
+            long sp = basePointer.get(memory);
             sp -= LLVMExpressionNode.I32_SIZE_IN_BYTES;
-            frame.setLong(slot, sp);
-            LLVMMemory.putI32(sp, value);
+            basePointer.set(sp);
+            memory.putI32(sp, value);
             return null;
         }
     }
 
     public abstract static class LLVMAMD64PushqNode extends LLVMAMD64PushNode {
         @Specialization
-        protected Object executeVoid(VirtualFrame frame, long value, @Cached("getStackPointerSlot()") FrameSlot slot) {
-            long sp = FrameUtil.getLongSafe(frame, slot);
+        protected Object doVoid(VirtualFrame frame, long value,
+                        @Cached("getStackPointerSlot()") FrameSlot slot,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, slot);
+            long sp = basePointer.get(memory);
             sp -= LLVMExpressionNode.I64_SIZE_IN_BYTES;
-            frame.setLong(slot, sp);
-            LLVMMemory.putI64(sp, value);
+            basePointer.set(sp);
+            memory.putI64(sp, value);
             return null;
         }
     }

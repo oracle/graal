@@ -38,24 +38,19 @@ import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
 
 public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
 
-    @Child private LLVMExpressionNode exceptionInfo;
-    @Child private LLVMToNativeNode exceptionInfoToLLVM;
-    @Child private LLVMExpressionNode thrownTypeID;
-    @Child private LLVMToNativeNode thrownTypeIDToLLVM;
-    @Child private LLVMExpressionNode destructor;
-    @Child private LLVMToNativeNode destructorToLLVM;
+    @Child private LLVMToNativeNode exceptionInfo;
+    @Child private LLVMToNativeNode thrownTypeID;
+    @Child private LLVMToNativeNode destructor;
     @Child private LLVMNativeFunctions.SulongThrowNode exceptionInitializaton;
 
     public LLVMThrowExceptionNode(LLVMExpressionNode arg1, LLVMExpressionNode arg2, LLVMExpressionNode arg3) {
-        this.exceptionInfo = arg1;
-        this.exceptionInfoToLLVM = createToNativeNode();
-        this.thrownTypeID = arg2;
-        this.thrownTypeIDToLLVM = createToNativeNode();
-        this.destructor = arg3;
-        this.destructorToLLVM = createToNativeNode();
+        this.exceptionInfo = LLVMToNativeNodeGen.create(arg1);
+        this.thrownTypeID = LLVMToNativeNodeGen.create(arg2);
+        this.destructor = LLVMToNativeNodeGen.create(arg3);
     }
 
     public LLVMNativeFunctions.SulongThrowNode getExceptionInitializaton() {
@@ -70,9 +65,9 @@ public final class LLVMThrowExceptionNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        LLVMAddress thrownObject = exceptionInfoToLLVM.executeWithTarget(frame, exceptionInfo.executeGeneric(frame));
-        LLVMAddress thrownType = thrownTypeIDToLLVM.executeWithTarget(frame, thrownTypeID.executeGeneric(frame));
-        LLVMAddress dest = destructorToLLVM.executeWithTarget(frame, destructor.executeGeneric(frame));
+        LLVMAddress thrownObject = exceptionInfo.execute(frame);
+        LLVMAddress thrownType = thrownTypeID.execute(frame);
+        LLVMAddress dest = destructor.execute(frame);
         getExceptionInitializaton().throvv(thrownObject, thrownType, dest, LLVMAddress.nullPointer(), LLVMAddress.nullPointer());
         throw new LLVMException(thrownObject);
     }

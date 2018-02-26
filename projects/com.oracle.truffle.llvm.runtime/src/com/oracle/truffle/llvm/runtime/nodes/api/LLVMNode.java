@@ -29,14 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import java.io.PrintStream;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public abstract class LLVMNode extends Node {
@@ -54,8 +58,11 @@ public abstract class LLVMNode extends Node {
     public static final int I64_SIZE_IN_BYTES = 8;
     public static final int I64_SIZE_IN_BITS = 64;
 
+    public static final int I8_SIZE_IN_BYTES = 1;
     public static final int I8_SIZE_IN_BITS = 8;
     public static final int I8_MASK = 0xff;
+
+    public static final int I1_SIZE_IN_BYTES = 1;
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
@@ -67,8 +74,22 @@ public abstract class LLVMNode extends Node {
         return getRootNode().getLanguage(LLVMLanguage.class);
     }
 
-    protected static final LLVMGlobalVariableAccess createGlobalAccess() {
-        return new LLVMGlobalVariableAccess();
+    public final LLVMMemory getLLVMMemory() {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
+            return rootNode.getLanguage(LLVMLanguage.class).getCapability(LLVMMemory.class);
+        } else {
+            return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
+        }
+    }
+
+    public final UnsafeIntArrayAccess getUnsafeIntArrayAccess() {
+        RootNode rootNode = getRootNode();
+        if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
+            return rootNode.getLanguage(LLVMLanguage.class).getCapability(UnsafeIntArrayAccess.class);
+        } else {
+            return LLVMLanguage.getLanguage().getCapability(UnsafeIntArrayAccess.class);
+        }
     }
 
     protected static PrintStream debugStream(ContextReference<LLVMContext> context) {
@@ -95,7 +116,17 @@ public abstract class LLVMNode extends Node {
         return tag == StandardTags.StatementTag.class || super.isTaggedWith(tag);
     }
 
-    protected LLVMToNativeNode createToNativeNode() {
-        return LLVMToNativeNodeGen.create();
+    public LLVMSourceLocation getSourceLocation() {
+        return null;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        final LLVMSourceLocation location = getSourceLocation();
+        if (location != null) {
+            return location.getSourceSection();
+        }
+
+        return null;
     }
 }

@@ -30,38 +30,38 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 
 import java.util.HashMap;
 
 public final class LLVMSourceContext {
 
-    private final HashMap<String, LLVMSourceLocation> sourceScopes;
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> globals;
+    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> staticValues;
+    private final HashMap<LLVMSourceSymbol, LLVMFrameValueAccess> frameValues;
 
     @TruffleBoundary
     public LLVMSourceContext() {
-        sourceScopes = new HashMap<>();
-        globals = new HashMap<>();
+        staticValues = new HashMap<>();
+        frameValues = new HashMap<>();
     }
 
     @TruffleBoundary
-    public synchronized void registerSourceScope(String symbolName, LLVMSourceLocation scope) {
-        sourceScopes.put(symbolName, scope);
+    public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugValue value) {
+        staticValues.put(symbol, value);
     }
 
     @TruffleBoundary
-    public LLVMSourceLocation getSourceScope(String symbolName) {
-        return sourceScopes.get(symbolName);
+    public LLVMDebugValue getStatic(LLVMSourceSymbol symbol) {
+        return staticValues.get(symbol);
     }
 
     @TruffleBoundary
-    public void registerGlobal(LLVMSourceSymbol symbol, LLVMDebugValue value) {
-        globals.put(symbol, value);
+    public void registerFrameValue(LLVMSourceSymbol symbol, LLVMFrameValueAccess value) {
+        frameValues.put(symbol, value);
     }
 
     @TruffleBoundary
-    public LLVMDebugValue getGlobal(LLVMSourceSymbol symbol) {
-        return globals.get(symbol);
+    public LLVMFrameValueAccess getFrameValue(LLVMSourceSymbol symbol) {
+        return frameValues.get(symbol);
     }
 }

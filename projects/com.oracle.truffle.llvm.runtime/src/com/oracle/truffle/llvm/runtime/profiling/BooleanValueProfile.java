@@ -86,7 +86,5 @@ public abstract class BooleanValueProfile extends NodeCloneable {
         public boolean profile(boolean value) {
             return value;
         }
-
     }
-
 }

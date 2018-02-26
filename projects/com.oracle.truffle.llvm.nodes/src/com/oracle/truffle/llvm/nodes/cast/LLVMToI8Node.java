@@ -41,8 +41,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -54,95 +53,97 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
     @Specialization
-    public byte executeI8(VirtualFrame frame, LLVMFunctionDescriptor from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected byte doI8(VirtualFrame frame, LLVMFunctionDescriptor from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    public byte executeLLVMAddress(LLVMGlobalVariable from, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return (byte) globalAccess.getNativeLocation(from).getVal();
+    protected byte doGlobal(VirtualFrame frame, LLVMGlobal from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
+        return (byte) access.executeWithTarget(frame, from).getVal();
     }
 
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I8);
 
     @Specialization
-    public byte executeLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from, @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected byte doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(frame, from).getVal();
     }
 
     @Specialization
-    public byte executeLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
+    protected byte doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
         return (byte) convert.executeWithTarget(frame, from.getValue());
     }
 
     public abstract static class LLVMToI8NoZeroExtNode extends LLVMToI8Node {
 
         @Specialization
-        public byte executeI8(boolean from) {
+        protected byte doI8(boolean from) {
             return from ? (byte) -1 : 0;
         }
 
         @Specialization
-        public byte executeI8(short from) {
+        protected byte doI8(short from) {
             return (byte) from;
         }
 
         @Specialization
-        public byte executeI8(int from) {
+        protected byte doI8(int from) {
             return (byte) from;
         }
 
         @Specialization
-        public byte executeI8(long from) {
+        protected byte doI8(long from) {
             return (byte) from;
         }
 
         @Specialization
-        public byte executeI8(LLVMIVarBit from) {
+        protected byte doI8(LLVMIVarBit from) {
             return from.getByteValue();
         }
 
         @Specialization
-        public byte executeI8(float from) {
+        protected byte doI8(float from) {
             return (byte) from;
         }
 
         @Specialization
-        public byte executeI8(double from) {
+        protected byte doI8(double from) {
             return (byte) from;
         }
 
         @Specialization
-        public byte executeI8(LLVM80BitFloat from) {
+        protected byte doI8(LLVM80BitFloat from) {
             return from.getByteValue();
         }
 
         @Specialization
-        public byte executeI8(LLVMAddress from) {
+        protected byte doI8(LLVMAddress from) {
             return (byte) from.getVal();
         }
 
         @Specialization
-        public byte executeI8(byte from) {
+        protected byte doI8(byte from) {
             return from;
         }
-
     }
 
     public abstract static class LLVMToI8ZeroExtNode extends LLVMToI8Node {
 
         @Specialization
-        public byte executeI8(boolean from) {
+        protected byte doI8(boolean from) {
             return (byte) (from ? 1 : 0);
         }
 
         @Specialization
-        public byte executeI8(byte from) {
+        protected byte doI8(byte from) {
             return from;
         }
 
         @Specialization
-        public byte executeI8(LLVMIVarBit from) {
+        protected byte doI8(LLVMIVarBit from) {
             return from.getZeroExtendedByteValue();
         }
     }
@@ -150,17 +151,17 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
     public abstract static class LLVMToI8BitNode extends LLVMToI8Node {
 
         @Specialization
-        public byte executeI8(byte from) {
+        protected byte doI8(byte from) {
             return from;
         }
 
         @Specialization
-        public byte executeI1Vector(LLVMI1Vector from) {
+        protected byte doI1Vector(LLVMI1Vector from) {
             return (byte) LLVMToI64BitNode.castI1Vector(from, Byte.SIZE);
         }
 
         @Specialization
-        public byte executeI8Vector(LLVMI8Vector from) {
+        protected byte doI8Vector(LLVMI8Vector from) {
             if (from.getLength() != 1) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("invalid vector size!");
@@ -168,5 +169,4 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
             return from.getValue(0);
         }
     }
-
 }

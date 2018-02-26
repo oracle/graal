@@ -56,19 +56,20 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress value, int n) {
+    protected Object doIntrinsic(LLVMAddress value, int n,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         int count = n < 0 ? 0 : n;
         byte[] bytes = new byte[count];
         long ptr = value.getVal();
         for (int i = 0; i < count; i++) {
-            bytes[i] = LLVMMemory.getI8(ptr);
+            bytes[i] = memory.getI8(ptr);
             ptr += Byte.BYTES;
         }
         return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), new PointerType(PrimitiveType.I8));
     }
 
     @Specialization
-    public Object interop(VirtualFrame frame, LLVMTruffleObject objectWithOffset, int n,
+    protected Object interop(VirtualFrame frame, LLVMTruffleObject objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
                     @Cached("createToByteNode()") ForeignToLLVM toLLVM) {
         long offset = objectWithOffset.getOffset();
@@ -94,5 +95,4 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
         System.err.println("Invalid arguments to \"read n bytes\"-builtin.");
         throw new IllegalArgumentException();
     }
-
 }

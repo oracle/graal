@@ -49,9 +49,9 @@ final class LLVMSourceScopeVariables implements TruffleObject {
         return object instanceof LLVMSourceScopeVariables;
     }
 
-    private final Map<Object, LLVMDebugObject> vars;
+    private final Map<String, LLVMDebugObject> vars;
 
-    LLVMSourceScopeVariables(Map<Object, LLVMDebugObject> vars) {
+    LLVMSourceScopeVariables(Map<String, LLVMDebugObject> vars) {
         this.vars = vars;
     }
 
@@ -63,6 +63,15 @@ final class LLVMSourceScopeVariables implements TruffleObject {
     @MessageResolution(receiverType = LLVMSourceScopeVariables.class)
     static final class VariablesMessageResolution {
 
+        @Resolve(message = "HAS_KEYS")
+        abstract static class VariablesHasKeysNode extends Node {
+
+            public Object access(@SuppressWarnings("unused") LLVMSourceScopeVariables vars) {
+                return true;
+            }
+
+        }
+
         @Resolve(message = "KEYS")
         abstract static class VariablesKeyNode extends Node {
 
@@ -70,7 +79,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
             public Object access(LLVMSourceScopeVariables vars) {
                 return new VariableNames(vars.vars.keySet());
             }
-
         }
 
         @Resolve(message = "KEY_INFO")
@@ -78,27 +86,25 @@ final class LLVMSourceScopeVariables implements TruffleObject {
 
             @TruffleBoundary
             public Object access(LLVMSourceScopeVariables vars, Object key) {
-                if (key == null || !vars.vars.containsKey(key)) {
-                    return 0;
-                } else {
+                if (key instanceof String && vars.vars.containsKey(key)) {
                     return 0b11;
+                } else {
+                    return 0;
                 }
             }
-
         }
 
         @Resolve(message = "READ")
         abstract static class VariablesReadNode extends Node {
 
             @TruffleBoundary
-            public Object access(LLVMSourceScopeVariables vars, Object name) {
-                if (vars.vars.containsKey(name)) {
-                    return vars.vars.get(name);
+            public Object access(LLVMSourceScopeVariables vars, Object key) {
+                if (key instanceof String && vars.vars.containsKey(key)) {
+                    return vars.vars.get(key);
                 } else {
-                    throw UnknownIdentifierException.raise(String.valueOf(name));
+                    throw UnknownIdentifierException.raise(String.valueOf(key));
                 }
             }
-
         }
 
     }
@@ -109,9 +115,9 @@ final class LLVMSourceScopeVariables implements TruffleObject {
             return object instanceof VariableNames;
         }
 
-        private final List<Object> names;
+        private final List<String> names;
 
-        VariableNames(Set<Object> names) {
+        VariableNames(Set<String> names) {
             this.names = new ArrayList<>(names);
         }
 
@@ -129,7 +135,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                 public Object access(@SuppressWarnings("unused") VariableNames varNames) {
                     return true;
                 }
-
             }
 
             @Resolve(message = "GET_SIZE")
@@ -139,7 +144,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                 public Object access(VariableNames varNames) {
                     return varNames.names.size();
                 }
-
             }
 
             @Resolve(message = "READ")
@@ -153,7 +157,6 @@ final class LLVMSourceScopeVariables implements TruffleObject {
                         return "No such index: " + index;
                     }
                 }
-
             }
 
         }

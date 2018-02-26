@@ -64,8 +64,9 @@ import sun.misc.SignalHandler;
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
-    public LLVMAddress doSignal(VirtualFrame frame, int signal, Object handler, @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("createToNativeNode()") LLVMToNativeNode toNative) {
+    protected LLVMAddress doSignal(VirtualFrame frame, int signal, Object handler,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return setSignalHandler(context.get(), signal, toNative.executeWithTarget(frame, handler));
     }
 
@@ -284,7 +285,6 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
                     registeredSignals.remove(signalId);
                 }
             }
-
         }
 
         /**
@@ -389,5 +389,4 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             return signal;
         }
     }
-
 }

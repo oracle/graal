@@ -65,6 +65,9 @@ public final class PrimitiveType extends Type {
             this.sizeInBits = sizeInBits;
         }
 
+        public int getSizeInBits() {
+            return sizeInBits;
+        }
     }
 
     private final PrimitiveKind kind;
@@ -171,5 +174,4 @@ public final class PrimitiveType extends Type {
         }
         return true;
     }
-
 }

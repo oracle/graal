@@ -71,5 +71,4 @@ public class LLVM80BitGetFloatTest extends LLVM80BitTest {
     public void testQNaN() {
         assertBitEquals(Float.NaN, nan().getFloatValue());
     }
-
 }

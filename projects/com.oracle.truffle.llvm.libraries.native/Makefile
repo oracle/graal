@@ -41,7 +41,7 @@ LLVM_GE_38 := $(shell expr ${LLVM_VERSION} \>= 308)
 LDFLAGS=-shared -g
 endif
 
-CFLAGS=-g -fPIC -DPIC -O0
+CFLAGS=-g -fPIC -DPIC -O3
 CXXFLAGS=${CFLAGS} -DLLVM_VERSION=${LLVM_VERSION}
 
 ifeq (${LLVM_GE_38},1)
@@ -49,7 +49,7 @@ CXXFLAGS+=-stdlib=libc++ -std=c++11
 LDFLAGS+=-stdlib=libc++ -std=c++11 -lc++abi
 endif
 
-bin/${LIBSULONG}: bin/sulongeh.o bin/misc.o bin/posix.o
+bin/${LIBSULONG}: bin/sulongeh.o bin/misc.o bin/posix.o bin/fp80.o
 	clang++ ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c

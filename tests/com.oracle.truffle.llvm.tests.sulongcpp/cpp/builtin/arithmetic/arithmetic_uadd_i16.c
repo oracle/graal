@@ -1,5 +1,5 @@
 #ifndef __clang__
-unsigned short __builtin_addcs(unsigned short, unsigned short, unsigned short, unsigned short*);
+unsigned short __builtin_addcs(unsigned short, unsigned short, unsigned short, unsigned short *);
 #endif
 
 int main(int argc, const char **argv) {

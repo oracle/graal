@@ -39,7 +39,7 @@ public abstract class LLVMAMD64FrameSlotNode extends LLVMExpressionNode {
     public abstract FrameSlot getSlot();
 
     @Specialization
-    protected FrameSlot execute() {
+    protected FrameSlot doOp() {
         return getSlot();
     }
 }

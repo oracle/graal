@@ -50,7 +50,7 @@ public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte executeI8(VirtualFrame frame, byte left, byte right) {
+        protected byte doI8(VirtualFrame frame, byte left, byte right) {
             byte result = (byte) (left & right);
             flags.execute(frame, result);
             return result;
@@ -63,7 +63,7 @@ public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short left, short right) {
+        protected short doI16(VirtualFrame frame, short left, short right) {
             short result = (short) (left & right);
             flags.execute(frame, result);
             return result;
@@ -76,7 +76,7 @@ public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int left, int right) {
+        protected int doI32(VirtualFrame frame, int left, int right) {
             int result = left & right;
             flags.execute(frame, result);
             return result;
@@ -89,7 +89,7 @@ public abstract class LLVMAMD64AndNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long executeI64(VirtualFrame frame, long left, long right) {
+        protected long doI64(VirtualFrame frame, long left, long right) {
             long result = left & right;
             flags.execute(frame, result);
             return result;

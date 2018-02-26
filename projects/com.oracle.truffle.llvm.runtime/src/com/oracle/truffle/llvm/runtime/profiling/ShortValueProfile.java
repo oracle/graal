@@ -86,7 +86,5 @@ public abstract class ShortValueProfile extends NodeCloneable {
         public short profile(short value) {
             return value;
         }
-
     }
-
 }

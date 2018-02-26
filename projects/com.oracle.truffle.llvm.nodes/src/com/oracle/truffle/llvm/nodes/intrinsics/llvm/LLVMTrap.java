@@ -34,13 +34,10 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 
 public abstract class LLVMTrap extends LLVMBuiltin {
 
-    // see
-    // http://stackoverflow.com/questions/2862731/when-assert-fails-what-is-the-program-exit-code
-    private static final int UNIX_SIGABORT = 134;
-
     @Specialization
-    public Object executeVoid() {
-        throw new LLVMExitException(UNIX_SIGABORT);
+    protected Object doVoid() {
+        // see
+        // http://stackoverflow.com/questions/2862731/when-assert-fails-what-is-the-program-exit-code
+        throw LLVMExitException.abort();
     }
-
 }

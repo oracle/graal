@@ -38,20 +38,21 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyBlockNode;
 import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Child private LLVMInlineAssemblyPrologueNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
 
     private final LLVMExpressionNode result;
 
-    public LLVMInlineAssemblyRootNode(LLVMLanguage language, SourceSection sourceSection, FrameDescriptor frameDescriptor,
+    public LLVMInlineAssemblyRootNode(LLVMLanguage language, LLVMSourceLocation source, FrameDescriptor frameDescriptor,
                     LLVMExpressionNode[] statements, List<LLVMExpressionNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
-        this.sourceSection = sourceSection;
+        this.source = source;
         this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
         this.block = new LLVMInlineAssemblyBlockNode(statements);
         this.result = result;
@@ -59,7 +60,10 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Override
     public SourceSection getSourceSection() {
-        return sourceSection;
+        if (source != null) {
+            return source.getSourceSection();
+        }
+        return null;
     }
 
     @Override
@@ -68,5 +72,4 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
         block.executeGeneric(frame);
         return result == null ? 0 : result.executeGeneric(frame);
     }
-
 }

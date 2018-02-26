@@ -50,20 +50,30 @@ public class LLVMBrUnconditionalNodeWrapper implements InstrumentableFactory<LLV
         @Child private LLVMBrUnconditionalNode delegate;
 
         LLVMBrUnconditionalNodeWrapper0(ProbeNode probe, LLVMBrUnconditionalNode delegate) {
-            super(delegate.getSourceSection());
+            super(delegate.getSourceLocation());
             this.probe = probe;
             this.delegate = delegate;
         }
 
         @Override
         public void execute(VirtualFrame frame) {
-            try {
-                probe.onEnter(frame);
-                delegate.execute(frame);
-                probe.onReturnValue(frame, null);
-            } catch (Throwable t) {
-                probe.onReturnExceptional(frame, t);
-                throw t;
+            for (;;) {
+                boolean wasOnReturnExecuted = false;
+                try {
+                    probe.onEnter(frame);
+                    delegate.execute(frame);
+                    wasOnReturnExecuted = true;
+                    probe.onReturnValue(frame, null);
+                    break;
+                } catch (Throwable t) {
+                    Object result = probe.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
+                    if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                        continue;
+                    } else if (result != null) {
+                        break;
+                    }
+                    throw t;
+                }
             }
         }
 

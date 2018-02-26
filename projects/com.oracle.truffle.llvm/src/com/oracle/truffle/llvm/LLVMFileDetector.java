@@ -37,6 +37,9 @@ import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.spi.FileTypeDetector;
 
+/**
+ * Used by Truffle (via the ServiceLoader infrastructure) to determine the mime-type of input files.
+ */
 public class LLVMFileDetector extends FileTypeDetector {
     private static final long BC_MAGIC_WORD = 0xdec04342L; // 'BC' c0de
     private static final long WRAPPER_MAGIC_WORD = 0x0B17C0DEL;

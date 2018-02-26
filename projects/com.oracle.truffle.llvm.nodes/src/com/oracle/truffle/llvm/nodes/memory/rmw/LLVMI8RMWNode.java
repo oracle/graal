@@ -33,104 +33,215 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNode;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNode;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
 public abstract class LLVMI8RMWNode extends LLVMExpressionNode {
 
+    protected static LLVMI8LoadNode createRead() {
+        return LLVMI8LoadNodeGen.create();
+    }
+
+    protected static LLVMI8StoreNode createWrite() {
+        return LLVMI8StoreNodeGen.create();
+    }
+
     public abstract static class LLVMI8RMWXchgNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> b);
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> b);
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> b);
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> b);
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, value);
+                return result;
+            }
         }
     }
 
     public abstract static class LLVMI8RMWAddNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a + b)));
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a + b)));
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a + b)));
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a + b)));
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, ((byte) (result + value)));
+                return result;
+            }
         }
     }
 
     public abstract static class LLVMI8RMWSubNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a - b)));
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a - b)));
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a - b)));
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a - b)));
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, ((byte) (result - value)));
+                return result;
+            }
         }
     }
 
     public abstract static class LLVMI8RMWAndNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a & b)));
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a & b)));
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a & b)));
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a & b)));
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, ((byte) (result & value)));
+                return result;
+            }
         }
     }
 
     public abstract static class LLVMI8RMWNandNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) ~(a & b)));
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) ~(a & b)));
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) ~(a & b)));
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> ((byte) ~(a & b)));
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, ((byte) ~(result & value)));
+                return result;
+            }
         }
     }
 
     public abstract static class LLVMI8RMWOrNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a | b)));
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a | b)));
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a | b)));
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a | b)));
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, ((byte) (result | value)));
+                return result;
+            }
         }
     }
 
     public abstract static class LLVMI8RMWXorNode extends LLVMI8RMWNode {
         @Specialization
-        public byte execute(LLVMGlobalVariable address, byte value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-            LLVMAddress adr = globalAccess.getNativeLocation(address);
-            return LLVMMemory.getAndOpI8(adr, value, (a, b) -> ((byte) (a ^ b)));
+        protected byte doOp(VirtualFrame frame, LLVMGlobal address, byte value,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            return memory.getAndOpI8(adr, value, (a, b) -> ((byte) (a ^ b)));
         }
 
         @Specialization
-        public byte execute(LLVMAddress address, byte value) {
-            return LLVMMemory.getAndOpI8(address, value, (a, b) -> ((byte) (a ^ b)));
+        protected byte doOp(LLVMAddress address, byte value,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return memory.getAndOpI8(address, value, (a, b) -> ((byte) (a ^ b)));
+        }
+
+        @Specialization
+        protected byte doOp(VirtualFrame frame, LLVMTruffleObject address, byte value,
+                        @Cached("createRead()") LLVMI8LoadNode read,
+                        @Cached("createWrite()") LLVMI8StoreNode write) {
+            synchronized (address.getObject()) {
+                byte result = (byte) read.executeWithTarget(frame, address);
+                write.executeWithTarget(frame, address, ((byte) (result ^ value)));
+                return result;
+            }
         }
     }
-
 }

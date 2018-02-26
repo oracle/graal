@@ -60,7 +60,6 @@ public final class ElfDynamicSection {
         public long getValue() {
             return unionValue;
         }
-
     }
 
     private final Entry[] entries;
@@ -154,5 +153,4 @@ public final class ElfDynamicSection {
 
         return sb.toString();
     }
-
 }

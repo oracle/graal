@@ -82,4 +82,10 @@ public final class MDFile implements MDBaseNode {
         return file;
     }
 
+    public static MDFile create(MDBaseNode fileNode, MDBaseNode dirNode) {
+        final MDFile file = new MDFile();
+        file.file = fileNode;
+        file.directory = dirNode;
+        return file;
+    }
 }

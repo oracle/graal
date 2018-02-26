@@ -39,7 +39,7 @@ public final class LLVMSourceMemberType extends LLVMSourceType {
     @CompilationFinal private LLVMSourceType elementType;
 
     public LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceLocation location) {
-        this(name, size, align, offset, LLVMSourceType.UNKNOWN_TYPE, location);
+        this(name, size, align, offset, LLVMSourceType.UNKNOWN, location);
     }
 
     private LLVMSourceMemberType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location) {

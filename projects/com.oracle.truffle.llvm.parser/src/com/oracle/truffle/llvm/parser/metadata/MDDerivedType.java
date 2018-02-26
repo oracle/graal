@@ -38,12 +38,14 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
 
     private MDBaseNode baseType;
     private MDBaseNode scope;
+    private MDBaseNode extraData;
 
     private MDDerivedType(long tag, long line, long size, long align, long offset, long flags) {
         super(tag, size, align, offset, line, flags);
 
         this.scope = MDVoidNode.INSTANCE;
         this.baseType = MDVoidNode.INSTANCE;
+        this.extraData = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -59,6 +61,10 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         return scope;
     }
 
+    public MDBaseNode getExtraData() {
+        return extraData;
+    }
+
     @Override
     public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
         super.replace(oldValue, newValue);
@@ -67,6 +73,9 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
         }
         if (scope == oldValue) {
             scope = newValue;
+        }
+        if (extraData == oldValue) {
+            extraData = newValue;
         }
     }
 
@@ -80,6 +89,7 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
     private static final int ARGINDEX_38_ALIGN = 8;
     private static final int ARGINDEX_38_OFFSET = 9;
     private static final int ARGINDEX_38_FLAGS = 10;
+    private static final int ARGINDEX_38_EXTRADATA = 11;
 
     public static MDDerivedType create38(long[] args, MetadataValueList md) {
         final long tag = args[ARGINDEX_38_TAG];
@@ -93,6 +103,7 @@ public final class MDDerivedType extends MDType implements MDBaseNode {
 
         derivedType.scope = md.getNullable(args[ARGINDEX_38_SCOPE], derivedType);
         derivedType.baseType = md.getNullable(args[ARGINDEX_38_BASETYPE], derivedType);
+        derivedType.extraData = md.getNullable(args[ARGINDEX_38_EXTRADATA], derivedType);
 
         derivedType.setFile(md.getNullable(args[ARGINDEX_38_FILE], derivedType));
         derivedType.setName(md.getNullable(args[ARGINDEX_38_NAME], derivedType));

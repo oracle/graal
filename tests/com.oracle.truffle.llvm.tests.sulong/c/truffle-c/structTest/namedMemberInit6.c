@@ -7,6 +7,6 @@ struct test {
 };
 
 int main() {
-  struct test t = { .a.c = -1 };
+  struct test t = {.a.c = -1 };
   return 1 + t.a.b + t.chars[0] + t.chars[1] + t.chars[2] + t.chars[3];
 }

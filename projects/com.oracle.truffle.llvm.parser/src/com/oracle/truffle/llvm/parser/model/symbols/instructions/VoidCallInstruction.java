@@ -29,50 +29,37 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.oracle.truffle.llvm.parser.model.IRScope;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.MetadataConstant;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-public final class VoidCallInstruction extends VoidInstruction implements Call {
+public final class VoidCallInstruction extends VoidInstruction implements FunctionStart {
 
-    private Symbol target;
+    private SymbolImpl target;
 
-    private final List<Symbol> arguments;
+    private final SymbolImpl[] arguments;
 
     private final AttributesCodeEntry paramAttr;
 
-    private VoidCallInstruction(AttributesCodeEntry paramAtt) {
-        arguments = new ArrayList<>();
+    private VoidCallInstruction(AttributesCodeEntry paramAtt, int argCount) {
+        this.arguments = argCount == 0 ? NO_ARGS : new SymbolImpl[argCount];
         this.paramAttr = paramAtt;
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
     @Override
-    public Symbol getArgument(int index) {
-        return arguments.get(index);
+    public SymbolImpl[] getArguments() {
+        return arguments;
     }
 
     @Override
-    public int getArgumentCount() {
-        return arguments.size();
-    }
-
-    @Override
-    public Symbol getCallTarget() {
+    public SymbolImpl getCallTarget() {
         return target;
     }
 
@@ -92,42 +79,26 @@ public final class VoidCallInstruction extends VoidInstruction implements Call {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (target == original) {
             target = replacement;
         }
-        for (int i = 0; i < arguments.size(); i++) {
-            if (arguments.get(i) == original) {
-                arguments.set(i, replacement);
+        for (int i = 0; i < arguments.length; i++) {
+            if (arguments[i] == original) {
+                arguments[i] = replacement;
             }
         }
     }
 
-    public static VoidCallInstruction fromSymbols(Symbols symbols, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
-        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr);
-        inst.target = symbols.getSymbol(targetIndex, inst);
-        final Type[] argTypes;
-        if (inst.target instanceof FunctionDefinition) {
-            argTypes = ((FunctionDefinition) (inst.target)).getType().getArgumentTypes();
-        } else if (inst.target instanceof FunctionDeclaration) {
-            argTypes = ((FunctionDeclaration) (inst.target)).getType().getArgumentTypes();
-        } else {
-            argTypes = null;
-        }
-        if (argTypes != null) {
-            for (int i = 0; i < arguments.length; i++) {
-                // TODO: why is it possible to have more arguments than argument types?
-                if (argTypes.length > i && argTypes[i] == MetaType.METADATA) {
-                    inst.arguments.add(new MetadataConstant(arguments[i]));
-                } else {
-                    inst.arguments.add(symbols.getSymbol(arguments[i], inst));
-                }
-            }
-        } else {
-            for (final int argument : arguments) {
-                inst.arguments.add(symbols.getSymbol(argument, inst));
-            }
-        }
+    public static VoidCallInstruction fromSymbols(IRScope scope, int targetIndex, int[] arguments, AttributesCodeEntry paramAttr) {
+        final VoidCallInstruction inst = new VoidCallInstruction(paramAttr, arguments.length);
+        inst.target = scope.getSymbols().getForwardReferenced(targetIndex, inst);
+        FunctionStart.parseArguments(scope, inst.target, inst, inst.arguments, arguments);
         return inst;
+    }
+
+    @Override
+    public String toString() {
+        return FunctionStart.asString(target, arguments);
     }
 }

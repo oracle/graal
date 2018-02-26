@@ -143,6 +143,7 @@ void *truffle_managed_memcpy(void *destination, const void *source, size_t count
 void *truffle_handle_for_managed(void *managedObject);
 void *truffle_release_handle(void *nativeHandle);
 void *truffle_managed_from_handle(void *nativeHandle);
+bool truffle_is_handle_to_managed(void *nativeHandle);
 
 void *truffle_sulong_function_to_native_pointer(void *sulongFunctionPointer, const void *signature);
 

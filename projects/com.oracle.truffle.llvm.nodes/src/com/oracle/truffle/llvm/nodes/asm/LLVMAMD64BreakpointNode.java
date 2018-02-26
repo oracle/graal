@@ -31,14 +31,14 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMAMD64BreakpointNode extends LLVMExpressionNode {
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
 
-    public LLVMAMD64BreakpointNode(SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
+    public LLVMAMD64BreakpointNode(LLVMSourceLocation source) {
+        this.source = source;
     }
 
     @Override
@@ -47,8 +47,8 @@ public class LLVMAMD64BreakpointNode extends LLVMExpressionNode {
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 
     @Override

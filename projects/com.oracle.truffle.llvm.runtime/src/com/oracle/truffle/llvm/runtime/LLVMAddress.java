@@ -79,7 +79,7 @@ public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider {
         return unsignedLessThan(val2.val);
     }
 
-    public boolean unsignedLessThan(long val2) {
+    private boolean unsignedLessThan(long val2) {
         return Long.compareUnsigned(val, val2) < 0;
     }
 

@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.parser.model.symbols.Symbols;
-import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class AllocateInstruction extends ValueInstruction {
 
-    private Symbol count;
+    private SymbolImpl count;
 
     private final int align;
 
@@ -47,7 +47,7 @@ public final class AllocateInstruction extends ValueInstruction {
     }
 
     @Override
-    public void accept(InstructionVisitor visitor) {
+    public void accept(SymbolVisitor visitor) {
         visitor.visit(this);
     }
 
@@ -56,7 +56,7 @@ public final class AllocateInstruction extends ValueInstruction {
         return align;
     }
 
-    public Symbol getCount() {
+    public SymbolImpl getCount() {
         return count;
     }
 
@@ -70,15 +70,15 @@ public final class AllocateInstruction extends ValueInstruction {
     }
 
     @Override
-    public void replace(Symbol original, Symbol replacement) {
+    public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (count == original) {
             count = replacement;
         }
     }
 
-    public static AllocateInstruction fromSymbols(Symbols symbols, Type type, int count, int align) {
+    public static AllocateInstruction fromSymbols(SymbolTable symbols, Type type, int count, int align) {
         final AllocateInstruction inst = new AllocateInstruction(type, align);
-        inst.count = symbols.getSymbol(count, inst);
+        inst.count = symbols.getForwardReferenced(count, inst);
         return inst;
     }
 }

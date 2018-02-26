@@ -36,11 +36,27 @@ import java.util.Arrays;
 import javax.xml.bind.DatatypeConverter;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @ValueType
-public final class LLVM80BitFloat {
+public final class LLVM80BitFloat implements LLVMArithmetic {
 
     private static final int BIT_TO_HEX_FACTOR = 4;
     public static final int BIT_WIDTH = 80;
@@ -259,12 +275,6 @@ public final class LLVM80BitFloat {
         }
     }
 
-    public LLVM80BitFloat add(LLVM80BitFloat right) {
-        double doubleValue = getDoubleValue();
-        double doubleValue2 = right.getDoubleValue();
-        return fromDouble(doubleValue + doubleValue2);
-    }
-
     @SuppressWarnings("unused")
     private LLVM80BitFloat add2(LLVM80BitFloat right) {
         int leftExponent = getExponent();
@@ -318,18 +328,6 @@ public final class LLVM80BitFloat {
         return LLVM80BitFloat.fromRawValues(newSign, newExponent, newFraction);
     }
 
-    public LLVM80BitFloat sub(LLVM80BitFloat right) {
-        return add(right.negate());
-    }
-
-    public LLVM80BitFloat mul(LLVM80BitFloat right) {
-        return fromDouble(getDoubleValue() * right.getDoubleValue());
-    }
-
-    public LLVM80BitFloat div(LLVM80BitFloat right) {
-        return fromDouble(getDoubleValue() / right.getDoubleValue());
-    }
-
     public LLVM80BitFloat rem(LLVM80BitFloat right) {
         return fromDouble(getDoubleValue() % right.getDoubleValue());
     }
@@ -340,6 +338,10 @@ public final class LLVM80BitFloat {
 
     public LLVM80BitFloat pow(LLVM80BitFloat right) {
         return fromDouble(Math.pow(getDoubleValue(), right.getDoubleValue()));
+    }
+
+    public LLVM80BitFloat abs() {
+        return LLVM80BitFloat.fromRawValues(false, biasedExponent, fraction);
     }
 
     public boolean isPositiveInfinity() {
@@ -626,4 +628,110 @@ public final class LLVM80BitFloat {
         return fromBytesBigEndian(DatatypeConverter.parseHexBinary(stringValue));
     }
 
+    protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
+        private final String name;
+
+        @Child private Node nativeExecute = Message.createExecute(2).createNode();
+
+        public LLVM80BitFloatNativeCallNode(String name) {
+            this.name = name;
+        }
+
+        protected TruffleObject createFunction() {
+            LLVMContext context = getContextReference().get();
+            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
+            return nfiContextExtension.getNativeFunction(context, "@__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
+        }
+
+        public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
+
+        @Specialization
+        protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
+                        @Cached("createFunction()") TruffleObject function,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            LLVMAddress mem = memory.allocateMemory(3 * 16);
+            LLVMAddress ptrX = mem;
+            LLVMAddress ptrY = ptrX.increment(16);
+            LLVMAddress ptrZ = ptrY.increment(16);
+            memory.put80BitFloat(ptrX, x);
+            memory.put80BitFloat(ptrY, y);
+            try {
+                ForeignAccess.sendExecute(nativeExecute, function, ptrZ.getVal(), ptrX.getVal(), ptrY.getVal());
+                LLVM80BitFloat z = memory.get80BitFloat(ptrZ);
+                return z;
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            } finally {
+                memory.free(mem);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "fp80 " + name;
+        }
+    }
+
+    static class LLVM80BitFloatOpNode extends LLVMArithmeticOpNode {
+        @Child private LLVM80BitFloatNativeCallNode node;
+
+        LLVM80BitFloatOpNode(String op) {
+            node = LLVM80BitFloatNativeCallNodeGen.create(op);
+        }
+
+        @Override
+        public boolean canCompute(Object x, Object y) {
+            return x instanceof LLVM80BitFloat && y instanceof LLVM80BitFloat;
+        }
+
+        @Override
+        public LLVM80BitFloat execute(VirtualFrame frame, Object x, Object y) {
+            LLVM80BitFloat a = (LLVM80BitFloat) x;
+            LLVM80BitFloat b = (LLVM80BitFloat) y;
+            return node.execute(a, b);
+        }
+    }
+
+    @Override
+    public LLVMArithmeticOpNode createAddNode() {
+        return new LLVM80BitFloatOpNode("add");
+    }
+
+    @Override
+    public LLVMArithmeticOpNode createSubNode() {
+        return new LLVM80BitFloatOpNode("sub");
+    }
+
+    @Override
+    public LLVMArithmeticOpNode createMulNode() {
+        return new LLVM80BitFloatOpNode("mul");
+    }
+
+    @Override
+    public LLVMArithmeticOpNode createDivNode() {
+        return new LLVM80BitFloatOpNode("div");
+    }
+
+    @Override
+    public LLVMArithmeticOpNode createRemNode() {
+        return new LLVM80BitFloatOpNode("mod");
+    }
+
+    @Override
+    public LLVMArithmeticCompareNode createCmpNode() {
+        return new LLVMArithmeticCompareNode() {
+            @Override
+            public int execute(VirtualFrame frame, Object x, Object y) throws InteropException {
+                LLVM80BitFloat a = (LLVM80BitFloat) x;
+                LLVM80BitFloat b = (LLVM80BitFloat) y;
+                return compare(a, b);
+            }
+
+            @Override
+            public boolean canCompute(Object x, Object y) {
+                return x instanceof LLVM80BitFloat && y instanceof LLVM80BitFloat;
+            }
+        };
+    }
 }

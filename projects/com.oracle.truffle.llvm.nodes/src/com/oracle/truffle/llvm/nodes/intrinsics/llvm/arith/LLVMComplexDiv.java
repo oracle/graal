@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -52,6 +53,16 @@ public final class LLVMComplexDiv extends LLVMExpressionNode {
         this.dNode = d;
     }
 
+    @CompilationFinal private LLVMMemory memory;
+
+    private LLVMMemory getMemory() {
+        if (memory == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memory = getLLVMMemory();
+        }
+        return memory;
+    }
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
@@ -65,8 +76,8 @@ public final class LLVMComplexDiv extends LLVMExpressionNode {
             double zImag = (b * c - a * d) / denom;
 
             LLVMAddress allocatedMemory = alloc.executeLLVMAddress(frame);
-            LLVMMemory.putDouble(allocatedMemory, zReal);
-            LLVMMemory.putDouble(allocatedMemory.getVal() + LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, zImag);
+            getMemory().putDouble(allocatedMemory, zReal);
+            getMemory().putDouble(allocatedMemory.getVal() + LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, zImag);
 
             return allocatedMemory;
         } catch (UnexpectedResultException e) {
@@ -74,5 +85,4 @@ public final class LLVMComplexDiv extends LLVMExpressionNode {
             throw new IllegalStateException(e);
         }
     }
-
 }

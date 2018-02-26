@@ -38,10 +38,15 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
@@ -98,9 +103,26 @@ public abstract class ForeignToLLVM extends LLVMNode {
         DOUBLE,
         POINTER,
         VECTOR,
+        ARRAY,
+        STRUCT,
         ANY,
         VOID,
-        VARBIT
+        VARBIT;
+
+        public static ForeignToLLVMType getIntegerType(int bitWidth) {
+            switch (bitWidth) {
+                case 8:
+                    return ForeignToLLVMType.I8;
+                case 16:
+                    return ForeignToLLVMType.I16;
+                case 32:
+                    return ForeignToLLVMType.I32;
+                case 64:
+                    return ForeignToLLVMType.I64;
+                default:
+                    throw new IllegalStateException("There is no integer type with " + bitWidth + " bits defined");
+            }
+        }
     }
 
     public static ForeignToLLVMType convert(Type type) {
@@ -129,6 +151,10 @@ public abstract class ForeignToLLVM extends LLVMNode {
             return ForeignToLLVMType.VOID;
         } else if (type instanceof VectorType) {
             return ForeignToLLVMType.VECTOR;
+        } else if (type instanceof ArrayType) {
+            return ForeignToLLVMType.ARRAY;
+        } else if (type instanceof StructureType) {
+            return ForeignToLLVMType.STRUCT;
         } else {
             throw UnsupportedTypeException.raise(new Object[]{type});
         }
@@ -170,31 +196,55 @@ public abstract class ForeignToLLVM extends LLVMNode {
         }
     }
 
+    public static Object defaultValue(ForeignToLLVMType type) {
+        switch (type) {
+            case I1:
+                return false;
+            case I8:
+                return (byte) 0;
+            case I16:
+                return (short) 0;
+            case I32:
+                return 0;
+            case I64:
+                return 0L;
+            case POINTER:
+                return LLVMAddress.fromLong(0);
+            case FLOAT:
+                return 0f;
+            case DOUBLE:
+                return 0d;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException();
+        }
+    }
+
     public static final class SlowPathForeignToLLVM extends ForeignToLLVM {
         @TruffleBoundary
-        public Object convert(Type type, Object value) {
-            return convert(ForeignToLLVM.convert(type), value);
+        public Object convert(Type type, LLVMMemory memory, LLVMContext context, Object value) {
+            return convert(memory, ForeignToLLVM.convert(type), context, value);
         }
 
         @TruffleBoundary
-        public Object convert(ForeignToLLVMType type, Object value) {
+        public Object convert(LLVMMemory memory, ForeignToLLVMType type, LLVMContext context, Object value) {
             switch (type) {
                 case ANY:
                     return ToAnyLLVM.slowPathPrimitiveConvert(this, value);
                 case DOUBLE:
-                    return ToDouble.slowPathPrimitiveConvert(this, value);
+                    return ToDouble.slowPathPrimitiveConvert(memory, this, context, value);
                 case FLOAT:
-                    return ToFloat.slowPathPrimitiveConvert(this, value);
+                    return ToFloat.slowPathPrimitiveConvert(memory, this, context, value);
                 case I1:
-                    return ToI1.slowPathPrimitiveConvert(this, value);
+                    return ToI1.slowPathPrimitiveConvert(memory, this, context, value);
                 case I16:
-                    return ToI16.slowPathPrimitiveConvert(this, value);
+                    return ToI16.slowPathPrimitiveConvert(memory, this, context, value);
                 case I32:
-                    return ToI32.slowPathPrimitiveConvert(this, value);
+                    return ToI32.slowPathPrimitiveConvert(memory, this, context, value);
                 case I64:
-                    return ToI64.slowPathPrimitiveConvert(this, value);
+                    return ToI64.slowPathPrimitiveConvert(memory, this, context, value);
                 case I8:
-                    return ToI8.slowPathPrimitiveConvert(this, value);
+                    return ToI8.slowPathPrimitiveConvert(memory, this, context, value);
                 case POINTER:
                     return ToPointer.slowPathPrimitiveConvert(this, value);
                 default:
@@ -209,5 +259,4 @@ public abstract class ForeignToLLVM extends LLVMNode {
             throw new IllegalStateException("Use convert method.");
         }
     }
-
 }

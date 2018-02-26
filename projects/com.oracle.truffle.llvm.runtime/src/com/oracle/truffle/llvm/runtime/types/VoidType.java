@@ -105,5 +105,4 @@ public final class VoidType extends Type {
         }
         return true;
     }
-
 }

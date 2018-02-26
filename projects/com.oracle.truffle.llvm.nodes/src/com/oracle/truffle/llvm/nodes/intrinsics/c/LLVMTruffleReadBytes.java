@@ -32,39 +32,42 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariable;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalVariableAccess;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
 
     @Specialization
-    public Object executeIntrinsic(LLVMGlobalVariable value, @Cached("createGlobalAccess()") LLVMGlobalVariableAccess globalAccess) {
-        return executeIntrinsic(globalAccess.getNativeLocation(value));
+    protected Object doIntrinsic(VirtualFrame frame, LLVMGlobal value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doIntrinsic(globalAccess.executeWithTarget(frame, value), memory);
     }
 
     @Specialization
-    public Object executeIntrinsic(LLVMAddress value) {
+    protected Object doIntrinsic(LLVMAddress value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
         byte c;
         long ptr = value.getVal();
         int count = 0;
-        while ((c = LLVMMemory.getI8(ptr)) != 0) {
+        while ((c = memory.getI8(ptr)) != 0) {
             count++;
             ptr += Byte.BYTES;
         }
         byte[] bytes = new byte[count];
         count = 0;
         ptr = value.getVal();
-        while ((c = LLVMMemory.getI8(ptr)) != 0) {
+        while ((c = memory.getI8(ptr)) != 0) {
             bytes[count++] = c;
             ptr += Byte.BYTES;
         }
         return JavaInterop.asTruffleObject(bytes);
     }
-
 }

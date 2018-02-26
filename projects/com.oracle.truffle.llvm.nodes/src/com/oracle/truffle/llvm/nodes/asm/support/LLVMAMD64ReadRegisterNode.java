@@ -29,12 +29,13 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.support;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeField(name = "slot", type = FrameSlot.class)
@@ -46,9 +47,14 @@ public abstract class LLVMAMD64ReadRegisterNode extends LLVMExpressionNode {
         return frame.getLong(getSlot());
     }
 
-    @Specialization(rewriteOn = FrameSlotTypeException.class)
-    protected LLVMAddress readAddress(VirtualFrame frame) throws FrameSlotTypeException {
-        return (LLVMAddress) frame.getObject(getSlot());
+    @Specialization(replaces = {"readI64"}, rewriteOn = FrameSlotTypeException.class)
+    protected Object readAddress(VirtualFrame frame) throws FrameSlotTypeException {
+        if (getSlot().getKind() == FrameSlotKind.Object) {
+            return frame.getObject(getSlot());
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new FrameSlotTypeException();
+        }
     }
 
     @Specialization(replaces = {"readI64", "readAddress"})

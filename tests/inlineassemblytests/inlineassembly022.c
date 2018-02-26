@@ -2,6 +2,6 @@ int main() {
   int arg1 = 40;
   int arg2 = 2;
   int quot = 0;
-  __asm__("idivl %%ebx, %%eax;" : "=a"(quot): "a"(arg1), "d"(0), "b"(arg2));
+  __asm__("idivl %%ebx, %%eax;" : "=a"(quot) : "a"(arg1), "d"(0), "b"(arg2));
   return quot;
 }

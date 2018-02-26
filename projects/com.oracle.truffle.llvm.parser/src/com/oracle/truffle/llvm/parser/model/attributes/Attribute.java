@@ -171,7 +171,6 @@ public abstract class Attribute {
         public String getIrString() {
             return String.format("\"%s\"=\"%s\"", stringAttr, value);
         }
-
     }
 
     public abstract String getIrString();

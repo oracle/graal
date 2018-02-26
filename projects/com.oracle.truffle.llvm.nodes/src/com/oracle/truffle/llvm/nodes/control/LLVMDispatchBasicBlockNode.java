@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,35 +38,47 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameNullerUtil;
 import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
 import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     private final FrameSlot exceptionValueSlot;
-    private final SourceSection sourceSection;
+    private final LLVMSourceLocation source;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
+    @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
 
-    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, SourceSection sourceSection) {
+    public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation source,
+                    LLVMExpressionNode[] copyArgumentsToFrame) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.beforeBlockNuller = beforeBlockNuller;
         this.afterBlockNuller = afterBlockNuller;
-        this.sourceSection = sourceSection;
+        this.source = source;
+        this.copyArgumentsToFrame = copyArgumentsToFrame;
+    }
+
+    @ExplodeLoop
+    private void copyArgumentsToFrame(VirtualFrame frame) {
+        for (LLVMExpressionNode n : copyArgumentsToFrame) {
+            n.executeGeneric(frame);
+        }
     }
 
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object executeGeneric(VirtualFrame frame) {
+        copyArgumentsToFrame(frame);
+
         Object returnValue = null;
 
         CompilerAsserts.compilationConstant(bodyNodes.length);
@@ -277,7 +289,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        return sourceSection;
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
     }
 }

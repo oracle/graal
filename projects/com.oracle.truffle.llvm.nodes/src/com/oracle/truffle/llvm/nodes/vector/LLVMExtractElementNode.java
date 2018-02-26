@@ -47,7 +47,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMI1ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public boolean executeI1(LLVMI1Vector vector, int index) {
+        protected boolean doI1(LLVMI1Vector vector, int index) {
             return vector.getValue(index);
         }
     }
@@ -56,7 +56,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMI8ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public byte executeI8(LLVMI8Vector vector, int index) {
+        protected byte doI8(LLVMI8Vector vector, int index) {
             return vector.getValue(index);
         }
     }
@@ -65,7 +65,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMI16ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public short executeI16(LLVMI16Vector vector, int index) {
+        protected short doI16(LLVMI16Vector vector, int index) {
             return vector.getValue(index);
         }
     }
@@ -74,7 +74,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMI32ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public int executeI32(LLVMI32Vector vector, int index) {
+        protected int doI32(LLVMI32Vector vector, int index) {
             return vector.getValue(index);
         }
     }
@@ -83,7 +83,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMI64ExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public long executeI64(LLVMI64Vector vector, int index) {
+        protected long doI64(LLVMI64Vector vector, int index) {
             return vector.getValue(index);
         }
     }
@@ -92,7 +92,7 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMFloatExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public float executeFloat(LLVMFloatVector vector, int index) {
+        protected float doFloat(LLVMFloatVector vector, int index) {
             return vector.getValue(index);
         }
     }
@@ -101,9 +101,8 @@ public abstract class LLVMExtractElementNode {
     public abstract static class LLVMDoubleExtractElementNode extends LLVMExpressionNode {
 
         @Specialization
-        public Double executeDouble(LLVMDoubleVector vector, int index) {
+        protected Double doDouble(LLVMDoubleVector vector, int index) {
             return vector.getValue(index);
         }
     }
-
 }

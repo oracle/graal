@@ -6,19 +6,19 @@ int main() {
   unsigned char cf;
   unsigned short old = out;
 
-  if(!has_rdseed())
+  if (!has_rdseed())
     return 1;
 
-  for(i = 0; i < 4; i++) {
+  for (i = 0; i < 4; i++) {
     unsigned short tmp = out;
     __asm__("rdseed %%ax; setc %%dl" : "=a"(out), "=d"(cf));
-    if(cf)
+    if (cf)
       old = tmp;
     else {
       i--;
       continue;
     }
-    if(old != out)
+    if (old != out)
       return 1;
   }
 

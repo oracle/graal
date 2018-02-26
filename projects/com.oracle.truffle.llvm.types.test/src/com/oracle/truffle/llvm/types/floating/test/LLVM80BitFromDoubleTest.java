@@ -101,5 +101,4 @@ public class LLVM80BitFromDoubleTest extends LLVM80BitTest {
         LLVM80BitFloat expected = LLVM80BitFloat.fromRawValues(false, 0x3fff, 0xc000000000000000L);
         assertEquals(expected, val);
     }
-
 }

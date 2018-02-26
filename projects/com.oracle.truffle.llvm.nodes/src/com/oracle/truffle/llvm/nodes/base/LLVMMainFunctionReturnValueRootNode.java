@@ -57,7 +57,6 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
         public Object execute(VirtualFrame frame) {
             return ((Boolean) callNode.call(new Object[]{})).booleanValue() ? 1 : 0;
         }
-
     }
 
     public static class LLVMMainFunctionReturnIVarBitRootNode extends LLVMMainFunctionReturnValueRootNode {
@@ -70,7 +69,6 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
         public Object execute(VirtualFrame frame) {
             return ((LLVMIVarBit) callNode.call(new Object[]{})).getIntValue();
         }
-
     }
 
     public static class LLVMMainFunctionReturnNumberRootNode extends LLVMMainFunctionReturnValueRootNode {
@@ -83,7 +81,6 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
         public Object execute(VirtualFrame frame) {
             return ((Number) callNode.call(new Object[]{})).intValue();
         }
-
     }
 
     public static class LLVMMainFunctionReturnVoidRootNode extends LLVMMainFunctionReturnValueRootNode {
@@ -99,7 +96,5 @@ public abstract class LLVMMainFunctionReturnValueRootNode extends RootNode {
             callNode.call(new Object[]{});
             return VOID_RET_VALUE;
         }
-
     }
-
 }

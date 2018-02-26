@@ -40,5 +40,4 @@ class BinaryHelper {
     static int getBitMask(int bit) {
         return ~(-1 << bit);
     }
-
 }

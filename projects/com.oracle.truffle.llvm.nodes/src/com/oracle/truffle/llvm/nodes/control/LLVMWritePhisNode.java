@@ -29,33 +29,26 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMWritePhisNode extends LLVMExpressionNode {
 
     @Children private final LLVMExpressionNode[] from;
-    @CompilationFinal(dimensions = 1) private final FrameSlot[] to;
-    @CompilationFinal(dimensions = 1) private final Type[] types;
+    @Children private final LLVMWriteNode[] writes;
 
-    public LLVMWritePhisNode(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
+    public LLVMWritePhisNode(LLVMExpressionNode[] from, LLVMWriteNode[] writes) {
         this.from = from;
-        this.to = to;
-        this.types = types;
-        assert types.length == from.length;
-        assert from.length == to.length;
+        this.writes = writes;
+        assert from.length == writes.length;
     }
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
+        // because of dependencies between the values, we need to read all the values before writing
+        // any new value
         Object[] values = readValues(frame);
         writeValues(frame, values);
         return null;
@@ -72,44 +65,8 @@ public final class LLVMWritePhisNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     private void writeValues(VirtualFrame frame, Object[] values) {
-        for (int i = 0; i < to.length; i++) {
-            CompilerAsserts.partialEvaluationConstant(types[i]);
-            if (types[i] instanceof PrimitiveType) {
-                PrimitiveKind primitiveKind = ((PrimitiveType) types[i]).getPrimitiveKind();
-                CompilerAsserts.partialEvaluationConstant(types[i]);
-                switch (primitiveKind) {
-                    case I1:
-                        frame.setBoolean(to[i], (boolean) values[i]);
-                        break;
-                    case I8:
-                        frame.setByte(to[i], (byte) values[i]);
-                        break;
-                    case I16:
-                        frame.setInt(to[i], (short) values[i]);
-                        break;
-                    case I32:
-                        frame.setInt(to[i], (int) values[i]);
-                        break;
-                    case I64:
-                        frame.setLong(to[i], (long) values[i]);
-                        break;
-                    case FLOAT:
-                        frame.setFloat(to[i], (float) values[i]);
-                        break;
-                    case DOUBLE:
-                        frame.setDouble(to[i], (double) values[i]);
-                        break;
-                    case X86_FP80:
-                        frame.setObject(to[i], values[i]);
-                        break;
-                    default:
-                        CompilerDirectives.transferToInterpreter();
-                        throw new AssertionError(primitiveKind);
-                }
-            } else {
-                frame.setObject(to[i], values[i]);
-            }
+        for (int i = 0; i < writes.length; i++) {
+            writes[i].executeWithTarget(frame, values[i]);
         }
     }
-
 }

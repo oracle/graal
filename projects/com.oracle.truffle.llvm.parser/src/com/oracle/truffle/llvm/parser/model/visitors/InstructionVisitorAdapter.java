@@ -61,159 +61,158 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInst
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 
-public interface InstructionVisitorAdapter extends InstructionVisitor {
+public interface InstructionVisitorAdapter extends SymbolVisitor {
 
-    default void defaultAction(@SuppressWarnings("unused") Instruction inst) {
+    default void visitInstruction(@SuppressWarnings("unused") Instruction inst) {
     }
 
     @Override
     default void visit(AllocateInstruction allocate) {
-        defaultAction(allocate);
+        visitInstruction(allocate);
     }
 
     @Override
     default void visit(BinaryOperationInstruction operation) {
-        defaultAction(operation);
+        visitInstruction(operation);
     }
 
     @Override
     default void visit(BranchInstruction branch) {
-        defaultAction(branch);
+        visitInstruction(branch);
     }
 
     @Override
     default void visit(CallInstruction call) {
-        defaultAction(call);
+        visitInstruction(call);
     }
 
     @Override
     default void visit(LandingpadInstruction landingpadInstruction) {
-        defaultAction(landingpadInstruction);
+        visitInstruction(landingpadInstruction);
     }
 
     @Override
     default void visit(CastInstruction cast) {
-        defaultAction(cast);
+        visitInstruction(cast);
     }
 
     @Override
     default void visit(CompareInstruction operation) {
-        defaultAction(operation);
+        visitInstruction(operation);
     }
 
     @Override
     default void visit(ConditionalBranchInstruction branch) {
-        defaultAction(branch);
+        visitInstruction(branch);
     }
 
     @Override
     default void visit(ExtractElementInstruction extract) {
-        defaultAction(extract);
+        visitInstruction(extract);
     }
 
     @Override
     default void visit(ExtractValueInstruction extract) {
-        defaultAction(extract);
+        visitInstruction(extract);
     }
 
     @Override
     default void visit(GetElementPointerInstruction gep) {
-        defaultAction(gep);
+        visitInstruction(gep);
     }
 
     @Override
     default void visit(IndirectBranchInstruction branch) {
-        defaultAction(branch);
+        visitInstruction(branch);
     }
 
     @Override
     default void visit(InsertElementInstruction insert) {
-        defaultAction(insert);
+        visitInstruction(insert);
     }
 
     @Override
     default void visit(InsertValueInstruction insert) {
-        defaultAction(insert);
+        visitInstruction(insert);
     }
 
     @Override
     default void visit(LoadInstruction load) {
-        defaultAction(load);
+        visitInstruction(load);
     }
 
     @Override
     default void visit(PhiInstruction phi) {
-        defaultAction(phi);
+        visitInstruction(phi);
     }
 
     @Override
     default void visit(ReturnInstruction ret) {
-        defaultAction(ret);
+        visitInstruction(ret);
     }
 
     @Override
     default void visit(SelectInstruction select) {
-        defaultAction(select);
+        visitInstruction(select);
     }
 
     @Override
     default void visit(ShuffleVectorInstruction shuffle) {
-        defaultAction(shuffle);
+        visitInstruction(shuffle);
     }
 
     @Override
     default void visit(StoreInstruction store) {
-        defaultAction(store);
+        visitInstruction(store);
     }
 
     @Override
     default void visit(SwitchInstruction select) {
-        defaultAction(select);
+        visitInstruction(select);
     }
 
     @Override
     default void visit(SwitchOldInstruction select) {
-        defaultAction(select);
+        visitInstruction(select);
     }
 
     @Override
     default void visit(UnreachableInstruction unreachable) {
-        defaultAction(unreachable);
+        visitInstruction(unreachable);
     }
 
     @Override
     default void visit(VoidCallInstruction call) {
-        defaultAction(call);
+        visitInstruction(call);
     }
 
     @Override
     default void visit(InvokeInstruction invoke) {
-        defaultAction(invoke);
+        visitInstruction(invoke);
     }
 
     @Override
     default void visit(VoidInvokeInstruction invoke) {
-        defaultAction(invoke);
+        visitInstruction(invoke);
     }
 
     @Override
     default void visit(ResumeInstruction resume) {
-        defaultAction(resume);
+        visitInstruction(resume);
     }
 
     @Override
     default void visit(CompareExchangeInstruction cmpxchg) {
-        defaultAction(cmpxchg);
+        visitInstruction(cmpxchg);
     }
 
     @Override
     default void visit(ReadModifyWriteInstruction rmw) {
-        defaultAction(rmw);
+        visitInstruction(rmw);
     }
 
     @Override
     default void visit(FenceInstruction fence) {
-        defaultAction(fence);
+        visitInstruction(fence);
     }
-
 }

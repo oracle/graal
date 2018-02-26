@@ -75,27 +75,27 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+        protected LLVMI16Vector doI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
             return left.and(right);
         }
 
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
             return left.and(right);
         }
 
         @Specialization
-        protected LLVMI32Vector executeI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
             return left.and(right);
         }
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
             return left.and(right);
         }
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.and(right);
         }
     }
@@ -132,27 +132,27 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+        protected LLVMI16Vector doI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
             return left.or(right);
         }
 
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
             return left.or(right);
         }
 
         @Specialization
-        protected LLVMI32Vector executeI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
             return left.or(right);
         }
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
             return left.or(right);
         }
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.or(right);
         }
     }
@@ -209,7 +209,7 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.xor(right);
         }
     }
@@ -241,27 +241,27 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+        protected LLVMI16Vector doI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
             return left.leftShift(right);
         }
 
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
             return left.leftShift(right);
         }
 
         @Specialization
-        protected LLVMI32Vector executeI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
             return left.leftShift(right);
         }
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
             return left.leftShift(right);
         }
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.leftShift(right);
         }
     }
@@ -293,27 +293,27 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+        protected LLVMI16Vector doI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
             return left.logicalRightShift(right);
         }
 
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
             return left.logicalRightShift(right);
         }
 
         @Specialization
-        protected LLVMI32Vector executeI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
             return left.logicalRightShift(right);
         }
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
             return left.logicalRightShift(right);
         }
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.logicalRightShift(right);
         }
     }
@@ -345,29 +345,28 @@ public abstract class LLVMLogicNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI16Vector executeI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
+        protected LLVMI16Vector doI16Vector(LLVMI16Vector left, LLVMI16Vector right) {
             return left.arithmeticRightShift(right);
         }
 
         @Specialization
-        protected LLVMI1Vector executeI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
+        protected LLVMI1Vector doI1Vector(LLVMI1Vector left, LLVMI1Vector right) {
             return left.arithmeticRightShift(right);
         }
 
         @Specialization
-        protected LLVMI32Vector executeI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
+        protected LLVMI32Vector doI32Vector(LLVMI32Vector left, LLVMI32Vector right) {
             return left.arithmeticRightShift(right);
         }
 
         @Specialization
-        protected LLVMI64Vector executeI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
+        protected LLVMI64Vector doI64Vector(LLVMI64Vector left, LLVMI64Vector right) {
             return left.arithmeticRightShift(right);
         }
 
         @Specialization
-        protected LLVMI8Vector executeI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
+        protected LLVMI8Vector doI8Vector(LLVMI8Vector left, LLVMI8Vector right) {
             return left.arithmeticRightShift(right);
         }
     }
-
 }

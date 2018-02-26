@@ -13,7 +13,7 @@ int sum(struct test *t) {
 }
 
 int main() {
-  struct test t1 = { .a = { 1, 2, 3 }, .b = { 'a', 'c' }, .c = -1 };
+  struct test t1 = {.a = { 1, 2, 3 }, .b = { 'a', 'c' }, .c = -1 };
 
   struct test t2 = t1;
   t2.b[0] = 32;

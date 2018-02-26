@@ -95,7 +95,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte executeI8(VirtualFrame frame, byte left, byte right, boolean cf) {
+        protected byte doI8(VirtualFrame frame, byte left, byte right, boolean cf) {
             byte c = (byte) (cf ? 1 : 0);
             byte result = (byte) (left + right + c);
             boolean overflow;
@@ -124,7 +124,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short executeI16(VirtualFrame frame, short left, short right, boolean cf) {
+        protected short doI16(VirtualFrame frame, short left, short right, boolean cf) {
             short c = (short) (cf ? 1 : 0);
             short result = (short) (left + right + c);
             boolean overflow;
@@ -153,7 +153,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int executeI32(VirtualFrame frame, int left, int right, boolean cf) {
+        protected int doI32(VirtualFrame frame, int left, int right, boolean cf) {
             int c = cf ? 1 : 0;
             int result = left + right + c;
             boolean overflow;
@@ -182,7 +182,7 @@ public abstract class LLVMAMD64AdcNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long executeI64(VirtualFrame frame, long left, long right, boolean cf) {
+        protected long doI64(VirtualFrame frame, long left, long right, boolean cf) {
             long c = cf ? 1 : 0;
             long result = left + right + c;
             boolean overflow;

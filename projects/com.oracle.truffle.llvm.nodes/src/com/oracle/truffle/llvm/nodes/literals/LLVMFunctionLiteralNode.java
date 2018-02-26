@@ -40,8 +40,7 @@ public abstract class LLVMFunctionLiteralNode extends LLVMExpressionNode {
     public abstract LLVMFunctionDescriptor getFunction();
 
     @Specialization
-    public LLVMFunctionDescriptor executeFunction() {
+    protected LLVMFunctionDescriptor doFunction() {
         return getFunction();
     }
-
 }
