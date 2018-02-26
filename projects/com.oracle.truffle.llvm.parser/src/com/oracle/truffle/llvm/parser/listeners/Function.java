@@ -29,11 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
@@ -88,6 +83,11 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public final class Function implements ParserListener {
 
@@ -352,19 +352,29 @@ public final class Function implements ParserListener {
             }
         }
 
-        final int[] arguments = new int[args.length - i];
-        for (int j = 0; i < args.length; j++) {
+        int[] arguments = new int[args.length - i];
+        int skipped = 0;
+        int j = 0;
+        while (j < functionType.getArgumentTypes().length && i < args.length) {
+            arguments[j++] = getIndex(args[i++]);
+        }
+        while (i < args.length) {
             int index = getIndex(args[i++]);
-            arguments[j] = index;
+            arguments[j++] = index;
             if (scope.isValueForwardRef(index)) {
                 i++;
+                skipped++;
             }
         }
+        if (skipped > 0) {
+            arguments = Arrays.copyOf(arguments, arguments.length - skipped);
+        }
+
         final Type returnType = functionType.getReturnType();
         if (returnType == VoidType.INSTANCE) {
             emit(VoidInvokeInstruction.fromSymbols(scope, target, arguments, normalSuccessor, unwindSuccessor, paramAttr));
         } else {
-            emit(InvokeInstruction.fromSymbols(scope.getSymbols(), returnType, target, arguments, normalSuccessor, unwindSuccessor, paramAttr));
+            emit(InvokeInstruction.fromSymbols(scope, returnType, target, arguments, normalSuccessor, unwindSuccessor, paramAttr));
         }
         isLastBlockTerminated = true;
     }
@@ -473,7 +483,7 @@ public final class Function implements ParserListener {
         if (returnType == VoidType.INSTANCE) {
             emit(VoidCallInstruction.fromSymbols(scope, callee, arguments, paramAttr));
         } else {
-            emit(CallInstruction.fromSymbols(scope.getSymbols(), returnType, callee, arguments, paramAttr));
+            emit(CallInstruction.fromSymbols(scope, returnType, callee, arguments, paramAttr));
         }
     }
 

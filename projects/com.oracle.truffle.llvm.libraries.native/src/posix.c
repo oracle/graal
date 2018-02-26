@@ -33,12 +33,19 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <poll.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+
+#ifdef __linux__
+#include <sys/vfs.h>
+#include <sys/klog.h>
+#include <sys/syscall.h>
+#endif
 
 
 #ifdef __linux__
@@ -287,6 +294,61 @@ int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* n
 	CALL(int, renameat, oldfd, old, newfd, new);
 }
 
+int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
+{
+#ifdef __linux__
+	CALL(int, syscall, __NR_getdents64, fd, dirp, count);
+#else
+	fprintf(stderr, "getdents64 is not supported on this OS.\n");
+	return -ENOSYS;
+#endif
+}
+
+int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
+{
+	CALL(int, getgroups, gidsetsize, grouplist);
+}
+
+int __sulong_posix_syslog(int type, char* bufp, int len)
+{
+#ifdef __linux__
+	CALL(int, klogctl, type, bufp, len);
+#else
+	fprintf(stderr, "klogctl is not supported on this OS.\n");
+	return -ENOSYS;
+#endif
+}
+
+int __sulong_posix_statfs(const char* path, struct statfs* buf)
+{
+#ifdef __linux__
+	CALL(int, statfs, path, buf);
+#else
+	fprintf(stderr, "statfs is not supported on this OS.\n");
+	return -ENOSYS;
+#endif
+}
+
+int __sulong_posix_fstatfs(int fd, struct statfs* buf)
+{
+#ifdef __linux__
+	CALL(int, fstatfs, fd, buf);
+#else
+	fprintf(stderr, "fstatfs is not supported on this OS.\n");
+	return -ENOSYS;
+#endif
+}
+
+int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+	CALL(int, poll, fds, nfds, timeout);
+}
+
+pid_t __sulong_posix_getpgid(pid_t pid)
+{
+	CALL(pid_t, getpgid, pid);
+}
+
 #else
 
 #include <stdio.h>
@@ -497,6 +559,41 @@ int __sulong_posix_rename(const char* old, const char* new)
 }
 
 int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* new)
+{
+	ERROR();
+}
+
+int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
+{
+	ERROR();
+}
+
+int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
+{
+	ERROR();
+}
+
+int __sulong_posix_syslog(int type, char* bufp, int len)
+{
+	ERROR();
+}
+
+int __sulong_posix_statfs(const char* path, struct statfs* buf)
+{
+	ERROR();
+}
+
+int __sulong_posix_fstatfs(int fd, struct statfs* buf)
+{
+	ERROR();
+}
+
+int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
+{
+	ERROR();
+}
+
+pid_t __sulong_posix_getpgid(pid_t pid)
 {
 	ERROR();
 }

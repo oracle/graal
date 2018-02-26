@@ -38,17 +38,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 @NodeChildren({@NodeChild("rax"), @NodeChild("rdi"), @NodeChild("rsi"), @NodeChild("rdx"), @NodeChild("r10"), @NodeChild("r8"), @NodeChild("r9")})
 public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
-
-    protected static void exit(int code) {
-        throw new LLVMExitException(code);
-    }
 
     protected static LLVMAMD64SyscallOperationNode createNode(long rax) {
         switch ((int) rax) {
@@ -66,6 +62,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallFstatNodeGen.create();
             case LLVMAMD64Syscall.SYS_lstat:
                 return LLVMAMD64SyscallLstatNodeGen.create();
+            case LLVMAMD64Syscall.SYS_poll:
+                return LLVMAMD64SyscallPollNodeGen.create();
             case LLVMAMD64Syscall.SYS_lseek:
                 return new LLVMAMD64SyscallLseekNode();
             case LLVMAMD64Syscall.SYS_mmap:
@@ -135,6 +133,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return LLVMAMD64SyscallUnlinkNodeGen.create();
             case LLVMAMD64Syscall.SYS_getuid:
                 return new LLVMAMD64SyscallGetuidNode();
+            case LLVMAMD64Syscall.SYS_syslog:
+                return LLVMAMD64SyscallSyslogNodeGen.create();
             case LLVMAMD64Syscall.SYS_getgid:
                 return new LLVMAMD64SyscallGetgidNode();
             case LLVMAMD64Syscall.SYS_setuid:
@@ -147,12 +147,22 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
                 return new LLVMAMD64SyscallGetegidNode();
             case LLVMAMD64Syscall.SYS_getppid:
                 return new LLVMAMD64SyscallGetPpidNode();
+            case LLVMAMD64Syscall.SYS_getgroups:
+                return LLVMAMD64SyscallGetgroupsNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getpgid:
+                return new LLVMAMD64SyscallGetpgidNode();
+            case LLVMAMD64Syscall.SYS_statfs:
+                return LLVMAMD64SyscallStatfsNodeGen.create();
+            case LLVMAMD64Syscall.SYS_fstatfs:
+                return LLVMAMD64SyscallFstatfsNodeGen.create();
             case LLVMAMD64Syscall.SYS_arch_prctl:
                 return LLVMAMD64SyscallArchPrctlNodeGen.create();
             case LLVMAMD64Syscall.SYS_gettid:
                 return new LLVMAMD64SyscallGettidNode();
             case LLVMAMD64Syscall.SYS_futex:
                 return LLVMAMD64SyscallFutexNodeGen.create();
+            case LLVMAMD64Syscall.SYS_getdents64:
+                return LLVMAMD64SyscallGetdents64NodeGen.create();
             case LLVMAMD64Syscall.SYS_set_tid_address:
                 return LLVMAMD64SyscallSetTidAddressNodeGen.create();
             case LLVMAMD64Syscall.SYS_clock_gettime:
@@ -169,19 +179,19 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
-    protected long cachedSyscall(@SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
+    protected long cachedSyscall(VirtualFrame frame, @SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
                     @Cached("createNode(rax)") LLVMAMD64SyscallOperationNode node, @SuppressWarnings("unused") @Cached("rax") long cachedRax) {
         if (traceEnabled()) {
             trace(node);
         }
-        return node.execute(rdi, rsi, rdx, r10, r8, r9);
+        return node.execute(frame, rdi, rsi, rdx, r10, r8, r9);
     }
 
     @Specialization(replaces = "cachedSyscall")
-    protected long doI64(long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    protected long doI64(VirtualFrame frame, long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         // TODO: implement big switch with type casts + logic + ...?
         CompilerDirectives.transferToInterpreter();
-        return createNode(rax).execute(rdi, rsi, rdx, r10, r8, r9);
+        return createNode(rax).execute(frame, rdi, rsi, rdx, r10, r8, r9);
     }
 
     @CompilationFinal private boolean traceEnabledFlag;

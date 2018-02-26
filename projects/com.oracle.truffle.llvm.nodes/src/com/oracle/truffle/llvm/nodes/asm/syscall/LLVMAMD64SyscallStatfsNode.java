@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.load;
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
-public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
+public abstract class LLVMAMD64SyscallStatfsNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode statfs;
+
+    public LLVMAMD64SyscallStatfsNode() {
+        super("statfs");
+        statfs = LLVMAMD64PosixCallNodeGen.create("statfs", "(UINT64,UINT64):SINT32", 2);
+    }
 
     @Specialization
-    protected LLVM80BitFloat do80BitFloat(LLVMAddress address,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memory.get80BitFloat(address);
+    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress path, LLVMAddress buf) {
+        return (int) statfs.execute(path.getVal(), buf.getVal());
+    }
+
+    @Specialization
+    protected long execute(VirtualFrame frame, long path, long buf) {
+        return execute(frame, LLVMAddress.fromLong(path), LLVMAddress.fromLong(buf));
     }
 }

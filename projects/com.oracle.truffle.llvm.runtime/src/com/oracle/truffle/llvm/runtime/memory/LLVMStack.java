@@ -35,7 +35,8 @@ import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
- * Implements a stack that grows from the top to the bottom.
+ * Implements a stack that grows from the top to the bottom. The stack is allocated lazily when it
+ * is accessed for the first time.
  */
 public final class LLVMStack {
 
@@ -92,9 +93,6 @@ public final class LLVMStack {
 
     @TruffleBoundary
     private void allocate(LLVMMemory memory) {
-        if (isAllocated) {
-            return;
-        }
         final long stackAllocation = memory.allocateMemory(stackSize * 1024).getVal();
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + stackSize * 1024;
@@ -103,9 +101,10 @@ public final class LLVMStack {
     }
 
     private long getStackPointer(LLVMMemory memory) {
-        allocate(memory);
-        long sp = this.stackPointer;
-        return sp;
+        if (!isAllocated) {
+            allocate(memory);
+        }
+        return this.stackPointer;
     }
 
     public StackPointer newFrame() {
@@ -143,5 +142,4 @@ public final class LLVMStack {
     private static boolean powerOfTwo(int value) {
         return (value & -value) == value;
     }
-
 }

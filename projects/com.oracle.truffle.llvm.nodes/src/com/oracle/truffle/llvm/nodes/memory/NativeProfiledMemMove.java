@@ -31,35 +31,34 @@ package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
-public abstract class NativeProfiledMemMove extends LLVMMemMoveNode {
+public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemMoveNode {
     protected static final long MAX_JAVA_LEN = 256;
 
     @CompilationFinal private boolean inJava = true;
 
-    @Child private LLVMToNativeNode convert1 = LLVMToNativeNode.createToNativeWithTarget();
-    @Child private LLVMToNativeNode convert2 = LLVMToNativeNode.createToNativeWithTarget();
+    @Child private LLVMToNativeNode convertTarget = LLVMToNativeNode.createToNativeWithTarget();
+    @Child private LLVMToNativeNode convertSource = LLVMToNativeNode.createToNativeWithTarget();
+    private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
-    protected Object case1(VirtualFrame frame, Object target, Object source, int length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memmove(memory, convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    protected Object case1(VirtualFrame frame, Object target, Object source, int length) {
+        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
     }
 
     @Specialization
-    protected Object case2(VirtualFrame frame, Object target, Object source, long length,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memmove(memory, convert1.executeWithTarget(frame, target), convert2.executeWithTarget(frame, source), length);
+    protected Object case2(VirtualFrame frame, Object target, Object source, long length) {
+        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
     }
 
-    private Object memmove(LLVMMemory memory, LLVMAddress target, LLVMAddress source, long length) {
+    private Object memmove(LLVMAddress target, LLVMAddress source, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long targetPointer = target.getVal();

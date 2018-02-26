@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -42,13 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public final class LLVMTruffleBinary {
-    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError("Pointee must be unmodified");
-        }
-    }
-
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleIsBoxed extends LLVMIntrinsic {
 
@@ -56,8 +48,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            checkLLVMTruffleObject(value);
-            return ForeignAccess.sendIsBoxed(foreignIsBoxed, value.getObject());
+            return value.getOffset() == 0 && ForeignAccess.sendIsBoxed(foreignIsBoxed, value.getObject());
         }
 
         @Fallback
@@ -73,8 +64,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            checkLLVMTruffleObject(value);
-            return ForeignAccess.sendIsExecutable(foreignIsExecutable, value.getObject());
+            return value.getOffset() == 0 && ForeignAccess.sendIsExecutable(foreignIsExecutable, value.getObject());
         }
 
         @Fallback
@@ -90,8 +80,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            checkLLVMTruffleObject(value);
-            return ForeignAccess.sendIsNull(foreignIsNull, value.getObject());
+            return value.getOffset() == 0 && ForeignAccess.sendIsNull(foreignIsNull, value.getObject());
         }
 
         @Fallback
@@ -107,8 +96,7 @@ public final class LLVMTruffleBinary {
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            checkLLVMTruffleObject(value);
-            return ForeignAccess.sendHasSize(foreignHasSize, value.getObject());
+            return value.getOffset() == 0 && ForeignAccess.sendHasSize(foreignHasSize, value.getObject());
         }
 
         @Fallback

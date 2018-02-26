@@ -120,11 +120,20 @@ ruby-downstream-test: {
     ]
 }
 
+svm-downstream-test: ${requireGCC} {
+  environment: {
+    SVM_REPO: "https://github.com/graalvm/graal.git",
+    SVM_SUITEDIR: substratevm,
+  },
+  run: [[mx, testdownstream, -R, "${SVM_REPO}", --suitedir, "${SVM_SUITEDIR}", -C, "--dynamicimport sulong gate --tags build,sulong"]]
+}
+
+
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, gate, --tags, "style"]] }
   ${gateStyle} ${requireJDT} { name: gate-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
   ${gateTest38-linux} { name: gate-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe,debug"]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-parser, run: [[mx, gate, --tags, "build,parser"]] }
   ${gateTest38-linux} { name: gate-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]] }
   ${gateTest38-linux} { name: gate-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
@@ -134,6 +143,7 @@ builds = [
   ${gateTest40-darwin} { name: gate-basic_mac, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
 
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
+  ${gateTest38-linux} ${svm-downstream-test} { name: gate-substratevm-downstream }
 
   ${deploy-binaries-linux} { name: postmerge-deploy-binaries-linux-amd64 }
   ${deploy-binaries-darwin} { name: postmerge-deploy-binaries-darwin-amd64 }

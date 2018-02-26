@@ -29,14 +29,12 @@
  */
 package com.oracle.truffle.llvm.nodes.control;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Instrumentable;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
@@ -302,21 +300,21 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
             return returnStruct(frame, retResult);
         }
 
-        private Object returnStruct(VirtualFrame frame, LLVMAddress retResult) {
-            try {
-                LLVMAddress retStructAddress = argIdx1.executeLLVMAddress(frame);
-                memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
-                return retStructAddress;
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
-            }
+        @Specialization
+        protected Object doOp(VirtualFrame frame, LLVMTruffleObject retResult) {
+            return returnStruct(frame, retResult);
         }
 
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMGlobal retResult,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
             return returnStruct(frame, globalAccess.executeWithTarget(frame, retResult));
+        }
+
+        private Object returnStruct(VirtualFrame frame, Object retResult) {
+            Object retStructAddress = argIdx1.executeGeneric(frame);
+            memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
+            return retStructAddress;
         }
     }
 

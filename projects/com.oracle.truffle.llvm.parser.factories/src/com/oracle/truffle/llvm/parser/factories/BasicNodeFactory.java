@@ -35,9 +35,9 @@ import java.util.List;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -120,8 +120,9 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugSimpleValue;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVACopyNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86.LLVMX86_64BitVAEnd;
@@ -144,6 +145,7 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMSimpleLiteralNode.LLVMTruffleO
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorAddressLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorDoubleLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFloatLiteralNodeGen;
+import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorFunctionLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI16LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI1LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI32LiteralNodeGen;
@@ -173,7 +175,6 @@ import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI32ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI64ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMI8ArrayLiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.literal.LLVMStructArrayLiteralNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVM80BitFloatLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNode.LLVMGlobalDirectLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVM80BitFloatDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMAddressDirectLoadNodeGen;
@@ -365,6 +366,7 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -743,7 +745,11 @@ public class BasicNodeFactory implements NodeFactory {
                     throw new AssertionError();
             }
         } else if (llvmType instanceof PointerType) {
-            return LLVMVectorAddressLiteralNodeGen.create(vals);
+            if (((PointerType) llvmType).getPointeeType() instanceof FunctionType) {
+                return LLVMVectorFunctionLiteralNodeGen.create(vals);
+            } else {
+                return LLVMVectorAddressLiteralNodeGen.create(vals);
+            }
         } else {
             throw new AssertionError(llvmType + " not yet supported");
         }
@@ -1101,7 +1107,7 @@ public class BasicNodeFactory implements NodeFactory {
                     load = LLVMDoubleLoadNodeGen.create();
                     break;
                 case X86_FP80:
-                    load = LLVM80BitFloatLoadNodeGen.create();
+                    load = LLVM80BitFloatDirectLoadNodeGen.create();
                     break;
                 default:
                     throw new AssertionError(type);
@@ -1115,7 +1121,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength,
+    public LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, long indexedTypeLength,
                     Type targetType) {
         return LLVMAddressGetElementPtrNodeGen.create(aggregateAddress, index, indexedTypeLength, targetType);
     }
@@ -1356,7 +1362,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset,
+    public LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, long offset,
                     LLVMExpressionNode valueToInsert, Type llvmType) {
         LLVMStoreNode store;
         if (llvmType instanceof PrimitiveType) {
@@ -1451,17 +1457,18 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> allFunctionNodes,
-                    FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation location) {
-        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller, afterBlockNuller, location);
+    public LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> allFunctionNodes, FrameSlot[][] beforeBlockNuller,
+                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation location, LLVMExpressionNode[] copyArgumentsToFrame) {
+        return new LLVMDispatchBasicBlockNode(exceptionValueSlot, allFunctionNodes.toArray(new LLVMBasicBlockNode[allFunctionNodes.size()]), beforeBlockNuller, afterBlockNuller, location,
+                        copyArgumentsToFrame);
     }
 
     @Override
-    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
-                    SourceSection sourceSection, FrameDescriptor frame, FunctionDefinition functionHeader, Source bcSource, LLVMSourceLocation location) {
-        String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
-        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, copyArgumentsToFrame, frame, functionHeader.getName(), functionHeader.getParameters().size(),
-                        originalName, bcSource, location);
+    public RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frame, FunctionDefinition functionHeader,
+                    Source bcSource, LLVMSourceLocation location) {
+        final String originalName = DebugInfoGenerator.getSourceFunctionName(functionHeader);
+        return new LLVMFunctionStartNode(sourceSection, runtime.getLanguage(), functionBodyNode, frame, functionHeader.getName(), functionHeader.getParameters().size(), originalName, bcSource,
+                        location);
     }
 
     @Override
@@ -1478,7 +1485,7 @@ public class BasicNodeFactory implements NodeFactory {
 
         Parser asmParser = new Parser(runtime.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
         LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
-        LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibraryName(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
+        LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibrary(), "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
         asm.declareInSulong(Truffle.getRuntime().createCallTarget(assemblyRoot), false);
         LLVMFunctionLiteralNode asmFunction = LLVMFunctionLiteralNodeGen.create(asm);
 
@@ -1493,7 +1500,6 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable) {
         return allocateGlobalIntern(runtime, globalVariable);
-
     }
 
     private static Object allocateGlobalIntern(LLVMParserRuntime runtime, final GlobalValueSymbol globalVariable) {
@@ -1501,28 +1507,12 @@ public class BasicNodeFactory implements NodeFactory {
         final String name = globalVariable.getName();
 
         LLVMContext context = runtime.getContext();
-
-        final LLVMGlobal descriptor;
-
         if (globalVariable.getInitialiser() == 0 && Linkage.isExtern(globalVariable.getLinkage())) {
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
             return LLVMGlobal.external(context, globalVariable, name, resolvedType, LLVMAddress.fromLong(nfiContextExtension.getNativeHandle(context, name)));
         } else {
-            descriptor = LLVMGlobal.internal(context, globalVariable, name, resolvedType);
-            runtime.addDestructor(new LLVMExpressionNode() {
-
-                private final LLVMGlobal global = descriptor;
-                private final LLVMContext c = context;
-
-                @Override
-                public Object executeGeneric(VirtualFrame frame) {
-                    LLVMGlobal.free(c, global);
-                    return null;
-                }
-            });
-            return descriptor;
+            return LLVMGlobal.internal(context, globalVariable, name, resolvedType);
         }
-
     }
 
     @Override
@@ -1809,7 +1799,7 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    private static int getOverflowFieldOffset(LLVMParserRuntime runtime, FunctionDeclaration declaration) {
+    private static long getOverflowFieldOffset(LLVMParserRuntime runtime, FunctionDeclaration declaration) {
         return runtime.getContext().getIndexOffset(1, (AggregateType) declaration.getType().getReturnType());
     }
 
@@ -1872,8 +1862,8 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Source sourceFile, Type mainReturnType, Type[] mainTypes) {
-        return new LLVMGlobalRootNode(runtime.getLanguage(), runtime.getGlobalFrameDescriptor(), sourceFile, mainReturnType, mainTypes, mainCallTarget);
+    public RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, LLVMFunctionDescriptor mainFunctionDescriptor, String applicationPath) {
+        return new LLVMGlobalRootNode(runtime.getLanguage(), runtime.getGlobalFrameDescriptor(), mainFunctionDescriptor, mainCallTarget, applicationPath);
     }
 
     @Override
@@ -1924,7 +1914,7 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode containerRead, int partIndex, int[] clearParts) {
         final LLVMDebugBuilder builder = getDebugBuilder(isDeclaration);
         if (partIndex < 0 || clearParts == null) {
-            return LLVMDebugWriteNodeFactory.SimpleWriteNodeGen.create(builder, containerRead, valueRead);
+            return LLVMDebugWriteNodeFactory.SimpleWriteNodeGen.create(builder, targetSlot, valueRead);
         } else {
             return LLVMDebugWriteNodeFactory.AggregateWriteNodeGen.create(builder, partIndex, clearParts, containerRead, valueRead);
         }
@@ -1933,14 +1923,14 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths) {
         if (offsets == null || lengths == null) {
-            return LLVMDebugInitNodeFactory.SimpleInitNodeGen.create(targetSlot);
+            return null;
         } else {
             return LLVMDebugInitNodeFactory.AggregateInitNodeGen.create(targetSlot, offsets, lengths);
         }
     }
 
     @Override
-    public LLVMDebugValue createDebugConstantValue(LLVMExpressionNode valueNode) {
+    public LLVMDebugValue createDebugStaticValue(LLVMExpressionNode valueNode) {
         final LLVMDebugValueProvider.Builder toDebugNode = LLVMToDebugValueNodeGen.create(LLVMLanguage.getLLVMContextReference());
         Object value;
         try {
@@ -1949,7 +1939,19 @@ public class BasicNodeFactory implements NodeFactory {
             // constant values should not need frame access
             value = null;
         }
-        return LLVMDebugSimpleValue.create(toDebugNode, value);
+
+        if (value != null) {
+            return LLVMDebugSimpleValue.create(toDebugNode, value);
+        } else {
+            return LLVMDebugValue.UNAVAILABLE;
+        }
+    }
+
+    @Override
+    public LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration) {
+        final TruffleLanguage.ContextReference<LLVMContext> contextRef = LLVMLanguage.getLLVMContextReference();
+        final LLVMDebugValueProvider.Builder builder = getDebugBuilder(isDeclaration).createBuilder(contextRef);
+        return new LLVMFrameValueAccessImpl(slot, builder);
     }
 
     @Override
@@ -2129,7 +2131,7 @@ public class BasicNodeFactory implements NodeFactory {
                 store = LLVMAddressStoreNodeGen.create(type);
             }
         } else if (type instanceof VectorType) {
-            store = LLVMStoreVectorNodeGen.create(type, size);
+            store = LLVMStoreVectorNodeGen.create((VectorType) type, size);
         } else {
             throw new AssertionError(type);
         }

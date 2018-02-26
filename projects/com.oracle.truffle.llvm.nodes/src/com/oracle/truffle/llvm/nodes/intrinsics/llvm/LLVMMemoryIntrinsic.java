@@ -108,6 +108,8 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMRealloc extends LLVMMemoryIntrinsic {
 
+        public abstract LLVMAddress executeWithTarget(LLVMAddress addr, Object size);
+
         @Specialization
         protected LLVMAddress doVoid(LLVMAddress addr, int size,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {

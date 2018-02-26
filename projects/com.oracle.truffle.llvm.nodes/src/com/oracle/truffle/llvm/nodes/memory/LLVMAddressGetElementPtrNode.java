@@ -50,10 +50,10 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-@NodeFields({@NodeField(type = int.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
+@NodeFields({@NodeField(type = long.class, name = "typeWidth"), @NodeField(type = Type.class, name = "targetType")})
 public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
 
-    public abstract int getTypeWidth();
+    public abstract long getTypeWidth();
 
     public abstract Type getTargetType();
 
@@ -64,7 +64,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     @Specialization
     protected Object intIncrement(VirtualFrame frame, Object addr, int val,
                     @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
-        int incr = getTypeWidth() * val;
+        long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(frame, addr, incr, getTargetType());
     }
 

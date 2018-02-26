@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.types;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -42,14 +41,14 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class FunctionType extends Type {
 
-    @CompilationFinal private Assumption assumption;
+    @CompilationFinal private Assumption returnTypeAssumption;
     @CompilationFinal private Type returnType;
 
     private final Type[] argumentTypes;
     private final boolean isVarargs;
 
     public FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
-        this.assumption = Truffle.getRuntime().createAssumption();
+        this.returnTypeAssumption = Truffle.getRuntime().createAssumption("FunctionType.returnType");
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
         this.isVarargs = isVarargs;
@@ -60,17 +59,17 @@ public final class FunctionType extends Type {
     }
 
     public Type getReturnType() {
-        if (!assumption.isValid()) {
+        if (!returnTypeAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         return returnType;
     }
 
     public void setReturnType(Type returnType) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.assumption.invalidate();
-        this.assumption = Truffle.getRuntime().createAssumption();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.returnTypeAssumption.invalidate();
         this.returnType = returnType;
+        this.returnTypeAssumption = Truffle.getRuntime().createAssumption("FunctionType.returnType");
     }
 
     public boolean isVarargs() {

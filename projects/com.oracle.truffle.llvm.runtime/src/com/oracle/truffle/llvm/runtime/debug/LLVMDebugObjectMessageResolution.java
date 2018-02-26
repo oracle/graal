@@ -38,6 +38,15 @@ import com.oracle.truffle.api.nodes.Node;
 @MessageResolution(receiverType = LLVMDebugObject.class)
 public class LLVMDebugObjectMessageResolution {
 
+    @Resolve(message = "HAS_KEYS")
+    public abstract static class LLVMDebugObjectHasKeysNode extends Node {
+
+        public Object access(@SuppressWarnings("unused") LLVMDebugObject receiver) {
+            return true;
+        }
+
+    }
+
     @Resolve(message = "KEYS")
     public abstract static class LLVMDebugObjectPropertiesNode extends Node {
 

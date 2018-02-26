@@ -42,7 +42,7 @@ char *convertForeignToCString(const char *s) {
   return cStr;
 }
 
-__attribute__((weak)) char *strncpy(char *dest, const char *source, size_t n) {
+char *strncpy(char *dest, const char *source, size_t n) {
   int i;
   for (i = 0; source[i] != '\0' && i < n; i++) {
     dest[i] = source[i];
@@ -55,7 +55,7 @@ __attribute__((weak)) char *strncpy(char *dest, const char *source, size_t n) {
   return dest;
 }
 
-__attribute__((weak)) char *strcpy(char *dest, const char *source) {
+char *strcpy(char *dest, const char *source) {
   int i = 0;
   do {
     dest[i] = source[i];
@@ -63,7 +63,7 @@ __attribute__((weak)) char *strcpy(char *dest, const char *source) {
   return dest;
 }
 
-__attribute__((weak)) size_t strlen(const char *s) {
+size_t strlen(const char *s) {
   if (truffle_has_size(s)) {
     return (size_t)truffle_get_size(s);
   }
@@ -75,7 +75,7 @@ __attribute__((weak)) size_t strlen(const char *s) {
   return len;
 }
 
-__attribute__((weak)) int strcmp(const char *s1, const char *s2) {
+int strcmp(const char *s1, const char *s2) {
   if (truffle_has_size(s1) && truffle_has_size(s2)) {
     int size1 = truffle_get_size(s1);
     int size2 = truffle_get_size(s2);

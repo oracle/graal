@@ -63,16 +63,14 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
 
-    @Child private LLVMExpressionNode stackPointer;
     @Children private final LLVMExpressionNode[] args;
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
     @Child private Node foreignExecute;
     @Child private ForeignToLLVM toLLVM;
 
-    public LLVMTruffleExecute(LLVMExpressionNode stackPointer, ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
+    public LLVMTruffleExecute(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
         this.args = args;
-        this.stackPointer = stackPointer;
         this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
             prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create(argTypes[i]);

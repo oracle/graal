@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,28 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.c;
+package com.oracle.truffle.llvm.runtime.debug.scope;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 
-@NodeChild(type = LLVMExpressionNode.class, value = "func")
-public abstract class LLVMAtExit extends LLVMIntrinsic {
+public interface LLVMFrameValueAccess {
 
-    @Specialization
-    @TruffleBoundary
-    protected long doInt(LLVMAddress func) {
-
-        LLVMContext context = getContextReference().get();
-        LLVMFunctionDescriptor desc = context.getFunctionDescriptor(func);
-        context.registerAtExitFunction(desc);
-
-        return func.getVal();
-    }
+    LLVMDebugValue getValue(Frame frame);
 }

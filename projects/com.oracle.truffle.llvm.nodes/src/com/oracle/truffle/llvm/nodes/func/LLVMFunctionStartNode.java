@@ -49,21 +49,18 @@ import java.util.Map;
 public class LLVMFunctionStartNode extends RootNode {
 
     @Child private LLVMExpressionNode node;
-    @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
     @CompilationFinal(dimensions = 1) FrameSlot[] frameSlotsToInitialize;
     private final String name;
     private final int explicitArgumentsCount;
     private final DebugInformation debugInformation;
 
-    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node, LLVMExpressionNode[] copyArgumentsToFrame,
+    public LLVMFunctionStartNode(SourceSection sourceSection, LLVMLanguage language, LLVMExpressionNode node,
                     FrameDescriptor frameDescriptor, String name, int explicitArgumentsCount, String originalName, Source bcSource, LLVMSourceLocation location) {
         super(language, frameDescriptor);
         this.debugInformation = new DebugInformation(sourceSection, originalName, bcSource, location);
         this.explicitArgumentsCount = explicitArgumentsCount;
         this.node = node;
-        this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.name = name;
-
         this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
     }
 
@@ -75,7 +72,6 @@ public class LLVMFunctionStartNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         nullStack(frame);
-        copyArgumentsToFrame(frame);
         Object result = node.executeGeneric(frame);
         return result;
     }
@@ -87,13 +83,6 @@ public class LLVMFunctionStartNode extends RootNode {
         }
     }
 
-    @ExplodeLoop
-    private void copyArgumentsToFrame(VirtualFrame frame) {
-        for (LLVMExpressionNode n : copyArgumentsToFrame) {
-            n.executeGeneric(frame);
-        }
-    }
-
     @Override
     public String toString() {
         return getName();
@@ -101,6 +90,9 @@ public class LLVMFunctionStartNode extends RootNode {
 
     @Override
     public String getName() {
+        if (debugInformation.originalName != null) {
+            return debugInformation.originalName;
+        }
         return name;
     }
 
@@ -110,6 +102,10 @@ public class LLVMFunctionStartNode extends RootNode {
 
     public String getOriginalName() {
         return debugInformation.originalName;
+    }
+
+    public String getBcName() {
+        return name;
     }
 
     public Source getBcSource() {

@@ -31,13 +31,24 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
+/**
+ * Used when exit or abort are called.
+ */
 public final class LLVMExitException extends ControlFlowException {
-
     private static final long serialVersionUID = 1L;
+    private static final int UNIX_SIGABORT = 134;
 
     private final int returnCode;
 
-    public LLVMExitException(int returnCode) {
+    public static LLVMExitException abort() {
+        return new LLVMExitException(UNIX_SIGABORT);
+    }
+
+    public static LLVMExitException exit(int returnCode) {
+        return new LLVMExitException(returnCode);
+    }
+
+    private LLVMExitException(int returnCode) {
         this.returnCode = returnCode;
     }
 

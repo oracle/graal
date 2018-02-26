@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.debug.DebuggerTags;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -44,6 +43,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -96,23 +96,23 @@ public final class Sulong extends LLVMLanguage {
         LLVMContext newContext = new LLVMContext(env, getContextExtensions(env));
         if (mainContext == null) {
             mainContext = newContext;
-            return newContext;
+        } else {
+            LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION.invalidate();
         }
-
-        LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION.invalidate();
         return newContext;
     }
 
     @Override
     protected void disposeContext(LLVMContext context) {
-        context.printNativeCallStatistic();
-        Runner.disposeContext(getCapability(LLVMMemory.class), context);
+        LLVMMemory memory = getCapability(LLVMMemory.class);
+        context.dispose(memory);
     }
 
     @Override
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return (new Runner(getNodeFactory())).parse(this, findLLVMContext(), source);
+        LLVMContext context = findLLVMContext();
+        return (new Runner(getNodeFactory())).parse(this, context, source);
     }
 
     @Override
@@ -232,6 +232,10 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected Iterable<Scope> findLocalScopes(LLVMContext context, Node node, Frame frame) {
-        return LLVMSourceScope.create(node, frame, context);
+        if (!context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
+            return super.findLocalScopes(context, node, frame);
+        } else {
+            return LLVMSourceScope.create(node, frame, context);
+        }
     }
 }

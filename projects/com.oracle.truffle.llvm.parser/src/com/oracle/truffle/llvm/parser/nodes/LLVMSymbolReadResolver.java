@@ -263,13 +263,13 @@ public final class LLVMSymbolReadResolver {
 
             final LLVMArithmeticInstructionType arithmeticInstructionType = LLVMBitcodeTypeHelper.toArithmeticInstructionType(operation.getOperator());
             if (arithmeticInstructionType != null) {
-                resolvedNode = runtime.getNodeFactory().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType, new Flag[0]);
+                resolvedNode = runtime.getNodeFactory().createArithmeticOperation(runtime, lhs, rhs, arithmeticInstructionType, baseType, Flag.EMPTY_ARRAY);
                 return;
             }
 
             final LLVMLogicalInstructionKind logicalInstructionType = LLVMBitcodeTypeHelper.toLogicalInstructionType(operation.getOperator());
             if (logicalInstructionType != null) {
-                resolvedNode = runtime.getNodeFactory().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType, new Flag[0]);
+                resolvedNode = runtime.getNodeFactory().createLogicalOperation(runtime, lhs, rhs, logicalInstructionType, baseType, Flag.EMPTY_ARRAY);
                 return;
             }
 
@@ -390,7 +390,7 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionDeclaration toResolve) {
             final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
-            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibraryName(), toResolve.getName(), toResolve.getType(),
+            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibrary(), toResolve.getName(), toResolve.getType(),
                             i);
             final Object value = runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), global, generator);
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, toResolve.getType());
@@ -399,7 +399,7 @@ public final class LLVMSymbolReadResolver {
         @Override
         public void visit(FunctionDefinition toResolve) {
             final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
-            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibraryName(), toResolve.getName(), toResolve.getType(),
+            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibrary(), toResolve.getName(), toResolve.getType(),
                             i);
             final Object value = runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), global, generator);
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, toResolve.getType());
@@ -451,11 +451,24 @@ public final class LLVMSymbolReadResolver {
 
     public static Integer evaluateIntegerConstant(SymbolImpl constant) {
         if (constant instanceof IntegerConstant) {
+            assert ((IntegerConstant) constant).getValue() == (int) ((IntegerConstant) constant).getValue();
             return (int) ((IntegerConstant) constant).getValue();
         } else if (constant instanceof BigIntegerConstant) {
             return ((BigIntegerConstant) constant).getValue().intValueExact();
         } else if (constant instanceof NullConstant) {
             return 0;
+        } else {
+            return null;
+        }
+    }
+
+    public static Long evaluateLongIntegerConstant(SymbolImpl constant) {
+        if (constant instanceof IntegerConstant) {
+            return ((IntegerConstant) constant).getValue();
+        } else if (constant instanceof BigIntegerConstant) {
+            return ((BigIntegerConstant) constant).getValue().longValueExact();
+        } else if (constant instanceof NullConstant) {
+            return 0L;
         } else {
             return null;
         }
@@ -469,7 +482,7 @@ public final class LLVMSymbolReadResolver {
             final SymbolImpl indexSymbol = indices.get(i);
             final Type indexType = indexSymbol.getType();
 
-            final Integer indexInteger = evaluateIntegerConstant(indexSymbol);
+            final Long indexInteger = evaluateLongIntegerConstant(indexSymbol);
             if (indexInteger == null) {
                 // the index is determined at runtime
                 if (currentType instanceof StructureType) {
@@ -477,14 +490,14 @@ public final class LLVMSymbolReadResolver {
                     throw new IllegalStateException("Indices on structs must be constant integers!");
                 }
                 AggregateType aggregate = (AggregateType) currentType;
-                final int indexedTypeLength = runtime.getContext().getIndexOffset(1, aggregate);
+                final long indexedTypeLength = runtime.getContext().getIndexOffset(1, aggregate);
                 currentType = aggregate.getElementType(1);
                 final LLVMExpressionNode indexNode = resolve(indexSymbol);
                 currentAddress = runtime.getNodeFactory().createTypedElementPointer(runtime, currentAddress, indexNode, indexedTypeLength, currentType);
             } else {
                 // the index is a constant integer
                 AggregateType aggregate = (AggregateType) currentType;
-                final int addressOffset = runtime.getContext().getIndexOffset(indexInteger, aggregate);
+                final long addressOffset = runtime.getContext().getIndexOffset(indexInteger, aggregate);
                 currentType = aggregate.getElementType(indexInteger);
 
                 // creating a pointer inserts type information, this needs to happen for the address

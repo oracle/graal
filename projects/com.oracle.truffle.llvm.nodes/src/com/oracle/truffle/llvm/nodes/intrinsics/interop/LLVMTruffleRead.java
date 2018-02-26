@@ -128,6 +128,11 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
             return doReadIdx(frame, value.getObject(), id, foreignRead, toLLVM);
         }
 
+        @Specialization
+        protected Object doIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
+            return doReadIdx(frame, value, id, foreignRead, toLLVM);
+        }
+
         @Fallback
         @TruffleBoundary
         @SuppressWarnings("unused")

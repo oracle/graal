@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.test.interop;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.llvm.test.options.TestOptions;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -39,13 +40,12 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
-
-import com.oracle.truffle.llvm.test.options.TestOptions;
-import org.graalvm.polyglot.proxy.ProxyExecutable;
-import org.junit.Assume;
 
 @SuppressWarnings({"static-method"})
 public final class LLVMInteropTest {
@@ -58,14 +58,14 @@ public final class LLVMInteropTest {
     @Test
     public void test002() {
         Runner runner = new Runner("interop002");
-        runner.export(makeObjectA(), "foreign");
+        runner.export(ProxyObject.fromMap(makeObjectA()), "foreign");
         Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test003() {
         Runner runner = new Runner("interop003");
-        runner.export(makeObjectA(), "foreign");
+        runner.export(ProxyObject.fromMap(makeObjectA()), "foreign");
         Assert.assertEquals(215, runner.run());
     }
 
@@ -73,7 +73,7 @@ public final class LLVMInteropTest {
     public void test004() {
         Runner runner = new Runner("interop004");
         Map<String, Object> a = makeObjectB();
-        runner.export(a, "foreign");
+        runner.export(ProxyObject.fromMap(a), "foreign");
         Assert.assertEquals(73, runner.run());
     }
 
@@ -81,22 +81,22 @@ public final class LLVMInteropTest {
     public void test005() {
         Runner runner = new Runner("interop005");
         Map<String, Object> a = makeObjectA();
-        runner.export(a, "foreign");
+        runner.export(ProxyObject.fromMap(a), "foreign");
         runner.run();
 
-        Assert.assertEquals(false, (boolean) a.get("valueBool"));
-        Assert.assertEquals(2, (int) a.get("valueI"));
-        Assert.assertEquals(3, (byte) a.get("valueB"));
-        Assert.assertEquals(4, (long) a.get("valueL"));
-        Assert.assertEquals(5.5, (float) a.get("valueF"), 0.1);
-        Assert.assertEquals(6.5, (double) a.get("valueD"), 0.1);
+        Assert.assertEquals(false, ((Value) a.get("valueBool")).asBoolean());
+        Assert.assertEquals(2, ((Value) a.get("valueI")).asInt());
+        Assert.assertEquals(3, ((Value) a.get("valueB")).asByte());
+        Assert.assertEquals(4, ((Value) a.get("valueL")).asLong());
+        Assert.assertEquals(5.5, ((Value) a.get("valueF")).asFloat(), 0.1);
+        Assert.assertEquals(6.5, ((Value) a.get("valueD")).asDouble(), 0.1);
     }
 
     @Test
     public void test006() {
         Runner runner = new Runner("interop006");
         Map<String, Object> a = makeObjectB();
-        runner.export(a, "foreign");
+        runner.export(ProxyObject.fromMap(a), "foreign");
         runner.run();
 
         Assert.assertEquals(1, ((int[]) a.get("valueI"))[0]);
@@ -282,8 +282,8 @@ public final class LLVMInteropTest {
         Runner runner = new Runner("interop023");
         Map<String, Object> a = makeObjectA();
         Map<String, Object> b = makeObjectA();
-        runner.export(a, "foreign");
-        runner.export(b, "foreign2");
+        runner.export(ProxyObject.fromMap(a), "foreign");
+        runner.export(ProxyObject.fromMap(b), "foreign2");
         Assert.assertEquals(42, runner.run());
     }
 
@@ -293,8 +293,8 @@ public final class LLVMInteropTest {
         Map<String, Object> a = makeObjectA();
         Map<String, Object> b = makeObjectA();
         b.put("valueI", 55);
-        runner.export(a, "foreign");
-        runner.export(b, "foreign2");
+        runner.export(ProxyObject.fromMap(a), "foreign");
+        runner.export(ProxyObject.fromMap(b), "foreign2");
         Assert.assertEquals(55, runner.run());
     }
 
@@ -306,9 +306,9 @@ public final class LLVMInteropTest {
         Map<String, Object> c = makeObjectA();
         b.put("valueI", 55);
         c.put("valueI", 66);
-        runner.export(a, "foreign");
-        runner.export(b, "foreign2");
-        runner.export(c, "foreign3");
+        runner.export(ProxyObject.fromMap(a), "foreign");
+        runner.export(ProxyObject.fromMap(b), "foreign2");
+        runner.export(ProxyObject.fromMap(c), "foreign3");
         Assert.assertEquals(66, runner.run());
     }
 
@@ -364,7 +364,7 @@ public final class LLVMInteropTest {
         Runner runner = new Runner("interop030");
         runner.run();
         Value get = runner.findGlobalSymbol("getValueI");
-        int result = get.execute(makeObjectA()).asInt();
+        int result = get.execute(ProxyObject.fromMap(makeObjectA())).asInt();
         Assert.assertEquals(42, result);
     }
 
@@ -498,7 +498,7 @@ public final class LLVMInteropTest {
     @Test
     public void test043() {
         Runner runner = new Runner("interop043");
-        runner.export(makeObjectA(), "foreign");
+        runner.export(ProxyObject.fromMap(makeObjectA()), "foreign");
         Assert.assertEquals(0, runner.run());
     }
 
@@ -662,10 +662,10 @@ public final class LLVMInteropTest {
         Map<String, Object> a = new HashMap<>();
         a.put("a", 0);
         a.put("b", 1);
-        runner.export(a, "foreign");
+        runner.export(ProxyObject.fromMap(a), "foreign");
         Assert.assertEquals(0, runner.run());
-        Assert.assertEquals(101, a.get("a"));
-        Assert.assertEquals(102, a.get("b"));
+        Assert.assertEquals(101, ((Value) a.get("a")).asInt());
+        Assert.assertEquals(102, ((Value) a.get("b")).asInt());
     }
 
     @Test
@@ -678,6 +678,7 @@ public final class LLVMInteropTest {
         Assert.assertEquals(102, a[1]);
     }
 
+    @Ignore
     @Test
     public void test059() {
         Runner runner = new Runner("interop059");
@@ -694,7 +695,7 @@ public final class LLVMInteropTest {
         Map<String, Object> a = new HashMap<>();
         a.put("a", 0);
         a.put("b", 1);
-        runner.export(a, "foreign");
+        runner.export(ProxyObject.fromMap(a), "foreign");
         Assert.assertEquals(0, runner.run());
         long a0 = ((Value) a.get("a")).asNativePointer();
         long a1 = ((Value) a.get("b")).asNativePointer();
@@ -900,6 +901,14 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void testIsHandle() {
+        Runner runner = new Runner("isHandle");
+        Object a = new Object();
+        runner.export(a, "object");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
     public void testStrlen() throws Exception {
         Runner runner = new Runner("strlen");
         runner.run();
@@ -953,7 +962,7 @@ public final class LLVMInteropTest {
         Runner runner = new Runner("handleFromNativeCallback");
         runner.run();
         Value testHandleFromNativeCallback = runner.findGlobalSymbol("testHandleFromNativeCallback");
-        Value ret = testHandleFromNativeCallback.execute(makeObjectA());
+        Value ret = testHandleFromNativeCallback.execute(ProxyObject.fromMap(makeObjectA()));
         Assert.assertEquals(42, ret.asInt());
     }
 
@@ -1101,7 +1110,7 @@ public final class LLVMInteropTest {
         runner.load();
         Assert.assertEquals("construct\n", buf.toString());
         runner.close();
-        Assert.assertEquals("construct\ndestruct\n", buf.toString());
+        Assert.assertEquals("construct\natexit\ndestruct\n", buf.toString());
     }
 
     private static Map<String, Object> makeObjectA() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.sulong;
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import java.util.List;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+public class LLVMAMD64SyscallGetpgidNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode getpgid;
 
-public abstract class LLVMRunConstructorFunctions extends LLVMIntrinsic {
+    public LLVMAMD64SyscallGetpgidNode() {
+        super("getpgid");
+        getpgid = LLVMAMD64PosixCallNodeGen.create("getpgid", "(SINT32):SINT32", 1);
+    }
 
-    @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
-    @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
-
-    @Specialization
-    protected Object doOp(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        if (targets == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<RootCallTarget> constructorFunctions = context.get().getConstructorFunctions();
-            targets = constructorFunctions.toArray(new RootCallTarget[constructorFunctions.size()]);
-        }
-        for (RootCallTarget target : targets) {
-            callNode.call(target, new Object[]{});
-        }
-        return null;
+    @Override
+    public long execute(VirtualFrame frame, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+        int pid = (int) (long) rdi;
+        return (int) getpgid.execute(pid);
     }
 }

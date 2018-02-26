@@ -46,8 +46,10 @@ import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -118,7 +120,7 @@ public interface NodeFactory {
 
     LLVMExpressionNode createExtractValue(LLVMParserRuntime runtime, Type type, LLVMExpressionNode targetAddress);
 
-    LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, int indexedTypeLength,
+    LLVMExpressionNode createTypedElementPointer(LLVMParserRuntime runtime, LLVMExpressionNode aggregateAddress, LLVMExpressionNode index, long indexedTypeLength,
                     Type targetType);
 
     LLVMExpressionNode createSelect(LLVMParserRuntime runtime, Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue);
@@ -151,12 +153,12 @@ public interface NodeFactory {
      */
     LLVMStackAllocationNode createStackAllocation(LLVMParserRuntime runtime);
 
-    LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, int offset, LLVMExpressionNode valueToInsert,
+    LLVMExpressionNode createInsertValue(LLVMParserRuntime runtime, LLVMExpressionNode resultAggregate, LLVMExpressionNode sourceAggregate, int size, long offset, LLVMExpressionNode valueToInsert,
                     Type llvmType);
 
     LLVMExpressionNode createZeroNode(LLVMParserRuntime runtime, LLVMExpressionNode addressNode, int size);
 
-    RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Source sourceFile, Type mainReturnType, Type[] mainTypes);
+    RootNode createGlobalRootNode(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, LLVMFunctionDescriptor mainFunctionDescriptor, String applicationPath);
 
     RootNode createGlobalRootNodeWrapping(LLVMParserRuntime runtime, RootCallTarget mainCallTarget, Type returnType);
 
@@ -165,10 +167,10 @@ public interface NodeFactory {
     LLVMExpressionNode createBasicBlockNode(LLVMParserRuntime runtime, LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
     LLVMExpressionNode createFunctionBlockNode(LLVMParserRuntime runtime, FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> basicBlockNodes, FrameSlot[][] beforeBlockNuller,
-                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection);
+                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMExpressionNode[] copyArgumentsToFrame);
 
-    RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, LLVMExpressionNode[] copyArgumentsToFrame,
-                    SourceSection sourceSection, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader, Source bcSource, LLVMSourceLocation location);
+    RootNode createFunctionStartNode(LLVMParserRuntime runtime, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader,
+                    Source bcSource, LLVMSourceLocation location);
 
     LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType,
                     LLVMSourceLocation sourceSection);
@@ -199,7 +201,9 @@ public interface NodeFactory {
 
     LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
-    LLVMDebugValue createDebugConstantValue(LLVMExpressionNode valueNode);
+    LLVMDebugValue createDebugStaticValue(LLVMExpressionNode valueNode);
+
+    LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 
     LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 

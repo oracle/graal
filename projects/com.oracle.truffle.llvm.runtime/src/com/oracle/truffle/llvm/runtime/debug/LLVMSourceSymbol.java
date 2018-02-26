@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
+import java.util.Objects;
+
 public final class LLVMSourceSymbol {
 
     private final String name;
@@ -88,7 +90,7 @@ public final class LLVMSourceSymbol {
             return false;
         }
 
-        return location != null ? !location.equals(symbol.location) : symbol.location != null;
+        return Objects.equals(location, symbol.location);
     }
 
     @Override

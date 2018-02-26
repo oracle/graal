@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <jni.h>
-#include "native.h"
+#include "com_oracle_truffle_llvm_pipe_CaptureOutput.h"
 
 #include <unistd.h>
 #include <fcntl.h>

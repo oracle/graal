@@ -76,6 +76,11 @@ public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
         return getSize(frame, value.getObject());
     }
 
+    @Specialization
+    protected int doIntrinsic(VirtualFrame frame, TruffleObject value) {
+        return getSize(frame, value);
+    }
+
     @Fallback
     @TruffleBoundary
     @SuppressWarnings("unused")

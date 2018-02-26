@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMAMD64SyscallOperationNode extends LLVMNode {
@@ -38,7 +39,7 @@ public abstract class LLVMAMD64SyscallOperationNode extends LLVMNode {
         this.name = name;
     }
 
-    public abstract long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9);
+    public abstract long execute(VirtualFrame frame, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9);
 
     public final String getName() {
         return name;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,22 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public interface Call extends SymbolImpl {
+public abstract class LLVMAMD64SyscallGetdents64Node extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode getdents64;
 
-    SymbolImpl getArgument(int index);
+    public LLVMAMD64SyscallGetdents64Node() {
+        super("getdents64");
+        getdents64 = LLVMAMD64PosixCallNodeGen.create("getdents64", "(UINT32,UINT64,UINT32):SINT32", 3);
+    }
 
-    int getArgumentCount();
+    @Specialization
+    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, long fd, LLVMAddress dirp, long count) {
+        return (int) getdents64.execute((int) fd, dirp.getVal(), (int) count);
+    }
 
-    SymbolImpl getCallTarget();
-
-    AttributesGroup getFunctionAttributesGroup();
-
-    AttributesGroup getReturnAttributesGroup();
-
-    AttributesGroup getParameterAttributesGroup(int idx);
+    @Specialization
+    protected long execute(VirtualFrame frame, long fd, long dirp, long count) {
+        return execute(frame, fd, LLVMAddress.fromLong(dirp), count);
+    }
 }

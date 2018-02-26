@@ -34,14 +34,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMToNativeNode extends LLVMNode {
@@ -75,14 +70,6 @@ public abstract class LLVMToNativeNode extends LLVMNode {
         }
     }
 
-    @Child private Node isNull = Message.IS_NULL.createNode();
-
-    @Specialization(guards = "isNull(pointer.getObject())")
-    protected LLVMAddress handleIsNull(LLVMTruffleObject pointer) {
-        LLVMAddress base = LLVMAddress.nullPointer();
-        return base.increment(pointer.getOffset());
-    }
-
     @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(frame, pointer)"})
     protected LLVMAddress handlePointerCached(VirtualFrame frame, Object pointer,
                     @Cached("createCached(pointer)") LLVMObjectNativeLibrary lib) {
@@ -111,9 +98,4 @@ public abstract class LLVMToNativeNode extends LLVMNode {
             throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress", e);
         }
     }
-
-    protected boolean isNull(TruffleObject object) {
-        return object == null || ForeignAccess.sendIsNull(isNull, object);
-    }
-
 }

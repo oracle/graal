@@ -29,23 +29,21 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class PhiInstruction extends ValueInstruction {
 
-    private final List<SymbolImpl> values = new ArrayList<>();
+    private final SymbolImpl[] values;
+    private final InstructionBlock[] blocks;
 
-    private final List<InstructionBlock> blocks = new ArrayList<>();
-
-    private PhiInstruction(Type type) {
+    private PhiInstruction(Type type, int size) {
         super(type);
+        values = new SymbolImpl[size];
+        blocks = new InstructionBlock[size];
     }
 
     @Override
@@ -54,31 +52,31 @@ public final class PhiInstruction extends ValueInstruction {
     }
 
     public InstructionBlock getBlock(int index) {
-        return blocks.get(index);
+        return blocks[index];
     }
 
     public int getSize() {
-        return values.size();
+        return values.length;
     }
 
     public SymbolImpl getValue(int index) {
-        return values.get(index);
+        return values[index];
     }
 
     @Override
     public void replace(SymbolImpl original, SymbolImpl replacment) {
-        for (int i = 0; i < values.size(); i++) {
-            if (values.get(i) == original) {
-                values.set(i, replacment);
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == original) {
+                values[i] = replacment;
             }
         }
     }
 
     public static PhiInstruction generate(SymbolTable symbols, Type type, int[] values, InstructionBlock[] blocks) {
-        final PhiInstruction phi = new PhiInstruction(type);
+        final PhiInstruction phi = new PhiInstruction(type, values.length);
         for (int i = 0; i < values.length; i++) {
-            phi.values.add(symbols.getForwardReferenced(values[i], phi));
-            phi.blocks.add(blocks[i]);
+            phi.values[i] = symbols.getForwardReferenced(values[i], phi);
+            phi.blocks[i] = blocks[i];
         }
         return phi;
     }

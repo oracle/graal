@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.base;
 
-import java.io.PrintStream;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -49,6 +47,8 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+
+import java.io.PrintStream;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
@@ -98,6 +98,10 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
                 statement.executeGeneric(frame);
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
+                throw e;
+            } catch (ThreadDeath e) {
+                // stack unwinding in the instrumentation framework relies on this not being wrapped
+                // in another exception
                 throw e;
             } catch (GuestLanguageRuntimeException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -175,7 +179,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     public String getSourceDescription() {
         LLVMFunctionStartNode functionStartNode = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
         assert functionStartNode != null : getParent().getClass();
-        return String.format("Function: %s - Block: %s", functionStartNode.getName(), blockName());
+        return String.format("Function: %s - Block: %s", functionStartNode.getBcName(), blockName());
     }
 
     private String blockName() {

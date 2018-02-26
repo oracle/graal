@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.rust;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMExitException;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMProcessExit extends LLVMIntrinsic {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doOp(int value) {
-        throw new LLVMExitException(value);
+    protected boolean doLongCase(long a,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        return doAddressCase(LLVMAddress.fromLong(a), context);
+    }
+
+    @Specialization
+    protected boolean doAddressCase(LLVMAddress a,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        return context.get().isHandle(a);
+    }
+
+    @Specialization
+    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        if (from.getValue() instanceof Long) {
+            return doLongCase((long) from.getValue(), context);
+        } else {
+            return false;
+        }
+    }
+
+    @Fallback
+    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
+        return false;
     }
 }

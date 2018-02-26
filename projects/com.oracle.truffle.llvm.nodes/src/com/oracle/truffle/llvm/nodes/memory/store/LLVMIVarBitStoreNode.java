@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
@@ -70,9 +71,19 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, LLVMIVarBit value,
+    protected Object doForeign(VirtualFrame frame, LLVMTruffleObject address, LLVMIVarBit value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        byte[] bytes = value.getBytes();
+        LLVMTruffleObject currentPtr = address;
+        for (int i = bytes.length - 1; i >= 0; i--) {
+            foreignWrite.execute(frame, currentPtr, bytes[i]);
+            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+        }
         return null;
+    }
+
+    @Override
+    protected LLVMForeignWriteNode createForeignWrite() {
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS), I8_SIZE_IN_BYTES);
     }
 }

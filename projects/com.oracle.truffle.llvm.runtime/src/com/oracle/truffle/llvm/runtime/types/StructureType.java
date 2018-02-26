@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.types;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
@@ -40,7 +41,7 @@ public final class StructureType extends AggregateType {
 
     private final String name;
     private final boolean isPacked;
-    private final Type[] types;
+    @CompilationFinal(dimensions = 1) private final Type[] types;
 
     public StructureType(String name, boolean isPacked, Type[] types) {
         this.name = name;
@@ -85,8 +86,9 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
-    public Type getElementType(int index) {
-        return types[index];
+    public Type getElementType(long index) {
+        assert index == (int) index;
+        return types[(int) index];
     }
 
     @Override
@@ -120,7 +122,7 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
-    public int getOffsetOf(int index, DataSpecConverter targetDataLayout) {
+    public long getOffsetOf(long index, DataSpecConverter targetDataLayout) {
         int offset = 0;
         for (int i = 0; i < index; i++) {
             final Type elementType = types[i];
@@ -130,7 +132,8 @@ public final class StructureType extends AggregateType {
             offset += elementType.getSize(targetDataLayout);
         }
         if (!isPacked && getSize(targetDataLayout) > offset) {
-            offset += Type.getPadding(offset, types[index], targetDataLayout);
+            assert index == (int) index;
+            offset += Type.getPadding(offset, types[(int) index], targetDataLayout);
         }
         return offset;
     }

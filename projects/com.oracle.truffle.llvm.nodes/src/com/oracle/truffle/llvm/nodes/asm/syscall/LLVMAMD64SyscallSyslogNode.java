@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.sulong;
+package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
+import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-public abstract class LLVMRunGlobalVariableInitalization extends LLVMIntrinsic {
+public abstract class LLVMAMD64SyscallSyslogNode extends LLVMAMD64SyscallOperationNode {
+    @Child private LLVMAMD64PosixCallNode syslog;
 
-    @Child private IndirectCallNode callNode = Truffle.getRuntime().createIndirectCallNode();
-    @CompilationFinal(dimensions = 1) private RootCallTarget[] targets;
+    public LLVMAMD64SyscallSyslogNode() {
+        super("syslog");
+        syslog = LLVMAMD64PosixCallNodeGen.create("syslog", "(SINT32,UINT64,SINT32):SINT32", 3);
+    }
 
     @Specialization
-    protected Object doOp(@Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        if (targets == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            List<RootCallTarget> globalVarInits = context.get().getGlobalVarInits();
-            targets = globalVarInits.toArray(new RootCallTarget[globalVarInits.size()]);
-        }
-        for (RootCallTarget target : targets) {
-            callNode.call(target, new Object[]{});
-        }
-        return null;
+    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, long type, LLVMAddress bufp, long len) {
+        return (int) syslog.execute((int) type, bufp.getVal(), (int) len);
+    }
+
+    @Specialization
+    protected long execute(VirtualFrame frame, long type, long bufp, long len) {
+        return execute(frame, type, LLVMAddress.fromLong(bufp), len);
     }
 }

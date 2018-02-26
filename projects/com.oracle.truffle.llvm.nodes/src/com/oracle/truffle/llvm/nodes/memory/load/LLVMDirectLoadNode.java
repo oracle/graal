@@ -56,14 +56,6 @@ public abstract class LLVMDirectLoadNode {
 
         public abstract int getBitWidth();
 
-        private int getByteSize() {
-            int nrFullBytes = getBitWidth() / Byte.SIZE;
-            if (getBitWidth() % Byte.SIZE != 0) {
-                nrFullBytes += 1;
-            }
-            return nrFullBytes;
-        }
-
         @Specialization
         protected LLVMIVarBit doI64(LLVMAddress addr,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -77,14 +69,25 @@ public abstract class LLVMDirectLoadNode {
             return memory.getIVarBit(globalAccess.executeWithTarget(frame, addr), getBitWidth());
         }
 
-        LLVMForeignReadNode createForeignRead() {
-            return new LLVMForeignReadNode(ForeignToLLVMType.VARBIT, getByteSize());
-        }
-
         @Specialization
         protected Object doForeign(VirtualFrame frame, LLVMTruffleObject addr,
                         @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-            return foreignRead.execute(frame, addr);
+            byte[] result = new byte[getByteSize()];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = result.length - 1; i >= 0; i--) {
+                result[i] = (Byte) foreignRead.execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVMIVarBit.create(getBitWidth(), result, getBitWidth(), false);
+        }
+
+        protected LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.I8, I8_SIZE_IN_BYTES);
+        }
+
+        private int getByteSize() {
+            assert getBitWidth() % Byte.SIZE == 0;
+            return getBitWidth() / Byte.SIZE;
         }
     }
 
@@ -101,6 +104,22 @@ public abstract class LLVMDirectLoadNode {
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.get80BitFloat(globalAccess.executeWithTarget(frame, addr));
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doForeign(VirtualFrame frame, LLVMTruffleObject addr,
+                        @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
+            byte[] result = new byte[LLVM80BitFloat.BYTE_WIDTH];
+            LLVMTruffleObject currentPtr = addr;
+            for (int i = 0; i < result.length; i++) {
+                result[i] = (Byte) foreignRead.execute(frame, currentPtr);
+                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+            }
+            return LLVM80BitFloat.fromBytes(result);
+        }
+
+        protected LLVMForeignReadNode createForeignRead() {
+            return new LLVMForeignReadNode(ForeignToLLVMType.I8, I8_SIZE_IN_BYTES);
         }
     }
 

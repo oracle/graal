@@ -81,11 +81,16 @@ int main() {
 
 to an LLVM bitcode file `test.bc`.
 
-    clang -c -emit-llvm -o test.bc test.c
+    clang -O1 -c -emit-llvm -o test.bc test.c
 
 You can then run `test.bc` on Graal VM as follows:
 
     lli test.bc
+
+Note the `-O1` flag in the compile command. Compiling without optimizations is
+not recommended with Sulong. In particular, cross-language interoperability
+with Java or another Truffle language will not work when the bitcode is
+compiled without optimizations.
 
 Build Dependencies
 ------------------

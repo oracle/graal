@@ -31,14 +31,12 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMAMD64GetTlsNode extends LLVMExpressionNode {
     @TruffleBoundary
-    private LLVMAddress getTLS() {
-        ThreadLocal<LLVMAddress> tls = getContextReference().get().getThreadLocalStorage();
-        return tls.get();
+    private Object getTLS() {
+        return getContextReference().get().getThreadLocalStorage();
     }
 
     @Override
