@@ -66,6 +66,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
  * <p>
  * It can be useful to {@link Engine#create() create} an engine instance without a context to only
  * access meta-data for installed languages, instruments and their available options.
+ * <p>
+ * <h4>System resource caching:</h4> TODO
  *
  * @since 1.0
  */
@@ -104,21 +106,6 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Gets an installed language by looking up the unique language ID. An example for the language
-     * id of JavaScript for example is <code>"js"</code>.
-     *
-     * @param languageId the unique of the language
-     * @throws IllegalArgumentException if an invalid language id was provided
-     * @see #getLanguages() To get map of all installed languages.
-     * @since 1.0
-     * @deprecated use {@link #getLanguages()}.{@link Map#get(Object) get(id)} instead
-     */
-    @Deprecated
-    public Language getLanguage(String languageId) {
-        return impl.requirePublicLanguage(languageId);
-    }
-
-    /**
      * Gets a map of all installed languages with the language id as key and the language object as
      * value. The returned map is unmodifiable and might be used from multiple threads.
      *
@@ -126,26 +113,6 @@ public final class Engine implements AutoCloseable {
      */
     public Map<String, Language> getLanguages() {
         return impl.getLanguages();
-    }
-
-    /**
-     * Gets an installed instrument by looking it up using its identifier. Shortcut for
-     * <code>engine.getLanguages().get(languageId)</code>.
-     * <p>
-     * An instrument alters and/or monitors the execution of guest language source code. Common
-     * examples for instruments are debuggers, profilers or monitoring tools. Instruments are
-     * enabled via {@link Instrument#getOptions() options} passed to the
-     * {@link Builder#option(String, String) engine} when the engine or context is constructed.
-     *
-     * @param instrumentId the unique of the language
-     * @throws IllegalArgumentException if an invalid languageId was provided
-     * @see #getLanguages() To get map of all installed languages.
-     * @since 1.0
-     * @deprecated use {@link #getInstruments()}.{@link Map#get(Object) get(id)} instead
-     */
-    @Deprecated
-    public Instrument getInstrument(String instrumentId) {
-        return impl.requirePublicInstrument(instrumentId);
     }
 
     /**
@@ -224,6 +191,17 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
+     * Gets a human-readable name of the polyglot implementation (for example, "Default Truffle
+     * Engine" or "Graal Truffle Engine"). The returned value may change without notice. The value
+     * is never <code>null</code>.
+     *
+     * @since 1.0
+     */
+    public String getImplementationName() {
+        return impl.getImplementationName();
+    }
+
+    /**
      * Creates a new engine instance with default configuration. The engine is constructed with the
      * same configuration as it will be as when constructed implicitly using the context builder.
      *
@@ -271,11 +249,6 @@ public final class Engine implements AutoCloseable {
         private boolean useSystemProperties = true;
         private boolean boundEngine;
 
-        /**
-         *
-         *
-         * @since 1.0
-         */
         Builder() {
         }
 
@@ -285,7 +258,8 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         *
+         * Sets the output stream used by this engine. If not specified then the engine will use
+         * {@link System#out System.out} by default or the one specified by a single bound Context.
          *
          * @since 1.0
          */
@@ -532,7 +506,7 @@ public final class Engine implements AutoCloseable {
     }
 
     /*
-     * Use static factory method with AbstractPolyglotImpl.
+     * Use static factory method with AbstractPolyglotImpl to avoid class loading if not used.
      */
     static AbstractPolyglotImpl createInvalidPolyglotImpl() {
         return new PolyglotInvalid();

@@ -97,7 +97,7 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
 
     @Override
     public String getName() {
-        return "Graal Truffle Runtime";
+        return "Graal Truffle Engine";
     }
 
     private volatile Lazy lazy;
@@ -189,8 +189,8 @@ public final class HotSpotTruffleRuntime extends GraalTruffleRuntime implements 
     }
 
     /**
-     * Prevents C1 or C2 from inlining a call to a method annotated by {@link TruffleCallBoundary}
-     * so that we never miss the chance to switch from the Truffle interpreter to compiled code.
+     * Prevents C1 or C2 from inlining a call to a method annotated by {@link TruffleCallBoundary} so
+     * that we never miss the chance to switch from the Truffle interpreter to compiled code.
      *
      * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods()
      */

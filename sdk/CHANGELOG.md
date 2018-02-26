@@ -2,6 +2,13 @@
 
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
+## Version 0.33
+* Expose TruffleRuntime#getName() as Engine#getImplementationName();
+* Deprecate Context#exportSymbol, Context#importSymbol, Context#lookup and introduce Context#getBindings, Context#getPolyglotBindings insteadn
+* Remove deprecated API Engine#getLanguage, Engine#getInstrument
+* Remove deprecated Language#isHost
+* Deprecate ProxyPrimitive without replacement
+
 ## Version 0.31
 
 * Added Value#as(Class) and Value.as(TypeLiteral) to convert to Java types.
