@@ -57,7 +57,7 @@ public abstract class Tag {
 
     /**
      * Finds a provided tag by the language using its {@link Tag.Identifier identifier}. If the
-     * language implementation class is not yet loaded then this method with force the loading.
+     * language implementation class is not yet loaded then this method will force the loading.
      * Therefore it is not recommended to iterate over the entire list of languages and request all
      * provided tags. It is guaranteed that there is only one provided tag class per tag identifier
      * and language. For different languages the same tag id might refer to different tag classes.
