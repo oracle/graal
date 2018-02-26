@@ -211,7 +211,8 @@ public interface InstrumentableNode extends NodeInterface {
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
      * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
-     * language context} currently being active.
+     * language context} currently being active. The {@link Node#getLock() AST lock} is held while
+     * {@link #getNodeObject()} object is invoked. There is no lock held when the object is read.
      *
      * @return the node object as TruffleObject or <code>null</code> if no node object properties
      *         are available for this instrumented node
