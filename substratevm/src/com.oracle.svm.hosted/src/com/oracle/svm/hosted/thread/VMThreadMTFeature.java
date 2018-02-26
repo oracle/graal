@@ -257,7 +257,8 @@ public class VMThreadMTFeature implements GraalFeature {
             assert nextOffset % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextOffset;
 
             if (info.isObject) {
-                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes);
+                final boolean isCompressed = false;
+                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes, isCompressed);
             }
             info.offset = nextOffset;
             nextOffset += info.sizeInBytes;
