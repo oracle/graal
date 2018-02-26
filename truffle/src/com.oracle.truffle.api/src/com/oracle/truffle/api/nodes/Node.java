@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -119,19 +120,15 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Retrieves the segment of guest language source code that is represented by this Node. The
      * default implementation of this method returns <code>null</code>. If your node represents a
-     * segment of the source code, override this method and return a <code>final</code> or
-     * {@link CompilationFinal} field in your node to the caller. Can be called on any thread and
-     * without a language context.
-     *
-     * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
-     * construction use:
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section}
-     *
-     * To create a node which can associate and change the {@link SourceSection} later at any point
-     * of time use:
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section}
+     * segment of the source code, override this method and return a eagerly or lazily computed
+     * source section value. This method is not designed to be invoked on compiled code paths. May
+     * be called on any thread and without a language context being active.
+     * <p>
+     * Simple example implementation using a simple implementation using a field:
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode}
+     * <p>
+     * Recommended implementation computing the source section lazily from primitive fields:
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode}
      *
      * @return the source code represented by this Node
      * @since 0.8 or earlier
@@ -715,37 +712,59 @@ public abstract class Node implements NodeInterface, Cloneable {
 
 }
 
+@SuppressWarnings("unused")
 class NodeSnippets {
-    static class NodeWithFixedSourceSection extends Node {
-        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
-        private final SourceSection section;
 
-        NodeWithFixedSourceSection(SourceSection section) {
-            this.section = section;
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode
+    abstract class SimpleNode extends Node {
+
+        private SourceSection sourceSection;
+
+        void setSourceSection(SourceSection sourceSection) {
+            this.sourceSection = sourceSection;
         }
 
         @Override
         public SourceSection getSourceSection() {
-            return section;
+            return sourceSection;
         }
-        // END: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
     }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode
 
-    static class MutableSourceSectionNode extends Node {
-        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
-        @CompilerDirectives.CompilationFinal private SourceSection section;
+    // BEGIN:com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode
+    abstract class RecommendedNode extends Node {
 
-        final void changeSourceSection(SourceSection sourceSection) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.section = sourceSection;
+        private static final int NO_SOURCE = -1;
+
+        private int sourceCharIndex = NO_SOURCE;
+        private int sourceLength;
+
+        public abstract Object execute(VirtualFrame frame);
+
+        // invoked by the parser to set the source
+        void setSourceSection(int charIndex, int length) {
+            assert sourceCharIndex == NO_SOURCE : "source should only be set once";
+            this.sourceCharIndex = charIndex;
+            this.sourceLength = length;
         }
 
         @Override
-        public SourceSection getSourceSection() {
-            return section;
+        public final SourceSection getSourceSection() {
+            if (sourceCharIndex == NO_SOURCE) {
+                // AST node without source
+                return null;
+            }
+            RootNode rootNode = getRootNode();
+            if (rootNode == null) {
+                // not yet adopted yet
+                return null;
+            }
+            Source source = rootNode.getSourceSection().getSource();
+            return source.createSection(sourceCharIndex, sourceLength);
         }
-        // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
+
     }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode
 
     public static void notifyInserted() {
         class InstrumentableLanguageNode extends Node {

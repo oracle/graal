@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes;
 
 import java.io.File;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -83,6 +84,7 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
      * For more details see {@link InstrumentableNode}.
      */
     @Override
+    @TruffleBoundary
     public final SourceSection getSourceSection() {
         if (sourceCharIndex == NO_SOURCE) {
             // AST node without source
