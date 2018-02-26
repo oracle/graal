@@ -153,8 +153,7 @@ public abstract class NodeClass {
      * If and only if this method returns {@code true}, {@link #getNodeFields()} adheres to the
      * following iteration order.
      * <ul>
-     * <li>{@link Node.Child @Child} fields
-     * <li>{@link Node.Children @Children} fields
+     * <li>{@link Node.Child @Child} or {@link Node.Children @Children} fields
      * <li>{@link NodeCloneable} fields
      * <li>Other fields
      * </ul>
