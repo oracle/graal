@@ -109,7 +109,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
     public Value getMetaObject(Object receiver) {
         Object prev = languageContext.enter();
         try {
-            Object metaObject = LANGUAGE.findMetaObject(languageContext.env, receiver);
+            Object metaObject = findMetaObject(receiver);
             if (metaObject != null) {
                 return newValue(metaObject);
             } else {
@@ -119,6 +119,16 @@ abstract class PolyglotValue extends AbstractValueImpl {
             throw wrapGuestException(languageContext, e);
         } finally {
             languageContext.leave(prev);
+        }
+    }
+
+    private Object findMetaObject(Object target) {
+        if (target instanceof PolyglotLanguageBindings) {
+            return languageContext.language.getName() + " Bindings";
+        } else if (target instanceof PolyglotBindings) {
+            return "Polyglot Bindings";
+        } else {
+            return LANGUAGE.findMetaObject(languageContext.env, target);
         }
     }
 
@@ -329,7 +339,13 @@ abstract class PolyglotValue extends AbstractValueImpl {
     public String toString(Object receiver) {
         Object prev = languageContext.enter();
         try {
-            return LANGUAGE.toStringIfVisible(languageContext.env, receiver, false);
+            if (receiver instanceof PolyglotLanguageBindings) {
+                return languageContext.language.getName() + " Bindings";
+            } else if (receiver instanceof PolyglotBindings) {
+                return "Polyglot Bindings";
+            } else {
+                return LANGUAGE.toStringIfVisible(languageContext.env, receiver, false);
+            }
         } catch (Throwable e) {
             throw wrapGuestException(languageContext, e);
         } finally {
@@ -1698,6 +1714,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         private static class RemoveArrayElementNode extends PolyglotNode {
 
             @Child private Node removeArrayNode = Message.REMOVE.createNode();
+            @Child private Node keyInfoNode = Message.KEY_INFO.createNode();
+            @Child private Node hasSizeNode = Message.HAS_SIZE.createNode();
+
+            @CompilationFinal private boolean optimistic = true;
 
             protected RemoveArrayElementNode(Interop interop) {
                 super(interop);
@@ -1716,16 +1736,35 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 long index = (long) args[1];
+                TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
-                    return ForeignAccess.sendRemove(removeArrayNode, (TruffleObject) receiver, index);
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    polyglot.removeArrayElementUnsupported(receiver);
-                } catch (UnknownIdentifierException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw invalidArrayIndex(polyglot.languageContext, receiver, index);
+                    if (optimistic) {
+                        return ForeignAccess.sendRemove(removeArrayNode, (TruffleObject) receiver, index);
+                    } else {
+                        int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, truffleReceiver, index);
+                        if (KeyInfo.isRemovable(keyInfo)) {
+                            return ForeignAccess.sendRemove(removeArrayNode, (TruffleObject) receiver, index);
+                        } else {
+                            if (KeyInfo.isExisting(keyInfo) || !ForeignAccess.sendHasSize(hasSizeNode, truffleReceiver)) {
+                                CompilerDirectives.transferToInterpreter();
+                                polyglot.removeArrayElementUnsupported(receiver);
+                            }
+                        }
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    if (optimistic) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        optimistic = false;
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                    }
+                    int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, truffleReceiver, index);
+                    if (KeyInfo.isExisting(keyInfo) || !ForeignAccess.sendHasSize(hasSizeNode, truffleReceiver)) {
+                        polyglot.removeArrayElementUnsupported(receiver);
+                    }
                 }
-                return false;
+                CompilerDirectives.transferToInterpreter();
+                throw invalidArrayIndex(polyglot.languageContext, receiver, index);
             }
         }
 
@@ -1762,7 +1801,9 @@ abstract class PolyglotValue extends AbstractValueImpl {
         private static class GetMemberNode extends PolyglotNode {
 
             @Child private Node readMemberNode = Message.READ.createNode();
-
+            @Child private Node keyInfoNode = Message.KEY_INFO.createNode();
+            @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
+            @CompilationFinal private boolean optimistic = true;
             private final ToHostValueNode toHostValue = polyglot.languageContext.createToHostValue();
 
             protected GetMemberNode(Interop interop) {
@@ -1782,15 +1823,37 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 String key = (String) args[1];
+                Object value;
+                TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
-                    return toHostValue.execute(ForeignAccess.sendRead(readMemberNode, (TruffleObject) receiver, key));
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    return polyglot.getMemberUnsupported(receiver, key);
-                } catch (UnknownIdentifierException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw invalidMemberKey(polyglot.languageContext, receiver, key);
+                    if (optimistic) {
+                        value = toHostValue.execute(ForeignAccess.sendRead(readMemberNode, truffleReceiver, key));
+                    } else {
+                        int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, truffleReceiver, key);
+                        if (KeyInfo.isReadable(keyInfo)) {
+                            value = toHostValue.execute(ForeignAccess.sendRead(readMemberNode, truffleReceiver, key));
+                        } else {
+                            if (KeyInfo.isExisting(keyInfo) || !ForeignAccess.sendHasKeys(hasKeysNode, truffleReceiver)) {
+                                CompilerDirectives.transferToInterpreter();
+                                return polyglot.getMemberUnsupported(receiver, key);
+                            }
+                            value = null;
+                        }
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    if (optimistic) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        optimistic = false;
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                    }
+                    int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, truffleReceiver, key);
+                    if (KeyInfo.isExisting(keyInfo) || !ForeignAccess.sendHasKeys(hasKeysNode, truffleReceiver)) {
+                        return polyglot.getMemberUnsupported(receiver, key);
+                    }
+                    value = null;
                 }
+                return value;
             }
 
         }
@@ -1839,6 +1902,10 @@ abstract class PolyglotValue extends AbstractValueImpl {
         private static class RemoveMemberNode extends PolyglotNode {
 
             @Child private Node removeMemberNode = Message.REMOVE.createNode();
+            @Child private Node keyInfoNode = Message.KEY_INFO.createNode();
+            @Child private Node hasKeysNode = Message.HAS_KEYS.createNode();
+
+            @CompilationFinal private boolean optimistic = true;
 
             protected RemoveMemberNode(Interop interop) {
                 super(interop);
@@ -1857,14 +1924,32 @@ abstract class PolyglotValue extends AbstractValueImpl {
             @Override
             protected Object executeImpl(Object receiver, Object[] args) {
                 String key = (String) args[1];
+                TruffleObject truffleReceiver = (TruffleObject) receiver;
                 try {
-                    return ForeignAccess.sendRemove(removeMemberNode, (TruffleObject) receiver, key);
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    polyglot.removeMemberUnsupported(receiver);
-                } catch (UnknownIdentifierException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw invalidMemberKey(polyglot.languageContext, receiver, key);
+                    if (optimistic) {
+                        return ForeignAccess.sendRemove(removeMemberNode, truffleReceiver, key);
+                    } else {
+                        int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, truffleReceiver, key);
+                        if (KeyInfo.isRemovable(keyInfo)) {
+                            return ForeignAccess.sendRemove(removeMemberNode, truffleReceiver, key);
+                        } else {
+                            if (KeyInfo.isExisting(keyInfo) || !ForeignAccess.sendHasKeys(hasKeysNode, truffleReceiver)) {
+                                CompilerDirectives.transferToInterpreter();
+                                return polyglot.getMemberUnsupported(receiver, key);
+                            }
+                        }
+                    }
+                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                    if (optimistic) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        optimistic = false;
+                    } else {
+                        CompilerDirectives.transferToInterpreter();
+                    }
+                    int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, truffleReceiver, key);
+                    if (KeyInfo.isExisting(keyInfo) || !ForeignAccess.sendHasKeys(hasKeysNode, truffleReceiver)) {
+                        polyglot.removeMemberUnsupported(receiver);
+                    }
                 }
                 return false;
             }

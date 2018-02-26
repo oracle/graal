@@ -152,15 +152,6 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * @since 0.27
-     * @deprecated in 0.27 use {@link #getOptionDescriptors()} instead.
-     */
-    @Deprecated
-    protected List<OptionDescriptor> describeOptions() {
-        return null;
-    }
-
-    /**
      * Returns a set of option descriptors that are supported by this instrument. Option values are
      * accessible using the {@link Env#getOptions() environment} when the instrument is
      * {@link #onCreate(Env) created}. By default no options are available for an instrument.
@@ -175,7 +166,7 @@ public abstract class TruffleInstrument {
      * @since 0.27
      */
     protected OptionDescriptors getOptionDescriptors() {
-        return OptionDescriptors.create(describeOptions());
+        return OptionDescriptors.EMPTY;
     }
 
     /**
@@ -594,9 +585,25 @@ public abstract class TruffleInstrument {
          *
          * @return a read-only map of symbol names and their values
          * @since 0.30
+         * @deprecated use {@link #getPolyglotBindings()} instead
          */
+        @Deprecated
         public Map<String, ? extends Object> getExportedSymbols() {
             return AccessorInstrumentHandler.engineAccess().getExportedSymbols(vmObject);
+        }
+
+        /**
+         * Returns a TruffleObject that represents the polyglot bindings. Each readable identifier
+         * of the returned object represents a bound object. If the identifiers are
+         * removable/modifiable/creatable depends on the
+         * {@link org.graalvm.polyglot.Context.Builder#allowPolyglotBindingsWriteAccess(boolean)
+         * configuration} in the polyglot API. If unsupported then the WRITE message with throw an
+         * unsupported message exception.
+         *
+         * @since 0.32
+         */
+        public Object getPolyglotBindings() {
+            return AccessorInstrumentHandler.engineAccess().getPolyglotBindingsForInstrument(vmObject);
         }
 
         /**
@@ -675,21 +682,21 @@ public abstract class TruffleInstrument {
         /**
          * A custom machine identifier for this instrument. If not defined then the fully qualified
          * class name is used.
-         * 
+         *
          * @since 0.12
          */
         String id() default "";
 
         /**
          * The name of the instrument in an arbitrary format for humans.
-         * 
+         *
          * @since 0.12
          */
         String name() default "";
 
         /**
          * The version for instrument in an arbitrary format.
-         * 
+         *
          * @since 0.12
          */
         String version() default "";

@@ -90,8 +90,17 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
         return false;
     }
 
-    @Override
-    public boolean isHost() {
+    Object getCurrentContext() {
+        Env env = PolyglotContextImpl.requireContext().contexts[index].env;
+        if (env == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new IllegalStateException(
+                            "The language context is not yet initialized or already disposed. ");
+        }
+        return LANGUAGE.getContext(env);
+    }
+
+    boolean isHost() {
         return host;
     }
 

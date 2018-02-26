@@ -33,7 +33,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -53,13 +52,12 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 final class DefaultScope {
 
-    static Iterable<Scope> topScope(TruffleLanguage<?> language, Object context, Object global) {
+    static Iterable<Scope> topScope(Object global) {
         TruffleObject globalObject;
         if (global instanceof TruffleObject && hasKeys((TruffleObject) global)) {
             globalObject = (TruffleObject) global;
         } else {
-            // For compatibility with TruffleLanguage.lookupSymbol()
-            globalObject = new LookupSymbolGlobalObject(language, context);
+            globalObject = new EmptyGlobalBindings();
         }
         return Collections.singletonList(Scope.newBuilder("global", globalObject).build());
     }
@@ -178,12 +176,10 @@ final class DefaultScope {
             @Resolve(message = "KEY_INFO")
             abstract static class VarsMapKeyInfoNode extends Node {
 
-                private static final int existingInfo = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
-
                 @TruffleBoundary
                 public Object access(VariablesMapObject varMap, String name) {
                     if (varMap.slots.containsKey(name)) {
-                        return existingInfo;
+                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
                     } else {
                         return 0;
                     }
@@ -230,9 +226,11 @@ final class DefaultScope {
 
     static final class VariableNamesObject implements TruffleObject {
 
+        static final VariableNamesObject EMPTY = new VariableNamesObject(Collections.emptySet());
+
         final List<String> names;
 
-        private VariableNamesObject(Set<String> names) {
+        VariableNamesObject(Set<String> names) {
             this.names = new ArrayList<>(names);
         }
 
@@ -357,33 +355,28 @@ final class DefaultScope {
         }
     }
 
-    static class LookupSymbolGlobalObject implements TruffleObject {
+    static class EmptyGlobalBindings implements TruffleObject {
 
-        private final TruffleLanguage<?> language;
-        private final Object context;
-
-        LookupSymbolGlobalObject(TruffleLanguage<?> language, Object context) {
-            this.language = language;
-            this.context = context;
+        EmptyGlobalBindings() {
         }
 
         @Override
         public ForeignAccess getForeignAccess() {
-            return LookupSymbolMessageResolutionForeign.ACCESS;
+            return EmptyGlobalBindingsResolutionForeign.ACCESS;
         }
 
         public static boolean isInstance(TruffleObject obj) {
-            return obj instanceof LookupSymbolGlobalObject;
+            return obj instanceof EmptyGlobalBindings;
         }
 
-        @MessageResolution(receiverType = LookupSymbolGlobalObject.class)
-        static class LookupSymbolMessageResolution {
+        @MessageResolution(receiverType = EmptyGlobalBindings.class)
+        static class EmptyGlobalBindingsResolution {
 
             @Resolve(message = "HAS_KEYS")
             abstract static class SymbolsHasKeysNode extends Node {
 
                 @SuppressWarnings("unused")
-                public Object access(LookupSymbolGlobalObject obj) {
+                public Object access(EmptyGlobalBindings obj) {
                     return true;
                 }
             }
@@ -391,33 +384,29 @@ final class DefaultScope {
             @Resolve(message = "KEYS")
             abstract static class SymbolsKeysNode extends Node {
 
-                @TruffleBoundary
                 @SuppressWarnings("unused")
-                public Object access(LookupSymbolGlobalObject obj) {
-                    // lookupSymbol() has an unknown set of symbols
-                    return new VariableNamesObject(Collections.emptySet());
+                public Object access(EmptyGlobalBindings obj) {
+                    return VariableNamesObject.EMPTY;
                 }
+
             }
 
             @Resolve(message = "KEY_INFO")
             abstract static class SymbolsKeyInfoNode extends Node {
 
-                private static final int existingInfo = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
-
-                @TruffleBoundary
-                public Object access(LookupSymbolGlobalObject obj, String name) {
-                    Object symbol = VMAccessor.LANGUAGE.lookupSymbol(obj.language, obj.context, name);
-                    return symbol != null ? existingInfo : 0;
+                @SuppressWarnings("unused")
+                public Object access(EmptyGlobalBindings obj, String name) {
+                    return KeyInfo.NONE;
                 }
             }
 
             @Resolve(message = "READ")
-            abstract static class SymbolsReadNode extends Node {
+            abstract static class ReadNode extends Node {
 
                 @TruffleBoundary
-                public Object access(LookupSymbolGlobalObject obj, String name) {
-                    Object symbol = VMAccessor.LANGUAGE.lookupSymbol(obj.language, obj.context, name);
-                    return symbol;
+                @SuppressWarnings("unused")
+                public Object access(EmptyGlobalBindings obj, String name) {
+                    throw UnknownIdentifierException.raise(name);
                 }
             }
 

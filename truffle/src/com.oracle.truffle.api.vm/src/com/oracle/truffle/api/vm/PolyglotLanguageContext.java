@@ -74,6 +74,8 @@ final class PolyglotLanguageContext implements VMObject {
     volatile boolean creating; // true when context is currently being created.
     volatile boolean initialized;
     volatile boolean finalized;
+    private volatile Object guestBindings;
+    private volatile Value hostBindings;
     @CompilationFinal volatile Env env;
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
     private final Node readNode = Message.READ.createNode();
@@ -97,6 +99,30 @@ final class PolyglotLanguageContext implements VMObject {
         PolyglotValue.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
         defaultValueCache = new PolyglotValue.Default(this);
+    }
+
+    Value getHostBindings() {
+        Value bindings = this.hostBindings;
+        if (bindings == null) {
+            initializeLanguageBindings();
+            bindings = hostBindings;
+            assert bindings != null;
+        }
+        return bindings;
+    }
+
+    private void initializeLanguageBindings() {
+        Object prev = enter();
+        try {
+            ensureInitialized(null);
+            Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
+            this.guestBindings = new PolyglotLanguageBindings(scopes);
+            this.hostBindings = this.toHostValue(guestBindings);
+        } catch (Throwable e) {
+            throw PolyglotImpl.wrapGuestException(this, e);
+        } finally {
+            leave(prev);
+        }
     }
 
     boolean isInitialized() {
@@ -281,6 +307,7 @@ final class PolyglotLanguageContext implements VMObject {
                             }
                             LANGUAGE.initializeThread(env, threadInfo.thread);
                         }
+
                         wasInitialized = true;
                     } catch (Throwable e) {
                         // language not successfully initialized, reset to avoid inconsistent

@@ -32,7 +32,6 @@ import java.io.Reader;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -127,33 +126,6 @@ public class ImplicitExplicitExportTest {
     }
 
     @Test
-    public void explicitExportPreferredInIterator() throws Exception {
-        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build());
-        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L2).build());
-        Iterable<PolyglotEngine.Value> iterable = vm.findGlobalSymbols("ahoj");
-        assertExplicitOverImplicit(iterable);
-        assertExplicitOverImplicit(iterable);
-        assertExplicitOverImplicit(iterable);
-    }
-
-    @Test
-    public void explicitExportPreferredInEnvIterator() throws Exception {
-        vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build());
-        vm.eval(Source.newBuilder("explicit.ahoj=43").name("Fourty three").mimeType(L2).build());
-        Object ret = vm.eval(Source.newBuilder("returnall=ahoj").name("Return").mimeType(L3).build()).get();
-        assertEquals("Explicit import from L2 is used first, then L1 value", "4342", ret);
-    }
-
-    private static void assertExplicitOverImplicit(Iterable<PolyglotEngine.Value> iterable) {
-        Iterator<PolyglotEngine.Value> it = iterable.iterator();
-        assertTrue("Has more", it.hasNext());
-        assertEquals("Explicit first", "43", it.next().get());
-        assertTrue("Has one more", it.hasNext());
-        assertEquals("Implicit next first", "42", it.next().get());
-        assertFalse("No more elements", it.hasNext());
-    }
-
-    @Test
     public void explicitExportPreferredDirect() throws Exception {
         // @formatter:off
         vm.eval(Source.newBuilder("implicit.ahoj=42").name("Fourty two").mimeType(L1).build());
@@ -224,6 +196,7 @@ public class ImplicitExplicitExportTest {
             return Truffle.getRuntime().createCallTarget(new ValueRootNode(code, this));
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected Object findExportedSymbol(Ctx context, String globalName, boolean onlyExplicit) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
@@ -234,11 +207,6 @@ public class ImplicitExplicitExportTest {
                 return context.implicit.get(globalName);
             }
             return null;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Ctx context) {
-            return context;
         }
 
         @Override
@@ -273,8 +241,9 @@ public class ImplicitExplicitExportTest {
                     }
                     if (k.equals("returnall")) {
                         StringBuilder sb = new StringBuilder();
-                        for (Object obj : ctx.env.importSymbols(p.getProperty(k))) {
-                            sb.append(obj);
+                        Object value = ctx.env.importSymbol(p.getProperty(k));
+                        if (value != null) {
+                            sb.append(value);
                         }
                         return sb.toString();
                     }

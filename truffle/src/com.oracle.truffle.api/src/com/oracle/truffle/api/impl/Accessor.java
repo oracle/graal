@@ -141,13 +141,11 @@ public abstract class Accessor {
 
         public abstract Object getInstrumentationHandler(Object languageShared);
 
-        public abstract Iterable<? extends Object> importSymbols(Object languageShared, Env env, String globalName);
-
         public abstract void exportSymbol(Object vmObject, String symbolName, Object value);
 
-        public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
+        public abstract Map<String, ? extends Object> getExportedSymbols(Object vmObject);
 
-        public abstract Map<String, ?> getExportedSymbols(Object vmObject);
+        public abstract Object importSymbol(Object vmObject, Env env, String symbolName);
 
         public abstract Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName);
 
@@ -239,7 +237,7 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> createDefaultLexicalScope(Node node, Frame frame);
 
-        public abstract Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global);
+        public abstract Iterable<Scope> createDefaultTopScope(Object global);
 
         public abstract RuntimeException wrapHostException(Object languageContext, Throwable exception);
 
@@ -277,6 +275,9 @@ public abstract class Accessor {
 
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
 
+        public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
+
+        public abstract Object getPolyglotBindingsForInstrument(Object vmObject);
     }
 
     public abstract static class LanguageSupport {
@@ -295,9 +296,7 @@ public abstract class Accessor {
         public abstract Object evalInContext(String code, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
-
-        public abstract Object lookupSymbol(TruffleLanguage<?> language, Object context, String globalName);
-
+        
         public abstract Object languageGlobal(TruffleLanguage.Env env);
 
         public abstract void dispose(Env env);
@@ -438,11 +437,6 @@ public abstract class Accessor {
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
-
-            @Override
-            protected Object getLanguageGlobal(Object context) {
-                return null;
-            }
 
             @Override
             protected boolean isObjectOfLanguage(Object object) {

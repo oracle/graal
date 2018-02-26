@@ -51,7 +51,6 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -86,7 +85,8 @@ public class ProxyAPITest {
         assertUnsupported(value, PROXY_OBJECT);
     }
 
-    static class ProxyPrimitiveTest implements ProxyPrimitive {
+    @SuppressWarnings("deprecation")
+    static class ProxyPrimitiveTest implements org.graalvm.polyglot.proxy.ProxyPrimitive {
 
         Object primitive;
         int invocationCounter = 0;
@@ -97,6 +97,7 @@ public class ProxyAPITest {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Test
     public void testProxyPrimitive() {
         ProxyPrimitiveTest proxy = new ProxyPrimitiveTest();
@@ -132,7 +133,7 @@ public class ProxyAPITest {
 
         RuntimeException e = new RuntimeException();
         try {
-            value = context.asValue(new ProxyPrimitive() {
+            value = context.asValue(new org.graalvm.polyglot.proxy.ProxyPrimitive() {
                 public Object asPrimitive() {
                     throw e;
                 }

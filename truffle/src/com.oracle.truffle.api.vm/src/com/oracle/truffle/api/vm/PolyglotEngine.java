@@ -34,15 +34,15 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -246,7 +246,7 @@ public class PolyglotEngine {
         }
     }
     private List<Object[]> config;
-    private HashMap<String, Object> globals;
+    private HashMap<String, DirectValue> globals;
 
     private final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
 
@@ -289,7 +289,10 @@ public class PolyglotEngine {
         this.err = err;
 
         this.executor = ComputeInExecutor.wrap(executor);
-        this.globals = new HashMap<>(globals);
+        this.globals = new HashMap<>();
+        for (Entry<String, Object> entry : globals.entrySet()) {
+            this.globals.put(entry.getKey(), new DirectValue(null, entry.getValue()));
+        }
         this.config = config;
 
         initLanguages();
@@ -306,6 +309,32 @@ public class PolyglotEngine {
                 mimeTypeToLanguage.put(mimeType, newLanguage);
             }
         }
+    }
+
+    DirectValue findLegacyExportedSymbol(String symbolName) {
+        DirectValue value = globals.get(symbolName);
+        if (value != null) {
+            return value;
+        }
+        DirectValue legacySymbol = findLegacyExportedSymbol(symbolName, true);
+        if (legacySymbol != null) {
+            return legacySymbol;
+        }
+        return findLegacyExportedSymbol(symbolName, false);
+    }
+
+    private DirectValue findLegacyExportedSymbol(String name, boolean onlyExplicit) {
+        final Collection<? extends Language> uniqueLang = getLanguages().values();
+        for (Language language : uniqueLang) {
+            Env env = language.env;
+            if (env != null) {
+                Object s = LANGUAGE.findExportedSymbol(env, name, onlyExplicit);
+                if (s != null) {
+                    return new DirectValue(language, s);
+                }
+            }
+        }
+        return null;
     }
 
     PolyglotEngine enter() {
@@ -723,11 +752,18 @@ public class PolyglotEngine {
     public Value findGlobalSymbol(final String globalName) {
         assert checkThread();
         assertNoCompilation();
-
-        for (Object v : findGlobalSymbols(globalName)) {
-            return (Value) v;
-        }
-        return null;
+        ComputeInExecutor<DirectValue> compute = new ComputeInExecutor<DirectValue>(executor()) {
+            @Override
+            protected DirectValue compute() {
+                Object prev = enter();
+                try {
+                    return findLegacyExportedSymbol(globalName);
+                } finally {
+                    leave(prev);
+                }
+            }
+        };
+        return compute.get();
     }
 
     /**
@@ -747,143 +783,12 @@ public class PolyglotEngine {
     public Iterable<Value> findGlobalSymbols(String globalName) {
         assert checkThread();
         assertNoCompilation();
-        return new Iterable<Value>() {
-
-            final Iterable<? extends Object> iterable = importSymbol(null, globalName, true);
-
-            public Iterator<Value> iterator() {
-                return new Iterator<PolyglotEngine.Value>() {
-                    final Iterator<? extends Object> iterator = iterable.iterator();
-
-                    public boolean hasNext() {
-                        ComputeInExecutor<Boolean> invokeCompute = new ComputeInExecutor<Boolean>(executor()) {
-                            @SuppressWarnings("try")
-                            @Override
-                            protected Boolean compute() {
-                                Object prev = enter();
-                                try {
-                                    return iterator.hasNext();
-                                } finally {
-                                    leave(prev);
-                                }
-                            }
-                        };
-                        return invokeCompute.get().booleanValue();
-                    }
-
-                    public Value next() {
-                        ComputeInExecutor<Value> invokeCompute = new ComputeInExecutor<Value>(executor()) {
-                            @SuppressWarnings("try")
-                            @Override
-                            protected Value compute() {
-                                Object prev = enter();
-                                try {
-                                    return (Value) iterator.next();
-                                } finally {
-                                    leave(prev);
-                                }
-                            }
-                        };
-                        return invokeCompute.get();
-                    }
-
-                };
-            }
-        };
-    }
-
-    private Iterable<? extends Object> importSymbol(Language filterLanguage, String globalName, boolean needsValue) {
-        class SymbolIterator implements Iterator<Object> {
-            private final Collection<? extends Language> uniqueLang;
-            private Object next;
-            private Iterator<? extends Language> explicit;
-            private Iterator<? extends Language> implicit;
-
-            SymbolIterator(Collection<? extends Language> uniqueLang, Object first) {
-                this.uniqueLang = uniqueLang;
-                if (first instanceof DirectValue) {
-                    if (needsValue) {
-                        this.next = first;
-                    } else {
-                        this.next = ((DirectValue) first).value;
-                    }
-                } else {
-                    this.next = (needsValue && first != null) ? new DirectValue(null, first) : first;
-                }
-            }
-
-            @Override
-            public boolean hasNext() {
-                return findNext() != this;
-            }
-
-            @Override
-            public Object next() {
-                Object res = findNext();
-                if (res == this) {
-                    throw new NoSuchElementException();
-                }
-                assert !needsValue || res instanceof Value;
-                next = null;
-                return res;
-            }
-
-            private Object findNext() {
-                if (next != null) {
-                    return next;
-                }
-
-                if (explicit == null) {
-                    explicit = uniqueLang.iterator();
-                }
-
-                while (explicit.hasNext()) {
-                    Language dl = explicit.next();
-                    TruffleLanguage.Env env = dl.getEnv(false);
-                    if (dl != filterLanguage && env != null) {
-                        Object obj = findExportedSymbol(dl, env, globalName, true);
-                        if (obj != null) {
-                            next = obj;
-                            explicit.remove();
-                            return next;
-                        }
-                    }
-                }
-
-                if (implicit == null) {
-                    implicit = uniqueLang.iterator();
-                }
-
-                while (implicit.hasNext()) {
-                    Language dl = implicit.next();
-                    TruffleLanguage.Env env = dl.getEnv(false);
-                    if (dl != filterLanguage && env != null) {
-                        Object obj = findExportedSymbol(dl, env, globalName, false);
-                        if (obj != null) {
-                            next = obj;
-                            return next;
-                        }
-                    }
-                }
-                return next = this;
-            }
-
-            private Object findExportedSymbol(Language lang, TruffleLanguage.Env env, String name, boolean onlyExplicit) {
-                Object value = LANGUAGE.findExportedSymbol(env, name, onlyExplicit);
-                if (needsValue && value != null) {
-                    value = new DirectValue(lang, value);
-                }
-                return value;
-            }
+        DirectValue value = globals.get(globalName);
+        if (value == null) {
+            return Collections.emptyList();
+        } else {
+            return Arrays.asList(value);
         }
-        Object globalObj = globals.get(globalName);
-        final Collection<? extends Language> uniqueLang = getLanguages().values();
-        return new Iterable<Object>() {
-            @Override
-            public Iterator<Object> iterator() {
-                return new SymbolIterator(new LinkedHashSet<>(uniqueLang), globalObj);
-            }
-        };
     }
 
     private static void assertNoCompilation() {
@@ -1049,8 +954,8 @@ public class PolyglotEngine {
          * Creates Java-typed foreign access to the object wrapped by this {@link Value Value}, a
          * kind of cross-language "cast". Results depend on the requested type:
          * <ul>
-         * <li>For primitive types such as {@link Number}, the value is simply cast and returned.
-         * </li>
+         * <li>For primitive types such as {@link Number}, the value is simply cast and
+         * returned.</li>
          * <li>A {@link String} is produced by the language that returned the value.</li>
          * <li>A {@link FunctionalInterface} instance is returned if the value
          * {@link Message#IS_EXECUTABLE can be executed}.</li>
@@ -1548,6 +1453,16 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Object getPolyglotBindingsForLanguage(Object vmObject) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Object getPolyglotBindingsForInstrument(Object vmObject) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public <T> T lookup(InstrumentInfo info, Class<T> serviceClass) {
             Object vmObject = LANGUAGE.getVMObject(info);
             Instrument instrument = (Instrument) vmObject;
@@ -1672,18 +1587,13 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Iterable<? extends Object> importSymbols(Object languageShared, Env env, String globalName) {
-            Language language = (Language) languageShared;
-            return language.engine().importSymbol(language, globalName, false);
-        }
-
-        @Override
         public Object importSymbol(Object vmObject, Env env, String symbolName) {
-            Iterator<? extends Object> symbolIterator = importSymbols(vmObject, env, symbolName).iterator();
-            if (!symbolIterator.hasNext()) {
+            Value symbol = ((Language) vmObject).engine().findLegacyExportedSymbol(symbolName);
+            if (symbol != null) {
+                return symbol.value();
+            } else {
                 return null;
             }
-            return symbolIterator.next();
         }
 
         @Override
@@ -1695,7 +1605,7 @@ public class PolyglotEngine {
         @Override
         public void exportSymbol(Object vmObject, String symbolName, Object value) {
             Language language = (Language) vmObject;
-            HashMap<String, Object> global = language.engine().globals;
+            HashMap<String, DirectValue> global = language.engine().globals;
             if (value == null) {
                 global.remove(symbolName);
             } else {
@@ -1706,18 +1616,14 @@ public class PolyglotEngine {
         @Override
         public Map<String, ?> getExportedSymbols(Object vmObject) {
             Instrument instrument = (Instrument) vmObject;
-            HashMap<String, Object> globals = instrument.getRuntime().currentVM().globals;
+            HashMap<String, DirectValue> globals = instrument.getRuntime().currentVM().globals;
             return new AbstractMap<String, Object>() {
                 @Override
                 public Set<Map.Entry<String, Object>> entrySet() {
                     LinkedHashSet<Map.Entry<String, Object>> valueEntries = new LinkedHashSet<>(globals.size());
-                    for (Map.Entry<String, Object> entry : globals.entrySet()) {
+                    for (Map.Entry<String, DirectValue> entry : globals.entrySet()) {
                         String name = entry.getKey();
-                        Object value = entry.getValue();
-                        if (value instanceof DirectValue) {
-                            value = ((DirectValue) value).value;
-                        }
-                        value = toGuestValue(value, vmObject);
+                        Object value = toGuestValue(entry.getValue().value, vmObject);
                         Map.Entry<String, Object> valueEntry = new AbstractMap.SimpleImmutableEntry<>(name, value);
                         valueEntries.add(valueEntry);
                     }
@@ -1862,8 +1768,8 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global) {
-            return DefaultScope.topScope(language, context, global);
+        public Iterable<Scope> createDefaultTopScope(Object global) {
+            return DefaultScope.topScope(global);
         }
 
         @Override
