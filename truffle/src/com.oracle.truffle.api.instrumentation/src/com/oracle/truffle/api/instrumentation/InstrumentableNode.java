@@ -230,8 +230,8 @@ public interface InstrumentableNode extends NodeInterface {
      * the syntactic AST structure, leading to invalid execution events reported to the
      * instrumentation framework. Implementing this method allows the instrumented node to restore
      * the syntactic AST structure when needed. It provides a list of tags that were requested by
-     * the execution event to allow the language to do the materialization only for instrumentable
-     * nodes that are tagged by any of these tags.
+     * all current execution event bindings to allow the language to do the materialization
+     * selectively for instrumentable nodes with certain tags only.
      * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
