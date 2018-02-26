@@ -65,7 +65,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * certain category of nodes. For example a debugger
  * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a guest
  * language to tag all nodes as {@link StandardTags.StatementTag statements} that should be
- * considered as such. See {@link #hasTag(Class)} for further details on how to use implement tags.
+ * considered as such. See {@link #hasTag(Class)} for further details on how to use tags.
  * <p>
  * <b>Example minimal implementation of an instrumentable node:</b>
  *
