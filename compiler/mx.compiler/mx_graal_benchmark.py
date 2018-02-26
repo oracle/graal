@@ -1215,6 +1215,8 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if benchmarks is not None:
             mx.abort("No benchmark should be specified for the selected suite.")
         vmArgs = self.vmArgs(bmSuiteArgs)
+        if mx_compiler.jdk.javaCompliance >= '9':
+            vmArgs += ["--add-modules", "java.xml.bind"]
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
 
