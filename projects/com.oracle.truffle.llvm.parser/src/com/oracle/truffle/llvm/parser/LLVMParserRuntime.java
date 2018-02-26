@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -94,9 +95,9 @@ public final class LLVMParserRuntime {
 
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         context.setDataLayoutConverter(targetDataLayout);
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, stack, nodeFactory, module.getAliases());
 
-        runtime.initializeFunctions(phiManager, labels, module.getFunctions());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, stack, nodeFactory, module.getAliases());
+        runtime.registerFunctions(phiManager, labels, module.getFunctions());
 
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, labels);
         LLVMExpressionNode[] globals = runtime.createGlobalVariableInitializationNodes(symbolResolver, module.getGlobals());
@@ -167,20 +168,38 @@ public final class LLVMParserRuntime {
         return library;
     }
 
-    private void initializeFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
+    private void registerFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
         for (FunctionDefinition function : functions) {
-            String functionName = function.getName();
-            LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, functionName, !Linkage.isFileLocal(function.getLinkage()),
-                            index -> LLVMFunctionDescriptor.createDescriptor(context, library, functionName, function.getType(), index));
-            LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(functionName), phiManager.getPhiMap(functionName),
-                            labels.labels(functionName));
+            registerFunction(phiManager, labels, function);
+        }
 
-            boolean replaceExistingFunction = checkReplaceExistingFunction(functionName, functionDescriptor);
-            functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
+        for (Entry<GlobalAlias, SymbolImpl> entry : aliases.entrySet()) {
+            GlobalAlias alias = entry.getKey();
+            SymbolImpl value = entry.getValue();
+            if (value instanceof FunctionDefinition) {
+                registerFunctionAlias(alias, (FunctionDefinition) value);
+            }
         }
     }
 
-    private boolean checkReplaceExistingFunction(String functionName, LLVMFunctionDescriptor functionDescriptor) {
+    private void registerFunction(LLVMPhiManager phiManager, LLVMLabelList labels, FunctionDefinition function) {
+        LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, function.getName(), !Linkage.isFileLocal(function.getLinkage()),
+                        index -> LLVMFunctionDescriptor.createDescriptor(context, library, function.getName(), function.getType(), index));
+        boolean replaceExistingFunction = checkReplaceExistingFunction(functionDescriptor);
+        LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(function.getName()),
+                        phiManager.getPhiMap(function.getName()), labels.labels(function.getName()));
+        functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
+    }
+
+    private void registerFunctionAlias(GlobalAlias alias, FunctionDefinition existingFunction) {
+        LLVMFunctionDescriptor existingDescriptor = scope.getFunctionDescriptor(existingFunction.getName());
+        LLVMFunctionDescriptor aliasDescriptor = scope.lookupOrCreateFunction(context, alias.getName(), !Linkage.isFileLocal(alias.getLinkage()),
+                        index -> LLVMFunctionDescriptor.createDescriptor(context, library, alias.getName(), existingFunction.getType(), index));
+        boolean replaceExistingFunction = checkReplaceExistingFunction(aliasDescriptor);
+        aliasDescriptor.declareInSulong(existingDescriptor.getFunction(), Linkage.isWeak(alias.getLinkage()), replaceExistingFunction);
+    }
+
+    private boolean checkReplaceExistingFunction(LLVMFunctionDescriptor functionDescriptor) {
         if (library.getLibrariesToReplace() != null) {
             for (ExternalLibrary lib : library.getLibrariesToReplace()) {
                 if (functionDescriptor.getLibrary().equals(lib)) {
@@ -188,13 +207,14 @@ public final class LLVMParserRuntime {
                     // overwriting it. We rename the already existing symbol by prefixing it with
                     // "__libName_", e.g., "@__clock_gettime" would be renamed to
                     // "@__libc___clock_gettime".
+                    String functionName = functionDescriptor.getName();
                     assert functionName.charAt(0) == '@';
                     String renamedFunctionName = "@__" + functionDescriptor.getLibrary().getName() + "_" + functionName.substring(1);
                     LLVMFunctionDescriptor renamedFunctionDescriptor = scope.lookupOrCreateFunction(functionDescriptor.getContext(), renamedFunctionName, true,
                                     index -> LLVMFunctionDescriptor.createDescriptor(functionDescriptor.getContext(), functionDescriptor.getLibrary(), renamedFunctionName,
                                                     functionDescriptor.getType(),
                                                     index));
-                    renamedFunctionDescriptor.declareInSulong(functionDescriptor.getFunction(), false);
+                    renamedFunctionDescriptor.declareInSulong(functionDescriptor.getFunction(), functionDescriptor.isWeak(), false);
                     functionDescriptor.setLibrary(library);
                     return true;
                 }
