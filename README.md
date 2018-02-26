@@ -238,4 +238,4 @@ The logo was designed by
 [Valentina Caruso](https://www.behance.net/volantina).
 
 Sulong is developed in a research collaboration with
-[Johannes Kepler University, Linz](www.ssw.jku.at).
+[Johannes Kepler University, Linz](http://www.ssw.jku.at).
