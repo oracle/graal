@@ -191,7 +191,7 @@ public interface InstrumentableNode extends NodeInterface {
      * <code>null</code> is returned then an empty tag object without any readable keys will be
      * assumed. Multiple calls to {@link #getNodeObject()} for a particular node may return the same
      * or objects with different identity. The returned object must not support any write operation.
-     * The returned object must not support execution, instantiation and must have a size.
+     * The returned object must not support execution or instantiation and must not have a size.
      * <p>
      * For performance reasons it is not recommended to eagerly collect all properties of the node
      * object when {@link #getNodeObject()} is invoked. Instead, the language should lazily compute
