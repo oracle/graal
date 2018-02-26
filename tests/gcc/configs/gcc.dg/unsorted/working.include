@@ -260,7 +260,6 @@ gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/20000628-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/macro3.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/mi6.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/strp1.c
-gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/strify5.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/builtin-macro-1.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/ucnid-2.c
 gcc-5.2.0/gcc/testsuite/gcc.dg/cpp/syshdr5.c
