@@ -103,7 +103,7 @@ void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_a
 }
 
 void __sulong_update_application_path(char *application_path, char **argv, Elf64_auxv_t *auxv) {
-  argv[0] = application_path;
+  __progname = argv[0] = application_path;
   auxv[0].a_un.a_val = (uint64_t)application_path;
 }
 
@@ -120,7 +120,6 @@ int _start(int type, char *application_path_java_byte_array) {
   }
 
   environ = envp;
-  __progname = *argv;
   __auxv = (Elf64_auxv_t *)(envp + envc + 1);
 
   // update the application path now that we know it
