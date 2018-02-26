@@ -85,6 +85,10 @@ final class JavaObject implements TruffleObject {
         return obj != null && obj.getClass().isArray();
     }
 
+    boolean isNull() {
+        return obj == null;
+    }
+
     Class<?> getObjectClass() {
         return obj == null ? null : obj.getClass();
     }

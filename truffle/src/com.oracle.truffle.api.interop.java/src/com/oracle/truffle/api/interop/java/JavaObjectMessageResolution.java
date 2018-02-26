@@ -78,7 +78,7 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "INVOKE")
     abstract static class InvokeNode extends Node {
-
+        private static final Message INVOKE = Message.createInvoke(0);
         @Child private LookupMethodNode lookupMethod;
         @Child private IsApplicableByArityNode isApplicableByArityNode;
         @Child private ExecuteMethodNode executeMethod;
@@ -88,8 +88,8 @@ class JavaObjectMessageResolution {
         @Child private Node sendExecuteNode;
 
         public Object access(JavaObject object, String name, Object[] args) {
-            if (TruffleOptions.AOT) {
-                throw UnsupportedMessageException.raise(Message.createInvoke(args.length));
+            if (TruffleOptions.AOT || object.isNull()) {
+                throw UnsupportedMessageException.raise(INVOKE);
             }
 
             // (1) look for a method; if found, invoke it on obj.
@@ -249,7 +249,7 @@ class JavaObjectMessageResolution {
     abstract static class NullCheckNode extends Node {
 
         public Object access(JavaObject object) {
-            return object == JavaObject.NULL;
+            return object.isNull();
         }
 
     }
@@ -295,7 +295,7 @@ class JavaObjectMessageResolution {
         }
 
         public Object access(JavaObject object, String name) {
-            if (TruffleOptions.AOT || object == JavaObject.NULL) {
+            if (TruffleOptions.AOT || object.isNull()) {
                 throw UnsupportedMessageException.raise(Message.READ);
             }
             JavaFieldDesc foundField = lookupField(object, name);
@@ -368,7 +368,7 @@ class JavaObjectMessageResolution {
         }
 
         public Object access(JavaObject receiver, String name, Object value) {
-            if (TruffleOptions.AOT || receiver == JavaObject.NULL) {
+            if (TruffleOptions.AOT || receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.WRITE);
             }
             JavaFieldDesc f = lookupField(receiver, name);
@@ -427,21 +427,24 @@ class JavaObjectMessageResolution {
     abstract static class HasKeysNode extends Node {
 
         public Object access(JavaObject receiver) {
-            return receiver != JavaObject.NULL;
+            return !receiver.isNull();
         }
     }
 
     @Resolve(message = "KEYS")
-    abstract static class PropertiesNode extends Node {
+    abstract static class KeysNode extends Node {
         @TruffleBoundary
         public Object access(JavaObject receiver, boolean includeInternal) {
+            if (receiver.isNull()) {
+                throw UnsupportedMessageException.raise(Message.KEYS);
+            }
             String[] fields = TruffleOptions.AOT ? new String[0] : JavaInteropReflect.findUniquePublicMemberNames(receiver.getLookupClass(), !receiver.isClass(), includeInternal);
             return JavaInterop.asTruffleObject(fields);
         }
     }
 
     @Resolve(message = "KEY_INFO")
-    abstract static class PropertyInfoNode extends Node {
+    abstract static class KeyInfoNode extends Node {
 
         private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
         private static final int READABLE_WRITABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
@@ -474,6 +477,9 @@ class JavaObjectMessageResolution {
 
         @TruffleBoundary
         public int access(JavaObject receiver, String name) {
+            if (receiver.isNull()) {
+                throw UnsupportedMessageException.raise(Message.KEY_INFO);
+            }
             if (TruffleOptions.AOT) {
                 return 0;
             }
