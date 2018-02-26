@@ -35,14 +35,20 @@ final class JavaObject implements TruffleObject {
     final Class<?> clazz;
     final Object languageContext;
 
-    JavaObject(Object obj, Class<?> clazz, Object languageContext) {
+    private JavaObject(Object obj, Class<?> clazz, Object languageContext) {
         this.obj = obj;
         this.clazz = clazz;
         this.languageContext = languageContext;
     }
 
     static JavaObject forClass(Class<?> clazz, Object languageContext) {
+        assert clazz != null;
         return new JavaObject(null, clazz, languageContext);
+    }
+
+    static JavaObject forObject(Object object, Object languageContext) {
+        assert object != null && !(object instanceof Class<?>);
+        return new JavaObject(object, object.getClass(), languageContext);
     }
 
     static boolean isInstance(TruffleObject obj) {

@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.interop.java;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Map;
 
 import org.graalvm.polyglot.Value;
@@ -296,11 +294,11 @@ public final class JavaInterop {
         if (obj instanceof TruffleObject) {
             return ((TruffleObject) obj);
         } else if (obj instanceof Class) {
-            return new JavaObject(null, (Class<?>) obj, languageContext);
+            return JavaObject.forClass((Class<?>) obj, languageContext);
         } else if (obj == null) {
             return JavaObject.NULL;
         } else if (obj.getClass().isArray()) {
-            return new JavaObject(obj, obj.getClass(), languageContext);
+            return JavaObject.forObject(obj, languageContext);
         } else if (obj instanceof TruffleList) {
             return ((TruffleList<?>) obj).guestObject;
         } else if (obj instanceof TruffleMap) {
@@ -308,7 +306,7 @@ public final class JavaInterop {
         } else if (obj instanceof TruffleFunction) {
             return ((TruffleFunction<?, ?>) obj).guestObject;
         } else if (TruffleOptions.AOT) {
-            return new JavaObject(obj, obj.getClass(), languageContext);
+            return JavaObject.forObject(obj, languageContext);
         } else {
             return JavaInteropReflect.asTruffleViaReflection(obj, languageContext);
         }
@@ -364,8 +362,8 @@ public final class JavaInterop {
     /**
      * Takes executable object from a {@link TruffleLanguage} and converts it into an instance of a
      * <b>Java</b> <em>functional interface</em>. If the <code>functionalType</code> method is using
-     * {@link Method#isVarArgs() variable arguments}, then the arguments are unwrapped and passed
-     * into the <code>function</code> as indivual arguments.
+     * {@link java.lang.reflect.Method#isVarArgs() variable arguments}, then the arguments are
+     * unwrapped and passed into the <code>function</code> as indivual arguments.
      *
      * @param <T> requested and returned type
      * @param functionalType interface with a single defined method - so called <em>functional
@@ -402,18 +400,10 @@ public final class JavaInterop {
      * @since 0.9
      */
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {
-        return asTruffleFunction(functionalType, implementation, currentPolyglotContext());
-    }
-
-    static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation, Object languageContext) {
         if (TruffleOptions.AOT) {
             throw new IllegalArgumentException();
         }
-        final Method method = functionalInterfaceMethod(functionalType);
-        if (method == null) {
-            throw new IllegalArgumentException();
-        }
-        return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
+        return JavaInteropReflect.asTruffleFunction(functionalType, implementation, currentPolyglotContext());
     }
 
     /**
@@ -461,9 +451,9 @@ public final class JavaInterop {
         if (obj instanceof JavaObject) {
             JavaObject receiver = (JavaObject) obj;
             if (receiver.isClass()) {
-                return new JavaObject(null, receiver.clazz.getClass(), receiver.languageContext);
+                return JavaObject.forClass(Class.class, receiver.languageContext);
             } else {
-                return new JavaObject(null, receiver.clazz, receiver.languageContext);
+                return JavaObject.forClass(receiver.clazz, receiver.languageContext);
             }
         } else {
             return null;
@@ -509,33 +499,6 @@ public final class JavaInterop {
             return engine.asHostException(exception);
         }
         throw new IllegalArgumentException("Not a HostException");
-    }
-
-    static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
-        if (!functionalType.isInterface()) {
-            return null;
-        }
-        final Method[] arr = functionalType.getMethods();
-        if (arr.length == 1) {
-            return arr[0];
-        }
-        Method found = null;
-        for (Method m : arr) {
-            if ((m.getModifiers() & Modifier.ABSTRACT) == 0) {
-                continue;
-            }
-            try {
-                Object.class.getMethod(m.getName(), m.getParameterTypes());
-                continue;
-            } catch (NoSuchMethodException ex) {
-                // OK, not an object method
-            }
-            if (found != null) {
-                return null;
-            }
-            found = m;
-        }
-        return found;
     }
 
     private static class TemporaryConvertRoot extends RootNode {

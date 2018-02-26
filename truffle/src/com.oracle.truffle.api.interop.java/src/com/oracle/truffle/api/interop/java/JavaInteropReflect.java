@@ -158,17 +158,57 @@ final class JavaInteropReflect {
     @CompilerDirectives.TruffleBoundary
     static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
         assert JavaInterop.isJavaFunctionInterface(functionalType);
-        Method functionalInterfaceMethod = JavaInterop.functionalInterfaceMethod(functionalType);
+        Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
         final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    static <T> TruffleObject asTruffleFunction(Class<T> functionalInterface, T implementation, Object languageContext) {
+        final Method method = functionalInterfaceMethod(functionalInterface);
+        if (method == null) {
+            throw new IllegalArgumentException();
+        }
+        return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
+    }
+
+    static <T> Method functionalInterfaceMethod(Class<T> functionalType) {
+        if (!functionalType.isInterface()) {
+            return null;
+        }
+        final Method[] arr = functionalType.getMethods();
+        if (arr.length == 1) {
+            return arr[0];
+        }
+        Method found = null;
+        for (Method m : arr) {
+            if ((m.getModifiers() & Modifier.ABSTRACT) == 0) {
+                continue;
+            }
+            try {
+                Object.class.getMethod(m.getName(), m.getParameterTypes());
+                continue;
+            } catch (NoSuchMethodException ex) {
+                // OK, not an object method
+            }
+            if (found != null) {
+                return null;
+            }
+            found = m;
+        }
+        return found;
+    }
+
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
-        if (obj instanceof TruffleFunction) {
-            return ((TruffleFunction<?, ?>) obj).guestObject;
-        } else if (Proxy.isProxyClass(obj.getClass())) {
+        if (obj instanceof Proxy) {
+            return asTruffleObjectProxy(obj, languageContext);
+        }
+        return JavaObject.forObject(obj, languageContext);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static TruffleObject asTruffleObjectProxy(Object obj, Object languageContext) {
+        if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof FunctionProxyHandler) {
                 return ((FunctionProxyHandler) h).functionObj;
@@ -176,7 +216,7 @@ final class JavaInteropReflect {
                 return ((ObjectProxyHandler) h).obj;
             }
         }
-        return new JavaObject(obj, obj.getClass(), languageContext);
+        return JavaObject.forObject(obj, languageContext);
     }
 
     static Object newProxyInstance(Class<?> clazz, TruffleObject obj, Object languageContext) throws IllegalArgumentException {
