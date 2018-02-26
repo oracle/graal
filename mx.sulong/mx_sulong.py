@@ -49,6 +49,7 @@ supportedLLVMVersions = [
     '3.9',
     '4.0',
     '5.0',
+    '6.0',
 ]
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
@@ -457,19 +458,24 @@ def getVersion(program):
 def getLLVMVersion(llvmProgram):
     """executes the program with --version and extracts the LLVM version string"""
     versionString = getVersion(llvmProgram)
-    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((3|4|5)\.\d)', versionString, re.IGNORECASE)
+    printLLVMVersion = re.search(r'(clang |LLVM )?(version )?((\d)\.\d)(\.\d)?', versionString, re.IGNORECASE)
     if printLLVMVersion is None:
         return None
     else:
         return printLLVMVersion.group(3)
 
 # the makefiles do not check which version of clang they invoke
+clang_versions_need_optnone = ['5', '6']
+def getLLVMExplicitArgs(mainLLVMVersion):
+    if mainLLVMVersion:
+        for ver in clang_versions_need_optnone:
+            if mainLLVMVersion.startswith(ver):
+                return ["-Xclang", "-disable-O0-optnone"]
+    return []
+
 def getClangImplicitArgs():
     mainLLVMVersion = getLLVMVersion('clang')
-    if mainLLVMVersion and mainLLVMVersion.startswith('5'):
-        return "-Xclang -disable-O0-optnone"
-    else:
-        return ""
+    return " ".join(getLLVMExplicitArgs(mainLLVMVersion))
 
 mx_subst.path_substitutions.register_no_arg('clangImplicitArgs', getClangImplicitArgs)
 
