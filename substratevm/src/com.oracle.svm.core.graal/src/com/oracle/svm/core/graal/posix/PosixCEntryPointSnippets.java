@@ -314,16 +314,16 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
              * thread register or the pthread thread-local variable.
              */
             writeCurrentVMThread(VMThreads.nullThread());
-            clearHeapBase();
             PosixVMThreads.VMThreadTL.set(VMThreads.nullThread());
 
             /* Remove the thread from the list of VM threads, and then free the memory. */
             VMThreads.detachThread(thread);
-            LibC.free(thread);
-
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
         }
+
+        LibC.free(thread);
+        clearHeapBase();
     }
 
     @Uninterruptible(reason = "Calling out from uninterruptible code with lock held.", calleeMustBe = false)
