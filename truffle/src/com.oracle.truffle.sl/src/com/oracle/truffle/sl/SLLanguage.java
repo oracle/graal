@@ -190,7 +190,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * </ul>
  */
 @TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", version = "0.30", mimeType = SLLanguage.MIME_TYPE)
-@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
+@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static volatile int counter;
 
@@ -211,8 +211,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         Source source = request.getSource();
         Map<String, SLRootNode> functions;
         /*
-         * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
-         * the functions with the SLContext happens lazily in SLEvalRootNode.
+         * Parse the provided source. At this point, we do not have a SLContext yet. Registration of the
+         * functions with the SLContext happens lazily in SLEvalRootNode.
          */
         if (request.getArgumentNames().isEmpty()) {
             functions = Parser.parseSL(this, source);
@@ -236,16 +236,16 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         SLRootNode evalMain;
         if (main != null) {
             /*
-             * We have a main function, so "evaluating" the parsed source means invoking that main
-             * function. However, we need to lazily register functions into the SLContext first, so
-             * we cannot use the original SLRootNode for the main function. Instead, we create a new
-             * SLEvalRootNode that does everything we need.
+             * We have a main function, so "evaluating" the parsed source means invoking that main function.
+             * However, we need to lazily register functions into the SLContext first, so we cannot use the
+             * original SLRootNode for the main function. Instead, we create a new SLEvalRootNode that does
+             * everything we need.
              */
             evalMain = new SLEvalRootNode(this, main.getFrameDescriptor(), main.getBodyNode(), main.getSourceSection(), main.getName(), functions);
         } else {
             /*
-             * Even without a main function, "evaluating" the parsed source needs to register the
-             * functions into the SLContext.
+             * Even without a main function, "evaluating" the parsed source needs to register the functions into
+             * the SLContext.
              */
             evalMain = new SLEvalRootNode(this, null, null, null, "[no_main]", functions);
         }
