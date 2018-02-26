@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
+import com.oracle.truffle.llvm.parser.metadata.MDType;
 import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
@@ -174,7 +175,7 @@ final class DITypeExtractor implements MetadataVisitor {
 
             case DW_TAG_VECTOR_TYPE:
             case DW_TAG_ARRAY_TYPE: {
-                final boolean isVector = mdType.getTag() == MDCompositeType.Tag.DW_TAG_VECTOR_TYPE;
+                final boolean isVector = mdType.getTag() == MDType.DwarfTag.DW_TAG_VECTOR_TYPE;
                 final LLVMSourceArrayLikeType type = new LLVMSourceArrayLikeType(size, align, offset, location);
                 parsedTypes.put(mdType, type);
 
@@ -200,9 +201,9 @@ final class DITypeExtractor implements MetadataVisitor {
             case DW_TAG_UNION_TYPE:
             case DW_TAG_STRUCTURE_TYPE: {
                 String name = MDNameExtractor.getName(mdType.getName());
-                if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_STRUCTURE_TYPE) {
+                if (mdType.getTag() == MDType.DwarfTag.DW_TAG_STRUCTURE_TYPE) {
                     name = String.format("struct %s", name);
-                } else if (mdType.getTag() == MDCompositeType.Tag.DW_TAG_UNION_TYPE) {
+                } else if (mdType.getTag() == MDType.DwarfTag.DW_TAG_UNION_TYPE) {
                     name = String.format("union %s", name);
                 }
 
@@ -345,7 +346,7 @@ final class DITypeExtractor implements MetadataVisitor {
             case DW_TAG_REFERENCE_TYPE:
             case DW_TAG_POINTER_TYPE: {
                 final boolean isSafeToDereference = Flags.OBJECT_POINTER.isSetIn(mdType.getFlags());
-                final boolean isReference = mdType.getTag() == MDDerivedType.Tag.DW_TAG_REFERENCE_TYPE;
+                final boolean isReference = mdType.getTag() == MDType.DwarfTag.DW_TAG_REFERENCE_TYPE;
                 final LLVMSourcePointerType type = new LLVMSourcePointerType(size, align, offset, isSafeToDereference, isReference, location);
                 parsedTypes.put(mdType, type);
 

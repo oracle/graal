@@ -39,11 +39,8 @@ public final class MDBasicType extends MDType implements MDBaseNode {
 
     private final DwarfEncoding encoding;
 
-    private final long tag;
-
     private MDBasicType(long tag, long line, long size, long align, long offset, long flags, long encoding) {
-        super(size, align, offset, line, flags);
-        this.tag = tag;
+        super(tag, size, align, offset, line, flags);
         this.encoding = DwarfEncoding.decode(encoding);
     }
 
@@ -54,10 +51,6 @@ public final class MDBasicType extends MDType implements MDBaseNode {
 
     public DwarfEncoding getEncoding() {
         return encoding;
-    }
-
-    public long getTag() {
-        return tag;
     }
 
     public enum DwarfEncoding {
