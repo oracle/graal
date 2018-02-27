@@ -826,6 +826,12 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
                 ]
         return skip_patterns
 
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(ScalaDaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if mx_compiler.jdk.javaCompliance >= '9':
+            vmArgs += ["--add-modules", "java.corba"]
+        return vmArgs
+
 
 mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
 
