@@ -642,7 +642,6 @@ public abstract class Node implements NodeInterface, Cloneable {
 
         static final class AccessNodes extends Accessor.Nodes {
 
-            @SuppressWarnings("deprecation")
             @Override
             public boolean isInstrumentable(RootNode rootNode) {
                 return rootNode.isInstrumentable();
@@ -768,7 +767,7 @@ class NodeSnippets {
 
     public static void notifyInserted() {
         class InstrumentableLanguageNode extends Node {
-            Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+            Object execute(VirtualFrame frame) {
                 return null;
             }
         }
@@ -790,7 +789,6 @@ class NodeSnippets {
             }
         }
 
-        @SuppressWarnings("unused")
         // @formatter:off
         // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted
         class MyRootNode extends RootNode {
