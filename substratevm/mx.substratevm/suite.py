@@ -197,6 +197,10 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.reflect",
+                "com.oracle.svm.jni",
+                "com.oracle.svm.graal",
+                "com.oracle.svm.core.genscavenge"
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",

@@ -54,17 +54,28 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.genscavenge.HeapPolicyOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.posix.PosixExecutableName;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
+import com.oracle.svm.graal.hosted.GraalFeature;
+import com.oracle.svm.hosted.FeatureHandler;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
+import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
+import com.oracle.svm.jni.hosted.JNIFeature;
+import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 class NativeImage {
 
@@ -119,33 +130,42 @@ class NativeImage {
     static final String oH = "-H:";
     static final String oR = "-R:";
 
-    static final String oHClass = oH + "Class=";
-    static final String oHName = oH + "Name=";
-    static final String oHPath = oH + "Path=";
-    static final String oHKind = oH + "Kind=";
-    static final String oHCLibraryPath = oH + "CLibraryPath=";
-    static final String oHOptimize = oH + "Optimize=";
-    static final String oHDebug = oH + "Debug=";
-    static final String enablePrintFlags = "+PrintFlags";
-
     /* Boolean arguments */
-    static final String RuntimeAssertions = "RuntimeAssertions";
+    static final String enableRuntimeAssertions = "+" + SubstrateOptions.RuntimeAssertions.getName();
+    static final String enablePrintFlags = "+" + SubstrateOptions.PrintFlags.getName();
+
+    private static <T> String oH(OptionKey<T> option) {
+        return oH + option.getName() + "=";
+    }
+
+    static final String oHClass = oH(NativeImageOptions.Class);
+    static final String oHName = oH(NativeImageOptions.Name);
+    static final String oHPath = oH(SubstrateOptions.Path);
+    static final String oHKind = oH(NativeImageOptions.Kind);
+    static final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
+    static final String oHOptimize = oH(SubstrateOptions.Optimize);
+    static final String oHDebug = oH + "Debug=";
 
     /* List arguments */
-    static final String oHFeatures = oH + "Features=";
-    static final String oHSubstitutionResources = oH + "SubstitutionResources=";
-    static final String oHIncludeResourceBundles = oH + "IncludeResourceBundles=";
+    static final String oHFeatures = oH(FeatureHandler.Options.Features);
+    static final String oHSubstitutionFiles = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionFiles);
+    static final String oHSubstitutionResources = oH(DeclarativeSubstitutionProcessor.Options.SubstitutionResources);
+    static final String oHIncludeResourceBundles = oH(LocalizationSupport.Options.IncludeResourceBundles);
+    static final String oHReflectionConfigurationFiles = oH(ReflectionFeature.Options.ReflectionConfigurationFiles);
+    static final String oHReflectionConfigurationResources = oH(ReflectionFeature.Options.ReflectionConfigurationResources);
+    static final String oHJNIConfigurationFiles = oH(JNIFeature.Options.JNIConfigurationFiles);
+    static final String oHJNIConfigurationResources = oH(JNIFeature.Options.JNIConfigurationResources);
     static final String oHInterfacesForJNR = oH + "InterfacesForJNR=";
-    static final String oHReflectionConfigurationFiles = oH + "ReflectionConfigurationFiles=";
-    static final String oHReflectionConfigurationResources = oH + "ReflectionConfigurationResources=";
-    static final String oHJNIConfigurationFiles = oH + "JNIConfigurationFiles=";
-    static final String oHJNIConfigurationResources = oH + "JNIConfigurationResources=";
 
-    static final String oHMaxRuntimeCompileMethods = oH + "MaxRuntimeCompileMethods=";
-    static final String oHInspectServerContentPath = oH + "InspectServerContentPath=";
+    static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
+    static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
 
-    static final String oRYoungGenerationSize = oR + "YoungGenerationSize=";
-    static final String oROldGenerationSize = oR + "OldGenerationSize=";
+    private static <T> String oR(OptionKey<T> option) {
+        return oR + option.getName() + "=";
+    }
+
+    static final String oRYoungGenerationSize = oR(HeapPolicyOptions.YoungGenerationSize);
+    static final String oROldGenerationSize = oR(HeapPolicyOptions.OldGenerationSize);
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
