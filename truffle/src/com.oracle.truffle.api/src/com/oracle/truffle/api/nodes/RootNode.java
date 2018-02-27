@@ -396,9 +396,7 @@ public abstract class RootNode extends ExecutableNode {
      * and without a language context.
      *
      * @since 0.8 or earlier
-     * @deprecated in 0.30 instrumentable must be controlled using the InstrumentableNode interface.
      */
-    @Deprecated
     protected boolean isInstrumentable() {
         return true;
     }

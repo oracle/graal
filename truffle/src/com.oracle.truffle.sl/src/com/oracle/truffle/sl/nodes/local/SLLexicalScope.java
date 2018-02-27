@@ -62,6 +62,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 
@@ -113,7 +114,7 @@ public final class SLLexicalScope {
             block = findChildrenBlock(node);
             if (block == null) {
                 // Corrupted SL AST, no block was found
-                assert false : "Corrupted SL AST under " + node;
+                assert node.getRootNode() instanceof SLEvalRootNode : "Corrupted SL AST under " + node;
                 return new SLLexicalScope(null, null, (SLBlockNode) null);
             }
             node = null; // node is above the block
