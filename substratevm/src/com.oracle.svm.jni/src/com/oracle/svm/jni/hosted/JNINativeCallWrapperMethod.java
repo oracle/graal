@@ -185,11 +185,14 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         }
 
         if (javaReturnType.getJavaKind().isObject()) {
-            returnValue = kit.unboxHandle(returnValue);
-            returnValue = kit.castObject(returnValue, (ResolvedJavaType) javaReturnType);
+            returnValue = kit.unboxHandle(returnValue); // before destroying handles in epilogue
         }
         kit.nativeCallEpilogue(handleFrame);
         kit.rethrowPendingException();
+        if (javaReturnType.getJavaKind().isObject()) {
+            // Just before return to always run the epilogue and never suppress a pending exception
+            returnValue = kit.castObject(returnValue, (ResolvedJavaType) javaReturnType);
+        }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
         kit.mergeUnwinds();
