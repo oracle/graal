@@ -72,8 +72,8 @@ public abstract class IntegerLowerThanNode extends CompareNode {
 
     private Stamp getSucceedingStampForX(boolean mirror, boolean strict, Stamp xStampGeneric, Stamp yStampGeneric, ValueNode forX, ValueNode forY) {
         Stamp s = getSucceedingStampForX(mirror, strict, xStampGeneric, yStampGeneric);
-        if (s != null) {
-            return s;
+        if (s != null && s.isUnrestricted()) {
+            s = null;
         }
         if (forY instanceof AddNode && xStampGeneric instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
@@ -90,11 +90,15 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                 IntegerStamp result = getOp().getSucceedingStampForXLowerXPlusA(mirror, strict, aStamp);
                 result = (IntegerStamp) xStamp.tryImproveWith(result);
                 if (result != null) {
-                    return result;
+                    if (s != null) {
+                        s = s.improveWith(result);
+                    } else {
+                        s = result;
+                    }
                 }
             }
         }
-        return null;
+        return s;
     }
 
     private Stamp getSucceedingStampForX(boolean mirror, boolean strict, Stamp xStampGeneric, Stamp yStampGeneric) {

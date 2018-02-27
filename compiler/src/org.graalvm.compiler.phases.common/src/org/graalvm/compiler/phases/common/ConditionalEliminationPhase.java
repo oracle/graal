@@ -642,15 +642,15 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         /**
          * Look for a preceding guard whose condition is implied by {@code thisGuard}. If we find
          * one, try to move this guard just above that preceding guard so that we can fold it:
-         * 
+         *
          * <pre>
          *     guard(C1); // preceding guard
          *     ...
          *     guard(C2); // thisGuard
          * </pre>
-         * 
+         *
          * If C2 => C1, transform to:
-         * 
+         *
          * <pre>
          *     guard(C2);
          *     ...
@@ -699,17 +699,16 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             Block testBlock = nodeToBlock.get(n);
             if (targetBlock != null && testBlock != null) {
                 if (targetBlock == testBlock) {
-                    for (FixedNode fixed : targetBlock.getNodes()) {
+                    for (Node fixed : blockToNodes.get(targetBlock)) {
                         if (fixed == n) {
                             return true;
                         } else if (fixed == target) {
-                            return false;
+                            break;
                         }
                     }
                 } else if (AbstractControlFlowGraph.dominates(testBlock, targetBlock)) {
                     return true;
                 }
-                return false;
             }
             InputFilter v = new InputFilter(knownToBeAbove);
             n.applyInputs(v);
