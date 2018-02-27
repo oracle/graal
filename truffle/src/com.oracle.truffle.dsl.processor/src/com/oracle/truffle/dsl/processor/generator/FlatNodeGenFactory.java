@@ -238,8 +238,8 @@ class FlatNodeGenFactory {
     /* Whether a new class should be generated for specialization instance fields. */
     private boolean useSpecializationClass(SpecializationData specialization) {
         /*
-         * Children with node array require a final field. Therefore we need to always use a specialization
-         * class in this case.
+         * Children with node array require a final field. Therefore we need to always use a
+         * specialization class in this case.
          */
         for (CacheExpression expression : specialization.getCaches()) {
             if (isNodeInterfaceArray(expression.getExpression().getResolvedType())) {

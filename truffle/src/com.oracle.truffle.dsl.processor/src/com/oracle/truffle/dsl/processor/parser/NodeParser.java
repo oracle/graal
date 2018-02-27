@@ -71,7 +71,6 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
@@ -458,8 +457,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         /*
-         * Sort elements by enclosing type to ensure that duplicate static methods are used from the most
-         * concrete subtype.
+         * Sort elements by enclosing type to ensure that duplicate static methods are used from the
+         * most concrete subtype.
          */
         Collections.sort(members, new Comparator<Element>() {
             Map<TypeMirror, Set<String>> cachedQualifiedNames = new HashMap<>();

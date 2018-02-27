@@ -137,7 +137,7 @@ public class ExecutedTest {
 
         @Children @Executed BaseNode[] children;
 
-        public ChildrenNode(BaseNode... children) {
+        ChildrenNode(BaseNode... children) {
             this.children = children;
         }
 
@@ -304,7 +304,7 @@ public class ExecutedTest {
         @ExpectError("Field annotated with @Executed has duplicate name 'child0Node'. " +
                         "Executed children must have unique names.") @Child @Executed BaseNode child0Node;
 
-        public ErrorSameChildName(BaseNode child0, BaseNode child1) {
+        ErrorSameChildName(BaseNode child0, BaseNode child1) {
             super(child0);
             this.child0Node = child1;
         }
@@ -325,7 +325,7 @@ public class ExecutedTest {
 
     }
 
-    final static class ConstantNode extends BaseNode {
+    static final class ConstantNode extends BaseNode {
 
         private final Object constant;
 

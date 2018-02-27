@@ -161,8 +161,8 @@ public class SLDebugTest {
     @Test
     public void testBreakpoint() throws Throwable {
         /*
-         * Wrappers need to remain inserted for recursive functions to work for debugging. Like in this test
-         * case when the breakpoint is in the exit condition and we want to step out.
+         * Wrappers need to remain inserted for recursive functions to work for debugging. Like in
+         * this test case when the breakpoint is in the exit condition and we want to step out.
          */
         final Source factorial = slCode("function main() {\n" +
                         "  return fac(5);\n" +
