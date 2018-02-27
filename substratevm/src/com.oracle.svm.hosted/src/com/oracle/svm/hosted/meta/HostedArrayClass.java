@@ -90,4 +90,10 @@ public class HostedArrayClass extends HostedClass {
     public boolean isMember() {
         return false;
     }
+
+    @Override
+    int compareToEqualClass(HostedType other) {
+        assert getClass().equals(other.getClass());
+        return getComponentType().compareTo(other.getComponentType());
+    }
 }
