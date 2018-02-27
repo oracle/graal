@@ -247,7 +247,7 @@ public class SnippetRuntime {
     }
 
     public static final NullPointerException cachedNullPointerException = setEmptyStackTrace(new NullPointerException());
-    private static final ClassCastException cachedClassCastException = setEmptyStackTrace(new ClassCastException());
+    public static final ClassCastException cachedClassCastException = setEmptyStackTrace(new ClassCastException());
     private static final ArrayStoreException cachedArrayStoreException = setEmptyStackTrace(new ArrayStoreException());
     private static final ArithmeticException cachedArithmeticException = setEmptyStackTrace(new ArithmeticException());
     public static final ArrayIndexOutOfBoundsException cachedArrayIndexOutOfBoundsException = setEmptyStackTrace(new ArrayIndexOutOfBoundsException());
