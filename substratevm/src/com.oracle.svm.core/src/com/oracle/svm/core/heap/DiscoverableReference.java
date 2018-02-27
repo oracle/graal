@@ -23,6 +23,7 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.compiler.word.ObjectAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -91,7 +92,7 @@ public class DiscoverableReference {
      * collector, so no barriers are used.
      */
     public Pointer getReferentPointer() {
-        return ObjectAccess.readWord(this, WordFactory.signed(RAW_REFERENT_OFFSET));
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(this, WordFactory.signed(RAW_REFERENT_OFFSET)));
     }
 
     /**
@@ -99,7 +100,7 @@ public class DiscoverableReference {
      * collector, so no barriers are used.
      */
     public void setReferentPointer(Pointer value) {
-        ObjectAccess.writeWord(this, WordFactory.signed(RAW_REFERENT_OFFSET), value);
+        ObjectAccess.writeObject(this, WordFactory.signed(RAW_REFERENT_OFFSET), value.toObject());
     }
 
     /** Read access to the next field. */
