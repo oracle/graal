@@ -83,7 +83,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.internal = Boolean.valueOf(info.getProperty(prefix + "internal"));
 
         if (TruffleOptions.AOT) {
-            this.languageClass = getLanguageClass();
+            this.languageClass = loadLanguageClass();
             this.singletonLanguage = readSingleton(languageClass);
         } else {
             this.languageClass = null;
@@ -378,6 +378,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         assert TruffleOptions.AOT : "Only supported during image generation";
         ArrayList<Class<?>> list = new ArrayList<>();
         for (LanguageCache cache : nativeImageCache.values()) {
+            assert cache.languageClass != null;
             list.add(cache.languageClass);
         }
         return list;
