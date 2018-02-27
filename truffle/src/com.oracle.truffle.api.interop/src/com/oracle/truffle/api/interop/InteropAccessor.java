@@ -115,8 +115,8 @@ class InteropAccessor extends Accessor {
                         }
 
                         int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, tObj, key);
-                        if (KeyInfo.isWritable(keyInfo) || KeyInfo.isInvocable(keyInfo)) {
-                            throw new AssertionError("Invalid node object: The key " + key + " is marked as writable or invocable but node objects must not be writable or invocable.");
+                        if (KeyInfo.isWritable(keyInfo)) {
+                            throw new AssertionError("Invalid node object: The key " + key + " is marked as writable but node objects must not be writable.");
                         }
                     }
                     Node node = Message.HAS_SIZE.createNode();
