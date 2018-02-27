@@ -788,7 +788,7 @@ public class ElementUtils {
         return resolveAnnotationValue(expectedType, getAnnotationValue(mirror, name));
     }
 
-    private static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
+    public static <T> T resolveAnnotationValue(Class<T> expectedType, AnnotationValue value) {
         if (value == null) {
             return null;
         }

@@ -40,7 +40,6 @@ import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
 public class NodeData extends Template implements Comparable<NodeData> {
 
     private final String nodeId;
-    private final String shortName;
     private final List<NodeData> enclosingNodes = new ArrayList<>();
     private NodeData declaringNode;
 
@@ -61,21 +60,20 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private TypeMirror frameType;
     private boolean reflectable;
 
-    public NodeData(ProcessorContext context, TypeElement type, String shortName, TypeSystemData typeSystem, boolean generateFactory) {
+    public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
         this.nodeId = ElementUtils.getSimpleName(type);
-        this.shortName = shortName;
         this.typeSystem = typeSystem;
         this.fields = new ArrayList<>();
         this.children = new ArrayList<>();
         this.childExecutions = new ArrayList<>();
-        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE), -1, -1);
+        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE, null), -1, -1);
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
     }
 
     public NodeData(ProcessorContext context, TypeElement type) {
-        this(context, type, null, null, false);
+        this(context, type, null, false);
     }
 
     public boolean isGenerateFactory() {
@@ -173,10 +171,6 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return casts;
     }
 
-    public String getShortName() {
-        return shortName;
-    }
-
     public List<NodeFieldData> getFields() {
         return fields;
     }
@@ -271,7 +265,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         }
 
         for (NodeExecutionData execution : childExecutions) {
-            if (execution.getName().equals(childName) && (execution.getChildIndex() == -1 || execution.getChildIndex() == index)) {
+            if (execution.getName().equals(childName) && (execution.getChildArrayIndex() == -1 || execution.getChildArrayIndex() == index)) {
                 return execution;
             }
         }
