@@ -37,8 +37,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorIns
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 /**
- * Base class for tags. A tag subclass can be used to {@link InstrumentableNode#hasTag(Class)} mark
- * AST nodes can be .
+ * Base class for tags used in the Truffle instrumentation framework.
  *
  * @see StandardTags For the standard set of tags
  * @see #findProvidedTag(LanguageInfo, String) to find a provided tag of a language
