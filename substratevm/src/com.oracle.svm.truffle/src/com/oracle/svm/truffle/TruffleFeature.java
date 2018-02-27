@@ -115,7 +115,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.Profile;
@@ -319,8 +318,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean hosted) {
         /*
-         * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
-         * that we get exact types for fields that store profiles.
+         * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so that we
+         * get exact types for fields that store profiles.
          */
         Registration r = new Registration(invocationPlugins, Profile.class);
         r.register0("isProfilingEnabled", new InvocationPlugin() {
@@ -369,6 +368,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         return true;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
@@ -376,7 +376,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         getLanguageClasses().forEach(config::registerForReflectiveInstantiation);
 
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
-        config.registerHierarchyForReflectiveInstantiation(InstrumentableFactory.class);
+        config.registerHierarchyForReflectiveInstantiation(com.oracle.truffle.api.instrumentation.InstrumentableFactory.class);
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
@@ -417,15 +417,15 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             initializeMethodBlacklist(config.getMetaAccess());
 
             /*
-             * Stack frames that are visited by Truffle-level stack walking must have full frame
-             * information available, otherwise SubstrateStackIntrospection cannot visit them.
+             * Stack frames that are visited by Truffle-level stack walking must have full frame information
+             * available, otherwise SubstrateStackIntrospection cannot visit them.
              */
             for (ResolvedJavaMethod method : truffleRuntime.getAnyFrameMethod()) {
                 graalFeature.requireFrameInformationForMethod(method);
                 /*
-                 * To avoid corner case errors, we also force compilation of these methods. This
-                 * only affects builds where no Truffle language is included, because any real
-                 * language makes these methods reachable (and therefore compiled).
+                 * To avoid corner case errors, we also force compilation of these methods. This only affects builds
+                 * where no Truffle language is included, because any real language makes these methods reachable
+                 * (and therefore compiled).
                  */
                 config.registerAsCompiled((AnalysisMethod) method);
             }
@@ -493,9 +493,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private boolean isBlacklisted(ResolvedJavaMethod method) {
         if (method.isSynchronized() && method.getName().equals("fillInStackTrace")) {
             /*
-             * We do not want anything related to Throwable.fillInStackTrace in the image. For
-             * simplicity, we just check the method name and not the declaring class too, but it is
-             * unlikely that some non-exception method is called "fillInStackTrace".
+             * We do not want anything related to Throwable.fillInStackTrace in the image. For simplicity, we
+             * just check the method name and not the declaring class too, but it is unlikely that some
+             * non-exception method is called "fillInStackTrace".
              */
             return true;
         }
@@ -545,8 +545,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         blacklistAllMethods(metaAccess, Hashtable.class);
 
         /*
-         * Core Substrate VM classes that very certainly should not be reachable for runtime
-         * compilation. Warn when they get reachable to detect explosion of reachable methods.
+         * Core Substrate VM classes that very certainly should not be reachable for runtime compilation.
+         * Warn when they get reachable to detect explosion of reachable methods.
          */
         warnAllMethods(metaAccess, JavaStackWalker.class);
         warnAllMethods(metaAccess, Deoptimizer.class);
@@ -573,9 +573,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private void warnAllMethods(MetaAccessProvider metaAccess, Class<?> clazz) {
         for (Executable m : clazz.getDeclaredMethods()) {
             /*
-             * Filter out methods that are, e.g., only present on a certain platform. We do not need
-             * all methods in the warning list, just enough to trigger the warnings. Accessors are
-             * generally allowed too.
+             * Filter out methods that are, e.g., only present on a certain platform. We do not need all methods
+             * in the warning list, just enough to trigger the warnings. Accessors are generally allowed too.
              */
             if (m.getAnnotations().length == 0 && !m.getName().startsWith("get") && !m.getName().startsWith("set")) {
                 warnMethods.add(metaAccess.lookupJavaMethod(m));
@@ -616,8 +615,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         if (warnViolations.size() > 0) {
             /*
-             * It is enough to print one warning message with one stack trace. Take the shortest
-             * stack trace.
+             * It is enough to print one warning message with one stack trace. Take the shortest stack trace.
              */
             GraalFeature.CallTreeNode printNode = null;
             int printLength = Integer.MAX_VALUE;
@@ -653,13 +651,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         if (Options.TruffleCheckFrameImplementation.getValue() && useTruffleCompiler()) {
             /*
-             * Check that only one Frame implementation is seen as instantiated by the static
-             * analysis. That allows de-virtualization of all calls to Frame methods in the
-             * interpreter.
+             * Check that only one Frame implementation is seen as instantiated by the static analysis. That
+             * allows de-virtualization of all calls to Frame methods in the interpreter.
              *
              * The DefaultTruffleRuntime uses multiple Frame implementations (DefaultVirtualFrame,
-             * DefaultMaterializedFrame, ReadOnlyFrame) to detect wrong usages of the Frame API, so
-             * we can only check when running with compilation enabled.
+             * DefaultMaterializedFrame, ReadOnlyFrame) to detect wrong usages of the Frame API, so we can only
+             * check when running with compilation enabled.
              */
             Optional<? extends ResolvedJavaType> optionalFrameType = access.getMetaAccess().optionalLookupJavaType(Frame.class);
             if (optionalFrameType.isPresent()) {
@@ -695,12 +692,12 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl {
 
     /**
-     * Truffle code can run during image generation, i.e., one or many contexts can be used during
-     * image generation. Truffle optimizes the case where only one context is ever created, and also
-     * stores additional information regarding which thread or threads used the context. We need to
-     * start with a completely fresh specialization state. To simplify that, all static state that
-     * stores context information is abstracted in the SingleContextState class, and it is enough to
-     * recompute a single static field to a new SingleContextState instance.
+     * Truffle code can run during image generation, i.e., one or many contexts can be used during image
+     * generation. Truffle optimizes the case where only one context is ever created, and also stores
+     * additional information regarding which thread or threads used the context. We need to start with
+     * a completely fresh specialization state. To simplify that, all static state that stores context
+     * information is abstracted in the SingleContextState class, and it is enough to recompute a single
+     * static field to a new SingleContextState instance.
      */
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.api.vm.PolyglotContextImpl$SingleContextState", isFinal = true) //
     static Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState SINGLE_CONTEXT_STATE;
