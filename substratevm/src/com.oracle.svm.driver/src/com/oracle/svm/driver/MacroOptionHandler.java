@@ -26,6 +26,7 @@ import java.util.Queue;
 
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -42,8 +43,10 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             String languagesRaw = headArg.substring(polyglotPrefix.length());
             try {
                 nativeImage.optionRegistry.enableOptions(languagesRaw.replace(',', ' '), MacroOptionKind.Language);
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
+            } catch (VerboseInvalidMacroException e1) {
+                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
+            } catch (InvalidMacroException e2) {
+                NativeImage.showError(e2.getMessage());
             }
             args.poll();
             return true;
@@ -54,6 +57,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             String toolString = headArg.substring(toolsPrefix.length());
             try {
                 nativeImage.optionRegistry.enableOptions(toolString, MacroOptionKind.Tool);
+            } catch (VerboseInvalidMacroException e1) {
+                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
             } catch (InvalidMacroException e) {
                 NativeImage.showError(e.getMessage());
             }
@@ -68,6 +73,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.optionRegistry.enableOptions(langString, MacroOptionKind.Language);
                 args.poll();
                 return true;
+            } catch (VerboseInvalidMacroException e1) {
+                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
             } catch (InvalidMacroException e) {
                 NativeImage.showError(e.getMessage());
             }

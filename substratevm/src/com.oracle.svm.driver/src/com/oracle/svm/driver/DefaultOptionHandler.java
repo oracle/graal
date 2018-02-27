@@ -46,6 +46,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "-help":
                 args.poll();
                 nativeImage.showMessage(NativeImage.buildContext().helpText);
+                nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
+                nativeImage.showMessage("");
                 System.exit(0);
                 return true;
             case "-version":

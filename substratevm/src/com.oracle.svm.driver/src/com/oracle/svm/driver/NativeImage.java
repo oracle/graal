@@ -476,10 +476,10 @@ class NativeImage {
             nativeImage.prepareImageBuildArgs();
             nativeImage.completeImageBuildArgs(args);
         } catch (NativeImageError e) {
-            nativeImage.show(System.err::println, "Error: " + e.getMessage());
+            NativeImage.show(System.err::println, "Error: " + e.getMessage());
             Throwable cause = e.getCause();
             while (cause != null) {
-                nativeImage.show(System.err::println, "Caused by: " + cause);
+                NativeImage.show(System.err::println, "Caused by: " + cause);
                 cause = cause.getCause();
             }
             System.exit(1);
@@ -613,10 +613,8 @@ class NativeImage {
         throw new NativeImageError(message, cause);
     }
 
-    private void show(Consumer<String> printFunc, String message) {
-        String result = message;
-        result = result.replaceAll("\\$\\{TOOL_NAME\\}", executablePath.getFileName().toString());
-        printFunc.accept(result);
+    private static void show(Consumer<String> printFunc, String message) {
+        printFunc.accept(message);
     }
 
     static List<Path> getJars(Path dir) {
