@@ -117,6 +117,14 @@ public final class Function implements ParserListener {
         this.paramAttributes = paramAttributes;
     }
 
+    public void setupScope() {
+        scope.startLocalScope(function);
+        final FunctionType functionType = function.getType();
+        for (Type argType : functionType.getArgumentTypes()) {
+            scope.addSymbol(function.createParameter(argType), argType);
+        }
+    }
+
     @Override
     public ParserListener enter(Block block) {
         switch (block) {

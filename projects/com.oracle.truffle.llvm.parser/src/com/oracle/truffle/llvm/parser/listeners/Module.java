@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
+import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
@@ -45,6 +46,7 @@ import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
 import com.oracle.truffle.llvm.parser.records.ModuleRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -218,16 +220,7 @@ public final class Module implements ParserListener {
                 return new Constants(types, scope);
 
             case FUNCTION: {
-                if (functionQueue.isEmpty()) {
-                    throw new RuntimeException("Missing Function Prototype in Bitcode File!");
-                }
-                final FunctionDefinition functionDefinition = functionQueue.removeFirst();
-                scope.startLocalScope(functionDefinition);
-                final FunctionType functionType = functionDefinition.getType();
-                for (Type argType : functionType.getArgumentTypes()) {
-                    scope.addSymbol(functionDefinition.createParameter(argType), argType);
-                }
-                return new Function(scope, types, functionDefinition, mode, paramAttributes);
+                throw new IllegalStateException("Functions must be parsed lazily!");
             }
 
             case TYPE:
@@ -245,6 +238,21 @@ public final class Module implements ParserListener {
 
             default:
                 return ParserListener.DEFAULT;
+        }
+    }
+
+    @Override
+    public void skip(Block block, LLVMScanner.LazyScanner lazyScanner) {
+        if (block == Block.FUNCTION) {
+            if (functionQueue.isEmpty()) {
+                throw new RuntimeException("Missing Function Prototype in Bitcode File!");
+            }
+            final FunctionDefinition definition = functionQueue.removeFirst();
+            final Function parser = new Function(scope, types, definition, mode, paramAttributes);
+            module.addFunctionParser(definition, new LazyFunctionParser(lazyScanner, parser));
+
+        } else {
+            ParserListener.super.skip(block, lazyScanner);
         }
     }
 

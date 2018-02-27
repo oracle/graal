@@ -29,11 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -49,6 +44,7 @@ import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
+import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
@@ -62,6 +58,11 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
+
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LLVMParserRuntime runtime;
     private final LLVMContext context;
@@ -71,10 +72,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final FrameDescriptor frame;
     private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
+    private final LazyFunctionParser parser;
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
-                    Map<InstructionBlock, List<Phi>> phis,
-                    Map<String, Integer> labels) {
+                               Map<InstructionBlock, List<Phi>> phis,
+                               Map<String, Integer> labels, LazyFunctionParser parser) {
         this.runtime = runtime;
         this.context = context;
         this.nodeFactory = nodeFactory;
@@ -83,11 +85,14 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         this.frame = frame;
         this.phis = phis;
         this.labels = labels;
+        this.parser = parser;
     }
 
     @Override
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
+
+        parser.parse();
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);

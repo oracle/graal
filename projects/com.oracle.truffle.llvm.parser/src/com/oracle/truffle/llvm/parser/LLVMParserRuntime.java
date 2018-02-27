@@ -29,12 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -45,6 +39,7 @@ import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
@@ -55,10 +50,10 @@ import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -72,6 +67,11 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 public final class LLVMParserRuntime {
     private static final String CONSTRUCTORS_VARNAME = "@llvm.global_ctors";
@@ -97,7 +97,8 @@ public final class LLVMParserRuntime {
         context.setDataLayoutConverter(targetDataLayout);
 
         LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, stack, nodeFactory, module.getAliases());
-        runtime.registerFunctions(phiManager, labels, module.getFunctions());
+
+        runtime.registerFunctions(phiManager, labels, model);
 
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, labels);
         LLVMExpressionNode[] globals = runtime.createGlobalVariableInitializationNodes(symbolResolver, module.getGlobals());
@@ -168,12 +169,12 @@ public final class LLVMParserRuntime {
         return library;
     }
 
-    private void registerFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, List<FunctionDefinition> functions) {
-        for (FunctionDefinition function : functions) {
-            registerFunction(phiManager, labels, function);
+    private void registerFunctions(LLVMPhiManager phiManager, LLVMLabelList labels, ModelModule model) {
+        for (FunctionDefinition function : model.getDefinedFunctions()) {
+            registerFunction(phiManager, labels, function, model.getFunctionParser(function));
         }
 
-        for (Entry<GlobalAlias, SymbolImpl> entry : aliases.entrySet()) {
+        for (Map.Entry<GlobalAlias, SymbolImpl> entry : aliases.entrySet()) {
             GlobalAlias alias = entry.getKey();
             SymbolImpl value = entry.getValue();
             if (value instanceof FunctionDefinition) {
@@ -182,12 +183,12 @@ public final class LLVMParserRuntime {
         }
     }
 
-    private void registerFunction(LLVMPhiManager phiManager, LLVMLabelList labels, FunctionDefinition function) {
+    private void registerFunction(LLVMPhiManager phiManager, LLVMLabelList labels, FunctionDefinition function, LazyFunctionParser lazyParser) {
         LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, function.getName(), !Linkage.isFileLocal(function.getLinkage()),
                         index -> LLVMFunctionDescriptor.createDescriptor(context, library, function.getName(), function.getType(), index));
         boolean replaceExistingFunction = checkReplaceExistingFunction(functionDescriptor);
         LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(function.getName()),
-                        phiManager.getPhiMap(function.getName()), labels.labels(function.getName()));
+                        phiManager.getPhiMap(function.getName()), labels.labels(function.getName()), lazyParser);
         functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
     }
 

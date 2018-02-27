@@ -181,7 +181,7 @@ public final class SourceModel {
         }
     }
 
-    private static final class SymbolParser implements FunctionVisitor, InstructionVisitorAdapter, ModelVisitor {
+    private static final class SymbolParser implements ModelVisitor {
 
         private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
             if (holder.hasAttachedMetadata()) {
@@ -194,13 +194,6 @@ public final class SourceModel {
 
         private final Cache cache;
         private final Source bitcodeSource;
-
-        private final LinkedList<Integer> removeFromBlock = new LinkedList<>();
-        private int blockInstIndex = 0;
-        private DbgValueInstruction lastDbgValue = null;
-
-        private SourceFunction currentFunction = null;
-        private InstructionBlock currentBlock = null;
 
         private SymbolParser(Cache cache, Source bitcodeSource) {
             this.cache = cache;
@@ -223,17 +216,11 @@ public final class SourceModel {
                 scope = LLVMSourceLocation.createBitcodeFunction(function.getName(), simpleSection);
             }
 
-            currentFunction = new SourceFunction(scope);
-
-            function.accept((FunctionVisitor) this);
-            function.setSourceFunction(currentFunction);
-
-            for (SourceVariable local : currentFunction.getVariables()) {
+            final SourceFunction sourceFunction = new SourceFunction(scope);
+            function.setSourceFunction(sourceFunction);
+            for (SourceVariable local : sourceFunction.getVariables()) {
                 local.processFragments();
             }
-
-            cache.endLocalScope();
-            currentFunction = null;
         }
 
         private void visitGlobal(GlobalValueSymbol global) {
@@ -275,6 +262,22 @@ public final class SourceModel {
         public void visit(GlobalVariable variable) {
             visitGlobal(variable);
         }
+    }
+
+    private static final class FunctionParser implements FunctionVisitor, InstructionVisitorAdapter {
+
+        private final SourceFunction function;
+        private final Cache cache;
+
+        private final LinkedList<Integer> removeFromBlock = new LinkedList<>();
+        private int blockInstIndex = 0;
+        private DbgValueInstruction lastDbgValue = null;
+        private InstructionBlock currentBlock = null;
+
+        private FunctionParser(SourceFunction function, Cache cache) {
+            this.function = function;
+            this.cache = cache;
+        }
 
         @Override
         public void visit(InstructionBlock block) {
@@ -297,7 +300,7 @@ public final class SourceModel {
             if (loc != null) {
                 final LLVMSourceLocation scope = cache.buildLocation(loc);
                 if (scope != null) {
-                    currentFunction.addInstruction(instruction, scope);
+                    function.addInstruction(instruction, scope);
                 }
             }
         }
@@ -330,7 +333,7 @@ public final class SourceModel {
                 final MDBaseNode mdLocal = ((MetadataSymbol) varSymbol).getNode();
 
                 final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdLocal, false);
-                return currentFunction.getLocal(symbol);
+                return function.getLocal(symbol);
             }
 
             return null;

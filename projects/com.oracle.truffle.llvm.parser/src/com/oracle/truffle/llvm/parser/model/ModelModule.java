@@ -29,20 +29,23 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class ModelModule {
 
@@ -58,6 +61,7 @@ public final class ModelModule {
     private final List<String> libraries = new ArrayList<>();
     private final List<String> paths = new ArrayList<>();
     private final SourceModel sourceModel = new SourceModel();
+    private final Map<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
     private TargetDataLayout targetDataLayout = defaultLayout;
 
     public ModelModule() {
@@ -88,6 +92,18 @@ public final class ModelModule {
 
     public void addFunctionDefinition(FunctionDefinition definition) {
         defines.add(definition);
+    }
+
+    public List<FunctionDefinition> getDefinedFunctions() {
+        return defines;
+    }
+
+    public void addFunctionParser(FunctionDefinition definition, LazyFunctionParser parser) {
+        lazyFunctionParsers.put(definition, parser);
+    }
+
+    public LazyFunctionParser getFunctionParser(FunctionDefinition functionDefinition) {
+        return lazyFunctionParsers.get(functionDefinition);
     }
 
     public void addGlobalType(Type type) {

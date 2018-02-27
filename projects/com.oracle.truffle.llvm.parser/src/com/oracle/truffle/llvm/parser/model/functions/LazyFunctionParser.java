@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.listeners;
+package com.oracle.truffle.llvm.parser.model.functions;
 
-import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.parser.listeners.Function;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 
-public interface ParserListener {
+public final class LazyFunctionParser {
 
-    default ParserListener enter(@SuppressWarnings("unused") Block block) {
-        return this;
+    private final LLVMScanner.LazyScanner scanner;
+    private final Function parser;
+
+    private boolean isParsed;
+
+    public LazyFunctionParser(LLVMScanner.LazyScanner scanner, Function parser) {
+        this.scanner = scanner;
+        this.parser = parser;
+        this.isParsed = false;
     }
 
-    default void skip(Block block, @SuppressWarnings("unused") LLVMScanner.LazyScanner lazyScanner) {
-        throw new AssertionError("Block not supported for lazy parsing: " + block);
+    public void parse() {
+        if (!isParsed) {
+            parser.setupScope();
+            scanner.scanBlock(parser);
+            isParsed = true;
+        }
     }
-
-    default void exit() {
-    }
-
-    void record(long id, long[] args);
-
-    ParserListener DEFAULT = (id, args) -> {
-    };
 }

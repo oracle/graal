@@ -29,12 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.model.functions;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
@@ -42,6 +36,7 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
@@ -55,9 +50,16 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class FunctionDefinition implements Constant, ValueSymbol, MetadataAttachmentHolder {
+
+    private static final InstructionBlock[] EMPTY = new InstructionBlock[0];
 
     private final List<FunctionParameter> parameters = new ArrayList<>();
     private final FunctionType type;
@@ -67,7 +69,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     private List<MDAttachment> mdAttachments = null;
     private SourceFunction sourceFunction = SourceModel.DEFAULT_FUNCTION;
 
-    private InstructionBlock[] blocks = new InstructionBlock[0];
+    private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;
     private String name;
 
