@@ -250,7 +250,7 @@ public interface InstrumentableNode extends NodeInterface {
      * @param materializedTags a set of tags that requested to be materialized
      * @since 0.32
      */
-    default InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+    default InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         return this;
     }
 
@@ -525,7 +525,7 @@ class InstrumentableNodeSnippets {
         }
 
         // desguar to restore syntactic structure of the AST
-        public InstrumentableNode materializeSyntaxNodes(
+        public InstrumentableNode materializeInstrumentableNodes(
                         Set<Class<? extends Tag>> tags) {
             if (tags.contains(StandardTags.ExpressionTag.class)) {
                 return new IncrementNode(

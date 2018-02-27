@@ -943,7 +943,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             super(children);
         }
 
-        public InstrumentableNode materializeSyntaxNodes(Set<Class<? extends Tag>> materializedTags) {
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(StandardTags.ExpressionTag.class)) {
                 MaterializedChildExpressionNode materializedNode = new MaterializedChildExpressionNode(getSourceSection(), children);
                 materializedNode.setSourceSection(getSourceSection());

@@ -988,7 +988,7 @@ final class InstrumentationHandler {
                 InstrumentableNode currentNode = (InstrumentableNode) instrumentableNode;
                 assert currentNode.isInstrumentable();
                 Set<Class<? extends Tag>> materializeTags = (Set<Class<? extends Tag>>) (materializeLimitedTags == null ? providedTags : materializeLimitedTags);
-                InstrumentableNode materializedNode = currentNode.materializeSyntaxNodes(materializeTags);
+                InstrumentableNode materializedNode = currentNode.materializeInstrumentableNodes(materializeTags);
                 if (currentNode != materializedNode) {
                     if (!(materializedNode instanceof Node)) {
                         throw new IllegalStateException("The returned materialized syntax node is not a Truffle Node.");
