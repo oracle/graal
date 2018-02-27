@@ -187,8 +187,8 @@ final class ShadowStack {
     static final class ThreadLocalStack {
 
         /*
-         * Window in which we look ahead and before the current stack index to find the potentially changed
-         * top of stack index, after copying.
+         * Window in which we look ahead and before the current stack index to find the potentially
+         * changed top of stack index, after copying.
          */
         private static final int CORRECTION_WINDOW = 5;
 

@@ -97,7 +97,8 @@ public abstract class ExecutionEventNode extends Node {
      * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} is
      * successfully executed. The order in which multiple event listeners are notified matches the
      * order they are
-     * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.
+     * {@link Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
+     * attached}.
      *
      * @param frame the frame that was used for executing instrumented node
      * @since 0.12
@@ -109,7 +110,8 @@ public abstract class ExecutionEventNode extends Node {
      * Invoked immediately after an {@link EventContext#getInstrumentedNode() instrumented node} did
      * not successfully execute. The order in which multiple event listeners are notified matches
      * the order they are
-     * {@link Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener) attached}.
+     * {@link Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
+     * attached}.
      *
      * @param frame the frame that was used for executing instrumented node
      * @param exception the exception that occurred during the node's execution

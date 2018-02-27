@@ -51,8 +51,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * </p>
  *
  * @param <T> subscriber type: {@link ExecutionEventListener} or {@link ExecutionEventNodeFactory}.
- * @see Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener)
- * @see Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
+ * @see Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
+ * @see Instrumenter#attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)
  *
  * @since 0.12
  */

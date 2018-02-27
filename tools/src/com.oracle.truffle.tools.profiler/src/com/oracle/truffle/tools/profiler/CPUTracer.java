@@ -116,8 +116,8 @@ public final class CPUTracer implements Closeable {
     }
 
     /**
-     * Sets the {@link SourceSectionFilter filter} for the tracer. This allows the tracer to trace only
-     * parts of the executed source code.
+     * Sets the {@link SourceSectionFilter filter} for the tracer. This allows the tracer to trace
+     * only parts of the executed source code.
      *
      * @param filter The filter describing which part of the source code to trace
      * @since 0.30
@@ -233,7 +233,8 @@ public final class CPUTracer implements Closeable {
         }
 
         /**
-         * @return A set of tags for the {@link SourceLocation} associated with this {@link ProfilerNode}
+         * @return A set of tags for the {@link SourceLocation} associated with this
+         *         {@link ProfilerNode}
          * @since 0.30
          */
         public Set<Class<?>> getTags() {

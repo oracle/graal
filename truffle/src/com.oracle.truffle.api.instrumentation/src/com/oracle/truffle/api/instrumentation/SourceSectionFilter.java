@@ -45,8 +45,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * them by calling {@link Builder#build()}.
  *
  * @see SourceSectionFilter#newBuilder()
- * @see Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
- * @see Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener)
+ * @see Instrumenter#attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)
+ * @see Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
  * @since 0.12
  */
 public final class SourceSectionFilter {
