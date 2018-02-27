@@ -198,6 +198,9 @@ public class TruffleCompilerOptions {
     @Option(help = "Should forced splits be allowed (when using pollution based splitting)", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleAllowForcedSplits = new OptionKey<>(false);
 
+    @Option(help = "What percent of the splitting budget can be used up by each call target.", type = OptionType.Expert)
+    public static final OptionKey<Double> TruffleSplittingSingleTargetBudget = new OptionKey<>(0.2);
+
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);
 

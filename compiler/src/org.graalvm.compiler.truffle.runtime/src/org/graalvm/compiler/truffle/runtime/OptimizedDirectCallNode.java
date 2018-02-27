@@ -165,6 +165,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             if (TruffleCompilerOptions.getValue(TruffleDirectTraceSplitting)) {
                 TruffleSplittingStrategy.logSplitOf(this);
             }
+            currentTarget.splitCount++;
             OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
             splitTarget.setCallSiteForSplit(this);
 
