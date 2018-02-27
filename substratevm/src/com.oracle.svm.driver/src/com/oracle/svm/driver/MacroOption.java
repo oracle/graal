@@ -42,13 +42,13 @@ final class MacroOption {
     enum MacroOptionKind {
         Language("languages") {
             @Override
-            protected String show(MacroOption option, boolean commandLineStyle) {
+            protected String getOptionDescription(MacroOption option, boolean commandLineStyle) {
                 return (commandLineStyle ? "--" : name() + ":") + option.getOptionName();
             }
         },
         Tool("tools") {
             @Override
-            protected String show(MacroOption option, boolean commandLineStyle) {
+            protected String getOptionDescription(MacroOption option, boolean commandLineStyle) {
                 return (commandLineStyle ? "--tool." : name() + ":") + option.getOptionName();
             }
         },
@@ -61,7 +61,7 @@ final class MacroOption {
         }
 
         @SuppressWarnings("unused")
-        protected String show(MacroOption option, boolean commandLineStyle) {
+        protected String getOptionDescription(MacroOption option, boolean commandLineStyle) {
             return "";
         }
 
@@ -87,8 +87,8 @@ final class MacroOption {
         return optionName;
     }
 
-    String show(boolean commandLineStyle) {
-        return kind.show(this, commandLineStyle);
+    String getDescription(boolean commandLineStyle) {
+        return kind.getOptionDescription(this, commandLineStyle);
     }
 
     @SuppressWarnings("serial")
@@ -117,7 +117,7 @@ final class MacroOption {
         public String getMessage(Registry registry) {
             StringBuilder sb = new StringBuilder();
             if (context != null) {
-                sb.append(context.show(false) + " contains ");
+                sb.append(context.getDescription(false) + " contains ");
             }
             Consumer<String> lineOut = s -> sb.append(s + "\n");
             lineOut.accept(super.getMessage());
@@ -232,7 +232,7 @@ final class MacroOption {
                     continue;
                 }
                 for (MacroOption option : supported.get(kind).values()) {
-                    String showEntry = option.show(commandLineStyle);
+                    String showEntry = option.getDescription(commandLineStyle);
                     if (!showEntry.isEmpty()) {
                         optionsToShow.add("    " + showEntry);
                     }
