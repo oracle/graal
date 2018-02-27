@@ -22,9 +22,13 @@
  */
 package com.oracle.svm.driver;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -50,19 +54,57 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.posix.PosixExecutableName;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 
 class NativeImage {
+
+    private static String getPlatform() {
+        if (Platform.includedIn(Platform.DARWIN_AMD64.class)) {
+            return "darwin-amd64";
+        }
+        if (Platform.includedIn(Platform.LINUX_AMD64.class)) {
+            return "linux-amd64";
+        }
+        throw VMError.shouldNotReachHere();
+    }
+
+    static final String platform = getPlatform();
+    static final String svmVersion = System.getProperty("substratevm.version");
+
+    private static String getGraalVMVersion() {
+        String tmpGraalVmVersion = System.getProperty("org.graalvm.version");
+        if (tmpGraalVmVersion == null) {
+            tmpGraalVmVersion = System.getProperty("graalvm.version");
+        }
+        if (tmpGraalVmVersion == null) {
+            throw new RuntimeException("Could not find GraalVM version in graalvm.version or org.graalvm.version");
+        }
+        return tmpGraalVmVersion;
+    }
+
+    static final String graalvmVersion = getGraalVMVersion();
+
+    static String getResource(String resourceName) {
+        try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            return reader.lines().collect(Collectors.joining("\n"));
+        } catch (IOException e) {
+            VMError.shouldNotReachHere(e);
+        }
+        return null;
+    }
+
+    private static final String usageText = getResource("/Usage.txt");
 
     abstract static class OptionHandler<T extends NativeImage> {
         protected final T nativeImage;
@@ -139,7 +181,7 @@ class NativeImage {
         assert executablePath != null;
         Path binDir = executablePath.getParent();
         Path rootDirCandidate = binDir.getParent();
-        if (rootDirCandidate.endsWith(buildContext().platform)) {
+        if (rootDirCandidate.endsWith(platform)) {
             rootDirCandidate = rootDirCandidate.getParent();
         }
         rootDir = rootDirCandidate;
@@ -166,10 +208,10 @@ class NativeImage {
 
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
 
-        addImageBuilderJavaArgs("-Dsubstratevm.version=" + buildContext().svmVersion);
-        if (buildContext().graalvmVersion != null) {
-            addImageBuilderJavaArgs("-Dgraalvm.version=" + buildContext().graalvmVersion);
-            addImageBuilderJavaArgs("-Dorg.graalvm.version=" + buildContext().graalvmVersion);
+        addImageBuilderJavaArgs("-Dsubstratevm.version=" + svmVersion);
+        if (graalvmVersion != null) {
+            addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
+            addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         }
 
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -224,7 +266,7 @@ class NativeImage {
         Path svmDir = getRootDir().resolve("lib/svm");
         getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
         getJars(svmDir).forEach(this::addImageClasspath);
-        Path clibrariesDir = svmDir.resolve("clibraries").resolve(buildContext().platform);
+        Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
         addImageBuilderArg(oHCLibraryPath + clibrariesDir);
         if (Files.isDirectory(svmDir.resolve("inspect"))) {
             addImageBuilderArg(oHInspectServerContentPath + svmDir.resolve("inspect"));
@@ -469,7 +511,7 @@ class NativeImage {
 
         try {
             if (args.length == 0) {
-                nativeImage.showMessage(buildContext().usageText);
+                nativeImage.showMessage(usageText);
                 System.exit(0);
             }
 
@@ -484,11 +526,6 @@ class NativeImage {
             }
             System.exit(1);
         }
-    }
-
-    @Fold
-    static NativeImageBuildContext buildContext() {
-        return ImageSingletons.lookup(NativeImageBuildContext.class);
     }
 
     private Path canonicalize(Path path) {

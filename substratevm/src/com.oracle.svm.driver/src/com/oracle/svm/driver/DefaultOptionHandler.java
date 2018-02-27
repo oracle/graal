@@ -34,6 +34,9 @@ import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
+    static final String helpText = NativeImage.getResource("/Help.txt");
+    static final String helpTextX = NativeImage.getResource("/HelpX.txt");
+
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
     }
@@ -45,7 +48,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "-?":
             case "-help":
                 args.poll();
-                nativeImage.showMessage(NativeImage.buildContext().helpText);
+                nativeImage.showMessage(helpText);
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
                 nativeImage.showMessage("");
                 System.exit(0);
@@ -53,13 +56,13 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "-version":
                 args.poll();
                 nativeImage.showMessage("SubstrateVM Version Info");
-                nativeImage.showMessage(NativeImage.buildContext().svmVersion.replace(',', '\n'));
-                nativeImage.showMessage("GraalVM Version " + NativeImage.buildContext().graalvmVersion);
+                nativeImage.showMessage(NativeImage.svmVersion.replace(',', '\n'));
+                nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
             case "-X":
                 args.poll();
-                nativeImage.showMessage(NativeImage.buildContext().helpTextX);
+                nativeImage.showMessage(helpTextX);
                 System.exit(0);
                 return true;
             case "-cp":
