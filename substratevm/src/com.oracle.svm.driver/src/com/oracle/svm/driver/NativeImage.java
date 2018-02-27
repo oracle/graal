@@ -126,6 +126,7 @@ class NativeImage {
     static final String oHCLibraryPath = oH + "CLibraryPath=";
     static final String oHOptimize = oH + "Optimize=";
     static final String oHDebug = oH + "Debug=";
+    static final String enablePrintFlags = "+PrintFlags";
 
     /* Boolean arguments */
     static final String RuntimeAssertions = "RuntimeAssertions";
@@ -421,8 +422,9 @@ class NativeImage {
         String mainClass = consolidateArgs(imageBuilderArgs, oHClass, Function.identity(), Function.identity(), () -> null, takeLast);
         String imageKind = consolidateArgs(imageBuilderArgs, oHKind, Function.identity(), Function.identity(), () -> null, takeLast);
         boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
+        boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
-        if (buildExecutable) {
+        if (buildExecutable && !printFlags) {
             List<String> extraImageArgs = new ArrayList<>();
             ListIterator<String> leftoverArgsItr = leftoverArgs.listIterator();
             while (leftoverArgsItr.hasNext()) {
@@ -431,6 +433,9 @@ class NativeImage {
                     leftoverArgsItr.remove();
                     extraImageArgs.add(leftoverArg);
                 }
+            }
+            if (!leftoverArgs.isEmpty()) {
+                showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unhandled leftover args: [", "]")));
             }
 
             /* Main-class from customImageBuilderArgs counts as explicitMainClass */
@@ -463,10 +468,6 @@ class NativeImage {
                 /* extraImageArgs executable name overrules previous specification */
                 replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
             }
-        }
-
-        if (!leftoverArgs.isEmpty()) {
-            showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unhandled leftover args: [", "]")));
         }
 
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);

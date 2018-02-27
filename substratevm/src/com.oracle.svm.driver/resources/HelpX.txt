@@ -1,6 +1,6 @@
 Non-standard options help:
 
-   -image-options-list    lists advanced image build options
+   -expert-options        lists image build options for experts
 
    -debug-attach[=<port>] attach to debugger during image building (default
                           port is 8000)

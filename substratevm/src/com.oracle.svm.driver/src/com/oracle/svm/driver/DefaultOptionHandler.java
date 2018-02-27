@@ -104,6 +104,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
                 return true;
+            case "-expert-options":
+                args.poll();
+                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
+                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
+                return true;
         }
 
         String debugAttach = "-debug-attach";

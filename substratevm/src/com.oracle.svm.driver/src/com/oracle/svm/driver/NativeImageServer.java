@@ -688,7 +688,8 @@ final class NativeImageServer extends NativeImage {
 
     @Override
     protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
-        if (useServer && !javaArgs.contains("-Xdebug")) {
+        boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
+        if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
             SignalHandler signalHandler = new SignalHandler();
             sun.misc.Signal.handle(new sun.misc.Signal("TERM"), signalHandler);
             sun.misc.Signal.handle(new sun.misc.Signal("INT"), signalHandler);

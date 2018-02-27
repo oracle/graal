@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -99,12 +100,25 @@ public class HostedOptionParser implements HostedOptionProvider {
 
         List<String> remainingArgs = new ArrayList<>();
         Set<String> errors = new HashSet<>();
+        InterruptImageBuilding interrupt = null;
         for (String arg : args) {
-            boolean isImageBuildOption = SubstrateOptionsParser.parseHostedOption(HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, errors, arg, System.out) ||
-                            SubstrateOptionsParser.parseHostedOption(RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, errors, arg, System.out);
+            boolean isImageBuildOption = false;
+            try {
+                isImageBuildOption |= SubstrateOptionsParser.parseHostedOption(HOSTED_OPTION_PREFIX, allHostedOptions, hostedValues, PLUS_MINUS, errors, arg, System.out);
+            } catch (InterruptImageBuilding e) {
+                interrupt = e;
+            }
+            try {
+                isImageBuildOption |= SubstrateOptionsParser.parseHostedOption(RUNTIME_OPTION_PREFIX, allRuntimeOptions, runtimeValues, PLUS_MINUS, errors, arg, System.out);
+            } catch (InterruptImageBuilding e) {
+                interrupt = e;
+            }
             if (!isImageBuildOption) {
                 remainingArgs.add(arg);
             }
+        }
+        if (interrupt != null) {
+            throw interrupt;
         }
         if (!errors.isEmpty()) {
             throw UserError.abort(errors);
