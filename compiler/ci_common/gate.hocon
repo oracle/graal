@@ -10,6 +10,12 @@ gateTest : {
   ]
 }
 
+gateTestMaxVS : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.DetailedAsserts=true -XX:MaxVectorSize=16"
+  }
+}
+
 gateTestCTW : {
   environment : {
     EXTRA_VM_ARGS : ""
