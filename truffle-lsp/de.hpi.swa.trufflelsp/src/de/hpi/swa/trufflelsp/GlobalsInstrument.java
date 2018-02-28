@@ -1,7 +1,9 @@
 package de.hpi.swa.trufflelsp;
 
+import java.io.IOException;
 import java.util.Map;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -16,7 +18,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 
-@Registration(id = GlobalsInstrument.ID, services = Object.class)
+@Registration(id = GlobalsInstrument.ID, services = GlobalsInstrument.class)
 public final class GlobalsInstrument extends TruffleInstrument {
 
     public static final String ID = "lsp-globals";
@@ -29,8 +31,11 @@ public final class GlobalsInstrument extends TruffleInstrument {
 
     }
 
+    private Env env;
+
     @Override
     protected void onCreate(final Env env) {
+        this.setEnv(env);
         env.registerService(this);
 // env.getInstrumenter().attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
         env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().sourceIs(new MySourceFilter()).build(), new ExecutionEventListener() {
@@ -56,6 +61,15 @@ public final class GlobalsInstrument extends TruffleInstrument {
                         }
                     }
                 }
+
+// try {
+// CallTarget callTarget =
+// env.parse(Source.newBuilder("2+2+asd").name("sample.py").mimeType("application/x-python").build());
+// System.out.println(callTarget);
+//// callTarget.call();
+// } catch (IOException e) {
+// e.printStackTrace();
+// }
             }
 
             @Override
@@ -107,6 +121,14 @@ public final class GlobalsInstrument extends TruffleInstrument {
             }
         });
 
+    }
+
+    public Env getEnv() {
+        return env;
+    }
+
+    private void setEnv(Env env) {
+        this.env = env;
     }
 
 }
