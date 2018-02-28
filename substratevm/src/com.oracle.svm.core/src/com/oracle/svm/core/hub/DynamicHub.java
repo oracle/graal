@@ -28,6 +28,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -53,6 +54,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.HostedIdentityHashCodeProvider;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.Substitute;
@@ -67,12 +70,16 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
 import sun.reflect.ReflectionFactory;
+import sun.security.util.SecurityConstants;
 
 @Hybrid
 @Substitute
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method"})
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, HostedIdentityHashCodeProvider, java.lang.reflect.Type, java.lang.reflect.GenericDeclaration {
+
+    /* Value copied from java.lang.Class. */
+    private static final int SYNTHETIC = 0x00001000;
 
     /**
      * The name of the class this hub is representing, as defined in {@link Class#getName()}.
@@ -135,7 +142,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Does this represent a static class?
      */
-    private boolean isStatic;
+    private final boolean isStatic;
+
+    /**
+     * Does this represent a synthetic class?
+     */
+    private final boolean isSynthetic;
 
     /**
      * The hub for the superclass, or null if an interface or primitive type.
@@ -222,9 +234,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class) private int hostedIdentityHashCode;
 
     private GenericInfo genericInfo;
+    private AnnotatedSuperInfo annotatedSuperInfo;
+
+    @Alias private static java.security.ProtectionDomain allPermDomain;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic) {
+    public DynamicHub(String name, boolean isLocalClass, DynamicHub superType, DynamicHub componentHub, String sourceFileName, boolean isStatic, boolean isSynthetic) {
         /* Class names must be interned strings according to the Java spec. */
         this.name = name.intern();
         this.isLocalClass = isLocalClass;
@@ -232,7 +247,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.componentHub = componentHub;
         this.sourceFileName = sourceFileName;
         this.genericInfo = GenericInfo.forEmpty();
+        this.annotatedSuperInfo = AnnotatedSuperInfo.forEmpty();
         this.isStatic = isStatic;
+        this.isSynthetic = isSynthetic;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -270,6 +287,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setGenericInfo(GenericInfo genericInfo) {
         this.genericInfo = genericInfo;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setAnnotatedSuperInfo(AnnotatedSuperInfo annotatedSuperInfo) {
+        this.annotatedSuperInfo = annotatedSuperInfo;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -404,6 +426,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return Modifier.PUBLIC |
                         (LayoutEncoding.isAbstract(getLayoutEncoding()) ? Modifier.ABSTRACT : 0) |
                         (isStatic ? Modifier.STATIC : 0) |
+                        (isSynthetic ? SYNTHETIC : 0) |
                         (isInterface() ? Modifier.INTERFACE : 0);
     }
 
@@ -758,6 +781,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native Class<?>[] getDeclaredClasses();
 
     @KeepOriginal
+    public native Class<?>[] getClasses();
+
+    @KeepOriginal
     private native Field[] getDeclaredFields();
 
     @KeepOriginal
@@ -864,6 +890,16 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
+    public AnnotatedType getAnnotatedSuperclass() {
+        return annotatedSuperInfo.getAnnotatedSuperclass();
+    }
+
+    @Substitute
+    public AnnotatedType[] getAnnotatedInterfaces() {
+        return annotatedSuperInfo.getAnnotatedInterfaces();
+    }
+
+    @Substitute
     private Method getEnclosingMethod() {
         if (rd.enclosingMethodOrConstructor instanceof Method) {
             return (Method) rd.enclosingMethodOrConstructor;
@@ -892,14 +928,36 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     public native Package getPackage();
 
+    @Override
+    @KeepOriginal
+    public native String toString();
+
+    @KeepOriginal
+    public native String toGenericString();
+
     @Substitute
-    public Object getProtectionDomain() {
-        throw VMError.unimplemented();
+    public boolean isSynthetic() {
+        return isSynthetic;
     }
 
-    @Override
     @Substitute
-    public String toString() {
-        return (isInterface() ? "interface " : (isPrimitive() ? "" : "class ")) + getName();
+    public Object[] getSigners() {
+        return null;
     }
+
+    @Substitute
+    public Object getProtectionDomain() {
+        if (allPermDomain == null) {
+            java.security.Permissions perms = new java.security.Permissions();
+            perms.add(SecurityConstants.ALL_PERMISSION);
+            allPermDomain = new java.security.ProtectionDomain(null, perms);
+        }
+        return allPermDomain;
+    }
+
+    @Substitute
+    public boolean desiredAssertionStatus() {
+        return SubstrateOptions.RuntimeAssertions.getValue() && SubstrateOptions.getRuntimeAssertionsFilter().test(getName());
+    }
+
 }
