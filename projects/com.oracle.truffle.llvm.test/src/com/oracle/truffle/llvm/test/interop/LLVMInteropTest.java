@@ -974,6 +974,12 @@ public final class LLVMInteropTest {
     }
 
     @Test
+    public void testManagedMallocMemSet() throws Exception {
+        Runner runner = new Runner("managedMallocMemset");
+        Assert.assertEquals(0, runner.run());
+    }
+
+    @Test
     public void testVirtualMallocArray() throws Exception {
         Runner runner = new Runner("virtualMallocArray");
         runner.load();

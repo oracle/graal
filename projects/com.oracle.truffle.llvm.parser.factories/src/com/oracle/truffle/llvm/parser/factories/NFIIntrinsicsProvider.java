@@ -1391,18 +1391,22 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return wrap("@__sulong_free", LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1)));
             }
         });
-        factories.put("@memset", new LLVMNativeIntrinsicFactory(true, false) {
+        LLVMNativeIntrinsicFactory memset = new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@memset", LLVMLibcMemsetNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
             }
-        });
-        factories.put("@memcpy", new LLVMNativeIntrinsicFactory(true, false) {
+        };
+        factories.put("@memset", memset);
+        factories.put("@__memset_chk", memset);
+        LLVMNativeIntrinsicFactory memcpy = new LLVMNativeIntrinsicFactory(true, false) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
                 return wrap("@memcpy", LLVMLibcMemcpyNodeGen.create(factory.createMemMove(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
             }
-        });
+        };
+        factories.put("@memcpy", memcpy);
+        factories.put("@__memcpy_chk", memcpy);
     }
 
     protected void registerExceptionIntrinsics() {
