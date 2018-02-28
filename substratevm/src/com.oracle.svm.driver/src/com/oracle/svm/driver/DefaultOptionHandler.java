@@ -34,6 +34,9 @@ import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
+    static final String helpText = NativeImage.getResource("/Help.txt");
+    static final String helpTextAdvanced = NativeImage.getResource("/HelpAdvanced.txt");
+
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
     }
@@ -45,19 +48,21 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "-?":
             case "-help":
                 args.poll();
-                nativeImage.showMessage(NativeImage.buildContext().helpText);
+                nativeImage.showMessage(helpText);
+                nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
+                nativeImage.showMessage("");
                 System.exit(0);
                 return true;
             case "-version":
                 args.poll();
                 nativeImage.showMessage("SubstrateVM Version Info");
-                nativeImage.showMessage(NativeImage.buildContext().svmVersion.replace(',', '\n'));
-                nativeImage.showMessage("GraalVM Version " + NativeImage.buildContext().graalvmVersion);
+                nativeImage.showMessage(NativeImage.svmVersion.replace(',', '\n'));
+                nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
-            case "-X":
+            case "-help-advanced":
                 args.poll();
-                nativeImage.showMessage(NativeImage.buildContext().helpTextX);
+                nativeImage.showMessage(helpTextAdvanced);
                 System.exit(0);
                 return true;
             case "-cp":
@@ -93,11 +98,16 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "-ea":
                 args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + '+' + NativeImage.RuntimeAssertions);
+                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enableRuntimeAssertions);
                 return true;
             case "-g":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
+                return true;
+            case "-expert-options":
+                args.poll();
+                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
+                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
                 return true;
         }
 

@@ -1,3 +1,5 @@
+Server options help:
+
    -no-server             do not use image-build server
 
    -server-list           lists current image-build servers
@@ -9,10 +11,4 @@
    -server-session=<custom-session-name>
                           use custom session name instead of system provided
                           session ID of the calling process
-
-   -debug-attach[=<port>] attach to debugger during image building (default
-                          port is 8000)
-
-   -dry-run               output the command line that would be used for building
-
-The non-standard options are subject to change without notice.
+ 
