@@ -86,7 +86,7 @@ public final class EventContext {
         }
         if (foundStandardTag) {
             RootNode root = probeNode.getRootNode();
-            if (root.getSourceSection() != null) {
+            if (root != null && root.getSourceSection() != null) {
                 assert sourceSection != null : "All nodes tagged with a standard tag and with a root node that has a source section must also have a source section.";
             }
         }
