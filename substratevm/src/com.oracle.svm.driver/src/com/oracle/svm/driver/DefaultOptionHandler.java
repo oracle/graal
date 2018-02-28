@@ -35,7 +35,7 @@ import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
-    static final String helpTextX = NativeImage.getResource("/HelpX.txt");
+    static final String helpTextAdvanced = NativeImage.getResource("/HelpAdvanced.txt");
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -60,9 +60,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
-            case "-X":
+            case "-help-advanced":
                 args.poll();
-                nativeImage.showMessage(helpTextX);
+                nativeImage.showMessage(helpTextAdvanced);
                 System.exit(0);
                 return true;
             case "-cp":
