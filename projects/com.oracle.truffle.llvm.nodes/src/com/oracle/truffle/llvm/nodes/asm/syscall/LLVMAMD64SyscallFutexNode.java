@@ -32,10 +32,13 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallFutexNode extends LLVMAMD64SyscallOperationNode {
-    public LLVMAMD64SyscallFutexNode() {
-        super("futex");
+public abstract class LLVMAMD64SyscallFutexNode extends LLVMSyscallOperationNode {
+
+    @Override
+    public final String getName() {
+        return "futex";
     }
 
     @SuppressWarnings("unused")

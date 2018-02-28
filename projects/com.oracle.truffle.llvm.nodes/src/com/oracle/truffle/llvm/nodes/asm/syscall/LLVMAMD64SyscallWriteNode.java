@@ -34,13 +34,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallWriteNode extends LLVMAMD64SyscallOperationNode {
+public abstract class LLVMAMD64SyscallWriteNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode write;
 
     public LLVMAMD64SyscallWriteNode() {
-        super("write");
         write = LLVMAMD64PosixCallNodeGen.create("write", "(SINT32,POINTER,UINT64):SINT64", 3);
+    }
+
+    @Override
+    public final String getName() {
+        return "write";
     }
 
     @Specialization

@@ -34,13 +34,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallGetdents64Node extends LLVMAMD64SyscallOperationNode {
+public abstract class LLVMAMD64SyscallGetdents64Node extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode getdents64;
 
     public LLVMAMD64SyscallGetdents64Node() {
-        super("getdents64");
         getdents64 = LLVMAMD64PosixCallNodeGen.create("getdents64", "(UINT32,UINT64,UINT32):SINT32", 3);
+    }
+
+    @Override
+    public final String getName() {
+        return "getdents64";
     }
 
     @Specialization

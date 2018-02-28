@@ -30,10 +30,13 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public class LLVMAMD64SyscallGetPpidNode extends LLVMAMD64SyscallOperationNode {
-    public LLVMAMD64SyscallGetPpidNode() {
-        super("getppid");
+public class LLVMAMD64SyscallGetPpidNode extends LLVMSyscallOperationNode {
+
+    @Override
+    public final String getName() {
+        return "getppid";
     }
 
     @Override

@@ -31,13 +31,18 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public class LLVMAMD64UnknownSyscallNode extends LLVMAMD64SyscallOperationNode {
+public class LLVMAMD64UnknownSyscallNode extends LLVMSyscallOperationNode {
     private final int nr;
 
     public LLVMAMD64UnknownSyscallNode(int nr) {
-        super("unknown(" + nr + ")");
         this.nr = nr;
+    }
+
+    @Override
+    public final String getName() {
+        return "unknown(" + nr + ")";
     }
 
     @Override

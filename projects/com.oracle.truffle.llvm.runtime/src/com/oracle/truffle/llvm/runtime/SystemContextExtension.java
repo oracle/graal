@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm.syscall;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallOperationNode extends LLVMNode {
-    private final String name;
+public abstract class SystemContextExtension implements ContextExtension {
 
-    public LLVMAMD64SyscallOperationNode(String name) {
-        this.name = name;
-    }
+    public abstract LLVMSyscallOperationNode createSyscallNode(long index);
 
-    public abstract long execute(VirtualFrame frame, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9);
-
-    public final String getName() {
-        return name;
+    @Override
+    public final Class<?> extensionClass() {
+        return SystemContextExtension.class;
     }
 }

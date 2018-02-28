@@ -32,13 +32,18 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public class LLVMAMD64SyscallGeteuidNode extends LLVMAMD64SyscallOperationNode {
+public class LLVMAMD64SyscallGeteuidNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode geteuid;
 
     public LLVMAMD64SyscallGeteuidNode() {
-        super("geteuid");
         geteuid = LLVMAMD64PosixCallNodeGen.create("geteuid", "():SINT32", 0);
+    }
+
+    @Override
+    public final String getName() {
+        return "geteuid";
     }
 
     @Override

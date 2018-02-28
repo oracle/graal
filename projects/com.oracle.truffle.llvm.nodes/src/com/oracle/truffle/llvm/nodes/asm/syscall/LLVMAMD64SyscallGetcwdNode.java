@@ -35,10 +35,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMString;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMAMD64SyscallOperationNode {
-    public LLVMAMD64SyscallGetcwdNode() {
-        super("getcwd");
+public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNode {
+
+    @Override
+    public final String getName() {
+        return "getcwd";
     }
 
     @Specialization

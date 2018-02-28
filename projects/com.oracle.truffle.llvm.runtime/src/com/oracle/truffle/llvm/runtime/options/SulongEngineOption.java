@@ -72,6 +72,10 @@ public final class SulongEngineOption {
     public static final String DEBUG_NAME = "llvm.debug";
     public static final String DEBUG_INFO = "Turns debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.";
 
+    public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
+    public static final String DEBUG_SYSCALLS_NAME = "llvm.debugSysCalls";
+    public static final String DEBUG_SYSCALLS_INFO = "Turns syscall debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.";
+
     public static final OptionKey<String> NATIVE_CALL_STATS = new OptionKey<>(String.valueOf(false));
     public static final String NATIVE_CALL_STATS_NAME = "llvm.printNativeCallStats";
     public static final String NATIVE_CALL_STATS_INFO = "Outputs stats about native call site frequencies. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.";
@@ -109,6 +113,8 @@ public final class SulongEngineOption {
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_NFI, SulongEngineOption.ENABLE_NFI_NAME).help(SulongEngineOption.ENABLE_NFI_INFO).category(
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.DEBUG, SulongEngineOption.DEBUG_NAME).help(SulongEngineOption.DEBUG_INFO).category(
+                        OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(SulongEngineOption.DEBUG_SYSCALLS, SulongEngineOption.DEBUG_SYSCALLS_NAME).help(SulongEngineOption.DEBUG_SYSCALLS_INFO).category(
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.NATIVE_CALL_STATS, SulongEngineOption.NATIVE_CALL_STATS_NAME).help(SulongEngineOption.NATIVE_CALL_STATS_INFO).category(
                         OptionCategory.USER).build());

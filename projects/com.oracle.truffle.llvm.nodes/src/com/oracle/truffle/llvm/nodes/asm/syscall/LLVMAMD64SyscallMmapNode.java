@@ -35,10 +35,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallMmapNode extends LLVMAMD64SyscallOperationNode {
-    public LLVMAMD64SyscallMmapNode() {
-        super("mmap");
+public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode {
+
+    @Override
+    public final String getName() {
+        return "mmap";
     }
 
     private final ConditionProfile mapAnonymousProfile = ConditionProfile.createCountingProfile();
