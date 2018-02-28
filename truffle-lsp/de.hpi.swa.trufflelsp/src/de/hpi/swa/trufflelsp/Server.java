@@ -1,3 +1,4 @@
+package de.hpi.swa.trufflelsp;
 
 
 import java.util.ArrayList;
