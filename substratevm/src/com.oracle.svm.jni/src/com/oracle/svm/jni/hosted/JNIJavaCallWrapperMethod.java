@@ -27,7 +27,6 @@ package com.oracle.svm.jni.hosted;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
@@ -36,7 +35,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -46,7 +44,6 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -192,11 +189,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             returnKind = JavaKind.Object;
         }
 
-        Mark preIfMark = graph.getMark();
-        kit.startIf(null, BranchProbabilityNode.FAST_PATH_PROBABILITY);
-        Iterator<IfNode> ifNodes = graph.getNewNodes(preIfMark).filter(IfNode.class).iterator();
-        IfNode ifNode = ifNodes.next();
-        assert !ifNodes.hasNext() : "must have exactly one If";
+        IfNode ifNode = kit.startIf(null, BranchProbabilityNode.FAST_PATH_PROBABILITY);
 
         kit.thenPart();
         LogicNode typeChecks = LogicConstantNode.tautology(kit.getGraph());
@@ -230,11 +223,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             typeMismatchValue = kit.unique(ConstantNode.defaultForKind(returnKind.getStackKind()));
         }
 
-        Mark preMergeMark = graph.getMark();
-        kit.endIf();
-        Iterator<MergeNode> mergeNodes = graph.getNewNodes(preMergeMark).filter(MergeNode.class).iterator();
-        MergeNode merge = mergeNodes.next();
-        assert !mergeNodes.hasNext() : "must have exactly one Merge";
+        AbstractMergeNode merge = kit.endIf();
 
         ValueNode returnValue = null;
         if (returnKind != JavaKind.Void) {
@@ -306,11 +295,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 kit.startIf(kit.unique(new ObjectEqualsNode(unboxed, hubNode)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
                 kit.thenPart();
                 ValueNode created = kit.append(new NewInstanceNode(receiverClass, true));
-                Mark preMergeMark = kit.getGraph().getMark();
-                kit.endIf();
-                Iterator<MergeNode> mergeNodes = kit.getGraph().getNewNodes(preMergeMark).filter(MergeNode.class).iterator();
-                MergeNode merge = mergeNodes.next();
-                VMError.guarantee(!mergeNodes.hasNext(), "must have exactly one merge");
+                AbstractMergeNode merge = kit.endIf();
                 receiver = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{created, unboxed}));
             } else {
                 receiver = unboxed;
