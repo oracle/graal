@@ -2,7 +2,8 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
-## Version 0.32
+## Version 0.33
+
 * This release contains major changes to the instrumentation framework.
 	* Deprecated @[Instrumentable](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumentable.html) and replaced it with [InstrumentableNode](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html). Please see [InstrumentableNode](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html) on how to specify instrumentable nodes in 0.32.
 	* Added @[GenerateWrapper](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/GenerateWrapper.html) for automatic wrapper generation.
@@ -20,6 +21,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Added the ability for instrumentable nodes to a expose a [node object](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api//instrumentation/InstrumentableNode.html#getNodeObject--). This object is intended to contain language specific properties of the node.
 * Added new DSL annotation @[Executed](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Executed.html) that allows to manually specify executed node fields.
 * The Truffle Node traversal order was slightly changed to always respect field declaration order (super class before sub class).
+
+## Version 0.32
+
 * Added [SuspendAnchor](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendAnchor.html) enum class that describes where, within a guest language source section, the suspend position is and [Breakpoint.Builder.suspendAnchor()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html#suspendAnchor-com.oracle.truffle.api.debug.SuspendAnchor-) to be able to break before or after the source section.
 * Deprecated `SuspendedEvent.isHaltedBefore()`, [SuspendedEvent.getSuspendAnchor()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getSuspendAnchor--) is to be used instead.
 * Added new interop message [REMOVE](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/Message.html#REMOVE) with the appropriate foreign access methods [ForeignAccess.sendRemove](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/ForeignAccess.html#sendRemove-com.oracle.truffle.api.nodes.Node-com.oracle.truffle.api.interop.TruffleObject-java.lang.Object-) and [KeyInfo.isRemovable flag](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/KeyInfo.html#isRemovable-int-).

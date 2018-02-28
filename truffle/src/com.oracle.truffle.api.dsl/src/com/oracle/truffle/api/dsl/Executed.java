@@ -69,7 +69,7 @@ import com.oracle.truffle.api.nodes.Node.Children;
  * }
  * </pre>
  *
- * @since 0.32
+ * @since 0.33
  */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.FIELD})
@@ -112,7 +112,7 @@ public @interface Executed {
      *
      * </pre>
      *
-     * @since 0.32
+     * @since 0.33
      */
     String[] with() default {
     };

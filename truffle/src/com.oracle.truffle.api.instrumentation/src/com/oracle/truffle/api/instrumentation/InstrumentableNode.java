@@ -82,7 +82,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *      tag.
  * @see GenerateWrapper Use an annotation processor to generate the wrapper class.
  * @see Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
- * @since 0.32
+ * @since 0.33
  */
 public interface InstrumentableNode extends NodeInterface {
 
@@ -100,7 +100,7 @@ public interface InstrumentableNode extends NodeInterface {
      * threaded. The method may be invoked without a {@link TruffleLanguage#getContextReference()
      * language context} currently being active.
      *
-     * @since 0.32
+     * @since 0.33
      */
     boolean isInstrumentable();
 
@@ -140,7 +140,7 @@ public interface InstrumentableNode extends NodeInterface {
      * @param probe the {@link ProbeNode probe node} to be adopted and sent execution events by the
      *            wrapper
      * @return a {@link WrapperNode wrapper} implementation
-     * @since 0.32
+     * @since 0.33
      */
     WrapperNode createWrapper(ProbeNode probe);
 
@@ -179,7 +179,7 @@ public interface InstrumentableNode extends NodeInterface {
      *            the {@link TruffleLanguage language}
      * @return <code>true</code> if the node should be considered tagged by a tag else
      *         <code>false</code>.
-     * @since 0.32
+     * @since 0.33
      */
     default boolean hasTag(Class<? extends Tag> tag) {
         return false;
@@ -217,7 +217,7 @@ public interface InstrumentableNode extends NodeInterface {
      *
      * @return the node object as TruffleObject or <code>null</code> if no node object properties
      *         are available for this instrumented node
-     * @since 0.32
+     * @since 0.33
      */
     default Object getNodeObject() {
         return null;
@@ -248,7 +248,7 @@ public interface InstrumentableNode extends NodeInterface {
      * {@link com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode}
      *
      * @param materializedTags a set of tags that requested to be materialized
-     * @since 0.32
+     * @since 0.33
      */
     default InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         return this;
@@ -260,7 +260,7 @@ public interface InstrumentableNode extends NodeInterface {
      * on execution events and reporting them via the instrumentation framework.
      *
      * @see #createWrapper(Node, ProbeNode)
-     * @since 0.32
+     * @since 0.33
      */
     @SuppressWarnings("deprecation")
     public interface WrapperNode extends NodeInterface, InstrumentableFactory.WrapperNode {
@@ -273,7 +273,7 @@ public interface InstrumentableNode extends NodeInterface {
          * without a {@link TruffleLanguage#getContextReference() language context} currently being
          * active.
          *
-         * @since 0.32
+         * @since 0.33
          */
         Node getDelegateNode();
 
@@ -285,7 +285,7 @@ public interface InstrumentableNode extends NodeInterface {
          * without a {@link TruffleLanguage#getContextReference() language context} currently being
          * active.
          *
-         * @since 0.32
+         * @since 0.33
          */
         ProbeNode getProbeNode();
 

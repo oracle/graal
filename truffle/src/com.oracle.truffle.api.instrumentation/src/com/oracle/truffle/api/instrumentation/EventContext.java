@@ -104,7 +104,7 @@ public final class EventContext {
      * and {@link EventContext}. The method may be used on compiled code paths.
      *
      * @param tag the tag to check to check, must not be <code>null</code>.
-     * @since 0.32
+     * @since 0.33
      */
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == null) {
@@ -127,7 +127,7 @@ public final class EventContext {
      * {@link #getNodeObject()} return the same node object instance.
      *
      * @see InstrumentableNode#getNodeObject()
-     * @since 0.32
+     * @since 0.33
      */
     public Object getNodeObject() {
         Object object = this.nodeObject;

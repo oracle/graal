@@ -90,7 +90,7 @@ public abstract class Instrumenter {
      *            {@link ExecutionEventListener listener}
      * @param listener that listens to execution events.
      * @see ExecutionEventListener
-     * @since 0.32
+     * @since 0.33
      */
     public final <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter eventFilter, T listener) {
         return attachExecutionEventListener(eventFilter, null, listener);
@@ -119,7 +119,7 @@ public abstract class Instrumenter {
      * @see ExecutionEventNodeFactory
      * @see #attachExecutionEventFactory(SourceSectionFilter, SourceSectionFilter,
      *      ExecutionEventNodeFactory)
-     * @since 0.32
+     * @since 0.33
      */
     public final <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter eventFilter, T factory) {
         return attachExecutionEventFactory(eventFilter, null, factory);
@@ -146,7 +146,7 @@ public abstract class Instrumenter {
      * @see ExecutionEventListener
      * @see ExecutionEventListener#onInputValue(EventContext,
      *      com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
-     * @since 0.32
+     * @since 0.33
      */
     public abstract <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter eventFilter, SourceSectionFilter inputFilter, T listener);
 
@@ -171,7 +171,7 @@ public abstract class Instrumenter {
      * @see ExecutionEventNodeFactory
      * @see ExecutionEventNode#onInputValue(com.oracle.truffle.api.frame.VirtualFrame, EventContext,
      *      int, Object)
-     * @since 0.32
+     * @since 0.33
      */
     public abstract <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter eventFilter, SourceSectionFilter inputFilter, T factory);
 
@@ -213,7 +213,7 @@ public abstract class Instrumenter {
      *
      * @see LoadSourceListener#onLoad(LoadSourceEvent)
      *
-     * @since 0.32
+     * @since 0.33
      */
     public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceFilter filter, T listener, boolean includeExistingSources);
 

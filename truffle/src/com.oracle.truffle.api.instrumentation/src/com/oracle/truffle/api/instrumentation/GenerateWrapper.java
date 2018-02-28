@@ -58,7 +58,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *
  * @see InstrumentableNode
  * @see ProbeNode
- * @since 0.32
+ * @since 0.33
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

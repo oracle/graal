@@ -139,7 +139,7 @@ public final class StandardTags {
      * node tagged with {@link RootTag} must provide a {@link Node#getSourceSection() source
      * section}, if its root node provides a source section.
      *
-     * @since 0.32
+     * @since 0.33
      */
     @Tag.Identifier("EXPRESSION")
     public static final class ExpressionTag extends Tag {

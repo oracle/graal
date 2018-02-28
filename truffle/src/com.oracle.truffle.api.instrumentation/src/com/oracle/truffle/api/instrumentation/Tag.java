@@ -41,14 +41,14 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
  *
  * @see StandardTags For the standard set of tags
  * @see #findProvidedTag(LanguageInfo, String) to find a provided tag of a language
- * @since 0.32
+ * @since 0.33
  */
 public abstract class Tag {
 
     /**
      * No instances of tags allowed. Tags are marker classes.
      *
-     * @since 0.32
+     * @since 0.33
      */
     protected Tag() {
         throw new AssertionError("No tag instances allowed.");
@@ -61,7 +61,7 @@ public abstract class Tag {
      * provided tags. It is guaranteed that there is only one provided tag class per tag identifier
      * and language. For different languages the same tag id might refer to different tag classes.
      *
-     * @since 0.32
+     * @since 0.33
      */
     @SuppressWarnings("unchecked")
     public static Class<? extends Tag> findProvidedTag(LanguageInfo language, String tagId) {
@@ -90,7 +90,7 @@ public abstract class Tag {
      *
      * @param tag the tag to return the alias for.
      * @return the alias string
-     * @since 0.32
+     * @since 0.33
      */
     public static String getIdentifier(Class<? extends Tag> tag) {
         Objects.requireNonNull(tag);
@@ -106,7 +106,7 @@ public abstract class Tag {
      * identifier can be used to {@link Tag#findProvidedTag(LanguageInfo, String) find} and load tag
      * classes used by tools.
      *
-     * @since 0.32
+     * @since 0.33
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target(value = TYPE)
@@ -115,7 +115,7 @@ public abstract class Tag {
         /**
          * Returns the identifier value as string.
          *
-         * @since 0.32
+         * @since 0.33
          */
         String value();
 
