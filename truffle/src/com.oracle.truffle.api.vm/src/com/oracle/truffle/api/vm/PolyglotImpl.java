@@ -793,6 +793,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (PolyglotException) PolyglotImpl.wrapGuestException(context, e);
         }
 
+        @Override
         public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
             return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getLanguageClass();
         }
