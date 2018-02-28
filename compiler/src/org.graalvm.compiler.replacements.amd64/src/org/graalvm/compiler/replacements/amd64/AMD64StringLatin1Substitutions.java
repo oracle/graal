@@ -40,7 +40,7 @@ public class AMD64StringLatin1Substitutions {
 
     /**
      * @param value is byte[]
-     * @param other is char[]
+     * @param other is byte[]
      */
     @MethodSubstitution
     public static int compareTo(byte[] value, byte[] other) {

@@ -29,9 +29,8 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG10;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
-
 import static org.graalvm.compiler.serviceprovider.JDK9Method.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 
 import java.util.Arrays;
 
@@ -193,6 +192,7 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", char[].class, int.class,
                             int.class, char[].class, int.class, int.class, int.class);
+            r.registerMethodSubstitution(AMD64StringSubstitutions.class, "compareTo", Receiver.class, String.class);
         }
     }
 

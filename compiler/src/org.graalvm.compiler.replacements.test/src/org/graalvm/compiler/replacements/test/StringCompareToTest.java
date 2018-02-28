@@ -28,6 +28,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -51,6 +52,7 @@ public class StringCompareToTest extends MethodSubstitutionTest {
 
     public StringCompareToTest() {
         Assume.assumeFalse(Java8OrEarlier);
+        Assume.assumeTrue(getTarget().arch instanceof AMD64);
 
         realMethod = getResolvedJavaMethod(String.class, "compareTo", String.class);
         testMethod = getResolvedJavaMethod("stringCompareTo");
