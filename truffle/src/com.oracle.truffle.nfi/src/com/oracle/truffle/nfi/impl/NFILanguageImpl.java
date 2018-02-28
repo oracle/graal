@@ -151,11 +151,6 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
     }
 
     @Override
-    protected Object getLanguageGlobal(NFIContext context) {
-        return null;
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof LibFFIFunction || object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
     }

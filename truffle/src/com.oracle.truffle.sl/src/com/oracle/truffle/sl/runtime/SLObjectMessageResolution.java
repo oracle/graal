@@ -164,17 +164,14 @@ public class SLObjectMessageResolution {
     @Resolve(message = "KEY_INFO")
     public abstract static class SLForeignPropertyInfoNode extends Node {
 
-        private static final int PROPERTY_INFO = KeyInfo.newBuilder().setReadable(true).setRemovable(true).setWritable(true).build();
-        private static final int PROPERTY_FUNCTION_INFO = KeyInfo.newBuilder().setReadable(true).setRemovable(true).setWritable(true).setInvocable(true).build();
-
         public int access(DynamicObject receiver, Object name) {
             Object property = receiver.get(name);
             if (property == null) {
-                return 0;
+                return KeyInfo.INSERTABLE;
             } else if (property instanceof SLFunction) {
-                return PROPERTY_FUNCTION_INFO;
+                return KeyInfo.READABLE | KeyInfo.REMOVABLE | KeyInfo.MODIFIABLE | KeyInfo.INVOCABLE;
             } else {
-                return PROPERTY_INFO;
+                return KeyInfo.READABLE | KeyInfo.REMOVABLE | KeyInfo.MODIFIABLE;
             }
         }
     }

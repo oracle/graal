@@ -78,11 +78,6 @@ public class NFILanguage extends TruffleLanguage<Context> {
     }
 
     @Override
-    protected Object getLanguageGlobal(Context context) {
-        return null;
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         return object instanceof NFILibrary;
     }

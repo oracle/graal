@@ -68,8 +68,8 @@ import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 final class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     /**
-     * This class isolates static state to optimize when only a single context is used. This
-     * simplifies resetting state in AOT mode during native image generation.
+     * This class isolates static state to optimize when only a single context is used. This simplifies
+     * resetting state in AOT mode during native image generation.
      */
     static final class SingleContextState {
         private final ContextThreadLocal contextThreadLocal = new ContextThreadLocal();
@@ -87,8 +87,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
     @CompilationFinal private volatile PolyglotThreadInfo constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
 
     /*
-     * While canceling the context can no longer be entered. The context goes from canceling into
-     * closed state.
+     * While canceling the context can no longer be entered. The context goes from canceling into closed
+     * state.
      */
     volatile boolean cancelling;
     private volatile Thread closingThread;
@@ -127,6 +127,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         contexts = null;
         truffleContext = null;
         parent = null;
+        polyglotHostBindings = null;
+        polyglotGuestBindings = null;
+        polyglotBindings = null;
     }
 
     /*
@@ -972,9 +975,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         for (PolyglotThreadInfo threadInfo : threads.values()) {
             if (!threadInfo.isCurrent() && threadInfo.isActive()) {
                 /*
-                 * We send an interrupt to the thread to wake up and to run some guest language code
-                 * in case they are waiting in some async primitive. The interrupt is then cleared
-                 * when the closed is performed.
+                 * We send an interrupt to the thread to wake up and to run some guest language code in case they
+                 * are waiting in some async primitive. The interrupt is then cleared when the closed is performed.
                  */
                 threadInfo.thread.interrupt();
             }

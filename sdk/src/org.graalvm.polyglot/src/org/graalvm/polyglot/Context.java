@@ -371,7 +371,7 @@ public final class Context implements AutoCloseable {
      * language. All languages have unrestricted access to the polyglot bindings. The returned
      * bindings object always has {@link Value#hasMembers() members} and its members are
      * {@link Value#getMember(String) readable}, {@link Value#putMember(String, Object) writable}
-     * and {@link Value#removeMember(String) removeable}.
+     * and {@link Value#removeMember(String) removable}.
      * <p>
      * Guest languages may put and get members through language specific APIs. For example, in
      * JavaScript symbols of the polyglot bindings can be accessed using
