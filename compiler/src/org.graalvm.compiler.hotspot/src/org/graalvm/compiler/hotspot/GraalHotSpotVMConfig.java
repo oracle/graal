@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,6 +159,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final boolean forceUnreachable = getFlag("ForceUnreachable", Boolean.class);
     public final int codeSegmentSize = getFlag("CodeCacheSegmentSize", Integer.class);
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
+    public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
     public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class);
