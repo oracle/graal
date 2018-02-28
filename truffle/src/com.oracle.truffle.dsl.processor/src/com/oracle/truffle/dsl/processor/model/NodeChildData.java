@@ -26,7 +26,9 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
@@ -53,12 +55,14 @@ public class NodeChildData extends MessageContainer {
     private final TypeMirror originalType;
     private final Element accessElement;
     private final Cardinality cardinality;
+    private final AnnotationValue executeWithValue;
 
     private List<NodeExecutionData> executeWith = Collections.emptyList();
 
     private NodeData childNode;
 
-    public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement, Cardinality cardinality) {
+    public NodeChildData(Element sourceElement, AnnotationMirror sourceMirror, String name, TypeMirror nodeType, TypeMirror originalNodeType, Element accessElement, Cardinality cardinality,
+                    AnnotationValue executeWithValue) {
         this.sourceElement = sourceElement;
         this.sourceAnnotationMirror = sourceMirror;
         this.name = name;
@@ -66,6 +70,15 @@ public class NodeChildData extends MessageContainer {
         this.originalType = originalNodeType;
         this.accessElement = accessElement;
         this.cardinality = cardinality;
+        this.executeWithValue = executeWithValue;
+    }
+
+    public boolean needsGeneratedField() {
+        return accessElement == null || accessElement.getKind() != ElementKind.FIELD;
+    }
+
+    public AnnotationValue getExecuteWithValue() {
+        return executeWithValue;
     }
 
     public List<NodeExecutionData> getExecuteWith() {

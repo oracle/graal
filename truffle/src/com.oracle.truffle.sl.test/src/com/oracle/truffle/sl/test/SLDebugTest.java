@@ -627,7 +627,12 @@ public class SLDebugTest {
                 assertEquals("main", dsf.getName());
                 assertEquals(2, dsf.getSourceSection().getStartLine());
                 assertFalse(dsf.isInternal());
-                assertFalse(sfIt.hasNext());
+
+                // skip internal frames
+                while (sfIt.hasNext()) {
+                    dsf = sfIt.next();
+                    assertTrue(dsf.isInternal());
+                }
             });
             expectDone();
         }

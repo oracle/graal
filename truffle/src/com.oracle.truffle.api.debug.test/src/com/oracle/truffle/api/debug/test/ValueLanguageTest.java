@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -47,9 +48,12 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -61,7 +65,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.polyglot.Source;
 
 /**
  * Test of value association with language and language-specific view of values.
@@ -443,21 +446,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @Override
-            protected boolean isTaggedWith(Class<?> tag) {
-                if (tag == StandardTags.RootTag.class) {
-                    return children != null;
-                }
-                return false;
-            }
-
-            @Override
             public SourceSection getSourceSection() {
                 return sourceSection;
             }
         }
 
-        @Instrumentable(factory = VarNodeWrapper.class)
-        public static class VarNode extends Node {
+        @GenerateWrapper
+        public static class VarNode extends Node implements InstrumentableNode {
 
             private final SourceSection sourceSection;
             private final String name;
@@ -479,6 +474,22 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 this.contextReference = node.contextReference;
             }
 
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new VarNodeWrapper(this, this, probe);
+            }
+
+            public boolean isInstrumentable() {
+                return sourceSection != null;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                if (tag == StandardTags.StatementTag.class) {
+                    return true;
+                }
+                return false;
+            }
+
             public Object execute(VirtualFrame frame) {
                 if (slot == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -496,20 +507,12 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @Override
-            protected final boolean isTaggedWith(Class<?> tag) {
-                if (tag == StandardTags.StatementTag.class) {
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
             public SourceSection getSourceSection() {
                 return sourceSection;
             }
         }
 
-        @Instrumentable(factory = PropNodeWrapper.class)
+        @GenerateWrapper
         public static class PropNode extends ValuesLanguage.VarNode {
 
             private final String var;
@@ -525,6 +528,24 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 super(node);
                 this.var = node.var;
                 this.prop = node.prop;
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probeNode) {
+                return new PropNodeWrapper(this, this, probeNode);
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return getSourceSection() != null;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                if (tag == StandardTags.StatementTag.class) {
+                    return true;
+                }
+                return false;
             }
 
             @Override

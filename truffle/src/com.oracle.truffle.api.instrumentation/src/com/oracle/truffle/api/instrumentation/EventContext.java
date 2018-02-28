@@ -30,9 +30,9 @@ import java.util.Objects;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.AccessorInstrumentHandler;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -41,7 +41,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Represents the context of an instrumentation event.
+ * Represents the context of an execution event.
  *
  * Instances of {@link EventContext} should be neither stored, cached nor hashed. One exception is
  * when they are stored in {@link ExecutionEventNode} implementations. The equality and hashing
@@ -55,15 +55,104 @@ public final class EventContext {
 
     private final ProbeNode probeNode;
     private final SourceSection sourceSection;
+    @CompilationFinal private volatile Object nodeObject;
 
     EventContext(ProbeNode probeNode, SourceSection sourceSection) {
         this.sourceSection = sourceSection;
         this.probeNode = probeNode;
     }
 
+    @SuppressWarnings("unchecked")
+    boolean validEventContext() {
+        Node node = getInstrumentedNode();
+        if (node instanceof RootNode) {
+            throw new IllegalStateException("Instrumentable node must not be a root node.");
+        }
+        Object object = null;
+        if (node instanceof InstrumentableNode) {
+            object = ((InstrumentableNode) node).getNodeObject();
+        } else {
+            // legacy support
+            return true;
+        }
+        if (object != null) {
+            assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
+        }
+        boolean foundStandardTag = false;
+        for (Class<?> clazz : StandardTags.ALL_TAGS) {
+            if (hasTag((Class<? extends Tag>) clazz)) {
+                foundStandardTag = true;
+            }
+        }
+        if (foundStandardTag) {
+            RootNode root = probeNode.getRootNode();
+            if (root != null && root.getSourceSection() != null) {
+                assert sourceSection != null : "All nodes tagged with a standard tag and with a root node that has a source section must also have a source section.";
+            }
+        }
+
+        return true;
+    }
+
+    ProbeNode getProbeNode() {
+        return probeNode;
+    }
+
+    /**
+     * Returns <code>true</code> if the underlying instrumented AST is tagged with a particular tag.
+     * The return value of {@link #hasTag(Class)} always returns the same value for a particular tag
+     * and {@link EventContext}. The method may be used on compiled code paths.
+     *
+     * @param tag the tag to check to check, must not be <code>null</code>.
+     * @since 0.33
+     */
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == null) {
+            CompilerDirectives.transferToInterpreter();
+            throw new NullPointerException();
+        }
+        Node node = getInstrumentedNode();
+        if (node instanceof InstrumentableNode) {
+            return ((InstrumentableNode) node).hasTag(tag);
+        } else {
+            // legacy support
+            return AccessorInstrumentHandler.nodesAccess().isTaggedWith(node, tag);
+        }
+    }
+
+    /**
+     * Returns a language provided object that represents the instrumented node properties. The
+     * returned is alwasy a valid interop object. The returned object is never <code>null</code> and
+     * always returns <code>true</code> for the HAS_KEYS message. Multiple calls to
+     * {@link #getNodeObject()} return the same node object instance.
+     *
+     * @see InstrumentableNode#getNodeObject()
+     * @since 0.33
+     */
+    public Object getNodeObject() {
+        Object object = this.nodeObject;
+        if (object == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Node node = getInstrumentedNode();
+            if (node instanceof InstrumentableNode) {
+                object = ((InstrumentableNode) node).getNodeObject();
+            } else {
+                return null;
+            }
+            if (object == null) {
+                object = AccessorInstrumentHandler.interopAccess().createDefaultNodeObject(node);
+            } else {
+                assert AccessorInstrumentHandler.interopAccess().isValidNodeObject(object);
+            }
+            this.nodeObject = object;
+        }
+        return object;
+    }
+
     /**
      * Returns the {@link SourceSection} that is being instrumented. The returned source section is
-     * final for each {@link EventContext} instance.
+     * final for each {@link EventContext} instance. The returned source section may be null if the
+     * node does not provide sources section.
      *
      * <p>
      * <b>Performance note:</b> this is method may be invoked in compiled code and is guaranteed to
@@ -86,8 +175,9 @@ public final class EventContext {
      *
      * @since 0.12
      */
+    @SuppressWarnings("deprecation")
     public Node getInstrumentedNode() {
-        WrapperNode wrapper = probeNode.findWrapper();
+        com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;
     }
 
@@ -231,7 +321,7 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
 
         // Listener that reenters on unwind, attached to root nodes.
         EventBinding<ExecutionEventListener> functionReenter =
-            env.getInstrumenter().attachListener(
+            env.getInstrumenter().attachExecutionEventListener(
                 SourceSectionFilter.newBuilder().
                                     tagIs(StandardTags.RootTag.class).build(),
             new ExecutionEventListener() {
@@ -248,7 +338,7 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
             });
 
         // Listener that initiates unwind at line 20, attached to statements.
-        env.getInstrumenter().attachListener(
+        env.getInstrumenter().attachExecutionEventListener(
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.StatementTag.class).build(),
             new ExecutionEventListener() {
@@ -278,7 +368,7 @@ class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
     protected void onCreate(TruffleInstrument.Env env) {
         // Register a listener that checks the return value to all call nodes
         // If the return value is not 42, it forces to return 42.
-        env.getInstrumenter().attachListener(
+        env.getInstrumenter().attachExecutionEventListener(
             SourceSectionFilter.newBuilder().
                                 tagIs(StandardTags.CallTag.class).build(),
             new ExecutionEventListener() {

@@ -794,6 +794,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
+            return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getLanguageClass();
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             throw new AssertionError("Should not reach here.");
         }

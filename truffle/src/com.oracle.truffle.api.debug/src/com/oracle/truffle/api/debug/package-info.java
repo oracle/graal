@@ -63,11 +63,11 @@
  * for code written in that particular language.
  * <p>
  * This extra information is expressed using so called tags. Tags can be applied to AST nodes by
- * implementing the {@link com.oracle.truffle.api.nodes.Node#isTaggedWith(Class)} method. The
- * debugger requires the guest language to implement statement and call tags from the set of
- * standard Truffle tags. Please refer to
+ * implementing the {@link com.oracle.truffle.api.instrumentation.InstrumentableNode#hasTag(Class)}
+ * method. The debugger requires the guest language to implement statement and call tags from the
+ * set of standard Truffle tags. Please refer to
  * {@link com.oracle.truffle.api.instrumentation.StandardTags} on how to implement them.
- * 
+ *
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.debug;

@@ -46,7 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Custom more efficient stack representations for profilers.
- * 
+ *
  * @since 0.30
  */
 final class ShadowStack {
@@ -67,7 +67,7 @@ final class ShadowStack {
     }
 
     EventBinding<?> install(Instrumenter instrumenter, SourceSectionFilter filter, boolean compiledOnly) {
-        return instrumenter.attachFactory(filter, new ExecutionEventNodeFactory() {
+        return instrumenter.attachExecutionEventFactory(filter, new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(EventContext context) {
                 boolean isRoot = instrumenter.queryTags(context.getInstrumentedNode()).contains(StandardTags.RootTag.class);
                 return new StackPushPopNode(ShadowStack.this, new SourceLocation(instrumenter, context), compiledOnly, isRoot);

@@ -75,7 +75,7 @@ final class NodeClassImpl extends NodeClass {
             }
 
             private int order(NodeFieldAccessor nodeField) {
-                return isChildField(nodeField) ? 0 : (isChildrenField(nodeField) ? 1 : (isCloneableField(nodeField) ? 2 : 3));
+                return isChildField(nodeField) ? 0 : (isChildrenField(nodeField) ? 0 : (isCloneableField(nodeField) ? 1 : 2));
             }
         });
 

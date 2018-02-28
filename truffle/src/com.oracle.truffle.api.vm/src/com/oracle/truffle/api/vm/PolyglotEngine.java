@@ -1985,6 +1985,12 @@ public class PolyglotEngine {
         public String getValueInfo(Object languageContext, Object value) {
             return Objects.toString(value);
         }
+
+        @Override
+        public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
+            return ((LanguageShared) NODES.getEngineObject(language)).cache.getLanguageClass();
+        }
+
     }
 
 }

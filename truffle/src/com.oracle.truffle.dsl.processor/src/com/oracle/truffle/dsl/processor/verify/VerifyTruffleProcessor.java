@@ -44,6 +44,7 @@ import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.dsl.processor.ExpectError;
 
@@ -133,7 +134,9 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
                 emitError("@Child field cannot be final", e);
                 continue;
             }
-            assertNoErrorExpected(e);
+            if (e.getAnnotation(Executed.class) == null) {
+                assertNoErrorExpected(e);
+            }
         }
         return false;
     }

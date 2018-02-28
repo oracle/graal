@@ -56,6 +56,7 @@ import javax.tools.Diagnostic.Kind;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CreateCast;
+import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GeneratedBy;
@@ -68,7 +69,8 @@ import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.Log;
@@ -104,6 +106,7 @@ public class NodeParser extends AbstractParser<NodeData> {
     public static final List<Class<? extends Annotation>> ANNOTATIONS = Arrays.asList(Fallback.class, TypeSystemReference.class,
                     Specialization.class,
                     NodeChild.class,
+                    Executed.class,
                     NodeChildren.class);
 
     @Override
@@ -206,7 +209,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
 
         node.getFields().addAll(parseFields(lookupTypes, members));
-        node.getChildren().addAll(parseChildren(lookupTypes, members));
+        node.getChildren().addAll(parseChildren(node, lookupTypes, members));
         node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));
         node.getExecutableTypes().addAll(parseExecutableTypeData(node, members, node.getSignatureSize(), context.getFrameTypes(), false));
 
@@ -500,13 +503,8 @@ public class NodeParser extends AbstractParser<NodeData> {
             // default dummy type system
             typeSystem = new TypeSystemData(context, templateType, null, true);
         }
-        AnnotationMirror nodeInfoMirror = findFirstAnnotation(typeHierarchy, NodeInfo.class);
-        String shortName = null;
-        if (nodeInfoMirror != null) {
-            shortName = ElementUtils.getAnnotationValue(String.class, nodeInfoMirror, "shortName");
-        }
         boolean useNodeFactory = findFirstAnnotation(typeHierarchy, GenerateNodeFactory.class) != null;
-        return new NodeData(context, templateType, shortName, typeSystem, useNodeFactory);
+        return new NodeData(context, templateType, typeSystem, useNodeFactory);
 
     }
 
@@ -516,6 +514,8 @@ public class NodeParser extends AbstractParser<NodeData> {
         List<NodeFieldData> fields = new ArrayList<>();
         for (VariableElement field : ElementFilter.fieldsIn(elements)) {
             if (field.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            } else if (field.getAnnotation(Executed.class) != null) {
                 continue;
             }
             if (field.getModifiers().contains(Modifier.PUBLIC) || field.getModifiers().contains(Modifier.PROTECTED)) {
@@ -560,7 +560,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         return fields;
     }
 
-    private List<NodeChildData> parseChildren(final List<TypeElement> typeHierarchy, List<? extends Element> elements) {
+    private List<NodeChildData> parseChildren(NodeData node, final List<TypeElement> typeHierarchy, List<? extends Element> elements) {
         Map<String, TypeMirror> castNodeTypes = new HashMap<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements)) {
             AnnotationMirror mirror = ElementUtils.findAnnotationMirror(processingEnv, method, CreateCast.class);
@@ -574,7 +574,60 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        List<NodeChildData> parsedChildren = new ArrayList<>();
+        List<NodeChildData> executedFieldChildren = new ArrayList<>();
+        for (VariableElement field : ElementFilter.fieldsIn(elements)) {
+            if (field.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+            AnnotationMirror executed = ElementUtils.findAnnotationMirror(field.getAnnotationMirrors(), context.getDeclaredType(Executed.class));
+            if (executed != null) {
+                TypeMirror type = field.asType();
+                String name = field.getSimpleName().toString();
+                Cardinality cardinality = Cardinality.ONE;
+                if (type.getKind() == TypeKind.ARRAY) {
+                    cardinality = Cardinality.MANY;
+                }
+                AnnotationValue executedWith = ElementUtils.getAnnotationValue(executed, "with");
+                NodeChildData child = new NodeChildData(field, executed, name, type, type, field, cardinality, executedWith);
+                executedFieldChildren.add(child);
+
+                if (field.getModifiers().contains(Modifier.PRIVATE)) {
+                    child.addError("Field annotated with @%s must be visible for the generated subclass to execute.", Executed.class.getSimpleName());
+                }
+
+                if (cardinality == Cardinality.ONE) {
+                    if (field.getAnnotation(Child.class) == null) {
+                        child.addError("Field annotated with @%s must also be annotated with @%s.", Executed.class.getSimpleName(), Child.class.getSimpleName());
+                    }
+                } else {
+                    assert cardinality == Cardinality.MANY;
+                    if (field.getAnnotation(Children.class) == null) {
+                        child.addError("Field annotated with @%s must also be annotated with @%s.", Executed.class.getSimpleName(), Children.class.getSimpleName());
+                    }
+                }
+            }
+        }
+
+        NodeChildData many = null;
+        Set<String> names = new HashSet<>();
+        for (NodeChildData child : executedFieldChildren) {
+            if (child.needsGeneratedField()) {
+                throw new AssertionError("Should not need generated field.");
+            }
+            if (names.contains(child.getName())) {
+                child.addError("Field annotated with @%s has duplicate name '%s'. " +
+                                "Executed children must have unique names.", Executed.class.getSimpleName(), child.getName());
+            } else if (many != null) {
+                child.addError("Field annotated with @%s is hidden by executed field '%s'. " +
+                                "Executed child fields with multiple children hide all following executed child declarations. " +
+                                "Reorder or remove this executed child declaration.", Executed.class.getSimpleName(), many.getName());
+            } else if (child.getCardinality().isMany()) {
+                many = child;
+            }
+            names.add(child.getName());
+        }
+
+        List<NodeChildData> nodeChildren = new ArrayList<>();
         List<TypeElement> typeHierarchyReversed = new ArrayList<>(typeHierarchy);
         Collections.reverse(typeHierarchyReversed);
         for (TypeElement type : typeHierarchyReversed) {
@@ -595,21 +648,22 @@ public class NodeParser extends AbstractParser<NodeData> {
 
                 Cardinality cardinality = Cardinality.ONE;
 
-                TypeMirror childType = inheritType(childMirror, "type", nodeClassType);
-                if (childType.getKind() == TypeKind.ARRAY) {
+                TypeMirror childNodeType = inheritType(childMirror, "type", nodeClassType);
+                if (childNodeType.getKind() == TypeKind.ARRAY) {
                     cardinality = Cardinality.MANY;
                 }
 
-                TypeMirror originalChildType = childType;
+                TypeMirror originalChildType = childNodeType;
                 TypeMirror castNodeType = castNodeTypes.get(name);
                 if (castNodeType != null) {
-                    childType = castNodeType;
+                    childNodeType = castNodeType;
                 }
 
-                Element getter = findGetter(elements, name, childType);
-                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childType, originalChildType, getter, cardinality);
+                Element getter = findGetter(elements, name, childNodeType);
+                AnnotationValue executeWith = ElementUtils.getAnnotationValue(childMirror, "executeWith");
+                NodeChildData nodeChild = new NodeChildData(type, childMirror, name, childNodeType, originalChildType, getter, cardinality, executeWith);
 
-                parsedChildren.add(nodeChild);
+                nodeChildren.add(nodeChild);
 
                 if (nodeChild.getNodeType() == null) {
                     nodeChild.addError("No valid node type could be resoleved.");
@@ -622,17 +676,25 @@ public class NodeParser extends AbstractParser<NodeData> {
             }
         }
 
-        List<NodeChildData> filteredChildren = new ArrayList<>();
-        Set<String> encounteredNames = new HashSet<>();
-        for (int i = parsedChildren.size() - 1; i >= 0; i--) {
-            NodeChildData child = parsedChildren.get(i);
-            if (!encounteredNames.contains(child.getName())) {
-                filteredChildren.add(0, child);
-                encounteredNames.add(child.getName());
+        if (!nodeChildren.isEmpty() && !executedFieldChildren.isEmpty()) {
+            node.addError("The use of @%s and @%s at the same time is not supported.", NodeChild.class.getSimpleName(), Executed.class.getSimpleName());
+            return executedFieldChildren;
+        } else if (!executedFieldChildren.isEmpty()) {
+            return executedFieldChildren;
+        } else {
+            List<NodeChildData> filteredChildren = new ArrayList<>();
+            Set<String> encounteredNames = new HashSet<>();
+            for (int i = nodeChildren.size() - 1; i >= 0; i--) {
+                NodeChildData child = nodeChildren.get(i);
+                if (!encounteredNames.contains(child.getName())) {
+                    filteredChildren.add(0, child);
+                    encounteredNames.add(child.getName());
+                }
             }
+
+            return filteredChildren;
         }
 
-        return filteredChildren;
     }
 
     private List<NodeExecutionData> parseExecutions(List<NodeFieldData> fields, List<NodeChildData> children, List<? extends Element> elements) {
@@ -848,35 +910,18 @@ public class NodeParser extends AbstractParser<NodeData> {
 
     }
 
+    @SuppressWarnings("unchecked")
     private void initializeChildren(NodeData node) {
-        initializeExecuteWith(node);
-
         for (NodeChildData child : node.getChildren()) {
-            TypeMirror nodeType = child.getNodeType();
-            NodeData fieldNodeData = parseChildNodeData(node, child, ElementUtils.fromTypeMirror(nodeType));
+            AnnotationValue executeWithValue1 = child.getExecuteWithValue();
 
-            child.setNode(fieldNodeData);
-            if (fieldNodeData == null || fieldNodeData.hasErrors()) {
-                child.addError("Node type '%s' is invalid or not a subclass of Node.", ElementUtils.getQualifiedName(nodeType));
-            } else {
-                List<ExecutableTypeData> types = child.findGenericExecutableTypes(context);
-                if (types.isEmpty()) {
-                    AnnotationValue executeWithValue = ElementUtils.getAnnotationValue(child.getMessageAnnotation(), "executeWith");
-                    child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s and frame types %s.", child.getExecuteWith().size(),
-                                    ElementUtils.getSimpleName(nodeType), ElementUtils.getUniqueIdentifiers(createAllowedChildFrameTypes(node)));
-                }
-            }
-        }
-    }
-
-    private static void initializeExecuteWith(NodeData node) {
-        for (NodeChildData child : node.getChildren()) {
-            List<String> executeWithStrings = ElementUtils.getAnnotationValueList(String.class, child.getMessageAnnotation(), "executeWith");
-            AnnotationValue executeWithValue = ElementUtils.getAnnotationValue(child.getMessageAnnotation(), "executeWith");
+            List<AnnotationValue> executeWithValues = ElementUtils.resolveAnnotationValue(List.class, executeWithValue1);
             List<NodeExecutionData> executeWith = new ArrayList<>();
-            for (String executeWithString : executeWithStrings) {
+            for (AnnotationValue executeWithValue : executeWithValues) {
+                String executeWithString = ElementUtils.resolveAnnotationValue(String.class, executeWithValue);
+
                 if (child.getName().equals(executeWithString)) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with itself.", executeWithString);
+                    child.addError(executeWithValue1, "The child node '%s' cannot be executed with itself.", executeWithString);
                     continue;
                 }
                 NodeExecutionData found = null;
@@ -893,16 +938,34 @@ public class NodeParser extends AbstractParser<NodeData> {
                 }
 
                 if (found == null) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The child node was not found.", child.getName(), executeWithString);
+                    child.addError(executeWithValue1, "The child node '%s' cannot be executed with '%s'. The child node was not found.", child.getName(), executeWithString);
                     continue;
                 } else if (!before) {
-                    child.addError(executeWithValue, "The child node '%s' cannot be executed with '%s'. The node %s is executed after the current node.", child.getName(), executeWithString,
+                    child.addError(executeWithValue1, "The child node '%s' cannot be executed with '%s'. The node %s is executed after the current node.", child.getName(), executeWithString,
                                     executeWithString);
                     continue;
                 }
                 executeWith.add(found);
             }
+
             child.setExecuteWith(executeWith);
+        }
+
+        for (NodeChildData child : node.getChildren()) {
+            TypeMirror nodeType = child.getNodeType();
+            NodeData fieldNodeData = parseChildNodeData(node, child, ElementUtils.fromTypeMirror(nodeType));
+
+            child.setNode(fieldNodeData);
+            if (fieldNodeData == null || fieldNodeData.hasErrors()) {
+                child.addError("Node type '%s' is invalid or not a subclass of Node.", ElementUtils.getQualifiedName(nodeType));
+            } else {
+                List<ExecutableTypeData> types = child.findGenericExecutableTypes(context);
+                if (types.isEmpty()) {
+                    AnnotationValue executeWithValue = child.getExecuteWithValue();
+                    child.addError(executeWithValue, "No generic execute method found with %s evaluated arguments for node type %s and frame types %s.", child.getExecuteWith().size(),
+                                    ElementUtils.getSimpleName(nodeType), ElementUtils.getUniqueIdentifiers(createAllowedChildFrameTypes(node)));
+                }
+            }
         }
     }
 

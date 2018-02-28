@@ -48,17 +48,22 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTest.ReturnLanguageEnv;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockNode;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineNode;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ExpressionNode;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.BlockTag;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.ConstantTag;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.LoopTag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -68,7 +73,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -117,8 +121,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * </p>
  */
 @Registration(id = InstrumentationTestLanguage.ID, mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
-@ProvidedTags({ExpressionNode.class, DefineNode.class, LoopNode.class,
-                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockNode.class, StandardTags.RootTag.class})
+@ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
+                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockTag.class, StandardTags.RootTag.class, ConstantTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 implements SpecialService {
 
@@ -126,17 +130,34 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
 
-    public static final Class<?> EXPRESSION = ExpressionNode.class;
-    public static final Class<?> DEFINE = DefineNode.class;
-    public static final Class<?> LOOP = LoopNode.class;
-    public static final Class<?> STATEMENT = StandardTags.StatementTag.class;
-    public static final Class<?> CALL = StandardTags.CallTag.class;
-    public static final Class<?> ROOT = StandardTags.RootTag.class;
-    public static final Class<?> BLOCK = BlockNode.class;
+    static class DefineTag extends Tag {
 
-    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT};
+    }
+
+    static class LoopTag extends Tag {
+
+    }
+
+    static class BlockTag extends Tag {
+
+    }
+
+    static class ConstantTag extends Tag {
+
+    }
+
+    public static final Class<? extends Tag> EXPRESSION = StandardTags.ExpressionTag.class;
+    public static final Class<? extends Tag> DEFINE = DefineTag.class;
+    public static final Class<? extends Tag> LOOP = LoopTag.class;
+    public static final Class<? extends Tag> STATEMENT = StandardTags.StatementTag.class;
+    public static final Class<? extends Tag> CALL = StandardTags.CallTag.class;
+    public static final Class<? extends Tag> ROOT = StandardTags.RootTag.class;
+    public static final Class<? extends Tag> BLOCK = BlockTag.class;
+    public static final Class<? extends Tag> CONSTANT = ConstantTag.class;
+
+    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
-                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE"};
+                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -370,12 +391,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new LoopNode(parseIdent(idents[0]), childArray);
                 case "BLOCK":
                     return new BlockNode(childArray);
+                case "BLOCK_NO_SOURCE_SECTION":
+                    return new BlockNoSourceSectionNode(childArray);
                 case "EXPRESSION":
                     return new ExpressionNode(childArray);
                 case "ROOT":
                     return new FunctionRootNode(childArray);
                 case "STATEMENT":
                     return new StatementNode(childArray);
+                case "INTERNAL":
+                    return new InternalNode(childArray);
                 case "CONSTANT":
                     return new ConstantNode(idents[0], childArray);
                 case "VARIABLE":
@@ -392,6 +417,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new JoinNode(childArray);
                 case "INVALIDATE":
                     return new InvalidateNode(childArray);
+                case "INNER_FRAME":
+                    return new InnerFrameNode(childArray);
+                case "MATERIALIZE_CHILD_EXPRESSION":
+                    return new MaterializeChildExpressionNode(childArray);
                 default:
                     throw new AssertionError();
             }
@@ -474,11 +503,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
 
         @Override
-        protected boolean isInstrumentable() {
-            return true;
-        }
-
-        @Override
         @ExplodeLoop
         public Object execute(VirtualFrame frame) {
             Object returnValue = Null.INSTANCE;
@@ -500,25 +524,69 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
-    static final class ExpressionNode extends InstrumentedNode {
+    static class ExpressionNode extends InstrumentedNode {
 
         ExpressionNode(BaseNode[] children) {
             super(children);
         }
 
+        @Override
+        public Object execute(VirtualFrame frame) {
+            StringBuilder b = new StringBuilder();
+
+            b.append("(");
+            if (children != null) {
+                for (int i = 0; i < children.length; i++) {
+                    BaseNode child = children[i];
+                    Object value = Null.INSTANCE;
+                    if (child != null) {
+                        value = child.execute(frame);
+                    }
+                    if (i > 0) {
+                        b.append("+");
+                    }
+                    b.append(value);
+                }
+            }
+            b.append(")");
+            return b.toString();
+        }
+
     }
 
-    @Instrumentable(factory = InstrumentedNodeWrapper.class)
-    public abstract static class InstrumentedNode extends BaseNode {
+    static class BlockNoSourceSectionNode extends BlockNode {
 
-        @Children private final BaseNode[] children;
+        BlockNoSourceSectionNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return null;
+        }
+
+    }
+
+    @GenerateWrapper
+    public abstract static class InstrumentedNode extends BaseNode implements InstrumentableNode, TruffleObject {
+
+        @Children final BaseNode[] children;
+
+        public InstrumentedNode() {
+            this.children = null;
+        }
 
         public InstrumentedNode(BaseNode[] children) {
             this.children = children;
         }
 
-        public InstrumentedNode(@SuppressWarnings("unused") InstrumentedNode delegate) {
-            this.children = null;
+        public boolean isInstrumentable() {
+            return getSourceSection() != null;
         }
 
         @Override
@@ -527,27 +595,56 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             Object returnValue = Null.INSTANCE;
             for (BaseNode child : children) {
                 if (child != null) {
-                    returnValue = child.execute(frame);
+                    Object value = child.execute(frame);
+                    if (value != null && value != Null.INSTANCE) {
+                        returnValue = value;
+                    }
                 }
             }
             return returnValue;
         }
 
+        public ForeignAccess getForeignAccess() {
+            return InstrumentedNodeAttributesForeign.ACCESS;
+        }
+
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new InstrumentedNodeWrapper(this, probe);
+        }
+
         @Override
-        protected final boolean isTaggedWith(Class<?> tag) {
+        public final boolean hasTag(Class<? extends Tag> tag) {
             if (tag == StandardTags.RootTag.class) {
                 return this instanceof FunctionRootNode;
             } else if (tag == StandardTags.CallTag.class) {
                 return this instanceof CallNode || this instanceof RecursiveCallNode;
             } else if (tag == StandardTags.StatementTag.class) {
                 return this instanceof StatementNode;
+            } else if (tag == StandardTags.ExpressionTag.class) {
+                return this instanceof ExpressionNode;
+            } else if (tag == LOOP) {
+                return this instanceof LoopNode;
+            } else if (tag == BLOCK) {
+                return this instanceof BlockNode;
+            } else if (tag == DEFINE) {
+                return this instanceof DefineNode;
+            } else if (tag == CONSTANT) {
+                return this instanceof ConstantNode;
             }
-            return getClass() == tag;
+            return false;
+        }
+
+        public Object getNodeObject() {
+            return this;
+        }
+
+        public static boolean isInstance(TruffleObject o) {
+            return o instanceof InstrumentedNode;
         }
 
     }
 
-    static final class BlockNode extends InstrumentedNode {
+    static class BlockNode extends InstrumentedNode {
 
         BlockNode(BaseNode[] children) {
             super(children);
@@ -563,14 +660,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
-    private static final class StatementNode extends InstrumentedNode {
+    private static class StatementNode extends InstrumentedNode {
 
         StatementNode(BaseNode[] children) {
             super(children);
         }
     }
 
-    static class DefineNode extends BaseNode {
+    static class DefineNode extends InstrumentedNode {
 
         private final String identifier;
         private final CallTarget target;
@@ -585,6 +682,11 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             }
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
             this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return false;
         }
 
         @Override
@@ -835,6 +937,59 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
+    static class MaterializeChildExpressionNode extends StatementNode {
+
+        MaterializeChildExpressionNode(BaseNode[] children) {
+            super(children);
+        }
+
+        public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+            if (materializedTags.contains(StandardTags.ExpressionTag.class)) {
+                MaterializedChildExpressionNode materializedNode = new MaterializedChildExpressionNode(getSourceSection(), children);
+                materializedNode.setSourceSection(getSourceSection());
+                return materializedNode;
+            }
+            return this;
+        }
+    }
+
+    static class MaterializedChildExpressionNode extends StatementNode {
+
+        @Child private InstrumentedNode expressionNode;
+
+        MaterializedChildExpressionNode(SourceSection sourceSection, BaseNode[] children) {
+            super(children);
+            this.expressionNode = new ExpressionNode(null);
+            this.expressionNode.setSourceSection(sourceSection);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            expressionNode.execute(frame);
+            return super.execute(frame);
+        }
+
+    }
+
+    private static class InnerFrameNode extends InstrumentedNode {
+
+        private final FrameDescriptor innerFrameDescriptor = new FrameDescriptor();
+
+        InnerFrameNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return null;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return super.execute(Truffle.getRuntime().createVirtualFrame(frame.getArguments(), innerFrameDescriptor));
+        }
+    }
+
     private static Object parseIdent(String identifier) {
         if (identifier.equals("infinity")) {
             return Double.POSITIVE_INFINITY;
@@ -968,6 +1123,24 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         }
     }
 
+    static final class InternalNode extends InstrumentedNode {
+
+        InternalNode(BaseNode[] children) {
+            super(children);
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return null;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return super.execute(frame);
+        }
+
+    }
+
     static class PrintNode extends InstrumentedNode {
 
         enum Output {
@@ -1020,9 +1193,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public abstract static class BaseNode extends Node {
 
         private SourceSection sourceSection;
+        private int index;
 
         public void setSourceSection(SourceSection sourceSection) {
             this.sourceSection = sourceSection;
+        }
+
+        public int getIndex() {
+            return index;
         }
 
         @Override
@@ -1293,6 +1471,110 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     }
                 }
 
+            }
+        }
+
+    }
+
+    @MessageResolution(receiverType = InstrumentedNode.class)
+    static final class InstrumentedNodeAttributes {
+
+        @Resolve(message = "HAS_KEYS")
+        abstract static class HasKeysNode extends Node {
+
+            @SuppressWarnings("unused")
+            public Object access(InstrumentedNode namesObject) {
+                return true;
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class ReadNode extends Node {
+
+            @CompilerDirectives.TruffleBoundary
+            public Object access(InstrumentedNode namesObject, String name) {
+                switch (name) {
+                    case "simpleName":
+                        return namesObject.getClass().getSimpleName();
+                }
+                if (namesObject instanceof ConstantNode) {
+                    switch (name) {
+                        case "constant":
+                            return ((ConstantNode) namesObject).constant;
+                    }
+                }
+                throw UnknownIdentifierException.raise(name);
+            }
+        }
+
+        @Resolve(message = "KEYS")
+        abstract static class KeyNode extends Node {
+
+            @CompilerDirectives.TruffleBoundary
+            public Object access(InstrumentedNode namesObject) {
+                if (namesObject instanceof ConstantNode) {
+                    return new KeysObject(new String[]{"simpleName", "constant"});
+                } else {
+                    return new KeysObject(new String[]{"simpleName"});
+                }
+            }
+        }
+
+        @Resolve(message = "KEY_INFO")
+        abstract static class KeyInfoNode extends Node {
+
+            private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
+
+            @SuppressWarnings("unused")
+            public int access(TruffleObject obj, String prop) {
+                return READABLE;
+            }
+        }
+
+    }
+
+    static class KeysObject implements TruffleObject {
+
+        final String[] keys;
+
+        KeysObject(String[] keys) {
+            this.keys = keys;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return KeyObjectResolutionForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof KeysObject;
+        }
+
+        @MessageResolution(receiverType = KeysObject.class)
+        static final class KeyObjectResolution {
+
+            @Resolve(message = "HAS_SIZE")
+            abstract static class HasSizeNode extends Node {
+
+                public Object access(@SuppressWarnings("unused") KeysObject obj) {
+                    return true;
+                }
+            }
+
+            @Resolve(message = "GET_SIZE")
+            abstract static class GetSizeNode extends Node {
+
+                public Object access(KeysObject obj) {
+                    return obj.keys.length;
+                }
+            }
+
+            @Resolve(message = "READ")
+            abstract static class ReadNode extends Node {
+
+                public Object access(KeysObject obj, Number index) {
+                    return obj.keys[index.intValue()];
+                }
             }
         }
 

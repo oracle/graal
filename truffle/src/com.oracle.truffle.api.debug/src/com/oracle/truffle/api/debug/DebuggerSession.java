@@ -483,7 +483,7 @@ public final class DebuggerSession implements Closeable {
                 }
             });
         }
-        return debugger.getInstrumenter().attachFactory(builder.build(), factory);
+        return debugger.getInstrumenter().attachExecutionEventFactory(builder.build(), factory);
     }
 
     private void removeBindings() {

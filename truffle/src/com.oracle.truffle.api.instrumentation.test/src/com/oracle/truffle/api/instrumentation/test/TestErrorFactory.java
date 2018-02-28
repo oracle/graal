@@ -24,12 +24,12 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Class is used for testing compile errors only. If you add this factory you will get error
  * messages without getting the 'class not found' error message.
  */
-abstract class TestErrorFactory implements InstrumentableFactory<Node> {
+@SuppressWarnings("deprecation")
+abstract class TestErrorFactory implements com.oracle.truffle.api.instrumentation.InstrumentableFactory<Node> {
 }

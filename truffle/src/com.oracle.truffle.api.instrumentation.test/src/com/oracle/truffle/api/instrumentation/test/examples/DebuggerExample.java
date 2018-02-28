@@ -70,7 +70,7 @@ public final class DebuggerExample extends TruffleInstrument {
 
         @Override
         public void installBreakpoint(int line, final Callback callback) {
-            instrumenter.attachListener(SourceSectionFilter.newBuilder().lineIs(line).tagIs(InstrumentationTestLanguage.STATEMENT).build(), new Breakpoint(callback));
+            instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().lineIs(line).tagIs(InstrumentationTestLanguage.STATEMENT).build(), new Breakpoint(callback));
         }
 
         @Override
@@ -109,7 +109,7 @@ public final class DebuggerExample extends TruffleInstrument {
             EventBinding<?> step = this.stepping;
             if (stepping) {
                 if (step == null) {
-                    this.stepping = instrumenter.attachListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new Stepping());
+                    this.stepping = instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new Stepping());
                 }
             } else {
                 if (step != null && !step.isDisposed()) {

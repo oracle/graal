@@ -26,6 +26,8 @@ package com.oracle.truffle.tck.tests;
 
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.tck.InlineSnippet;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.Assumption;
@@ -41,7 +43,6 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -50,9 +51,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.tck.InlineSnippet;
 
 /**
  * Verify constraints of Truffle languages.
@@ -70,15 +68,15 @@ public class VerifierInstrument extends TruffleInstrument {
     protected void onCreate(Env instrumentEnv) {
         this.env = instrumentEnv;
         instrumentEnv.registerService(this);
-        instrumentEnv.getInstrumenter().attachListener(
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(
                         SourceSectionFilter.newBuilder().tagIs(RootTag.class).build(),
-                        new RootFrameChecker(instrumentEnv.getInstrumenter()));
+                        new RootFrameChecker());
     }
 
     void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
         if (inlineSnippet != null) {
             inlineScriptsRunner = new InlineScriptsRunner();
-            inlineBinding = env.getInstrumenter().attachListener(
+            inlineBinding = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StatementTag.class, CallTag.class).build(),
                             inlineScriptsRunner);
             inlineScriptsRunner.setSnippet(languageId, inlineSnippet, verifier);
@@ -177,12 +175,6 @@ public class VerifierInstrument extends TruffleInstrument {
 
     private static class RootFrameChecker implements ExecutionEventListener {
 
-        private final Instrumenter instrumenter;
-
-        RootFrameChecker(Instrumenter instrumenter) {
-            this.instrumenter = instrumenter;
-        }
-
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
             checkFrameIsEmpty(context, frame.materialize());
@@ -204,7 +196,7 @@ public class VerifierInstrument extends TruffleInstrument {
             if (parent == null) {
                 return false;
             }
-            if (instrumenter.queryTags(parent).contains(RootTag.class)) {
+            if (TruffleTCKAccessor.nodesAccess().isTaggedWith(parent, RootTag.class)) {
                 return true;
             }
             return hasParentRootTag(parent);
@@ -225,6 +217,10 @@ public class VerifierInstrument extends TruffleInstrument {
 
         static Accessor.EngineSupport engineAccess() {
             return ACCESSOR.engineSupport();
+        }
+
+        static Accessor.Nodes nodesAccess() {
+            return ACCESSOR.nodes();
         }
 
         static Accessor.InstrumentSupport instrumentAccess() {
