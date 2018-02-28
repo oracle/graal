@@ -22,6 +22,8 @@ import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 
 public class TruffleAdapter {
+    public static final String SOURCE_SECTION_ID = "TruffleLSPTestSection";
+
     private LanguageClient client;
     private Workspace workspace;
 
@@ -48,11 +50,11 @@ public class TruffleAdapter {
                 lang = "python";
                 source = Source.newBuilder(lang, text, documentUri).build();
                 Context context = Context.create(lang);
-                // Instrument instrument = context.getEngine().getInstruments().get(GlobalsInstrument.ID);
-                // System.out.println(instrument);
+                Instrument instrument = context.getEngine().getInstruments().get(GlobalsInstrument.ID);
+                System.out.println(instrument);
 
-                // instrument.lookup(Object.class);
-                Value value = context.eval(source);
+                instrument.lookup(Object.class);
+                Value value = context.eval(Source.newBuilder(lang, "globvar = 1\n2+2\ndef abc():\n  myLocal = 3\n  return myLocal\nabc()+globvar", SOURCE_SECTION_ID).build());
             }
         } catch (IOException | IllegalStateException e) {
             e.printStackTrace(ServerLauncher.errWriter());
