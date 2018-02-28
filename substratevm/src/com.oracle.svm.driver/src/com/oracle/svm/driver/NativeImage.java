@@ -423,16 +423,18 @@ class NativeImage {
         imageBuilderArgs.addAll(customImageBuilderArgs);
 
         /* Perform option consolidation of imageBuilderArgs */
+        Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
         consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
         consolidateArgs(imageBuilderArgs, oRYoungGenerationSize, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
         consolidateArgs(imageBuilderArgs, oROldGenerationSize, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
-        consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", s -> canonicalize(Paths.get(s)).toString());
+        consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
+        consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHIncludeResourceBundles, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHInterfacesForJNR, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", s -> canonicalize(Paths.get(s)).toString());
+        consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHReflectionConfigurationResources, ",", Function.identity());
-        consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", s -> canonicalize(Paths.get(s)).toString());
+        consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationResources, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
 
