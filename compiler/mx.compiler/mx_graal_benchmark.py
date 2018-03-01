@@ -470,6 +470,7 @@ class AveragingBenchmarkMixin(object):
             averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
             averageResult["metric.value"] = totalTimeForAverage / resultIterations
             averageResult["metric.name"] = "time"
+            averageResult["metric.average-over"] = resultIterations
             results.append(averageResult)
 
 
