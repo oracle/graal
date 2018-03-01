@@ -45,6 +45,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
      */
     public static final GraalHotSpotVMConfig INJECTED_VMCONFIG = null;
 
+    // this uses `1.9` which will give the correct result with `1.9`, `9`, `10` etc.
     private final boolean isJDK8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
     private final int jdkVersion = isJDK8 ? 8 : Integer.parseInt(System.getProperty("java.specification.version"));
     public final String osName = getHostOSName();
