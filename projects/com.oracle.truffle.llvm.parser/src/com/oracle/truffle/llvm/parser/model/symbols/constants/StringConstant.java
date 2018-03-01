@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 
 public final class StringConstant extends AbstractConstant {
 
@@ -39,7 +39,7 @@ public final class StringConstant extends AbstractConstant {
 
     private final boolean isCString;
 
-    public StringConstant(Type type, String value, boolean isCString) {
+    public StringConstant(ArrayType type, String value, boolean isCString) {
         super(type);
         this.value = value;
         this.isCString = isCString;
@@ -56,6 +56,11 @@ public final class StringConstant extends AbstractConstant {
 
     public boolean isCString() {
         return isCString;
+    }
+
+    @Override
+    public ArrayType getType() {
+        return (ArrayType) super.getType();
     }
 
     @Override

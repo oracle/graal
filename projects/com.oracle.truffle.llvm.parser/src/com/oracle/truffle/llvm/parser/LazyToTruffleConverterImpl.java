@@ -148,9 +148,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             FrameSlot slot = frame.findFrameSlot(parameter.getName());
             if (isStructByValue(parameter)) {
                 Type type = ((PointerType) parameter.getType()).getPointeeType();
-                int size = runtime.getContext().getByteSize(type);
-                int alignment = runtime.getContext().getByteAlignment(type);
-                formalParamInits.add(nodeFactory.createFrameWrite(runtime, parameter.getType(), nodeFactory.createCopyStructByValue(runtime, type, size, alignment, parameterNode), slot, null));
+                formalParamInits.add(nodeFactory.createFrameWrite(runtime, parameter.getType(), nodeFactory.createCopyStructByValue(runtime, type, parameterNode), slot, null));
             } else {
                 formalParamInits.add(nodeFactory.createFrameWrite(runtime, parameter.getType(), parameterNode, slot, null));
             }

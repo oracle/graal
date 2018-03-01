@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI64Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
@@ -89,7 +89,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
 
     @Specialization
     protected Object doOp(LLVMVirtualAllocationAddress address, long value,
-                    @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+                    @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
         address.writeI64(memory, value);
         return null;
     }

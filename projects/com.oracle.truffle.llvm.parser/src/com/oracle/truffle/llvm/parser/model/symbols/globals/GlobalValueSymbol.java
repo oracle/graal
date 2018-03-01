@@ -133,4 +133,8 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
             value = newValue;
         }
     }
+
+    public boolean isExternal() {
+        return getInitialiser() == 0 && Linkage.isExtern(getLinkage());
+    }
 }

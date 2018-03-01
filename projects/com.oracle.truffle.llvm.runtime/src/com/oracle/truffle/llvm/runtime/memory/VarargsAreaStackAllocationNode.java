@@ -30,10 +30,8 @@
 package com.oracle.truffle.llvm.runtime.memory;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
-public abstract class LLVMStackAllocationNode extends LLVMNode {
-
-    public abstract Object executeWithTarget(VirtualFrame frame, long size);
-
+public interface VarargsAreaStackAllocationNode extends NodeInterface {
+    Object executeWithTarget(VirtualFrame frame, long size);
 }

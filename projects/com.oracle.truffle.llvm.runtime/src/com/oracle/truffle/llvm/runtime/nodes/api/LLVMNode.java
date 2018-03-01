@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
 public abstract class LLVMNode extends Node {
@@ -83,12 +83,12 @@ public abstract class LLVMNode extends Node {
         }
     }
 
-    public final UnsafeIntArrayAccess getUnsafeIntArrayAccess() {
+    public final UnsafeArrayAccess getUnsafeArrayAccess() {
         RootNode rootNode = getRootNode();
         if (rootNode != null && rootNode.getLanguage(LLVMLanguage.class) != null) {
-            return rootNode.getLanguage(LLVMLanguage.class).getCapability(UnsafeIntArrayAccess.class);
+            return rootNode.getLanguage(LLVMLanguage.class).getCapability(UnsafeArrayAccess.class);
         } else {
-            return LLVMLanguage.getLanguage().getCapability(UnsafeIntArrayAccess.class);
+            return LLVMLanguage.getLanguage().getCapability(UnsafeArrayAccess.class);
         }
     }
 

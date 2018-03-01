@@ -169,7 +169,7 @@ public final class LLVMSymbolReadResolver {
                 if (arraySize == 0) {
                     resolvedNode = null;
                 } else {
-                    final LLVMExpressionNode target = runtime.allocateFunctionLifetime(type, runtime.getContext().getByteSize(type), runtime.getContext().getByteAlignment(type));
+                    final LLVMExpressionNode target = runtime.getNodeFactory().createAlloca(runtime, type);
                     resolvedNode = runtime.getNodeFactory().createZeroNode(runtime, target, arraySize);
                 }
             }
@@ -181,8 +181,7 @@ public final class LLVMSymbolReadResolver {
                     final LLVMAddress minusOneNode = LLVMAddress.fromLong(-1);
                     resolvedNode = runtime.getNodeFactory().createLiteral(runtime, minusOneNode, new PointerType(structureType));
                 } else {
-                    final int alignment = runtime.getContext().getByteAlignment(structureType);
-                    final LLVMExpressionNode addressnode = runtime.allocateFunctionLifetime(structureType, structSize, alignment);
+                    final LLVMExpressionNode addressnode = runtime.getNodeFactory().createAlloca(runtime, structureType);
                     resolvedNode = runtime.getNodeFactory().createZeroNode(runtime, addressnode, structSize);
                 }
             }
@@ -220,8 +219,7 @@ public final class LLVMSymbolReadResolver {
             for (int i = 0; i < array.getElementCount(); i++) {
                 values.add(resolve(array.getElement(i)));
             }
-            final Type arrayType = array.getType();
-            resolvedNode = runtime.getNodeFactory().createArrayLiteral(runtime, values, arrayType);
+            resolvedNode = runtime.getNodeFactory().createArrayLiteral(runtime, values, array.getType());
         }
 
         @Override

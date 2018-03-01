@@ -32,7 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 @ValueType
 public final class LLVMVirtualAllocationAddress {
@@ -67,59 +67,59 @@ public final class LLVMVirtualAllocationAddress {
         return new LLVMVirtualAllocationAddress(this.object, this.offset + value);
     }
 
-    public void writeI1(UnsafeIntArrayAccess memory, boolean value) {
+    public void writeI1(UnsafeArrayAccess memory, boolean value) {
         memory.writeI1(object, offset, value);
     }
 
-    public boolean getI1(UnsafeIntArrayAccess memory) {
+    public boolean getI1(UnsafeArrayAccess memory) {
         return memory.getI1(object, offset);
     }
 
-    public void writeI8(UnsafeIntArrayAccess memory, byte value) {
+    public void writeI8(UnsafeArrayAccess memory, byte value) {
         memory.writeI8(object, offset, value);
     }
 
-    public byte getI8(UnsafeIntArrayAccess memory) {
+    public byte getI8(UnsafeArrayAccess memory) {
         return memory.getI8(object, offset);
     }
 
-    public void writeI16(UnsafeIntArrayAccess memory, short value) {
+    public void writeI16(UnsafeArrayAccess memory, short value) {
         memory.writeI16(object, offset, value);
     }
 
-    public short getI16(UnsafeIntArrayAccess memory) {
+    public short getI16(UnsafeArrayAccess memory) {
         return memory.getI16(object, offset);
     }
 
-    public void writeI32(UnsafeIntArrayAccess memory, int value) {
+    public void writeI32(UnsafeArrayAccess memory, int value) {
         memory.writeI32(object, offset, value);
     }
 
-    public int getI32(UnsafeIntArrayAccess memory) {
+    public int getI32(UnsafeArrayAccess memory) {
         return memory.getI32(object, offset);
     }
 
-    public void writeI64(UnsafeIntArrayAccess memory, long value) {
+    public void writeI64(UnsafeArrayAccess memory, long value) {
         memory.writeI64(object, offset, value);
     }
 
-    public long getI64(UnsafeIntArrayAccess memory) {
+    public long getI64(UnsafeArrayAccess memory) {
         return memory.getI64(object, offset);
     }
 
-    public void writeFloat(UnsafeIntArrayAccess memory, float value) {
+    public void writeFloat(UnsafeArrayAccess memory, float value) {
         memory.writeFloat(object, offset, value);
     }
 
-    public float getFloat(UnsafeIntArrayAccess memory) {
+    public float getFloat(UnsafeArrayAccess memory) {
         return memory.getFloat(object, offset);
     }
 
-    public void writeDouble(UnsafeIntArrayAccess memory, double value) {
+    public void writeDouble(UnsafeArrayAccess memory, double value) {
         memory.writeDouble(object, offset, value);
     }
 
-    public double getDouble(UnsafeIntArrayAccess memory) {
+    public double getDouble(UnsafeArrayAccess memory) {
         return memory.getDouble(object, offset);
     }
 

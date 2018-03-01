@@ -42,6 +42,7 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.AsmDialect;
@@ -98,9 +99,7 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -170,20 +169,22 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             alignment = LLVMStack.NO_ALIGNMENT_REQUIREMENTS;
         }
 
-        final int size = runtime.getContext().getByteSize(type);
         final SymbolImpl count = allocate.getCount();
         final LLVMExpressionNode result;
         if (count instanceof NullConstant) {
-            result = nodeFactory.createAlloca(runtime, type, size, alignment);
+            result = nodeFactory.createAlloca(runtime, type, alignment);
         } else if (count instanceof IntegerConstant) {
-            if (type instanceof VariableBitWidthType) {
-                result = nodeFactory.createAlloca(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment);
+            long numElements = (int) ((IntegerConstant) count).getValue();
+            if (numElements == 1) {
+                result = nodeFactory.createAlloca(runtime, type, alignment);
             } else {
-                result = nodeFactory.createAlloca(runtime, type, size * (int) ((IntegerConstant) count).getValue(), alignment);
+                assert numElements == (int) numElements;
+                ArrayType arrayType = new ArrayType(type, (int) numElements);
+                result = nodeFactory.createAlloca(runtime, arrayType, alignment);
             }
         } else {
             LLVMExpressionNode num = symbols.resolve(count);
-            result = nodeFactory.createAlloca(runtime, type, num, alignment);
+            result = nodeFactory.createAllocaArray(runtime, type, num, alignment);
         }
 
         // we never want to step on allocations, only to actual assignments in the source
@@ -233,10 +234,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argIndex++;
 
         if (targetType instanceof StructureType) {
-            final int size = runtime.getContext().getByteSize(targetType);
-            final int align = runtime.getContext().getByteAlignment(targetType);
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createAlloca(runtime, targetType, size, align);
+            argNodes[argIndex] = nodeFactory.createAlloca(runtime, targetType);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++) {
@@ -270,9 +269,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LandingpadInstruction landingpadInstruction) {
         Type type = landingpadInstruction.getType();
-        final int size = runtime.getContext().getByteSize(type);
-        final int align = runtime.getContext().getByteAlignment(type);
-        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloca(runtime, type, size, align);
+        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloca(runtime, type);
         LLVMExpressionNode[] entries = new LLVMExpressionNode[landingpadInstruction.getClauseSymbols().length];
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
@@ -380,10 +377,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
         if (targetType instanceof StructureType) {
-            final int size = runtime.getContext().getByteSize(targetType);
-            final int align = runtime.getContext().getByteAlignment(targetType);
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createAlloca(runtime, targetType, size, align);
+            argNodes[argIndex] = nodeFactory.createAlloca(runtime, targetType);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
@@ -632,10 +627,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode valueToInsert = symbols.resolve(insert.getValue());
         final Type valueType = insert.getValue().getType();
         final int targetIndex = insert.getIndex();
-        final int size = runtime.getContext().getByteSize(sourceType);
-        final int alignment = runtime.getContext().getByteAlignment(sourceType);
 
-        final LLVMExpressionNode resultAggregate = nodeFactory.createAlloca(runtime, sourceType, size, alignment);
+        final LLVMExpressionNode resultAggregate = nodeFactory.createAlloca(runtime, sourceType);
 
         final long offset = runtime.getContext().getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(runtime, resultAggregate, sourceAggregate,

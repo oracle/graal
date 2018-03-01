@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
+import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -60,7 +60,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
 
     private final int numberOfExplicitArguments;
     private final LLVMSourceLocation source;
-    @Child private LLVMStackAllocationNode stackAllocationNode;
+    @Child private VarargsAreaStackAllocationNode stackAllocationNode;
 
     @Child private LLVMStoreNode i64RegSaveAreaStore;
     @Child private LLVMStoreNode i32RegSaveAreaStore;
@@ -81,7 +81,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     @Child private LLVMMemMoveNode memmove;
 
     public LLVMX86_64VAStart(int numberOfExplicitArguments, LLVMSourceLocation source,
-                    LLVMStackAllocationNode stackAllocationNode,
+                    VarargsAreaStackAllocationNode stackAllocationNode,
                     LLVMMemMoveNode memmove) {
         this.numberOfExplicitArguments = numberOfExplicitArguments;
         this.source = source;
