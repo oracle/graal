@@ -119,13 +119,6 @@ public abstract class Launcher {
         System.exit(e.getExitCode());
     }
 
-    /**
-     * Sets the version action that will be executed before launching.
-     */
-    protected void setVersionAction(VersionAction versionAction) {
-        this.versionAction = versionAction;
-    }
-
     protected static class AbortException extends RuntimeException {
         static final long serialVersionUID = 4681646279864737876L;
         private final int exitCode;
@@ -417,12 +410,12 @@ public abstract class Launcher {
 
         switch (versionAction) {
             case PrintAndContinue:
-                printVersion();
+                printPolyglotVersions();
                 // fall through
             case None:
                 break;
             case PrintAndExit:
-                printVersion();
+                printPolyglotVersions();
                 return true;
         }
         boolean printDefaultHelp = help || ((helpExpert || helpDebug) && !helpTools && !helpLanguages);
@@ -443,8 +436,8 @@ public abstract class Launcher {
             if (helpExpert || helpDebug) {
                 printOption("--help:debug",             "Print additional options for debugging.");
             }
-            printOption("--version",                    "Print version information and exit.");
-            printOption("--show-version",               "Print version information and continue execution.");
+            printOption("--version:graalvm",            "Print GraalVM version information and exit.");
+            printOption("--show-version:graalvm",       "Print GraalVM version information and continue execution.");
             // @formatter:on
             List<PrintableOption> engineOptions = new ArrayList<>();
             for (OptionDescriptor descriptor : getTempEngine().getOptions()) {
@@ -545,10 +538,10 @@ public abstract class Launcher {
             case "--help:languages":
                 helpLanguages = true;
                 return true;
-            case "--version":
+            case "--version:graalvm":
                 versionAction = VersionAction.PrintAndExit;
                 return true;
-            case "--show-version":
+            case "--show-version:graalvm":
                 versionAction = VersionAction.PrintAndContinue;
                 return true;
             case "--polyglot":
@@ -642,8 +635,8 @@ public abstract class Launcher {
         options.add("--help:languages");
         options.add("--help:tools");
         options.add("--help:expert");
-        options.add("--version");
-        options.add("--show-version");
+        options.add("--version:graalvm");
+        options.add("--show-version:graalvm");
         if (helpExpert || helpDebug) {
             options.add("--help:debug");
         }

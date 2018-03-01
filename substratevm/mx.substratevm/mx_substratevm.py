@@ -454,7 +454,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     ]
 
     failure_warning = None
-    if not version:
+    if not version and not mx.suite(language_suite_name, fatalIfMissing=False):
         # If no specific version requested use binary import of last recently deployed master version
         repo_suite_name = language_repo_name if language_repo_name else language_suite_name
         repo_url = mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(repo_suite_name))
