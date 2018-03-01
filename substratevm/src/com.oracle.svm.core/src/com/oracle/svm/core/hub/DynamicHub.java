@@ -929,8 +929,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public native Package getPackage();
 
     @Override
-    @KeepOriginal
-    public native String toString();
+    @Substitute
+    public String toString() {
+        return (isInterface() ? "interface " : (isPrimitive() ? "" : "class ")) + getName();
+    }
 
     @KeepOriginal
     public native String toGenericString();
