@@ -49,8 +49,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
-import com.oracle.svm.core.graal.nodes.CurrentVMThreadFixedNode;
-import com.oracle.svm.core.graal.nodes.HeapBaseFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -147,7 +146,7 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, new CurrentVMThreadFixedNode());
+                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forIsolateThread());
                 } else {
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
                 }
@@ -158,7 +157,7 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    b.addPush(JavaKind.Object, new HeapBaseFixedNode());
+                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forHeapBase());
                 } else {
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
                 }

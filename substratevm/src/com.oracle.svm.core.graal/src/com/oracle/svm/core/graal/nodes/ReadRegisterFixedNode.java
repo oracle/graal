@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.svm.core.graal.nodes;
 
+import java.util.function.Function;
+
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -32,29 +34,46 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
-import com.oracle.svm.core.util.VMError;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
 
 /**
- * Gets the heap base address. This is a fixed node for the same reasons as
- * {@link CurrentVMThreadFixedNode}.
+ * Reads the value of a specific register.
+ *
+ * This is a fixed node (no value numbering of multiple thread accesses) and moves the register into
+ * a new virtual register. The virtual register is necessary because the Graal LIR is currently not
+ * flexible enough to handle fixed registers, e.g., in deoptimization states. And the fixed register
+ * would show up in the Substrate VM deoptimization meta data, where we currently do not support
+ * registers (only stack slots and constants).
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public class HeapBaseFixedNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<HeapBaseFixedNode> TYPE = NodeClass.create(HeapBaseFixedNode.class);
+public class ReadRegisterFixedNode extends FixedWithNextNode implements LIRLowerable {
+    public static final NodeClass<ReadRegisterFixedNode> TYPE = NodeClass.create(ReadRegisterFixedNode.class);
 
-    public HeapBaseFixedNode() {
+    public static ReadRegisterFixedNode forHeapBase() {
+        return new ReadRegisterFixedNode(SubstrateRegisterConfig::getHeapBaseRegister);
+    }
+
+    public static ReadRegisterFixedNode forIsolateThread() {
+        return new ReadRegisterFixedNode(SubstrateRegisterConfig::getThreadRegister);
+    }
+
+    private final Function<SubstrateRegisterConfig, Register> registerSupplier;
+
+    public ReadRegisterFixedNode(Function<SubstrateRegisterConfig, Register> registerSupplier) {
         super(TYPE, FrameAccess.getWordStamp());
+        this.registerSupplier = registerSupplier;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        VMError.guarantee(SubstrateOptions.UseHeapBaseRegister.getValue());
-
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
-        gen.setResult(this, tool.emitMove(registerConfig.getHeapBaseRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp()))));
+        LIRKind lirKind = tool.getLIRKind(FrameAccess.getWordStamp());
+        RegisterValue value = registerSupplier.apply(registerConfig).asValue(lirKind);
+        gen.setResult(this, tool.emitMove(value));
     }
 }
