@@ -92,8 +92,9 @@ public class RegexEngine implements RegexLanguageObject {
                 }
                 RegexSource regexSource = new RegexSource(pattern, RegexFlags.parseFlags(flags));
                 // Detect SyntaxErrors in regular expressions early.
-                RegexParser.validate(regexSource);
-                RegexObject regexObject = new RegexObject(receiver.compiler, regexSource);
+                RegexParser regexParser = new RegexParser(regexSource, RegexOptions.DEFAULT);
+                regexParser.validate();
+                RegexObject regexObject = new RegexObject(receiver.compiler, regexSource, regexParser.getNamedCaptureGroups());
                 if (receiver.eagerCompilation) {
                     // Force the compilation of the RegExp.
                     regexObject.getCompiledRegexObject();

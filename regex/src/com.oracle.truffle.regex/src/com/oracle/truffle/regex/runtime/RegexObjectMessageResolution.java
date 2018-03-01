@@ -36,6 +36,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionFactory.ReadCacheNodeGen;
+import com.oracle.truffle.regex.util.TruffleNull;
+import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 
 @MessageResolution(receiverType = RegexObject.class)
 public class RegexObjectMessageResolution {
@@ -69,18 +71,30 @@ public class RegexObjectMessageResolution {
         }
     }
 
+    static class GetNamedCaptureGroupsNode extends RegexObjectPropertyNode {
+
+        @Override
+        Object execute(RegexObject receiver) {
+            if (receiver.getNamedCaptureGroups() != null) {
+                return new TruffleReadOnlyMap(receiver.getNamedCaptureGroups());
+            } else {
+                return TruffleNull.INSTANCE;
+            }
+        }
+    }
+
     abstract static class ReadCacheNode extends Node {
 
         abstract Object execute(RegexObject receiver, String symbol);
 
-        @Specialization(guards = "symbol == cachedSymbol", limit = "3")
+        @Specialization(guards = "symbol == cachedSymbol", limit = "4")
         Object readIdentity(RegexObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") @SuppressWarnings("unused") String cachedSymbol,
                         @Cached("getResultProperty(symbol)") RegexObjectPropertyNode propertyNode) {
             return propertyNode.execute(receiver);
         }
 
-        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "3", replaces = "readIdentity")
+        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "4", replaces = "readIdentity")
         Object readEquals(RegexObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") @SuppressWarnings("unused") String cachedSymbol,
                         @Cached("getResultProperty(symbol)") RegexObjectPropertyNode propertyNode) {
@@ -95,6 +109,8 @@ public class RegexObjectMessageResolution {
                     return new GetPatternNode();
                 case "flags":
                     return new GetFlagsNode();
+                case "groups":
+                    return new GetNamedCaptureGroupsNode();
                 default:
                     throw UnknownIdentifierException.raise(symbol);
             }

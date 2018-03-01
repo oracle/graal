@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
+import java.util.Map;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
@@ -61,18 +62,24 @@ public class RegexObject implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
     private final RegexSource source;
+    private final Map<String, Integer> namedCaptureGroups;
     private TruffleObject compiledRegexObject;
     private final RegexObjectExecMethod execMethod;
     private RegexProfile regexProfile;
 
-    public RegexObject(RegexCompiler compiler, RegexSource source) {
+    public RegexObject(RegexCompiler compiler, RegexSource source, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
         this.source = source;
+        this.namedCaptureGroups = namedCaptureGroups;
         execMethod = new RegexObjectExecMethod(this);
     }
 
     public RegexSource getSource() {
         return source;
+    }
+
+    public Map<String, Integer> getNamedCaptureGroups() {
+        return namedCaptureGroups;
     }
 
     public TruffleObject getCompiledRegexObject() {

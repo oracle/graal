@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntries
 import com.oracle.truffle.regex.util.Constants;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import java.util.function.Function;
 
@@ -107,6 +108,7 @@ public final class RegexParser {
     private Group curGroup;
     private Term curTerm;
 
+    @TruffleBoundary
     public RegexParser(RegexSource source, RegexOptions options) {
         this.source = source;
         this.lexer = new RegexLexer(source, options);
@@ -127,15 +129,17 @@ public final class RegexParser {
         }
     }
 
+    @TruffleBoundary
     public static RegexAST parse(RegexSource source, RegexOptions options) throws RegexSyntaxException {
         return new RegexParser(source, options).parse();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
         new RegexParser(source, RegexOptions.DEFAULT).parseDryRun();
     }
 
+    @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         ast.setRoot(parse(true));
         final CalcMinPathsVisitor calcMinPathsVisitor = new CalcMinPathsVisitor();
@@ -148,6 +152,16 @@ public final class RegexParser {
             new MarkLookBehindEntriesVisitor(ast).run();
         }
         return ast;
+    }
+
+    @TruffleBoundary
+    public void validate() throws RegexSyntaxException {
+        parseDryRun();
+    }
+
+    @TruffleBoundary
+    public Map<String, Integer> getNamedCaptureGroups() {
+        return lexer.getNamedCaptureGroups();
     }
 
     /* AST manipulation */
