@@ -37,12 +37,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Provides the capabilities to attach {@link ExecutionEventNodeFactory} and
- * {@link ExecutionEventListener} instances for a set of source locations specified by a
- * {@link SourceSectionFilter}. The result of an attachment is a {@link EventBinding binding}.
+ * Provides capabilities to attach listeners for execution, load, output and allocation events. The
+ * instrumenter remains usable as long as the engine is not closed. The instrumenter methods are
+ * safe to be used from arbitrary other threads.
  *
- * @see #attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
- * @see #attachListener(SourceSectionFilter, ExecutionEventListener)
  * @since 0.12
  */
 public abstract class Instrumenter {
@@ -51,20 +49,131 @@ public abstract class Instrumenter {
     }
 
     /**
-     * Starts event notification for a given {@link ExecutionEventNodeFactory factory} and returns a
-     * {@link EventBinding binding} which represents a handle to dispose the notification.
-     *
      * @since 0.12
+     * @deprecated in 0.32 use
+     *             {@link #attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)
+     *             instead (rename only)
      */
-    public abstract <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(SourceSectionFilter filter, T factory);
+    @Deprecated
+    public final <T extends ExecutionEventNodeFactory> EventBinding<T> attachFactory(SourceSectionFilter eventFilter, T factory) {
+        return attachExecutionEventFactory(eventFilter, null, factory);
+    }
 
     /**
-     * Starts event notification for a given {@link ExecutionEventListener listener} and returns a
-     * {@link EventBinding binding} which represents a handle to dispose the notification.
-     *
      * @since 0.12
+     * @deprecated in 0.32 use
+     *             {@link #attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)}
+     *             instead (rename only)
      */
-    public abstract <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter filter, T listener);
+    @Deprecated
+    public final <T extends ExecutionEventListener> EventBinding<T> attachListener(SourceSectionFilter eventFilter, T listener) {
+        return attachExecutionEventListener(eventFilter, null, listener);
+    }
+
+    /**
+     * Starts execution event notification for a given {@link SourceSectionFilter event filter} and
+     * {@link ExecutionEventListener listener}. The execution events are delivered to the
+     * {@link ExecutionEventListener}.
+     * <p>
+     * Returns a {@link EventBinding binding} which allows to dispose the attached execution event
+     * binding. Disposing the binding removes all probes and wrappers from the AST that were created
+     * for this instrument. The removal of probes and wrappers is performed lazily on the next
+     * execution of the AST.
+     * <p>
+     * By default no
+     * {@link ExecutionEventNode#onInputValue(com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
+     * input value events} are delivered to the listener. To deliver inputs events use
+     * {@link #attachExecutionEventListener(SourceSectionFilter, SourceSectionFilter, ExecutionEventListener)}
+     * instead.
+     *
+     * @param eventFilter filters the events that are reported to the given
+     *            {@link ExecutionEventListener listener}
+     * @param listener that listens to execution events.
+     * @see ExecutionEventListener
+     * @since 0.33
+     */
+    public final <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter eventFilter, T listener) {
+        return attachExecutionEventListener(eventFilter, null, listener);
+    }
+
+    /**
+     * Starts execution event notification for a given {@link SourceSectionFilter event filter} and
+     * {@link ExecutionEventNodeFactory factory}. Events are delivered to the
+     * {@link ExecutionEventNode} instances created by the factory.
+     * <p>
+     * Returns a {@link EventBinding binding} which allows to dispose the attached execution event
+     * binding. Disposing the binding removes all probes and wrappers from the AST that were created
+     * for this instrument. The removal of probes and wrappers is performed lazily on the next
+     * execution of the AST.
+     * <p>
+     * By default no
+     * {@link ExecutionEventNode#onInputValue(com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
+     * input value events} are delivered to the created execution event nodes. To deliver inputs
+     * events use
+     * {@link #attachExecutionEventFactory(SourceSectionFilter, SourceSectionFilter, ExecutionEventNodeFactory)}
+     * instead.
+     *
+     * @param eventFilter filters the events that are reported to the {@link ExecutionEventNode
+     *            execution event nodes} created by the factory.
+     * @param factory the factory that creates {@link ExecutionEventNode execution event nodes}.
+     * @see ExecutionEventNodeFactory
+     * @see #attachExecutionEventFactory(SourceSectionFilter, SourceSectionFilter,
+     *      ExecutionEventNodeFactory)
+     * @since 0.33
+     */
+    public final <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter eventFilter, T factory) {
+        return attachExecutionEventFactory(eventFilter, null, factory);
+    }
+
+    /**
+     * Starts execution event notification for a given {@link SourceSectionFilter event filter} and
+     * {@link ExecutionEventListener listener}. The execution events are delivered to the
+     * {@link ExecutionEventListener}.
+     * <p>
+     * Returns a {@link EventBinding binding} which allows to dispose the attached execution event
+     * binding. Disposing the binding removes all probes and wrappers from the AST that were created
+     * for this instrument. The removal of probes and wrappers is performed lazily on the next
+     * execution of the AST.
+     * <p>
+     * The input filter argument filters which
+     * {@link ExecutionEventListener#onInputValue(EventContext, com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
+     * input events} are delivered to the created execution event nodes.
+     *
+     * @param eventFilter filters the events that are reported to the given
+     *            {@link ExecutionEventListener listener}
+     * @param inputFilter filters input events, <code>null</code> for no input values
+     * @param listener that listens to execution events.
+     * @see ExecutionEventListener
+     * @see ExecutionEventListener#onInputValue(EventContext,
+     *      com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
+     * @since 0.33
+     */
+    public abstract <T extends ExecutionEventListener> EventBinding<T> attachExecutionEventListener(SourceSectionFilter eventFilter, SourceSectionFilter inputFilter, T listener);
+
+    /**
+     * Starts execution event notification for a given {@link SourceSectionFilter event filter} and
+     * {@link ExecutionEventNodeFactory factory}. Events are delivered to the
+     * {@link ExecutionEventNode} instances created by the factory.
+     * <p>
+     * Returns a {@link EventBinding binding} which allows to dispose the attached execution event
+     * binding. Disposing the binding removes all probes and wrappers from the AST that were created
+     * for this instrument. The removal of probes and wrappers is performed lazily on the next
+     * execution of the AST.
+     * <p>
+     * The input filter argument filters which
+     * {@link ExecutionEventNode#onInputValue(com.oracle.truffle.api.frame.VirtualFrame, EventContext, int, Object)
+     * input events} are delivered to the created execution event nodes.
+     *
+     * @param eventFilter filters the events that are reported to the {@link ExecutionEventNode
+     *            execution event nodes} created by the factory.
+     * @param inputFilter filters input events, <code>null</code> for no input values
+     * @param factory the factory that creates {@link ExecutionEventNode execution event nodes}.
+     * @see ExecutionEventNodeFactory
+     * @see ExecutionEventNode#onInputValue(com.oracle.truffle.api.frame.VirtualFrame, EventContext,
+     *      int, Object)
+     * @since 0.33
+     */
+    public abstract <T extends ExecutionEventNodeFactory> EventBinding<T> attachExecutionEventFactory(SourceSectionFilter eventFilter, SourceSectionFilter inputFilter, T factory);
 
     /**
      * Starts notifications for each newly loaded {@link Source} and returns a
@@ -76,7 +185,7 @@ public abstract class Instrumenter {
      * {@link SourceSectionFilter.Builder#sourceIs(Source...) sources} or
      * {@link SourceSectionFilter.Builder#mimeTypeIs(String...) mime types}.
      *
-     * @param filter a filter on which sources trigger events. Only filters are allowed.
+     * @param filter a filter on which sources trigger events. Only source filters are allowed.
      * @param listener a listener that gets notified if a source was loaded
      * @param includeExistingSources whether or not this listener should be notified for sources
      *            which were already loaded at the time when this listener was attached.
@@ -85,8 +194,28 @@ public abstract class Instrumenter {
      * @see LoadSourceListener#onLoad(LoadSourceEvent)
      *
      * @since 0.15
+     * @deprecated Use {@link #attachLoadSourceListener(SourceFilter, LoadSourceListener, boolean)}
      */
+    @Deprecated
     public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceSectionFilter filter, T listener, boolean includeExistingSources);
+
+    /**
+     * Starts notifications for each newly loaded {@link Source} and returns a
+     * {@linkplain EventBinding binding} that can be used to terminate notifications. Only
+     * subsequent loads will be notified unless {@code includeExistingSources} is true, in which
+     * case a notification for each previous load will be delivered before this method returns.
+     *
+     * @param filter a filter on which sources events are triggered.
+     * @param listener a listener that gets notified if a source was loaded
+     * @param includeExistingSources whether or not this listener should be notified for sources
+     *            which were already loaded at the time when this listener was attached.
+     * @return a handle for stopping the notification stream
+     *
+     * @see LoadSourceListener#onLoad(LoadSourceEvent)
+     *
+     * @since 0.33
+     */
+    public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceFilter filter, T listener, boolean includeExistingSources);
 
     /**
      * Starts notifications for each {@link SourceSection} in every newly loaded {@link Source} and

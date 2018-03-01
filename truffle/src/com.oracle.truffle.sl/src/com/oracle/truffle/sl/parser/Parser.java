@@ -47,10 +47,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
 // Checkstyle: stop
@@ -474,12 +474,7 @@ public class Parser {
 
     };
 
-    @Deprecated
-    public static Map<String, SLRootNode> parseSL(Source source) {
-        return parseSL(null, source);
-    }
-
-    public static Map<String, SLRootNode> parseSL(SLLanguage language, Source source) {
+    public static Map<String, RootCallTarget> parseSL(SLLanguage language, Source source) {
         Parser parser = new Parser(language, source);
         parser.Parse();
         if (parser.errors.errors.size() > 0) {

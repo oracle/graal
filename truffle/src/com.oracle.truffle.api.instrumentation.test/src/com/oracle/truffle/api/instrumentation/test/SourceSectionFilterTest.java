@@ -35,7 +35,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -90,25 +93,41 @@ public class SourceSectionFilterTest {
         }
     }
 
-    private static Node createNode(final SourceSection section, final Class<?>... tags) {
-        return new Node() {
+    private static class SourceSectionNode extends Node implements InstrumentableNode {
+        private final SourceSection sourceSection;
+        private final Class<?>[] tags;
 
-            @Override
-            public SourceSection getSourceSection() {
-                return section;
-            }
+        SourceSectionNode(SourceSection sourceSection, final Class<?>... tags) {
+            this.sourceSection = sourceSection;
+            this.tags = tags;
+        }
 
-            @Override
-            protected boolean isTaggedWith(Class<?> tag) {
-                for (int i = 0; i < tags.length; i++) {
-                    if (tags[i] == tag) {
-                        return true;
-                    }
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
+        }
+
+        public boolean isInstrumentable() {
+            return sourceSection != null;
+        }
+
+        public boolean hasTag(Class<? extends Tag> tag) {
+            for (int i = 0; i < tags.length; i++) {
+                if (tags[i] == tag) {
+                    return true;
                 }
-                return super.isTaggedWith(tag);
             }
+            return false;
+        }
 
-        };
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return null;
+        }
+
+    }
+
+    private static Node createNode(final SourceSection section, final Class<?>... tags) {
+        return new SourceSectionNode(section, tags);
     }
 
     private static RootNode createRootNode(final SourceSection section, final Boolean internal) throws Exception {
@@ -597,10 +616,6 @@ public class SourceSectionFilterTest {
         Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(2, 6), sampleSource1.createSection(2, 7)).build(),
                                         null, createNode(sampleSource1.createUnavailableSection())));
-
-        Assert.assertFalse(
-                        isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(2, 6), sampleSource1.createSection(2, 7)).build(),
-                                        root1, null));
 
         Assert.assertNotNull(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(1, 6)).build().toString());
     }

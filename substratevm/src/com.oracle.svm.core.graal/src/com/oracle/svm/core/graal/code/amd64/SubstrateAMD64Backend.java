@@ -700,7 +700,7 @@ public class SubstrateAMD64Backend extends Backend {
     }
 
     protected AMD64ArithmeticLIRGenerator createArithmeticLIRGen() {
-        return new AMD64ArithmeticLIRGenerator();
+        return new AMD64ArithmeticLIRGenerator(null);
     }
 
     protected AMD64MoveFactoryBase createMoveFactory(LIRGenerationResult lirGenRes, BackupSlotProvider backupSlotProvider) {

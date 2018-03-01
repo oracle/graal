@@ -92,6 +92,8 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def classpath(args):
+    if not args:
+        return [] # safeguard against mx.classpath(None) behaviour
     return mx.classpath(args, jdk=mx_compiler.jdk)
 
 def clibrary_paths():
@@ -125,6 +127,8 @@ def relsymlink(target_path, dest_path):
     os.symlink(os.path.relpath(target_path, dirname(dest_path)), dest_path)
 
 def native_image_layout(dists, subdir, native_image_root):
+    if not dists:
+        return
     dest_path = join(native_image_root, subdir)
     # Cleanup leftovers from previous call
     if exists(dest_path):
@@ -167,16 +171,83 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
         relsymlink(option_properties, target_path)
 
 flag_suitename_map = {
-    'js' : ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
+    'js' : ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
     'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
     'llvm' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
     'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
+}
+
+class ToolDescriptor:
+    def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
+        """
+        By adding a new ToolDescriptor entry in the tools_map a new --tool.<keyname>
+        option is made available to native-image and also makes the tool available as
+        Tool:<keyname> in a native-image properties file Requires statement.  The tool is
+        represented in the <native_image_root>/tools/<keyname> directory. If a
+        corresponding tools-<keyname>.properties file exists in mx.substratevm it will get
+        symlinked as <native_image_root>/tools/<keyname>/native-image.properties so that
+        native-image will use these options whenever the tool is requested. Image_deps and
+        builder_deps (see below) are also represented as symlinks to JAR files in
+        <native_image_root>/tools/<keyname> (<native_image_root>/tools/<keyname>/builder).
+
+        :param image_deps: list dependencies that get added to the image-cp (the classpath
+        of the application you want to compile into an image) when using the tool.
+        :param builder_deps: list dependencies that get added to the image builder-cp when
+        using the tool. Builder-cp adds to the classpath that contains the image-generator
+        itself. This might be necessary, e.g. when custom substitutions are needed to be
+        able to compile classes on the image-cp. Another possible reason is when the image
+        builder needs to prepare things prior to image building and doing so needs
+        additional classes (see junit tool).
+        :param native_deps: list native dependencies that should be extracted to
+        <native_image_root>/tools/<keyname>.
+        """
+        self.image_deps = image_deps if image_deps else []
+        self.builder_deps = builder_deps if builder_deps else []
+        self.native_deps = native_deps if native_deps else []
+
+tools_map = {
+    'truffle' : ToolDescriptor(), # only used to encapsulate builtin:Truffle (see tools-truffle.properties)
+    'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
+    'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
+    'nfi' : ToolDescriptor(builder_deps=['truffle:TRUFFLE_NFI'], native_deps=['truffle:TRUFFLE_NFI_NATIVE']),
+    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
+    'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
 
 def native_image_path(native_image_root):
     native_image_name = 'native-image'
     native_image_dir = join(native_image_root, platform_subdir(), 'bin')
     return join(native_image_dir, native_image_name)
+
+def remove_option_prefix(text, prefix):
+    if text.startswith(prefix):
+        return True, text[len(prefix):]
+    return False, text
+
+def native_image_extract_dependencies(args):
+    deps = []
+    for arg in args:
+        macro, option = remove_option_prefix(arg, '--')
+        if not macro:
+            continue
+        tool, option = remove_option_prefix(option, 'tool.')
+        if tool:
+            tool_name = option.partition('=')[0]
+            if tool_name in tools_map:
+                tool_descriptor = tools_map[tool_name]
+                deps += tool_descriptor.builder_deps
+                deps += tool_descriptor.image_deps
+                deps += tool_descriptor.native_deps
+        else:
+            language_flag = option
+            if language_flag in flag_suitename_map:
+                language_entry = flag_suitename_map[language_flag]
+                language_suite_name = language_entry[0]
+                language_deps = language_entry[1]
+                deps += [language_suite_name + ':' + dep for dep in language_deps]
+                language_native_deps = language_entry[2]
+                deps += [language_suite_name + ':' + dep for dep in language_native_deps]
+    return deps
 
 def native_image_symlink_path(native_image_root, platform_specific=True):
     symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
@@ -242,16 +313,12 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     native_image_layout_dists(join('lib', 'truffle'), ['truffle:TRUFFLE_API'])
 
     # Create native-image layout for tools parts
-    native_image_layout_dists(join('tools', 'junit', 'builder'), ['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST'])
-    native_image_option_properties('tools', 'junit', native_image_root)
-    native_image_option_properties('tools', 'truffle', native_image_root)
-    native_image_layout_dists(join('tools', 'nfi', 'builder'), ['truffle:TRUFFLE_NFI'])
-    native_image_extract_dists(join('tools', 'nfi'), ['truffle:TRUFFLE_NFI_NATIVE'])
-    native_image_option_properties('tools', 'nfi', native_image_root)
-    native_image_layout_dists(join('tools', 'chromeinspector'), ['tools:CHROMEINSPECTOR'])
-    native_image_option_properties('tools', 'chromeinspector', native_image_root)
-    native_image_layout_dists(join('tools', 'profiler'), ['tools:TRUFFLE_PROFILER'])
-    native_image_option_properties('tools', 'profiler', native_image_root)
+    for tool_name in tools_map:
+        tool_descriptor = tools_map[tool_name]
+        native_image_layout_dists(join('tools', tool_name, 'builder'), tool_descriptor.builder_deps)
+        native_image_layout_dists(join('tools', tool_name), tool_descriptor.image_deps)
+        native_image_extract_dists(join('tools', tool_name), tool_descriptor.native_deps)
+        native_image_option_properties('tools', tool_name, native_image_root)
 
     # Create native-image layout for svm parts
     svm_subdir = join('lib', 'svm')
@@ -274,7 +341,9 @@ class BootstrapNativeImage(mx.Project):
         self.buildDependencies = kwargs.pop('buildDependencies', [])
         self.graalDistribution = kwargs.pop('graal', [])
         self.svmDistribution = kwargs.pop('svm', [])
+        self.buildDependencies += self.svmDistribution
         self.librarySupportDistribution = kwargs.pop('svmSupport', [])
+        self.buildDependencies += self.librarySupportDistribution
 
     def getResults(self):
         return None
@@ -297,15 +366,22 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         prefix = "Bootstrapping " if self._allow_bootstrapping() else "Skip bootstrapping "
         return prefix + self.subject.name
 
-    def build(self):
+    def _shouldRebuildNativeImage(self):
         # Only bootstrap native-image for the most-specific svm_suite
         if not self._allow_bootstrapping():
-            return
+            return False, 'Skip bootstrapping'
 
         # Only bootstrap if it doesn't already exist
         symlink_path = native_image_symlink_path(self.subject.native_image_root)
         if exists(symlink_path):
             mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
+            return False, 'Already bootstrapped'
+
+        return True, ''
+
+    def build(self):
+        shouldRebuild = self._shouldRebuildNativeImage()[0]
+        if not shouldRebuild:
             return
 
         bootstrap_native_image(
@@ -326,15 +402,9 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
 
     def needsBuild(self, newestInput):
-        # Only bootstrap native-image for the most-specific svm_suite
-        if not self._allow_bootstrapping():
-            return False, 'Skip bootstrapping'
-
-        # Only bootstrap if it doesn't already exist
-        symlink_path = native_image_symlink_path(self.subject.native_image_root)
-        if exists(symlink_path):
-            mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
-            return False, 'Already bootstrapped'
+        shouldRebuild, reason = self._shouldRebuildNativeImage()
+        if not shouldRebuild:
+            return False, reason
 
         witness = self.newestOutput()
         if not self._newestOutput or witness.isNewerThan(self._newestOutput):
@@ -348,7 +418,7 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
     def newestOutput(self):
         return mx.TimeStampFile(native_image_path(self.subject.native_image_root))
 
-def truffle_language_ensure(language_flag, version=None, native_image_root=None):
+def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False):
     """
     Ensures that we have a valid suite for the given language_flag, by downloading a binary if necessary
     and providing the suite distribution artifacts in the native-image directory hierachy (via symlinks).
@@ -366,6 +436,11 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
 
     if language_flag not in flag_suitename_map:
         mx.abort('No truffle-language uses language_flag \'' + language_flag + '\'')
+
+    language_dir = join('languages', language_flag)
+    if early_exit and exists(join(native_image_root, language_dir)):
+        mx.logv('Early exit mode: Language subdir \'' + language_flag + '\' exists. Skip suite.import_suite.')
+        return None
 
     language_entry = flag_suitename_map[language_flag]
 
@@ -400,8 +475,6 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
             mx.warn(failure_warning)
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
 
-    language_dir = join('languages', language_flag)
-
     language_suite_depnames = language_entry[1]
     language_deps = language_suite.dists + language_suite.libs
     language_deps = [dep for dep in language_deps if dep.name in language_suite_depnames]
@@ -419,7 +492,6 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
     return language_suite
-
 
 def locale_US_args():
     return ['-Duser.country=US', '-Duser.language=en']
@@ -706,18 +778,20 @@ def fetch_languages(args):
     if args:
         requested = dict()
         for arg in args:
-            arg = arg[len('--'):]
-            before, sep, after = arg.partition('.version=')
-            if sep:
-                requested[before] = after
-            else:
-                requested[arg] = None
+            macro, option = remove_option_prefix(arg, '--')
+            if not macro:
+                continue
+            tool, option = remove_option_prefix(option, 'tool.')
+            if tool:
+                continue
+            option, _, version = option.partition('.version=')
+            requested[option] = version
     else:
         requested = dict((lang, None) for lang in flag_suitename_map)
 
     for language_flag in requested:
         version = requested[language_flag]
-        truffle_language_ensure(language_flag, version)
+        truffle_language_ensure(language_flag, version, early_exit=True)
 
 mx.update_commands(suite, {
     'build': [build, ''],

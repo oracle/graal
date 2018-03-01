@@ -22,9 +22,9 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import static com.oracle.svm.reflect.hosted.ReflectionFeature.Options.ReflectionConfigurationFiles;
+import static com.oracle.svm.reflect.hosted.ReflectionFeature.Options.ReflectionConfigurationResources;
+
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.options.Option;
@@ -32,13 +32,11 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.config.ReflectionConfigurationParser;
-import com.oracle.svm.hosted.option.HostedOptionParser;
 
 @AutomaticFeature
 public final class ReflectionFeature implements Feature {
@@ -93,31 +91,7 @@ public final class ReflectionFeature implements Feature {
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
         ReflectionConfigurationParser parser = new ReflectionConfigurationParser(reflectionData, access.getImageClassLoader());
-        String configFiles = Options.ReflectionConfigurationFiles.getValue();
-        if (!configFiles.isEmpty()) {
-            for (String file : configFiles.split(",")) {
-                try {
-                    parser.parseAndRegister(file);
-                } catch (Exception e) {
-                    throw UserError.abort("Could not parse reflection configuration file \"" + file + "\". Verify that the file exists and its contents match the expected schema (see " +
-                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.ReflectionConfigurationFiles.getName() +
-                                    ").\n" + e.toString());
-                }
-            }
-        }
-        String configResources = Options.ReflectionConfigurationResources.getValue();
-        if (!configResources.isEmpty()) {
-            for (String resource : configResources.split(",")) {
-                InputStream stream = access.getImageClassLoader().findResourceByName(resource);
-                try (Reader reader = new InputStreamReader(stream)) {
-                    parser.parseAndRegister(reader);
-                } catch (Exception e) {
-                    throw UserError.abort("Could not parse reflection configuration resource \"" + resource + "\". Verify that the resource exists and its contents match the expected schema (see " +
-                                    HostedOptionParser.HOSTED_OPTION_PREFIX + SubstrateOptions.PrintFlags.getName() + " for option " + Options.ReflectionConfigurationResources.getName() +
-                                    ").\n" + e.toString());
-                }
-            }
-        }
+        parser.parseAndRegisterConfigurations("reflection", ReflectionConfigurationFiles, ReflectionConfigurationResources);
     }
 
     @Override

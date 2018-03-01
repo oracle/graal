@@ -29,7 +29,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -44,8 +43,9 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * {@link Instrumentable} nodes must extend {@link Node}. The instrumentation framework will, when
  * needed during execution, {@link Node#replace(Node) replace} the instrumentable node with a
- * {@link WrapperNode} and delegate to the original node. After the replacement of an instrumentable
- * node with a wrapper we refer to the original node as an instrumented node.
+ * {@link com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode} and delegate to
+ * the original node. After the replacement of an instrumentable node with a wrapper we refer to the
+ * original node as an instrumented node.
  * </p>
  * <p>
  * Wrappers can be generated automatically using an annotation processor. For that a class literal
@@ -73,25 +73,27 @@ import com.oracle.truffle.api.source.SourceSection;
  * &#064;Instrumentable(factory = BaseNodeWrapper.class)
  * public abstract class BaseNode extends Node {
  *     private final String addtionalData;
- * 
+ *
  *     public BaseNode(String additonalData) {
  *         this.additionalData = additionalData;
  *     }
- * 
+ *
  *     public BaseNode(BaseNode delegate) {
  *         this.additionalData = delegate.additionalData;
  *     }
- * 
+ *
  *     public abstract Object execute(VirtualFrame frame);
  * }
  * </pre>
  *
- * @see WrapperNode
+ * @see com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode
  * @see ProbeNode
  * @since 0.12
+ * @deprecated use {@link GenerateWrapper} and {@link InstrumentableNode} instead.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
+@Deprecated
 public @interface Instrumentable {
 
     /**
@@ -106,9 +108,10 @@ public @interface Instrumentable {
      *     public abstract Object execute(VirtualFrame frame);
      * }
      * </pre>
-     * 
+     *
      * @since 0.12
      */
+    @SuppressWarnings("deprecation")
     Class<? extends InstrumentableFactory<? extends Node>> factory();
 
 }

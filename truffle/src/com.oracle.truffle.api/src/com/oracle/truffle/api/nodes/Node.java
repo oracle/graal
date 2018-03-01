@@ -43,10 +43,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -120,19 +120,15 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Retrieves the segment of guest language source code that is represented by this Node. The
      * default implementation of this method returns <code>null</code>. If your node represents a
-     * segment of the source code, override this method and return a <code>final</code> or
-     * {@link CompilationFinal} field in your node to the caller. Can be called on any thread and
-     * without a language context.
-     *
-     * To define node with <em>fixed</em> {@link SourceSection} that doesn't change after node
-     * construction use:
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section}
-     *
-     * To create a node which can associate and change the {@link SourceSection} later at any point
-     * of time use:
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section}
+     * segment of the source code, override this method and return a eagerly or lazily computed
+     * source section value. This method is not designed to be invoked on compiled code paths. May
+     * be called on any thread and without a language context being active.
+     * <p>
+     * Simple example implementation using a simple implementation using a field:
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode}
+     * <p>
+     * Recommended implementation computing the source section lazily from primitive fields:
+     * {@link com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode}
      *
      * @return the source code represented by this Node
      * @since 0.8 or earlier
@@ -203,7 +199,8 @@ public abstract class Node implements NodeInterface, Cloneable {
      * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
      * instrumentable} nodes remain unchanged after their root node is first
      * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
-     * don't need to be notified if it is known that none of the inserted nodes are instrumentable.
+     * don't need to be notified if it is known that none of the inserted nodes are
+     * {@link com.oracle.truffle.api.instrumentation.InstrumentableNode instrumentable}.
      * <p>
      * The provided {@link Node} and its children must be {@link #adoptChildren() adopted} in the
      * AST before invoking this method. The caller must ensure that this method is invoked only once
@@ -243,6 +240,24 @@ public abstract class Node implements NodeInterface, Cloneable {
             dump(this, newChild, null);
         }
         NodeUtil.adoptChildrenHelper(newChild);
+    }
+
+    int adoptChildrenAndCount() {
+        CompilerAsserts.neverPartOfCompilation();
+        return 1 + NodeUtil.adoptChildrenAndCountHelper(this);
+    }
+
+    int adoptAndCountHelper(Node newChild) {
+        assert newChild != null;
+        if (newChild == this) {
+            throw new IllegalStateException("The parent of a node can never be the node itself.");
+        }
+        assert checkSameLanguages(newChild);
+        newChild.parent = this;
+        if (TruffleOptions.TraceASTJSON) {
+            dump(this, newChild, null);
+        }
+        return 1 + NodeUtil.adoptChildrenAndCountHelper(newChild);
     }
 
     private boolean checkSameLanguages(final Node newChild) {
@@ -560,44 +575,12 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns <code>true</code> if this node should be considered tagged by a given tag else
-     * <code>false</code>. The method is only invoked for tags which are explicitly declared as
-     * {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by the
-     * {@link TruffleLanguage language}. If the {@link #getSourceSection() source section} of the
-     * node returns <code>null</code> then this node is considered to be not tagged by any tag. Can
-     * be called on any thread and without a language context.
-     * <p>
-     * Tags are used by guest languages to indicate that a {@link Node node} is a member of a
-     * certain category of nodes. For example a debugger
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument instrument} might require a
-     * guest language to tag all nodes as halt locations that should be considered as such.
-     * <p>
-     * The node implementor may decide how to implement tagging for nodes. The simplest way to
-     * implement tagging using Java types is by overriding the {@link #isTaggedWith(Class)} method.
-     * This example shows how to tag a node subclass and all its subclasses as expression and
-     * statement:
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode}
-     *
-     * <p>
-     * Often it is impossible to just rely on the node's Java type to implement tagging. This
-     * example shows how to use local state to implement tagging for a node.
-     *
-     * {@link com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt}
-     *
-     * <p>
-     * The implementation of isTaggedWith method must ensure that its result is stable after the
-     * parent {@link RootNode root node} was wrapped in a {@link CallTarget} using
-     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
-     * calling this method for a particular tag remains always the same.
-     *
-     * @param tag the class {@link com.oracle.truffle.api.instrumentation.ProvidedTags provided} by
-     *            the {@link TruffleLanguage language}
-     * @return <code>true</code> if the node should be considered tagged by a tag else
-     *         <code>false</code>.
      * @since 0.12
+     * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
+     * @deprecated in 0.32 implement InstrumentableNode#hasTag instead.
      */
-    protected boolean isTaggedWith(Class<?> tag) {
+    @Deprecated
+    protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
         return false;
     }
 
@@ -698,6 +681,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             }
 
             @Override
+            public int adoptChildrenAndCount(RootNode rootNode) {
+                return rootNode.adoptChildrenAndCount();
+            }
+
+            @Override
             public Object getEngineObject(LanguageInfo languageInfo) {
                 return languageInfo.getEngineObject();
             }
@@ -733,6 +721,11 @@ public abstract class Node implements NodeInterface, Cloneable {
                 root.instrumentationBits = (byte) bits;
             }
 
+            @Override
+            public Lock getLock(Node node) {
+                return node.getLock();
+            }
+
         }
     }
 
@@ -741,82 +734,63 @@ public abstract class Node implements NodeInterface, Cloneable {
 
 }
 
+@SuppressWarnings("unused")
 class NodeSnippets {
-    static class NodeWithFixedSourceSection extends Node {
-        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
-        private final SourceSection section;
 
-        NodeWithFixedSourceSection(SourceSection section) {
-            this.section = section;
+    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode
+    abstract class SimpleNode extends Node {
+
+        private SourceSection sourceSection;
+
+        void setSourceSection(SourceSection sourceSection) {
+            this.sourceSection = sourceSection;
         }
 
         @Override
         public SourceSection getSourceSection() {
-            return section;
+            return sourceSection;
         }
-        // END: com.oracle.truffle.api.nodes.NodeSnippets.NodeWithFixedSourceSection#section
     }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.SimpleNode
 
-    static class MutableSourceSectionNode extends Node {
-        // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
-        @CompilerDirectives.CompilationFinal private SourceSection section;
+    // BEGIN:com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode
+    abstract class RecommendedNode extends Node {
 
-        final void changeSourceSection(SourceSection sourceSection) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.section = sourceSection;
+        private static final int NO_SOURCE = -1;
+
+        private int sourceCharIndex = NO_SOURCE;
+        private int sourceLength;
+
+        public abstract Object execute(VirtualFrame frame);
+
+        // invoked by the parser to set the source
+        void setSourceSection(int charIndex, int length) {
+            assert sourceCharIndex == NO_SOURCE : "source should only be set once";
+            this.sourceCharIndex = charIndex;
+            this.sourceLength = length;
         }
 
         @Override
-        public SourceSection getSourceSection() {
-            return section;
-        }
-        // END: com.oracle.truffle.api.nodes.NodeSnippets.MutableSourceSectionNode#section
-    }
-
-    private static final class Debugger {
-        static class HaltTag {
-        }
-    }
-
-    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
-    class StatementNode extends Node {
-        private boolean isDebuggerHalt;
-
-        public void setDebuggerHalt(boolean isDebuggerHalt) {
-            this.isDebuggerHalt = isDebuggerHalt;
-        }
-
-        @Override
-        protected boolean isTaggedWith(Class<?> tag) {
-            if (tag == Debugger.HaltTag.class) {
-                return isDebuggerHalt;
+        public final SourceSection getSourceSection() {
+            if (sourceCharIndex == NO_SOURCE) {
+                // AST node without source
+                return null;
             }
-            return super.isTaggedWith(tag);
-        }
-    }
-
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.StatementNode#isDebuggerHalt
-
-    static class ExpressionTag {
-    }
-
-    // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
-    class ExpressionNode extends Node {
-
-        @Override
-        protected boolean isTaggedWith(Class<?> tag) {
-            if (tag == ExpressionTag.class) {
-                return true;
+            RootNode rootNode = getRootNode();
+            if (rootNode == null) {
+                // not yet adopted yet
+                return null;
             }
-            return super.isTaggedWith(tag);
+            Source source = rootNode.getSourceSection().getSource();
+            return source.createSection(sourceCharIndex, sourceLength);
         }
-    }
 
-    // END: com.oracle.truffle.api.nodes.NodeSnippets.ExpressionNode
+    }
+    // END: com.oracle.truffle.api.nodes.NodeSnippets.RecommendedNode
 
     public static void notifyInserted() {
-        class InstrumentableNode extends Node {
-            Object execute(@SuppressWarnings("unused") VirtualFrame frame) {
+        class InstrumentableLanguageNode extends Node {
+            Object execute(VirtualFrame frame) {
                 return null;
             }
         }
@@ -838,7 +812,6 @@ class NodeSnippets {
             }
         }
 
-        @SuppressWarnings("unused")
         // @formatter:off
         // BEGIN: com.oracle.truffle.api.nodes.NodeSnippets#notifyInserted
         class MyRootNode extends RootNode {
@@ -847,13 +820,13 @@ class NodeSnippets {
                 super(language);
             }
 
-            @Child InstrumentableNode child;
+            @Child InstrumentableLanguageNode child;
 
             @Override
             public Object execute(VirtualFrame frame) {
                 if (child == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    child = insert(new InstrumentableNode());
+                    child = insert(new InstrumentableLanguageNode());
                     notifyInserted(child);
                 }
                 return child.execute(frame);

@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.controlflow;
 
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
@@ -57,12 +58,11 @@ public class SLDebuggerNode extends SLStatementNode {
     }
 
     @Override
-    protected boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == DebuggerTags.AlwaysHalt.class) {
             return true;
-        } else {
-            return super.isTaggedWith(tag);
         }
+        return super.hasTag(tag);
     }
 
 }

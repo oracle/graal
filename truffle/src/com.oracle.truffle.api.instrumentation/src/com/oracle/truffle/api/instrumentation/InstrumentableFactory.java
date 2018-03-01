@@ -38,7 +38,10 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @param <T> the type of delegate node this factory operates on
  * @since 0.12
+ * @deprecated use {@link GenerateWrapper} and implement
+ *             {@link InstrumentableNode#createWrapper(ProbeNode)} instead.
  */
+@Deprecated
 public interface InstrumentableFactory<T extends Node> {
 
     /**
@@ -80,7 +83,10 @@ public interface InstrumentableFactory<T extends Node> {
      *
      * @see #createWrapper(Node, ProbeNode)
      * @since 0.12
+     * @deprecated use {@link GenerateWrapper} and implement
+     *             {@link InstrumentableNode#createWrapper(ProbeNode)} instead.
      */
+    @Deprecated
     public interface WrapperNode {
 
         /**

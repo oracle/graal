@@ -110,7 +110,7 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
         }
         for (String substitutionResourceName : Options.SubstitutionResources.getValue().split(",")) {
             if (!substitutionResourceName.isEmpty()) {
-                InputStream substitutionStream = imageClassLoader.findResourceByName(substitutionResourceName);
+                InputStream substitutionStream = imageClassLoader.findResourceAsStreamByName(substitutionResourceName);
                 guarantee(substitutionStream != null, "substitution file %s does not exist", substitutionResourceName);
                 loadFile(new InputStreamReader(substitutionStream));
             }

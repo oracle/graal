@@ -45,8 +45,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * them by calling {@link Builder#build()}.
  *
  * @see SourceSectionFilter#newBuilder()
- * @see Instrumenter#attachFactory(SourceSectionFilter, ExecutionEventNodeFactory)
- * @see Instrumenter#attachListener(SourceSectionFilter, ExecutionEventListener)
+ * @see Instrumenter#attachExecutionEventFactory(SourceSectionFilter, ExecutionEventNodeFactory)
+ * @see Instrumenter#attachExecutionEventListener(SourceSectionFilter, ExecutionEventListener)
  * @since 0.12
  */
 public final class SourceSectionFilter {
@@ -105,6 +105,23 @@ public final class SourceSectionFilter {
         return b.toString();
     }
 
+    /**
+     * Returns which tags are required to be materialized in order for this filter to be correct.
+     * Returns <code>null</code> to indicate that all provided tags are required.
+     */
+    Set<Class<?>> getLimitedTags() {
+        Set<Class<?>> requiredTags = null;
+        for (EventFilterExpression expression : expressions) {
+            if (expression instanceof EventFilterExpression.TagIs) {
+                if (requiredTags == null) {
+                    requiredTags = new HashSet<>();
+                }
+                expression.collectReferencedTags(requiredTags);
+            }
+        }
+        return requiredTags;
+    }
+
     // implementation
     Set<Class<?>> getReferencedTags() {
         Set<Class<?>> usedTags = new HashSet<>();
@@ -133,9 +150,7 @@ public final class SourceSectionFilter {
     }
 
     boolean isInstrumentedNode(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-        if (sourceSection == null) {
-            return false;
-        }
+        assert InstrumentationHandler.isInstrumentableNode(instrumentedNode, sourceSection);
         for (EventFilterExpression exp : expressions) {
             if (!exp.isIncluded(providedTags, instrumentedNode, sourceSection)) {
                 return false;
@@ -168,6 +183,16 @@ public final class SourceSectionFilter {
         private boolean includeInternal = true;
 
         private Builder() {
+        }
+
+        /**
+         * Add a source filter.
+         *
+         * @since 0.32
+         */
+        public Builder sourceFilter(SourceFilter sourceFilter) {
+            expressions.addAll(Arrays.asList(sourceFilter.expressions));
+            return this;
         }
 
         /**
@@ -459,17 +484,17 @@ public final class SourceSectionFilter {
             return new SourceSectionFilter(expressions.toArray(new EventFilterExpression[0]));
         }
 
-        private void verifyNotNull(Object[] values) {
-            if (values == null) {
-                throw new IllegalArgumentException("Given arguments must not be null.");
-            }
-            for (int i = 0; i < values.length; i++) {
-                if (values[i] == null) {
-                    throw new IllegalArgumentException("None of the given argument values must be null.");
-                }
+    }
+
+    static void verifyNotNull(Object[] values) {
+        if (values == null) {
+            throw new IllegalArgumentException("Given arguments must not be null.");
+        }
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == null) {
+                throw new IllegalArgumentException("None of the given argument values must be null.");
             }
         }
-
     }
 
     /**
@@ -562,7 +587,7 @@ public final class SourceSectionFilter {
 
     }
 
-    private abstract static class EventFilterExpression implements Comparable<EventFilterExpression> {
+    abstract static class EventFilterExpression implements Comparable<EventFilterExpression> {
 
         protected abstract int getOrder();
 
@@ -594,11 +619,11 @@ public final class SourceSectionFilter {
             }
         }
 
-        private static final class SourceFilterIs extends EventFilterExpression {
+        static final class SourceFilterIs extends EventFilterExpression {
 
-            private final SourcePredicate predicate;
+            private final Predicate<Source> predicate;
 
-            SourceFilterIs(SourcePredicate predicate) {
+            SourceFilterIs(Predicate<Source> predicate) {
                 this.predicate = predicate;
             }
 
@@ -628,6 +653,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null) {
+                    return false;
+                }
                 return isSourceIncluded(sourceSection.getSource());
             }
 
@@ -681,7 +709,7 @@ public final class SourceSectionFilter {
             }
         }
 
-        private static final class SourceIs extends EventFilterExpression {
+        static final class SourceIs extends EventFilterExpression {
 
             private final Source[] sources;
 
@@ -717,6 +745,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null) {
+                    return false;
+                }
                 return isSourceIncluded(sourceSection.getSource());
             }
 
@@ -770,6 +801,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null) {
+                    return false;
+                }
                 return isSourceIncluded(sourceSection.getSource());
             }
 
@@ -855,6 +889,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection s) {
+                if (s == null) {
+                    return false;
+                }
                 for (SourceSection compareSection : sourceSections) {
                     if (s.equals(compareSection)) {
                         return true;
@@ -940,7 +977,6 @@ public final class SourceSectionFilter {
                 if (rootSection == null) {
                     return false;
                 }
-
                 for (SourceSection compareSection : sourceSections) {
                     if (rootSection.equals(compareSection)) {
                         return true;
@@ -986,7 +1022,7 @@ public final class SourceSectionFilter {
             }
 
             private static boolean isIndexIn(SourceSection sourceSection, IndexRange[] ranges) {
-                if (!sourceSection.isAvailable()) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getCharIndex();
@@ -1034,7 +1070,7 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-                if (!sourceSection.isAvailable()) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getStartLine();
@@ -1081,6 +1117,9 @@ public final class SourceSectionFilter {
 
             @Override
             boolean isIncluded(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
+                    return false;
+                }
                 int otherStart = sourceSection.getStartLine();
                 int otherEnd;
                 if (sourceSection.getSource() == null) {
@@ -1135,7 +1174,7 @@ public final class SourceSectionFilter {
             }
 
             static boolean isLineIn(SourceSection sourceSection, IndexRange[] ranges) {
-                if (!sourceSection.isAvailable()) {
+                if (sourceSection == null || !sourceSection.isAvailable()) {
                     return false;
                 }
                 int otherStart = sourceSection.getStartLine();
@@ -1198,7 +1237,7 @@ public final class SourceSectionFilter {
 
     private static final class Not extends EventFilterExpression {
 
-        private final EventFilterExpression delegate;
+        final EventFilterExpression delegate;
 
         Not(EventFilterExpression delegate) {
             this.delegate = delegate;

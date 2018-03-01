@@ -56,8 +56,6 @@ import com.oracle.truffle.sl.nodes.call.SLDispatchNode;
 import com.oracle.truffle.sl.nodes.call.SLDispatchNodeGen;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNode;
 import com.oracle.truffle.sl.nodes.interop.SLForeignToSLTypeNodeGen;
-import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNode;
-import com.oracle.truffle.sl.nodes.interop.SLTypeToForeignNodeGen;
 
 /**
  * The class containing all message resolution implementations of an SL object.
@@ -94,7 +92,6 @@ public class SLObjectMessageResolution {
 
         @Child private SLReadPropertyCacheNode read = SLReadPropertyCacheNodeGen.create();
         @Child private SLForeignToSLTypeNode nameToSLType = SLForeignToSLTypeNodeGen.create();
-        @Child private SLTypeToForeignNode toForeign = SLTypeToForeignNodeGen.create();
 
         public Object access(DynamicObject receiver, Object name) {
             Object convertedName = nameToSLType.executeConvert(name);
@@ -104,7 +101,7 @@ public class SLObjectMessageResolution {
             } catch (SLUndefinedNameException undefinedName) {
                 throw UnknownIdentifierException.raise(String.valueOf(convertedName));
             }
-            return toForeign.executeConvert(result);
+            return result;
         }
     }
 
@@ -135,7 +132,6 @@ public class SLObjectMessageResolution {
     public abstract static class SLForeignInvokeNode extends Node {
 
         @Child private SLDispatchNode dispatch = SLDispatchNodeGen.create();
-        @Child private SLTypeToForeignNode toForeign = SLTypeToForeignNodeGen.create();
 
         public Object access(DynamicObject receiver, String name, Object[] arguments) {
             Object property = receiver.get(name);
@@ -149,7 +145,7 @@ public class SLObjectMessageResolution {
                     arr[i] = SLContext.fromForeignValue(arguments[i]);
                 }
                 Object result = dispatch.executeDispatch(function, arr);
-                return toForeign.executeConvert(result);
+                return result;
             } else {
                 throw UnknownIdentifierException.raise(name);
             }

@@ -51,7 +51,6 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     };
 
     public StringCompareToTest() {
-        Assume.assumeFalse(Java8OrEarlier);
         Assume.assumeTrue(getTarget().arch instanceof AMD64);
 
         realMethod = getResolvedJavaMethod(String.class, "compareTo", String.class);
@@ -59,7 +58,7 @@ public class StringCompareToTest extends MethodSubstitutionTest {
         StructuredGraph graph = testGraph("stringCompareTo");
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false);
+        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null);
         if (replacement == null) {
             assertInGraph(graph, ArrayCompareToNode.class);
         }
@@ -70,8 +69,6 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     private void executeStringCompareTo(String s0, String s1) {
-        Assume.assumeFalse(Java8OrEarlier);
-
         Object expected = invokeSafe(realMethod, s0, s1);
         // Verify that the original method and the substitution produce the same value
         assertDeepEquals(expected, invokeSafe(testMethod, null, s0, s1));

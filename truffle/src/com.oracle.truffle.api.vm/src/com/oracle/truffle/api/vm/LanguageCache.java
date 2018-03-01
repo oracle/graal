@@ -270,6 +270,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     @SuppressWarnings("unchecked")
+    Class<? extends TruffleLanguage<?>> getLanguageClass() {
+        if (TruffleOptions.AOT) {
+            TruffleLanguage<?> instance = singletonLanguage;
+            if (instance != null) {
+                return (Class<? extends TruffleLanguage<?>>) instance.getClass();
+            } else {
+                return this.languageClass;
+            }
+        } else {
+            return loadLanguageClass();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
     private Class<? extends TruffleLanguage<?>> loadLanguageClass() {
         if (languageClass == null) {
             synchronized (this) {
@@ -364,6 +378,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         assert TruffleOptions.AOT : "Only supported during image generation";
         ArrayList<Class<?>> list = new ArrayList<>();
         for (LanguageCache cache : nativeImageCache.values()) {
+            assert cache.languageClass != null;
             list.add(cache.languageClass);
         }
         return list;

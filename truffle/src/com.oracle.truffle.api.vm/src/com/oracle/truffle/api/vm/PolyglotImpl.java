@@ -794,6 +794,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
+        public Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language) {
+            return ((PolyglotLanguage) NODES.getEngineObject(language)).cache.getLanguageClass();
+        }
+
+        @Override
         public Object legacyTckEnter(Object vm) {
             throw new AssertionError("Should not reach here.");
         }
@@ -807,7 +812,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <T> T getOrCreateRuntimeData(Object sourceVM, Supplier<T> constructor) {
             if (!(sourceVM instanceof VMObject)) {
-                throw new IllegalArgumentException();
+                return null;
             }
             final PolyglotEngineImpl engine = getEngine(sourceVM);
             if (engine.runtimeData == null) {

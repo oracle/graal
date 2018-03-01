@@ -96,12 +96,11 @@ public final class SLMain {
         out.println("== running on " + context.getEngine());
 
         try {
-            Value main = context.eval(source);
+            Value result = context.eval(source);
             if (context.lookup(SL, "main") == null) {
                 System.err.println("No function main() defined in SL source file.");
                 return 1;
             }
-            Value result = main.execute();
             if (!result.isNull()) {
                 out.println(result.toString());
             }

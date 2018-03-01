@@ -967,8 +967,8 @@ public class InliningUtil extends ValueMergeUtil {
         return replacements.hasSubstitution(target, invokeBci);
     }
 
-    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci, boolean trackNodeSourcePosition) {
-        return replacements.getSubstitution(target, invokeBci, trackNodeSourcePosition);
+    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+        return replacements.getSubstitution(target, invokeBci, trackNodeSourcePosition, replaceePosition);
     }
 
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalError {

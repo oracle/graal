@@ -626,7 +626,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         }
 
         void submitExecutionListener() {
-            bindingExec = env.getInstrumenter().attachListener(
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
 
@@ -729,7 +729,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         }
 
         void submit(String fromCode, String toCode, int repeats) {
-            bindingExec = env.getInstrumenter().attachListener(
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
 
@@ -800,7 +800,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         }
 
         void submit(final boolean enter, final String... fromToCode) {
-            bindingExec = env.getInstrumenter().attachListener(
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
 
@@ -885,7 +885,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
             final ThreadDeath[] unwindPtr = new ThreadDeath[1];
             CyclicBarrier enterBarrier = new CyclicBarrier(3);
             CyclicBarrier unwindBarrier = new CyclicBarrier(3);
-            bindingExec = env.getInstrumenter().attachListener(
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
 
@@ -953,7 +953,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
 
         void submitConcurrent() {
             CyclicBarrier unwindBarrier = new CyclicBarrier(3);
-            bindingExec = env.getInstrumenter().attachListener(
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
                                 @Override
@@ -997,7 +997,7 @@ public class UnwindReenterReturnTest extends AbstractInstrumentationTest {
         void submitSequential() {
             final ThreadDeath[] unwindPtr = new ThreadDeath[1];
             ReentrantLock lock = new ReentrantLock();
-            bindingExec = env.getInstrumenter().attachListener(
+            bindingExec = env.getInstrumenter().attachExecutionEventListener(
                             SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class, StandardTags.CallTag.class).build(),
                             new ExecutionEventListener() {
                                 @Override

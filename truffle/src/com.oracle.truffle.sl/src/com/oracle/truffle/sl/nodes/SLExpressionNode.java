@@ -42,7 +42,10 @@ package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
@@ -53,7 +56,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  */
 @TypeSystemReference(SLTypes.class)
 @NodeInfo(description = "The abstract base node for all expressions")
-@Instrumentable(factory = SLExpressionNodeWrapper.class)
+@GenerateWrapper
 public abstract class SLExpressionNode extends SLStatementNode {
 
     /**
@@ -69,6 +72,19 @@ public abstract class SLExpressionNode extends SLStatementNode {
     @Override
     public void executeVoid(VirtualFrame frame) {
         executeGeneric(frame);
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new SLExpressionNodeWrapper(this, probe);
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == StandardTags.ExpressionTag.class) {
+            return true;
+        }
+        return super.hasTag(tag);
     }
 
     /*

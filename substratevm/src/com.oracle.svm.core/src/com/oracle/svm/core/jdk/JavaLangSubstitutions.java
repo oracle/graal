@@ -185,6 +185,12 @@ final class Target_java_lang_ClassLoader {
     private Class<?> loadClass(String name) throws ClassNotFoundException {
         return ClassForNameSupport.forName(name);
     }
+
+    @Substitute
+    @SuppressWarnings("unused")
+    static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
+    }
+
 }
 
 @TargetClass(className = "java.lang.ClassLoaderHelper")

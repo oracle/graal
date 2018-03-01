@@ -24,13 +24,13 @@
  */
 package org.graalvm.nativeimage;
 
-import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
 /**
  * Pointer to the runtime data structure for a thread. The size and actual layout of the data
  * structure is unspecified, client code must not make any assumptions about it.
  */
-@CPointerTo(nameOfCType = "graal_isolatethread_t")
+@CStruct(value = "graal_isolatethread_t", isIncomplete = true)
 public interface IsolateThread extends PointerBase {
 }

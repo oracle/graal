@@ -40,7 +40,7 @@ public interface LoadSourceListener {
     /**
      * Invoked whenever a new {@link Source source} is loaded.The order in which multiple source
      * event listeners are notified matches the order they are
-     * {@link Instrumenter#attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceSectionFilter, com.oracle.truffle.api.instrumentation.LoadSourceListener, boolean)
+     * {@link Instrumenter#attachLoadSourceListener(SourceFilter, LoadSourceListener, boolean)
      * attached}.
      * <p>
      * <b>Implementation Note:</b> Source load events are notified when the guest language

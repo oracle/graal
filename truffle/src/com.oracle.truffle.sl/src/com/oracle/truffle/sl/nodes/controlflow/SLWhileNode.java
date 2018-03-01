@@ -44,7 +44,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 
@@ -55,13 +54,6 @@ public final class SLWhileNode extends SLStatementNode {
 
     public SLWhileNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
         this.loopNode = Truffle.getRuntime().createLoopNode(new SLWhileRepeatingNode(conditionNode, bodyNode));
-    }
-
-    @Override
-    public void setSourceSection(SourceSection section) {
-        super.setSourceSection(section);
-        /* Propagate the SourceSection also to the repeated loop body node. */
-        ((SLWhileRepeatingNode) loopNode.getRepeatingNode()).setSourceSection(section);
     }
 
     @Override

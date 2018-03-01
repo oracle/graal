@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -40,25 +40,25 @@ CFLAGS+=-m64
 LDFLAGS+=-m64
 endif
 
+DEPFLAGS = -MT $@ -MMD -MP -MF bin/$*.Td
+POSTCOMPILE = @mv -f bin/$*.Td bin/$*.d && touch $@
+$(shell mkdir -p bin/ >/dev/null)
 
 ${TARGET}: ${OBJECTS}
 	@echo LINK $@
 	@g++ -shared ${LDFLAGS} $+ -o $@
 
-bin/%.d: src/%.c
-	@mkdir -p bin/
-	@gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
-
-bin/%.o: src/%.c
+bin/%.o: src/%.c bin/%.d
 	@echo CC $@
-	@gcc -c ${CFLAGS} ${CPPFLAGS} -o $@ $<
+	@gcc -c ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
+	${POSTCOMPILE}
 
-bin/%.d: src/%.cc
-	@mkdir -p bin/
-	@g++ -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
-
-bin/%.o: src/%.cc
+bin/%.o: src/%.cc bin/%.d
 	@echo CXX $@
-	@g++ -c ${CFLAGS} ${CPPFLAGS} -o $@ $<
+	@g++ -c ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
+	${POSTCOMPILE}
+
+bin/%.d: ;
+.PRECIOUS: bin/%.d
 
 -include ${OBJECTS:%.o=%.d}

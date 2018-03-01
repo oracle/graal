@@ -162,7 +162,7 @@ mx_unittest.add_config_participant(_unittest_config_participant)
 def sl(args):
     """run an SL program"""
     vmArgs, slArgs = mx.extract_VM_args(args)
-    mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl"]) + ["com.oracle.truffle.sl.SLMain"] + slArgs)
+    mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"]) + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)

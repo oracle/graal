@@ -22,14 +22,17 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
+import com.oracle.svm.core.meta.CompressedNullConstant;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MemoryAccessProvider;
 
-public class HostedMemoryAccessProvider implements MemoryAccessProvider {
+public class HostedMemoryAccessProvider implements SubstrateMemoryAccessProvider {
 
     private final HostedMetaAccess metaAccess;
 
@@ -68,6 +71,19 @@ public class HostedMemoryAccessProvider implements MemoryAccessProvider {
     @Override
     public JavaConstant readObjectConstant(Constant base, long displacement) {
         return doRead(JavaKind.Object, (JavaConstant) base, displacement);
+    }
+
+    @Override
+    public JavaConstant readNarrowObjectConstant(Constant base, long displacement) {
+        assert SubstrateOptions.UseHeapBaseRegister.getValue();
+        JavaConstant result = readObjectConstant(base, displacement);
+        if (result == null) {
+            return null;
+        }
+        if (JavaConstant.NULL_POINTER.equals(result)) {
+            return CompressedNullConstant.COMPRESSED_NULL;
+        }
+        return ((SubstrateObjectConstant) result).compress();
     }
 
     /**

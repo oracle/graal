@@ -248,6 +248,8 @@ final class ObjectStructures {
         final Node getSize;
         final Node read;
         final Node write;
+        final Node isBoxed;
+        final Node unbox;
 
         MessageNodes() {
             keyInfo = Message.KEY_INFO.createNode();
@@ -256,6 +258,8 @@ final class ObjectStructures {
             getSize = Message.GET_SIZE.createNode();
             read = Message.READ.createNode();
             write = Message.WRITE.createNode();
+            isBoxed = Message.IS_BOXED.createNode();
+            unbox = Message.UNBOX.createNode();
         }
     }
 }

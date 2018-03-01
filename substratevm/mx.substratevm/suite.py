@@ -196,7 +196,10 @@ suite = {
                 "resources"
             ],
             "dependencies": [
-                "com.oracle.svm.hosted",
+                "com.oracle.svm.graal",
+                "com.oracle.svm.core.genscavenge",
+                "com.oracle.svm.reflect",
+                "com.oracle.svm.jni",
             ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
@@ -391,8 +394,8 @@ suite = {
             "class" : "BootstrapNativeImage",
             "buildDependencies": [
                 "SVM_DRIVER",
-                "SVM",
-                "LIBRARY_SUPPORT"
+                'tools:CHROMEINSPECTOR',
+                'tools:TRUFFLE_PROFILER',
             ],
             "svm" : [
                 "SVM"

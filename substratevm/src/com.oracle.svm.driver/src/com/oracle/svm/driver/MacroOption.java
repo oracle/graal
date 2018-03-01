@@ -25,11 +25,13 @@ package com.oracle.svm.driver;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -38,14 +40,29 @@ import java.util.stream.Collectors;
 
 final class MacroOption {
     enum MacroOptionKind {
-        Language("languages"),
-        Tool("tools"),
+        Language("languages") {
+            @Override
+            protected String getOptionDescription(MacroOption option, boolean commandLineStyle) {
+                return (commandLineStyle ? "--" : name() + ":") + option.getOptionName();
+            }
+        },
+        Tool("tools") {
+            @Override
+            protected String getOptionDescription(MacroOption option, boolean commandLineStyle) {
+                return (commandLineStyle ? "--tool." : name() + ":") + option.getOptionName();
+            }
+        },
         Builtin("");
 
         final String subdir;
 
         MacroOptionKind(String subdir) {
             this.subdir = subdir;
+        }
+
+        @SuppressWarnings("unused")
+        protected String getOptionDescription(MacroOption option, boolean commandLineStyle) {
+            return "";
         }
 
         static MacroOptionKind fromSubdir(String subdir) {
@@ -70,10 +87,42 @@ final class MacroOption {
         return optionName;
     }
 
+    String getDescription(boolean commandLineStyle) {
+        return kind.getOptionDescription(this, commandLineStyle);
+    }
+
     @SuppressWarnings("serial")
     static final class InvalidMacroException extends RuntimeException {
         InvalidMacroException(String arg0) {
             super(arg0);
+        }
+    }
+
+    @SuppressWarnings("serial")
+    static final class VerboseInvalidMacroException extends RuntimeException {
+        final MacroOptionKind forKind;
+        final MacroOption context;
+
+        VerboseInvalidMacroException(String arg0, MacroOption context) {
+            this(arg0, null, context);
+        }
+
+        VerboseInvalidMacroException(String arg0, MacroOptionKind forKind, MacroOption context) {
+            super(arg0);
+            this.forKind = forKind;
+            this.context = context;
+
+        }
+
+        public String getMessage(Registry registry) {
+            StringBuilder sb = new StringBuilder();
+            if (context != null) {
+                sb.append(context.getDescription(false) + " contains ");
+            }
+            Consumer<String> lineOut = s -> sb.append(s + "\n");
+            lineOut.accept(super.getMessage());
+            registry.showOptions(forKind, context == null, lineOut);
+            return sb.toString();
         }
     }
 
@@ -176,18 +225,38 @@ final class MacroOption {
             return builtin;
         }
 
+        void showOptions(MacroOptionKind forKind, boolean commandLineStyle, Consumer<String> lineOut) {
+            List<String> optionsToShow = new ArrayList<>();
+            for (MacroOptionKind kind : MacroOptionKind.values()) {
+                if (forKind != null && !kind.equals(forKind)) {
+                    continue;
+                }
+                for (MacroOption option : supported.get(kind).values()) {
+                    String showEntry = option.getDescription(commandLineStyle);
+                    if (!showEntry.isEmpty()) {
+                        optionsToShow.add("    " + showEntry);
+                    }
+                }
+            }
+            if (!optionsToShow.isEmpty()) {
+                lineOut.accept("Available " + (forKind != null ? forKind.name() + " options" : "MacroOptions") + " are:");
+                optionsToShow.forEach(lineOut);
+            }
+        }
+
         void enableOptions(String optionsSpec, MacroOptionKind kind) {
             try {
-                enableOptions(optionsSpec, kind, new HashSet<>());
+                enableOptions(optionsSpec, kind, new HashSet<>(), null);
             } catch (AddedTwiceException e) {
                 throw new InvalidMacroException(e.getMessage() + " already added before");
             }
         }
 
-        private void enableOptions(String optionsSpec, MacroOptionKind kind, HashSet<MacroOption> addedCheck) {
+        private void enableOptions(String optionsSpec, MacroOptionKind kind, HashSet<MacroOption> addedCheck, MacroOption context) {
             if (optionsSpec.isEmpty()) {
                 return;
             }
+
             for (String specString : optionsSpec.split(" ")) {
                 MacroOptionKind kindPart;
                 String specNameParts;
@@ -198,17 +267,17 @@ final class MacroOption {
                 } else {
                     String[] specParts = specString.split(":");
                     if (specParts.length != 2) {
-                        throw new InvalidMacroException("Invalid option specification: " + specString);
+                        throw new VerboseInvalidMacroException("invalid option specification: " + specString, context);
                     }
                     try {
                         kindPart = MacroOptionKind.valueOf(specParts[0]);
                     } catch (Exception e) {
-                        throw new InvalidMacroException("Unknown kind in option specification: " + specString);
+                        throw new VerboseInvalidMacroException("unknown kind in option specification: " + specString, context);
                     }
                     specNameParts = specParts[1];
                 }
                 if (specNameParts.isEmpty()) {
-                    throw new InvalidMacroException("Empty option specification: " + specString);
+                    throw new VerboseInvalidMacroException("empty option specification: " + specString, context);
                 }
                 String[] parts = specNameParts.split("=");
                 String optionName = parts[0];
@@ -221,7 +290,7 @@ final class MacroOption {
                 if (option != null) {
                     enableResolved(option, optionArg, addedCheck);
                 } else {
-                    throw new InvalidMacroException("Unknown name in option specification: " + kindPart + ":" + optionName);
+                    throw new VerboseInvalidMacroException("unknown name in option specification: " + kindPart + ":" + optionName, kindPart, context);
                 }
             }
         }
@@ -238,7 +307,7 @@ final class MacroOption {
                 EnabledOption enabledOption = new EnabledOption(option, optionArg);
                 String requires = enabledOption.getProperty("Requires");
                 if (requires != null) {
-                    enableOptions(requires, null, addedCheck);
+                    enableOptions(requires, null, addedCheck, option);
                 }
                 enabled.add(enabledOption);
             } catch (AddedTwiceException e) {

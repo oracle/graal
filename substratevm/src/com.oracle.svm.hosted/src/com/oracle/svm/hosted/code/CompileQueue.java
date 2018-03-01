@@ -125,7 +125,6 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
-import com.oracle.svm.hosted.meta.UniverseBuilder;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
@@ -593,7 +592,7 @@ public class CompileQueue {
     }
 
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, @SuppressWarnings("unused") HostedMethod method) {
-        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
+        GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
         return gbConf;
     }
 
@@ -900,7 +899,7 @@ public class CompileQueue {
     }
 
     public Map<HostedMethod, CompilationResult> getCompilations() {
-        Map<HostedMethod, CompilationResult> result = new TreeMap<>(UniverseBuilder.METHOD_COMPARATOR);
+        Map<HostedMethod, CompilationResult> result = new TreeMap<>();
         for (Entry<HostedMethod, CompileTask> entry : compilations.entrySet()) {
             result.put(entry.getKey(), entry.getValue().result);
         }

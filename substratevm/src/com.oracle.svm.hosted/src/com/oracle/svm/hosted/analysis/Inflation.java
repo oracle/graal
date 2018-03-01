@@ -25,6 +25,7 @@ package com.oracle.svm.hosted.analysis;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -60,6 +61,7 @@ import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -75,6 +77,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class Inflation extends BigBang {
     private Set<AnalysisField> handledUnknownValueFields;
     private Map<GenericInterfacesEncodingKey, Type[]> genericInterfacesMap;
+    private Map<AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap;
     private Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
     private final Pattern illegalCalleesPattern;
@@ -91,6 +94,7 @@ public class Inflation extends BigBang {
 
         handledUnknownValueFields = new HashSet<>();
         genericInterfacesMap = new HashMap<>();
+        annotatedInterfacesMap = new HashMap<>();
         interfacesEncodings = new HashMap<>();
     }
 
@@ -205,6 +209,7 @@ public class Inflation extends BigBang {
         super.cleanupAfterAnalysis();
         handledUnknownValueFields = null;
         genericInterfacesMap = null;
+        annotatedInterfacesMap = null;
         interfacesEncodings = null;
     }
 
@@ -226,6 +231,24 @@ public class Inflation extends BigBang {
         }
     }
 
+    class AnnotatedInterfacesEncodingKey {
+        final AnnotatedType[] interfaces;
+
+        AnnotatedInterfacesEncodingKey(AnnotatedType[] aInterfaces) {
+            this.interfaces = aInterfaces;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof AnnotatedInterfacesEncodingKey && Arrays.equals(interfaces, ((AnnotatedInterfacesEncodingKey) obj).interfaces);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(interfaces);
+        }
+    }
+
     private void fillGenericInfo(AnalysisType type) {
         SVMHost svmHost = (SVMHost) hostVM;
         DynamicHub hub = svmHost.dynamicHub(type);
@@ -233,10 +256,19 @@ public class Inflation extends BigBang {
         Class<?> javaClass = type.getJavaClass();
 
         TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
+        /* The bounds are lazily initialized. Initialize them eagerly in the native image. */
+        Arrays.stream(typeParameters).forEach(TypeVariable::getBounds);
         Type[] genericInterfaces = Arrays.stream(javaClass.getGenericInterfaces()).filter(this::filterGenericInterfaces).toArray(Type[]::new);
         Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
         Type genericSuperClass = javaClass.getGenericSuperclass();
         hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
+
+        AnnotatedType annotatedSuperclass = javaClass.getAnnotatedSuperclass();
+        AnnotatedType[] annotatedInterfaces = Arrays.stream(javaClass.getAnnotatedInterfaces())
+                        .filter(ai -> filterGenericInterfaces(ai.getType())).toArray(AnnotatedType[]::new);
+        AnnotatedType[] cachedAnnotatedInterfaces = annotatedInterfacesMap.computeIfAbsent(
+                        new AnnotatedInterfacesEncodingKey(annotatedInterfaces), k -> annotatedInterfaces);
+        hub.setAnnotatedSuperInfo(AnnotatedSuperInfo.factory(annotatedSuperclass, cachedAnnotatedInterfaces));
     }
 
     private boolean filterGenericInterfaces(Type t) {

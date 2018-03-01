@@ -191,7 +191,7 @@ public class MethodTypeFlowBuilder {
                     if (needParsing) {
                         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(bb.getProviders().getGraphBuilderPlugins()).withEagerResolving(true)
                                         .withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()))
-                                        .withNodeSourcePosition(true).withBytecodeExceptionMode(BytecodeExceptionMode.ExplicitOnly);
+                                        .withNodeSourcePosition(true).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
                         bb.getHostVM().createGraphBuilderPhase(bb.getProviders(), config, OptimisticOptimizations.NONE, null).apply(graph);
                     }
                 } catch (PermanentBailoutException ex) {

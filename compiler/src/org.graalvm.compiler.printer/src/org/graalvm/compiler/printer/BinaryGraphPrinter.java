@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -69,7 +70,6 @@ import org.graalvm.graphio.GraphTypes;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 public class BinaryGraphPrinter implements
@@ -380,8 +380,8 @@ public class BinaryGraphPrinter implements
         if (obj instanceof Class<?>) {
             return ((Class<?>) obj).getName();
         }
-        if (obj instanceof ResolvedJavaType) {
-            return ((ResolvedJavaType) obj).toJavaName();
+        if (obj instanceof JavaType) {
+            return ((JavaType) obj).toJavaName();
         }
         return null;
     }

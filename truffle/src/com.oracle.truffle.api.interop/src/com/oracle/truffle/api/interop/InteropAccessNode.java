@@ -110,7 +110,7 @@ abstract class InteropAccessNode extends Node {
         }
     }
 
-    private static Object checkInteropType(Object obj) {
+    static Object checkInteropType(Object obj) {
         assert checkInteropTypeImpl(obj);
         return obj;
     }

@@ -123,6 +123,11 @@ final class GraalTVMCI extends TVMCI {
     }
 
     @Override
+    protected int adoptChildrenAndCount(RootNode root) {
+        return super.adoptChildrenAndCount(root);
+    }
+
+    @Override
     public boolean isCloneUninitializedSupported(RootNode root) {
         return super.isCloneUninitializedSupported(root);
     }
@@ -142,6 +147,11 @@ final class GraalTVMCI extends TVMCI {
     }
 
     EngineData getEngineData(RootNode rootNode) {
-        return getOrCreateRuntimeData(rootNode, EngineData::new);
+        return getOrCreateRuntimeData(rootNode, new Supplier<EngineData>() {
+            @Override
+            public EngineData get() {
+                return new EngineData();
+            }
+        });
     }
 }

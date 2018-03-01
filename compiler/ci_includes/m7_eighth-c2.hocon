@@ -14,7 +14,7 @@ m7_eighth.c2 : ${labsjdk8} {
 
 builds += [
   ${bench-dacapo}              ${m7_eighth.c2} { name: "bench-compiler-dacapo-solaris-m7_eighth-c2" }
-  ${bench-scala-dacapo}        ${m7_eighth.c2} { name: "bench-compiler-scala-dacapo-solaris-m7_eighth-c2" }
+  ${bench-scala-dacapo}        ${m7_eighth.c2} { name: "bench-compiler-scala-dacapo-solaris-m7_eighth-c2", timelimit: "45:00" }
   ${bench-specjvm2008-Single}  ${m7_eighth.c2} { name: "bench-compiler-specjvm2008-Single-solaris-m7_eighth-c2" }
   ${bench-specjvm2008-OneVM}   ${m7_eighth.c2} { name: "bench-compiler-specjvm2008-OneVM-solaris-m7_eighth-c2" }
   ${bench-specjbb2015}         ${m7_eighth.c2} { name: "bench-compiler-specjbb2015-solaris-m7_eighth-c2" }

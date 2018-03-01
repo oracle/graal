@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Modifier;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -194,7 +195,9 @@ public final class SVMHost implements HostVM {
         if (type.isArray()) {
             componentHub = dynamicHub(type.getComponentType());
         }
-        return new DynamicHub(type.toClassName(), type.isLocal(), superHub, componentHub, type.getSourceFileName());
+        boolean isStatic = Modifier.isStatic(type.getJavaClass().getModifiers());
+        boolean isSynthetic = type.getJavaClass().isSynthetic();
+        return new DynamicHub(type.toClassName(), type.isLocal(), superHub, componentHub, type.getSourceFileName(), isStatic, isSynthetic);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {

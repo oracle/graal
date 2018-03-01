@@ -29,7 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -146,9 +146,9 @@ public class UniverseBuilder {
             setConstantFieldValues();
 
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
-            hUniverse.orderedMethods.sort(METHOD_COMPARATOR);
+            Collections.sort(hUniverse.orderedMethods);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
-            hUniverse.orderedFields.sort(FIELD_COMPARATOR);
+            Collections.sort(hUniverse.orderedFields);
             profilingInformationBuildTask.join();
         }
     }
@@ -294,78 +294,6 @@ public class UniverseBuilder {
         hUniverse.fields.put(aField, hField);
     }
 
-    private static final Comparator<HostedType> TYPE_COMPARATOR = new Comparator<HostedType>() {
-
-        private int idx(HostedType t) {
-            if (t.isInterface()) {
-                return 4;
-            } else if (t.isArray()) {
-                return 3;
-            } else if (t.isInstanceClass()) {
-                return 2;
-            } else if (t.getJavaKind() != JavaKind.Object) {
-                return 1;
-            } else {
-                throw shouldNotReachHere();
-            }
-        }
-
-        @Override
-        public int compare(HostedType t1, HostedType t2) {
-            if (t1.equals(t2)) {
-                return 0;
-            }
-            int result = idx(t1) - idx(t2);
-            if (result == 0) {
-                if (t1.getJavaKind() != JavaKind.Object) {
-                    result = t1.getJavaKind().ordinal() - t2.getJavaKind().ordinal();
-                } else if (t1.isArray()) {
-                    result = compare(t1.getComponentType(), t2.getComponentType());
-                } else {
-                    result = t1.getName().compareTo(t2.getName());
-                }
-            }
-            assert result != 0 : "Types not distinguishable: " + t1 + ", " + t2;
-            return result;
-        }
-    };
-
-    public static final Comparator<HostedMethod> METHOD_COMPARATOR = (m1, m2) -> {
-        if (m1.equals(m2)) {
-            return 0;
-        }
-
-        /*
-         * Sort deoptimization targets towards the end of the code cache. They are rarely executed,
-         * and we do not want a deoptimization target as the first method (because offset 0 means no
-         * deoptimization target available).
-         */
-        int result = Boolean.compare(m1.compilationInfo.isDeoptTarget(), m2.compilationInfo.isDeoptTarget());
-
-        if (result == 0) {
-            result = TYPE_COMPARATOR.compare(m1.getDeclaringClass(), m2.getDeclaringClass());
-        }
-        if (result == 0) {
-            result = m1.getName().compareTo(m2.getName());
-        }
-        if (result == 0) {
-            result = m1.getSignature().getParameterCount(false) - m2.getSignature().getParameterCount(false);
-        }
-        if (result == 0) {
-            for (int i = 0; i < m1.getSignature().getParameterCount(false); i++) {
-                result = TYPE_COMPARATOR.compare((HostedType) m1.getSignature().getParameterType(i, null), (HostedType) m2.getSignature().getParameterType(i, null));
-                if (result != 0) {
-                    break;
-                }
-            }
-        }
-        if (result == 0) {
-            result = TYPE_COMPARATOR.compare((HostedType) m1.getSignature().getReturnType(null), (HostedType) m2.getSignature().getReturnType(null));
-        }
-        assert result != 0;
-        return result;
-    };
-
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
         hUniverse.methods.entrySet().parallelStream()
@@ -400,7 +328,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.types.values()) {
             Set<HostedType> subTypesSet = allSubTypes.get(type);
             HostedType[] subTypes = subTypesSet.toArray(new HostedType[subTypesSet.size()]);
-            Arrays.sort(subTypes, TYPE_COMPARATOR);
+            Arrays.sort(subTypes);
             type.subTypes = subTypes;
         }
     }
@@ -589,30 +517,6 @@ public class UniverseBuilder {
             }
         }
     }
-
-    private static final Comparator<HostedField> FIELD_COMPARATOR = (field1, field2) -> {
-        if (field1.equals(field2)) {
-            return 0;
-        }
-        /*
-         * Order by JavaKind. This is required, since we want instance fields of the same size and
-         * kind consecutive.
-         */
-        int result = field2.getJavaKind().ordinal() - field1.getJavaKind().ordinal();
-
-        if (result == 0) {
-            /*
-             * Make the field order deterministic by sorting by name. This is arbitrary, we can come
-             * up with any better ordering.
-             */
-            result = field1.getDeclaringClass().getName().compareTo(field2.getDeclaringClass().getName());
-            if (result == 0) {
-                result = field1.getName().compareTo(field2.getName());
-            }
-        }
-        assert result != 0 : "Fields not distinguishable: " + field1 + ", " + field2;
-        return result;
-    };
 
     // @formatter:off
 //    /**
@@ -841,7 +745,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        rawFields.sort(FIELD_COMPARATOR);
+        Collections.sort(rawFields);
 
         int nextOffset = startSize;
         while (rawFields.size() > 0) {
@@ -933,7 +837,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        fields.sort(FIELD_COMPARATOR);
+        Collections.sort(fields);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
@@ -998,7 +902,7 @@ public class UniverseBuilder {
         for (HostedType type : hUniverse.orderedTypes) {
             List<HostedMethod> list = methodsOfType[type.getTypeID()];
             if (list != null) {
-                list.sort(METHOD_COMPARATOR);
+                Collections.sort(list);
                 type.allDeclaredMethods = list.toArray(new HostedMethod[list.size()]);
             } else {
                 type.allDeclaredMethods = noMethods;
@@ -1011,7 +915,7 @@ public class UniverseBuilder {
 
             // Reuse the implementations from the analysis method.
             method.implementations = hUniverse.lookup(method.wrapped.getImplementations());
-            Arrays.sort(method.implementations, METHOD_COMPARATOR);
+            Arrays.sort(method.implementations);
         }
     }
 
@@ -1283,8 +1187,8 @@ public class UniverseBuilder {
     private static boolean assertSame(Collection<HostedType> c1, Collection<HostedType> c2) {
         List<HostedType> list1 = new ArrayList<>(c1);
         List<HostedType> list2 = new ArrayList<>(c2);
-        list1.sort(TYPE_COMPARATOR);
-        list2.sort(TYPE_COMPARATOR);
+        Collections.sort(list1);
+        Collections.sort(list2);
 
         for (int i = 0; i < Math.min(list1.size(), list2.size()); i++) {
             assert list1.get(i) == list2.get(i);

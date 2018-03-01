@@ -453,7 +453,7 @@ public class Breakpoint {
                     resolveBreakpoint();
                 }
             }, true);
-            breakpointBinding = debugger.getInstrumenter().attachFactory(filter, new BreakpointNodeFactory());
+            breakpointBinding = debugger.getInstrumenter().attachExecutionEventFactory(filter, new BreakpointNodeFactory());
         }
     }
 

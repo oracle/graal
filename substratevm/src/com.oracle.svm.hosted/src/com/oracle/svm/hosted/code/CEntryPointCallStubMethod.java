@@ -64,9 +64,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
+import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.code.CEntryPointCallStubs;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
@@ -81,8 +81,8 @@ import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.image.NativeBootImage;
-import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
+import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -289,7 +289,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                 }
             }
             if (matchesCount == 1) {
-                if (matchType.isAssignableFrom(threadType)) {
+                if (threadType.isAssignableFrom(matchType)) {
                     prologueClass = CEntryPointSetup.EnterPrologue.class;
                 } else {
                     prologueClass = CEntryPointSetup.EnterIsolatePrologue.class;
@@ -316,7 +316,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             UserError.guarantee(prologueType.isPrimitive() || providers.getWordTypes().isWord(prologueType),
                             "Prologue method parameter types are restricted to primitive types and word types: " +
                                             targetMethod.format("%H.%n(%p)") + " -> " + prologueMethod.format("%H.%n(%p)"));
-            while (i < types.length && !types[i].equals(prologueType)) {
+            while (i < types.length && !prologueType.isAssignableFrom((ResolvedJavaType) types[i])) {
                 i++;
             }
             if (i >= types.length) {

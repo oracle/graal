@@ -22,30 +22,20 @@
  */
 package com.oracle.svm.jni.hosted;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.jni.JNIGeneratedMethodSupport;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * {@link HostedGraphKit} implementation with extensions that are specific to generated JNI code.
@@ -54,20 +44,6 @@ class JNIGraphKit extends HostedGraphKit {
 
     JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
-    }
-
-    public ValueNode castObject(ValueNode value, ResolvedJavaType type) {
-        ValueNode casted = value;
-        if (!type.isJavaLangObject()) { // safe cast to expected type
-            TypeReference typeRef = TypeReference.createTrusted(getAssumptions(), type);
-            LogicNode condition = append(InstanceOfNode.createAllowNull(typeRef, value, null, null));
-            if (!condition.isTautology()) {
-                ObjectStamp stamp = StampFactory.object(typeRef, false);
-                FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-                casted = append(PiNode.create(value, stamp, fixedGuard));
-            }
-        }
-        return casted;
     }
 
     private InvokeNode createStaticInvoke(String name, ValueNode... args) {

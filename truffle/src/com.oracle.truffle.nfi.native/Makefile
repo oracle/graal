@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -49,18 +49,17 @@ CFLAGS+=-m64 -pthread
 LDFLAGS+=-m64 -pthread
 endif
 
+DEPFLAGS = -MT $@ -MMD -MP -MF bin/$*.Td
+$(shell mkdir -p bin/ >/dev/null)
 
 bin/${LIBTRUFFLENFI}: ${OBJECTFILES} ${LIBFFI_LIB}
-	$(QUIETLY) echo LINK $@
+	@echo LINK $@
 	$(QUIETLY) gcc -shared ${LDFLAGS} $+ -o $@
 
-bin/%.d: src/%.c libffi-build/include/ffi.h
-	$(QUIETLY) mkdir -p bin/
-	$(QUIETLY) gcc -MM ${CPPFLAGS} $< | sed 's|\($*\)\.o[ :]*|bin/\1.o $@ : |g' > $@
-
-bin/%.o: src/%.c
-	$(QUIETLY) echo CC $@
-	$(QUIETLY) gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} -o $@ $<
+bin/%.o: src/%.c bin/%.d libffi-build/include/ffi.h
+	@echo CC $@
+	$(QUIETLY) gcc -c -Wall -Werror ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} -o $@ $<
+	$(QUIETLY) mv -f bin/$*.Td bin/$*.d && touch $@
 
 ${LIBFFI_LIB}: libffi-build/Makefile
 	$(QUIETLY) echo MAKE libffi
@@ -68,13 +67,18 @@ ${LIBFFI_LIB}: libffi-build/Makefile
 
 # on the Mac /bin/sh is bash which will produce output if CDPATH is set which causes
 # this command to fail, so clear it out before running the command.
-libffi-build/Makefile libffi-build/include/ffi.h: libffi-3.2.1/configure
+libffi-build/Makefile: libffi-3.2.1/configure
 	$(QUIETLY) echo CONFIGURE libffi
 	$(QUIETLY) mkdir -p libffi-build
 	$(QUIETLY) unset CDPATH CPPFLAGS && cd libffi-build && CFLAGS="${CFLAGS}" ../libffi-3.2.1/configure --enable-static > ../libffi.configure.log
 
+libffi-build/include/ffi.h: libffi-build/Makefile
+
 libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) tar xzf ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
+
+bin/%.d: ;
+.PRECIOUS: bin/%.d
 
 -include ${OBJECTS:%.o=bin/%.d}
