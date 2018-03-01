@@ -165,6 +165,18 @@ suite = {
       "license" : "BSD-new",
     },
 
+    "com.oracle.truffle.llvm.launcher" : {
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:LAUNCHER_COMMON",
+       ],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+    },
+
     "com.oracle.truffle.llvm.asm.amd64.parser" : {
       "subDir" : "projects",
       "native" : True,
@@ -340,14 +352,23 @@ suite = {
   "distributions" : {
     "SULONG" : {
       "path" : "build/sulong.jar",
-      "subDir" : "graal",
+      "subDir" : "projects",
       "sourcesPath" : "build/sulong.src.zip",
-      "mainClass" : "com.oracle.truffle.llvm.LLVM",
       "dependencies" : ["com.oracle.truffle.llvm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "SULONG_LIBS",
+      ],
+      "license" : "BSD-new",
+    },
+
+    "SULONG_LAUNCHER" : {
+      "subDir" : "projects",
+      "mainClass" : "com.oracle.truffle.llvm.launcher.LLVMLauncher",
+      "dependencies" : ["com.oracle.truffle.llvm.launcher"],
+      "distDependencies" : [
+        "sdk:LAUNCHER_COMMON",
       ],
       "license" : "BSD-new",
     },
@@ -365,9 +386,7 @@ suite = {
     },
 
     "SULONG_TEST" : {
-      "path" : "build/sulong_test.jar",
-      "subDir" : "graal",
-      "sourcesPath" : "build/sulong_test.src.zip",
+      "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm.test",
         "com.oracle.truffle.llvm.types.test",
