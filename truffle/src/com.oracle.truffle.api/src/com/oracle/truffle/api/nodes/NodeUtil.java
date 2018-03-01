@@ -249,6 +249,40 @@ public final class NodeUtil {
 
     }
 
+    /*
+     * Slow version of child adoption. Unlike the adoptChildrenHelper this method traverses (and
+     * counts) all nodes, i.e. including the ones already adopted.
+     */
+    static int adoptChildrenAndCountHelper(Node currentNode) {
+        int count = 0;
+        NodeClass clazz = currentNode.getNodeClass();
+        for (Object field : clazz.getNodeFields()) {
+            if (clazz.isChildField(field)) {
+                Object child = clazz.getFieldObject(field, currentNode);
+                if (child != null) {
+                    Node node = (Node) child;
+                    count += currentNode.adoptAndCountHelper(node);
+                }
+            } else if (clazz.isChildrenField(field)) {
+                Object arrayObject = clazz.getFieldObject(field, currentNode);
+                if (arrayObject == null) {
+                    continue;
+                }
+                Object[] array = (Object[]) arrayObject;
+                for (int i = 0; i < array.length; i++) {
+                    Object child = array[i];
+                    if (child != null) {
+                        Node node = (Node) child;
+                        count += currentNode.adoptAndCountHelper(node);
+                    }
+                }
+            } else if (clazz.nodeFieldsOrderedByKind()) {
+                break;
+            }
+        }
+        return count;
+    }
+
     static boolean replaceChild(Node parent, Node oldChild, Node newChild, boolean adopt) {
         CompilerAsserts.neverPartOfCompilation("do not replace Node child from compiled code");
         NodeClass nodeClass = parent.getNodeClass();

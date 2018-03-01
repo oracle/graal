@@ -242,6 +242,24 @@ public abstract class Node implements NodeInterface, Cloneable {
         NodeUtil.adoptChildrenHelper(newChild);
     }
 
+    int adoptChildrenAndCount() {
+        CompilerAsserts.neverPartOfCompilation();
+        return 1 + NodeUtil.adoptChildrenAndCountHelper(this);
+    }
+
+    int adoptAndCountHelper(Node newChild) {
+        assert newChild != null;
+        if (newChild == this) {
+            throw new IllegalStateException("The parent of a node can never be the node itself.");
+        }
+        assert checkSameLanguages(newChild);
+        newChild.parent = this;
+        if (TruffleOptions.TraceASTJSON) {
+            dump(this, newChild, null);
+        }
+        return 1 + NodeUtil.adoptChildrenAndCountHelper(newChild);
+    }
+
     private boolean checkSameLanguages(final Node newChild) {
         if (newChild instanceof ExecutableNode && !(newChild instanceof RootNode)) {
             RootNode root = getRootNode();
@@ -660,6 +678,11 @@ public abstract class Node implements NodeInterface, Cloneable {
             @Override
             public RootNode cloneUninitialized(RootNode rootNode) {
                 return rootNode.cloneUninitialized();
+            }
+
+            @Override
+            public int adoptChildrenAndCount(RootNode rootNode) {
+                return rootNode.adoptChildrenAndCount();
             }
 
             @Override
