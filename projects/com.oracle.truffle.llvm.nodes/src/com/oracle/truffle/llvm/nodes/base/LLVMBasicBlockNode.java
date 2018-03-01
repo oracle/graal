@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -129,8 +129,8 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         CompilerAsserts.neverPartOfCompilation();
         for (int j = i; j >= 0; j--) {
             LLVMExpressionNode node = statements[j];
-            if (node instanceof InstrumentableFactory.WrapperNode) {
-                node = (LLVMExpressionNode) ((InstrumentableFactory.WrapperNode) node).getDelegateNode();
+            if (node instanceof InstrumentableNode.WrapperNode) {
+                node = (LLVMExpressionNode) ((InstrumentableNode.WrapperNode) node).getDelegateNode();
             }
 
             LLVMSourceLocation location = node.getSourceLocation();

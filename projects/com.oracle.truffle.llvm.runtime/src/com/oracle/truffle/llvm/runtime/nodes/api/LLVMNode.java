@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import java.io.PrintStream;
 
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -108,12 +109,11 @@ public abstract class LLVMNode extends Node {
         return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }
 
-    @Override
-    protected boolean isTaggedWith(Class<?> tag) {
+    public boolean hasTag(Class<? extends Tag> tag) {
         // only nodes that have a SourceSection attached are considered to be tagged by any
         // anything, for sulong only those nodes that actually represent source language statements
         // should have one
-        return tag == StandardTags.StatementTag.class || super.isTaggedWith(tag);
+        return tag == StandardTags.StatementTag.class;
     }
 
     public LLVMSourceLocation getSourceLocation() {
