@@ -25,6 +25,8 @@
 
 package org.graalvm.compiler.core.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.xmm0;
+import static jdk.vm.ci.amd64.AMD64.xmm1;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
@@ -968,9 +970,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitLog(gen, input, base10);
         if (result == null) {
+            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
+            getLIRGen().emitMove(xmm0Value, input);
             result = gen.newVariable(LIRKind.combine(input));
             AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, asAllocatable(input), stackSlot));
+            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), base10 ? LOG10 : LOG, result, xmm0Value, stackSlot));
         }
         return result;
     }
@@ -980,9 +984,11 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitCos(gen, input);
         if (result == null) {
+            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
+            getLIRGen().emitMove(xmm0Value, input);
             result = gen.newVariable(LIRKind.combine(input));
             AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), COS, result, asAllocatable(input), stackSlot));
+            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), COS, result, xmm0Value, stackSlot));
         }
         return result;
     }
@@ -992,9 +998,12 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitSin(gen, input);
         if (result == null) {
+            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
+            getLIRGen().emitMove(xmm0Value, input);
             result = gen.newVariable(LIRKind.combine(input));
             AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), SIN, result, asAllocatable(input), stackSlot));
+            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), SIN, result, xmm0Value, stackSlot));
+            return result;
         }
         return result;
     }
@@ -1004,25 +1013,33 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         LIRGenerator gen = getLIRGen();
         Variable result = maths.emitTan(gen, input);
         if (result == null) {
+            RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
+            getLIRGen().emitMove(xmm0Value, input);
             result = gen.newVariable(LIRKind.combine(input));
             AllocatableValue stackSlot = gen.getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), TAN, result, asAllocatable(input), stackSlot));
+            gen.append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), TAN, result, xmm0Value, stackSlot));
         }
         return result;
     }
 
     @Override
     public Value emitMathExp(Value input) {
+        RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input));
+        getLIRGen().emitMove(xmm0Value, input);
         Variable result = getLIRGen().newVariable(LIRKind.combine(input));
         AllocatableValue stackSlot = getLIRGen().getResult().getFrameMapBuilder().allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), EXP, result, asAllocatable(input), stackSlot));
+        getLIRGen().append(new AMD64MathIntrinsicUnaryOp(getAMD64LIRGen(), EXP, result, xmm0Value, stackSlot));
         return result;
     }
 
     @Override
     public Value emitMathPow(Value input1, Value input2) {
+        RegisterValue xmm0Value = xmm0.asValue(LIRKind.combine(input1));
+        getLIRGen().emitMove(xmm0Value, input1);
+        RegisterValue xmm1Value = xmm1.asValue(LIRKind.combine(input2));
+        getLIRGen().emitMove(xmm1Value, input2);
         Variable result = getLIRGen().newVariable(LIRKind.combine(input1));
-        getLIRGen().append(new AMD64MathIntrinsicBinaryOp(getAMD64LIRGen(), POW, result, asAllocatable(input1), asAllocatable(input2)));
+        getLIRGen().append(new AMD64MathIntrinsicBinaryOp(getAMD64LIRGen(), POW, result, xmm0Value, xmm1Value));
         return result;
     }
 

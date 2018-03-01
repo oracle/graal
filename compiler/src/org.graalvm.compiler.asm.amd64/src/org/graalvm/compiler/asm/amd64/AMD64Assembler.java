@@ -2170,6 +2170,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitOperandHelper(src, dst, 0);
     }
 
+    public final void movw(Register dst, AMD64Address src) {
+        emitByte(0x66);
+        prefix(src, dst);
+        emitByte(0x8B);
+        emitOperandHelper(dst, src, 0);
+    }
+
     public final void movzbl(Register dst, AMD64Address src) {
         prefix(src, dst);
         emitByte(0x0F);
