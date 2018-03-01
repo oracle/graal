@@ -80,7 +80,7 @@ public class InlineableGraph implements Inlineable {
      */
     private static StructuredGraph getOriginalGraph(final ResolvedJavaMethod method, final HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, int callerBci,
                     boolean trackNodeSourcePosition) {
-        StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method, callerBci, trackNodeSourcePosition);
+        StructuredGraph result = InliningUtil.getIntrinsicGraph(context.getReplacements(), method, callerBci, trackNodeSourcePosition, null);
         if (result != null) {
             return result;
         }
