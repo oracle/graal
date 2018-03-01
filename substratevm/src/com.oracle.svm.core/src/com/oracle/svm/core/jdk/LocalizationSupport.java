@@ -81,7 +81,10 @@ public final class LocalizationSupport {
     public ResourceBundle getCached(String baseName, Locale locale) {
         ResourceBundle result = cache.get(baseName);
         if (result == null) {
-            throw VMError.unsupportedFeature("Access of resource bundle that was not pre-cached: " + baseName);
+            throw VMError.unsupportedFeature(
+                            "Access of resource bundle that was not pre-cached: " +
+                                            baseName +
+                                            ". More info at https://github.com/oracle/graal/blob/master/substratevm/RESOURCES.md");
         }
         return result;
     }
