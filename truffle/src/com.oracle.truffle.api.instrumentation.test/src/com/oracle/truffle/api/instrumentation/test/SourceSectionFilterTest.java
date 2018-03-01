@@ -93,7 +93,7 @@ public class SourceSectionFilterTest {
         }
     }
 
-    private static class SourceSectionNode extends Node implements InstrumentableNode {
+    static class SourceSectionNode extends Node implements InstrumentableNode {
         private final SourceSection sourceSection;
         private final Class<?>[] tags;
 
@@ -130,8 +130,13 @@ public class SourceSectionFilterTest {
         return new SourceSectionNode(section, tags);
     }
 
-    private static RootNode createRootNode(final SourceSection section, final Boolean internal) throws Exception {
-        Language language = Engine.create().getLanguages().get(InstrumentationTestLanguage.ID);
+    static RootNode createRootNode(final SourceSection section, final Boolean internal, Node... children) throws Exception {
+        Engine engine = Engine.create();
+        return createRootNode(engine, section, internal, children);
+    }
+
+    static RootNode createRootNode(Engine engine, final SourceSection section, final Boolean internal, Node... children) throws Exception {
+        Language language = engine.getLanguages().get(InstrumentationTestLanguage.ID);
         Field impl = Language.class.getDeclaredField("impl");
         ReflectionUtils.setAccessible(impl, true);
         Object polyglotLanguage = impl.get(language);
@@ -146,6 +151,13 @@ public class SourceSectionFilterTest {
         TruffleLanguage<?> truffleLanguage = (TruffleLanguage<?>) spi.get(languageInfo);
 
         return new RootNode(truffleLanguage) {
+
+            @Node.Children Node[] rootChildren = children;
+
+            @Override
+            protected boolean isInstrumentable() {
+                return true;
+            }
 
             @Override
             public SourceSection getSourceSection() {

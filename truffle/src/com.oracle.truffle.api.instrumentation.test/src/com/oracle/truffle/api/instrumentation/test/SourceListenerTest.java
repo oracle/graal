@@ -32,6 +32,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
@@ -39,6 +40,8 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 import org.graalvm.polyglot.Instrument;
@@ -117,10 +120,21 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.allEvents, source4);
     }
 
+    private static void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources) {
+        Assert.assertEquals(0, actualSources.size());
+    }
+
     private void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources, Source... expectedSources) {
         Assert.assertEquals(expectedSources.length, actualSources.size());
         for (int i = 0; i < expectedSources.length; i++) {
             Assert.assertSame("index " + i, getSourceImpl(expectedSources[i]), actualSources.get(i));
+        }
+    }
+
+    private static void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources, com.oracle.truffle.api.source.Source... expectedSources) {
+        Assert.assertEquals(expectedSources.length, actualSources.size());
+        for (int i = 0; i < expectedSources.length; i++) {
+            Assert.assertSame("index " + i, expectedSources[i], actualSources.get(i));
         }
     }
 
@@ -247,4 +261,24 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
     }
 
+    @Test
+    public void testLoadSourceNoRootSection() throws Exception {
+        Instrument instrument = engine.getInstruments().get("testLoadSource1");
+        TestLoadSource1 impl = instrument.lookup(TestLoadSource1.class);
+        com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("line1\nline2").mimeType("mime").name("NoName1").build();
+        com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("line3\nline4").mimeType("mime").name("NoName2").build();
+        com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("line5\nline6").mimeType("mime").name("NoName3").build();
+        Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
+        RootNode rootA = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node1);
+        assertEvents(impl.allEvents);
+        Truffle.getRuntime().createCallTarget(rootA);
+        assertEvents(impl.allEvents, source1);
+
+        Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(2));
+        Node node3 = new SourceSectionFilterTest.SourceSectionNode(source3.createSection(2));
+        RootNode rootB = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2, node3);
+        assertEvents(impl.allEvents, source1);
+        Truffle.getRuntime().createCallTarget(rootB);
+        assertEvents(impl.allEvents, source1, source2, source3);
+    }
 }
