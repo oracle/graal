@@ -29,9 +29,12 @@ import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
 import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -48,8 +51,21 @@ public class PosixIsolates {
     private static final CGlobalData<Word> IMAGE_HEAP_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BEGIN_SYMBOL_NAME);
     private static final CGlobalData<Word> IMAGE_HEAP_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_END_SYMBOL_NAME);
 
+    @Uninterruptible(reason = "Thread state not yet set up.", callerMustBe = true, mayBeInlined = true)
+    public static int checkSanity(Isolate isolate) {
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            return isolate.isNull() ? Errors.NO_ERROR : Errors.UNINITIALIZED_ISOLATE;
+        }
+        return isolate.isNull() ? Errors.NULL_ARGUMENT : Errors.NO_ERROR;
+    }
+
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, @SuppressWarnings("unused") CEntryPointCreateIsolateParameters parameters) {
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            isolatePointer.write(Word.nullPointer());
+            return Errors.NO_ERROR;
+        }
+
         Word begin = IMAGE_HEAP_BEGIN.get();
         Word size = IMAGE_HEAP_END.get().subtract(begin);
 
@@ -92,5 +108,13 @@ public class PosixIsolates {
         LibC.memcpy(heap, begin, size);
         isolatePointer.write(heap);
         return Errors.NO_ERROR;
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.", callerMustBe = true, mayBeInlined = true)
+    public static PointerBase getHeapBase(Isolate isolate) {
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            return IMAGE_HEAP_BEGIN.get();
+        }
+        return isolate;
     }
 }

@@ -157,7 +157,7 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("getCurrentIsolate", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+                if (SubstrateOptions.SpawnIsolates.getValue()) {
                     b.addPush(JavaKind.Object, new HeapBaseFixedNode());
                 } else {
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));

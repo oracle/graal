@@ -57,6 +57,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -174,7 +175,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     }
 
     @Uninterruptible(reason = "Called by an uninterruptible method.", callerMustBe = true, mayBeInlined = true)
-    private static void setHeapBase(Isolate isolate) {
+    private static void setHeapBase(PointerBase isolate) {
         assert SubstrateOptions.UseHeapBaseRegister.getValue();
         writeCurrentVMHeapBase(hasHeapBase() ? isolate : Word.nullPointer());
     }
@@ -222,7 +223,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             return error;
         }
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-            setHeapBase(isolate.read());
+            setHeapBase(PosixIsolates.getHeapBase(isolate.read()));
         }
         PosixVMThreads.ensureInitialized();
         return attachThread(isolate.read(), vmThreadSize);
@@ -244,11 +245,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static int attachThread(Isolate isolate, int vmThreadSize) {
+        int sanityError = PosixIsolates.checkSanity(isolate);
+        if (sanityError != Errors.NO_ERROR) {
+            return sanityError;
+        }
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-            if (isolate.isNull()) {
-                return Errors.NULL_ARGUMENT;
-            }
-            setHeapBase(isolate);
+            setHeapBase(PosixIsolates.getHeapBase(isolate));
         }
         if (!PosixVMThreads.isInitialized()) {
             return Errors.UNINITIALIZED_ISOLATE;
@@ -355,11 +357,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread register not set up yet")
     @SubstrateForeignCallTarget
     private static int enterIsolate(Isolate isolate) {
+        int sanityError = PosixIsolates.checkSanity(isolate);
+        if (sanityError != Errors.NO_ERROR) {
+            return sanityError;
+        }
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-            if (isolate.isNull()) {
-                return Errors.NULL_ARGUMENT;
-            }
-            setHeapBase(isolate);
+            setHeapBase(PosixIsolates.getHeapBase(isolate));
         }
         if (!PosixVMThreads.isInitialized()) {
             return Errors.UNINITIALIZED_ISOLATE;
@@ -381,7 +384,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
         if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
             Isolate isolate = PosixVMThreads.IsolateTL.get(thread);
-            setHeapBase(isolate);
+            setHeapBase(PosixIsolates.getHeapBase(isolate));
         }
         writeCurrentVMThread(thread);
         transitionCtoJava();
