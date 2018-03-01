@@ -100,16 +100,16 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         this.temp2 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
 
         // We only need the vector temporaries if we generate SSE code.
-        if (supportsSSE41(tool.target())) {
+        if (supportsSSE42(tool.target())) {
             this.vectorTemp1 = tool.newVariable(LIRKind.value(AMD64Kind.DOUBLE));
         } else {
             this.vectorTemp1 = Value.ILLEGAL;
         }
     }
 
-    private static boolean supportsSSE41(TargetDescription target) {
+    private static boolean supportsSSE42(TargetDescription target) {
         AMD64 arch = (AMD64) target.arch;
-        return arch.getFeatures().contains(CPUFeature.SSE4_1);
+        return arch.getFeatures().contains(CPUFeature.SSE4_2);
     }
 
     private static boolean supportsAVX2(TargetDescription target) {
@@ -217,7 +217,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         }
 
         // if (UseAVX >= 2 && UseSSE42Intrinsics) {
-        if (supportsAVX2(crb.target) && supportsSSE41(crb.target)) {
+        if (supportsAVX2(crb.target) && supportsSSE42(crb.target)) {
             Register vec1 = asRegister(vectorTemp1, AMD64Kind.DOUBLE);
 
             // Checkstyle: stop
@@ -405,7 +405,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
             masm.jmpb(WHILE_HEAD_LABEL);
 
             masm.bind(COMPARE_SMALL_STR);
-        } else if (supportsSSE41(crb.target)) {
+        } else if (supportsSSE42(crb.target)) {
             Register vec1 = asRegister(vectorTemp1, AMD64Kind.DOUBLE);
 
             // Checkstyle: stop
