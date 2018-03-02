@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,14 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
-public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider {
+public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider, TruffleObject {
 
     public static final int WORD_LENGTH_BIT = 64;
 
@@ -142,5 +145,14 @@ public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider {
         public LLVMAddress toNative(VirtualFrame frame, Object obj) throws InteropException {
             return (LLVMAddress) obj;
         }
+    }
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMTruffleAddress;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LLVMAddressMessageResolutionForeign.ACCESS;
     }
 }
