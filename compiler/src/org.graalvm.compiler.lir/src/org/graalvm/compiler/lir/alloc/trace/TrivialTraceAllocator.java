@@ -80,10 +80,9 @@ public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAlloc
         assert outLength <= inLenght : "Trivial Trace! There cannot be more outgoing values than incoming.";
         int outIdx = 0;
         for (int inIdx = 0; inIdx < inLenght; inIdx++) {
-            Value value = predLocOut[inIdx];
             if (outIdx < outLength && blockOut[outIdx] == blockIn[inIdx]) {
                 // set the outgoing location to the incoming value
-                locationOut[outIdx++] = value;
+                locationOut[outIdx++] = predLocOut[inIdx];
             }
         }
         assert outIdx == outLength;
