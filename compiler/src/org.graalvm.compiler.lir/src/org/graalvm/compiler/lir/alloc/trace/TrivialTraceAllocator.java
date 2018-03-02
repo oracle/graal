@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
@@ -58,17 +59,13 @@ public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAlloc
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
-        allocate(block, pred, livenessInfo, lir.numVariables(), SSAUtil.phiOutOrNull(lir, block));
+        allocate(block, pred, livenessInfo, SSAUtil.phiOutOrNull(lir, block));
     }
 
-    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
+    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, LIRInstruction jump) {
         // exploit that the live sets are sorted
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
-
-        // If there are Phis, we need to create a map from variables to locations.
-        boolean hasPhis = jump != null;
-        Value[] variableMap = hasPhis ? new Value[numVariables] : null;
 
         // setup incoming variables/locations
         final int[] blockIn = livenessInfo.getBlockIn(block);
@@ -84,10 +81,6 @@ public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAlloc
         int outIdx = 0;
         for (int inIdx = 0; inIdx < inLenght; inIdx++) {
             Value value = predLocOut[inIdx];
-            if (hasPhis) {
-                // collect mapping for Phi resolution
-                variableMap[blockIn[inIdx]] = value;
-            }
             if (outIdx < outLength && blockOut[outIdx] == blockIn[inIdx]) {
                 // set the outgoing location to the incoming value
                 locationOut[outIdx++] = value;
@@ -101,18 +94,19 @@ public final class TrivialTraceAllocator extends TraceAllocationPhase<TraceAlloc
          */
         livenessInfo.setInLocations(block, predLocOut);
         livenessInfo.setOutLocations(block, locationOut);
-        if (hasPhis) {
-            handlePhiOut(jump, variableMap);
+        if (jump != null) {
+            handlePhiOut(jump, blockIn, predLocOut);
         }
     }
 
-    private static void handlePhiOut(LIRInstruction jump, Value[] variableMap) {
+    private static void handlePhiOut(LIRInstruction jump, int[] varIn, Value[] locIn) {
         // handle outgoing phi values
         ValueProcedure outputConsumer = new ValueProcedure() {
             @Override
             public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
-                    return variableMap[asVariable(value).index];
+                    // since incoming variables are sorted, we can do a binary search
+                    return locIn[Arrays.binarySearch(varIn, asVariable(value).index)];
                 }
                 return value;
             }

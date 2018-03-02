@@ -30,9 +30,9 @@ import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo.Builder;
-import org.graalvm.compiler.lir.alloc.trace.NewTrivialTraceAllocator;
-import org.graalvm.compiler.lir.alloc.trace.OldTrivialTraceAllocator;
 import org.graalvm.compiler.lir.alloc.trace.TrivialTraceAllocator;
+import org.graalvm.compiler.lir.alloc.trace.NaiveTrivialTraceAllocator;
+import org.graalvm.compiler.lir.alloc.trace.MappingTrivialTraceAllocator;
 import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -55,7 +55,7 @@ import jdk.vm.ci.meta.Value;
 @Fork(1)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
-public class TrivialTraceBuilderBenchmark {
+public class TrivialTraceAllocatorBenchmark {
 
     public class TrivialAllocation {
 
@@ -406,23 +406,23 @@ public class TrivialTraceBuilderBenchmark {
     }
 
     @Benchmark
+    public void naiveTrivialTraceAllocator() {
+        for (TrivialAllocation i : instances) {
+            NaiveTrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.numVariables, i.jump);
+        }
+    }
+
+    @Benchmark
+    public void mappingTrivialTraceAllocator() {
+        for (TrivialAllocation i : instances) {
+            MappingTrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.numVariables, i.jump);
+        }
+    }
+
+    @Benchmark
     public void trivialTraceAllocator() {
         for (TrivialAllocation i : instances) {
-            TrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.numVariables, i.jump);
-        }
-    }
-
-    @Benchmark
-    public void oldTrivialTraceAllocator() {
-        for (TrivialAllocation i : instances) {
-            OldTrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.numVariables, i.jump);
-        }
-    }
-
-    @Benchmark
-    public void newTrivialTraceAllocator() {
-        for (TrivialAllocation i : instances) {
-            NewTrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.jump);
+            TrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.jump);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.alloc.trace.TraceUtil.isTrivialTrace;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.alloc.Trace;
@@ -48,7 +47,7 @@ import jdk.vm.ci.meta.Value;
  * Allocates a trivial trace i.e. a trace consisting of a single block with no instructions other
  * than the {@link LabelOp} and the {@link JumpOp}.
  */
-public final class NewTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
+public final class MappingTrivialTraceAllocator extends TraceAllocationPhase<TraceAllocationPhase.TraceAllocationContext> {
 
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, Trace trace, TraceAllocationContext context) {
@@ -59,13 +58,17 @@ public final class NewTrivialTraceAllocator extends TraceAllocationPhase<TraceAl
         AbstractBlockBase<?> pred = block.getPredecessors()[0];
 
         GlobalLivenessInfo livenessInfo = context.livenessInfo;
-        allocate(block, pred, livenessInfo, SSAUtil.phiOutOrNull(lir, block));
+        allocate(block, pred, livenessInfo, lir.numVariables(), SSAUtil.phiOutOrNull(lir, block));
     }
 
-    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, LIRInstruction jump) {
+    public static void allocate(AbstractBlockBase<?> block, AbstractBlockBase<?> pred, GlobalLivenessInfo livenessInfo, int numVariables, LIRInstruction jump) {
         // exploit that the live sets are sorted
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, block);
         assert TraceAssertions.liveSetsAreSorted(livenessInfo, pred);
+
+        // If there are Phis, we need to create a map from variables to locations.
+        boolean hasPhis = jump != null;
+        Value[] variableMap = hasPhis ? new Value[numVariables] : null;
 
         // setup incoming variables/locations
         final int[] blockIn = livenessInfo.getBlockIn(block);
@@ -80,9 +83,14 @@ public final class NewTrivialTraceAllocator extends TraceAllocationPhase<TraceAl
         assert outLength <= inLenght : "Trivial Trace! There cannot be more outgoing values than incoming.";
         int outIdx = 0;
         for (int inIdx = 0; inIdx < inLenght; inIdx++) {
+            Value value = predLocOut[inIdx];
+            if (hasPhis) {
+                // collect mapping for Phi resolution
+                variableMap[blockIn[inIdx]] = value;
+            }
             if (outIdx < outLength && blockOut[outIdx] == blockIn[inIdx]) {
                 // set the outgoing location to the incoming value
-                locationOut[outIdx++] = predLocOut[inIdx];
+                locationOut[outIdx++] = value;
             }
         }
         assert outIdx == outLength;
@@ -93,19 +101,18 @@ public final class NewTrivialTraceAllocator extends TraceAllocationPhase<TraceAl
          */
         livenessInfo.setInLocations(block, predLocOut);
         livenessInfo.setOutLocations(block, locationOut);
-        if (jump != null) {
-            handlePhiOut(jump, blockIn, predLocOut);
+        if (hasPhis) {
+            handlePhiOut(jump, variableMap);
         }
     }
 
-    private static void handlePhiOut(LIRInstruction jump, int[] varIn, Value[] locIn) {
+    private static void handlePhiOut(LIRInstruction jump, Value[] variableMap) {
         // handle outgoing phi values
         ValueProcedure outputConsumer = new ValueProcedure() {
             @Override
             public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVariable(value)) {
-                    // since incoming variables are sorted, we can do a binary search
-                    return locIn[Arrays.binarySearch(varIn, asVariable(value).index)];
+                    return variableMap[asVariable(value).index];
                 }
                 return value;
             }
