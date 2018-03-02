@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNodeF
 import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionNodeFactory.LLVMAddressWriteMessageResolutionNodeGen;
 
 @MessageResolution(receiverType = LLVMTruffleAddress.class)
-public class LLVMAddressMessageResolution {
+public class LLVMTruffleAddressMessageResolution {
 
     @Resolve(message = "HAS_SIZE")
     public abstract static class ForeignHasSize extends Node {
