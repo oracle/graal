@@ -45,6 +45,7 @@ public class NodeSourcePosition extends BytecodePosition {
 
     private final int hashCode;
     private final Marker marker;
+    private final SourceLanguagePosition sourceLanguagePosition;
 
     /**
      * Remove marker frames.
@@ -74,6 +75,15 @@ public class NodeSourcePosition extends BytecodePosition {
     }
 
     public NodeSourcePosition(NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker marker) {
+        this(null, caller, method, bci, marker);
+
+    }
+
+    public NodeSourcePosition(SourceLanguagePosition sourceLanguagePosition, NodeSourcePosition caller, ResolvedJavaMethod method, int bci) {
+        this(sourceLanguagePosition, caller, method, bci, None);
+    }
+
+    public NodeSourcePosition(SourceLanguagePosition sourceLanguagePosition, NodeSourcePosition caller, ResolvedJavaMethod method, int bci, Marker marker) {
         super(caller, method, bci);
         if (caller == null) {
             this.hashCode = 31 * bci + method.hashCode();
@@ -81,6 +91,7 @@ public class NodeSourcePosition extends BytecodePosition {
             this.hashCode = caller.hashCode * 7 + 31 * bci + method.hashCode();
         }
         this.marker = marker;
+        this.sourceLanguagePosition = sourceLanguagePosition;
     }
 
     public static NodeSourcePosition placeholder(ResolvedJavaMethod method) {
@@ -117,7 +128,8 @@ public class NodeSourcePosition extends BytecodePosition {
             if (hashCode != that.hashCode) {
                 return false;
             }
-            if (this.getBCI() == that.getBCI() && Objects.equals(this.getMethod(), that.getMethod()) && Objects.equals(this.getCaller(), that.getCaller())) {
+            if (this.getBCI() == that.getBCI() && Objects.equals(this.getMethod(), that.getMethod()) && Objects.equals(this.getCaller(), that.getCaller()) &&
+                            Objects.equals(this.sourceLanguagePosition, that.sourceLanguagePosition)) {
                 return true;
             }
         }
@@ -139,26 +151,38 @@ public class NodeSourcePosition extends BytecodePosition {
         return d;
     }
 
+    public SourceLanguagePosition getSourceLanauage() {
+        return sourceLanguagePosition;
+    }
+
     @Override
     public NodeSourcePosition getCaller() {
         return (NodeSourcePosition) super.getCaller();
     }
 
-    public NodeSourcePosition addCaller(NodeSourcePosition link, boolean isSubstitution) {
-        if (getCaller() == null) {
-            if (isPlaceholder()) {
-                return new NodeSourcePosition(link, getMethod(), 0);
-            }
-            assert link == null || isSubstitution || verifyCaller(this, link) : link;
-
-            return new NodeSourcePosition(link, getMethod(), getBCI());
-        } else {
-            return new NodeSourcePosition(getCaller().addCaller(link, isSubstitution), getMethod(), getBCI());
-        }
+    public NodeSourcePosition addCaller(SourceLanguagePosition newSourceLanguagePosition, NodeSourcePosition link) {
+        return addCaller(newSourceLanguagePosition, link, false);
     }
 
     public NodeSourcePosition addCaller(NodeSourcePosition link) {
-        return addCaller(link, false);
+        return addCaller(null, link, false);
+    }
+
+    public NodeSourcePosition addCaller(NodeSourcePosition link, boolean isSubstitution) {
+        return addCaller(null, link, isSubstitution);
+    }
+
+    public NodeSourcePosition addCaller(SourceLanguagePosition newSourceLanguagePosition, NodeSourcePosition link, boolean isSubstitution) {
+        if (getCaller() == null) {
+            if (isPlaceholder()) {
+                return new NodeSourcePosition(newSourceLanguagePosition, link, getMethod(), 0);
+            }
+            assert link == null || isSubstitution || verifyCaller(this, link) : link;
+
+            return new NodeSourcePosition(newSourceLanguagePosition, link, getMethod(), getBCI());
+        } else {
+            return new NodeSourcePosition(getCaller().addCaller(newSourceLanguagePosition, link, isSubstitution), getMethod(), getBCI());
+        }
     }
 
     @Override
@@ -167,6 +191,9 @@ public class NodeSourcePosition extends BytecodePosition {
         NodeSourcePosition pos = this;
         while (pos != null) {
             format(sb, pos);
+            if (pos.sourceLanguagePosition != null) {
+                sb.append(" source=" + pos.sourceLanguagePosition.toShortString());
+            }
             pos = pos.getCaller();
             if (pos != null) {
                 sb.append(CodeUtil.NEW_LINE);
