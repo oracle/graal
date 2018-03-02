@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -246,12 +247,12 @@ public final class LLVMContext {
         return environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
     }
 
-    private static TruffleObject toTruffleObjects(String[] values) {
+    private static LLVMTruffleObject toTruffleObjects(String[] values) {
         TruffleObject[] result = new TruffleObject[values.length];
         for (int i = 0; i < values.length; i++) {
             result[i] = JavaInterop.asTruffleObject(values[i].getBytes());
         }
-        return JavaInterop.asTruffleObject(result);
+        return new LLVMTruffleObject(JavaInterop.asTruffleObject(result), PointerType.I8);
     }
 
     public void dispose(LLVMMemory memory) {
