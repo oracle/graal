@@ -285,5 +285,5 @@ public abstract class TVMCI {
         return (T) fallbackEngineData;
     }
 
-    protected void pollute(Node node) {}
+    protected void reportPolymorphicSpecialize(Node node) {}
 }

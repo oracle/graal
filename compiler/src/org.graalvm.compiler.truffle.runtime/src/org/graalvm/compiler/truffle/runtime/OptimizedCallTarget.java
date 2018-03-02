@@ -685,7 +685,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return profilePolluted;
     }
 
-    void pollutionEvent(Node source) {
+    void polymorphicSpecialize(Node source) {
         if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
             List<Node> toDump = new ArrayList<>();
             pullOutParentChain(source, toDump);

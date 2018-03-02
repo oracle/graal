@@ -96,8 +96,9 @@ public abstract class Accessor {
         public abstract void setRootNodeBits(RootNode root, int bits);
 
         public abstract Lock getLock(Node node);
-        public void splitCandidate(Node node) {
-            SUPPORT.pollute(node);
+
+        public void reportPolymorphicSpecialize(Node node) {
+            SUPPORT.reportPolymorphicSpecialize(node);
         }
     }
 

@@ -1091,7 +1091,7 @@ class FlatNodeGenFactory {
         builder.declaration(context.getType(boolean.class), "hasLock", "true");
         builder.statement("lock.lock()");
         builder.declaration(context.getType(NodeCost.class), "oldCost", "getCost()");
-        builder.declaration("boolean", "splitCandidate", CodeTreeBuilder.singleString("false"));
+        builder.declaration("boolean", "reportPolymorphicSpecialize", CodeTreeBuilder.singleString("false"));
         builder.startTryBlock();
 
         builder.tree(state.createLoad(frameState));
@@ -2518,7 +2518,7 @@ class FlatNodeGenFactory {
                 builder.statement(specializationLocalName + " = null");
             }
             builder.statement(countName + "++");
-//            builder.startIf().string("!splitCandidate && " + countName + " > 1").end().startBlock().statement("splitCandidate()").statement("splitCandidate = true").end();
+//            builder.startIf().string("!reportPolymorphicSpecialize && " + countName + " > 1").end().startBlock().statement("reportPolymorphicSpecialize()").statement("reportPolymorphicSpecialize = true").end();
             builder.end();
         }
 
