@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -186,11 +185,6 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     @Specialization
     protected LLVMDebugValueProvider fromLLVMTruffleObject(LLVMTruffleObject value) {
         return new LLVMConstantValueProvider.InteropValue(value.getObject(), value.getOffset());
-    }
-
-    @Specialization
-    protected LLVMDebugValueProvider fromTruffleObject(TruffleObject value) {
-        return new LLVMConstantValueProvider.InteropValue(value);
     }
 
     @Specialization
