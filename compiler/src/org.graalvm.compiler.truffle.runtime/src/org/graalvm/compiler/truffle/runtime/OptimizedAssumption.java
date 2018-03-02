@@ -142,12 +142,19 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     @Override
     public void invalidate() {
         if (isValid) {
-            invalidateImpl();
+            invalidateImpl(null);
+        }
+    }
+
+    @Override
+    public void invalidate(String message) {
+        if (isValid) {
+            invalidateImpl(message);
         }
     }
 
     @TruffleBoundary
-    private synchronized void invalidateImpl() {
+    private synchronized void invalidateImpl(String message) {
         /*
          * Check again, now that we are holding the lock. Since isValid is defined volatile,
          * double-checked locking is allowed.
@@ -164,7 +171,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                 OptimizedCallTarget callTarget = invalidateWithReason(dependency, "assumption invalidated");
                 invalidatedADependency = true;
                 if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
-                    logInvalidatedDependency(dependency);
+                    logInvalidatedDependency(dependency, message);
                 }
                 if (callTarget != null) {
                     callTarget.getCompilationProfile().reportInvalidated();
@@ -263,8 +270,12 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         return isValid;
     }
 
-    private void logInvalidatedDependency(OptimizedAssumptionDependency dependency) {
-        TTY.out().out().printf("assumption '%s' invalidated installed code '%s'\n", name, dependency);
+    private void logInvalidatedDependency(OptimizedAssumptionDependency dependency, String message) {
+        if (message != null && message.length() > 0) {
+            TTY.out().out().printf("assumption '%s' invalidated installed code '%s' with message '%s'\n", name, dependency, message);
+        } else {
+            TTY.out().out().printf("assumption '%s' invalidated installed code '%s'\n", name, dependency);
+        }
     }
 
     private static void logStackTrace() {
