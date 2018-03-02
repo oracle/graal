@@ -30,6 +30,7 @@ import org.graalvm.compiler.lir.StandardOp.JumpOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo;
 import org.graalvm.compiler.lir.alloc.trace.GlobalLivenessInfo.Builder;
+import org.graalvm.compiler.lir.alloc.trace.NewTrivialTraceAllocator;
 import org.graalvm.compiler.lir.alloc.trace.OldTrivialTraceAllocator;
 import org.graalvm.compiler.lir.alloc.trace.TrivialTraceAllocator;
 import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
@@ -415,6 +416,13 @@ public class TrivialTraceBuilderBenchmark {
     public void oldTrivialTraceAllocator() {
         for (TrivialAllocation i : instances) {
             OldTrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.numVariables, i.jump);
+        }
+    }
+
+    @Benchmark
+    public void newTrivialTraceAllocator() {
+        for (TrivialAllocation i : instances) {
+            NewTrivialTraceAllocator.allocate(b2, b0, i.livenessInfo, i.jump);
         }
     }
 
