@@ -22,43 +22,59 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
+import java.util.function.Function;
+
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterValue;
+
 /**
- * Gets the address of the C++ JavaThread object for the current thread.
+ * Reads the value of a specific register.
  *
- * This is a fixed node (no value numbering of multiple thread accesses) and moves the thread
- * register into a new virtual register. The virtual register is necessary because the Graal LIR is
- * currently not flexible enough to handle fixed registers, e.g., in deoptimization states. And the
- * fixed thread register would show up in the Substrate VM deoptimization meta data, where we
- * currently do not support registers (only stack slots and constants).
+ * This is a floating node that uses the register directly as the result. It is more efficient than
+ * using a {@link ReadRegisterFixedNode}, but limits usages.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public final class CurrentVMThreadFixedNode extends FixedWithNextNode implements LIRLowerable {
-    public static final NodeClass<CurrentVMThreadFixedNode> TYPE = NodeClass.create(CurrentVMThreadFixedNode.class);
+public final class ReadRegisterFloatingNode extends FloatingNode implements LIRLowerable {
+    public static final NodeClass<ReadRegisterFloatingNode> TYPE = NodeClass.create(ReadRegisterFloatingNode.class);
 
-    public CurrentVMThreadFixedNode() {
+    public static ReadRegisterFloatingNode forHeapBase() {
+        return new ReadRegisterFloatingNode(SubstrateRegisterConfig::getHeapBaseRegister);
+    }
+
+    public static ReadRegisterFloatingNode forIsolateThread() {
+        return new ReadRegisterFloatingNode(SubstrateRegisterConfig::getThreadRegister);
+    }
+
+    private final Function<SubstrateRegisterConfig, Register> registerSupplier;
+
+    public ReadRegisterFloatingNode(Function<SubstrateRegisterConfig, Register> registerSupplier) {
         super(TYPE, FrameAccess.getWordStamp());
+        this.registerSupplier = registerSupplier;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
-        VMError.guarantee(SubstrateOptions.MultiThreaded.getValue());
+        VMError.guarantee(usages().filter(FrameState.class).isEmpty(), "When used in a FrameState, need a ReadRegisterFixedNode and not a ReadRegisterFloatingNode");
 
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         SubstrateRegisterConfig registerConfig = (SubstrateRegisterConfig) tool.getRegisterConfig();
-        gen.setResult(this, tool.emitMove(registerConfig.getThreadRegister().asValue(tool.getLIRKind(FrameAccess.getWordStamp()))));
+        LIRKind lirKind = tool.getLIRKind(FrameAccess.getWordStamp());
+        RegisterValue value = registerSupplier.apply(registerConfig).asValue(lirKind);
+        gen.setResult(this, value);
     }
 }

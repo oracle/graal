@@ -27,6 +27,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -371,4 +372,12 @@ public class Mman {
     /** Remove shared memory segment. */
     @CFunction
     public static native int shm_unlink(CCharPointer name);
+
+    public static class NoTransitions {
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native Pointer mmap(PointerBase addr, UnsignedWord len, int prot, int flags, int fd, long offset);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int mprotect(PointerBase addr, UnsignedWord len, int prot);
+    }
 }

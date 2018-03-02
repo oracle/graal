@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.graal.posix.PosixCEntryPointSnippets;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -55,13 +54,13 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.graal.posix.PosixIsolates;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -273,9 +272,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // read-only and read-write sections, respectively.
             heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
 
-            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-                objectFile.createDefinedDataSymbol(PosixCEntryPointSnippets.HEAP_BASE, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset));
-            }
+            objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset));
+            objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_END_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset + heap.getWritableSectionSize()));
 
             // Mark the sections with the relocations from the maps.
             // - "null" as the objectMap is because relocations from text are always to constants.
