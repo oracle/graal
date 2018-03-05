@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.tck.tests;
 
-interface InlineResultVerifier {
+import org.graalvm.polyglot.PolyglotException;
+
+public interface InlineResultVerifier {
 
     /**
      * Verify a raw value from inline evaluation.
@@ -32,7 +34,7 @@ interface InlineResultVerifier {
     void verify(Object result);
 
     /**
-     * Verify a raw throwable from inline evaluation.
+     * Verify a {@link PolyglotException} from inline evaluation.
      */
-    void verify(Throwable ex);
+    void verify(PolyglotException pe);
 }

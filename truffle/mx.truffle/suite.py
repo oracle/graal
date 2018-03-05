@@ -487,8 +487,32 @@ suite = {
         "mx:JUNIT",
         "sdk:POLYGLOT_TCK"
       ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+    },
+    "com.oracle.truffle.tck.tests" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:POLYGLOT_TCK"
+      ],
       "uses":[
         "org.graalvm.polyglot.tck.LanguageProvider"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+    },
+    "com.oracle.truffle.tck.instrumentation" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "TRUFFLE_API",
+        "com.oracle.truffle.tck.tests",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -714,6 +738,35 @@ suite = {
       ],
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
+      "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_TCK_TESTS" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.tck.tests"
+      ],
+      "distDependencies" : [
+        "sdk:POLYGLOT_TCK",
+      ],
+      "exclude" : ["mx:JUNIT"],
+      "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
+      "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_TCK_INSTRUMENTATION" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.tck.instrumentation"
+      ],
+      "distDependencies" : [
+        "TRUFFLE_API",
+        "TRUFFLE_TCK_TESTS"
+      ],
+      "exclude" : ["mx:JUNIT"],
+      "description" : "Instruments used by the Truffle TCK.",
       "allowsJavadocWarnings": True,
     },
 

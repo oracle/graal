@@ -185,14 +185,17 @@ mx.update_commands(_suite, {
 
 def _unittest_config_participant_tck(config):
     def create_filter(requiredResource):
-        def has_resource(jar):
-            with zipfile.ZipFile(jar, "r") as zf:
-                try:
-                    zf.getinfo(requiredResource)
-                except KeyError:
-                    return False
-                else:
-                    return True
+        def has_resource(dist):
+            if dist.isJARDistribution() and exists(dist.path):
+                with zipfile.ZipFile(dist.path, "r") as zf:
+                    try:
+                        zf.getinfo(requiredResource)
+                    except KeyError:
+                        return False
+                    else:
+                        return True
+            else:
+                return False
         return has_resource
 
     def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
@@ -204,7 +207,7 @@ def _unittest_config_participant_tck(config):
         seenSuites.add(suite.name)
         suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
         for dist in suite.dists:
-            if dist.isJARDistribution() and exists(dist.path) and predicate(dist.path):
+            if predicate(dist):
                 for distCpEntry in mx.classpath_entries(dist):
                     if hasattr(distCpEntry, "getJavaProperties"):
                         for key, value in dist.getJavaProperties().items():
@@ -221,6 +224,7 @@ def _unittest_config_participant_tck(config):
     suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
     languages = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
+    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_INSTRUMENTATION" == dist.name and exists(dist.path), languages, javaPropertiesToAdd, set())
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tck.impl;
+package com.oracle.truffle.tck.instrumentation;
 
 import java.io.FileWriter;
 import java.io.IOException;
