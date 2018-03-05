@@ -34,7 +34,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoProcessor;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
@@ -67,7 +67,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     private final Linkage linkage;
 
     private List<MDAttachment> mdAttachments = null;
-    private SourceFunction sourceFunction = SourceModel.DEFAULT_FUNCTION;
+    private SourceFunction sourceFunction = DebugInfoProcessor.DEFAULT_FUNCTION;
 
     private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;

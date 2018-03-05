@@ -30,7 +30,8 @@
 package com.oracle.truffle.llvm.parser.model;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceModel;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoProcessor;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
@@ -38,6 +39,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
@@ -60,9 +63,11 @@ public final class ModelModule {
     private final List<TargetInformation> targetInfo = new ArrayList<>();
     private final List<String> libraries = new ArrayList<>();
     private final List<String> paths = new ArrayList<>();
-    private final SourceModel sourceModel = new SourceModel();
+    private final Map<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
+    private final Map<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
     private final Map<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
     private TargetDataLayout targetDataLayout = defaultLayout;
+    private DebugInfoFunctionProcessor functionProcessor = null;
 
     public ModelModule() {
     }
@@ -118,8 +123,16 @@ public final class ModelModule {
         targetInfo.add(info);
     }
 
-    public SourceModel getSourceModel() {
-        return sourceModel;
+    public Map<LLVMSourceSymbol, SymbolImpl> getSourceGlobals() {
+        return sourceGlobals;
+    }
+
+    public Map<LLVMSourceStaticMemberType, SymbolImpl> getSourceStaticMembers() {
+        return sourceStaticMembers;
+    }
+
+    public DebugInfoFunctionProcessor getFunctionProcessor() {
+        return functionProcessor;
     }
 
     public void exitModule(IRScope scope, Source source) {
@@ -129,7 +142,7 @@ public final class ModelModule {
                 variable.setName(String.valueOf(globalIndex++));
             }
         }
-        sourceModel.process(this, source, scope.getMetadata());
+        this.functionProcessor = DebugInfoProcessor.processModule(this, source, scope.getMetadata());
     }
 
     @Override

@@ -70,7 +70,7 @@ public final class Module implements ParserListener {
 
     private final LinkedList<FunctionDefinition> functionQueue;
 
-    public Module(ModelModule module, StringTable stringTable, IRScope scope) {
+    Module(ModelModule module, StringTable stringTable, IRScope scope) {
         this.module = module;
         this.stringTable = stringTable;
         types = new Types(module);

@@ -1076,4 +1076,8 @@ public final class Function implements ParserListener {
         }
         return (int) actualIndex;
     }
+
+    public FunctionDefinition getFunction() {
+        return function;
+    }
 }

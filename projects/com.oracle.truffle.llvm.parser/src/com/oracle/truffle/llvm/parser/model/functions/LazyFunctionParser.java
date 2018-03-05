@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.model.functions;
 
 import com.oracle.truffle.llvm.parser.listeners.Function;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 
 public final class LazyFunctionParser {
@@ -45,10 +46,11 @@ public final class LazyFunctionParser {
         this.isParsed = false;
     }
 
-    public void parse() {
+    public void parse(DebugInfoFunctionProcessor diProcessor) {
         if (!isParsed) {
             parser.setupScope();
             scanner.scanBlock(parser);
+            diProcessor.process(parser.getFunction());
             isParsed = true;
         }
     }

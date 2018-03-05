@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
@@ -73,10 +74,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
     private final LazyFunctionParser parser;
+    private final DebugInfoFunctionProcessor diProcessor;
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
                                Map<InstructionBlock, List<Phi>> phis,
-                               Map<String, Integer> labels, LazyFunctionParser parser) {
+                               Map<String, Integer> labels, LazyFunctionParser parser, DebugInfoFunctionProcessor diProcessor) {
         this.runtime = runtime;
         this.context = context;
         this.nodeFactory = nodeFactory;
@@ -86,13 +88,14 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         this.phis = phis;
         this.labels = labels;
         this.parser = parser;
+        this.diProcessor = diProcessor;
     }
 
     @Override
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
-        parser.parse();
+        parser.parse(diProcessor);
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);

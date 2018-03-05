@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,43 +29,64 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
-import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
+import java.util.HashMap;
 import java.util.Map;
 
-public final class DebugInfoProcessor {
+final class DebugInfoCache {
 
-    public static final SourceFunction DEFAULT_FUNCTION = new SourceFunction(LLVMSourceLocation.createUnavailable(LLVMSourceLocation.Kind.FUNCTION, "<unavailable>", "<unavailable>", 0, 0));
+    private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
+    private final DIScopeBuilder scopeBuilder;
+    private final DITypeExtractor typeExtractor;
 
-    private DebugInfoProcessor() {
+    DebugInfoCache(MetadataValueList metadata, Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers) {
+        this.parsedVariables = new HashMap<>();
+        this.scopeBuilder = new DIScopeBuilder(metadata);
+        this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, staticMembers);
     }
 
-    public static DebugInfoFunctionProcessor processModule(ModelModule irModel, Source bitcodeSource, MetadataValueList metadata) {
-        MDUpgrade.perform(metadata);
-
-        final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers());
-
-        final Map<LLVMSourceSymbol, SymbolImpl> globals = irModel.getSourceGlobals();
-        final Map<LLVMSourceStaticMemberType, SymbolImpl> staticMembers = irModel.getSourceStaticMembers();
-
-        irModel.accept(new DebugInfoModelProcessor(cache, bitcodeSource, globals, staticMembers));
-
-        final MDBaseNode cuNode = metadata.getNamedNode(MDNamedNode.COMPILEUNIT_NAME);
-        final DebugInfoMetadataProcessor mdParser = new DebugInfoMetadataProcessor(cache, globals, staticMembers);
-        if (cuNode != null) {
-            cuNode.accept(mdParser);
+    LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
+        if (parsedVariables.containsKey(mdVariable)) {
+            return parsedVariables.get(mdVariable);
         }
 
-        return new DebugInfoFunctionProcessor(cache);
+        LLVMSourceLocation location = scopeBuilder.buildLocation(mdVariable);
+        final LLVMSourceType type = typeExtractor.parseType(mdVariable);
+        final String varName = MDNameExtractor.getName(mdVariable);
 
-        // TODO metadata.localsAccept(mdParser);
+        final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isGlobal);
+        parsedVariables.put(mdVariable, symbol);
+
+        if (location != null) {
+            // this is currently the line/column where the symbol was declared, we want the
+            // scope
+            location = location.getParent();
+        }
+
+        if (location != null) {
+            location.addSymbol(symbol);
+        }
+
+        return symbol;
     }
+
+    LLVMSourceLocation buildLocation(MDBaseNode node) {
+        return scopeBuilder.buildLocation(node);
+    }
+
+    LLVMSourceType parseType(MDBaseNode mdType) {
+        return typeExtractor.parseType(mdType);
+    }
+
+    void endLocalScope() {
+        scopeBuilder.clearLocalScopes();
+    }
+
 }
