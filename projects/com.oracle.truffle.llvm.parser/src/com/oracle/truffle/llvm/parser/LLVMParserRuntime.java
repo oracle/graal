@@ -82,7 +82,6 @@ public final class LLVMParserRuntime {
     public static LLVMParserResult parse(Source source, ExternalLibrary library, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context,
                     NodeFactory nodeFactory) {
         ModelModule model = parserResult.getModel();
-        StackAllocation stack = parserResult.getStackAllocation();
         LLVMLabelList labels = parserResult.getLabels();
         TargetDataLayout layout = model.getTargetDataLayout();
         assert layout != null;
@@ -93,7 +92,7 @@ public final class LLVMParserRuntime {
         DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
         context.setDataLayoutConverter(targetDataLayout);
 
-        LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, stack, nodeFactory, module.getAliases());
+        LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, nodeFactory, module.getAliases());
 
         runtime.registerFunctions(labels, model);
 
@@ -142,23 +141,22 @@ public final class LLVMParserRuntime {
     private final ExternalLibrary library;
     private final LLVMLanguage language;
     private final LLVMContext context;
-    private final StackAllocation stack;
     private final NodeFactory nodeFactory;
     private final Map<GlobalAlias, SymbolImpl> aliases;
     private final List<LLVMExpressionNode> deallocations;
     private final LLVMScope scope;
+    private final FrameDescriptor rootFrame;
 
-    private LLVMParserRuntime(Source source, ExternalLibrary library, LLVMLanguage language, LLVMContext context, StackAllocation stack, NodeFactory nodeFactory,
-                    Map<GlobalAlias, SymbolImpl> aliases) {
+    private LLVMParserRuntime(Source source, ExternalLibrary library, LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory, Map<GlobalAlias, SymbolImpl> aliases) {
         this.source = source;
         this.library = library;
         this.context = context;
-        this.stack = stack;
         this.nodeFactory = nodeFactory;
         this.language = language;
         this.aliases = aliases;
         this.deallocations = new ArrayList<>();
         this.scope = LLVMScope.createFileScope(context);
+        this.rootFrame = StackManager.createRootFrame();
     }
 
     public ExternalLibrary getLibrary() {
@@ -183,8 +181,8 @@ public final class LLVMParserRuntime {
         LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, function.getName(), !Linkage.isFileLocal(function.getLinkage()),
                         index -> LLVMFunctionDescriptor.createDescriptor(context, library, function.getName(), function.getType(), index));
         boolean replaceExistingFunction = checkReplaceExistingFunction(functionDescriptor);
-        LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, stack.getFrame(function.getName()), labels.labels(function.getName()),
-                        model.getFunctionParser(function), model.getFunctionProcessor());
+        LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, labels.labels(function.getName()), model.getFunctionParser(function),
+                        model.getFunctionProcessor());
         functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
     }
 
@@ -329,7 +327,7 @@ public final class LLVMParserRuntime {
             final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(this, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
             final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(this, functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                            nodeFactory.createFrameRead(this, new PointerType(VoidType.INSTANCE), stack.getRootFrame().findFrameSlot(LLVMStack.FRAME_ID))};
+                            nodeFactory.createFrameRead(this, new PointerType(VoidType.INSTANCE), rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
             final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(this, loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
@@ -354,7 +352,7 @@ public final class LLVMParserRuntime {
     }
 
     public FrameDescriptor getGlobalFrameDescriptor() {
-        return stack.getRootFrame();
+        return rootFrame;
     }
 
     public void addDestructor(LLVMExpressionNode destructorNode) {

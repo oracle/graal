@@ -39,21 +39,15 @@ import java.util.List;
 
 public final class BitcodeParserResult {
     private final ModelModule model;
-    private final StackAllocation stackAllocation;
     private final LLVMLabelList labels;
 
-    private BitcodeParserResult(ModelModule model, StackAllocation stackAllocation, LLVMLabelList labels) {
+    private BitcodeParserResult(ModelModule model, LLVMLabelList labels) {
         this.model = model;
-        this.stackAllocation = stackAllocation;
         this.labels = labels;
     }
 
     public ModelModule getModel() {
         return model;
-    }
-
-    public StackAllocation getStackAllocation() {
-        return stackAllocation;
     }
 
     public LLVMLabelList getLabels() {
@@ -76,9 +70,8 @@ public final class BitcodeParserResult {
 
         final ModelModule model = LLVMScanner.parse(source, bytes);
 
-        final StackAllocation stackAllocation = StackAllocation.generate(model);
         final LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        return new BitcodeParserResult(model, stackAllocation, labels);
+        return new BitcodeParserResult(model, labels);
     }
 }

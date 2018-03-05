@@ -70,19 +70,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final NodeFactory nodeFactory;
     private final FunctionDefinition method;
     private final Source source;
-    private final FrameDescriptor frame;
     private final Map<String, Integer> labels;
     private final LazyFunctionParser parser;
     private final DebugInfoFunctionProcessor diProcessor;
 
-    LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
-                    Map<String, Integer> labels, LazyFunctionParser parser, DebugInfoFunctionProcessor diProcessor) {
+    LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, Map<String, Integer> labels,
+                    LazyFunctionParser parser, DebugInfoFunctionProcessor diProcessor) {
         this.runtime = runtime;
         this.context = context;
         this.nodeFactory = nodeFactory;
         this.method = method;
         this.source = source;
-        this.frame = frame;
         this.labels = labels;
         this.parser = parser;
         this.diProcessor = diProcessor;
@@ -98,6 +96,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
+        // setup the frameDescriptor
+        final FrameDescriptor frame = StackManager.createFrame(method);
+
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);
         List<FrameSlot> notNullable = new ArrayList<>();
@@ -108,11 +109,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         LLVMBitcodeFunctionVisitor visitor = new LLVMBitcodeFunctionVisitor(runtime, frame, labels, phis, nodeFactory, method.getParameters().size(),
                         symbols, method, liveness, notNullable, dbgInfoHandler);
         method.accept(visitor);
-        FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(liveness.getNullableBeforeBlock(), notNullable);
-        FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(liveness.getNullableAfterBlock(), notNullable);
+        FrameSlot[][] nullableBeforeBlock = getNullableFrameSlots(frame, liveness.getNullableBeforeBlock(), notNullable);
+        FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(frame, liveness.getNullableAfterBlock(), notNullable);
         LLVMSourceLocation location = method.getLexicalScope();
 
-        List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame();
+        List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
         LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
         LLVMExpressionNode body = nodeFactory.createFunctionBlockNode(runtime, frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock, nullableAfterBlock,
                         location, copyArgumentsToFrameArray);
@@ -122,7 +123,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return Truffle.getRuntime().createCallTarget(rootNode);
     }
 
-    private FrameSlot[][] getNullableFrameSlots(BitSet[] nullableBeforeBlock, List<FrameSlot> notNullable) {
+    private static FrameSlot[][] getNullableFrameSlots(FrameDescriptor frame, BitSet[] nullableBeforeBlock, List<FrameSlot> notNullable) {
         List<? extends FrameSlot> frameSlots = frame.getSlots();
         FrameSlot[][] result = new FrameSlot[nullableBeforeBlock.length][];
 
@@ -142,7 +143,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return result;
     }
 
-    private List<LLVMExpressionNode> copyArgumentsToFrame() {
+    private List<LLVMExpressionNode> copyArgumentsToFrame(FrameDescriptor frame) {
         List<FunctionParameter> parameters = method.getParameters();
         List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
         LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, PrimitiveType.I64);
