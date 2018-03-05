@@ -29,12 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class BlockAddressConstant extends AbstractConstant {
 
@@ -56,8 +55,8 @@ public final class BlockAddressConstant extends AbstractConstant {
         return function;
     }
 
-    public InstructionBlock getInstructionBlock() {
-        return function.getBlock(block);
+    public int getBlockIndex() {
+        return block;
     }
 
     @Override

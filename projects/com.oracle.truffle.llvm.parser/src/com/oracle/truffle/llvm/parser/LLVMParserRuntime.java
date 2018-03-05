@@ -82,7 +82,6 @@ public final class LLVMParserRuntime {
     public static LLVMParserResult parse(Source source, ExternalLibrary library, BitcodeParserResult parserResult, LLVMLanguage language, LLVMContext context,
                     NodeFactory nodeFactory) {
         ModelModule model = parserResult.getModel();
-        LLVMLabelList labels = parserResult.getLabels();
         TargetDataLayout layout = model.getTargetDataLayout();
         assert layout != null;
 
@@ -94,9 +93,9 @@ public final class LLVMParserRuntime {
 
         LLVMParserRuntime runtime = new LLVMParserRuntime(source, library, language, context, nodeFactory, module.getAliases());
 
-        runtime.registerFunctions(labels, model);
+        runtime.registerFunctions(model);
 
-        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, labels);
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, runtime.getGlobalFrameDescriptor());
         LLVMExpressionNode[] globals = runtime.createGlobalVariableInitializationNodes(symbolResolver, module.getGlobals());
         RootNode globalVarInits = nodeFactory.createStaticInitsRootNode(runtime, globals);
         RootCallTarget globalVarInitsTarget = Truffle.getRuntime().createCallTarget(globalVarInits);
@@ -163,9 +162,9 @@ public final class LLVMParserRuntime {
         return library;
     }
 
-    private void registerFunctions(LLVMLabelList labels, ModelModule model) {
+    private void registerFunctions(ModelModule model) {
         for (FunctionDefinition function : model.getDefinedFunctions()) {
-            registerFunction(labels, function, model);
+            registerFunction(function, model);
         }
 
         for (Map.Entry<GlobalAlias, SymbolImpl> entry : aliases.entrySet()) {
@@ -177,12 +176,11 @@ public final class LLVMParserRuntime {
         }
     }
 
-    private void registerFunction(LLVMLabelList labels, FunctionDefinition function, ModelModule model) {
+    private void registerFunction(FunctionDefinition function, ModelModule model) {
         LLVMFunctionDescriptor functionDescriptor = scope.lookupOrCreateFunction(context, function.getName(), !Linkage.isFileLocal(function.getLinkage()),
                         index -> LLVMFunctionDescriptor.createDescriptor(context, library, function.getName(), function.getType(), index));
         boolean replaceExistingFunction = checkReplaceExistingFunction(functionDescriptor);
-        LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, labels.labels(function.getName()), model.getFunctionParser(function),
-                        model.getFunctionProcessor());
+        LazyToTruffleConverterImpl lazyConverter = new LazyToTruffleConverterImpl(this, context, nodeFactory, function, source, model.getFunctionParser(function), model.getFunctionProcessor());
         functionDescriptor.declareInSulong(lazyConverter, Linkage.isWeak(function.getLinkage()), replaceExistingFunction);
     }
 

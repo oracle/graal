@@ -99,12 +99,10 @@ import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     private final FrameDescriptor frame;
-    private final Map<String, Integer> labels;
     private final List<Phi> blockPhis;
     private final NodeFactory nodeFactory;
     private final int argCount;
@@ -120,11 +118,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private int instructionIndex;
     private LLVMControlFlowNode controlFlowNode;
 
-    LLVMBitcodeInstructionVisitor(FrameDescriptor frame, Map<String, Integer> labels,
-                    List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime,
+    LLVMBitcodeInstructionVisitor(FrameDescriptor frame, List<Phi> blockPhis, NodeFactory nodeFactory, int argCount, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime,
                     ArrayList<LLVMLivenessAnalysis.NullerInformation> nullerInfos, SourceFunction sourceFunction, List<FrameSlot> notNullable, LLVMRuntimeDebugInformation dbgInfoHandler) {
         this.frame = frame;
-        this.labels = labels;
         this.blockPhis = blockPhis;
         this.nodeFactory = nodeFactory;
         this.argCount = argCount;
@@ -216,7 +212,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(BranchInstruction branch) {
-        LLVMControlFlowNode unconditionalBranchNode = nodeFactory.createUnconditionalBranch(runtime, labels.get(branch.getSuccessor().getName()),
+        LLVMControlFlowNode unconditionalBranchNode = nodeFactory.createUnconditionalBranch(runtime, branch.getSuccessor().getBlockIndex(),
                         getPhiWriteNodes(branch)[0], sourceFunction.getSourceLocation(branch));
         setControlFlowNode(unconditionalBranchNode);
     }
@@ -391,8 +387,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         final SymbolImpl target = call.getCallTarget();
-        int regularIndex = labels.get(call.normalSuccessor().getName());
-        int unwindIndex = labels.get(call.unwindSuccessor().getName());
+        int regularIndex = call.normalSuccessor().getBlockIndex();
+        int unwindIndex = call.unwindSuccessor().getBlockIndex();
 
         List<FrameSlot> normalTo = new ArrayList<>();
         List<FrameSlot> unwindTo = new ArrayList<>();
@@ -456,8 +452,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             argIndex++;
         }
 
-        int regularIndex = labels.get(call.normalSuccessor().getName());
-        int unwindIndex = labels.get(call.unwindSuccessor().getName());
+        int regularIndex = call.normalSuccessor().getBlockIndex();
+        int unwindIndex = call.unwindSuccessor().getBlockIndex();
 
         List<FrameSlot> normalTo = new ArrayList<>();
         List<FrameSlot> unwindTo = new ArrayList<>();
@@ -532,8 +528,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(ConditionalBranchInstruction branch) {
         LLVMExpressionNode conditionNode = symbols.resolve(branch.getCondition());
-        int trueIndex = labels.get(branch.getTrueSuccessor().getName());
-        int falseIndex = labels.get(branch.getFalseSuccessor().getName());
+        int trueIndex = branch.getTrueSuccessor().getBlockIndex();
+        int falseIndex = branch.getFalseSuccessor().getBlockIndex();
 
         LLVMExpressionNode[] phiWriteNodes = getPhiWriteNodes(branch);
         LLVMControlFlowNode node = nodeFactory.createConditionalBranch(runtime, trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1], sourceFunction.getSourceLocation(branch));
@@ -593,7 +589,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         if (branch.getSuccessorCount() > 1) {
             int[] labelTargets = new int[branch.getSuccessorCount()];
             for (int i = 0; i < labelTargets.length; i++) {
-                labelTargets[i] = labels.get(branch.getSuccessor(i).getName());
+                labelTargets[i] = branch.getSuccessor(i).getBlockIndex();
             }
             LLVMExpressionNode value = symbols.resolve(branch.getAddress());
 
@@ -601,7 +597,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             setControlFlowNode(node);
         } else {
             assert branch.getSuccessorCount() == 1;
-            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(runtime, labels.get(branch.getSuccessor(0).getName()), getPhiWriteNodes(branch)[0],
+            LLVMControlFlowNode node = nodeFactory.createUnconditionalBranch(runtime, branch.getSuccessor(0).getBlockIndex(), getPhiWriteNodes(branch)[0],
                             sourceFunction.getSourceLocation(branch));
             setControlFlowNode(node);
         }
@@ -731,9 +727,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         LLVMExpressionNode cond = symbols.resolve(zwitch.getCondition());
         int[] successors = new int[zwitch.getCaseCount() + 1];
         for (int i = 0; i < successors.length - 1; i++) {
-            successors[i] = labels.get(zwitch.getCaseBlock(i).getName());
+            successors[i] = zwitch.getCaseBlock(i).getBlockIndex();
         }
-        successors[successors.length - 1] = labels.get(zwitch.getDefaultBlock().getName());
+        successors[successors.length - 1] = zwitch.getDefaultBlock().getBlockIndex();
 
         Type llvmType = zwitch.getCondition().getType();
         LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
@@ -780,9 +776,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         int[] successors = new int[zwitch.getCaseCount() + 1];
         for (int i = 0; i < successors.length - 1; i++) {
-            successors[i] = labels.get(zwitch.getCaseBlock(i).getName());
+            successors[i] = zwitch.getCaseBlock(i).getBlockIndex();
         }
-        successors[successors.length - 1] = labels.get(zwitch.getDefaultBlock().getName());
+        successors[successors.length - 1] = zwitch.getDefaultBlock().getBlockIndex();
 
         final PrimitiveType llvmType = (PrimitiveType) zwitch.getCondition().getType();
         final LLVMExpressionNode[] cases = new LLVMExpressionNode[zwitch.getCaseCount()];
