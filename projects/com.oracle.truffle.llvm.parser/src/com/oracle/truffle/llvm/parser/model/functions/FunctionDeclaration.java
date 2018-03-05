@@ -68,7 +68,7 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toGlobalIdentifier(name);
+        this.name = name;
     }
 
     @Override

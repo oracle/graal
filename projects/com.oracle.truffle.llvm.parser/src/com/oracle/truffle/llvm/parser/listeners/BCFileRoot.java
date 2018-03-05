@@ -33,6 +33,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.parser.util.SymbolNameMangling;
 
 public final class BCFileRoot implements ParserListener {
 
@@ -64,6 +65,7 @@ public final class BCFileRoot implements ParserListener {
 
     @Override
     public void exit() {
+        SymbolNameMangling.demangleGlobals(module);
         module.exitModule(scope, source);
     }
 

@@ -109,7 +109,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toGlobalIdentifier(name);
+        this.name = name;
     }
 
     @Override
@@ -175,7 +175,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
         for (final InstructionBlock block : blocks) {
             if (block.getName().equals(LLVMIdentifier.UNKNOWN)) {
                 do {
-                    block.setImplicitName(symbolIndex++);
+                    block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
                     // avoid name clashes
                 } while (explicitBlockNames.contains(block.getName()));
             }
@@ -211,7 +211,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     }
 
     public void nameBlock(int index, String argName) {
-        blocks[index].setName(argName);
+        blocks[index].setName(LLVMIdentifier.toExplicitBlockName(argName));
     }
 
     @Override

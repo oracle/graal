@@ -54,7 +54,7 @@ public final class ModelModule {
 
     // when running with Polyglot it can be that there is no layout available - we fall back to this
     // one.
-    private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-m:e-i64:64-f80:128-n8:16:32:64-S128");
+    private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-i64:64-f80:128-n8:16:32:64-S128");
 
     private final List<Type> types = new ArrayList<>();
     private final List<GlobalValueSymbol> globals = new ArrayList<>();
