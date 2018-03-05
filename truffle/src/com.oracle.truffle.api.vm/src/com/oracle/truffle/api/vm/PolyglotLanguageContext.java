@@ -75,6 +75,7 @@ final class PolyglotLanguageContext implements VMObject {
     volatile boolean initialized;
     volatile boolean finalized;
     private volatile Object guestBindings;
+    private volatile Object polyglotGuestBindings;
     private volatile Value hostBindings;
     @CompilationFinal volatile Env env;
     private final Node keyInfoNode = Message.KEY_INFO.createNode();
@@ -111,12 +112,23 @@ final class PolyglotLanguageContext implements VMObject {
         return bindings;
     }
 
+    Object getPolyglotGuestBindings() {
+        Object bindings = this.polyglotGuestBindings;
+        if (bindings == null) {
+            initializeLanguageBindings();
+            bindings = polyglotGuestBindings;
+            assert bindings != null;
+        }
+        return bindings;
+    }
+
     private void initializeLanguageBindings() {
         Object prev = enter();
         try {
             ensureInitialized(null);
             Iterable<Scope> scopes = LANGUAGE.findTopScopes(env);
             this.guestBindings = new PolyglotLanguageBindings(scopes);
+            this.polyglotGuestBindings = new PolyglotBindings(this, context.polyglotBindings);
             this.hostBindings = this.toHostValue(guestBindings);
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(this, e);
@@ -572,19 +584,18 @@ final class PolyglotLanguageContext implements VMObject {
         assert !(value instanceof Value);
         Object receiver = value;
         PolyglotValue cache = valueCache.get(receiver.getClass());
-        final APIAccess apiAccess = context.engine.impl.getAPIAccess();
         if (cache == null) {
             receiver = convertToInterop(receiver);
             cache = lookupValueCache(receiver);
         }
-        return apiAccess.newValue(receiver, cache);
+        return getAPIAccess().newValue(receiver, cache);
     }
 
-    Object convertToInterop(Object receiver) {
+    TruffleObject convertToInterop(Object receiver) {
         if (receiver instanceof Proxy) {
             return PolyglotProxy.toProxyGuestObject(PolyglotLanguageContext.this, (Proxy) receiver);
         } else {
-            return JAVAINTEROP.toJavaGuestObject(receiver, PolyglotLanguageContext.this);
+            return (TruffleObject) JAVAINTEROP.toJavaGuestObject(receiver, PolyglotLanguageContext.this);
         }
     }
 
@@ -645,9 +656,7 @@ final class PolyglotLanguageContext implements VMObject {
                 }
             }
             return toHostValue(value);
-
         }
-
     }
 
     ToHostValueNode createToHostValue() {

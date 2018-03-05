@@ -627,25 +627,25 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a context with default configuration.
      *
-     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
+     * @param permittedLanguages names of languages permitted in this context, {@code null} if all
      *            languages are permitted
      * @return a new context
      * @since 1.0
      */
-    public static Context create(String... onlyLanguages) {
-        return newBuilder(onlyLanguages).build();
+    public static Context create(String... permittedLanguages) {
+        return newBuilder(permittedLanguages).build();
     }
 
     /**
      * Creates a builder for constructing a context with custom configuration.
      *
-     * @param onlyLanguages names of languages permitted in this context, {@code null} if all
+     * @param permittedLanguages names of languages permitted in this context, {@code null} if all
      *            languages are permitted
      * @return a builder that can create a context
      * @since 1.0
      */
-    public static Builder newBuilder(String... onlyLanguages) {
-        return EMPTY.new Builder(onlyLanguages);
+    public static Builder newBuilder(String... permittedLanguages) {
+        return EMPTY.new Builder(permittedLanguages);
     }
 
     private static final Context EMPTY = new Context(null);

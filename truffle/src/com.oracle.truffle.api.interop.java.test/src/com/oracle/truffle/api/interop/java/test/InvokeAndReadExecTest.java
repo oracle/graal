@@ -86,7 +86,7 @@ public class InvokeAndReadExecTest {
         abstract static class KeyInfoImpl extends Node {
             @SuppressWarnings("unused")
             protected int access(TruffleObject obj, String name) {
-                return name.equals("test") ? KeyInfo.newBuilder().setInvocable(true).build() : 0;
+                return name.equals("test") ? KeyInfo.INVOCABLE : KeyInfo.NONE;
             }
         }
 
@@ -140,7 +140,7 @@ public class InvokeAndReadExecTest {
         abstract static class KeyInfoImpl extends Node {
             @SuppressWarnings("unused")
             protected int access(ReadExecObject obj, String name) {
-                return name.equals("test") ? KeyInfo.newBuilder().setReadable(true).build() : 0;
+                return name.equals("test") ? KeyInfo.READABLE : 0;
             }
         }
 

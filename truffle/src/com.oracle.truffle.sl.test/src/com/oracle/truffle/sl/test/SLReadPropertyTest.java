@@ -46,6 +46,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assert.*;
 
 public class SLReadPropertyTest {
 
@@ -73,11 +74,6 @@ public class SLReadPropertyTest {
     @Test
     public void testRead() {
         Assert.assertEquals(42, slObject.getMember("number").asInt());
-        try {
-            slObject.getMember("nonexistent");
-            Assert.fail("Should not reach here for a non existent field.");
-        } catch (IllegalArgumentException e) {
-            // Expected exception
-        }
+        assertNull(slObject.getMember("nonexistent"));
     }
 }

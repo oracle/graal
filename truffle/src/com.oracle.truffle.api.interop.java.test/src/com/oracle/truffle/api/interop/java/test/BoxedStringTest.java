@@ -122,7 +122,7 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
     public abstract static class KeyInfoNode extends Node {
         @SuppressWarnings("unused")
         public Object access(BoxedStringTest obj, String key) {
-            return KEYS.contains(key) ? KeyInfo.newBuilder().setReadable(true).build() : 0;
+            return KEYS.contains(key) ? KeyInfo.READABLE : KeyInfo.NONE;
         }
     }
 }

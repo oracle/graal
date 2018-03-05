@@ -68,8 +68,10 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -1187,6 +1189,39 @@ public class LanguageSPITest {
         service.awaitTermination(100000, TimeUnit.MILLISECONDS);
 
         c.close();
+    }
+
+    @Test
+    public void testPolyglotBindingsPreserveLanguage() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object bindings = getCurrentContext(ProxyLanguage.class).env.getPolyglotBindings();
+                        try {
+                            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) bindings, "exportedValue", "convertOnToString");
+                        } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                            throw new AssertionError(e);
+                        }
+                        return bindings;
+                    }
+                });
+            }
+
+            @Override
+            protected String toString(LanguageContext context, Object value) {
+                if (value.equals("convertOnToString")) {
+                    return "myStringToString";
+                }
+                return super.toString(context, value);
+            }
+        });
+        Context c = Context.create();
+        c.eval(ProxyLanguage.ID, "");
+
+        assertEquals("Make sure language specific toString was invoked.", "myStringToString", c.getPolyglotBindings().getMember("exportedValue").toString());
     }
 
 }

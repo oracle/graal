@@ -25,7 +25,8 @@
 package com.oracle.truffle.api.vm;
 
 import java.util.Map;
-import java.util.function.Function;
+
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -44,12 +45,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 final class PolyglotBindings implements TruffleObject {
 
-    final Map<String, Object> bindings;
-    final Function<String, Object> legacyLookup;
+    // a bindings object for each language.
+    final PolyglotLanguageContext languageContext;
+    // the bindings map that shared across a bindings object for each language context
+    final Map<String, Value> bindings;
 
-    PolyglotBindings(Map<String, Object> bindings, Function<String, Object> legacyLookup) {
+    PolyglotBindings(PolyglotLanguageContext languageContext, Map<String, Value> bindings) {
+        this.languageContext = languageContext;
         this.bindings = bindings;
-        this.legacyLookup = legacyLookup;
     }
 
     public ForeignAccess getForeignAccess() {
@@ -171,7 +174,7 @@ final class PolyglotBindings implements TruffleObject {
                 Object[] arguments = frame.getArguments();
                 PolyglotBindings bindings = (PolyglotBindings) arguments[0];
                 try {
-                    return execute(bindings.bindings, arguments, 1);
+                    return execute(bindings.languageContext, bindings.bindings, arguments, 1);
                 } catch (InteropException e) {
                     CompilerDirectives.transferToInterpreter();
                     throw e.raise();
@@ -187,7 +190,7 @@ final class PolyglotBindings implements TruffleObject {
                 return (String) key;
             }
 
-            abstract Object execute(Map<String, Object> map, Object[] arguments, int offset) throws InteropException;
+            abstract Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException;
 
         }
 
@@ -195,19 +198,19 @@ final class PolyglotBindings implements TruffleObject {
 
             @Override
             @TruffleBoundary
-            Object execute(Map<String, Object> map, Object[] arguments, int offset) throws InteropException {
+            Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 String identifier = expectIdentifier(arguments, offset, Message.READ);
-                Object value = map.get(identifier);
+                Value value = map.get(identifier);
                 if (value == null) {
                     CompilerDirectives.transferToInterpreter();
                     // legacy support
-                    Object legacyValue = PolyglotContextImpl.requireContext().findLegacyExportedSymbol(identifier);
+                    Value legacyValue = context.context.findLegacyExportedSymbol(identifier);
                     if (legacyValue != null) {
-                        return legacyValue;
+                        return context.getAPIAccess().getReceiver(legacyValue);
                     }
                     throw UnknownIdentifierException.raise(identifier);
                 }
-                return value;
+                return context.toGuestValue(value);
             }
 
         }
@@ -216,10 +219,10 @@ final class PolyglotBindings implements TruffleObject {
 
             @Override
             @TruffleBoundary
-            Object execute(Map<String, Object> map, Object[] arguments, int offset) throws InteropException {
+            Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 String identifier = expectIdentifier(arguments, offset, Message.WRITE);
                 Object value = arguments[offset + 1];
-                map.put(identifier, arguments[offset + 1]);
+                map.put(identifier, context.toHostValue(value));
                 return value;
             }
 
@@ -229,7 +232,7 @@ final class PolyglotBindings implements TruffleObject {
 
             @Override
             @TruffleBoundary
-            Object execute(Map<String, Object> map, Object[] arguments, int offset) throws InteropException {
+            Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 String identifier = expectIdentifier(arguments, offset, Message.REMOVE);
                 return map.remove(identifier);
             }
@@ -239,7 +242,7 @@ final class PolyglotBindings implements TruffleObject {
 
             @Override
             @TruffleBoundary
-            Object execute(Map<String, Object> map, Object[] arguments, int offset) throws InteropException {
+            Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 return new DefaultScope.VariableNamesObject(map.keySet());
             }
 
@@ -249,7 +252,7 @@ final class PolyglotBindings implements TruffleObject {
 
             @Override
             @TruffleBoundary
-            Object execute(Map<String, Object> map, Object[] arguments, int offset) throws InteropException {
+            Object execute(PolyglotLanguageContext context, Map<String, Value> map, Object[] arguments, int offset) throws InteropException {
                 String identifier = expectIdentifier(arguments, offset, Message.KEY_INFO);
                 if (map.containsKey(identifier)) {
                     return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;

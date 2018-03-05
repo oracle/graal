@@ -650,7 +650,7 @@ public class SLDebugTest {
 
         Context context = Context.create("sl");
         context.eval(stackSource);
-        Value fac = context.importSymbol("fac");
+        Value fac = context.getBindings("sl").getMember("fac");
         Object multiply = new Multiply();
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
         boolean[] done = new boolean[1];

@@ -370,7 +370,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected void initializeContext(BenchmarkContext context) throws Exception {
-            context.env.exportSymbol("context", JavaInterop.asTruffleValue(context));
+            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", JavaInterop.asTruffleValue(context));
         }
 
         @Override

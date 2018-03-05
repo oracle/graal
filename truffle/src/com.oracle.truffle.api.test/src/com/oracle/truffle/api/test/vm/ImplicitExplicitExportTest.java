@@ -209,12 +209,17 @@ public class ImplicitExplicitExportTest {
             return null;
         }
 
+        @SuppressWarnings("deprecation")
+        @Override
+        protected Object getLanguageGlobal(Ctx context) {
+            return context;
+        }
+
         @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
 
-        @SuppressWarnings("deprecation")
         @TruffleBoundary
         private Object importExport(Source code) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);

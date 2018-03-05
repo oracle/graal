@@ -66,11 +66,6 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
         }
 
         @Override
-        protected Object getLanguageGlobal(Env context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return object instanceof TestStatement;
         }
@@ -102,7 +97,7 @@ final class TruffleTestInvoker<T extends CallTarget> extends TVMCI.TestAccessor<
                 context.enter();
                 Env prevEnv = rule.testEnv;
                 try {
-                    rule.testEnv = context.importSymbol("env").asHostObject();
+                    rule.testEnv = context.getPolyglotBindings().getMember("env").asHostObject();
                     stmt.evaluate();
                 } catch (Throwable t) {
                     throw t;

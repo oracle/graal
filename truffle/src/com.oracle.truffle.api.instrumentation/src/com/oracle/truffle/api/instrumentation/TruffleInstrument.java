@@ -585,25 +585,9 @@ public abstract class TruffleInstrument {
          *
          * @return a read-only map of symbol names and their values
          * @since 0.30
-         * @deprecated use {@link #getPolyglotBindings()} instead
          */
-        @Deprecated
         public Map<String, ? extends Object> getExportedSymbols() {
             return AccessorInstrumentHandler.engineAccess().getExportedSymbols(vmObject);
-        }
-
-        /**
-         * Returns a TruffleObject that represents the polyglot bindings. Each readable identifier
-         * of the returned object represents a bound object. If the identifiers are
-         * removable/modifiable/creatable depends on the
-         * {@link org.graalvm.polyglot.Context.Builder#allowPolyglotBindingsWriteAccess(boolean)
-         * configuration} in the polyglot API. If unsupported then the WRITE message with throw an
-         * unsupported message exception.
-         *
-         * @since 0.32
-         */
-        public Object getPolyglotBindings() {
-            return AccessorInstrumentHandler.engineAccess().getPolyglotBindingsForInstrument(vmObject);
         }
 
         /**

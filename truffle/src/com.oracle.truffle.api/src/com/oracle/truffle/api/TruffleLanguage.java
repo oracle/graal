@@ -702,7 +702,8 @@ public abstract class TruffleLanguage<C> {
      *         meaningful in this language
      * @since 0.8 or earlier
      * @deprecated write to the {@link Env#getPolyglotBindings() polyglot bindings} object instead
-     *             when symbols are exported.
+     *             when symbols need to be exported. Implicit exported values should be exposed
+     *             using {@link TruffleLanguage#findTopScopes(Object)} instead.
      */
     @Deprecated
     protected Object findExportedSymbol(C context, String globalName, boolean onlyExplicit) {
@@ -1296,10 +1297,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Explicitely imports a symbol from the polyglot scope. The polyglot scope consists of a
-         * set of symbols that have been exported explicitely by the languages or the engine. This
-         * set of symbols allows for data exchange between polyglot languages.
-         *
+         * Explicitely imports a symbol from the polyglot bindings. The behavior of this method is
+         * equivalent to sending a READ message to the {@link #getPolyglotBindings() polyglot
+         * bindings} object. Reading a symbol that does not exist will return <code>null</code>.
          * <p>
          * The returned symbol value can either be a <code>TruffleObject</code> (e.g. a native
          * object from the other language) to support interoperability between languages,
@@ -1310,21 +1310,17 @@ public abstract class TruffleLanguage<C> {
          * @param symbolName the name of the symbol to search for
          * @return object representing the symbol or <code>null</code> if it does not exist
          * @since 0.8 or earlier
-         * @deprecated in 0.32 send a READ message to the {@link #getPolyglotBindings() polyglot
-         *             bindings} instead.
          */
         @TruffleBoundary
-        @Deprecated
         public Object importSymbol(String symbolName) {
             return AccessAPI.engineAccess().importSymbol(vmObject, this, symbolName);
         }
 
         /**
-         * Explicitely exports a symbol to the polyglot scope. The polyglot scope consists of a set
-         * of symbols that have been exported explicitely by the languages or the engine. This set
-         * of symbols allows for data exchange between polyglot languages. If a symbol is already
-         * exported then it is overwritten. An exported symbol can be cleared by calling the method
-         * with <code>null</code>.
+         * Explicitely exports a symbol to the polyglot scope. The behavior of this method is
+         * equivalent to sending a WRITE message to the {@link #getPolyglotBindings() polyglot
+         * bindings} object. Exporting a symbol with a <code>null</code> value will remove the
+         * symbol from the polyglot object.
          * <p>
          * The exported symbol value can either be a <code>TruffleObject</code> (e.g. a native
          * object from the other language) to support interoperability between languages,
@@ -1335,11 +1331,8 @@ public abstract class TruffleLanguage<C> {
          *            scope
          * @param value the value to export for
          * @since 0.27
-         * @deprecated in 0.32 send a WRITE message to the {@link #getPolyglotBindings() polyglot
-         *             bindings} instead.
          */
         @TruffleBoundary
-        @Deprecated
         public void exportSymbol(String symbolName, Object value) {
             AccessAPI.engineAccess().exportSymbol(vmObject, symbolName, value);
         }
@@ -1396,8 +1389,6 @@ public abstract class TruffleLanguage<C> {
             return AccessAPI.engineAccess().isHostAccessAllowed(vmObject, this);
         }
 
-
-        
         /**
          * Allows it to be determined if this {@link org.graalvm.polyglot.Context} can execute code
          * written in a language with a given MIME type.
@@ -1598,7 +1589,7 @@ public abstract class TruffleLanguage<C> {
             }
             return languageClass.cast(spi);
         }
-        
+
         Object findExportedSymbol(String globalName, boolean onlyExplicit) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
@@ -1942,7 +1933,7 @@ public abstract class TruffleLanguage<C> {
         public Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit) {
             return env.findExportedSymbol(globalName, onlyExplicit);
         }
-        
+
         @Override
         public LanguageInfo getLanguageInfo(TruffleLanguage<?> language) {
             return language.languageInfo;

@@ -810,13 +810,9 @@ public class EngineTest {
             constructorInvocationCount++;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected ForkingLanguageChannel createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
             ForkingLanguageChannel channel = (ForkingLanguageChannel) env.getConfig().get("channel");
-            for (String key : channel.symbols.keySet()) {
-                env.exportSymbol(key, channel.symbols.get(key));
-            }
             if (channel.toFork != null) {
                 ForkingLanguageChannel forking = channel.toFork;
                 channel.toFork = null;
@@ -891,6 +887,12 @@ public class EngineTest {
             });
         }
 
+        @SuppressWarnings("deprecation")
+        @Override
+        protected Object findExportedSymbol(ForkingLanguageChannel context, String globalName, boolean onlyExplicit) {
+            return context.symbols.get(globalName);
+        }
+        
         @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(ForkingLanguageChannel context) {

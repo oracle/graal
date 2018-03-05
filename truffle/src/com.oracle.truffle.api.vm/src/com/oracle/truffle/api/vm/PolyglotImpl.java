@@ -503,7 +503,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @TruffleBoundary
         public Object importSymbol(Object vmObject, Env env, String symbolName) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            return context.context.polyglotBindings.get(symbolName);
+            Value value = context.context.polyglotBindings.get(symbolName);
+            if (value != null) {
+                return context.getAPIAccess().getReceiver(value);
+            } else {
+                return null;
+            }
         }
 
         @Override
@@ -529,7 +534,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @TruffleBoundary
         public void exportSymbol(Object vmObject, String symbolName, Object value) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            context.context.polyglotBindings.put(symbolName, value);
+            if (value == null) {
+                context.context.polyglotBindings.remove(symbolName);
+            } else {
+                context.context.polyglotBindings.put(symbolName, context.toHostValue(value));
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -758,12 +767,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object getPolyglotBindingsForLanguage(Object languageVMObject) {
-            return ((PolyglotLanguageContext) languageVMObject).context.polyglotGuestBindings;
-        }
-
-        @Override
-        public Object getPolyglotBindingsForInstrument(Object vmObject) {
-            return PolyglotContextImpl.requireContext().polyglotGuestBindings;
+            return ((PolyglotLanguageContext) languageVMObject).getPolyglotGuestBindings();
         }
 
         @Override

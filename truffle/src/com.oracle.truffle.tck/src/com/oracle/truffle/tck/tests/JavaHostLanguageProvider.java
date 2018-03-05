@@ -40,7 +40,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.Snippet;
 import org.graalvm.polyglot.tck.TypeDescriptor;
@@ -119,16 +118,11 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
 
     @Override
     public Value createIdentityFunction(final Context context) {
-        final String symbolName = "$$java-identity$$"; // some symbol unlikely to conflict
-        Value oldValue = context.importSymbol(symbolName);
-        context.exportSymbol(symbolName, new ProxyExecutable() {
+        return context.asValue(new ProxyExecutable() {
             public Object execute(Value... arguments) {
                 return arguments[0];
             }
         });
-        Value javaIdentity = context.importSymbol(symbolName);
-        context.exportSymbol(symbolName, oldValue);
-        return javaIdentity;
     }
 
     @Override
@@ -192,11 +186,11 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
     }
 
     private static Value export(final Context context, final Supplier<Object> s) {
-        context.exportSymbol("tmp", s);
-        return context.importSymbol("tmp");
+        return context.asValue(s);
     }
 
-    private static final class ProxyPrimitiveImpl implements ProxyPrimitive {
+    @SuppressWarnings("deprecation")
+    private static final class ProxyPrimitiveImpl implements org.graalvm.polyglot.proxy.ProxyPrimitive {
         private final Object primitiveValue;
 
         ProxyPrimitiveImpl(final Object primitiveValue) {

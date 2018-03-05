@@ -82,8 +82,8 @@ public class InstrumentationUpdateTest {
     }
 
     /*
-     * Test that if indexed based filters were applied we are notified if the an instrumentable node
-     * was not contained within a root node's source section. (that was not the case at some point).
+     * Test that if indexed based filters were applied we are notified if the an instrumentable node was
+     * not contained within a root node's source section. (that was not the case at some point).
      */
     @Test
     public void testNotWithinRootSourceSection() {
@@ -133,8 +133,7 @@ public class InstrumentationUpdateTest {
     }
 
     /*
-     * Test that we can change instrumentable nodes after the first execute by notifying the
-     * framework.
+     * Test that we can change instrumentable nodes after the first execute by notifying the framework.
      */
     @Test
     public void testInsertInstrumentableNodes() {
@@ -336,11 +335,6 @@ public class InstrumentationUpdateTest {
         @Override
         protected Object createContext(@SuppressWarnings("hiding") com.oracle.truffle.api.TruffleLanguage.Env env) {
             this.env = env;
-            return null;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Object context) {
             return null;
         }
 

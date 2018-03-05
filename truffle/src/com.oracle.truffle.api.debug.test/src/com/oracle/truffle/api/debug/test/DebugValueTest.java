@@ -93,7 +93,7 @@ public class DebugValueTest extends AbstractDebugTest {
                         "))\n");
         Context context = Context.create();
         context.eval(source);
-        Value functionValue = context.importSymbol("function");
+        Value functionValue = context.getPolyglotBindings().getMember("function");
         assertNotNull(functionValue);
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
 
@@ -259,7 +259,9 @@ public class DebugValueTest extends AbstractDebugTest {
 
                 @SuppressWarnings("unused")
                 public int access(ModifiableAttributesTruffleObject ato, String propName) {
-                    return KeyInfo.newBuilder().setReadable(ato.isReadable).setWritable(ato.isWritable).setInternal(ato.isInternal).build();
+                    return (ato.isReadable ? KeyInfo.READABLE : 0) |
+                                    (ato.isWritable ? KeyInfo.MODIFIABLE : 0) |
+                                    (ato.isInternal ? KeyInfo.INTERNAL : 0);
                 }
             }
         }

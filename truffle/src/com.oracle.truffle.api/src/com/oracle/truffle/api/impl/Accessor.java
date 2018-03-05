@@ -277,7 +277,6 @@ public abstract class Accessor {
 
         public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
 
-        public abstract Object getPolyglotBindingsForInstrument(Object vmObject);
     }
 
     public abstract static class LanguageSupport {
@@ -296,7 +295,7 @@ public abstract class Accessor {
         public abstract Object evalInContext(String code, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
-        
+
         public abstract Object languageGlobal(TruffleLanguage.Env env);
 
         public abstract void dispose(Env env);

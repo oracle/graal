@@ -108,7 +108,7 @@ public class SLJavaInteropConversionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator());
             assertTrue(res.isNumber() && res.asInt() == 42);
         }
@@ -124,7 +124,7 @@ public class SLJavaInteropConversionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator());
             assertTrue(res.isNumber() && res.asInt() == 42);
         }
@@ -139,7 +139,7 @@ public class SLJavaInteropConversionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             Value res = test.execute(new Validator(), new Object[2]);
             assertTrue(res.isNumber() && res.asInt() == 42);
         }

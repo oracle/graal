@@ -183,7 +183,7 @@ public class SLDebugDirectTest {
                         UNASSIGNED, "res", UNASSIGNED);
         continueExecution();
 
-        Value value = context.importSymbol("test").execute();
+        Value value = context.getBindings("sl").getMember("test").execute();
         assertExecutedOK();
         Assert.assertEquals("2\n", getOut());
         Assert.assertTrue(value.isNumber());
@@ -205,7 +205,7 @@ public class SLDebugDirectTest {
                         "1", "res", UNASSIGNED);
         continueExecution();
 
-        Value value = context.importSymbol("test").execute();
+        Value value = context.getBindings("sl").getMember("test").execute();
         assertExecutedOK();
         Assert.assertEquals("2\n", getOut());
         Assert.assertTrue(value.isNumber());
@@ -256,7 +256,7 @@ public class SLDebugDirectTest {
         assertLocation("test", 3, true, "println(res)", "res", "2");
         stepOut();
 
-        Value value = context.importSymbol("test");
+        Value value = context.getBindings("sl").getMember("test");
         assertTrue(value.canExecute());
         Value resultValue = value.execute();
         String resultStr = resultValue.toString();
@@ -303,7 +303,7 @@ public class SLDebugDirectTest {
             nh.pauseDone();
         });
 
-        Value value = context.importSymbol("interopFunction").execute(nh);
+        Value value = context.getBindings("sl").getMember("interopFunction").execute(nh);
 
         assertExecutedOK();
         assertTrue(value.isBoolean());
@@ -332,7 +332,7 @@ public class SLDebugDirectTest {
         assertLocation("nullTest", 3, true, "return res", "res", "NULL");
         continueExecution();
 
-        Value value = context.importSymbol("nullTest").execute();
+        Value value = context.getBindings("sl").getMember("nullTest").execute();
         assertExecutedOK();
 
         String val = value.toString();
