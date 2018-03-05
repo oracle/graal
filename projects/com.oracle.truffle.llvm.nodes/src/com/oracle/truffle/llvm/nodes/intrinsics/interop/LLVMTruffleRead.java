@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -126,11 +126,6 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
             checkLLVMTruffleObject(value);
             return doReadIdx(frame, value.getObject(), id, foreignRead, toLLVM);
-        }
-
-        @Specialization
-        protected Object doIntrinsic(VirtualFrame frame, TruffleObject value, int id) {
-            return doReadIdx(frame, value, id, foreignRead, toLLVM);
         }
 
         @Fallback

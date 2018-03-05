@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionForeign;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTruffleAddressMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMTruffleAddress implements TruffleObject {
@@ -63,7 +63,7 @@ public final class LLVMTruffleAddress implements TruffleObject {
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return LLVMAddressMessageResolutionForeign.ACCESS;
+        return LLVMTruffleAddressMessageResolutionForeign.ACCESS;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,8 +43,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -68,7 +70,8 @@ public class LLVMGlobalRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
-                Object[] realArgs = new Object[]{basePointer, mainFunctionType, JavaInterop.asTruffleObject(applicationPath.getBytes())};
+                LLVMTruffleObject applicationPathObj = new LLVMTruffleObject(JavaInterop.asTruffleObject(applicationPath.getBytes()), PointerType.I8);
+                Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();
                 return result;
