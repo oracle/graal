@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle.runtime;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleInliningMaxCallerSize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleMaximumRecursiveInlining;
 
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import com.oracle.truffle.api.CompilerOptions;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +23,16 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.CompilerOptions;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
-public interface TruffleInliningPolicy {
+public class NoInliningPolicy implements TruffleInliningPolicy {
 
-    boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options);
+    @Override
+    public double calculateScore(TruffleInliningProfile profile) {
+        return 0.0;
+    }
 
-    double calculateScore(TruffleInliningProfile profile);
-
-    static TruffleInliningPolicy getInliningPolicy(OptionValues options) {
-        if (TruffleCompilerOptions.TruffleEconomyMode.getValue(options)) {
-            return new NoInliningPolicy();
-        } else {
-            return new DefaultInliningPolicy();
-        }
+    @Override
+    public boolean isAllowed(TruffleInliningProfile profile, int currentNodeCount, CompilerOptions options) {
+        return false;
     }
 }

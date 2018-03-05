@@ -292,5 +292,8 @@ public class TruffleCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available.")
     public static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(10000);
 
+    @Option(help = "Whether to enable economy-mode compilations.")
+    public static final OptionKey<Boolean> TruffleEconomyMode = new OptionKey<>(false);
+
     // @formatter:on
 }
