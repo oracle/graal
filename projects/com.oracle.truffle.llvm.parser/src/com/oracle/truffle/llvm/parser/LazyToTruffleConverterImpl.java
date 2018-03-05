@@ -71,21 +71,18 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final FunctionDefinition method;
     private final Source source;
     private final FrameDescriptor frame;
-    private final Map<InstructionBlock, List<Phi>> phis;
     private final Map<String, Integer> labels;
     private final LazyFunctionParser parser;
     private final DebugInfoFunctionProcessor diProcessor;
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, LLVMContext context, NodeFactory nodeFactory, FunctionDefinition method, Source source, FrameDescriptor frame,
-                               Map<InstructionBlock, List<Phi>> phis,
-                               Map<String, Integer> labels, LazyFunctionParser parser, DebugInfoFunctionProcessor diProcessor) {
+                    Map<String, Integer> labels, LazyFunctionParser parser, DebugInfoFunctionProcessor diProcessor) {
         this.runtime = runtime;
         this.context = context;
         this.nodeFactory = nodeFactory;
         this.method = method;
         this.source = source;
         this.frame = frame;
-        this.phis = phis;
         this.labels = labels;
         this.parser = parser;
         this.diProcessor = diProcessor;
@@ -95,7 +92,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     public RootCallTarget convert() {
         CompilerAsserts.neverPartOfCompilation();
 
+        // parse the function block
         parser.parse(diProcessor);
+
+        // prepare the phis
+        final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
         LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(frame, context, phis, method);
         LLVMSymbolReadResolver symbols = new LLVMSymbolReadResolver(runtime, method, frame, labels);

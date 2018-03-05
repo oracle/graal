@@ -29,10 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
@@ -100,6 +96,10 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -754,6 +754,10 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private LLVMExpressionNode[] convertToPhiWriteNodes(ArrayList<Phi>[] phisPerSuccessor) {
+        if (phisPerSuccessor.length == 0) {
+            return LLVMExpressionNode.NO_EXPRESSIONS;
+        }
+
         LLVMExpressionNode[] result = new LLVMExpressionNode[phisPerSuccessor.length];
         for (int i = 0; i < result.length; i++) {
             LLVMExpressionNode[] from = new LLVMExpressionNode[phisPerSuccessor[i].size()];

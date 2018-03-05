@@ -29,33 +29,27 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
-
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+
 public final class BitcodeParserResult {
     private final ModelModule model;
-    private final LLVMPhiManager phis;
     private final StackAllocation stackAllocation;
     private final LLVMLabelList labels;
 
-    private BitcodeParserResult(ModelModule model, LLVMPhiManager phis, StackAllocation stackAllocation, LLVMLabelList labels) {
+    private BitcodeParserResult(ModelModule model, StackAllocation stackAllocation, LLVMLabelList labels) {
         this.model = model;
-        this.phis = phis;
         this.stackAllocation = stackAllocation;
         this.labels = labels;
     }
 
     public ModelModule getModel() {
         return model;
-    }
-
-    public LLVMPhiManager getPhis() {
-        return phis;
     }
 
     public StackAllocation getStackAllocation() {
@@ -82,10 +76,9 @@ public final class BitcodeParserResult {
 
         final ModelModule model = LLVMScanner.parse(source, bytes);
 
-        final LLVMPhiManager phis = LLVMPhiManager.generate(model);
         final StackAllocation stackAllocation = StackAllocation.generate(model);
         final LLVMLabelList labels = LLVMLabelList.generate(model);
 
-        return new BitcodeParserResult(model, phis, stackAllocation, labels);
+        return new BitcodeParserResult(model, stackAllocation, labels);
     }
 }

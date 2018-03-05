@@ -29,92 +29,43 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 public final class LLVMPhiManager implements ModelVisitor {
-
-    static LLVMPhiManager generate(ModelModule model) {
-        LLVMPhiManager visitor = new LLVMPhiManager();
-
-        model.accept(visitor);
-
-        return visitor;
-    }
-
-    private final Map<String, Map<InstructionBlock, List<Phi>>> edges = new HashMap<>();
 
     private LLVMPhiManager() {
     }
 
-    public Map<InstructionBlock, List<Phi>> getPhiMap(String method) {
-        Map<InstructionBlock, List<Phi>> references = edges.get(method);
-        if (references == null) {
-            return Collections.emptyMap();
-        } else {
-            return references;
-        }
-    }
-
-    @Override
-    public void visit(GlobalAlias alias) {
-    }
-
-    @Override
-    public void visit(GlobalConstant constant) {
-    }
-
-    @Override
-    public void visit(GlobalVariable variable) {
-    }
-
-    @Override
-    public void visit(FunctionDeclaration method) {
-    }
-
-    @Override
-    public void visit(FunctionDefinition method) {
-        LLVMPhiManagerFunctionVisitor visitor = new LLVMPhiManagerFunctionVisitor();
-
-        method.accept((FunctionVisitor) visitor);
-
-        edges.put(method.getName(), visitor.getEdges());
-    }
-
-    @Override
-    public void visit(Type type) {
+    public static Map<InstructionBlock, List<Phi>> getPhis(FunctionDefinition function) {
+        final Map<InstructionBlock, List<Phi>> phiMap = new HashMap<>();
+        function.accept((FunctionVisitor) new LLVMPhiManagerFunctionVisitor(phiMap));
+        return phiMap;
     }
 
     private static class LLVMPhiManagerFunctionVisitor implements FunctionVisitor, InstructionVisitorAdapter {
 
-        private final Map<InstructionBlock, List<Phi>> edges = new HashMap<>();
+        private static final Function<InstructionBlock, List<Phi>> PRODUCER = block -> new ArrayList<>();
+
+        private final Map<InstructionBlock, List<Phi>> phiMap;
 
         private InstructionBlock currentBlock = null;
 
-        LLVMPhiManagerFunctionVisitor() {
-        }
-
-        public Map<InstructionBlock, List<Phi>> getEdges() {
-            return edges;
+        LLVMPhiManagerFunctionVisitor(Map<InstructionBlock, List<Phi>> phiMap) {
+            this.phiMap = phiMap;
         }
 
         @Override
@@ -126,8 +77,8 @@ public final class LLVMPhiManager implements ModelVisitor {
         @Override
         public void visit(PhiInstruction phi) {
             for (int i = 0; i < phi.getSize(); i++) {
-                InstructionBlock blk = phi.getBlock(i);
-                List<Phi> references = edges.computeIfAbsent(blk, k -> new ArrayList<>());
+                final InstructionBlock blk = phi.getBlock(i);
+                final List<Phi> references = phiMap.computeIfAbsent(blk, PRODUCER);
                 references.add(new Phi(currentBlock, phi, phi.getValue(i)));
             }
         }
@@ -189,8 +140,8 @@ public final class LLVMPhiManager implements ModelVisitor {
     }
 
     private static boolean hasMatchingPhi(ArrayList<Phi> possiblePhiList, Phi phi) {
-        for (int j = 0; j < possiblePhiList.size(); j++) {
-            if (possiblePhiList.get(j).getPhiValue() == phi.getPhiValue()) {
+        for (Phi possiblePhi : possiblePhiList) {
+            if (possiblePhi.getPhiValue() == phi.getPhiValue()) {
                 // this successor already has a phi that corresponds to the same phi symbol -> it
                 // can't be for that successor. this case happens when we have the same successor
                 // block multiple times in the list of the successors.
