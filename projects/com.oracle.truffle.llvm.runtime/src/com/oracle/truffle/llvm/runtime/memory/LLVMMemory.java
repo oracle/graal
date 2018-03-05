@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
@@ -82,6 +83,11 @@ public final class LLVMMemory {
 
     private static final LLVMMemory INSTANCE = new LLVMMemory();
 
+    /**
+     * @deprecated "This method should not be called directly. Use
+     *             {@link LLVMLanguage#getCapability(Class)} instead."
+     */
+    @Deprecated
     public static LLVMMemory getInstance() {
         return INSTANCE;
     }

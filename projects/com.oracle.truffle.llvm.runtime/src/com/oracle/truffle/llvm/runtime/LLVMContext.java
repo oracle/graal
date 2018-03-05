@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -68,8 +67,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-import sun.misc.Unsafe;
-
 public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
@@ -93,7 +90,7 @@ public final class LLVMContext {
     private final LLVMScope globalScope;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
-    private final List<ContextExtension> contextExtension;
+    private final List<ContextExtension> contextExtensions;
 
     private final MaterializedFrame globalFrame = Truffle.getRuntime().createMaterializedFrame(new Object[0]);
     private final FrameDescriptor globalFrameDescriptor = globalFrame.getFrameDescriptor();
@@ -112,19 +109,7 @@ public final class LLVMContext {
 
     public static final class LLVMGlobalsStack {
 
-        static final Unsafe UNSAFE = getUnsafe();
-
-        private static Unsafe getUnsafe() {
-            CompilerAsserts.neverPartOfCompilation();
-            try {
-                Field singleoneInstanceField = Unsafe.class.getDeclaredField("theUnsafe");
-                singleoneInstanceField.setAccessible(true);
-                return (Unsafe) singleoneInstanceField.get(null);
-            } catch (Exception e) {
-                throw new AssertionError();
-            }
-        }
-
+        private final LLVMMemory memory;
         private final long lowerBounds;
         private final long upperBounds;
 
@@ -133,8 +118,10 @@ public final class LLVMContext {
 
         private long stackPointer;
 
+        @SuppressWarnings("deprecation")
         public LLVMGlobalsStack() {
-            long stackAllocation = UNSAFE.allocateMemory(SIZE * 1024);
+            this.memory = LLVMMemory.getInstance();
+            long stackAllocation = memory.allocateMemory(SIZE * 1024).getVal();
             this.lowerBounds = stackAllocation;
             this.upperBounds = stackAllocation + SIZE * 1024;
             this.stackPointer = upperBounds;
@@ -142,7 +129,7 @@ public final class LLVMContext {
 
         @TruffleBoundary
         public void free() {
-            UNSAFE.freeMemory(lowerBounds);
+            memory.free(lowerBounds);
         }
 
         public long allocateStackMemory(final long size) {
@@ -177,9 +164,9 @@ public final class LLVMContext {
         }
     }
 
-    public LLVMContext(Env env, List<ContextExtension> contextExtension) {
+    public LLVMContext(Env env, List<ContextExtension> contextExtensions) {
         this.env = env;
-        this.contextExtension = contextExtension;
+        this.contextExtensions = contextExtensions;
         this.initialized = false;
         this.cleanupNecessary = false;
 
@@ -291,7 +278,7 @@ public final class LLVMContext {
 
     public <T> T getContextExtension(Class<T> type) {
         CompilerAsserts.neverPartOfCompilation();
-        for (ContextExtension ce : contextExtension) {
+        for (ContextExtension ce : contextExtensions) {
             if (ce.extensionClass() == type) {
                 return type.cast(ce);
             }
@@ -301,7 +288,7 @@ public final class LLVMContext {
 
     public boolean hasContextExtension(Class<?> type) {
         CompilerAsserts.neverPartOfCompilation();
-        for (ContextExtension ce : contextExtension) {
+        for (ContextExtension ce : contextExtensions) {
             if (ce.extensionClass() == type) {
                 return true;
             }

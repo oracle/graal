@@ -38,9 +38,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStackAllocationNode;
+import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMNativeStackAllocationNode extends LLVMStackAllocationNode {
+public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode implements VarargsAreaStackAllocationNode {
 
     @CompilationFinal private FrameSlot stackPointer;
 

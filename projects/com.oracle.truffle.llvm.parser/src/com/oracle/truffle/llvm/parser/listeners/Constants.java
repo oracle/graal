@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigInteger
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.records.ConstantsRecord;
 import com.oracle.truffle.llvm.parser.records.Records;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class Constants implements ParserListener {
@@ -111,11 +112,11 @@ public final class Constants implements ParserListener {
                 return;
             }
             case STRING:
-                scope.addSymbol(new StringConstant(type, Records.toString(args), false), type);
+                scope.addSymbol(new StringConstant((ArrayType) type, Records.toString(args), false), type);
                 return;
 
             case CSTRING:
-                scope.addSymbol(new StringConstant(type, Records.toString(args), true), type);
+                scope.addSymbol(new StringConstant((ArrayType) type, Records.toString(args), true), type);
                 return;
 
             case CE_BINOP: {

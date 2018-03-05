@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadObjectNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.UnsafeIntArrayAccess;
+import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
@@ -161,7 +161,7 @@ public abstract class LLVMDirectLoadNode {
 
         @Specialization
         protected LLVMAddress doLLVMByteArrayAddress(LLVMVirtualAllocationAddress address,
-                        @Cached("getUnsafeIntArrayAccess()") UnsafeIntArrayAccess memory) {
+                        @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
             return LLVMAddress.fromLong(address.getI64(memory));
         }
 
