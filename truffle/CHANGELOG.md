@@ -20,6 +20,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new DSL annotation @[Executed](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Executed.html) that allows to manually specify executed node fields.
 * The Truffle Node traversal order was slightly changed to always respect field declaration order (super class before sub class).
 * The [Assumption](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Assumption.html) interface has an additional override for the `invalidate` method to provide a message for debugging purposes.
+* Deprecate KeyInfo.Builder use bitwise constants in the KeyInfo class instead.
 * Deprecate TruffleInstrument.Env#getExportedSymbols(); introduced getPolyglotBindings as replacement.
 * Deprecate TruffleLanguage#getLanguageGlobal, implement TruffleLanguage#findTopScopes instead.
 * Deprecate TruffleLanguage#findExportedSymbol, TruffleLanguage.Env#importSymbol, TruffleLanguage.Env#exportSymbol; Use TruffleLanguage.Env#getPolyglotBindings instead.
