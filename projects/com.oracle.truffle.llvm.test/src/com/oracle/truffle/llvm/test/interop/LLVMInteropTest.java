@@ -937,6 +937,7 @@ public final class LLVMInteropTest {
         Value test7 = strcmpFunction.execute(new char[]{'a', 'b', 'c'}, new char[]{'a', 'b', 'c', 'd'});
         Value test8 = strcmpFunction.execute(new char[]{'a', 'b', 'c', 'd'}, new char[]{'a', 'b', 'c'});
         Value test9 = strcmpFunction.execute(new char[]{'A', 'B', 'C', 'D'}, new char[]{'a', 'b', 'c', 'd'});
+        Value compareUpToZero = strcmpFunction.execute(new char[]{'A', 'B', '\0', 'D'}, new char[]{'A', 'B', '\0'});
         Assert.assertEquals(0, test1.asInt());
         Assert.assertEquals(97, test2.asInt());
         Assert.assertEquals(-97, test3.asInt());
@@ -946,6 +947,7 @@ public final class LLVMInteropTest {
         Assert.assertEquals(-100, test7.asInt());
         Assert.assertEquals(100, test8.asInt());
         Assert.assertEquals(-32, test9.asInt());
+        Assert.assertEquals(0, compareUpToZero.asInt());
         Value strcmpWithNativeFunction = runner.findGlobalSymbol("compare_with_native");
         Value test10 = strcmpWithNativeFunction.execute(new char[]{});
         Value test11 = strcmpWithNativeFunction.execute(new char[]{'f', 'o', 'o'});

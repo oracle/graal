@@ -177,7 +177,7 @@ def checkCFiles(targetDir):
     error = False
     for path, _, files in os.walk(targetDir):
         for f in files:
-            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h'):
+            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
                 if not checkCFile(path + '/' + f):
                     error = True
     if error:

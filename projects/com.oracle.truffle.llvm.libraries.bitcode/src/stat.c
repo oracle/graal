@@ -27,6 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/*
+ * There are no external implementations of the stat() functions, so we need to manually map them
+ * to valid native functions. This manual mapping is only used when LLVM optimizations are disabled
+ * (i.e., when O0 is used), as LLVM uses extern_inline code for all stat() functions otherwise.
+ */
+
 struct stat;
 
 struct stat64;
