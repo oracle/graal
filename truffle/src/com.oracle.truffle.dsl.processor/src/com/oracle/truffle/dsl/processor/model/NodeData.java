@@ -60,6 +60,10 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private TypeMirror frameType;
     private boolean reflectable;
 
+    private boolean reportPolymorphism;
+    private List<String> reportPolymorphismInclude;
+    private List<String> reportPolymorphismExclude;
+
     public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory) {
         super(context, type, null);
         this.nodeId = ElementUtils.getSimpleName(type);
@@ -578,4 +582,21 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return ElementUtils.uniqueSortedTypes(types, false);
     }
 
+    public void setReportPolymorphism(boolean report, List<String> include, List<String> exclude) {
+        this.reportPolymorphism = report;
+        this.reportPolymorphismInclude = include;
+        this.reportPolymorphismExclude = exclude;
+    }
+
+    public boolean isReportPolymorphism() {
+        return reportPolymorphism;
+    }
+
+    public List<String> getReportPolymorphismInclude() {
+        return reportPolymorphismInclude;
+    }
+
+    public List<String> getReportPolymorphismExclude() {
+        return reportPolymorphismExclude;
+    }
 }
