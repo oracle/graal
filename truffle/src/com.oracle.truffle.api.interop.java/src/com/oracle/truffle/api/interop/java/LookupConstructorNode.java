@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,30 +28,29 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
-abstract class LookupInnerClassNode extends Node {
+abstract class LookupConstructorNode extends Node {
     static final int LIMIT = 3;
 
-    LookupInnerClassNode() {
+    LookupConstructorNode() {
     }
 
-    static LookupInnerClassNode create() {
-        return LookupInnerClassNodeGen.create();
+    static LookupConstructorNode create() {
+        return LookupConstructorNodeGen.create();
     }
 
-    public abstract Class<?> execute(Class<?> outerclass, String name);
+    public abstract JavaMethodDesc execute(Class<?> clazz);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
-    static Class<?> doCached(Class<?> clazz, String name,
+    @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
+    static JavaMethodDesc doCached(Class<?> clazz,
                     @Cached("clazz") Class<?> cachedClazz,
-                    @Cached("name") String cachedName,
-                    @Cached("doUncached(clazz, name)") Class<?> cachedInnerClass) {
-        assert cachedInnerClass == JavaInteropReflect.findInnerClass(clazz, name);
-        return cachedInnerClass;
+                    @Cached("doUncached(clazz)") JavaMethodDesc cachedMethod) {
+        assert cachedMethod == doUncached(clazz);
+        return cachedMethod;
     }
 
     @Specialization(replaces = "doCached")
-    static Class<?> doUncached(Class<?> clazz, String name) {
-        return JavaInteropReflect.findInnerClass(clazz, name);
+    static JavaMethodDesc doUncached(Class<?> clazz) {
+        return JavaClassDesc.forClass(clazz).lookupConstructor();
     }
 }

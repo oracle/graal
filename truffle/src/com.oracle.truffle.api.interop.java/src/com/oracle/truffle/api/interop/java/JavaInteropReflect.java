@@ -80,19 +80,19 @@ final class JavaInteropReflect {
     }
 
     static boolean isField(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
         final boolean onlyStatic = object.isClass();
         return classDesc.lookupField(name, onlyStatic) != null;
     }
 
     static boolean isMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
         final boolean onlyStatic = object.isClass();
         return classDesc.lookupMethod(name, onlyStatic) != null;
     }
 
     static boolean isInternalMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
+        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
         final boolean onlyStatic = object.isClass();
         JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
         return method != null && method.isInternal();
@@ -104,7 +104,7 @@ final class JavaInteropReflect {
             // no support for non-static members now
             return false;
         }
-        Class<?> clazz = object.clazz;
+        Class<?> clazz = object.getLookupClass();
         if (Modifier.isPublic(clazz.getModifiers())) {
             for (Class<?> t : clazz.getClasses()) {
                 if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
@@ -136,40 +136,72 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaMethodDesc findMethod(JavaObject object, String name) {
+    static JavaMethodDesc findMethod(Class<?> clazz, String name, boolean onlyStatic) {
         if (TruffleOptions.AOT) {
             return null;
         }
 
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.clazz);
-        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, object.isClass());
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
+        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isJNIName(name)) {
-            foundMethod = classDesc.lookupMethodByJNIName(name, object.isClass());
+            foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
         }
         return foundMethod;
     }
 
     @CompilerDirectives.TruffleBoundary
-    static JavaFieldDesc findField(JavaObject receiver, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(receiver.clazz);
-        final boolean onlyStatic = receiver.isClass();
+    static JavaFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
         return classDesc.lookupField(name, onlyStatic);
     }
 
     @CompilerDirectives.TruffleBoundary
     static <T> T asJavaFunction(Class<T> functionalType, TruffleObject function, Object languageContext) {
         assert JavaInterop.isJavaFunctionInterface(functionalType);
-        Method functionalInterfaceMethod = JavaInterop.functionalInterfaceMethod(functionalType);
+        Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
         final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
         Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
         return functionalType.cast(obj);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    static <T> TruffleObject asTruffleFunction(Class<T> functionalInterface, T implementation, Object languageContext) {
+        final Method method = functionalInterfaceMethod(functionalInterface);
+        if (method == null) {
+            throw new IllegalArgumentException();
+        }
+        return new JavaFunctionObject(SingleMethodDesc.unreflect(method), implementation, languageContext);
+    }
+
+    static Method functionalInterfaceMethod(Class<?> functionalInterface) {
+        if (!functionalInterface.isInterface()) {
+            return null;
+        }
+        final Method[] methods = functionalInterface.getMethods();
+        if (methods.length == 1) {
+            return methods[0];
+        }
+        Method found = null;
+        for (Method m : methods) {
+            if (Modifier.isAbstract(m.getModifiers()) && !JavaClassDesc.isObjectMethodOverride(m)) {
+                if (found != null) {
+                    return null;
+                }
+                found = m;
+            }
+        }
+        return found;
+    }
+
     static TruffleObject asTruffleViaReflection(Object obj, Object languageContext) {
-        if (obj instanceof TruffleFunction) {
-            return ((TruffleFunction<?, ?>) obj).guestObject;
-        } else if (Proxy.isProxyClass(obj.getClass())) {
+        if (obj instanceof Proxy) {
+            return asTruffleObjectProxy(obj, languageContext);
+        }
+        return JavaObject.forObject(obj, languageContext);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static TruffleObject asTruffleObjectProxy(Object obj, Object languageContext) {
+        if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof FunctionProxyHandler) {
                 return ((FunctionProxyHandler) h).functionObj;
@@ -177,7 +209,7 @@ final class JavaInteropReflect {
                 return ((ObjectProxyHandler) h).obj;
             }
         }
-        return new JavaObject(obj, obj.getClass(), languageContext);
+        return JavaObject.forObject(obj, languageContext);
     }
 
     static Object newProxyInstance(Class<?> clazz, TruffleObject obj, Object languageContext) throws IllegalArgumentException {

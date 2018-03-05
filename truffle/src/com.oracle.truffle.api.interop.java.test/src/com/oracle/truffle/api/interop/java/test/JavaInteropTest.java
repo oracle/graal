@@ -52,7 +52,9 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import org.graalvm.polyglot.Context;
 import org.hamcrest.CoreMatchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -103,12 +105,21 @@ public class JavaInteropTest {
     private Data data;
     private XYPlus xyp;
     private boolean assertThisCalled;
+    private Context context;
 
     @Before
     public void initObjects() {
+        context = Context.create();
+        context.enter();
         data = new Data();
         obj = JavaInterop.asTruffleObject(data);
         xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
+    }
+
+    @After
+    public void cleanup() {
+        context.leave();
+        context.close();
     }
 
     @Test

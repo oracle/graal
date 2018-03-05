@@ -701,8 +701,10 @@ public final class NodeUtil {
     private static String getNodeFieldName(Node parent, Node node, String defaultName) {
         NodeClass nodeClass = parent.getNodeClass();
         for (Object field : nodeClass.getNodeFields()) {
-            if (nodeClass.isChildField(field) && nodeClass.getFieldObject(field, parent) == node) {
-                return nodeClass.getFieldName(field);
+            if (nodeClass.isChildField(field)) {
+                if (nodeClass.getFieldObject(field, parent) == node) {
+                    return nodeClass.getFieldName(field);
+                }
             } else if (nodeClass.isChildrenField(field)) {
                 int index = 0;
                 for (Object arrayNode : (Object[]) nodeClass.getFieldObject(field, parent)) {

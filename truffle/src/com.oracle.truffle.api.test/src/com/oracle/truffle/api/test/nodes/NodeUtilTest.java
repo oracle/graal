@@ -23,6 +23,7 @@
 package com.oracle.truffle.api.test.nodes;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
 import java.util.Iterator;
@@ -248,6 +249,36 @@ public class NodeUtilTest {
         Assert.assertEquals(1, otherChild.visited);
     }
 
+    @Test
+    public void testPrintCompactTree() {
+        String testNodeSimpleName = getSimpleName(TestNode.class);
+        String testForEachNodeSimpleName = getSimpleName(TestForEachNode.class);
+
+        TestNode test1 = new TestNode();
+        test1.child0 = new TestNode();
+        test1.child1 = new TestNode();
+        String output = NodeUtil.printCompactTreeToString(test1);
+        assertEquals("" +
+                        "  " + testNodeSimpleName + "\n" +
+                        "    child0 = " + testNodeSimpleName + "\n" +
+                        "    child1 = " + testNodeSimpleName + "\n", output);
+
+        TestForEachNode test2 = new TestForEachNode(4);
+        test2.firstChild = new TestNode();
+        test2.children[1] = test1;
+        test2.children[3] = new TestNode();
+        test2.lastChild = new TestNode();
+        output = NodeUtil.printCompactTreeToString(test2);
+        assertEquals("" +
+                        "  " + testForEachNodeSimpleName + "\n" +
+                        "    firstChild = " + testNodeSimpleName + "\n" +
+                        "    children[1] = " + testNodeSimpleName + "\n" +
+                        "      child0 = " + testNodeSimpleName + "\n" +
+                        "      child1 = " + testNodeSimpleName + "\n" +
+                        "    children[3] = " + testNodeSimpleName + "\n" +
+                        "    lastChild = " + testNodeSimpleName + "\n", output);
+    }
+
     private static int iterate(Iterator<Node> iterator) {
         int iterationCount = 0;
         while (iterator.hasNext()) {
@@ -265,6 +296,10 @@ public class NodeUtilTest {
             iterationCount++;
         }
         return iterationCount;
+    }
+
+    private static String getSimpleName(Class<?> clazz) {
+        return clazz.getName().substring(clazz.getName().lastIndexOf('.') + 1);
     }
 
     private static class VisitableNode extends Node {

@@ -372,7 +372,7 @@ public class EngineTest {
     }
 
     @FunctionalInterface
-    interface TestInterface {
+    public interface TestInterface {
         void foobar();
     }
 
