@@ -39,8 +39,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -345,8 +348,14 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             memory.putAddress(address, (LLVMAddress) managedValue);
         } else if (managedValue instanceof LLVMGlobal) {
             memory.putAddress(address, ((LLVMGlobal) managedValue).getAsNative(memory, context).getPointer());
-        } else if (managedValue instanceof TruffleObject || managedValue instanceof LLVMTruffleObject) {
-            throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + managedValue);
+        } else if (managedValue instanceof LLVMTruffleObject) {
+            try {
+                Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), ((LLVMTruffleObject) managedValue).getObject());
+                long toAddr = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativized);
+                memory.putAddress(address, toAddr + ((LLVMTruffleObject) managedValue).getOffset());
+            } catch (UnsupportedMessageException e) {
+                throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + managedValue);
+            }
         } else if (managedValue instanceof LLVMVirtualAllocationAddress) {
             throw new IllegalStateException("Cannot resolve address of a managed allocation.");
         } else {
