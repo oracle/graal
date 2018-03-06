@@ -400,7 +400,7 @@ def extract_compiler_args(args, useDoubleDash=False):
 def runLLVM(args=None, out=None):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.Sulong"] + sulongArgs, out=out)
+    return mx.run_java(getCommonOptions(False) + vmArgs + getClasspathOptions() + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
 
 def getCommonOptions(withAssertion, lib_args=None):
     options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
@@ -553,7 +553,7 @@ def findGCCProgram(gccProgram, optional=False):
 
 def getClasspathOptions():
     """gets the classpath of the Sulong distributions"""
-    return mx.get_runtime_jvm_args('SULONG')
+    return mx.get_runtime_jvm_args(['SULONG', 'SULONG_LAUNCHER'])
 
 def ensureLLVMBinariesExist():
     """downloads the LLVM binaries if they have not been downloaded yet"""
