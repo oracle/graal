@@ -142,18 +142,8 @@ public class CEntryPointSupport implements GraalFeature {
 
     private static void registerEntryPointContextPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, CEntryPointContext.class);
-        r.register0("getCurrentIsolateThread", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forIsolateThread());
-                } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
-                }
-                return true;
-            }
-        });
-        r.register0("getCurrentIsolate", new InvocationPlugin() {
+
+        InvocationPlugin getCurrentIsolate = new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
@@ -163,7 +153,23 @@ public class CEntryPointSupport implements GraalFeature {
                 }
                 return true;
             }
-        });
+        };
+        r.register0("getCurrentIsolate", getCurrentIsolate);
+
+        InvocationPlugin getCurrentIsolateThread;
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            getCurrentIsolateThread = new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forIsolateThread());
+                    return true;
+                }
+            };
+        } else { // In single-threaded mode, Isolate and IsolateThread are identical
+            getCurrentIsolateThread = getCurrentIsolate;
+        }
+        r.register0("getCurrentIsolateThread", getCurrentIsolateThread);
+
         r.register1("isCurrentThreadAttachedTo", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {

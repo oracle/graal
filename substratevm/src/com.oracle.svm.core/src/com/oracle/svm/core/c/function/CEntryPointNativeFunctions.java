@@ -63,7 +63,8 @@ public final class CEntryPointNativeFunctions {
                     "Create a new isolate, considering the passed parameters (which may be NULL).",
                     "Returns 0 on success, or a non-zero value on failure.",
                     "On success, the current thread is attached to the created isolate, and the",
-                    "address of the isolate structure is written to the passed pointer."})
+                    "address of the isolate structure is written to the passed pointer. If the",
+                    "image is single-threaded, NULL can be written as a valid address."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static int createIsolate(CEntryPointCreateIsolateParameters params, IsolatePointer isolate) {
         int result = CEntryPointActions.enterCreateIsolate(params);
@@ -78,7 +79,8 @@ public final class CEntryPointNativeFunctions {
     @CEntryPoint(name = "attach_thread", documentation = {
                     "Attaches the current thread to the passed isolate.",
                     "On failure, returns a non-zero value. On success, writes the address of the",
-                    "created isolate thread structure to the passed pointer and returns 0.",
+                    "created isolate thread structure to the passed pointer and returns 0. If the",
+                    "image is single-threaded, NULL can be written as a valid address.",
                     "If the thread has already been attached, the call succeeds and also provides",
                     "the thread's isolate thread structure."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
@@ -95,7 +97,8 @@ public final class CEntryPointNativeFunctions {
     @CEntryPoint(name = "current_thread", documentation = {
                     "Given an isolate to which the current thread is attached, returns the address of",
                     "the thread's associated isolate thread structure.  If the current thread is not",
-                    "attached to the passed isolate or if another error occurs, returns NULL."})
+                    "attached to the passed isolate or if another error occurs, returns NULL. If the",
+                    "image is single-threaded, can return NULL as a valid result."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static IsolateThread getCurrentThread(Isolate isolate) {
         int result = CEntryPointActions.enterIsolate(isolate);
@@ -113,7 +116,8 @@ public final class CEntryPointNativeFunctions {
     @CEntryPoint(name = "current_isolate", documentation = {
                     "Given an isolate thread structure for the current thread, determines to which",
                     "isolate it belongs and returns the address of its isolate structure.  If an",
-                    "error occurs, returns NULL instead."})
+                    "error occurs, returns NULL instead. If the image is single-threaded, can",
+                    "return NULL as a valid result."})
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, nameTransformation = NameTransformation.class)
     public static Isolate getCurrentIsolate(IsolateThread thread) {
         int result = CEntryPointActions.enter(thread);

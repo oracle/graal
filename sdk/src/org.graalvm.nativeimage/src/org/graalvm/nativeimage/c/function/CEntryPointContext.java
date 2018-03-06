@@ -30,12 +30,13 @@ import org.graalvm.nativeimage.IsolateThread;
 public final class CEntryPointContext {
 
     /**
-     * @return the current isolate.
+     * @return the current isolate. Can be {@code null} in single-threaded images.
      */
     public static native Isolate getCurrentIsolate();
 
     /**
-     * @return context of the current thread in the current isolate.
+     * @return context of the current thread in the current isolate. Can be {@code null} in
+     *         single-threaded images.
      */
     public static native IsolateThread getCurrentIsolateThread();
 
