@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,12 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -140,31 +137,6 @@ public final class Sulong extends LLVMLanguage {
     @Override
     public LLVMContext findLLVMContext() {
         return getContextReference().get();
-    }
-
-    public static void main(String[] args) throws Exception {
-        if (args.length == 0) {
-            throw new IllegalArgumentException("please provide a file to execute!");
-        }
-        File file = new File(args[0]);
-        String[] otherArgs = new String[args.length - 1];
-        System.arraycopy(args, 1, otherArgs, 0, otherArgs.length);
-        int status = executeMain(file, otherArgs);
-        System.exit(status);
-    }
-
-    public static int executeMain(File file, String[] args) throws Exception {
-        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, file).build();
-        Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).build();
-        try {
-            Value result = context.eval(source);
-            if (result.isNull()) {
-                throw new LinkageError("No main function found.");
-            }
-            return result.asInt();
-        } finally {
-            context.close();
-        }
     }
 
     private List<ContextExtension> getContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,10 +35,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.llvm.Sulong;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import java.util.Objects;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 public class ProcessUtil {
 
@@ -125,7 +127,7 @@ public class ProcessUtil {
     public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args) throws Exception {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             try (CaptureOutput out = new CaptureOutput()) {
-                int result = Sulong.executeMain(bitcodeFile, args);
+                int result = executeMain(bitcodeFile, args);
                 System.out.flush();
                 System.err.flush();
                 return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
@@ -134,6 +136,20 @@ public class ProcessUtil {
             String aotArgs = TestOptions.TEST_AOT_ARGS == null ? "" : TestOptions.TEST_AOT_ARGS + " ";
             String cmdline = TestOptions.TEST_AOT_IMAGE + " " + aotArgs + bitcodeFile.getAbsolutePath() + " " + concatCommand(args);
             return executeNativeCommand(cmdline);
+        }
+    }
+
+    private static int executeMain(File file, String[] args) throws Exception {
+        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, file).build();
+        Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).build();
+        try {
+            Value result = context.eval(source);
+            if (result.isNull()) {
+                throw new LinkageError("No main function found.");
+            }
+            return result.asInt();
+        } finally {
+            context.close();
         }
     }
 
