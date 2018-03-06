@@ -62,7 +62,7 @@ def _run_netbeans_app(app_name, env=None, args=None):
     if mx.get_os() != 'windows':
         # Make sure that execution is allowed. The zip file does not always specfiy that correctly
         os.chmod(executable, 0777)
-    launch = [executable];
+    launch = [executable]
     if not mx.get_opts().verbose:
         launch.append('-J-Dnetbeans.logger.console=false')
     mx.run(launch+args, env=env)
@@ -71,7 +71,7 @@ def _igvJdk():
     v8u20 = mx.VersionSpec("1.8.0_20")
     v8u40 = mx.VersionSpec("1.8.0_40")
     def _igvJdkVersionCheck(version):
-        return (version < v8u20 or version >= v8u40)
+        return version < v8u20 or version >= v8u40
     return mx.get_jdk(_igvJdkVersionCheck, versionDescription='>= 1.8 and < 1.8.0u20 or >= 1.8.0u40', purpose="running IGV").home
 
 def igv(args):
