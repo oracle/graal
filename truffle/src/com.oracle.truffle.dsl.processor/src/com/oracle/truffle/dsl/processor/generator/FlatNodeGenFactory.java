@@ -3604,7 +3604,7 @@ class FlatNodeGenFactory {
             return builder.build();
         }
 
-        public CodeTree createContainsOnly(FrameState frameState, int offset, int length, Object[] selectedElements, @SuppressWarnings("hiding") Object[] allElements) {
+        public CodeTree createContainsOnly(FrameState frameState, int offset, int length, Object[] selectedElements, Object[] allElements) {
             CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
             long mask = ~createMask(offset, length, selectedElements) & createMask(allElements);
             builder.tree(createMaskedReference(frameState, mask));
