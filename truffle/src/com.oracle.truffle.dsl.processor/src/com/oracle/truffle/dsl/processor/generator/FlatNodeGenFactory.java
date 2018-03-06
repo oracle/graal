@@ -1119,8 +1119,8 @@ class FlatNodeGenFactory {
     private void generateNewPolymorphism(CodeTreeBuilder builder, boolean requiresExclude) {
         if (node.isReportPolymorphism()) {
             builder.startIf().string("oldState > 1").end().startBlock();
-//            builder.declaration(state.bitSetType, "newState", state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
-            builder.declaration(state.bitSetType, "newState", "state_");
+            builder.declaration(state.bitSetType, "newState", state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
+//            builder.declaration(state.bitSetType, "newState", "state_");
             if (requiresExclude) {
                 builder.declaration(exclude.bitSetType, "newExclude", "exclude_");
             }
@@ -1159,8 +1159,8 @@ class FlatNodeGenFactory {
 
     private void generateOldPolymorphism(CodeTreeBuilder builder, boolean requiresExclude) {
         if (node.isReportPolymorphism()) {
-//            builder.declaration(state.bitSetType, "oldState", state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
-            builder.declaration(state.bitSetType, "oldState", "state_");
+            builder.declaration(state.bitSetType, "oldState", state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
+//            builder.declaration(state.bitSetType, "oldState", "state_");
             if (requiresExclude) {
                 builder.declaration(exclude.bitSetType, "oldExclude", "exclude_");
             }
