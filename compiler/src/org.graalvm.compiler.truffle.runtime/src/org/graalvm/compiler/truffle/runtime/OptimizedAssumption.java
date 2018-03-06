@@ -142,7 +142,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     @Override
     public void invalidate() {
         if (isValid) {
-            invalidateImpl(null);
+            invalidateImpl("");
         }
     }
 

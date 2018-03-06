@@ -75,7 +75,9 @@ public interface Assumption {
      * @param message a message stating the reason of the invalidation
      * @since 0.33
      */
-    void invalidate(String message);
+    default void invalidate(String message) {
+        invalidate();
+    }
 
     /**
      * A name for the assumption that is used for debug output.

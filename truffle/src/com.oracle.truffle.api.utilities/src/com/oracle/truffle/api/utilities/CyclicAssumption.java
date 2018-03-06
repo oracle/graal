@@ -74,7 +74,7 @@ public class CyclicAssumption {
     /** @since 0.8 or earlier */
     @TruffleBoundary
     public void invalidate() {
-        invalidate(null);
+        invalidate("");
     }
 
     /** @since 0.33 */
