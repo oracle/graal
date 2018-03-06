@@ -64,7 +64,8 @@ public abstract class ExecutableNode extends Node {
      * Execute this fragment at the place where it was parsed.
      *
      * @param frame the actual frame valid at the parsed location
-     * @return the result of the execution
+     * @return the result of the execution, must be an interop type (i.e. either implementing
+     *         TruffleObject or be a primitive value), or <code>null</code>.
      * @since 0.31
      */
     public abstract Object execute(VirtualFrame frame);

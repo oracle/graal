@@ -410,9 +410,18 @@ public abstract class TruffleInstrument {
             @Override
             public Object execute(VirtualFrame frame) {
                 assert frameDescriptor == null || frameDescriptor == frame.getFrameDescriptor();
-                return fragment.execute(frame);
+                Object ret = fragment.execute(frame);
+                assert checkNullOrInterop(ret);
+                return ret;
             }
 
+            private boolean checkNullOrInterop(Object obj) {
+                if (obj == null) {
+                    return true;
+                }
+                AccessorInstrumentHandler.interopAccess().checkInteropType(obj);
+                return true;
+            }
         }
 
         /**
@@ -456,12 +465,14 @@ public abstract class TruffleInstrument {
          * of this method is undefined if a type unknown to the language is passed as a value.
          *
          * @param language a language
-         * @param value a known value of that language
+         * @param value a known value of that language, must be an interop type (i.e. either
+         *            implementing TruffleObject or be a primitive value)
          * @return a human readable string representation of the value.
          * @see #findLanguage(java.lang.Object)
          * @since 0.27
          */
         public String toString(LanguageInfo language, Object value) {
+            AccessorInstrumentHandler.interopAccess().checkInteropType(value);
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
             return AccessorInstrumentHandler.langAccess().toStringIfVisible(env, value, false);
         }
@@ -496,12 +507,14 @@ public abstract class TruffleInstrument {
          * language}, if any.
          *
          * @param language a language
-         * @param value a value to find the meta-object of
+         * @param value a value to find the meta-object of, must be an interop type (i.e. either
+         *            implementing TruffleObject or be a primitive value)
          * @return the meta-object, or <code>null</code>
          * @see #findLanguage(java.lang.Object)
          * @since 0.27
          */
         public Object findMetaObject(LanguageInfo language, Object value) {
+            AccessorInstrumentHandler.interopAccess().checkInteropType(value);
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
             return AccessorInstrumentHandler.langAccess().findMetaObject(env, value);
         }
@@ -530,12 +543,14 @@ public abstract class TruffleInstrument {
          * if any.
          *
          * @param language a language
-         * @param value a value to get the source location for
+         * @param value a value to get the source location for, must be an interop type (i.e. either
+         *            implementing TruffleObject or be a primitive value)
          * @return a source location of the object, or <code>null</code>
          * @see #findLanguage(java.lang.Object)
          * @since 0.27
          */
         public SourceSection findSourceLocation(LanguageInfo language, Object value) {
+            AccessorInstrumentHandler.interopAccess().checkInteropType(value);
             final TruffleLanguage.Env env = AccessorInstrumentHandler.engineAccess().getEnvForInstrument(language);
             return AccessorInstrumentHandler.langAccess().findSourceLocation(env, value);
         }

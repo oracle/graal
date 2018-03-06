@@ -268,8 +268,13 @@ public final class MemoryTracer implements Closeable {
             }
             Node instrumentedNode = stack.getStack()[stack.getStackIndex()].getInstrumentedNode();
             LanguageInfo languageInfo = instrumentedNode.getRootNode().getLanguageInfo();
+            String metaObjectString;
             Object metaObject = env.findMetaObject(languageInfo, event.getValue());
-            String metaObjectString = env.toString(languageInfo, metaObject);
+            if (metaObject != null) {
+                metaObjectString = env.toString(languageInfo, metaObject);
+            } else {
+                metaObjectString = "null";
+            }
             AllocationEventInfo info = new AllocationEventInfo(event.getLanguage(), event.getNewSize() - event.getOldSize(), event.getOldSize() != 0, metaObjectString);
             handleEvent(stack, info);
         }
