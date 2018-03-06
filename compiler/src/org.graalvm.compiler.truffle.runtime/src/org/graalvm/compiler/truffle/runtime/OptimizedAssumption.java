@@ -222,9 +222,15 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     }
 
     /**
-     * Registers some dependent code with this object.
+     * Registers some dependent code with this assumption.
      *
-     * @return a consumer that will be supplied the dependent code once it is available
+     * As the dependent code may not yet be available, a {@link Consumer} is returned that must be
+     * {@linkplain Consumer#accept(Object) notified} when the code becomes available. If there is an
+     * error while compiling or installing the code, the returned consumer must be called with a
+     * {@code null} argument.
+     *
+     * If this assumption is already invalid, then {@code null} is returned in which case the caller
+     * (e.g., the compiler) must ensure the dependent code is never executed.
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
         if (isValid) {
@@ -237,18 +243,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             size++;
             return e;
         } else {
-            return new Consumer<OptimizedAssumptionDependency>() {
-                @Override
-                public void accept(OptimizedAssumptionDependency dependency) {
-                    if (dependency != null) {
-                        invalidateWithReason(dependency, "assumption already invalidated when installing code");
-                        if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
-                            logInvalidatedDependency(dependency);
-                            logStackTrace();
-                        }
-                    }
-                }
-            };
+            return null;
         }
     }
 

@@ -164,10 +164,17 @@ public interface TruffleCompilerRuntime {
     JavaConstant getCallTargetForCallNode(JavaConstant callNode);
 
     /**
-     * Registers a (pending) dependency on an assumption.
+     * Registers some dependent code on an assumption.
+     *
+     * As the dependent code may not yet be available, a {@link Consumer} is returned that must be
+     * {@linkplain Consumer#accept(Object) notified} when the code becomes available. If there is an
+     * error while compiling or installing the code, the returned consumer must be called with a
+     * {@code null} argument.
+     *
+     * If the assumption is already invalid, then {@code null} is returned in which case the caller
+     * (e.g., the compiler) must ensure the dependent code is never executed.
      *
      * @param optimizedAssumption compiler constant representing an {@code OptimizedAssumption}
-     * @return a consumer that will be supplied the dependency once it materializes
      */
     Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumption);
 

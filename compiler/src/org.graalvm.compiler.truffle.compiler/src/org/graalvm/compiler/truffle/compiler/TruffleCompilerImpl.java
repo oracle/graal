@@ -51,6 +51,7 @@ import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -543,7 +544,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
             for (Assumption assumption : result.getAssumptions()) {
                 if (assumption != null && assumption instanceof TruffleAssumption) {
                     TruffleAssumption truffleAssumption = (TruffleAssumption) assumption;
-                    optimizedAssumptions.add(runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption()));
+                    Consumer<OptimizedAssumptionDependency> dep = runtime.registerOptimizedAssumptionDependency(truffleAssumption.getAssumption());
+                    if (dep == null) {
+                        // Before bailing out, notify other assumptions waiting
+                        // for the code that it will never be installed
+                        notifyAssumptions(null);
+
+                        throw new RetryableBailoutException("Assumption invalidated while compiling code: %s", truffleAssumption);
+                    }
+                    optimizedAssumptions.add(dep);
                 } else {
                     newAssumptions.add(assumption);
                 }
@@ -584,16 +593,33 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                     };
                 }
 
-                for (Consumer<OptimizedAssumptionDependency> entry : optimizedAssumptions) {
-                    entry.accept(dependency);
-                }
+                notifyAssumptions(dependency);
             }
         }
 
         @Override
         public void installFailed(Throwable t) {
+            notifyAssumptions(null);
+        }
+
+        private void notifyAssumptions(OptimizedAssumptionDependency dependency) {
+            List<Throwable> errors = null;
             for (Consumer<OptimizedAssumptionDependency> entry : optimizedAssumptions) {
-                entry.accept(null);
+                try {
+                    entry.accept(dependency);
+                } catch (Throwable t) {
+                    if (errors == null) {
+                        errors = new ArrayList<>();
+                    }
+                    errors.add(t);
+                }
+            }
+            if (errors != null) {
+                StringBuilder sb = new StringBuilder("There were errors while notifying assumptions:");
+                for (Throwable e : errors) {
+                    sb.append(System.lineSeparator()).append("  ").append(e);
+                }
+                throw new RetryableBailoutException(sb.toString());
             }
         }
     }
