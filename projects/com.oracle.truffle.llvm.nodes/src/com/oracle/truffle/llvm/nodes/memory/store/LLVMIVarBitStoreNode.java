@@ -77,7 +77,7 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = bytes.length - 1; i >= 0; i--) {
             foreignWrite.execute(frame, currentPtr, bytes[i]);
-            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
         return null;
     }

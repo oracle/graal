@@ -69,7 +69,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < bytes.length; i++) {
             foreignWrite.execute(frame, currentPtr, bytes[i]);
-            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
         return null;
     }

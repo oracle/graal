@@ -88,7 +88,7 @@ public abstract class LLVMDoubleArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             double currentValue = LLVMTypesGen.asDouble(values[i].executeGeneric(frame));
             foreignWrite.execute(frame, currentPtr, currentValue);
-            currentPtr = currentPtr.increment(stride, currentPtr.getType());
+            currentPtr = currentPtr.increment(stride);
         }
         return addr;
     }

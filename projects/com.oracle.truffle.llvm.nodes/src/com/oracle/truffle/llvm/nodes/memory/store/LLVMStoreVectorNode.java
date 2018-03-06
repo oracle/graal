@@ -201,7 +201,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -214,7 +214,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -227,7 +227,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -240,7 +240,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -253,7 +253,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -266,7 +266,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -279,7 +279,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -292,7 +292,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
         }
         return null;
     }
@@ -305,7 +305,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             foreignWrite.execute(frame, currentPtr, value.getValue(i));
-            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES, currentPtr.getType());
+            currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
         return null;
     }

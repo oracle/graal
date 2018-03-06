@@ -1832,7 +1832,7 @@ class AsmFactory {
             LLVMWriteAddressNode writeAddr = LLVMWriteAddressNodeGen.create(addrArg, slot, null);
             statements.add(writeAddr);
             LLVMExpressionNode addr = LLVMAddressReadNodeGen.create(slot);
-            this.result = StructLiteralNodeGen.create(retOffsets, retTypes, writeNodes, valueNodes, addr);
+            this.result = StructLiteralNodeGen.create(retOffsets, writeNodes, valueNodes, addr);
         }
 
         todoRegisters.remove("rsp"); // rsp is initialized to stack pointer; ignore it here

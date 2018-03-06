@@ -49,7 +49,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider {
     private final TruffleObject object;
     private final long offset;
-    private final Type type;
     private final LLVMSourceType baseType;
 
     private static LLVMSourceType overrideBaseType(LLVMTruffleObject obj, Type newType) {
@@ -69,21 +68,20 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
     }
 
     public static LLVMTruffleObject createPointer(long ptr) {
-        return new LLVMTruffleObject(null, ptr, null, null);
+        return new LLVMTruffleObject(null, ptr, null);
     }
 
     public LLVMTruffleObject(LLVMTruffleObject orig, Type type) {
-        this(orig.getObject(), orig.getOffset(), type, overrideBaseType(orig, type));
+        this(orig.getObject(), orig.getOffset(), overrideBaseType(orig, type));
     }
 
     public LLVMTruffleObject(TruffleObject object, Type type) {
-        this(object, 0, type, type.getSourceType());
+        this(object, 0, type.getSourceType());
     }
 
-    private LLVMTruffleObject(TruffleObject object, long offset, Type type, LLVMSourceType baseType) {
+    private LLVMTruffleObject(TruffleObject object, long offset, LLVMSourceType baseType) {
         this.object = object;
         this.offset = offset;
-        this.type = type;
         this.baseType = baseType;
     }
 
@@ -95,16 +93,8 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         return object;
     }
 
-    public Type getType() {
-        return type;
-    }
-
     public LLVMTruffleObject increment(long incr) {
-        return new LLVMTruffleObject(object, offset + incr, type, baseType);
-    }
-
-    public LLVMTruffleObject increment(long incr, Type newType) {
-        return new LLVMTruffleObject(object, offset + incr, newType, baseType);
+        return new LLVMTruffleObject(object, offset + incr, baseType);
     }
 
     public LLVMSourceType getBaseType() {
@@ -169,7 +159,7 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
                     return object;
                 } else {
                     Object nativeBase = lib.toNative(frame, object.getObject());
-                    return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset, object.type, object.baseType);
+                    return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset, object.baseType);
                 }
             }
         };

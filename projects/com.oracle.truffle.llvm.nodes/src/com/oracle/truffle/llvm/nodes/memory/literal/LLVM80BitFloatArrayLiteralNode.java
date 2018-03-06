@@ -91,7 +91,7 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
             try {
                 LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);
                 write.executeWithTarget(frame, addr, currentValue);
-                currentPtr = currentPtr.increment(stride, currentPtr.getType());
+                currentPtr = currentPtr.increment(stride);
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);

@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
@@ -50,13 +49,11 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
     @Children private final LLVMExpressionNode[] values;
     private final long stride;
     @Child private LLVMMemMoveNode memMove;
-    private final Type elementType;
 
-    public LLVMStructArrayLiteralNode(LLVMExpressionNode[] values, LLVMMemMoveNode memMove, long stride, Type elementType) {
+    public LLVMStructArrayLiteralNode(LLVMExpressionNode[] values, LLVMMemMoveNode memMove, long stride) {
         this.values = values;
         this.stride = stride;
         this.memMove = memMove;
-        this.elementType = elementType;
     }
 
     @Specialization
@@ -93,7 +90,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             LLVMTruffleObject currentValue = (LLVMTruffleObject) values[i].executeGeneric(frame);
             memMove.executeWithTarget(frame, currentPtr, currentValue, stride);
-            currentPtr = currentPtr.increment(stride, elementType);
+            currentPtr = currentPtr.increment(stride);
         }
         return addr;
     }

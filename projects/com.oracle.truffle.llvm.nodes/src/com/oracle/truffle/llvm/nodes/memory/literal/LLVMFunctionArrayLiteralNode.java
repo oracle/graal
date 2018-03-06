@@ -94,7 +94,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
             try {
                 LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
                 foreignWrites[i].execute(frame, currentPtr, currentValue);
-                currentPtr = currentPtr.increment(stride, currentPtr.getType());
+                currentPtr = currentPtr.increment(stride);
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException(e);

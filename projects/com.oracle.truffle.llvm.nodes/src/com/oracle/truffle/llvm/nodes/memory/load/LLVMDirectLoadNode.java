@@ -76,7 +76,7 @@ public abstract class LLVMDirectLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = result.length - 1; i >= 0; i--) {
                 result[i] = (Byte) foreignRead.execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
             }
             return LLVMIVarBit.create(getBitWidth(), result, getBitWidth(), false);
         }
@@ -113,7 +113,7 @@ public abstract class LLVMDirectLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < result.length; i++) {
                 result[i] = (Byte) foreignRead.execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
             }
             return LLVM80BitFloat.fromBytes(result);
         }

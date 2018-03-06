@@ -88,7 +88,7 @@ public abstract class LLVMI8ArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             byte currentValue = LLVMTypesGen.asByte(values[i].executeGeneric(frame));
             foreignWrite.execute(frame, currentPtr, currentValue);
-            currentPtr = currentPtr.increment(stride, currentPtr.getType());
+            currentPtr = currentPtr.increment(stride);
         }
         return addr;
     }
