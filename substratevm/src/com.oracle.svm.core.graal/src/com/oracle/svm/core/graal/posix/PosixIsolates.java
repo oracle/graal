@@ -112,7 +112,7 @@ public class PosixIsolates {
 
     @Uninterruptible(reason = "Thread state not yet set up.", callerMustBe = true, mayBeInlined = true)
     public static PointerBase getHeapBase(Isolate isolate) {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+        if (!SubstrateOptions.SpawnIsolates.getValue() || isolate.isNull()) {
             return IMAGE_HEAP_BEGIN.get();
         }
         return isolate;

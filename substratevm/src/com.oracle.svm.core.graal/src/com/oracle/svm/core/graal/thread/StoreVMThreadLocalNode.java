@@ -31,13 +31,15 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
-import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
@@ -63,10 +65,21 @@ public class StoreVMThreadLocalNode extends AbstractStateSplit implements Lowera
     public void lower(LoweringTool tool) {
         assert threadLocalInfo.offset >= 0;
 
-        ConstantNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), threadLocalInfo.offset, holder.graph());
+        ConstantNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), threadLocalInfo.offset, graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-        WriteNode write = graph().add(new CInterfaceWriteNode(address, threadLocalInfo.locationIdentity, value, barrierType, threadLocalInfo.name));
+
+        AbstractWriteNode write;
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            write = new CInterfaceWriteNode(address, threadLocalInfo.locationIdentity, value, barrierType, threadLocalInfo.name);
+        } else {
+            write = new JavaWriteNode(threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, value, barrierType, true);
+        }
+        write = graph().add(write);
         write.setStateAfter(stateAfter());
         graph().replaceFixedWithFixed(this, write);
+
+        if (!SubstrateOptions.MultiThreaded.getValue()) {
+            tool.getLowerer().lower(write, tool);
+        }
     }
 }
