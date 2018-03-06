@@ -462,6 +462,9 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @Snippet
     public static int enterSingleThreadedSnippet() {
+        if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+            setHeapBase(PosixIsolates.getHeapBase(WordFactory.nullPointer()));
+        }
         return Errors.NO_ERROR;
     }
 
