@@ -38,14 +38,17 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerOptions;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
+import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -237,6 +240,58 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         SnippetReflectionProvider snippetReflection = runtime().getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
         OptimizedDirectCallNode callNode = snippetReflection.asObject(OptimizedDirectCallNode.class, callNodeConstant);
         return findByCall(callNode);
+    }
+
+    static class TruffleSourceLanguagePosition implements SourceLanguagePosition {
+
+        private final SourceSection sourceSection;
+
+        TruffleSourceLanguagePosition(SourceSection section) {
+            this.sourceSection = section;
+        }
+
+        @Override
+        public void addSourceInformation(Map<String, Object> props) {
+            props.put("truffle.SourceSection", sourceSection.getSource().getURI());
+            props.put("truffle.line", sourceSection.getStartLine());
+            props.put("truffle.charIndex", sourceSection.getCharIndex());
+            props.put("truffle.column", sourceSection.getStartColumn());
+        }
+
+        @Override
+        public String toShortString() {
+            return sourceSection.getSource().getURI() + " " + sourceSection.getStartLine() + ":" + sourceSection.getStartColumn();
+        }
+    }
+
+    @Override
+    public SourceLanguagePosition getPosition(JavaConstant node) {
+        SnippetReflectionProvider snippetReflection = runtime().getGraalRuntime().getRequiredCapability(SnippetReflectionProvider.class);
+        Node truffleNode = snippetReflection.asObject(Node.class, node);
+        if (truffleNode == null) {
+            return null;
+        }
+        SourceSection section = null;
+        if (truffleNode instanceof DirectCallNode) {
+            section = ((DirectCallNode) truffleNode).getCurrentRootNode().getSourceSection();
+        }
+        if (section == null) {
+            section = truffleNode.getSourceSection();
+        }
+        if (section == null) {
+            Node cur = truffleNode.getParent();
+            while (cur != null) {
+                section = cur.getSourceSection();
+                if (section != null) {
+                    break;
+                }
+                cur = cur.getParent();
+            }
+        }
+        if (section != null) {
+            return new TruffleSourceLanguagePosition(section);
+        }
+        return null;
     }
 
     public TruffleInliningDecision findByCall(OptimizedDirectCallNode callNode) {

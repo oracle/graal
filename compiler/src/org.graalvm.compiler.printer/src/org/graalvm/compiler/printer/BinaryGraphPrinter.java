@@ -33,7 +33,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
@@ -47,6 +46,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -68,6 +68,7 @@ import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import org.graalvm.graphio.GraphTypes;
 
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
@@ -264,6 +265,17 @@ public class BinaryGraphPrinter implements
                 updateStringPropertiesForConstant((Map) props, cn);
             }
             props.put("category", "floating");
+        }
+        if (node.getNodeSourcePosition() != null) {
+            NodeSourcePosition pos = node.getNodeSourcePosition();
+            while (pos != null) {
+                SourceLanguagePosition cur = pos.getSourceLanauage();
+                if (cur != null) {
+                    cur.addSourceInformation(props);
+                    break;
+                }
+                pos = pos.getCaller();
+            }
         }
         if (getSnippetReflectionProvider() != null) {
             for (Map.Entry<String, Object> prop : props.entrySet()) {

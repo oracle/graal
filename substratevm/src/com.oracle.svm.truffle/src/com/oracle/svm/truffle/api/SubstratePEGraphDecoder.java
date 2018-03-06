@@ -27,6 +27,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -51,9 +52,10 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
 
     public SubstratePEGraphDecoder(Architecture architecture, StructuredGraph graph, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
                     ConstantFieldProvider constantFieldProvider, StampProvider stampProvider, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod) {
+                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod callInlinedMethod,
+                    SourceLanguagePositionProvider sourceLanguagePosition) {
         super(architecture, graph, metaAccess, constantReflection, constantFieldProvider, stampProvider, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins,
-                        callInlinedMethod);
+                        callInlinedMethod, sourceLanguagePosition);
     }
 
     @Override
