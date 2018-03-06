@@ -396,7 +396,7 @@ final class PolyglotLanguageContext implements VMObject {
                     toGuestValue[i] = createToGuestValue();
                 }
             }
-            if (cachedLength == 0) {
+            if (args.length == 0) {
                 return args;
             } else if (cachedLength == args.length) {
                 // fast path
