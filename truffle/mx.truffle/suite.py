@@ -492,12 +492,23 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Tools",
     },
+    "com.oracle.truffle.tck.common" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:POLYGLOT_TCK"
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Tools",
+    },
     "com.oracle.truffle.tck.tests" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
-        "sdk:POLYGLOT_TCK"
+        "sdk:POLYGLOT_TCK",
+        "com.oracle.truffle.tck.common",
       ],
       "uses":[
         "org.graalvm.polyglot.tck.LanguageProvider"
@@ -512,7 +523,7 @@ suite = {
       "dependencies" : [
         "mx:JUNIT",
         "TRUFFLE_API",
-        "com.oracle.truffle.tck.tests",
+        "com.oracle.truffle.tck.common",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -741,6 +752,19 @@ suite = {
       "allowsJavadocWarnings": True,
     },
 
+    "TRUFFLE_TCK_COMMON" : {
+      "subDir" : "src",
+      "javaCompliance" : "1.8",
+      "dependencies" : [
+        "com.oracle.truffle.tck.common"
+      ],
+      "distDependencies" : [
+        "sdk:POLYGLOT_TCK",
+      ],
+      "description" : "Common types for TCK Tests and Instruments.",
+      "allowsJavadocWarnings": True,
+    },
+
     "TRUFFLE_TCK_TESTS" : {
       "subDir" : "src",
       "javaCompliance" : "1.8",
@@ -749,6 +773,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT_TCK",
+        "TRUFFLE_TCK_COMMON"
       ],
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
@@ -763,7 +788,7 @@ suite = {
       ],
       "distDependencies" : [
         "TRUFFLE_API",
-        "TRUFFLE_TCK_TESTS"
+        "TRUFFLE_TCK_COMMON"
       ],
       "exclude" : ["mx:JUNIT"],
       "description" : "Instruments used by the Truffle TCK.",

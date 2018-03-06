@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
@@ -108,7 +109,7 @@ public class InlineExecutionTest {
         }
     }
 
-    private class TestResultVerifier implements InlineResultVerifier {
+    private class TestResultVerifier implements InlineVerifier.ResultVerifier {
 
         Exception exception;
 

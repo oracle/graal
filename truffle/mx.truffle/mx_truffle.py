@@ -184,6 +184,23 @@ mx.update_commands(_suite, {
 })
 
 def _unittest_config_participant_tck(config):
+
+    def find_path_arg(vmArgs, prefix):
+        for index in reversed(range(len(vmArgs) - 1)):
+            if prefix in vmArgs[index]:
+                return index, vmArgs[index][len(prefix):]
+        return None, None
+
+    def is_graalvm(jdk):
+        releaseFile = os.path.join(jdk.home, "release")
+        if exists(releaseFile):
+            with open(releaseFile) as f:
+                pattern = re.compile('^GRAALVM_VERSION=*')
+                for line in f.readlines():
+                    if pattern.match(line):
+                        return True
+        return False
+
     def create_filter(requiredResource):
         def has_resource(dist):
             if dist.isJARDistribution() and exists(dist.path):
@@ -231,10 +248,41 @@ def _unittest_config_participant_tck(config):
     if cpValue:
         for cpElement in cpValue.split(os.pathsep):
             cpBuilder[cpElement] = None
-    for langCpElement in languages:
-        cpBuilder[langCpElement] = None
     for providerCpElement in providers:
         cpBuilder[providerCpElement] = None
+
+    if is_graalvm(mx.get_jdk()):
+        common = OrderedDict()
+        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_COMMON" == dist.name and exists(dist.path), common, javaPropertiesToAdd, set())
+        tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
+        tpBuilder = OrderedDict()
+        if tpValue:
+            for cpElement in tpValue.split(os.pathsep):
+                tpBuilder[cpElement] = None
+        for langCpElement in languages:
+            tpBuilder[langCpElement] = None
+        bpIndex, bpValue = find_path_arg(vmArgs, '-Xbootclasspath/a:')
+        bpBuilder = OrderedDict()
+        if bpValue:
+            for cpElement in bpValue.split(os.pathsep):
+                bpBuilder[cpElement] = None
+        for bootCpElement in common:
+            bpBuilder[bootCpElement] = None
+            cpBuilder.pop(bootCpElement, None)
+            tpBuilder.pop(bootCpElement, None)
+        tpValue = '-Dtruffle.class.path.append=' + os.pathsep.join((e for e in tpBuilder))
+        if tpIndex:
+            vmArgs[tpIndex] = tpValue
+        else:
+            vmArgs.append(tpValue)
+        bpValue = '-Xbootclasspath/a:' + os.pathsep.join((e for e in bpBuilder))
+        if bpIndex:
+            vmArgs[bpIndex] = bpValue
+        else:
+            vmArgs.append(bpValue)
+    else:
+        for langCpElement in languages:
+            cpBuilder[langCpElement] = None
     cpValue = os.pathsep.join((e for e in cpBuilder))
     if cpIndex:
         vmArgs[cpIndex] = cpValue

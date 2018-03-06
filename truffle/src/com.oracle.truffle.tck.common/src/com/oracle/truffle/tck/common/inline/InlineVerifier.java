@@ -22,19 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tck.tests;
+package com.oracle.truffle.tck.common.inline;
 
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.tck.InlineSnippet;
 
-public interface InlineResultVerifier {
-
-    /**
-     * Verify a raw value from inline evaluation.
-     */
-    void verify(Object result);
+public interface InlineVerifier {
 
     /**
-     * Verify a {@link PolyglotException} from inline evaluation.
+     * Sets the {@link InlineSnippet} to parse.
+     *
+     * @param languageId the snippet language
+     * @param inlineSnippet the snippet to parse
+     * @param verifier the {@link InlineResultVerifier} to verify the inline execution result.
      */
-    void verify(PolyglotException pe);
+    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, ResultVerifier verifier);
+
+    interface ResultVerifier {
+        /**
+         * Verify a raw value from inline evaluation.
+         */
+        void verify(Object result);
+
+        /**
+         * Verify a {@link PolyglotException} from inline evaluation.
+         */
+        void verify(PolyglotException pe);
+    }
 }

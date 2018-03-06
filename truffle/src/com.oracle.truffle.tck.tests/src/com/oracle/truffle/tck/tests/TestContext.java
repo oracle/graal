@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -241,7 +242,7 @@ final class TestContext implements Closeable {
         return value;
     }
 
-    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
+    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
         inlineVerifier.setInlineSnippet(languageId, inlineSnippet, verifier);
     }
 

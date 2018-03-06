@@ -51,8 +51,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tck.tests.InlineResultVerifier;
-import com.oracle.truffle.tck.tests.InlineVerifier;
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import org.graalvm.polyglot.PolyglotException;
 
 /**
@@ -77,7 +76,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     }
 
     @Override
-    public void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
+    public void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
         if (inlineSnippet != null) {
             inlineScriptsRunner = new InlineScriptsRunner();
             inlineBinding = env.getInstrumenter().attachExecutionEventListener(
@@ -97,7 +96,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         @CompilationFinal private volatile Predicate<SourceSection> predicate;
         @CompilationFinal private volatile ExecutableNode inlineNode;
         @CompilationFinal private volatile FrameDescriptor inlineDescriptor;
-        @CompilationFinal private InlineResultVerifier resultVerifier;
+        @CompilationFinal private InlineVerifier.ResultVerifier resultVerifier;
         @CompilationFinal private Assumption inlineSnippetChanged = Truffle.getRuntime().createAssumption("Inline Snippet Changed");
 
         InlineScriptsRunner() {
@@ -169,7 +168,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             return predicate.test(section);
         }
 
-        private void setSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
+        private void setSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
             if (inlineSnippet != null) {
                 CharSequence code = inlineSnippet.getCode();
                 this.snippet = Source.newBuilder(code).language(languageId).name("inline_source").build();
