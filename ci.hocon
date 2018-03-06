@@ -78,6 +78,9 @@ gateTest40-darwin: ${gateCommon} ${darwin-amd64} ${darwin-llvm} {
 }
 
 requireGCC: {
+    packages: {
+        gcc: "==6.1.0"
+    }
     downloads: {
         DRAGONEGG_GCC: {name: "gcc+dragonegg", version: "4.6.4-1", platformspecific: true}
         DRAGONEGG_LLVM: {name: "clang+llvm", version: "3.2", platformspecific: true}
