@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.parser.model;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoProcessor;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
@@ -142,7 +142,7 @@ public final class ModelModule {
                 variable.setName(String.valueOf(globalIndex++));
             }
         }
-        this.functionProcessor = DebugInfoProcessor.processModule(this, source, scope.getMetadata());
+        this.functionProcessor = DebugInfoModuleProcessor.processModule(this, source, scope.getMetadata());
     }
 
     @Override

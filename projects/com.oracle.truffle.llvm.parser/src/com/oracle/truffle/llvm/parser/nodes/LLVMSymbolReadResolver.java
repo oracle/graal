@@ -497,6 +497,9 @@ public final class LLVMSymbolReadResolver {
     }
 
     public LLVMExpressionNode resolve(SymbolImpl symbol) {
+        if (symbol == null) {
+            return null;
+        }
         resolvedNode = null;
         symbol.accept(visitor);
         return resolvedNode;

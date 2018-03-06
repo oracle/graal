@@ -1080,4 +1080,8 @@ public final class Function implements ParserListener {
     public FunctionDefinition getFunction() {
         return function;
     }
+
+    public IRScope getScope() {
+        return scope;
+    }
 }

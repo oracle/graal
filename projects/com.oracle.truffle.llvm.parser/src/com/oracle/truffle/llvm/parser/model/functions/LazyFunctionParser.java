@@ -50,7 +50,7 @@ public final class LazyFunctionParser {
         if (!isParsed) {
             parser.setupScope();
             scanner.scanBlock(parser);
-            diProcessor.process(parser.getFunction());
+            diProcessor.process(parser.getFunction(), parser.getScope());
             isParsed = true;
         }
     }

@@ -31,8 +31,11 @@ package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDLocation;
 import com.oracle.truffle.llvm.parser.metadata.MetadataSymbol;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
@@ -78,8 +81,9 @@ public final class DebugInfoFunctionProcessor {
         this.cache = cache;
     }
 
-    public void process(FunctionDefinition function) {
-        function.accept((FunctionVisitor) new Processor(function.getSourceFunction()));
+    public void process(FunctionDefinition function, IRScope scope) {
+        function.accept((FunctionVisitor) new SymbolProcessor(function.getSourceFunction()));
+        scope.getMetadata().consumeLocals(new MetadataProcessor());
         cache.endLocalScope();
     }
 
@@ -98,17 +102,17 @@ public final class DebugInfoFunctionProcessor {
         return MDExpression.EMPTY;
     }
 
-    private final class Processor implements FunctionVisitor, InstructionVisitorAdapter {
+    private final class SymbolProcessor implements FunctionVisitor, InstructionVisitorAdapter {
 
-        private final SourceFunction currentFunction;
+        private final SourceFunction function;
         private final LinkedList<Integer> removeFromBlock = new LinkedList<>();
 
         private int blockInstIndex = 0;
         private DbgValueInstruction lastDbgValue = null;
         private InstructionBlock currentBlock = null;
 
-        private Processor(SourceFunction currentFunction) {
-            this.currentFunction = currentFunction;
+        private SymbolProcessor(SourceFunction function) {
+            this.function = function;
         }
 
         @Override
@@ -132,7 +136,7 @@ public final class DebugInfoFunctionProcessor {
             if (loc != null) {
                 final LLVMSourceLocation scope = cache.buildLocation(loc);
                 if (scope != null) {
-                    currentFunction.addInstruction(instruction, scope);
+                    function.addInstruction(instruction, scope);
                 }
             }
         }
@@ -161,7 +165,7 @@ public final class DebugInfoFunctionProcessor {
                 final MDBaseNode mdLocal = ((MetadataSymbol) varSymbol).getNode();
 
                 final LLVMSourceSymbol symbol = cache.getSourceSymbol(mdLocal, false);
-                return currentFunction.getLocal(symbol);
+                return function.getLocal(symbol);
             }
 
             return null;
@@ -245,5 +249,15 @@ public final class DebugInfoFunctionProcessor {
                 }
             }
         }
+    }
+
+    private final class MetadataProcessor implements MetadataVisitor {
+
+        @Override
+        public void visit(MDLocalVariable md) {
+            // make sure the symbol is registered even if no value is available
+            cache.getSourceSymbol(md, false);
+        }
+
     }
 }

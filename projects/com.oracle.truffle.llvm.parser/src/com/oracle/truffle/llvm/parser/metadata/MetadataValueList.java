@@ -135,7 +135,8 @@ public final class MetadataValueList extends ValueList<MDBaseNode, MetadataVisit
         locals.add(mdLocal);
     }
 
-    public void localsAccept(MetadataVisitor visitor) {
+    public void consumeLocals(MetadataVisitor visitor) {
         locals.forEach(l -> l.accept(visitor));
+        locals.clear();
     }
 }
