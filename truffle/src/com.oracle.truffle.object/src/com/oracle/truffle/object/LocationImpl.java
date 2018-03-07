@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -28,7 +30,6 @@ import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.TypedLocation;
 
 /** @since 0.17 or earlier */
 public abstract class LocationImpl extends Location {
@@ -146,7 +147,7 @@ public abstract class LocationImpl extends Location {
     @Override
     public String toString() {
         String finalString = isFinal() ? "f" : "";
-        String typeString = (this instanceof TypedLocation ? ((TypedLocation) this).getType().getSimpleName() : "Object");
+        String typeString = (this instanceof com.oracle.truffle.api.object.TypedLocation ? ((com.oracle.truffle.api.object.TypedLocation) this).getType().getSimpleName() : "Object");
         return finalString + typeString + getWhereString();
     }
 
@@ -157,7 +158,7 @@ public abstract class LocationImpl extends Location {
 
     /**
      * Get the number of object array elements this location requires.
-     * 
+     *
      * @since 0.17 or earlier
      */
     public int objectArrayCount() {
@@ -166,7 +167,7 @@ public abstract class LocationImpl extends Location {
 
     /**
      * Get the number of in-object {@link Object} fields this location requires.
-     * 
+     *
      * @since 0.17 or earlier
      */
     public int objectFieldCount() {
@@ -175,7 +176,7 @@ public abstract class LocationImpl extends Location {
 
     /**
      * Get the number of in-object primitive fields this location requires.
-     * 
+     *
      * @since 0.17 or earlier
      */
     public int primitiveFieldCount() {
@@ -184,7 +185,7 @@ public abstract class LocationImpl extends Location {
 
     /**
      * Get the number of primitive array elements this location requires.
-     * 
+     *
      * @since 0.17 or earlier
      */
     public int primitiveArrayCount() {
@@ -206,7 +207,7 @@ public abstract class LocationImpl extends Location {
      *
      * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
      * usually know more about the value to be set.
-     * 
+     *
      * @since 0.17 or earlier
      */
     public static boolean valueEquals(Object val1, Object val2) {

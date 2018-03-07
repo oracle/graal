@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,12 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.object.debug;
+package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.object.ObjectStorageOptions;
-import com.oracle.truffle.object.ShapeImpl;
 import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -35,15 +33,16 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-@SuppressWarnings("deprecation")
-@Deprecated
-public class ShapeProfiler {
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+
+class ShapeProfiler {
     private static final String LINE_SEPARATOR = "***********************************************";
     private static final String BULLET = "* ";
     private static final String TOKEN_SEPARATOR = "\t";
     private final ConcurrentLinkedQueue<DynamicObject> queue;
 
-    public ShapeProfiler() {
+    ShapeProfiler() {
         queue = new ConcurrentLinkedQueue<>();
     }
 
@@ -214,12 +213,12 @@ public class ShapeProfiler {
     private static final ShapeProfiler shapeProf;
 
     static {
-        if (ObjectStorageOptions.Profile) {
+        if (com.oracle.truffle.object.ObjectStorageOptions.Profile) {
             shapeProf = new ShapeProfiler();
             Runtime.getRuntime().addShutdownHook(new Thread() {
                 @Override
                 public void run() {
-                    getInstance().dump(new PrintWriter(System.out), ObjectStorageOptions.ProfileTopResults);
+                    getInstance().dump(new PrintWriter(System.out), com.oracle.truffle.object.ObjectStorageOptions.ProfileTopResults);
                 }
             });
         } else {
