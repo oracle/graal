@@ -224,21 +224,14 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
         return false;
     }
 
-    /* All remaining methods are unsupported on Substrate VM. */
-
-    @Override
-    public ObjectName getObjectName() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
     @Override
     public int getThreadCount() {
-        return (int) JavaThreads.singleton().getLiveThreads();
+        return JavaThreads.singleton().getLiveThreads();
     }
 
     @Override
     public int getPeakThreadCount() {
-        return (int) JavaThreads.singleton().getPeakThreads();
+        return JavaThreads.singleton().getPeakThreads();
     }
 
     @Override
@@ -248,10 +241,14 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
 
     @Override
     public int getDaemonThreadCount() {
-        int liveThreads = (int) JavaThreads.singleton().getLiveThreads();
-        int noDaemonThreads = (int) JavaThreads.singleton().getNonDaemonThreads();
+        return JavaThreads.singleton().getDaemonThreads();
+    }
 
-        return Math.max(0, liveThreads - noDaemonThreads);
+    /* All remaining methods are unsupported on Substrate VM. */
+
+    @Override
+    public ObjectName getObjectName() {
+        throw VMError.unsupportedFeature(MSG);
     }
 
     @Override
