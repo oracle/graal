@@ -132,7 +132,7 @@ public class BreakpointTest extends AbstractDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 assertSame(breakpoint3a, event.getBreakpoints().iterator().next());
                 assertSame(SuspendAnchor.BEFORE, event.getSuspendAnchor());
-                assertEquals("null", event.getReturnValue().as(String.class));
+                assertNull(event.getReturnValue());
             });
             expectSuspended((SuspendedEvent event) -> {
                 assertSame(breakpoint3b, event.getBreakpoints().iterator().next());
