@@ -932,11 +932,11 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             }
         });
 
-        factories.put("@truffle_managed_to_global", new LLVMNativeIntrinsicFactory(true, true) {
+        factories.put("@truffle_assign_managed", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_managed_to_global", LLVMTruffleWriteManagedToGlobalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_assign_managed", LLVMTruffleWriteManagedToGlobalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
 
