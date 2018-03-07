@@ -105,9 +105,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     @Override
     public List<String> getInputArguments() {
         if (ImageSingletons.contains(JavaMainSupport.class)) {
-            JavaMainSupport support = ImageSingletons.lookup(JavaMainSupport.class);
-
-            return support.getInputArguments();
+            return ImageSingletons.lookup(JavaMainSupport.class).getInputArguments();
         }
         return Collections.emptyList();
     }
