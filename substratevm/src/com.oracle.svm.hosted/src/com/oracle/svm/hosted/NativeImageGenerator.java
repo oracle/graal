@@ -53,7 +53,6 @@ import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -113,7 +112,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
-import com.oracle.graal.pointsto.AnalysisPrinter;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -126,6 +124,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
+import com.oracle.graal.pointsto.reports.CallTreePrinter;
+import com.oracle.graal.pointsto.reports.ObjectTreePrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.Timer;
@@ -235,6 +236,7 @@ import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
+import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -694,12 +696,14 @@ public class NativeImageGenerator {
                  * features are reported or the analysis fails due to any other reasons.
                  */
 
-                if (PointstoOptions.PrintAnalysisCallTree.getValue(options)) {
-                    AnalysisPrinter.printCallTree(bigbang);
+                if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
+                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
+                    CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
                 }
 
-                if (PointstoOptions.PrintBootImageHeap.getValue(options)) {
-                    AnalysisPrinter.printBootImageHeap(bigbang);
+                if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
+                    String reportName = imageName.substring(imageName.lastIndexOf("/") + 1);
+                    ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), reportName);
                 }
 
                 if (PointstoOptions.ReportAnalysisStatistics.getValue(options)) {

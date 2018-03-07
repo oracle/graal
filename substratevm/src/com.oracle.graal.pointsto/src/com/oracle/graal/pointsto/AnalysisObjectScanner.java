@@ -94,7 +94,7 @@ public class AnalysisObjectScanner extends ObjectScanner {
     }
 
     @Override
-    public void forNullArrayElement(JavaConstant array, AnalysisType arrayType) {
+    public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex) {
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         if (!arrayObjElementsFlow.getState().canBeNull()) {
             /* Signal that the constant array can contain null. */
@@ -103,7 +103,7 @@ public class AnalysisObjectScanner extends ObjectScanner {
     }
 
     @Override
-    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType) {
+    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex) {
         assert elementType.isInstantiated();
         /*
          * *ALL* constants are scanned after each analysis iteration, thus the elementType will
