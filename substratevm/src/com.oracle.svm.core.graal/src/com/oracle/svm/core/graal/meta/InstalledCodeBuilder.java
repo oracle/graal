@@ -59,6 +59,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -368,9 +369,11 @@ public class InstalledCodeBuilder {
 
     @Uninterruptible(reason = "Operates on raw pointers to objects")
     private void writeObjectConstantsToCode(ObjectConstantsHolder objectConstants) {
+        boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
         Pointer constantsStart = code.add(constantsOffset);
         for (int i = 0; i < objectConstants.count; i++) {
-            constantsStart.writeObject(objectConstants.offsets[i], objectConstants.values[i]);
+            Pointer address = constantsStart.add(objectConstants.offsets[i]);
+            ReferenceAccess.singleton().writeObjectAt(address, objectConstants.values[i], compressed);
         }
         /* From now on the constantsWalker will operate on the constants area. */
         constantsWalker.pointerMapValid = true;
