@@ -147,6 +147,17 @@ class FlatNodeGenFactory {
     private final Set<SpecializationData> usedInsertAccessorsArray = new HashSet<>();
     private final Set<SpecializationData> usedInsertAccessorsSimple = new HashSet<>();
 
+    // Polymorphism reporting constants
+    private static final String OLD_PREFIX = "old_";
+    private static final String NEW_PREFIX = "new_";
+    private static final String COUNT_SUFIX = "_count";
+    private static final String OLD_STATE = OLD_PREFIX + "state";
+    private static final String OLD_EXCLUDE = OLD_PREFIX + "exclude";
+    private static final String NEW_STATE = NEW_PREFIX + "state";
+    private static final String NEW_EXCLUDE = NEW_PREFIX + "exclude";
+    private static final String REPORT_POLYMORPHIC_SPECIALIZE = "reportPolymorphicSpecialize";
+    private static final String CHECK_FOR_POLYMORPHIC_SPECIALIZE = "checkForPolymorphicSpecialize";
+
     FlatNodeGenFactory(ProcessorContext context, NodeData node) {
         this.context = context;
         this.node = node;
@@ -392,7 +403,7 @@ class FlatNodeGenFactory {
 
         clazz.addOptional(createExecuteAndSpecialize());
         if (node.isReportPolymorphism()) {
-            clazz.addOptional(createCheckReportPolymorphic());
+            clazz.addOptional(createCheckForPolymorphicSpecialize());
         }
 
         NodeInfo nodeInfo = node.getTemplateType().getAnnotation(NodeInfo.class);
@@ -403,7 +414,7 @@ class FlatNodeGenFactory {
         for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes, false)) {
             if (!typeSystem.hasType(type)) {
                 clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem,
-                                context.getType(Object.class), type));
+                        context.getType(Object.class), type));
             }
         }
 
@@ -429,59 +440,60 @@ class FlatNodeGenFactory {
         return clazz;
     }
 
-    private Element createCheckReportPolymorphic() {
+    private Element createCheckForPolymorphicSpecialize() {
         final boolean requiresExclude = requiresExclude();
         TypeMirror returnType = getType(void.class);
-        CodeExecutableElement executable = new CodeExecutableElement(modifiers(PRIVATE), returnType, "checkReportPolymorphic");
-        executable.addParameter(new CodeVariableElement(state.bitSetType, "oldState"));
+        CodeExecutableElement executable = new CodeExecutableElement(modifiers(PRIVATE), returnType, CHECK_FOR_POLYMORPHIC_SPECIALIZE);
+        executable.addParameter(new CodeVariableElement(state.bitSetType, OLD_STATE));
         if (requiresExclude) {
-            executable.addParameter(new CodeVariableElement(exclude.bitSetType, "oldExclude"));
+            executable.addParameter(new CodeVariableElement(exclude.bitSetType, OLD_EXCLUDE));
         }
         for (SpecializationData specialization : reachableSpecializations) {
             if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
-                executable.addParameter(new CodeVariableElement(getType(int.class), "old_" + createSpecializationLocalName(specialization) + "count"));
+                executable.addParameter(new CodeVariableElement(getType(int.class), OLD_PREFIX + createSpecializationLocalName(specialization) + COUNT_SUFIX));
             }
         }
         CodeTreeBuilder builder = executable.createBuilder();
-        FrameState frameState = FrameState.load(this);
-        if (node.isReportPolymorphism()) {
-            builder.startIf().string("oldState > 1").end().startBlock();
-            builder.declaration(state.bitSetType, "newState", state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
-//            builder.declaration(state.bitSetType, "newState", "state_");
-            if (requiresExclude) {
-                builder.declaration(exclude.bitSetType, "newExclude", "exclude_");
-            }
-            if (state.bitSetType.equals(context.getType(int.class))) {
-                builder.startIf().string("Integer.bitCount(oldState ^ newState) " + (requiresExclude ? "+ Integer.bitCount(oldExclude ^ newExclude)" : "") + " > 0");
-            } else {
-                builder.startIf().string("Long.bitCount(oldState ^ newState) " + (requiresExclude ? "+ Long.bitCount(oldExclude ^ newExclude)" : "") + " > 0");
-            }
-            builder.end();
+        builder.startIf().string(OLD_STATE + " > 1");
+        builder.end();
 
-            builder.startBlock().string("reportPolymorphicSpecialize();").newLine();
-            builder.end();
-            builder.startElseBlock();
-            for (SpecializationData specialization : reachableSpecializations) {
-                if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
-                    String typeName = createSpecializationTypeName(specialization);
-                    String fieldName = createSpecializationFieldName(specialization);
-                    String localName = createSpecializationLocalName(specialization);
-                    builder.declaration(typeName, localName, "this." + fieldName);
-                    String localCountName = "new_" + localName + "count";
-                    builder.declaration("int", localCountName, "0");
-                    builder.startWhile().string(localName, " != null").end();
-                    builder.startBlock().string(localCountName + "++;").newLine();
-                    builder.string(localName + "= " + localName + ".next_;").newLine();
-                    builder.end();
-                    builder.startIf().string(localCountName + " > old_" + localName + "count");
-                    builder.end();
-                    builder.startBlock().string("reportPolymorphicSpecialize();").newLine().string("return;").newLine();
-                    builder.end();
-                }
-            }
-            builder.end();
-            builder.end(); // if
+        builder.startBlock();
+        builder.declaration(state.bitSetType, NEW_STATE, state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
+//            builder.declaration(state.bitSetType, NEW_STATE, state.createReference(FrameState.load(this)));
+        if (requiresExclude) {
+            builder.declaration(exclude.bitSetType, NEW_EXCLUDE, exclude.createReference(FrameState.load(this)));
         }
+        final String bitCountClass = state.bitSetType.equals(context.getType(int.class)) ? "Integer" : "Long";
+        builder.startIf().startCall(bitCountClass, "bitCount").string(OLD_STATE + " ^ " + NEW_STATE).end();
+        if (requiresExclude) {
+            builder.string(" + ");
+            builder.startCall(bitCountClass, "bitCount").string(OLD_EXCLUDE + " ^ " + NEW_EXCLUDE).end();
+        }
+        builder.string(" > 0");
+        builder.end(); // if
+        builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2);
+        builder.end(); // true block
+        builder.startElseBlock();
+        for (SpecializationData specialization : reachableSpecializations) {
+            if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
+                String typeName = createSpecializationTypeName(specialization);
+                String fieldName = createSpecializationFieldName(specialization);
+                String localName = createSpecializationLocalName(specialization);
+                builder.declaration(typeName, localName, "this." + fieldName);
+                String localCountName = NEW_PREFIX + localName + COUNT_SUFIX;
+                builder.declaration(context.getType(int.class), localCountName, "0");
+                builder.startWhile().string(localName, " != null");
+                builder.end();
+                builder.startBlock().statement(localCountName + "++;").statement(localName + "= " + localName + ".next_;");
+                builder.end();
+                builder.startIf().string(localCountName + " > " + OLD_PREFIX + localName + COUNT_SUFIX);
+                builder.end();
+                builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2).returnStatement();
+                builder.end();
+            }
+        }
+        builder.end(); // else block
+        builder.end(); // if
         return executable;
     }
 
@@ -1147,7 +1159,9 @@ class FlatNodeGenFactory {
         builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         builder.declaration(context.getType(boolean.class), "hasLock", "true");
         builder.statement("lock.lock()");
-        generateOldPolymorphism(builder, requiresExclude);
+        if (node.isReportPolymorphism()) {
+            generateSaveOldPolymorphismState(builder, requiresExclude);
+        }
         builder.startTryBlock();
 
         builder.tree(state.createLoad(frameState));
@@ -1166,7 +1180,9 @@ class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
         builder.end().startFinallyBlock();
-        generateNewPolymorphism(builder, requiresExclude);
+        if (node.isReportPolymorphism()) {
+            generateCheckNewPolymorphismState(builder, requiresExclude);
+        }
         builder.startIf().string("hasLock").end().startBlock();
         builder.statement("lock.unlock()");
         builder.end();
@@ -1175,44 +1191,40 @@ class FlatNodeGenFactory {
         return method;
     }
 
-    private void generateNewPolymorphism(CodeTreeBuilder builder, boolean requiresExclude) {
-        if (node.isReportPolymorphism()) {
-            builder.string("checkReportPolymorphic(oldState");
-            if (requiresExclude) {
-                builder.string(", oldExclude");
-            }
-            for (SpecializationData specialization : reachableSpecializations) {
-                if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
-                    builder.string(", old_" + createSpecializationLocalName(specialization) + "count");
-                }
-            }
-            builder.string(");").newLine();
+    private void generateCheckNewPolymorphismState(CodeTreeBuilder builder, boolean requiresExclude) {
+        builder.string(CHECK_FOR_POLYMORPHIC_SPECIALIZE + "(" + OLD_STATE);
+        if (requiresExclude) {
+            builder.string(", " + OLD_EXCLUDE);
         }
+        for (SpecializationData specialization : reachableSpecializations) {
+            if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
+                builder.string(", " + OLD_PREFIX + createSpecializationLocalName(specialization) + COUNT_SUFIX);
+            }
+        }
+        builder.string(");").newLine();
     }
 
-    private void generateOldPolymorphism(CodeTreeBuilder builder, boolean requiresExclude) {
-        if (node.isReportPolymorphism()) {
-            builder.declaration(state.bitSetType, "oldState", state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
-//            builder.declaration(state.bitSetType, "oldState", "state_");
-            if (requiresExclude) {
-                builder.declaration(exclude.bitSetType, "oldExclude", "exclude_");
-            }
-            builder.lineComment("TODO: includes: " + node.getReportPolymorphismInclude().toString());
-            builder.lineComment("TODO: excludes: " + node.getReportPolymorphismExclude().toString());
-            for (SpecializationData specialization : reachableSpecializations) {
-                if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
-                    String typeName = createSpecializationTypeName(specialization);
-                    String fieldName = createSpecializationFieldName(specialization);
-                    String localName = createSpecializationLocalName(specialization);
-                    String localCountName = "old_" + localName + "count";
-                    builder.declaration("int", localCountName, "0");
-                    builder.startBlock();
-                    builder.declaration(typeName, localName, "this." + fieldName);
-                    builder.startWhile().string(localName, " != null").end();
-                    builder.startBlock().string(localCountName + "++;").newLine();
-                    builder.string(localName + "= " + localName + ".next_;").newLine().end();
-                    builder.end();
-                }
+    private void generateSaveOldPolymorphismState(CodeTreeBuilder builder, boolean requiresExclude) {
+        builder.declaration(state.bitSetType, OLD_STATE, state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
+//      builder.declaration(state.bitSetType, OLD_STATE, state.createReference(FrameState.load(this)));
+        if (requiresExclude) {
+            builder.declaration(exclude.bitSetType, OLD_EXCLUDE, exclude.createReference(FrameState.load(this)));
+        }
+        builder.lineComment("TODO: includes: " + node.getReportPolymorphismInclude().toString());
+        builder.lineComment("TODO: excludes: " + node.getReportPolymorphismExclude().toString());
+        for (SpecializationData specialization : reachableSpecializations) {
+            if (useSpecializationClass(specialization) && specialization.getMaximumNumberOfInstances() > 1) {
+                String typeName = createSpecializationTypeName(specialization);
+                String fieldName = createSpecializationFieldName(specialization);
+                String localName = createSpecializationLocalName(specialization);
+                String localCountName = OLD_PREFIX + localName + COUNT_SUFIX;
+                builder.declaration(context.getType(int.class), localCountName, "0");
+                builder.startBlock().declaration(typeName, localName, "this." + fieldName);
+                builder.startWhile().string(localName, " != null");
+                builder.end();
+                builder.startBlock().statement(localCountName + "++").statement(localName + "= " + localName + ".next_;");
+                builder.end();
+                builder.end(); // scope block
             }
         }
     }
