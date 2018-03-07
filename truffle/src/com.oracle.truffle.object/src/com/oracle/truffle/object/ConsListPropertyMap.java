@@ -412,8 +412,6 @@ final class ConsListPropertyMap extends PropertyMap {
         return null;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
     public ConsListPropertyMap getParentMap() {
         return car;
     }

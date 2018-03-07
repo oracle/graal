@@ -75,12 +75,6 @@ public abstract class PropertyMap implements ImmutableMap<Object, Property> {
     public abstract PropertyMap removeCopy(Property value);
 
     /** @since 0.17 or earlier */
-    @Deprecated
-    public PropertyMap getParentMap() {
-        throw new UnsupportedOperationException();
-    }
-
-    /** @since 0.17 or earlier */
     @Override
     public Property put(final Object key, final Property value) {
         throw unmodifiableException();

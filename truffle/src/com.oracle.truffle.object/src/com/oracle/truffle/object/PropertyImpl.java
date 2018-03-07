@@ -253,14 +253,6 @@ public class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @SuppressWarnings("deprecation")
-    @Deprecated
-    @Override
-    public final boolean isShadow() {
-        return false;
-    }
-
-    /** @since 0.17 or earlier */
     @SuppressWarnings("hiding")
     protected Property construct(Object name, Location location, int flags) {
         return new PropertyImpl(name, location, flags, relocatable);

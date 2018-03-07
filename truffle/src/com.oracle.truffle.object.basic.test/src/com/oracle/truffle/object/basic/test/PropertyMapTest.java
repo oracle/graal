@@ -34,8 +34,8 @@ import java.util.Random;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.PropertyMap;
 
 public class PropertyMapTest {
@@ -51,14 +51,12 @@ public class PropertyMapTest {
         int[] shuffledSequence = randomSequence.clone();
         shuffle(shuffledSequence, rnd);
 
-        Layout layout = Layout.createLayout();
-        Allocator allocator;
+        Layout layout = Layout.newLayout().build();
         // fill the map
-        allocator = layout.createAllocator();
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, allocator.locationForValue(id), 0);
+            Property value = Property.create(key, newLocation(layout, id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
             assertEqualsOrdered(referenceMap, map);
@@ -66,22 +64,20 @@ public class PropertyMapTest {
 
         // put the same values again, should not modify the map
         PropertyMap initial = map;
-        allocator = layout.createAllocator();
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, allocator.locationForValue(id), 0);
+            Property value = Property.create(key, newLocation(layout, id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             assertSame(initial, map);
         }
         assertEqualsOrdered(referenceMap, map);
 
         // update existing values
-        allocator = layout.createAllocator();
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, allocator.locationForValue((double) id), 0);
+            Property value = Property.create(key, newLocation(layout, (double) id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
         }
@@ -89,18 +85,17 @@ public class PropertyMapTest {
         for (int i = size - 1; i >= 0; i--) {
             int id = randomSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, allocator.locationForValue((double) id), 0);
+            Property value = Property.create(key, newLocation(layout, (double) id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
         }
         assertEqualsOrdered(referenceMap, map);
 
         // update existing values, in random order
-        allocator = layout.createAllocator();
         for (int i = 0; i < size; i++) {
             int id = shuffledSequence[i];
             String key = String.valueOf(id);
-            Property value = Property.create(key, allocator.locationForValue((long) id), 0);
+            Property value = Property.create(key, newLocation(layout, (long) id), 0);
             map = (PropertyMap) map.copyAndPut(key, value);
             referenceMap.put(key, value);
         }
@@ -128,6 +123,10 @@ public class PropertyMapTest {
             referenceMap.remove(key);
             assertEqualsOrdered(referenceMap, map);
         }
+    }
+
+    private static Location newLocation(Layout layout, Object id) {
+        return layout.createAllocator().locationForValue(id);
     }
 
     void assertEqualsOrdered(Map<Object, Property> referenceMap, PropertyMap map) {

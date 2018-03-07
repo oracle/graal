@@ -73,22 +73,6 @@ public class ObjectType {
         return "DynamicObject<" + this.toString() + ">@" + Integer.toHexString(hashCode(object));
     }
 
-    /** @since 0.8 or earlier */
-    @Deprecated
-    public ForeignAccess getForeignAccessFactory() {
-        return ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
-
-            public boolean canHandle(TruffleObject obj) {
-                throw new IllegalArgumentException(this.toString() + " cannot be shared");
-            }
-
-            @Override
-            public CallTarget accessMessage(Message tree) {
-                throw UnsupportedMessageException.raise(tree);
-            }
-        });
-    }
-
     /**
      * Create a {@link ForeignAccess} to access a specific {@link DynamicObject}.
      *
@@ -96,6 +80,20 @@ public class ObjectType {
      * @since 0.8 or earlier
      */
     public ForeignAccess getForeignAccessFactory(DynamicObject object) {
-        return getForeignAccessFactory();
+        return createDefaultForeignAccess();
+    }
+
+    static ForeignAccess createDefaultForeignAccess() {
+        return ForeignAccess.create(new com.oracle.truffle.api.interop.ForeignAccess.Factory() {
+            @TruffleBoundary
+            public boolean canHandle(TruffleObject obj) {
+                throw new IllegalArgumentException(obj.toString() + " cannot be shared");
+            }
+
+            @Override
+            public CallTarget accessMessage(Message tree) {
+                throw UnsupportedMessageException.raise(tree);
+            }
+        });
     }
 }
