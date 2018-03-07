@@ -60,7 +60,6 @@ import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleContext;
@@ -548,7 +547,6 @@ public class MultiThreadedLanguageTest {
     }
 
     @Test
-    @Ignore("GR-5832")
     public void testAsssertionIfThreadStillActive() throws InterruptedException {
         MultiThreadedLanguage.isThreadAccessAllowed = (req) -> {
             return true;
@@ -690,9 +688,7 @@ public class MultiThreadedLanguageTest {
         executors.clear();
         for (Entry<Object, Set<Thread>> entry : initializedThreadsPerContext.entrySet()) {
             if (!entry.getValue().isEmpty()) {
-                // throw new AssertionError("Threads initialized but not disposed for context " +
-                // entry.getKey() +
-                // ": " + entry.getValue());
+                throw new AssertionError("Threads initialized but not disposed for context " + entry.getKey() + ": " + entry.getValue());
             }
         }
     }
