@@ -92,11 +92,13 @@ public final class InspectorInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         OptionValues options = env.getOptions();
-        Server server = new Server(env);
-        try {
-            server.start("Main Context", options.get(Inspect), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path), options.get(Remote));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (options.hasSetOptions()) {
+            Server server = new Server(env);
+            try {
+                server.start("Main Context", options.get(Inspect), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path), options.get(Remote));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

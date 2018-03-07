@@ -101,6 +101,11 @@ class OptionValuesImpl implements OptionValues {
         values.put(optionKey, value);
     }
 
+    @Override
+    public boolean hasSetOptions() {
+        return !values.isEmpty();
+    }
+
     private OptionDescriptor findDescriptor(String key) {
         OptionDescriptor descriptor = descriptors.get(key);
         if (descriptor == null) {
