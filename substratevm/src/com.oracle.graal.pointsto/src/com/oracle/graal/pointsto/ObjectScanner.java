@@ -160,10 +160,10 @@ public abstract class ObjectScanner {
      */
 
     /** Hook for scanned null element value. */
-    public abstract void forNullArrayElement(JavaConstant array, AnalysisType arrayType);
+    public abstract void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex);
 
     /** Hook for scanned non-null element value. */
-    public abstract void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType);
+    public abstract void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex);
 
     /**
      * Scans constant arrays, one element at the time.
@@ -178,9 +178,11 @@ public abstract class ObjectScanner {
         assert valueObj instanceof Object[];
 
         try {
-            for (Object e : (Object[]) valueObj) {
+            Object[] arrayObject = (Object[]) valueObj;
+            for (int idx = 0; idx < arrayObject.length; idx++) {
+                Object e = arrayObject[idx];
                 if (e == null) {
-                    forNullArrayElement(array, arrayType);
+                    forNullArrayElement(array, arrayType, idx);
                 } else {
                     Object element = bb.getUniverse().replaceObject(e);
                     JavaConstant elementConstant = bb.getSnippetReflectionProvider().forObject(element);
@@ -190,7 +192,7 @@ public abstract class ObjectScanner {
                     /* Scan the array element. */
                     scanConstant(elementConstant, reason);
                     /* Process the array element. */
-                    forNonNullArrayElement(array, arrayType, elementConstant, elementType);
+                    forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx);
 
                 }
             }
