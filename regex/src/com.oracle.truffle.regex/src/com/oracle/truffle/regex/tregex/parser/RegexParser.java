@@ -66,34 +66,30 @@ public final class RegexParser {
     private static final Group NO_TRAIL_SURROGATE_AHEAD;
 
     static {
-        try {
-            final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
-            final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
-            WORD_BOUNDARY_SUBSTITUTION = parseRootLess(wordBoundarySrc);
-            NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(nonWordBoundarySrc);
-            // The definitions of \w and \W depend on whether or not we are using the 'u' and 'i'
-            // regexp flags. This means that we cannot substitute \b and \B by the same regular
-            // expression all the time; we need an alternative for when both the Unicode and
-            // IgnoreCase flags are enabled. The straightforward way to do so would be to parse the
-            // expressions `wordBoundarySrc` and `nonWordBoundarySrc` with the 'u' and 'i' flags.
-            // However, the resulting expressions would be needlessly complicated (the unicode
-            // expansion for \W matches complete surrogate pairs, which we do not care about in
-            // these look-around assertions). More importantly, the engine currently does not
-            // support look-behind of length greater than 1 and so \W, which can match two code
-            // units in Unicode mode, would break the engine. Therefore, we make use of the fact
-            // that the difference between /\w/ and /\w/ui is only in the two characters \u017F and
-            // \u212A and we just slightly adjust the expressions `wordBoundarySrc` and
-            // `nonWordBoundarySrc` and parse them in non-Unicode mode.
-            final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
-            UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(wordBoundarySrc));
-            UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(nonWordBoundarySrc));
-            MULTI_LINE_CARET_SUBSTITUTION = parseRootLess("(?:^|(?<=[\\r\\n\\u2028\\u2029]))");
-            MULTI_LINE_DOLLAR_SUBSTITUTION = parseRootLess("(?:$|(?=[\\r\\n\\u2028\\u2029]))");
-            NO_LEAD_SURROGATE_BEHIND = parseRootLess("(?:^|(?<=[^\\uD800-\\uDBFF]))");
-            NO_TRAIL_SURROGATE_AHEAD = parseRootLess("(?:$|(?=[^\\uDC00-\\uDFFF]))");
-        } catch (RegexSyntaxException e) {
-            throw new RuntimeException(e);
-        }
+        final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
+        final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
+        WORD_BOUNDARY_SUBSTITUTION = parseRootLess(wordBoundarySrc);
+        NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(nonWordBoundarySrc);
+        // The definitions of \w and \W depend on whether or not we are using the 'u' and 'i'
+        // regexp flags. This means that we cannot substitute \b and \B by the same regular
+        // expression all the time; we need an alternative for when both the Unicode and
+        // IgnoreCase flags are enabled. The straightforward way to do so would be to parse the
+        // expressions `wordBoundarySrc` and `nonWordBoundarySrc` with the 'u' and 'i' flags.
+        // However, the resulting expressions would be needlessly complicated (the unicode
+        // expansion for \W matches complete surrogate pairs, which we do not care about in
+        // these look-around assertions). More importantly, the engine currently does not
+        // support complex lookbehind and so \W, which can match anywhere between one or two code
+        // units in Unicode mode, would break the engine. Therefore, we make use of the fact
+        // that the difference between /\w/ and /\w/ui is only in the two characters \u017F and
+        // \u212A and we just slightly adjust the expressions `wordBoundarySrc` and
+        // `nonWordBoundarySrc` and parse them in non-Unicode mode.
+        final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
+        UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(wordBoundarySrc));
+        UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(nonWordBoundarySrc));
+        MULTI_LINE_CARET_SUBSTITUTION = parseRootLess("(?:^|(?<=[\\r\\n\\u2028\\u2029]))");
+        MULTI_LINE_DOLLAR_SUBSTITUTION = parseRootLess("(?:$|(?=[\\r\\n\\u2028\\u2029]))");
+        NO_LEAD_SURROGATE_BEHIND = parseRootLess("(?:^|(?<=[^\\uD800-\\uDBFF]))");
+        NO_TRAIL_SURROGATE_AHEAD = parseRootLess("(?:$|(?=[^\\uDC00-\\uDFFF]))");
     }
 
     private final RegexAST ast;
@@ -136,7 +132,7 @@ public final class RegexParser {
 
     @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexParser(source, RegexOptions.DEFAULT).parseDryRun();
+        new RegexParser(source, RegexOptions.DEFAULT).validate();
     }
 
     @TruffleBoundary

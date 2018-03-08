@@ -91,11 +91,7 @@ public class RegexObject implements RegexLanguageObject {
 
     @CompilerDirectives.TruffleBoundary
     private TruffleObject compileRegex() {
-        try {
-            return compiler.compile(source);
-        } catch (RegexSyntaxException e) {
-            throw new RuntimeException(e);
-        }
+        return compiler.compile(source);
     }
 
     public void setCompiledRegexObject(TruffleObject compiledRegexObject) {
