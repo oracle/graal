@@ -870,7 +870,7 @@ public class JavaInteropTest {
         keyInfo = getKeyInfo(d, "toString");
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isRemovable(keyInfo));
     }

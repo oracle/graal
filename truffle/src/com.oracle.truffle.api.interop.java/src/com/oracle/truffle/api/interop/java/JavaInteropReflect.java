@@ -79,42 +79,6 @@ final class JavaInteropReflect {
         return null;
     }
 
-    static boolean isField(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
-        final boolean onlyStatic = object.isClass();
-        return classDesc.lookupField(name, onlyStatic) != null;
-    }
-
-    static boolean isMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
-        final boolean onlyStatic = object.isClass();
-        return classDesc.lookupMethod(name, onlyStatic) != null;
-    }
-
-    static boolean isInternalMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
-        final boolean onlyStatic = object.isClass();
-        JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
-        return method != null && method.isInternal();
-    }
-
-    static boolean isMemberType(JavaObject object, String name) {
-        final boolean onlyStatic = object.isClass();
-        if (!onlyStatic) {
-            // no support for non-static members now
-            return false;
-        }
-        Class<?> clazz = object.getLookupClass();
-        if (Modifier.isPublic(clazz.getModifiers())) {
-            for (Class<?> t : clazz.getClasses()) {
-                if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     static boolean isJNIName(String name) {
         return name.contains("__");
     }
@@ -153,6 +117,54 @@ final class JavaInteropReflect {
     static JavaFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
         JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
         return classDesc.lookupField(name, onlyStatic);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static int findKeyInfo(Class<?> clazz, String name, boolean onlyStatic) {
+        if (TruffleOptions.AOT) {
+            return 0;
+        }
+
+        boolean readable = false;
+        boolean writable = false;
+        boolean invocable = false;
+        boolean internal = false;
+
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
+        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        if (foundMethod != null) {
+            readable = true;
+            invocable = true;
+        } else if (isJNIName(name)) {
+            foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
+            if (foundMethod != null) {
+                readable = true;
+                invocable = true;
+                internal = true;
+            }
+        }
+
+        if (!readable) {
+            JavaFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
+            if (foundField != null) {
+                readable = true;
+                writable = true;
+            }
+        }
+
+        if (!readable) {
+            if (onlyStatic) {
+                Class<?> innerClass = findInnerClass(clazz, name);
+                if (innerClass != null) {
+                    readable = true;
+                }
+            }
+        }
+
+        if (readable) {
+            return KeyInfo.newBuilder().setReadable(readable).setWritable(writable).setInvocable(invocable).setInternal(internal).build();
+        }
+        return 0;
     }
 
     @CompilerDirectives.TruffleBoundary
