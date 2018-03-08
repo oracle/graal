@@ -1,5 +1,5 @@
 # overlay version
-overlay = 62779305d1f01e3237231cd2a543ddf5599c3a04
+overlay = 6f4b88a4acc9895abdd60473e21aac1257ee8fca
 
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
