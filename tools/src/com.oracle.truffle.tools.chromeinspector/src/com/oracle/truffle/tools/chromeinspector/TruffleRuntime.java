@@ -246,17 +246,19 @@ public final class TruffleRuntime extends RuntimeDomain {
         JSONArray internals = new JSONArray();
         HashSet<String> storedPropertyNames = new HashSet<>(properties.size());
         for (DebugValue v : properties) {
-            if (!v.isInternal()) {
-                result.put(createPropertyJSON(v));
-                storedPropertyNames.add(v.getName());
-            } else {
-                internals.put(createPropertyJSON(v));
+            if (v.isReadable()) {
+                if (!v.isInternal()) {
+                    result.put(createPropertyJSON(v));
+                    storedPropertyNames.add(v.getName());
+                } else {
+                    internals.put(createPropertyJSON(v));
+                }
             }
         }
         int i = 0;
         for (DebugValue v : arrayElements) {
             String name = Integer.toString(i++);
-            if (!storedPropertyNames.contains(name)) {
+            if (v.isReadable() && !storedPropertyNames.contains(name)) {
                 result.put(createPropertyJSON(v, name));
             }
         }
