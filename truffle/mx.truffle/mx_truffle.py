@@ -399,11 +399,10 @@ def check_filename_length(args):
     parser.parse_known_args(args)
     max_length = 143
     too_long = []
-    for root, _, filenames in os.walk('.'):
+    for _, _, filenames in os.walk('.'):
         for filename in filenames:
             if len(filename) > max_length:
                 too_long.append(filename)
-            os.path.join(root, filename)
     if too_long:
         mx.log_error("The following file names are too long for eCryptfs: ")
         for x in too_long:
