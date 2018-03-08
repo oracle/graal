@@ -199,7 +199,10 @@ public final class Sulong extends LLVMLanguage {
     @Override
     protected Object findMetaObject(LLVMContext context, Object value) {
         if (value instanceof LLVMDebugObject) {
-            return ((LLVMDebugObject) value).getType();
+            final LLVMSourceType source = ((LLVMDebugObject) value).getType();
+            if (source != null) {
+                return source.getName();
+            }
         }
 
         return super.findMetaObject(context, value);
