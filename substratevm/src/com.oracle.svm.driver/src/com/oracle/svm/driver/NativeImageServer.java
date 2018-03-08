@@ -22,6 +22,9 @@
  */
 package com.oracle.svm.driver;
 
+import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGTERM;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -129,60 +132,95 @@ final class NativeImageServer extends NativeImage {
             return result;
         }
 
-        private int sendRequest(Consumer<String> out, Consumer<String> err, ServerCommand serverCommand, String... args) {
+        private int sendRequest(Consumer<byte[]> out, Consumer<byte[]> err, ServerCommand serverCommand, String... args) {
             List<String> argList = Arrays.asList(args);
             showVerboseMessage(verboseServer, "Sending to server [");
-            showVerboseMessage(verboseServer, argList.stream().collect(Collectors.joining(" \\\n")));
+            showVerboseMessage(verboseServer, serverCommand.toString());
+            if (argList.size() > 0) {
+                showVerboseMessage(verboseServer, argList.stream().collect(Collectors.joining(" \\\n")));
+            }
             showVerboseMessage(verboseServer, "]");
-            int exitCode = NativeImageBuildClient.sendRequest(serverCommand, String.join(" ", argList), port, out, err);
+            int exitCode = NativeImageBuildClient.sendRequest(serverCommand, String.join(" ", argList).getBytes(), port, out, err);
             showVerboseMessage(verboseServer, "Server returns: " + exitCode);
             return exitCode;
         }
 
         void sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
             withLockDirFileChannel(serverDir, lockFileChannel -> {
-                try (FileLock lock = lockFileChannel.tryLock()) {
-                    if (lock == null) {
-                        showError("A previous build is still in progress. Try again later.");
-                    }
+                boolean abortedOnce = false;
+                boolean finished = false;
+                while (!finished) {
+                    try (FileLock lock = lockFileChannel.tryLock()) {
+                        if (lock != null) {
+                            finished = true;
+                            if (abortedOnce) {
+                                showMessage("DONE.");
+                            }
+                        } else {
+                            /* Cancel strategy */
+                            if (!abortedOnce) {
+                                showMessagePart("A previous build is in progress. Aborting previous build...");
+                                abortTask();
+                                abortedOnce = true;
+                            }
+                            try {
+                                Thread.sleep(3_000);
+                            } catch (InterruptedException e) {
+                                throw showError("Woke up from waiting for previous build to abort", e);
+                            }
+                            continue;
+                        }
 
-                    /* Now we have the server-lock and can send the build-request */
-                    List<String> command = new ArrayList<>();
-                    command.add("-task=" + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
-                    LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
-                    imagecp.addAll(imageCP);
-                    command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
-                    command.addAll(imageArgs);
-                    showVerboseMessage(isVerbose(), "SendBuildRequest [");
-                    showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining("\n")));
-                    showVerboseMessage(isVerbose(), "]");
-                    try {
-                        /* logfile main purpose is to know when was the last build request */
-                        String logFileEntry = command.stream().collect(Collectors.joining(" ", Instant.now().toString() + ": ", "\n"));
-                        Files.write(serverDir.resolve(buildRequestLog), logFileEntry.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                        updateLastBuildRequest();
+                        /* Now we have the server-lock and can send the build-request */
+                        List<String> command = new ArrayList<>();
+                        command.add("-task=" + "com.oracle.svm.hosted.NativeImageGeneratorRunner");
+                        LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
+                        imagecp.addAll(imageCP);
+                        command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+                        command.addAll(imageArgs);
+                        showVerboseMessage(isVerbose(), "SendBuildRequest [");
+                        showVerboseMessage(isVerbose(), command.stream().collect(Collectors.joining("\n")));
+                        showVerboseMessage(isVerbose(), "]");
+                        try {
+                            /* logfile main purpose is to know when was the last build request */
+                            String logFileEntry = command.stream().collect(Collectors.joining(" ", Instant.now().toString() + ": ", "\n"));
+                            Files.write(serverDir.resolve(buildRequestLog), logFileEntry.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                            updateLastBuildRequest();
+                        } catch (IOException e) {
+                            throw showError("Could not read/write into build-request log file", e);
+                        }
+                        // Checkstyle: stop
+                        int requestStatus = sendRequest(
+                                        byteStreamToByteConsumer(System.out),
+                                        byteStreamToByteConsumer(System.err),
+                                        ServerCommand.BUILD_IMAGE,
+                                        command.toArray(new String[command.size()]));
+                        // Checkstyle: resume
+                        if (requestStatus != NativeImageBuildClient.EXIT_SUCCESS) {
+                            throw showError("Processing image build request failed");
+                        }
                     } catch (IOException e) {
-                        showError("Could not read/write into build-request log file", e);
+                        throw showError("Error while trying to lock ServerDir " + serverDir, e);
                     }
-                    int requestStatus = sendRequest(System.out::print, System.err::print, ServerCommand.BUILD_IMAGE, command.toArray(new String[command.size()]));
-                    if (requestStatus != NativeImageBuildClient.EXIT_SUCCESS) {
-                        showError("Processing image build request failed");
-                    }
-                } catch (IOException e) {
-                    showError("Error while trying to lock ServerDir " + serverDir, e);
                 }
             });
         }
 
         boolean isAlive() {
-            StringBuilder sb = new StringBuilder();
-            boolean alive = sendRequest(sb::append, sb::append, ServerCommand.GET_VERSION) == NativeImageBuildClient.EXIT_SUCCESS;
-            showVerboseMessage(verboseServer, "Server version response: " + sb);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            boolean alive = sendRequest(byteStreamToByteConsumer(baos), byteStreamToByteConsumer(baos), ServerCommand.GET_VERSION) == NativeImageBuildClient.EXIT_SUCCESS;
+            showVerboseMessage(verboseServer, "Server version response: " + new String(baos.toByteArray()));
             return alive;
         }
 
+        void abortTask() {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            sendRequest(byteStreamToByteConsumer(baos), byteStreamToByteConsumer(baos), ServerCommand.ABORT_BUILD);
+            showVerboseMessage(verboseServer, "Server abort response:" + new String(baos.toByteArray()));
+        }
+
         synchronized void shutdown() {
-            Signal.kill(pid, Signal.SignalEnum.SIGTERM.getCValue());
+            Signal.kill(pid, SIGTERM.getCValue());
             /* Release port only after server stops responding to it */
             long timeout = System.currentTimeMillis() + 60_000;
             showVerboseMessage(verboseServer, "Waiting for " + this + " to die");
@@ -190,10 +228,10 @@ final class NativeImageServer extends NativeImage {
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
-                    showError("Woke up from waiting for " + this + " to die", e);
+                    throw showError("Woke up from waiting for " + this + " to die", e);
                 }
                 if (timeout < System.currentTimeMillis()) {
-                    showError(this + " keeps responding to port " + port + " even after shutdown");
+                    throw showError(this + " keeps responding to port " + port + " even after shutdown");
                 }
             }
             deleteAllFiles(serverDir);
@@ -204,7 +242,7 @@ final class NativeImageServer extends NativeImage {
             StringBuilder sb = new StringBuilder();
             sb.append(getClass().getName());
             sb.append("\nServerDir: ").append(serverDir);
-            sb.append("\nRunning since: ").append(getDurationString(since));
+            sb.append("\nRunning for: ").append(getDurationString(since));
             sb.append("\nLast build: ");
             if (since.equals(lastBuildRequest)) {
                 sb.append("None");
@@ -237,7 +275,7 @@ final class NativeImageServer extends NativeImage {
 
         private String getLivenessInfo(boolean alive) {
             if (alive) {
-                return " since: " + getDurationString(since);
+                return " running for: " + getDurationString(since);
             } else {
                 return " DEAD";
             }
@@ -250,6 +288,16 @@ final class NativeImageServer extends NativeImage {
                 return " last build: " + getDurationString(lastBuildRequest);
             }
         }
+    }
+
+    private static Consumer<byte[]> byteStreamToByteConsumer(OutputStream stream) {
+        return b -> {
+            try {
+                stream.write(b);
+            } catch (IOException e) {
+                throw new RuntimeException("Byte stream write failed.");
+            }
+        };
     }
 
     private String getSessionID() {
@@ -321,12 +369,12 @@ final class NativeImageServer extends NativeImage {
                     try {
                         Server server = new Server(serverDir);
                         if (!server.isAlive()) {
-                            showError("Found defunct server:" + server.getServerInfo());
+                            throw showError("Found defunct server:" + server.getServerInfo());
                         }
                         showVerboseMessage(verboseServer, "Reuse running server: " + server);
                         result[0] = server;
                     } catch (Exception e) {
-                        showError("Found corrupt ServerDir: " + serverDir, e);
+                        throw showError("Found corrupt ServerDir: " + serverDir, e);
                     }
                 } else {
                     int serverPort = acquirePortNumber(maxPorts);
@@ -347,7 +395,7 @@ final class NativeImageServer extends NativeImage {
                                 showWarning("Cannot acquire new server port despite removing " + victim);
                             }
                         } else {
-                            showWarning("Native image server limit exceeded. Use options -server{-list,shutdown[-all]} to fix the problem.");
+                            showWarning("Native image server limit exceeded. Use options -server{-list,-shutdown[-all]} to fix the problem.");
                         }
                     }
                     if (serverPort >= 0) {
@@ -360,7 +408,7 @@ final class NativeImageServer extends NativeImage {
                     }
                 }
             } catch (IOException e) {
-                showError("ServerInstance-creation locking failed", e);
+                throw showError("ServerInstance-creation locking failed", e);
             }
         });
         return result[0];
@@ -382,7 +430,7 @@ final class NativeImageServer extends NativeImage {
                                 .filter(sessionDir -> sessionDir.getFileName().toString().startsWith(sessionDirPrefix))
                                 .collect(Collectors.toList());
             } catch (IOException e) {
-                showError("Accessing MachineDir " + getMachineDir() + " failed", e);
+                throw showError("Accessing MachineDir " + getMachineDir() + " failed", e);
             }
         }
         return sessionDirs;
@@ -403,7 +451,7 @@ final class NativeImageServer extends NativeImage {
                     }
                 });
             } catch (IOException e) {
-                showError("Accessing SessionDir " + sessionDir + " failed", e);
+                throw showError("Accessing SessionDir " + sessionDir + " failed", e);
             }
         }
         return servers;
@@ -442,7 +490,7 @@ final class NativeImageServer extends NativeImage {
                         }
                     }
                 } catch (IOException e) {
-                    showError("Locking SessionDir " + sessionDir + " failed", e);
+                    throw showError("Locking SessionDir " + sessionDir + " failed", e);
                 }
             });
         }
@@ -454,7 +502,7 @@ final class NativeImageServer extends NativeImage {
                     deleteAllFiles(sessionDir);
                 }
             } catch (IOException e) {
-                showError("Accessing SessionDir " + sessionDir + " failed");
+                throw showError("Accessing SessionDir " + sessionDir + " failed");
             }
         }
     }
@@ -506,7 +554,7 @@ final class NativeImageServer extends NativeImage {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
                     String serverStr = server == null ? "server" : server.toString();
-                    showError("Woke up from waiting for " + serverStr + " to become alive", e);
+                    throw showError("Woke up from waiting for " + serverStr + " to become alive", e);
                 }
             }
         }
@@ -524,6 +572,10 @@ final class NativeImageServer extends NativeImage {
             default:
                 return pid;
         }
+
+        /* The server should not get signals from the native-image during the first run. */
+        Unistd.setsid();
+
         runnable.run();
         System.exit(0);
         return -1;
@@ -561,7 +613,7 @@ final class NativeImageServer extends NativeImage {
                 fileChannel.close();
             }
         } catch (IOException e) {
-            showError("Using FileChannel for " + filePath + " failed", e);
+            throw showError("Using FileChannel for " + filePath + " failed", e);
         }
     }
 
@@ -574,7 +626,7 @@ final class NativeImageServer extends NativeImage {
                     /* Trigger AsynchronousCloseException in channel.lock() */
                     channel.close();
                 } catch (IOException e) {
-                    showError("LockWatcher closing FileChannel of LockFile failed", e);
+                    throw showError("LockWatcher closing FileChannel of LockFile failed", e);
                 }
             } catch (InterruptedException e) {
                 /* Sleep interrupted -> Lock acquired") */
@@ -617,7 +669,7 @@ final class NativeImageServer extends NativeImage {
                     mp.store(os, "");
                 }
             } catch (IOException e) {
-                showError("Acquiring new server port number locking failed", e);
+                throw showError("Acquiring new server port number locking failed", e);
             }
         });
         if (selectedPort[0] < firstPortNumber) {
@@ -649,17 +701,25 @@ final class NativeImageServer extends NativeImage {
                     mp.store(os, "");
                 }
             } catch (Exception e) {
-                showError("Locking for releasing server port number " + port + " failed", e);
+                throw showError("Locking for releasing server port number " + port + " failed", e);
             }
         });
     }
 
-    private final class SignalHandler implements sun.misc.SignalHandler {
+    private final class AbortBuildSignalHandler implements sun.misc.SignalHandler {
+        private int attemptCount = 0;
+
         @Override
         public void handle(sun.misc.Signal signal) {
-            killServer();
-            closeFileChannels();
-            System.exit(1);
+            Server current = building;
+            if (attemptCount >= 3 || current == null) {
+                killServer();
+                closeFileChannels();
+                System.exit(1);
+            } else {
+                attemptCount += 1;
+                current.abortTask();
+            }
         }
 
         private void closeFileChannels() {
@@ -670,7 +730,7 @@ final class NativeImageServer extends NativeImage {
                         showVerboseMessage(isVerbose(), "Closing open FileChannel: " + fileChannel);
                         fileChannel.close();
                     } catch (Exception e) {
-                        showError("Closing FileChannel failed", e);
+                        throw showError("Closing FileChannel failed", e);
                     }
                 }
             }
@@ -690,7 +750,7 @@ final class NativeImageServer extends NativeImage {
     protected void buildImage(LinkedHashSet<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
         if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
-            SignalHandler signalHandler = new SignalHandler();
+            AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
             sun.misc.Signal.handle(new sun.misc.Signal("TERM"), signalHandler);
             sun.misc.Signal.handle(new sun.misc.Signal("INT"), signalHandler);
 

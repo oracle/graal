@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,8 +42,8 @@ import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
 public class NativeImageBuildClient {
 
-    public static final String COMMAND_PREFIX = "-command=";
-    public static final int EXIT_FAIL = -1;
+    private static final String COMMAND_PREFIX = "-command=";
+    private static final int EXIT_FAIL = -1;
     public static final int EXIT_SUCCESS = 0;
 
     private static void usage(Consumer<String> out) {
@@ -51,8 +52,8 @@ public class NativeImageBuildClient {
                         PORT_PREFIX));
     }
 
-    public static int run(String[] argsArray, Consumer<String> out, Consumer<String> err) {
-        Consumer<String> outln = s -> out.accept(s + "\n");
+    public static int run(String[] argsArray, Consumer<byte[]> out, Consumer<byte[]> err) {
+        Consumer<String> outln = s -> out.accept((s + "\n").getBytes());
         final List<String> args = new ArrayList<>(Arrays.asList(argsArray));
         if (args.size() < 1) {
             usage(outln);
@@ -67,16 +68,16 @@ public class NativeImageBuildClient {
 
         if (port.isPresent() && command.isPresent()) {
             ServerCommand serverCommand = ServerCommand.valueOf(command.get());
-            return sendRequest(serverCommand, String.join(" ", args), port.get(), out, err);
+            return sendRequest(serverCommand, String.join(" ", args).getBytes(), port.get(), out, err);
         } else {
             usage(outln);
             return EXIT_FAIL;
         }
     }
 
-    public static int sendRequest(ServerCommand command, String payload, int port, Consumer<String> out, Consumer<String> err) {
-        Consumer<String> outln = s -> out.accept(s + "\n");
-        Consumer<String> errln = s -> out.accept(s + "\n");
+    public static int sendRequest(ServerCommand command, byte[] payload, int port, Consumer<byte[]> out, Consumer<byte[]> err) {
+        Consumer<String> outln = s -> out.accept((s + "\n").getBytes());
+        Consumer<String> errln = s -> err.accept((s + "\n").getBytes());
 
         try (
                         Socket svmClient = new Socket((String) null, port);
@@ -88,12 +89,13 @@ public class NativeImageBuildClient {
                 line = is.readLine();
                 if (line != null) {
                     SubstrateServerMessage response = new Gson().fromJson(line, SubstrateServerMessage.class);
-                    outln.accept(response.payload);
+                    outln.accept(new String(response.payload));
                 }
             } else {
+
                 while ((line = is.readLine()) != null) {
                     SubstrateServerMessage serverCommand = new Gson().fromJson(line, SubstrateServerMessage.class);
-                    Consumer<String> selectedConsumer = null;
+                    Consumer<byte[]> selectedConsumer;
                     switch (serverCommand.command) {
                         case WRITE_OUT:
                             selectedConsumer = out;
@@ -103,7 +105,7 @@ public class NativeImageBuildClient {
                             break;
                         case SEND_STATUS:
                             /* Exit with exit status sent by server */
-                            return Integer.valueOf(serverCommand.payload);
+                            return ByteBuffer.wrap(serverCommand.payload).getInt();
                         default:
                             throw new RuntimeException("Invalid command sent by the image build server: " + serverCommand.command);
                     }

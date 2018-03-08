@@ -48,4 +48,9 @@ public interface ImageBuildTask {
      */
     int build(String[] args, String[] classpath, ClassLoader compilationClassLoader);
 
+    /**
+     * Requests interruption of the image build.
+     */
+    void interruptBuild();
+
 }
