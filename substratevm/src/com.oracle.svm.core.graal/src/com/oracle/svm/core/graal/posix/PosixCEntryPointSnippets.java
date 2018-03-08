@@ -23,6 +23,7 @@
 package com.oracle.svm.core.graal.posix;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateOptions.UseHeapBaseRegister;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
@@ -53,6 +54,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -69,6 +71,7 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
@@ -82,7 +85,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posix.thread.PosixVMThreads;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -154,9 +156,9 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     }
 
     @Uninterruptible(reason = "Called by an uninterruptible method.")
-    private static void setHeapBase(PointerBase isolate) {
+    private static void setHeapBase(PointerBase heapBase) {
         assert UseHeapBaseRegister.getValue();
-        writeCurrentVMHeapBase(hasHeapBase() ? isolate : Word.nullPointer());
+        writeCurrentVMHeapBase(hasHeapBase() ? heapBase : Word.nullPointer());
     }
 
     @Snippet
@@ -225,7 +227,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     public static int detachThreadSnippet() {
         int result = Errors.NO_ERROR;
         if (MultiThreaded.getValue()) {
-            IsolateThread thread = KnownIntrinsics.currentVMThread();
+            IsolateThread thread = CEntryPointContext.getCurrentIsolateThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
         if (UseHeapBaseRegister.getValue()) {
@@ -321,15 +323,27 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @Snippet
     public static int enterSnippet(IsolateThread thread) {
-        if (MultiThreaded.getValue() && thread.isNull()) {
-            return Errors.NULL_ARGUMENT;
+        Isolate isolate;
+        if (MultiThreaded.getValue()) {
+            if (thread.isNull()) {
+                return Errors.NULL_ARGUMENT;
+            }
+            writeCurrentVMThread(thread);
+            isolate = PosixVMThreads.IsolateTL.get(thread);
+        } else { // single-threaded
+            if (SpawnIsolates.getValue()) {
+                if (thread.isNull()) {
+                    return Errors.NULL_ARGUMENT;
+                }
+            } else if (!thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
+                return Errors.UNATTACHED_THREAD;
+            }
+            isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
         if (UseHeapBaseRegister.getValue()) {
-            Isolate isolate = MultiThreaded.getValue() ? PosixVMThreads.IsolateTL.get(thread) : (Isolate) thread;
             setHeapBase(PosixIsolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
-            writeCurrentVMThread(thread);
             Safepoint.transitionNativeToJava();
         }
         return Errors.NO_ERROR;
@@ -365,15 +379,15 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @Snippet
     public static boolean isAttachedSnippet(Isolate isolate) {
-        return !MultiThreaded.getValue() /* any thread is potentially "attached" */
-                        || runtimeCallIsAttached(IS_ATTACHED_MT, isolate);
+        return PosixIsolates.checkSanity(isolate) == Errors.NO_ERROR &&
+                        (!MultiThreaded.getValue() || runtimeCallIsAttached(IS_ATTACHED_MT, isolate));
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static boolean isAttachedMT(Isolate isolate) {
         if (UseHeapBaseRegister.getValue()) {
-            setHeapBase(isolate);
+            setHeapBase(PosixIsolates.getHeapBase(isolate));
         }
         return PosixVMThreads.isInitialized() && PosixVMThreads.VMThreadTL.get().isNonNull();
     }

@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.core.c.function;
 
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -31,6 +32,21 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 
 public class CEntryPointSetup {
+
+    /**
+     * The sentinel value for {@link Isolate} when the native image is built so that there can be
+     * only a single isolate.
+     */
+    public static final Word SINGLE_ISOLATE_SENTINEL = Word.unsigned(0x150_150_150_150_150L);
+
+    /** @see #SINGLE_THREAD_SENTINEL */
+    public static final int SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND = 0x777 - 0x150;
+
+    /**
+     * The sentinel value for {@link IsolateThread} when the native image is built so that there can
+     * be only a single isolate with a single thread.
+     */
+    public static final Word SINGLE_THREAD_SENTINEL = SINGLE_ISOLATE_SENTINEL.add(SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
 
     public static final class EnterPrologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
