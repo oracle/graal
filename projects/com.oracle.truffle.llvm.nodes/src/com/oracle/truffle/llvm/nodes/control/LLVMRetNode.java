@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,9 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
@@ -57,15 +59,25 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-@Instrumentable(factory = LLVMRetNodeWrapper.class)
-public abstract class LLVMRetNode extends LLVMControlFlowNode {
+@GenerateWrapper
+public abstract class LLVMRetNode extends LLVMControlFlowNode implements InstrumentableNode {
 
     public LLVMRetNode(LLVMSourceLocation sourceSection) {
         super(sourceSection);
     }
 
-    public LLVMRetNode(LLVMRetNode delegate) {
+    protected LLVMRetNode(LLVMRetNode delegate) {
         super(delegate.getSourceLocation());
+    }
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMRetNodeWrapper(this, this, probe);
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return getSourceLocation() != null;
     }
 
     @Override

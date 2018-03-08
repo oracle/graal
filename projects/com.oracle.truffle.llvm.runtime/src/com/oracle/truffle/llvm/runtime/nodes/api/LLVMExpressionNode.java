@@ -31,7 +31,9 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -54,8 +56,18 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * operation.
  */
 @TypeSystemReference(LLVMTypes.class)
-@Instrumentable(factory = LLVMExpressionNodeWrapper.class)
-public abstract class LLVMExpressionNode extends LLVMNode {
+@GenerateWrapper
+public abstract class LLVMExpressionNode extends LLVMNode implements InstrumentableNode {
+
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMExpressionNodeWrapper(this, probe);
+    }
+
+    @Override
+    public boolean isInstrumentable() {
+        return getSourceLocation() != null;
+    }
 
     public static final LLVMExpressionNode[] NO_EXPRESSIONS = {};
 
