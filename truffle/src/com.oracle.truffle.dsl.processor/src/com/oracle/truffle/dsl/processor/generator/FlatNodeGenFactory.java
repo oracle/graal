@@ -2644,9 +2644,6 @@ class FlatNodeGenFactory {
                 builder.statement(specializationLocalName + " = null");
             }
             builder.statement(countName + "++");
-// builder.startIf().string("!reportPolymorphicSpecialize && " + countName + " >
-// 1").end().startBlock().statement("reportPolymorphicSpecialize()").statement("reportPolymorphicSpecialize
-// = true").end();
             builder.end();
         }
 
@@ -3799,13 +3796,6 @@ class FlatNodeGenFactory {
 
             builder.string(" /* ", label("is-single"), " */");
             return builder.build();
-        }
-
-        public CodeTree createMasked(FrameState frameState, Object[] elements) {
-            String mask = formatMask(createMask(elements));
-            CodeTree masked = CodeTreeBuilder.createBuilder().startParantheses().tree(createReference(frameState)).string(" & ").string(mask).end().build();
-            CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-            return builder.tree(masked).build();
         }
 
         public CodeTree createContains(FrameState frameState, Object[] elements) {

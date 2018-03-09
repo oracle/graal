@@ -500,12 +500,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         Node.ACCESSOR.nodes().reportPolymorphicSpecialize(this);
     }
 
-    protected void reportNodeCostChange(NodeCost oldCost, NodeCost newCost) {
-        if (oldCost.compareTo(newCost) < 0 && newCost == NodeCost.POLYMORPHIC) {
-            reportPolymorphicSpecialize();
-        }
-    }
-
     /**
      * Converts this node to a textual representation useful for debugging.
      *
