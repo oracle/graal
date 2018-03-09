@@ -390,7 +390,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             Iterator<ResolvedJavaMethod> enumExceptionCtor = Arrays.stream(enumExceptionType.getDeclaredConstructors()).filter(
                             c -> c.getSignature().getParameterCount(false) == 1 && c.getSignature().getParameterType(0, null).equals(metaAccess.lookupJavaType(String.class))).iterator();
             ConstantNode enumExceptionMessage = kit.createConstant(kit.getConstantReflection().forString("null return value cannot be converted to a C enum value"), JavaKind.Object);
-            kit.createJavaCall(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
+            kit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, enumExceptionCtor.next(), enumException, enumExceptionMessage);
             assert !enumExceptionCtor.hasNext();
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, enumException));
             kit.append(new DeadEndNode());

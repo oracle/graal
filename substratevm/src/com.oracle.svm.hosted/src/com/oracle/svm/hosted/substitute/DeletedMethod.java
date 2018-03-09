@@ -31,7 +31,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.replacements.GraphKit;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
@@ -72,7 +71,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
     }
 
     public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message) {
-        GraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
@@ -86,9 +85,10 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(method, message, false);
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
-        ValueNode exceptionNode = kit.createInvoke(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, msgNode);
+        ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, bci++, msgNode);
 
         kit.append(new UnwindNode(exceptionNode));
+        kit.mergeUnwinds();
 
         assert graph.verify();
         return graph;
