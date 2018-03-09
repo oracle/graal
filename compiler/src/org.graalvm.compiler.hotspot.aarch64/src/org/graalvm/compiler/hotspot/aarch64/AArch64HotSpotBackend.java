@@ -296,8 +296,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
      * Insert a nop at the start of the prolog so we can patch in a branch if we need to invalidate
      * the method later.
      *
-     * @see: HotSpot: c1MacroAssembler_aarch64.cpp C1_MacroAssembler::build_frame
-     * @see: HotSpot: nativeInst_aarch64.cpp NativeJump::patch_verified_entry
+     * @see "http://mail.openjdk.java.net/pipermail/aarch64-port-dev/2013-September/000273.html"
      */
     public static void emitInvalidatePlaceholder(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         crb.blockComment("[nop for method invalidation]");
