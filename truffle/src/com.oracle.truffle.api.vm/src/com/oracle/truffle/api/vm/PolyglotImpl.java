@@ -210,11 +210,26 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(T e) {
+    static <T extends Throwable> RuntimeException wrapHostException(PolyglotLanguageContext context, T e) {
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
         } else if (e instanceof PolyglotException) {
-            return (PolyglotException) e;
+            PolyglotException polyglot = (PolyglotException) e;
+            if (context != null) {
+                PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getImpl(polyglot));
+                if (exceptionImpl.context == context.context || exceptionImpl.isHostException()) {
+                    // for values of the same context the TruffleException is allowed to be unboxed
+                    // for host exceptions no guest values are bound therefore it can also be
+                    // unboxed
+                    Throwable original = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getImpl(polyglot)).exception;
+                    if (original instanceof RuntimeException) {
+                        throw (RuntimeException) original;
+                    } else if (original instanceof Error) {
+                        throw (Error) original;
+                    }
+                }
+                // fall-through and treat it as any other host exception
+            }
         } else if (e instanceof EngineException) {
             return ((EngineException) e).e;
         } else if (e instanceof HostException) {
@@ -713,8 +728,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public RuntimeException wrapHostException(Throwable exception) {
-            return PolyglotImpl.wrapHostException(exception);
+        public RuntimeException wrapHostException(Object languageContext, Throwable exception) {
+            return PolyglotImpl.wrapHostException((PolyglotLanguageContext) languageContext, exception);
         }
 
         @Override

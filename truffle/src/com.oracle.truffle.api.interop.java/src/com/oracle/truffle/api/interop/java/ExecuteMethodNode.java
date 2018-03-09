@@ -68,7 +68,7 @@ abstract class ExecuteMethodNode extends Node {
         } catch (InteropException e) {
             throw e.raise();
         } catch (Throwable e) {
-            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(e));
+            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(languageContext, e));
         }
     }
 
@@ -675,7 +675,7 @@ abstract class ExecuteMethodNode extends Node {
         try {
             ret = method.invoke(obj, arguments);
         } catch (Throwable e) {
-            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(e));
+            throw JavaInteropReflect.rethrow(JavaInterop.wrapHostException(languageContext, e));
         }
         return JavaInterop.toGuestValue(ret, languageContext);
     }

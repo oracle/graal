@@ -400,6 +400,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public AbstractExceptionImpl getImpl(PolyglotException value) {
+            return value.impl;
+        }
+
+        @Override
         public Context newContext(AbstractContextImpl impl) {
             return new Context(impl);
         }

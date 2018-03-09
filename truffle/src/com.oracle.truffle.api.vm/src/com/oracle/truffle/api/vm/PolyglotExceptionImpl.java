@@ -57,7 +57,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     PolyglotException api;
 
-    final PolyglotEngineImpl engine;
+    final PolyglotContextImpl context;
     final Throwable exception;
     final List<TruffleStackTraceElement> guestFrames;
 
@@ -76,7 +76,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     PolyglotExceptionImpl(PolyglotLanguageContext languageContext, Throwable original) {
         super(languageContext.getImpl());
-        this.engine = languageContext.getEngine();
+        this.context = languageContext.context;
         this.exception = original;
         this.guestFrames = TruffleStackTraceElement.getStackTrace(original);
 
@@ -236,7 +236,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
 
     @Override
     public PolyglotEngineImpl getEngine() {
-        return engine;
+        return context.getEngine();
     }
 
     @Override

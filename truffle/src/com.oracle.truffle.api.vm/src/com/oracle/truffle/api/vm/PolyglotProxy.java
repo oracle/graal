@@ -99,7 +99,7 @@ final class PolyglotProxy {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     seenException = true;
                 }
-                throw PolyglotImpl.wrapHostException(t);
+                throw PolyglotImpl.wrapHostException(context, t);
             }
         }
 
@@ -261,7 +261,7 @@ final class PolyglotProxy {
             }
             Object guestValue = context.toGuestValue(result);
             if (!(guestValue instanceof TruffleObject) || !ForeignAccess.sendHasSize(hasSize, (TruffleObject) guestValue)) {
-                throw PolyglotImpl.wrapHostException(new IllegalStateException(
+                throw PolyglotImpl.wrapHostException(context, new IllegalStateException(
                                 String.format("getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
                                                 context.toHostValue(guestValue).toString())));
             }

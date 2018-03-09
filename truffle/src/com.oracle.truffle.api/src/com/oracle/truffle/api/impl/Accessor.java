@@ -241,7 +241,7 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> createDefaultTopScope(TruffleLanguage<?> language, Object context, Object global);
 
-        public abstract RuntimeException wrapHostException(Throwable exception);
+        public abstract RuntimeException wrapHostException(Object languageContext, Throwable exception);
 
         public abstract RootNode wrapHostBoundary(ExecutableNode executableNode, Supplier<String> name);
 
