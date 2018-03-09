@@ -467,7 +467,10 @@ class FlatNodeGenFactory {
             executable.addParameter(new CodeVariableElement(getType(int.class), OLD_CACHE_COUNT));
         }
         CodeTreeBuilder builder = executable.createBuilder();
-        builder.startIf().string(OLD_STATE + " > 1"); // will be != 0 but also add ` || exclude != 0`
+        builder.startIf().string(OLD_STATE + " != 0");
+        if (requiresExclude) {
+            builder.string(" || " + OLD_EXCLUDE + " != 0");
+        }
         builder.end();
 
         builder.startBlock();
@@ -478,7 +481,7 @@ class FlatNodeGenFactory {
         builder.startIf().string("(" + OLD_STATE + " ^ " + NEW_STATE + ") != 0");
         if (requiresExclude) {
             builder.string(" || ");
-            builder.string("(" + OLD_EXCLUDE + " ^ " + NEW_EXCLUDE + ") !=0");
+            builder.string("(" + OLD_EXCLUDE + " ^ " + NEW_EXCLUDE + ") != 0");
         }
         builder.end(); // if
         builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2);
@@ -1177,15 +1180,14 @@ class FlatNodeGenFactory {
         builder.declaration(context.getType(Lock.class), "lock", "getLock()");
         builder.declaration(context.getType(boolean.class), "hasLock", "true");
         builder.statement("lock.lock()");
-        if (node.isReportPolymorphism()) {
-            generateSaveOldPolymorphismState(builder);
-        }
-        builder.startTryBlock();
-
         builder.tree(state.createLoad(frameState));
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
         }
+        if (node.isReportPolymorphism()) {
+            generateSaveOldPolymorphismState(builder);
+        }
+        builder.startTryBlock();
 
         FrameState originalFrameState = frameState.copy();
         SpecializationGroup group = createSpecializationGroups();
@@ -1221,12 +1223,13 @@ class FlatNodeGenFactory {
     }
 
     private void generateSaveOldPolymorphismState(CodeTreeBuilder builder) {
-        builder.declaration(state.bitSetType, OLD_STATE, state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
+        String stateMask = new String(new char[reachableSpecializations.size()]).replace("\0", "1");
+        builder.declaration(state.bitSetType, OLD_STATE, "state & 0b" + stateMask);
         if (requiresExclude()) {
-            builder.declaration(exclude.bitSetType, OLD_EXCLUDE, exclude.createReference(FrameState.load(this)));
+            builder.declaration(exclude.bitSetType, OLD_EXCLUDE, "exclude");
         }
         if (requiresCacheCheck()) {
-                builder.declaration(context.getType(int.class), OLD_CACHE_COUNT, COUNT_CACHES + "()");
+            builder.declaration(context.getType(int.class), OLD_CACHE_COUNT, COUNT_CACHES + "()");
         }
     }
 
