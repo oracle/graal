@@ -121,6 +121,10 @@ public final class PosixJavaThreads extends JavaThreads {
         startData.setIsolate(CEntryPointContext.getCurrentIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
 
+        if (!thread.isDaemon()) {
+            JavaThreads.singleton().signalNonDaemonThreadStart();
+        }
+
         Pthread.pthread_tPointer newThread = StackValue.get(SizeOf.get(Pthread.pthread_tPointer.class));
         PosixUtils.checkStatusIs0(
                         Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
@@ -198,7 +202,7 @@ public final class PosixJavaThreads extends JavaThreads {
 
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
 
-        boolean status = singleton().assignJavaThread(thread);
+        boolean status = singleton().assignJavaThread(thread, false);
         VMError.guarantee(status, "currentThread already initialized");
 
         /*
