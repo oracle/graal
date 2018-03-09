@@ -428,7 +428,7 @@ class FlatNodeGenFactory {
         for (TypeMirror type : ElementUtils.uniqueSortedTypes(expectedTypes, false)) {
             if (!typeSystem.hasType(type)) {
                 clazz.addOptional(TypeSystemCodeGenerator.createExpectMethod(PRIVATE, typeSystem,
-                        context.getType(Object.class), type));
+                                context.getType(Object.class), type));
             }
         }
 
@@ -2632,7 +2632,9 @@ class FlatNodeGenFactory {
                 builder.statement(specializationLocalName + " = null");
             }
             builder.statement(countName + "++");
-//            builder.startIf().string("!reportPolymorphicSpecialize && " + countName + " > 1").end().startBlock().statement("reportPolymorphicSpecialize()").statement("reportPolymorphicSpecialize = true").end();
+// builder.startIf().string("!reportPolymorphicSpecialize && " + countName + " >
+// 1").end().startBlock().statement("reportPolymorphicSpecialize()").statement("reportPolymorphicSpecialize
+// = true").end();
             builder.end();
         }
 

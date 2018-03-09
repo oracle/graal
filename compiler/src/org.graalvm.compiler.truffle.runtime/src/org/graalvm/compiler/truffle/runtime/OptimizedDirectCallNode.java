@@ -37,7 +37,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleDirectTraceSplitting;
 
-
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
  *

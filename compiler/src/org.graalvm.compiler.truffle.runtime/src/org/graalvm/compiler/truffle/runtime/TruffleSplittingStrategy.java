@@ -55,7 +55,6 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleTraceSplittingSummary;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
 
-
 final class TruffleSplittingStrategy {
 
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
@@ -80,7 +79,6 @@ final class TruffleSplittingStrategy {
             }
         }
     }
-
 
     private static void doSplit(OptimizedDirectCallNode call) {
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {

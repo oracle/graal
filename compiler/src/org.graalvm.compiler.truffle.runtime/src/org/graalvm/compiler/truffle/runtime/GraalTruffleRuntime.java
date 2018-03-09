@@ -485,7 +485,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         } else {
             return new FrameWithBoxing(frameDescriptor, arguments);
         }
-}
+    }
 
     @Override
     public CompilerOptions createCompilerOptions() {
