@@ -26,6 +26,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Introspection;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -474,7 +475,7 @@ class FlatNodeGenFactory {
         builder.end();
 
         builder.startBlock();
-        builder.declaration(state.bitSetType, NEW_STATE, state.createMasked(FrameState.load(this), reachableSpecializations.toArray()));
+        builder.declaration(state.bitSetType, NEW_STATE, "state_ & " + getMaskForReportPolymorphism());
         if (requiresExclude) {
             builder.declaration(exclude.bitSetType, NEW_EXCLUDE, exclude.createReference(FrameState.load(this)));
         }
@@ -1223,14 +1224,25 @@ class FlatNodeGenFactory {
     }
 
     private void generateSaveOldPolymorphismState(CodeTreeBuilder builder) {
-        String stateMask = new String(new char[reachableSpecializations.size()]).replace("\0", "1");
-        builder.declaration(state.bitSetType, OLD_STATE, "state & 0b" + stateMask);
+        builder.declaration(state.bitSetType, OLD_STATE, "state & " + getMaskForReportPolymorphism());
         if (requiresExclude()) {
             builder.declaration(exclude.bitSetType, OLD_EXCLUDE, "exclude");
         }
         if (requiresCacheCheck()) {
             builder.declaration(context.getType(int.class), OLD_CACHE_COUNT, COUNT_CACHES + "()");
         }
+    }
+
+    private String getMaskForReportPolymorphism() {
+        StringBuilder stateMaskBuilder = new StringBuilder("0b");
+        for (SpecializationData specialization : reachableSpecializations) {
+            if (specialization.getMessageElement().getAnnotation(ReportPolymorphism.Exclude.class) == null) {
+                stateMaskBuilder.append("1");
+            } else {
+                stateMaskBuilder.append("0");
+            }
+        }
+        return stateMaskBuilder.toString();
     }
 
     private CodeTree createThrowUnsupported(final CodeTreeBuilder parent, final FrameState frameState) {
