@@ -1912,8 +1912,8 @@ public class PolyglotEngine {
         }
 
         @Override
-        public RuntimeException wrapHostException(Throwable exception) {
-            return PolyglotImpl.wrapHostException(exception);
+        public RuntimeException wrapHostException(Object languageContext, Throwable exception) {
+            return PolyglotImpl.wrapHostException(null, exception);
         }
 
         @Override

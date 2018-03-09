@@ -567,7 +567,7 @@ public final class JavaInterop {
         return engine.findOriginalObject(truffleObject);
     }
 
-    static Throwable wrapHostException(Throwable exception) {
+    static Throwable wrapHostException(Object languageContext, Throwable exception) {
         EngineSupport engine = ACCESSOR.engine();
         if (engine == null) {
             return exception;
@@ -575,7 +575,7 @@ public final class JavaInterop {
         if (exception instanceof TruffleException) {
             return exception;
         }
-        return engine.wrapHostException(exception);
+        return engine.wrapHostException(languageContext, exception);
     }
 
     static Object currentPolyglotContext() {

@@ -2250,7 +2250,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
                             try {
                                 Object result = ForeignAccess.sendRead(keysReadNode, keys, index);
                                 if (!(result instanceof String || result instanceof Character)) {
-                                    throw PolyglotImpl.wrapHostException(new ClassCastException("Cannot cast " + result + " to String."));
+                                    throw PolyglotImpl.wrapHostException(languageContext, new ClassCastException("Cannot cast " + result + " to String."));
                                 }
                                 index++;
                                 return result.toString();
