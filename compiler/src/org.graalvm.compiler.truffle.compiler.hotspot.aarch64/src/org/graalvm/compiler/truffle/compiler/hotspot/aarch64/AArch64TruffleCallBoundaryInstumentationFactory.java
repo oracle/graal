@@ -34,6 +34,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.hotspot.aarch64.AArch64HotSpotBackend;
 import org.graalvm.compiler.hotspot.aarch64.AArch64HotSpotMove;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -57,6 +58,8 @@ public class AArch64TruffleCallBoundaryInstumentationFactory extends TruffleCall
             @Override
             protected void injectTailCallCode(int installedCodeOffset, int entryPointOffset) {
                 AArch64MacroAssembler masm = (AArch64MacroAssembler) this.asm;
+                AArch64HotSpotBackend.emitInvalidatePlaceholder(this, masm);
+
                 try (ScratchRegister scratch = masm.getScratchRegister()) {
                     Register thisRegister = codeCache.getRegisterConfig().getCallingConventionRegisters(JavaCall, Object).get(0);
                     Register spillRegister = scratch.getRegister();
