@@ -42,18 +42,24 @@ import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
  * <pre>
  * // Function that is externally accessible
  * &#064;CEntryPoint
- * private static int myFunction(int x, int y) {
+ * static int myFunction(IsolateThread thread, int x, int y) {
  *     ...
  * }
  *
- * // Invocation interface (not strictly necessary, we could just use FunctionPointer)
+ * // Invocation interface (for calls from Java, otherwise CFunctionPointer suffices)
  * interface MyFunctionPointer extends FunctionPointer {
  *     &#064;InvokeCFunctionPointer
- *     int invoke(int x, int y);
+ *     int invoke(IsolateThread thread, int x, int y);
  * }
  *
  * // Function pointer literal
- * public static final CEntryPointLiteral&lt;MyFunctionPointer&gt; myFunctionLiteral = CEntryPointLiteral.create(MyClass.class, &quot;myFunction&quot;, new Class<?>[]{int.class, int.class});
+ * public static final CEntryPointLiteral&lt;MyFunctionPointer&gt; myFunctionLiteral = CEntryPointLiteral.create(MyClass.class, &quot;myFunction&quot;, new Class<?>[]{IsolateThread.class, int.class, int.class});
+ *
+ * // Call from Java
+ * void caller() {
+ *     MyFunctionPointer fp = myFunctionLiteral.getFunctionPointer(); // entry point, could be returned to C code
+ *     int fiftyeight = fp.invoke(CEntryPointContext.getCurrentIsolateThread(), 47, 11);
+ * }
  * </pre>
  */
 public final class CEntryPointLiteral<T extends CFunctionPointer> {
