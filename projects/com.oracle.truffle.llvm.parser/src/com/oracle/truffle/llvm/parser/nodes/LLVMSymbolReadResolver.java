@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.parser.nodes;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.llvm.parser.LLVMLabelList;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
@@ -81,21 +81,16 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public final class LLVMSymbolReadResolver {
 
     private final LLVMParserRuntime runtime;
-    private final FunctionDefinition method;
     private final FrameDescriptor frame;
-    private final Map<String, Integer> labels;
-    private final LLVMLabelList allLabels;
 
     private final InternalVisitor visitor = new InternalVisitor();
     private LLVMExpressionNode resolvedNode = null;
@@ -276,14 +271,9 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(BlockAddressConstant constant) {
-            int val;
-            if (allLabels != null) {
-                val = allLabels.labels(constant.getFunction().getName()).get(constant.getInstructionBlock().getName());
-            } else {
-                assert constant.getFunction() == method;
-                val = labels.get(constant.getInstructionBlock().getName());
-            }
-            resolvedNode = runtime.getNodeFactory().createLiteral(runtime, LLVMAddress.fromLong(val), new PointerType(null));
+            final LLVMAddress blockAddress = LLVMAddress.fromLong(constant.getBlockIndex());
+            final PointerType type = new PointerType(null);
+            resolvedNode = runtime.getNodeFactory().createLiteral(runtime, blockAddress, type);
         }
 
         @Override
@@ -431,20 +421,9 @@ public final class LLVMSymbolReadResolver {
         }
     }
 
-    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, LLVMLabelList allLabels) {
-        this(runtime, null, null, null, allLabels);
-    }
-
-    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FunctionDefinition method, FrameDescriptor frame, Map<String, Integer> labels) {
-        this(runtime, method, frame, labels, null);
-    }
-
-    private LLVMSymbolReadResolver(LLVMParserRuntime runtime, FunctionDefinition method, FrameDescriptor frame, Map<String, Integer> labels, LLVMLabelList allLabels) {
+    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame) {
         this.runtime = runtime;
-        this.method = method;
         this.frame = frame;
-        this.labels = labels;
-        this.allLabels = allLabels;
     }
 
     public static Integer evaluateIntegerConstant(SymbolImpl constant) {
@@ -518,6 +497,9 @@ public final class LLVMSymbolReadResolver {
     }
 
     public LLVMExpressionNode resolve(SymbolImpl symbol) {
+        if (symbol == null) {
+            return null;
+        }
         resolvedNode = null;
         symbol.accept(visitor);
         return resolvedNode;

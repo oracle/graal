@@ -29,18 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
@@ -48,58 +43,35 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-public final class StackAllocation {
+public final class StackManager {
 
-    private final FrameDescriptor rootFrame;
+    private StackManager() {
+    }
 
-    private final Map<String, FrameDescriptor> frameDescriptors;
-
-    private StackAllocation(Map<String, FrameDescriptor> frameDescriptors) {
-        this.frameDescriptors = frameDescriptors;
-        rootFrame = new FrameDescriptor();
+    public static FrameDescriptor createRootFrame() {
+        final FrameDescriptor rootFrame = new FrameDescriptor();
         rootFrame.addFrameSlot(LLVMStack.FRAME_ID, new PointerType(VoidType.INSTANCE), FrameSlotKind.Object);
-    }
-
-    public FrameDescriptor getFrame(String functionName) {
-        return frameDescriptors.get(functionName);
-    }
-
-    public FrameDescriptor getRootFrame() {
         return rootFrame;
     }
 
-    static StackAllocation generate(ModelModule model) {
-        final StackAllocationModelVisitor modelVisitor = new StackAllocationModelVisitor();
-        model.accept(modelVisitor);
-        return new StackAllocation(modelVisitor.getFrames());
-    }
+    public static FrameDescriptor createFrame(FunctionDefinition function) {
+        final FrameDescriptor frame = new FrameDescriptor();
 
-    private static final class StackAllocationModelVisitor implements ModelVisitor {
+        frame.addFrameSlot(LLVMException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
+        frame.addFrameSlot(LLVMStack.FRAME_ID, new PointerType(VoidType.INSTANCE), FrameSlotKind.Object);
 
-        final Map<String, FrameDescriptor> frames = new HashMap<>();
-
-        public Map<String, FrameDescriptor> getFrames() {
-            return frames;
-        }
-
-        @Override
-        public void visit(FunctionDefinition functionDefinition) {
-            final FrameDescriptor frame = new FrameDescriptor();
-            frame.addFrameSlot(LLVMException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
-            frame.addFrameSlot(LLVMStack.FRAME_ID, new PointerType(VoidType.INSTANCE), FrameSlotKind.Object);
-            for (FunctionParameter parameter : functionDefinition.getParameters()) {
-                Type type = parameter.getType();
-                if (parameter.isSourceVariable()) {
-                    type = type.shallowCopy();
-                }
-                frame.addFrameSlot(parameter.getName(), type, Type.getFrameSlotKind(type));
+        for (FunctionParameter parameter : function.getParameters()) {
+            Type type = parameter.getType();
+            if (parameter.isSourceVariable()) {
+                type = type.shallowCopy();
             }
-
-            final StackAllocationFunctionVisitor functionVisitor = new StackAllocationFunctionVisitor(frame);
-            functionDefinition.accept((FunctionVisitor) functionVisitor);
-
-            frames.put(functionDefinition.getName(), frame);
+            frame.addFrameSlot(parameter.getName(), type, Type.getFrameSlotKind(type));
         }
+
+        final StackAllocationFunctionVisitor functionVisitor = new StackAllocationFunctionVisitor(frame);
+        function.accept((FunctionVisitor) functionVisitor);
+
+        return frame;
     }
 
     private static final class StackAllocationFunctionVisitor extends ValueInstructionVisitor implements FunctionVisitor {
