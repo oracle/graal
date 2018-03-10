@@ -136,13 +136,13 @@ builds = [
   ${gateStyle} { name: gate-style, run: [[mx, gate, --tags, "style"]] }
   ${gateStyle} ${requireJDT} { name: gate-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
   ${gateTest38-linux} { name: gate-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe,debug"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-parser, run: [[mx, gate, --tags, "build,parser"]] }
   ${gateTest38-linux} { name: gate-gcc_c, run: [[mx, gate, --tags, "build,gcc_c"]] }
   ${gateTest38-linux} { name: gate-gcc_cpp, run: [[mx, gate, --tags, "build,gcc_cpp"]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-gcc_fortran, run: [[mx, gate, --tags, "build,gcc_fortran"]] }
-  ${gateTest38-linux} ${requireGCC} { name: gate-basic_v38, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
-  ${gateTest40-linux} ${requireGCC} { name: gate-basic_v40, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
+  ${gateTest38-linux} ${requireGCC} { name: gate-basic_v38, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop,debug"]] }
+  ${gateTest40-linux} ${requireGCC} { name: gate-basic_v40, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop,debug"]] }
   ${gateTest40-darwin} { name: gate-basic_mac, run: [[mx, gate, --tags, "build,nwcc,llvm,sulong,interop"]] }
 
   ${gateTest38-linux} ${ruby-downstream-test} { name: gate-ruby-downstream }
