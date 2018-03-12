@@ -629,12 +629,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object toGuestValue(Object obj, Object context) {
-            PolyglotLanguageContext languageContext;
-            if (context instanceof VMObject && obj instanceof Value) {
-                PolyglotValue valueImpl = (PolyglotValue) ((VMObject) context).getAPIAccess().getImpl((Value) obj);
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
+            if (obj instanceof Value) {
+                PolyglotValue valueImpl = (PolyglotValue) languageContext.getImpl().getAPIAccess().getImpl((Value) obj);
                 languageContext = valueImpl.languageContext;
-            } else {
-                languageContext = (PolyglotLanguageContext) context;
             }
             return languageContext.toGuestValue(obj);
         }
