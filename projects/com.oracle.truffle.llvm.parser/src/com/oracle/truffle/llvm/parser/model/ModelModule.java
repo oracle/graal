@@ -29,9 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.model;
 
-import com.oracle.truffle.api.source.Source;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
@@ -42,13 +46,6 @@ import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public final class ModelModule {
 
@@ -123,6 +120,10 @@ public final class ModelModule {
         targetInfo.add(info);
     }
 
+    public List<GlobalValueSymbol> getGlobals() {
+        return globals;
+    }
+
     public Map<LLVMSourceSymbol, SymbolImpl> getSourceGlobals() {
         return sourceGlobals;
     }
@@ -135,14 +136,8 @@ public final class ModelModule {
         return functionProcessor;
     }
 
-    public void exitModule(IRScope scope, Source source) {
-        int globalIndex = 0;
-        for (GlobalValueSymbol variable : globals) {
-            if (variable.getName().equals(LLVMIdentifier.UNKNOWN)) {
-                variable.setName(String.valueOf(globalIndex++));
-            }
-        }
-        this.functionProcessor = DebugInfoModuleProcessor.processModule(this, source, scope.getMetadata());
+    public void setFunctionProcessor(DebugInfoFunctionProcessor functionProcessor) {
+        this.functionProcessor = functionProcessor;
     }
 
     @Override
