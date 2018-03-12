@@ -33,6 +33,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
 
 /**
  * A call node with a constant {@link CallTarget} that can be optimized by Graal.
@@ -164,10 +167,14 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
             if (callCount >= 1) {
                 currentTarget.decrementKnownCallSites();
-                currentTarget.removeKnownCallSite(this);
+                if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+                    currentTarget.removeKnownCallSite(this);
+                }
             }
             splitTarget.incrementKnownCallSites();
-            splitTarget.addKnownCallNode(this);
+            if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+                splitTarget.addKnownCallNode(this);
+            }
 
             if (getParent() != null) {
                 // dummy replace to report the split, irrelevant if this node is not adopted
