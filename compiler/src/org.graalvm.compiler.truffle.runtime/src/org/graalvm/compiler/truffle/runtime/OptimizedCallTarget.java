@@ -662,7 +662,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
         // Keeping all the known call sites can be too much to handle in some cases
         // so we are limiting to a 100 call sites for now
-        // TODO Consider better approaches. FIFO? LIFO?
         if (knownCallNodes.size() < 100) {
             knownCallNodes.add(directCallNode);
         }
@@ -689,7 +688,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void polluteProfile(int depth, List<RootCallTarget> toPollute, List<Node> toDump) {
-        // TODO: what if compiled?
         if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || profilePolluted || knownCallNodes.size() == 0 ||
                         compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
             return;
