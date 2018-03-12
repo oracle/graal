@@ -77,8 +77,9 @@ final class PolyglotBindingsValue extends PolyglotValue {
     }
 
     /*
-     * It would be very hard to implement the #as(Class) semantics again here. So we just delegate to an
-     * interop value in such a case. This also means that we loose language information for members.
+     * It would be very hard to implement the #as(Class) semantics again here. So we just delegate
+     * to an interop value in such a case. This also means that we loose language information for
+     * members.
      */
     @Override
     public <T> T as(Object receiver, Class<T> targetType) {

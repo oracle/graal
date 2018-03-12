@@ -66,8 +66,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
  * for JavaScript. Since this is the first time we access JavaScript, it automatically gets
  * {@link #initialize(String) initialized} first.
- * <li>Then, we assert the result value by converting the result value as primitive
- * <code>int</code>.
+ * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
+ * .
  * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
  * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
  * {@code try-with-resources} statement.
@@ -122,8 +122,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * <li>Next, we evaluate the expression "42" with language "js", which is the language identifier
  * for JavaScript. Since this is the first time we access JavaScript, it first gets
  * {@link #initialize(String) initialized} as well.
- * <li>Then, we assert the result value by converting the result value as primitive
- * <code>int</code>.
+ * <li>Then, we assert the result value by converting the result value as primitive <code>int</code>
+ * .
  * <li>Finally, if the context is no longer needed, it is necessary to close it to ensure that all
  * resources are freed. Contexts are also {@link AutoCloseable} for use with the Java
  * {@code try-with-resources} statement.
@@ -337,9 +337,8 @@ public final class Context implements AutoCloseable {
 
     /**
      * @since 1.0
-     * @deprecated use {@link #getBindings(String)
-     *             getBindings(languageId)}.{@link Value#getMember(String) getMember(symbol)}
-     *             instead.
+     * @deprecated use {@link #getBindings(String) getBindings(languageId)}.
+     *             {@link Value#getMember(String) getMember(symbol)} instead.
      */
     @Deprecated
     public Value lookup(String languageId, String symbol) {
