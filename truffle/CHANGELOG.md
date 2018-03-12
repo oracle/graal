@@ -22,6 +22,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new DSL annotation @[Executed](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Executed.html) that allows to manually specify executed node fields.
 * The Truffle Node traversal order was slightly changed to always respect field declaration order (super class before sub class).
 * The [Assumption](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Assumption.html) interface has an additional override for the `invalidate` method to provide a message for debugging purposes.
+* Removed deprecated APIs and public debug classes in truffle.api.object and truffle.object packages, respectively.
+* Removed internal truffle.object package from javadoc.
 
 ## Version 0.32
 
