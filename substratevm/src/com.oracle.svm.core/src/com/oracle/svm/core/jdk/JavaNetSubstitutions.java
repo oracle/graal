@@ -26,18 +26,23 @@ package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.InetAddress;
 import java.net.URL;
 import java.net.URLStreamHandler;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 
+import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.net.URL.class)
@@ -47,24 +52,68 @@ final class Target_java_net_URL {
 
     @Substitute
     private static URLStreamHandler getURLStreamHandler(String protocol) {
-        URLStreamHandler result = Util_java_net_URL.imageHandlers.get(protocol);
-        if (result == null) {
-            throw VMError.unsupportedFeature("Unknown URL protocol: " + protocol);
-        }
-        return result;
+        return JavaNetSubstitutions.getURLStreamHandler(protocol);
     }
 }
 
-final class Util_java_net_URL {
+@AutomaticFeature
+class JavaNetFeature implements Feature {
 
-    static final HashMap<String, URLStreamHandler> imageHandlers = new HashMap<>();
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        String optionValue = SubstrateOptions.EnableURLProtocols.getValue();
+        if (optionValue.isEmpty()) {
+            return;
+        }
+        String[] protocols = optionValue.split(",");
+        boolean printProtocols = false;
+        String warningMessage = "";
+        for (String protocol : protocols) {
+            if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
+                warningMessage += "The URL protocol " + protocol + " is enabled by default. " +
+                                "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed." + System.lineSeparator();
+            } else if (JavaNetSubstitutions.supportedProtocols.contains(protocol)) {
+                JavaNetSubstitutions.addURLStreamHandler(protocol);
+            } else if (JavaNetSubstitutions.unsupportedProtocols.contains(protocol)) {
+                warningMessage += "The URL protocol " + protocol + " is not currently supported." + System.lineSeparator();
+                printProtocols = true;
+            } else {
+                warningMessage += "The URL protocol " + protocol + " is not tested and might not work as expected." + System.lineSeparator();
+                JavaNetSubstitutions.addURLStreamHandler(protocol);
+                printProtocols = true;
+            }
+        }
+
+        if (printProtocols) {
+            warningMessage += JavaNetSubstitutions.supportedProtocols() + System.lineSeparator();
+        }
+
+        // Checkstyle: stop
+        System.out.print(warningMessage);
+        // Checkstyle: resume
+    }
+}
+
+/** Dummy class to have a class with the file's name. */
+public final class JavaNetSubstitutions {
+
+    private static final String FILE_PROTOCOL = "file";
+    private static final String HTTP_PROTOCOL = "http";
+    private static final String HTTPS_PROTOCOL = "https";
+
+    static List<String> defaultProtocols = Arrays.asList(FILE_PROTOCOL);
+    static List<String> supportedProtocols = Arrays.asList(HTTP_PROTOCOL);
+    static List<String> unsupportedProtocols = Arrays.asList(HTTPS_PROTOCOL);
+
+    private static final HashMap<String, URLStreamHandler> imageHandlers = new HashMap<>();
+    static final String enableProtocolsOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.EnableURLProtocols, "");
 
     static {
-        addURLStreamHandler("file");
+        defaultProtocols.forEach(protocol -> addURLStreamHandler(protocol));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void addURLStreamHandler(String protocol) {
+    static void addURLStreamHandler(String protocol) {
         try {
             Method method = URL.class.getDeclaredMethod("getURLStreamHandler", String.class);
             method.setAccessible(true);
@@ -73,22 +122,27 @@ final class Util_java_net_URL {
             throw new Error(ex);
         }
     }
-}
 
-@TargetClass(java.net.URLStreamHandler.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_java_net_URLStreamHandler {
-
-    @Substitute
-    private InetAddress getHostAddress(URL u) {
-        /*
-         * This method is used for hashCode and equals of URL. Returning null is OK, but changes
-         * semantics a bit.
-         */
-        return null;
+    static URLStreamHandler getURLStreamHandler(String protocol) {
+        URLStreamHandler result = JavaNetSubstitutions.imageHandlers.get(protocol);
+        if (result == null) {
+            String errorMessage = "Accessing an URL protocol that was not enabled. ";
+            if (supportedProtocols.contains(protocol)) {
+                errorMessage += "The URL protocol " + protocol + " is supported but not enabled by default. It must be enabled using " + enableProtocolsOption + protocol + ".";
+            } else if (JavaNetSubstitutions.unsupportedProtocols.contains(protocol)) {
+                errorMessage += "The URL protocol " + protocol + " is not currently supported. It can still be enabled using " + enableProtocolsOption + protocol + ". ";
+                errorMessage += supportedProtocols();
+            } else {
+                errorMessage += "The URL protocol " + protocol + " is not tested and might not work as expected. It can still be enabled using " + enableProtocolsOption + protocol + ". ";
+                errorMessage += supportedProtocols();
+            }
+            throw VMError.unsupportedFeature(errorMessage);
+        }
+        return result;
     }
-}
 
-/** Dummy class to have a class with the file's name. */
-public final class JavaNetSubstitutions {
+    static String supportedProtocols() {
+        return "Supported URL protocols enabled by default: " + String.join(",", JavaNetSubstitutions.defaultProtocols) +
+                        ". Additional supported URL protocols: " + String.join(",", JavaNetSubstitutions.supportedProtocols) + ".";
+    }
 }
