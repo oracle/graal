@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VariableBitWidthType extends Type {
@@ -126,5 +127,11 @@ public final class VariableBitWidthType extends Type {
         final VariableBitWidthType copy = new VariableBitWidthType(bitWidth, constant);
         copy.setInteropType(getInteropType());
         return copy;
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        return String.format("i%d %s", getBitSize(), getConstant());
     }
 }
