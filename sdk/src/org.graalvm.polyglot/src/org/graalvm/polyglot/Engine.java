@@ -66,8 +66,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
  * <p>
  * It can be useful to {@link Engine#create() create} an engine instance without a context to only
  * access meta-data for installed languages, instruments and their available options.
- * <p>
- * <h4>System resource caching:</h4> TODO
  *
  * @since 1.0
  */
