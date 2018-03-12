@@ -855,8 +855,8 @@ public abstract class TruffleLanguage<C> {
      * <h3>Use Cases</h3>
      * <ul>
      * <li>Top scopes are accessible to instruments with
-     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findTopScopes(java.lang.String)}.
-     * They are used by debuggers to access the top-most scopes of the language.
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findTopScopes(java.lang.String)}
+     * . They are used by debuggers to access the top-most scopes of the language.
      * <li>Top scopes available in the {@link org.graalvm.polyglot polyglot API} as context
      * {@link Context#getBindings(String) bindings} object. When members of the bindings object are
      * {@link Value#getMember(String) read} then the first scope where the key exists is read. If a
