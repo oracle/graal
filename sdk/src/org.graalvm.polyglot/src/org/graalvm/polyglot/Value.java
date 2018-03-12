@@ -40,7 +40,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * values are bound to a {@link Context context}. If the context is closed then all value operations
  * throw an {@link IllegalStateException}.
  * <p>
- * Polylgot values have one of the following types:
+ * Polyglot values have one of the following types:
  * <ul>
  * <li>{@link #isNull() Null}: This value represents a <code>null</code> like value. Certain
  * languages might use a different name or use multiple values to represent <code>null</code> like
@@ -125,7 +125,7 @@ public final class Value {
     }
 
     /**
-     * Returns the array element of a given index. Polyglot array start with index <code>0</code>,
+     * Returns the array element of a given index. Polyglot arrays start with index <code>0</code>,
      * independent of the guest language. The given array index must be greater or equal 0.
      *
      * @throws ArrayIndexOutOfBoundsException if the array index does not exist
@@ -142,7 +142,7 @@ public final class Value {
 
     /**
      * Sets the value at a given index. Polyglot array start with index <code>0</code>, independent
-     * of the guest language. The array element value is subject to polylgot value mapping rules as
+     * of the guest language. The array element value is subject to polyglot value mapping rules as
      * described in {@link Context#asValue(Object)}.
      *
      * @throws ArrayIndexOutOfBoundsException if the array index does not exist
@@ -249,7 +249,7 @@ public final class Value {
     }
 
     /**
-     * Sets the value of a member using an identifier. The member value is subject to polylgot value
+     * Sets the value of a member using an identifier. The member value is subject to polyglot value
      * mapping rules as described in {@link Context#asValue(Object)}.
      *
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
@@ -293,7 +293,7 @@ public final class Value {
     /**
      * Executes this value if it {@link #canExecute() can} be executed and returns its result. If no
      * result value is expected or needed use {@link #executeVoid(Object...)} for better
-     * performance. All arguments are subject to polylgot value mapping rules as described in
+     * performance. All arguments are subject to polyglot value mapping rules as described in
      * {@link Context#asValue(Object)}.
      *
      * @throws IllegalStateException if the underlying context was closed
@@ -315,7 +315,7 @@ public final class Value {
 
     /**
      * Executes this value if it {@link #canExecute() can} be executed. All arguments are subject to
-     * polylgot value mapping rules as described in {@link Context#asValue(Object)}.
+     * polyglot value mapping rules as described in {@link Context#asValue(Object)}.
      *
      * @throws IllegalStateException if the underlying context was closed
      * @throws IllegalArgumentException if a wrong number of arguments was provided or one of the
@@ -346,7 +346,7 @@ public final class Value {
 
     /**
      * Instantiates this value if it {@link #canInstantiate() can} be instantiated. All arguments
-     * are subject to polylgot value mapping rules as described in {@link Context#asValue(Object)}.
+     * are subject to polyglot value mapping rules as described in {@link Context#asValue(Object)}.
      *
      * @throws IllegalStateException if the underlying context was closed
      * @throws IllegalArgumentException if a wrong number of arguments was provided or one of the
