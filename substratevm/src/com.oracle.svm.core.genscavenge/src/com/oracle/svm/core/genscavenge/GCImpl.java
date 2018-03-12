@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -61,7 +62,6 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
@@ -724,7 +724,7 @@ public class GCImpl implements GC {
                  * (or in native code) so they will each have a JavaFrameAnchor in their VMThread.
                  */
                 for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-                    if (vmThread == KnownIntrinsics.currentVMThread()) {
+                    if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
                         /*
                          * The current thread is already scanned by code above, so we do not have to
                          * do anything for it here. It might have a JavaFrameAnchor from earlier

@@ -32,13 +32,13 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
@@ -88,7 +88,7 @@ class DumpAllStacks implements SignalHandler {
         VMOperation.enqueueBlockingSafepoint("DumpAllStacks", () -> {
             Log log = Log.log();
             for (IsolateThread vmThread = VMThreads.firstThread(); VMThreads.isNonNullThread(vmThread); vmThread = VMThreads.nextThread(vmThread)) {
-                if (vmThread == KnownIntrinsics.currentVMThread()) {
+                if (vmThread == CEntryPointContext.getCurrentIsolateThread()) {
                     /* Skip the signal handler stack */
                     continue;
                 }
