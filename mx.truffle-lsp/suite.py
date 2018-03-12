@@ -101,6 +101,7 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_DSL_PROCESSOR",
+                "truffle:TRUFFLE_NFI",
                 "sdk:GRAAL_SDK",
                 "LSP4J",
                 "mx:JUNIT"
