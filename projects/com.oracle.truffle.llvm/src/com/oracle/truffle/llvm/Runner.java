@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -146,8 +143,7 @@ public final class Runner {
             ByteBuffer bytes;
             ExternalLibrary library;
             if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-                ByteBuffer buffer = Charset.forName("ascii").newEncoder().encode(CharBuffer.wrap(source.getCharacters()));
-                bytes = Base64.getDecoder().decode(buffer);
+                bytes = ByteBuffer.wrap(decodeBase64(source.getCharacters()));
                 library = new ExternalLibrary("<STREAM>");
             } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
                 NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
@@ -175,10 +171,11 @@ public final class Runner {
             ExternalLibrary lib = libs[i];
             if (!lib.isParsed()) {
                 try {
-                    File libFile = lib.getPath().toFile();
-                    Source source = Source.newBuilder(libFile).build();
-                    ByteBuffer bytes = read(lib.getPath());
-                    parserResults[i] = parse(language, context, source, lib, bytes);
+                    Path path = lib.getPath();
+                    byte[] bytes = Files.readAllBytes(path);
+                    // at the moment, we don't need the bitcode as the content of the source
+                    Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
+                    parserResults[i] = parse(language, context, source, lib, ByteBuffer.wrap(bytes));
                     lib.setParsed();
                 } catch (Throwable t) {
                     throw new RuntimeException("Error while trying to parse " + lib.getName(), t);
@@ -186,6 +183,16 @@ public final class Runner {
             }
         }
         return parserResults;
+    }
+
+    private static byte[] decodeBase64(CharSequence charSequence) {
+        byte[] result = new byte[charSequence.length()];
+        for (int i = 0; i < result.length; i++) {
+            char ch = charSequence.charAt(i);
+            assert ch >= 0 && ch <= Byte.MAX_VALUE;
+            result[i] = (byte) ch;
+        }
+        return Base64.getDecoder().decode(result);
     }
 
     private LLVMParserResult parse(LLVMLanguage language, LLVMContext context, Source source, ExternalLibrary library, ByteBuffer bytes) throws IOException {
