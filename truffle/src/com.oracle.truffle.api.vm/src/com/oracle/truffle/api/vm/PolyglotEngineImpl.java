@@ -855,7 +855,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     public String getImplementationName() {
-        return Truffle.getRuntime().getName();
+        String name = Truffle.getRuntime().getName();
+        if (name.contains("Graal")) {
+            return "Graal Engine";
+        } else {
+            return "Default Engine";
+        }
     }
 
     @Override
