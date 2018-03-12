@@ -23,23 +23,14 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.graphio.GraphStructure;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -85,8 +76,10 @@ final class TruffleSplittingStrategy {
         }
         call.split();
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
-            getReporter().splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-            getReporter().splitCount++;
+            final SplitStatisticsReporter reporter = getReporter();
+            reporter.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+            reporter.splitCount++;
+            reporter.splitTargets.put(call.getCallTarget(), reporter.splitTargets.getOrDefault(call.getCallTarget(), 0)  + 1);
         }
     }
 
@@ -261,13 +254,9 @@ final class TruffleSplittingStrategy {
 
     static void newPolymorphicSpecialize(Node node) {
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
-            final Map<Class<? extends Node>, Integer> pollutedNodes = getReporter().pollutedNodes;
+            final Map<Class<? extends Node>, Integer> polymorphicNodes = getReporter().polymorphicNodes;
             final Class<? extends Node> aClass = node.getClass();
-            if (pollutedNodes.containsKey(aClass)) {
-                pollutedNodes.put(aClass, pollutedNodes.get(aClass) + 1);
-            } else {
-                pollutedNodes.put(aClass, 1);
-            }
+            polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
         }
     }
 
@@ -283,7 +272,8 @@ final class TruffleSplittingStrategy {
 
     static class SplitStatisticsReporter extends Thread {
         final Set<GraalTVMCI.EngineData> engineDataSet = new HashSet<>();
-        final Map<Class<? extends Node>, Integer> pollutedNodes = new HashMap<>();
+        final Map<Class<? extends Node>, Integer> polymorphicNodes = new HashMap<>();
+        final Map<OptimizedCallTarget, Integer> splitTargets = new HashMap<>();
         int splitCount;
         int forcedSplitCount;
         int splitNodeCount;
@@ -295,6 +285,7 @@ final class TruffleSplittingStrategy {
         static final String D_FORMAT = "[truffle] %-40s: %10d";
         static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
         static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
+        static final String DELIMITER_FORMAT = "%n[truffle] --- %s";
 
         @Override
         public void run() {
@@ -311,7 +302,14 @@ final class TruffleSplittingStrategy {
             System.out.println(String.format(P_FORMAT, "Percent of split nodes wasted", (wastedNodeCount * 100.0) / (splitNodeCount)));
             System.out.println(String.format(D_FORMAT, "Targets wasted due to splitting", wastedTargetCount));
             System.out.println(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
-            for (Map.Entry<Class<? extends Node>, Integer> entry : pollutedNodes.entrySet()) {
+
+            System.out.println(String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
+            for (Map.Entry<OptimizedCallTarget, Integer> entry : splitTargets.entrySet()) {
+                System.out.println(String.format(D_FORMAT, entry.getKey(), entry.getValue()));
+            }
+
+            System.out.println(String.format(DELIMITER_FORMAT, "NODES"));
+            for (Map.Entry<Class<? extends Node>, Integer> entry : polymorphicNodes.entrySet()) {
                 System.out.println(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
             }
         }
