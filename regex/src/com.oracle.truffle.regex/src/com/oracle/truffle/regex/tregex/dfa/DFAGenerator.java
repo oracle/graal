@@ -402,8 +402,8 @@ public final class DFAGenerator {
         MatcherBuilder[] matchers = new MatcherBuilder[successors.length];
         DFACaptureGroupTransitionBuilder[] captureGroupTransitions = trackCaptureGroups ? new DFACaptureGroupTransitionBuilder[successors.length] : null;
         for (int i = 0; i < successors.length; i++) {
-            assert !successors[i].getTargetState().isEmpty();
-            DFAStateNodeBuilder lookupSuccessorState = stateMap.get(successors[i].getTargetState());
+            assert !successors[i].getTransitionSet().isEmpty();
+            DFAStateNodeBuilder lookupSuccessorState = stateMap.get(successors[i].getTransitionSet());
             if (lookupSuccessorState == null) {
                 successorStates[i] = createState(successors[i]);
                 expansionQueue.push(successorStates[i]);
@@ -453,7 +453,7 @@ public final class DFAGenerator {
     }
 
     private DFAStateNodeBuilder lookupOrCreateState(DFAStateTransitionBuilder connection) {
-        DFAStateNodeBuilder lookup = stateMap.get(connection.getTargetState());
+        DFAStateNodeBuilder lookup = stateMap.get(connection.getTransitionSet());
         if (lookup == null) {
             lookup = createState(connection);
             expansionQueue.push(lookup);
@@ -462,7 +462,7 @@ public final class DFAGenerator {
     }
 
     private DFAStateNodeBuilder createState(DFAStateTransitionBuilder connection) {
-        DFAStateNodeBuilder dfaState = createStateInner(connection.getTargetState());
+        DFAStateNodeBuilder dfaState = createStateInner(connection.getTransitionSet());
         if (!forward) {
             if (dfaState.getNfaStateSet().containsPrefixStates()) {
                 NFATransitionSet prefixStateSet = NFATransitionSet.create(nfa, false, false);

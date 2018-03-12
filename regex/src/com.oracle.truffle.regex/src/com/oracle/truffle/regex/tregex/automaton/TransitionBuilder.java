@@ -42,7 +42,7 @@ public abstract class TransitionBuilder<SS> {
 
     public abstract void setMatcherBuilder(MatcherBuilder matcherBuilder);
 
-    public abstract SS getTargetState();
+    public abstract SS getTransitionSet();
 
     public abstract TransitionBuilder<SS> createMerged(TransitionBuilder<SS> other, MatcherBuilder mergedMatcher);
 

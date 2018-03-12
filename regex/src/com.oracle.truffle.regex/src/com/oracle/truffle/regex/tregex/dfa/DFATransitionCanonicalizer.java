@@ -42,9 +42,9 @@ public class DFATransitionCanonicalizer extends StateTransitionCanonicalizer<NFA
         if (!trackCaptureGroups) {
             return true;
         }
-        assert a.getTargetState().equals(b.getTargetState());
-        Iterator<NFAStateTransition> ia = a.getTargetState().iterator();
-        Iterator<NFAStateTransition> ib = b.getTargetState().iterator();
+        assert a.getTransitionSet().equals(b.getTransitionSet());
+        Iterator<NFAStateTransition> ia = a.getTransitionSet().iterator();
+        Iterator<NFAStateTransition> ib = b.getTransitionSet().iterator();
         while (ia.hasNext()) {
             final NFAStateTransition lastA = ia.next();
             final NFAStateTransition lastB = ib.next();

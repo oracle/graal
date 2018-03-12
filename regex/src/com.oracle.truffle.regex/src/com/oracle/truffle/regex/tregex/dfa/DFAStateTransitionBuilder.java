@@ -60,17 +60,17 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
 
     @Override
     public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        return new DFAStateTransitionBuilder(mergedMatcher, transitions.createMerged(other.getTargetState()));
+        return new DFAStateTransitionBuilder(mergedMatcher, transitions.createMerged(other.getTransitionSet()));
     }
 
     @Override
     public void mergeInPlace(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        transitions.addAll(other.getTargetState());
+        transitions.addAll(other.getTransitionSet());
         matcherBuilder = mergedMatcher;
     }
 
     @Override
-    public NFATransitionSet getTargetState() {
+    public NFATransitionSet getTransitionSet() {
         return transitions;
     }
 
@@ -83,6 +83,6 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     public DebugUtil.Table toTable(String name) {
         return new DebugUtil.Table(name,
                         new DebugUtil.Value("matcherBuilder", getMatcherBuilder()),
-                        new DebugUtil.Value("transitions", getTargetState()));
+                        new DebugUtil.Value("transitions", getTransitionSet()));
     }
 }

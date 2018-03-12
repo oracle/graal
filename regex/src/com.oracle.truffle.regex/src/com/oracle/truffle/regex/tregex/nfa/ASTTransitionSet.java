@@ -52,7 +52,7 @@ public class ASTTransitionSet implements Iterable<ASTTransition> {
     }
 
     public void mergeInPlace(TransitionBuilder<ASTTransitionSet> other) {
-        merge(other.getTargetState());
+        merge(other.getTransitionSet());
     }
 
     private void merge(ASTTransitionSet other) {

@@ -49,13 +49,13 @@ public class ASTTransitionSetBuilder extends TransitionBuilder<ASTTransitionSet>
     }
 
     @Override
-    public ASTTransitionSet getTargetState() {
+    public ASTTransitionSet getTransitionSet() {
         return transitionSet;
     }
 
     @Override
     public ASTTransitionSetBuilder createMerged(TransitionBuilder<ASTTransitionSet> other, MatcherBuilder mergedMatcher) {
-        return new ASTTransitionSetBuilder(transitionSet.createMerged(other.getTargetState()), mergedMatcher);
+        return new ASTTransitionSetBuilder(transitionSet.createMerged(other.getTransitionSet()), mergedMatcher);
     }
 
     @Override

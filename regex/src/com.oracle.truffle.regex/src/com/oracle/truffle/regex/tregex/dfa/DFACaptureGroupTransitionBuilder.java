@@ -56,7 +56,7 @@ public class DFACaptureGroupTransitionBuilder {
     private NFAStateSet getRequiredStates() {
         if (requiredStates == null) {
             requiredStates = new NFAStateSet(nfa);
-            for (NFAStateTransition transition : transitionBuilder.getTargetState()) {
+            for (NFAStateTransition transition : transitionBuilder.getTransitionSet()) {
                 requiredStates.add(transition.getSource());
             }
         }
@@ -71,7 +71,7 @@ public class DFACaptureGroupTransitionBuilder {
         ObjectArrayBuffer indexUpdates = compilationBuffer.getObjectBuffer1();
         ObjectArrayBuffer indexClears = compilationBuffer.getObjectBuffer2();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
-        for (NFAStateTransition nfaTransition : transitionBuilder.getTargetState()) {
+        for (NFAStateTransition nfaTransition : transitionBuilder.getTransitionSet()) {
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getRequiredStates().getStateIndex(nfaTransition.getSource());
                 int targetIndex = targetStates.getStateIndex(nfaTransition.getTarget());
@@ -153,7 +153,7 @@ public class DFACaptureGroupTransitionBuilder {
 
     public DebugUtil.Table toTable() {
         DebugUtil.Table table = new DebugUtil.Table("CGTransition");
-        for (NFAStateTransition nfaTransition : transitionBuilder.getTargetState()) {
+        for (NFAStateTransition nfaTransition : transitionBuilder.getTransitionSet()) {
             table.append(new DebugUtil.Value("nfaTransition", String.format("%s -> %s",
                             nfaTransition.getSource().idToString(),
                             nfaTransition.getTarget().idToString())),

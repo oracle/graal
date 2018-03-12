@@ -144,7 +144,7 @@ public final class NFAGenerator {
                 boolean containsPositionAssertion = false;
                 boolean containsMatchFound = false;
                 boolean containsPrefixStates = false;
-                for (ASTTransition astTransition : mergeBuilder.getTargetState()) {
+                for (ASTTransition astTransition : mergeBuilder.getTransitionSet()) {
                     Term target = astTransition.getTarget();
                     if (target instanceof CharacterClass) {
                         if (stateSetCC == null) {

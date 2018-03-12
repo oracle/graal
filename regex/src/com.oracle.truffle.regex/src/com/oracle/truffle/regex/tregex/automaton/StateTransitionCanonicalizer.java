@@ -79,9 +79,9 @@ public abstract class StateTransitionCanonicalizer<SS, TB extends TransitionBuil
             if (tb.getMatcherBuilder().matchesNothing()) {
                 continue;
             }
-            TB existingTransitions = mergeSameTargetsMap.get(tb.getTargetState());
+            TB existingTransitions = mergeSameTargetsMap.get(tb.getTransitionSet());
             if (existingTransitions == null) {
-                mergeSameTargetsMap.put(tb.getTargetState(), tb);
+                mergeSameTargetsMap.put(tb.getTransitionSet(), tb);
                 resultSize++;
             } else {
                 boolean merged = false;
@@ -96,7 +96,7 @@ public abstract class StateTransitionCanonicalizer<SS, TB extends TransitionBuil
                 } while (mergeCandidate != null);
                 if (!merged) {
                     tb.setNext(existingTransitions);
-                    mergeSameTargetsMap.put(tb.getTargetState(), tb);
+                    mergeSameTargetsMap.put(tb.getTransitionSet(), tb);
                     resultSize++;
                 }
             }
