@@ -8,6 +8,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Remove deprecated API Engine#getLanguage, Engine#getInstrument.
 * Remove deprecated Language#isHost.
 * Deprecate ProxyPrimitive without replacement.
+* Added Context.Builder#allAccess that allows to inverse default access rights. e.g. make all access the default.
 
 ## Version 0.31
 
