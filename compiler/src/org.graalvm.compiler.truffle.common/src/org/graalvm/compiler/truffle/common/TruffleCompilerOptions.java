@@ -193,7 +193,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Boolean> TruffleTraceSplittingSummary = new OptionKey<>(false);
 
     @Option(help = "Dumps to IGV information on polymorphic events", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleDumpPolymorphicEvents = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleDumpPolymorphicSpecialize = new OptionKey<>(false);
 
     @Option(help = "Should forced splits be allowed (when using pollution based splitting)", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleAllowForcedSplits = new OptionKey<>(false);
