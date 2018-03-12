@@ -41,12 +41,13 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
                     boolean finalState,
                     boolean anchoredFinalState,
                     boolean findSingleChar,
+                    boolean hasBackwardPrefixState,
                     short loopToSelf,
                     short[] successors,
                     CharMatcher[] matchers,
                     short[] captureGroupTransitions,
                     short[] precedingCaptureGroupTransitions) {
-        super(id, finalState, anchoredFinalState, findSingleChar, loopToSelf, successors, matchers);
+        super(id, finalState, anchoredFinalState, findSingleChar, hasBackwardPrefixState, loopToSelf, successors, matchers);
         this.captureGroupTransitions = captureGroupTransitions;
         this.precedingCaptureGroupTransitions = precedingCaptureGroupTransitions;
         transitionDispatchNode = precedingCaptureGroupTransitions.length > 1 ? DFACaptureGroupPartialTransitionDispatchNode.create(precedingCaptureGroupTransitions) : null;

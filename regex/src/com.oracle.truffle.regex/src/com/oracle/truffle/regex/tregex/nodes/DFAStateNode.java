@@ -39,6 +39,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private static final byte FINAL_STATE_FLAG = 1;
     private static final byte ANCHORED_FINAL_STATE_FLAG = 1 << 1;
     private static final byte FIND_SINGLE_CHAR_FLAG = 1 << 2;
+    private static final byte HAS_BACKWARD_PREFIX_STATE_FLAG = 1 << 3;
 
     private final short id;
     private final byte flags;
@@ -49,6 +50,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
                     boolean finalState,
                     boolean anchoredFinalState,
                     boolean findSingleChar,
+                    boolean hasBackwardPrefixState,
                     short loopToSelf,
                     short[] successors,
                     CharMatcher[] matchers) {
@@ -65,13 +67,17 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (findSingleChar) {
             newFlags |= FIND_SINGLE_CHAR_FLAG;
         }
+        if (hasBackwardPrefixState) {
+            newFlags |= HAS_BACKWARD_PREFIX_STATE_FLAG;
+        }
         this.loopToSelf = loopToSelf;
         this.flags = newFlags;
         this.matchers = matchers;
     }
 
     protected DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.isFinalState(), nodeSplitCopy.isAnchoredFinalState(), nodeSplitCopy.isFindSingleChar(), nodeSplitCopy.loopToSelf,
+        this(copyID, nodeSplitCopy.isFinalState(), nodeSplitCopy.isAnchoredFinalState(), nodeSplitCopy.isFindSingleChar(),
+                        nodeSplitCopy.hasBackwardPrefixState(), nodeSplitCopy.loopToSelf,
                         Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length), nodeSplitCopy.getMatchers());
     }
 
@@ -101,12 +107,37 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return flagIsSet(FIND_SINGLE_CHAR_FLAG);
     }
 
+    public boolean hasBackwardPrefixState() {
+        return flagIsSet(HAS_BACKWARD_PREFIX_STATE_FLAG);
+    }
+
     private boolean flagIsSet(byte flag) {
         return (flags & flag) != 0;
     }
 
-    public boolean isLoopToSelf() {
+    public boolean hasLoopToSelf() {
         return loopToSelf != -1;
+    }
+
+    protected boolean isLoopToSelf(int transitionIndex) {
+        return transitionIndex == loopToSelf;
+    }
+
+    private boolean treeTransitionMatching() {
+        return matchers.length > 0 && matchers[matchers.length - 1] instanceof AllTransitionsInOneTreeMatcher;
+    }
+
+    private AllTransitionsInOneTreeMatcher getTreeMatcher() {
+        return (AllTransitionsInOneTreeMatcher) matchers[matchers.length - 1];
+    }
+
+    private int treeTransitionMatchingGetLinearSuccessor(char c) {
+        for (int i = 0; i < matchers.length - 1; i++) {
+            if (matchers[i].match(c)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -161,19 +192,26 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private boolean checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
-        for (int i = 0; i < matchers.length; i++) {
-            if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                System.out.println("check " + matchers[i]);
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree1(frame, executor, this, c);
+            assert successor == treeTransitionMatchingGetLinearSuccessor(c) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return hasLoopToSelf() && isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (DebugUtil.DEBUG_STEP_EXECUTION) {
+                    System.out.println("check " + matchers[i]);
+                }
+                if (matchers[i].match(c)) {
+                    CompilerAsserts.partialEvaluationConstant(i);
+                    successorFound1(frame, executor, i);
+                    executor.setSuccessorIndex(frame, i);
+                    return hasLoopToSelf() && isLoopToSelf(i);
+                }
             }
-            if (matchers[i].match(c)) {
-                CompilerAsserts.partialEvaluationConstant(i);
-                successorFound1(frame, executor, i);
-                executor.setSuccessorIndex(frame, i);
-                return isLoopToSelf() && i == loopToSelf;
-            }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            return false;
         }
-        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
-        return false;
     }
 
     /**
@@ -195,23 +233,30 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private boolean checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
-        for (int i = 0; i < matchers.length; i++) {
-            if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                System.out.println("check " + matchers[i]);
-            }
-            if (matchers[i].match(c)) {
-                executor.setSuccessorIndex(frame, i);
-                if (i != loopToSelf) {
-                    CompilerAsserts.partialEvaluationConstant(i);
-                    successorFound2(frame, executor, i);
-                    return false;
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree2(frame, executor, this, c);
+            assert successor == treeTransitionMatchingGetLinearSuccessor(c) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (DebugUtil.DEBUG_STEP_EXECUTION) {
+                    System.out.println("check " + matchers[i]);
                 }
-                return true;
+                if (matchers[i].match(c)) {
+                    executor.setSuccessorIndex(frame, i);
+                    if (!isLoopToSelf(i)) {
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        successorFound2(frame, executor, i);
+                        return false;
+                    }
+                    return true;
+                }
             }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            noSuccessor2(frame, executor);
+            return false;
         }
-        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
-        noSuccessor2(frame, executor);
-        return false;
     }
 
     /**
@@ -239,23 +284,30 @@ public class DFAStateNode extends DFAAbstractStateNode {
     private boolean checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {
         final char c = executor.getChar(frame);
         executor.advance(frame);
-        for (int i = 0; i < matchers.length; i++) {
-            if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                System.out.println("check " + matchers[i]);
-            }
-            if (matchers[i].match(c)) {
-                executor.setSuccessorIndex(frame, i);
-                if (i != loopToSelf) {
-                    CompilerAsserts.partialEvaluationConstant(i);
-                    successorFound3(frame, executor, i, preLoopIndex);
-                    return false;
+        if (treeTransitionMatching()) {
+            int successor = getTreeMatcher().checkMatchTree3(frame, executor, this, c, preLoopIndex);
+            assert successor == treeTransitionMatchingGetLinearSuccessor(c) : this.toString();
+            executor.setSuccessorIndex(frame, successor);
+            return isLoopToSelf(successor);
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                if (DebugUtil.DEBUG_STEP_EXECUTION) {
+                    System.out.println("check " + matchers[i]);
                 }
-                return true;
+                if (matchers[i].match(c)) {
+                    executor.setSuccessorIndex(frame, i);
+                    if (!isLoopToSelf(i)) {
+                        CompilerAsserts.partialEvaluationConstant(i);
+                        successorFound3(frame, executor, i, preLoopIndex);
+                        return false;
+                    }
+                    return true;
+                }
             }
+            executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
+            noSuccessor3(frame, executor, preLoopIndex);
+            return false;
         }
-        executor.setSuccessorIndex(frame, FS_RESULT_NO_SUCCESSOR);
-        noSuccessor3(frame, executor, preLoopIndex);
-        return false;
     }
 
     /**
@@ -440,7 +492,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        DebugUtil.appendNodeId(sb, id).append(": ").append(matchers.length).append(" successors");
+        DebugUtil.appendNodeId(sb, id).append(": ");
+        if (!treeTransitionMatching()) {
+            sb.append(matchers.length).append(" successors");
+        }
         if (isAnchoredFinalState()) {
             sb.append(", AFS");
         }
@@ -448,9 +503,13 @@ public class DFAStateNode extends DFAAbstractStateNode {
             sb.append(", FS");
         }
         sb.append(":\n");
-        for (int i = 0; i < matchers.length; i++) {
-            sb.append("      - ").append(matchers[i]).append(" -> ");
-            DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
+        if (treeTransitionMatching()) {
+            sb.append("      ").append(matchers[0]).append("\n      successors: ").append(Arrays.toString(successors)).append("\n");
+        } else {
+            for (int i = 0; i < matchers.length; i++) {
+                sb.append("      ").append(i).append(": ").append(matchers[i]).append(" -> ");
+                DebugUtil.appendNodeId(sb, getSuccessors()[i]).append("\n");
+            }
         }
         return sb.toString();
     }
@@ -472,7 +531,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (isFinalState()) {
             table.append(new DebugUtil.Value("finalState", "true"));
         }
-        if (isLoopToSelf()) {
+        if (hasLoopToSelf()) {
             table.append(new DebugUtil.Value("loopToSelf", "true"));
         }
         for (int i = 0; i < matchers.length; i++) {

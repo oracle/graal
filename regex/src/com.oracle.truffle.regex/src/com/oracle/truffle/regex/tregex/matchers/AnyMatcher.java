@@ -50,6 +50,11 @@ public final class AnyMatcher implements CharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        return 0;
+    }
+
+    @Override
     public String toString() {
         return "any";
     }

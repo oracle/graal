@@ -100,6 +100,11 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        return 8;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         StringBuilder sb = new StringBuilder(modifiersToString()).append("[\n");

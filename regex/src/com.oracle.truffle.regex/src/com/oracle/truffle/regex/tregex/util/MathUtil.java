@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,37 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.matchers;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+package com.oracle.truffle.regex.tregex.util;
 
-/**
- * Specialized {@link BitSetMatcher} that exists simply because ascii bit set matchers occur often
- * and we can save one comparison when the high byte is {@code 0x00}.
- */
-public final class NullHighByteBitSetMatcher extends ProfiledCharMatcher {
+public final class MathUtil {
 
-    private final CompilationFinalBitSet bitSet;
-
-    NullHighByteBitSetMatcher(boolean inverse, CompilationFinalBitSet bitSet) {
-        super(inverse);
-        this.bitSet = bitSet;
+    public static int log2floor(int x) {
+        return 31 - Integer.numberOfLeadingZeros(x);
     }
 
-    @Override
-    protected boolean matchChar(char c) {
-        return bitSet.get(c);
-    }
-
-    @Override
-    public int estimatedCost() {
-        return 2;
-    }
-
-    @Override
-    @CompilerDirectives.TruffleBoundary
-    public String toString() {
-        return modifiersToString() + "{ascii " + bitSet + "}";
+    public static int log2ceil(int x) {
+        return 32 - Integer.numberOfLeadingZeros(x - 1);
     }
 }

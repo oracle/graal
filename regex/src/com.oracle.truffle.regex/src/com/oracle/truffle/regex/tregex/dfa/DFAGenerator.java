@@ -29,7 +29,9 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
@@ -38,6 +40,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAMatcherState;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import com.oracle.truffle.regex.tregex.nodes.AllTransitionsInOneTreeMatcher;
 import com.oracle.truffle.regex.tregex.nodes.BackwardDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.CGTrackingDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
@@ -52,6 +55,7 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -225,20 +229,83 @@ public final class DFAGenerator {
         for (DFAStateNodeBuilder s : stateMap.values()) {
             CharMatcher[] matchers = (s.getMatcherBuilders().length > 0) ? new CharMatcher[s.getMatcherBuilders().length] : CharMatcher.EMPTY;
             MatcherBuilder acc = MatcherBuilder.createEmpty();
+            int nCheckingTransitions = matchers.length;
+            int nRanges = 0;
+            int estimatedTransitionsCost = 0;
             for (int i = 0; i < matchers.length; i++) {
                 MatcherBuilder matcherBuilder = s.getMatcherBuilders()[i];
+                nRanges += matcherBuilder.size();
                 acc = acc.union(matcherBuilder, compilationBuffer);
                 if (i == matchers.length - 1 && (acc.matchesEverything() || (pruneUnambiguousPaths && !s.isFinalStateSuccessor()))) {
                     // replace the last matcher with an AnyMatcher, since it must always cover the
                     // remaining input space
                     matchers[i] = AnyMatcher.create();
+                    nCheckingTransitions--;
                 } else {
                     matchers[i] = matcherBuilder.createMatcher(compilationBuffer);
                 }
+                estimatedTransitionsCost += matchers[i].estimatedCost();
             }
             if (matchers.length == 1 && matchers[0] == AnyMatcher.INSTANCE) {
                 matchers = AnyMatcher.INSTANCE_ARRAY;
             }
+
+            // Very conservative heuristic for whether we should use AllTransitionsInOneTreeMatcher.
+            // TODO: Potential benefits of this should be further explored.
+            boolean useTreeTransitionMatcher = nCheckingTransitions > 1 && MathUtil.log2ceil(nRanges + 2) * 8 < estimatedTransitionsCost;
+            if (useTreeTransitionMatcher) {
+                MatcherBuilder[] matcherBuilders = s.getMatcherBuilders();
+                CharArrayBuffer sortedRangesBuf = compilationBuffer.getRangesArrayBuffer1();
+                ShortArrayBuffer rangeTreeSuccessorsBuf = compilationBuffer.getShortArrayBuffer();
+                int[] matcherIndices = new int[matcherBuilders.length];
+                boolean rangesLeft = false;
+                for (int i = 0; i < matcherBuilders.length; i++) {
+                    matcherIndices[i] = 0;
+                    rangesLeft |= matcherIndices[i] < matcherBuilders[i].size();
+                }
+                int lastHi = 0;
+                while (rangesLeft) {
+                    int minLo = Integer.MAX_VALUE;
+                    int minMb = -1;
+                    for (int i = 0; i < matcherBuilders.length; i++) {
+                        MatcherBuilder mb = matcherBuilders[i];
+                        if (matcherIndices[i] < mb.size() && mb.getLo(matcherIndices[i]) < minLo) {
+                            minLo = mb.getLo(matcherIndices[i]);
+                            minMb = i;
+                        }
+                    }
+                    if (minMb == -1) {
+                        break;
+                    }
+                    if (minLo != lastHi) {
+                        rangeTreeSuccessorsBuf.add((short) -1);
+                        sortedRangesBuf.add((char) minLo);
+                    }
+                    rangeTreeSuccessorsBuf.add((short) minMb);
+                    lastHi = matcherBuilders[minMb].getHi(matcherIndices[minMb]) + 1;
+                    if (lastHi <= Character.MAX_VALUE) {
+                        sortedRangesBuf.add((char) (lastHi));
+                    }
+                    matcherIndices[minMb]++;
+                }
+                if (lastHi != Character.MAX_VALUE + 1) {
+                    rangeTreeSuccessorsBuf.add((short) -1);
+                }
+                // ====
+                // TODO: Can be changed to
+
+                // matchers = new CharMatcher[]{new AllTransitionsInOneTreeMatcher(
+                // sortedRangesBuf.toArray(), rangeTreeSuccessorsBuf.toArray())};
+
+                // with some minor changes in DFAStateNode. We'll keep this for testing purposes
+                // for the moment.
+
+                matchers = Arrays.copyOf(matchers, matchers.length + 1);
+                matchers[matchers.length - 1] = new AllTransitionsInOneTreeMatcher(sortedRangesBuf.toArray(), rangeTreeSuccessorsBuf.toArray());
+
+                // ====
+            }
+
             short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
             short[] cgTransitions = null;
             short[] cgPrecedingTransitions = null;
@@ -272,17 +339,21 @@ public final class DFAGenerator {
                             matchers[0] instanceof SingleCharMatcher &&
                             matchers[1] instanceof AnyMatcher &&
                             successors[1] == s.getId();
+            DFAStateNode stateNode;
             if (trackCaptureGroups) {
-                ret[s.getId()] = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers,
-                                cgTransitions, cgPrecedingTransitions);
+                stateNode = new CGTrackingDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, s.hasBackwardPrefixState(),
+                                loopToSelf, successors, matchers, cgTransitions, cgPrecedingTransitions);
             } else if (nfa.isTraceFinderNFA()) {
-                ret[s.getId()] = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers,
-                                s.getUnAnchoredResult(), s.getAnchoredResult());
+                stateNode = new TraceFinderDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, s.hasBackwardPrefixState(),
+                                loopToSelf, successors, matchers, s.getUnAnchoredResult(), s.getAnchoredResult());
             } else if (forward) {
-                ret[s.getId()] = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers);
+                stateNode = new DFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, s.hasBackwardPrefixState(),
+                                loopToSelf, successors, matchers);
             } else {
-                ret[s.getId()] = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, loopToSelf, successors, matchers);
+                stateNode = new BackwardDFAStateNode(s.getId(), s.isFinalState(), s.isAnchoredFinalState(), findSingleChar, s.hasBackwardPrefixState(),
+                                loopToSelf, successors, matchers);
             }
+            ret[s.getId()] = stateNode;
         }
         return ret;
     }

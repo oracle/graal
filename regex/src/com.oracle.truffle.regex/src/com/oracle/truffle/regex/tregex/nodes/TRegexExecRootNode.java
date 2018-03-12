@@ -106,7 +106,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         compileEagerSearchNode();
         if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
             if (DebugUtil.LOG_SWITCH_TO_EAGER) {
-                System.out.println("regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : "profile: " + profile));
+                System.out.println("regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
             }
             runRegexSearchNode = insert(eagerSearchNode);
         }

@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.matchers;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
  * Character range matcher using a left-balanced tree of ranges.
@@ -123,6 +124,11 @@ public final class RangeTreeMatcher extends ProfiledCharMatcher {
             }
         }
         return false;
+    }
+
+    @Override
+    public int estimatedCost() {
+        return MathUtil.log2ceil(tree.length);
     }
 
     @Override

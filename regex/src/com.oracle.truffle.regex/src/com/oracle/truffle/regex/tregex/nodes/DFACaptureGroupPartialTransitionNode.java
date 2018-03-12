@@ -61,6 +61,10 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
         return newOrder != null;
     }
 
+    public byte[] getArrayCopies() {
+        return arrayCopies;
+    }
+
     public void apply(DFACaptureGroupTrackingData d, final int currentIndex) {
         if (DebugUtil.DEBUG_STEP_EXECUTION) {
             System.out.println("applying " + this);

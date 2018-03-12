@@ -37,6 +37,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  *
  * @see ObjectArrayBuffer
  * @see ByteArrayBuffer
+ * @see ShortArrayBuffer
  * @see RangesArrayBuffer
  */
 public class CompilationBuffer {
@@ -44,33 +45,10 @@ public class CompilationBuffer {
     private ObjectArrayBuffer objectBuffer1;
     private ObjectArrayBuffer objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
+    private ShortArrayBuffer shortArrayBuffer;
     private RangesArrayBuffer rangesArrayBuffer1;
     private RangesArrayBuffer rangesArrayBuffer2;
     private RangesArrayBuffer rangesArrayBuffer3;
-
-    public RangesArrayBuffer getRangesArrayBuffer1() {
-        if (rangesArrayBuffer1 == null) {
-            rangesArrayBuffer1 = new RangesArrayBuffer(64);
-        }
-        rangesArrayBuffer1.clear();
-        return rangesArrayBuffer1;
-    }
-
-    public RangesArrayBuffer getRangesArrayBuffer2() {
-        if (rangesArrayBuffer2 == null) {
-            rangesArrayBuffer2 = new RangesArrayBuffer(64);
-        }
-        rangesArrayBuffer2.clear();
-        return rangesArrayBuffer2;
-    }
-
-    public RangesArrayBuffer getRangesArrayBuffer3() {
-        if (rangesArrayBuffer3 == null) {
-            rangesArrayBuffer3 = new RangesArrayBuffer(64);
-        }
-        rangesArrayBuffer3.clear();
-        return rangesArrayBuffer3;
-    }
 
     public ObjectArrayBuffer getObjectBuffer1() {
         if (objectBuffer1 == null) {
@@ -94,5 +72,37 @@ public class CompilationBuffer {
         }
         byteArrayBuffer.clear();
         return byteArrayBuffer;
+    }
+
+    public ShortArrayBuffer getShortArrayBuffer() {
+        if (shortArrayBuffer == null) {
+            shortArrayBuffer = new ShortArrayBuffer();
+        }
+        shortArrayBuffer.clear();
+        return shortArrayBuffer;
+    }
+
+    public RangesArrayBuffer getRangesArrayBuffer1() {
+        if (rangesArrayBuffer1 == null) {
+            rangesArrayBuffer1 = new RangesArrayBuffer(64);
+        }
+        rangesArrayBuffer1.clear();
+        return rangesArrayBuffer1;
+    }
+
+    public RangesArrayBuffer getRangesArrayBuffer2() {
+        if (rangesArrayBuffer2 == null) {
+            rangesArrayBuffer2 = new RangesArrayBuffer(64);
+        }
+        rangesArrayBuffer2.clear();
+        return rangesArrayBuffer2;
+    }
+
+    public RangesArrayBuffer getRangesArrayBuffer3() {
+        if (rangesArrayBuffer3 == null) {
+            rangesArrayBuffer3 = new RangesArrayBuffer(64);
+        }
+        rangesArrayBuffer3.clear();
+        return rangesArrayBuffer3;
     }
 }

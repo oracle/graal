@@ -341,4 +341,42 @@ public final class TRegexDFAExecutorNode extends Node {
     public TRegexDFAExecutorProperties getProperties() {
         return props;
     }
+
+    public double getCGReorderRatio() {
+        if (!props.isTrackCaptureGroups()) {
+            return 0;
+        }
+        int nPT = 0;
+        int nReorder = 0;
+        for (DFACaptureGroupLazyTransitionNode t : cgTransitions) {
+            nPT += t.getPartialTransitions().length;
+            for (DFACaptureGroupPartialTransitionNode pt : t.getPartialTransitions()) {
+                if (pt.doesReorderResults()) {
+                    nReorder++;
+                }
+            }
+        }
+        if (nPT > 0) {
+            return (double) nReorder / nPT;
+        }
+        return 0;
+    }
+
+    public double getCGArrayCopyRatio() {
+        if (!props.isTrackCaptureGroups()) {
+            return 0;
+        }
+        int nPT = 0;
+        int nArrayCopy = 0;
+        for (DFACaptureGroupLazyTransitionNode t : cgTransitions) {
+            nPT += t.getPartialTransitions().length;
+            for (DFACaptureGroupPartialTransitionNode pt : t.getPartialTransitions()) {
+                nArrayCopy += pt.getArrayCopies().length / 2;
+            }
+        }
+        if (nPT > 0) {
+            return (double) nArrayCopy / nPT;
+        }
+        return 0;
+    }
 }
