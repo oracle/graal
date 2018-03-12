@@ -658,7 +658,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private volatile List<OptimizedDirectCallNode> knownCallNodes = new ArrayList<>();
-    int splitCount = 0;
 
     void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
         // Keeping all the known call sites can be too much to handle in some cases

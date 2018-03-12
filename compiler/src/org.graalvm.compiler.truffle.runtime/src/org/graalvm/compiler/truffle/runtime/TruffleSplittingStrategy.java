@@ -51,7 +51,6 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingGrowthLimit;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingSingleTargetBudget;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleTraceSplittingSummary;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
 
@@ -103,9 +102,6 @@ final class TruffleSplittingStrategy {
             return false;
         }
         if (callTarget.isValid()) {
-            return false;
-        }
-        if ((callTarget.splitCount + 1) * callTarget.getUninitializedNodeCount() > TruffleCompilerOptions.getValue(TruffleSplittingSingleTargetBudget) * engineData.splitLimit) {
             return false;
         }
         return true;
