@@ -271,6 +271,16 @@ final class TruffleSplittingStrategy {
         }
     }
 
+    static void newCallNodeCreated(OptimizedDirectCallNode directCallNode) {
+        if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+            final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
+            callTarget.addKnownCallNode(directCallNode);
+            if (callTarget.isProfilePolluted()) {
+                directCallNode.setNeedsSplit(true);
+            }
+        }
+    }
+
     static class SplitStatisticsReporter extends Thread {
         final Set<GraalTVMCI.EngineData> engineDataSet = new HashSet<>();
         final Map<Class<? extends Node>, Integer> pollutedNodes = new HashMap<>();

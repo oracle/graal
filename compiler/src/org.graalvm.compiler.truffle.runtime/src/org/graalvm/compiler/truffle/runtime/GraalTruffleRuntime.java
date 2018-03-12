@@ -130,11 +130,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingGrowthLimit;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery.FrameBoxingClass;
@@ -449,14 +445,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
-            final OptimizedCallTarget optimizedCallTarget = (OptimizedCallTarget) target;
-            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(this, optimizedCallTarget);
-            if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
-                optimizedCallTarget.addKnownCallNode(directCallNode);
-                if (optimizedCallTarget.isProfilePolluted()) {
-                    directCallNode.setNeedsSplit(true);
-                }
-            }
+            final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(this, (OptimizedCallTarget) target);
+            TruffleSplittingStrategy.newCallNodeCreated(directCallNode);
             return directCallNode;
         } else {
             throw new IllegalStateException(String.format("Unexpected call target class %s!", target.getClass()));
