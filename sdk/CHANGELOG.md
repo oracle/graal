@@ -3,12 +3,12 @@
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
 ## Version 0.33
-* Expose Runtime name as as Engine#getImplementationName();
+* Expose Runtime name as Engine#getImplementationName();
 * Deprecate Context#exportSymbol, Context#importSymbol, Context#lookup use Context#getBindings, Context#getPolyglotBindings instead.
 * Remove deprecated API Engine#getLanguage, Engine#getInstrument.
 * Remove deprecated Language#isHost.
 * Deprecate ProxyPrimitive without replacement.
-* Added Context.Builder#allAccess that allows to inverse default access rights. e.g. make all access the default.
+* Added Context.Builder#allAccess that allows to declare that a context has all access by default, also for new access rights.
 
 ## Version 0.31
 
