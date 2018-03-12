@@ -99,6 +99,21 @@ matrix:
           - libc++abi1
           - libc++-dev
           - libc++abi-dev
+  - env: LLVM_VER=6.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
+    addons:
+      apt:
+        sources:
+          - ubuntu-toolchain-r-test
+          - llvm-toolchain-trusty-6.0
+        packages:
+          - python2.7
+          - python-pip
+          - clang-6.0
+          - llvm-6.0
+          - libc++1
+          - libc++abi1
+          - libc++-dev
+          - libc++abi-dev
   - env: LLVM_VER=3.8 GATE_TAGS='style'
     addons:
       apt:
