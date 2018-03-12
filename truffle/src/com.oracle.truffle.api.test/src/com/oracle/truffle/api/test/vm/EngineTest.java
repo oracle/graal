@@ -892,7 +892,7 @@ public class EngineTest {
         protected Object findExportedSymbol(ForkingLanguageChannel context, String globalName, boolean onlyExplicit) {
             return context.symbols.get(globalName);
         }
-        
+
         @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(ForkingLanguageChannel context) {

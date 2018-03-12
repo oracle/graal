@@ -791,7 +791,7 @@ public abstract class TruffleLanguage<C> {
      * @param context context to find the language global in
      * @return the global object or <code>null</code> if the language does not support such concept
      * @since 0.8 or earlier
-     * @deprecated in 0.32 implement {@link #findTopScopes(Object)} instead.
+     * @deprecated in 0.33 implement {@link #findTopScopes(Object)} instead.
      */
     @Deprecated
     protected Object getLanguageGlobal(C context) {
@@ -843,22 +843,23 @@ public abstract class TruffleLanguage<C> {
      * from the inner-most to the outer-most scope order. The language may return an empty iterable
      * to indicate no scopes. The returned scope objects may be cached by the caller per language
      * context. Therefore the method should always return equivalent top-scopes and variables
-     * objects for a given language context. Changes to the top scope by the guest language should
-     * be reflected by existing scopes instances. It is recommended to store the top-scopes iterable
-     * directly in the language context for efficient access.
+     * objects for a given language context. Changes to the top scope by executing guest language
+     * code should be reflected by cached scope instances. It is recommended to store the top-scopes
+     * iterable directly in the language context for efficient access.
      * <p>
      * <h3>Interpretation</h3> In most languages, just evaluating an expression like
      * <code>Math</code> is equivalent of a lookup with the identifier 'Math' in the top-most scopes
      * of the language. Looking up the identifier 'Math' should have equivalent semantics as reading
      * with the key 'Math' from the variables object of one of the top-most scopes of the language.
-     * In addition languages may optionally allow modifying and insertion with the variables object
-     * of the returned top-scopes.
+     * In addition languages may optionally allow modification and insertion with the variables
+     * object of the returned top-scopes.
      * <p>
-     * Languages may want to specify multiple top-scopes. It is recommended to stay as close to the
-     * set of top-scopes that as is described in the guest language specification, if available. For
-     * example, in JavaScript, there is a 'global environment' and a 'global object' scope. While
-     * the global environment scope contains class declarations and is not insertable, the global
-     * object scope is used to insert new global variable values and is therefore insertable.
+     * Languages may want to specify multiple top-scopes. It is recommended to stay as close as
+     * possible to the set of top-scopes that as is described in the guest language specification,
+     * if available. For example, in JavaScript, there is a 'global environment' and a 'global
+     * object' scope. While the global environment scope contains class declarations and is not
+     * insertable, the global object scope is used to insert new global variable values and is
+     * therefore insertable.
      * <p>
      * <h3>Use Cases</h3>
      * <ul>
@@ -867,14 +868,13 @@ public abstract class TruffleLanguage<C> {
      * top-most scopes of the language.
      * <li>Top scopes available in the {@link org.graalvm.polyglot polyglot API} as context
      * {@link Context#getBindings(String) bindings} object. When members of the bindings object are
-     * {@link Value#getMember(String) read} then the first scope is read where the key exists. If a
+     * {@link Value#getMember(String) read} then the first scope where the key exists is read. If a
      * member is {@link Value#putMember(String, Object) modified} in the bindings object, then the
-     * value will be written to the first scope where the value exists. If a new member is added to
+     * value will be written to the first scope where the key exists. If a new member is added to
      * the bindings object then it is added to the first variables object where the key is
-     * insertable. If a member is removed, it is only tried to be removed from the first variables
-     * object where such a key exists. If {@link Value#getMemberKeys() member keys} are requested
-     * from the bindings object, then the variable object keys are returned sorted from first to
-     * last.
+     * insertable. If a member is removed, it is only tried to be removed from the first scope of
+     * where such a key exists. If {@link Value#getMemberKeys() member keys} are requested from the
+     * bindings object, then the variable object keys are returned sorted from first to last.
      * </ul>
      * <p>
      * When not overridden then a single read-only scope named 'global' without any keys will be

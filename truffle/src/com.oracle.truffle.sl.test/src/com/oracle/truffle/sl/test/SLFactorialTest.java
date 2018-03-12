@@ -57,7 +57,7 @@ public class SLFactorialTest {
     public void initEngine() throws Exception {
         context = Context.create();
         // @formatter:off
-        context.eval("sl","\n" +
+        context.eval("sl", "\n" +
                 "function fac(n) {\n" +
                 "  if (n <= 1) {\n" +
                 "    return 1;\n" +

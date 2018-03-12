@@ -577,7 +577,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * @since 0.12
      * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
-     * @deprecated in 0.32 implement InstrumentableNode#hasTag instead.
+     * @deprecated in 0.33 implement InstrumentableNode#hasTag instead.
      */
     @Deprecated
     protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
