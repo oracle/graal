@@ -186,9 +186,6 @@ public class TruffleCompilerOptions {
     @Option(help = "Use the splitting strategy that relies on language implamentations marking nodes for splitting", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleUsePollutionBasedSplittingStrategy= new OptionKey<>(false);
 
-    @Option(help = "Used for debugging the splitting implementation. Prints splitting information directly to stdout", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleDirectTraceSplitting = new OptionKey<>(false);
-
     @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleTraceSplittingSummary = new OptionKey<>(false);
 
