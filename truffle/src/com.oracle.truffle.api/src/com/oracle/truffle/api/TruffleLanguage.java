@@ -124,25 +124,16 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link org.graalvm.polyglot.Context.Builder#option(String, String) configurable} options in
  * {@link #getOptionDescriptors()}.
  *
- * <h4>Global Symbols</h4>
+ * <h4>Polyglot Bindings</h4>
  *
  * Language implementations communicate with one another (and with instrumentation-based tools such
- * as debuggers) by exporting/importing named values known as <em>global symbols</em>. These
- * typically implement guest language export/import statements used for <em>language
- * interoperation</em>.
+ * as debuggers) by reading/writing named values into the {@link Env#getPolyglotBindings() polyglot
+ * bindings}. This bindings object is used to implement guest language export/import statements used
+ * for <em>language interoperation</em>.
  * <p>
- * A language manages its namespace of exported global symbols dynamically, by its response to the
- * query {@link #findExportedSymbol(Object, String, boolean)}. No attempt is made to avoid
- * cross-language name conflicts.
- * <p>
- * A language implementation can also {@linkplain Env#importSymbol(String) import} a global symbol
- * by name, according to the following rules:
- * <ul>
- * <li>A global symbol {@link org.graalvm.polyglot.Context#exportSymbol(String, Object) exported by
- * the context} will be returned, if any, ignoring global symbols exported by other languages.</li>
- * <li>Otherwise all languages are queried in unspecified order, and the first global symbol found,
- * if any, is returned.</li>
- * </ul>
+ * A language implementation can also {@linkplain Env#importSymbol(String) import} or
+ * {@linkplain Env#exportSymbol(String, Object) export} a global symbol by name. The scope may be
+ * accessed from multiple threads at the same time. Existing keys are overwritten.
  *
  * <h4>Configuration vs. Initialization</h4>
  *
@@ -863,8 +854,9 @@ public abstract class TruffleLanguage<C> {
      * <p>
      * <h3>Use Cases</h3>
      * <ul>
-     * <li>Top scopes are accessible to instruments with {@link Env#findTopScopes(java.lang.String)}
-     * . They are used by debuggers to access the top-most scopes of the language.
+     * <li>Top scopes are accessible to instruments with
+     * {@link com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findTopScopes(java.lang.String)}.
+     * They are used by debuggers to access the top-most scopes of the language.
      * <li>Top scopes available in the {@link org.graalvm.polyglot polyglot API} as context
      * {@link Context#getBindings(String) bindings} object. When members of the bindings object are
      * {@link Value#getMember(String) read} then the first scope where the key exists is read. If a
@@ -1316,8 +1308,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Explicitely exports a symbol to the polyglot scope. The behavior of this method is
-         * equivalent to sending a WRITE message to the {@link #getPolyglotBindings() polyglot
+         * Explicitely exports a symbol to the polyglot bindings object. The behavior of this method
+         * is equivalent to sending a WRITE message to the {@link #getPolyglotBindings() polyglot
          * bindings} object. Exporting a symbol with a <code>null</code> value will remove the
          * symbol from the polyglot object.
          * <p>
@@ -1351,7 +1343,7 @@ public abstract class TruffleLanguage<C> {
          * @since 0.27
          * @deprecated deprecated without replacement. the language
          *             {@link Context#getBindings(String) bindings} may be exposed to the language
-         *             using the polyglot scope.
+         *             using the polyglot bindings.
          */
         @TruffleBoundary
         @Deprecated

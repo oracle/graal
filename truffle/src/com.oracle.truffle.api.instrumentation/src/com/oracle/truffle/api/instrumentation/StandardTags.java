@@ -27,6 +27,7 @@ package com.oracle.truffle.api.instrumentation;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.CallTarget;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags

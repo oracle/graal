@@ -419,9 +419,9 @@ public final class Context implements AutoCloseable {
 
     /**
      * Converts a host value to a polyglot value representation. This conversion is applied
-     * implicitly whenever values are {@link #exportSymbol(String, Object) exported},
-     * {@link Value#execute(Object...) execution} or {@link Value#newInstance(Object...)
-     * instantiation} arguments are provided, {@link Value#putMember(String, Object) members} and
+     * implicitly whenever {@link Value#execute(Object...) execution} or
+     * {@link Value#newInstance(Object...) instantiation} arguments are provided,
+     * {@link Value#putMember(String, Object) members} and
      * {@link Value#setArrayElement(long, Object) array elements} are set or when a value is
      * returned by a {@link Proxy polyglot proxy}. It is not required nor efficient to explicitly
      * convert to polyglot values before performing these operations. This method is useful to
@@ -778,7 +778,6 @@ public final class Context implements AutoCloseable {
          * </ul>
          *
          * @param enabled <code>true</code> for all access by default.
-         * @return
          * @since 1.0
          */
         public Builder allowAllAccess(boolean enabled) {

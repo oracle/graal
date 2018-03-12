@@ -349,8 +349,7 @@ public abstract class TruffleTCK {
     /**
      * Name of a function to return global object. The function can be executed without providing
      * any arguments and should return global object of the language, if the language supports it.
-     * Global object is the one accessible via
-     * {@link TruffleLanguage#getLanguageGlobal(java.lang.Object)}.
+     * The global scopes are accessible via {@link TruffleLanguage#findTopScopes(java.lang.Object)}.
      *
      * @return name of globally exported symbol, return <code>null</code> if the language doesn't
      *         support the concept of global object
