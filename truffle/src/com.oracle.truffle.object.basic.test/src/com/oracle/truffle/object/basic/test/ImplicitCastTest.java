@@ -37,7 +37,6 @@ import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.TypedLocation;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 @RunWith(Parameterized.class)
@@ -66,17 +65,21 @@ public class ImplicitCastTest {
         this.otherPrimClass = otherPrimClass;
     }
 
+    private static Class<?> getLocationType(Location location) {
+        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
+    }
+
     @Test
     public void testIntOther() {
         Shape rootShape = layout.createShape(new ObjectType());
         DynamicObject object = rootShape.newInstance();
         object.define("a", intVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(int.class, ((TypedLocation) location1).getType());
+        Assert.assertEquals(int.class, getLocationType(location1));
 
         object.define("a", otherVal);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(otherPrimClass, ((TypedLocation) location2).getType());
+        Assert.assertEquals(otherPrimClass, getLocationType(location2));
         Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
         DOTestAsserts.assertSameLocation(location1, location2);
     }
@@ -87,11 +90,11 @@ public class ImplicitCastTest {
         DynamicObject object = rootShape.newInstance();
         object.define("a", otherVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(otherPrimClass, ((TypedLocation) location1).getType());
+        Assert.assertEquals(otherPrimClass, getLocationType(location1));
 
         object.define("a", intVal);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(otherPrimClass, ((TypedLocation) location2).getType());
+        Assert.assertEquals(otherPrimClass, getLocationType(location2));
         Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
         DOTestAsserts.assertSameLocation(location1, location2);
     }
@@ -102,17 +105,17 @@ public class ImplicitCastTest {
         DynamicObject object = rootShape.newInstance();
         object.define("a", intVal);
         Location location1 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(int.class, ((TypedLocation) location1).getType());
+        Assert.assertEquals(int.class, getLocationType(location1));
 
         object.define("a", otherVal);
         Location location2 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(otherPrimClass, ((TypedLocation) location2).getType());
+        Assert.assertEquals(otherPrimClass, getLocationType(location2));
         Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
         DOTestAsserts.assertSameLocation(location1, location2);
 
         object.define("a", intVal);
         Location location3 = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(otherPrimClass, ((TypedLocation) location3).getType());
+        Assert.assertEquals(otherPrimClass, getLocationType(location3));
         Assert.assertEquals(otherVal.getClass(), object.get("a").getClass());
         DOTestAsserts.assertSameLocation(location2, location3);
     }
@@ -124,7 +127,7 @@ public class ImplicitCastTest {
         object.define("a", intVal);
         object.define("a", "");
         Location location = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(Object.class, ((TypedLocation) location).getType());
+        Assert.assertEquals(Object.class, getLocationType(location));
         Assert.assertEquals(String.class, object.get("a").getClass());
     }
 
@@ -136,7 +139,7 @@ public class ImplicitCastTest {
         object.define("a", otherVal);
         object.define("a", "");
         Location location = object.getShape().getProperty("a").getLocation();
-        Assert.assertEquals(Object.class, ((TypedLocation) location).getType());
+        Assert.assertEquals(Object.class, getLocationType(location));
         Assert.assertEquals(String.class, object.get("a").getClass());
     }
 
