@@ -28,7 +28,7 @@ import java.util.Collection;
 import java.util.Map;
 
 final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition>
-                extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> {
+                extends GraphProtocol<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, StackTraceElement> {
     private final GraphStructure<Graph, Node, NodeClass, Port> structure;
     private final GraphTypes types;
     private final GraphBlocks<Graph, Block, Node> blocks;
@@ -43,7 +43,7 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
         this.elements = elements;
     }
 
-    ProtocolImpl(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?> parent, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
+    ProtocolImpl(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?, ?> parent, GraphStructure<Graph, Node, NodeClass, Port> structure, GraphTypes enums, GraphBlocks<Graph, Block, Node> blocks,
                     GraphElements<ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> elements) {
         super(parent);
         this.structure = structure;
@@ -285,8 +285,18 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     }
 
     @Override
-    protected StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
+    protected StackTraceElement findLocation(ResolvedJavaMethod method, int bci, NodeSourcePosition pos) {
         return elements.methodStackTraceElement(method, bci, pos);
+    }
+
+    @Override
+    protected String findLocationFile(StackTraceElement loc) {
+        return loc.getFileName();
+    }
+
+    @Override
+    protected int findLocationLine(StackTraceElement loc) {
+        return loc.getLineNumber();
     }
 
     @Override

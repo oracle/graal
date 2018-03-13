@@ -34,9 +34,9 @@ import java.util.Map;
  * @param <M> the type of methods this instance handles
  */
 public final class GraphOutput<G, M> implements Closeable {
-    private final GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?> printer;
+    private final GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> printer;
 
-    private GraphOutput(GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?> p) {
+    private GraphOutput(GraphProtocol<G, ?, ?, ?, ?, M, ?, ?, ?, ?> p) {
         this.printer = p;
     }
 
