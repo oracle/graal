@@ -151,7 +151,7 @@ public class NodeSourcePosition extends BytecodePosition {
         return d;
     }
 
-    public SourceLanguagePosition getSourceLanauage() {
+    public SourceLanguagePosition getSourceLanguage() {
         return sourceLanguagePosition;
     }
 
