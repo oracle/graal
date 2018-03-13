@@ -671,6 +671,7 @@ def test_python_smoke(args):
         mx.log("Python binary says: " + out.data)
 
 def build_ruby(native_image):
+    truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
     native_image(['--ruby'])
 
