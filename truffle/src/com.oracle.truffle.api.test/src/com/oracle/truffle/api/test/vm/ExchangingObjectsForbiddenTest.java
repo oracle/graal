@@ -42,6 +42,7 @@ import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
+@SuppressWarnings("deprecation")
 public class ExchangingObjectsForbiddenTest {
     private MyObj myObj;
     private PolyglotEngine myEngine;

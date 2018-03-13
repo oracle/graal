@@ -25,12 +25,14 @@
 package com.oracle.truffle.api.vm;
 
 import java.util.HashMap;
+
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 final class PolyglotCache {
 
     private final Map<Object, Cache> cachedTargets = new HashMap<>();

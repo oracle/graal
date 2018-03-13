@@ -52,6 +52,8 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.truffle.api.CallTarget;
@@ -199,8 +201,10 @@ import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
  *
  * @since 0.9
  * @see TruffleLanguage More information for language implementors.
+ * @deprecated use the {@link Context} instead.
  */
-@SuppressWarnings({"rawtypes"})
+@SuppressWarnings({"rawtypes", "deprecation"})
+@Deprecated
 public class PolyglotEngine {
     static final PolyglotEngine UNUSABLE_ENGINE = new PolyglotEngine();
 
@@ -401,7 +405,9 @@ public class PolyglotEngine {
      * </pre>
      *
      * @since 0.9
+     * @deprecated use {@link Context#newBuilder(String...)} instead.
      */
+    @Deprecated
     public class Builder {
         private OutputStream out;
         private OutputStream err;
@@ -892,7 +898,9 @@ public class PolyglotEngine {
      * running on behind.
      *
      * @since 0.9
+     * @deprecated use {@link org.graalvm.polyglot.Value} instead.
      */
+    @Deprecated
     public abstract class Value {
         private final Language language;
         private CallTarget executeTarget;
@@ -1225,7 +1233,9 @@ public class PolyglotEngine {
      *
      * @see PolyglotEngine#getLanguages()
      * @since 0.9
+     * @deprecated use {@link Engine#getLanguages()} instead.
      */
+    @Deprecated
     public class Language {
         private volatile TruffleLanguage.Env env;
         final LanguageShared shared;
@@ -1432,6 +1442,11 @@ public class PolyglotEngine {
 
         @Override
         public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
+            return null;
+        }
+
+        @Override
+        public Object findMetaObjectForLanguage(Object vmObject, Object value) {
             return null;
         }
 
@@ -1682,7 +1697,6 @@ public class PolyglotEngine {
             };
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
             Object vm = getCurrentVM();
@@ -1896,6 +1910,7 @@ public class PolyglotEngine {
 
 }
 
+@SuppressWarnings("deprecation")
 class PolyglotEngineSnippets {
     abstract class YourLang extends TruffleLanguage<Object> {
         public static final String MIME_TYPE = "application/my-test-lang";
@@ -2008,7 +2023,7 @@ class PolyglotEngineSnippets {
     static PrintStream err = System.err;
 
     // @formatter:off
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused"})
     static void createEngines(String mimeType) {
     // BEGIN: com.oracle.truffle.api.vm.PolyglotEngineSnippets#createEngines
     PolyglotRuntime runtime = PolyglotRuntime.newBuilder().

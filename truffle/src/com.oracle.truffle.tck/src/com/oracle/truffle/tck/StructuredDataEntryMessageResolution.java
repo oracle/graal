@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = StructuredDataEntry.class)
+@SuppressWarnings("deprecation")
 class StructuredDataEntryMessageResolution {
 
     @Resolve(message = "HAS_KEYS")

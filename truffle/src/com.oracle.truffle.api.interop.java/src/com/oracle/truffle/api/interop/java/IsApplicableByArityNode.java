@@ -28,6 +28,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 abstract class IsApplicableByArityNode extends Node {
     static final int LIMIT = 3;
 

@@ -25,7 +25,6 @@
 package com.oracle.truffle.tools.profiler.test;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -58,11 +57,7 @@ public abstract class AbstractProfilerTest {
             ")");
 
     protected Source makeSource(String s) {
-        try {
-            return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").build();
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
+        return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
     }
 
     protected static final SourceSectionFilter NO_INTERNAL_ROOT_TAG_FILTER = SourceSectionFilter.

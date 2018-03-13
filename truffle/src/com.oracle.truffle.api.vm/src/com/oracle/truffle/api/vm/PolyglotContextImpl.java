@@ -64,6 +64,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
+@SuppressWarnings("deprecation")
 final class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
 
     /**

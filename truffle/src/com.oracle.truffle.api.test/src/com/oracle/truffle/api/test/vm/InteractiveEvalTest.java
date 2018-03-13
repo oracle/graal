@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
+@SuppressWarnings("deprecation")
 public class InteractiveEvalTest {
 
     @Test

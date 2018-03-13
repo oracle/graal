@@ -66,6 +66,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 
+@SuppressWarnings("deprecation")
 public class EngineTest {
     private final PolyglotRuntime testRuntime = PolyglotRuntime.newBuilder().build();
     private final Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -887,13 +888,11 @@ public class EngineTest {
             });
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object findExportedSymbol(ForkingLanguageChannel context, String globalName, boolean onlyExplicit) {
             return context.symbols.get(globalName);
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(ForkingLanguageChannel context) {
             return context.globalObject;

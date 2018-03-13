@@ -24,6 +24,15 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.AfterClass;
+import org.junit.Assume;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -31,14 +40,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
-import org.junit.AfterClass;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Assume;
-import org.junit.BeforeClass;
-import org.junit.Test;
 
+/**
+ * This test is to be removed with the PolyglotEngine. Truffle NFI is currently no longer accessible
+ * from the embedder API.
+ */
+@SuppressWarnings("deprecation")
 public class StringAsInterfaceNFITest {
     private static StdLib stdlib;
     private static PolyglotEngine engine;

@@ -34,6 +34,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import org.junit.After;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("deprecation")
 public class ToStringTest {
     private PolyglotEngine engine;
 

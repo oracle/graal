@@ -24,12 +24,13 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.tools.profiler.CPUSampler;
-import org.graalvm.options.OptionDescriptors;
 
 /**
  * The {@linkplain TruffleInstrument instrument} for the CPU sampler.
@@ -82,15 +83,32 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
      * {@link CPUSampler}.
-     * 
+     *
      * @since 0.30
+     * @deprecated use {@link #getSampler(Engine)} instead.
      */
-    public static CPUSampler getSampler(PolyglotEngine engine) {
-        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static CPUSampler getSampler(com.oracle.truffle.api.vm.PolyglotEngine engine) {
+        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
         if (instrument == null) {
             throw new IllegalStateException("Sampler is not installed.");
         }
         instrument.setEnabled(true);
+        return instrument.lookup(CPUSampler.class);
+    }
+
+    /**
+     * Does a lookup in the runtime instruments of the engine and returns an instance of the
+     * {@link CPUSampler}.
+     *
+     * @since 0.33
+     */
+    public static CPUSampler getSampler(Engine engine) {
+        Instrument instrument = engine.getInstruments().get(ID);
+        if (instrument == null) {
+            throw new IllegalStateException("Sampler is not installed.");
+        }
         return instrument.lookup(CPUSampler.class);
     }
 

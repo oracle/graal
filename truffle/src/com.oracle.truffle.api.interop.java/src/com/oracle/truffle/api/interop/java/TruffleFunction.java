@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.TruffleObject;
 
+@SuppressWarnings("deprecation")
 final class TruffleFunction<T, R> implements Function<T, R> {
 
     final TruffleObject guestObject;
@@ -72,7 +73,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
 
     @Override
     public String toString() {
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
         if (engine != null) {
             try {
                 return engine.toHostValue(guestObject, languageContext).toString();
@@ -143,7 +144,7 @@ final class TruffleFunction<T, R> implements Function<T, R> {
         }
 
         private static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
-            EngineSupport engine = JavaInterop.ACCESSOR.engine();
+            EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
             if (engine == null) {
                 return createTarget(new Apply(receiverClass, returnClass, returnType));
             }

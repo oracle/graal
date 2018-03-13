@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
+@SuppressWarnings("deprecation")
 final class PolyglotLanguageContext implements VMObject {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
@@ -571,7 +572,7 @@ final class PolyglotLanguageContext implements VMObject {
         } else if (receiver instanceof Proxy) {
             return PolyglotProxy.toProxyGuestObject(languageContext, (Proxy) receiver);
         } else {
-            return JAVAINTEROP.toJavaGuestObject(receiver, languageContext);
+            return JAVAINTEROP.toGuestObject(receiver, languageContext);
         }
     }
 
@@ -596,7 +597,7 @@ final class PolyglotLanguageContext implements VMObject {
         if (receiver instanceof Proxy) {
             return PolyglotProxy.toProxyGuestObject(PolyglotLanguageContext.this, (Proxy) receiver);
         } else {
-            return (TruffleObject) JAVAINTEROP.toJavaGuestObject(receiver, PolyglotLanguageContext.this);
+            return (TruffleObject) JAVAINTEROP.toGuestObject(receiver, PolyglotLanguageContext.this);
         }
     }
 

@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
+@SuppressWarnings("deprecation")
 class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     final Object languageContext;
@@ -355,7 +356,7 @@ class TruffleMap<K, V> extends AbstractMap<K, V> {
         }
 
         static TruffleMapCache lookup(Object languageContext, Class<?> receiverClass, Class<?> keyClass, Class<?> valueClass, Type valueType) {
-            EngineSupport engine = JavaInterop.ACCESSOR.engine();
+            EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
             if (engine == null) {
                 return new TruffleMapCache(receiverClass, keyClass, valueClass, valueType);
             }

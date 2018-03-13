@@ -62,7 +62,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -108,13 +107,11 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 assertEquals("L1:test", value.as(String.class));
 
                 value = frame.getScope().getDeclaredValue("a");
-                LanguageInfo lang = value.getOriginalLanguage();
-                assertNotNull(lang);
-                assertEquals("host", lang.getId());
+                assertNull(value.getOriginalLanguage());
                 assertEquals("null", value.as(String.class));
 
                 value = frame.getScope().getDeclaredValue("b");
-                lang = value.getOriginalLanguage();
+                LanguageInfo lang = value.getOriginalLanguage();
                 assertNotNull(lang);
                 assertEquals(ValuesLanguage1.NAME, lang.getName());
                 assertEquals("{a={}, j=100}", value.as(String.class));
@@ -329,7 +326,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     break;
                 default:
                     if ("null".equals(valueStr)) {
-                        value = JavaInterop.asTruffleObject(null);
+                        value = new NullObject();
                     } else {
                         value = new PropertiesMapObject(id, sourceSection);
                     }
@@ -439,7 +436,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 for (VarNode ch : children) {
                     ch.execute(frame);
                 }
-                return JavaInterop.asTruffleObject(null);
+                return new NullObject();
             }
 
             @Override
@@ -714,6 +711,29 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     }
                 }
 
+            }
+        }
+
+    }
+
+    @MessageResolution(receiverType = NullObject.class)
+    static final class NullObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NullObjectForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof NullObject;
+        }
+
+        @Resolve(message = "IS_NULL")
+        abstract static class PropertyKeysHasSizeNode extends Node {
+
+            @SuppressWarnings("unused")
+            public boolean access(NullObject ato) {
+                return true;
             }
         }
 

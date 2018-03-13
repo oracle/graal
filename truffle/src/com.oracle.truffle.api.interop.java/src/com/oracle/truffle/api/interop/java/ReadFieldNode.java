@@ -24,10 +24,13 @@
  */
 package com.oracle.truffle.api.interop.java;
 
+import java.util.function.BiFunction;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 abstract class ReadFieldNode extends Node {
     static final int LIMIT = 3;
 
@@ -40,17 +43,23 @@ abstract class ReadFieldNode extends Node {
 
     public abstract Object execute(JavaFieldDesc field, JavaObject object);
 
+    protected static BiFunction<Object, Object, Object> createToGuestValue() {
+        return JavaInteropAccessor.ACCESSOR.engine().createToGuestValueNode();
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
     static Object doCached(SingleFieldDesc field, JavaObject object,
-                    @Cached("field") SingleFieldDesc cachedField) {
+                    @Cached("field") SingleFieldDesc cachedField,
+                    @Cached("createToGuestValue()") BiFunction<Object, Object, Object> toGuest) {
         Object val = cachedField.get(object.obj);
-        return JavaInterop.toGuestValue(val, object.languageContext);
+        return toGuest.apply(object.languageContext, val);
     }
 
     @Specialization(replaces = "doCached")
-    static Object doUncached(SingleFieldDesc field, JavaObject object) {
+    static Object doUncached(SingleFieldDesc field, JavaObject object,
+                    @Cached("createToGuestValue()") BiFunction<Object, Object, Object> toGuest) {
         Object val = field.get(object.obj);
-        return JavaInterop.toGuestValue(val, object.languageContext);
+        return toGuest.apply(object.languageContext, val);
     }
 }

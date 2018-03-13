@@ -30,6 +30,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 
+@SuppressWarnings("deprecation")
 public class EngineAsynchTest extends EngineTest {
     @Test
     public void marker() {

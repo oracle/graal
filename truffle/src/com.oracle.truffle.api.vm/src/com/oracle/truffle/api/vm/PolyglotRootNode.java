@@ -50,6 +50,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
+@SuppressWarnings("deprecation")
 abstract class PolyglotRootNode extends RootNode {
 
     private static RootCallTarget voidCallTarget = Truffle.getRuntime().createCallTarget(new VoidRootNode());
@@ -141,7 +142,6 @@ abstract class PolyglotRootNode extends RootNode {
         }
 
         @Override
-        @SuppressWarnings("deprecation")
         protected Object executeImpl(VirtualFrame frame) {
             final TruffleObject receiver = ForeignAccess.getReceiver(frame);
             final Object[] args = ForeignAccess.getArguments(frame).toArray();

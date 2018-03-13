@@ -31,6 +31,7 @@ import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -41,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
@@ -49,8 +51,6 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
-import com.oracle.truffle.api.vm.PolyglotEngine.Language;
-import java.io.PrintStream;
 
 /**
  * A runtime environment for one or more {@link PolyglotEngine} instances. By default a constructed
@@ -69,11 +69,14 @@ import java.io.PrintStream;
  * @since 0.25
  * @see PolyglotEngine
  * @see TruffleLanguage More information for language implementors.
+ * @deprecated use {@link Engine} instead.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class PolyglotRuntime {
     private final List<LanguageShared> languages;
     final Object instrumentationHandler;
-    @SuppressWarnings("deprecation") final Map<String, PolyglotEngine.Instrument> instruments;
+    final Map<String, PolyglotEngine.Instrument> instruments;
     final Object[] debugger = {null};
     final PolyglotEngineProfile engineProfile;
     private final AtomicInteger instanceCount = new AtomicInteger(0);
@@ -149,7 +152,6 @@ public final class PolyglotRuntime {
         instanceCount.incrementAndGet();
     }
 
-    @SuppressWarnings("deprecation")
     private Map<String, PolyglotEngine.Instrument> createInstruments(List<InstrumentCache> instrumentCaches) {
         Map<String, PolyglotEngine.Instrument> instr = new LinkedHashMap<>();
         for (InstrumentCache cache : instrumentCaches) {
@@ -230,7 +232,7 @@ public final class PolyglotRuntime {
             this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal());
         }
 
-        Language currentLanguage() {
+        com.oracle.truffle.api.vm.PolyglotEngine.Language currentLanguage() {
             return runtime.currentVM().findLanguage(this);
         }
 
@@ -273,7 +275,9 @@ public final class PolyglotRuntime {
      * Builder for creating new instance of a {@link PolyglotRuntime}.
      *
      * @since 0.25
+     * @deprecated use {@link Engine#newBuilder()} instead.
      */
+    @Deprecated
     public final class Builder {
         private OutputStream out;
         private OutputStream err;
@@ -358,7 +362,9 @@ public final class PolyglotRuntime {
      *
      * @see PolyglotRuntime#getInstruments()
      * @since 0.25
+     * @deprecated use {@link Engine#getInstruments()} instead.
      */
+    @Deprecated
     public class Instrument {
 
         private final InstrumentCache cache;

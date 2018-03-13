@@ -82,6 +82,9 @@ final class ForeignAccessFactoryGenerator {
         w.append("package ").append(packageName).append(";\n\n");
         appendImports(w);
         Utils.appendFactoryGeneratedFor(w, "", receiverTypeClass, ElementUtils.getQualifiedName(element));
+        if (ElementUtils.isDeprecated(element)) {
+            Utils.suppressDeprecationWarnings(w, "");
+        }
         Utils.appendVisibilityModifier(w, element);
         w.append("final class ").append(simpleClassName);
         w.append(" implements StandardFactory, Factory {\n");

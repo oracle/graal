@@ -43,6 +43,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import java.io.PrintStream;
 
 //TODO (chumer): maybe this class should share some code with LanguageCache?
+@SuppressWarnings("deprecation")
 final class InstrumentCache {
 
     private static final boolean JDK8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;

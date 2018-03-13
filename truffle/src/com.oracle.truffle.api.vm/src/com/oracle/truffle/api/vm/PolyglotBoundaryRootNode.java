@@ -37,6 +37,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /*
  * TODO merge this with PolyglotValue.PolyglotNode
  */
+@SuppressWarnings("deprecation")
 final class PolyglotBoundaryRootNode extends RootNode {
 
     private static final Object UNINITIALIZED_CONTEXT = new Object();

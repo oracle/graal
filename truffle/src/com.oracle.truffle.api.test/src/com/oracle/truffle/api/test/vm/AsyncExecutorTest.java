@@ -41,6 +41,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 
+@SuppressWarnings("deprecation")
 public class AsyncExecutorTest {
 
     @Test

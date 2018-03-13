@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.graalvm.polyglot.Engine;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.impl.DebuggerInstrument;
@@ -42,11 +44,11 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
  * Represents debugging related state of a {@link PolyglotEngine}.
@@ -300,9 +302,35 @@ public final class Debugger {
      * @param engine the engine to find debugger for
      * @return an instance of associated debugger, never <code>null</code>
      * @since 0.9
+     * @deprecated use {@link #find(TruffleInstrument.Env)}, {@link #find(TruffleLanguage.Env)} or
+     *             {@link #find(Engine)} instead.
      */
-    public static Debugger find(PolyglotEngine engine) {
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static Debugger find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
         return DebuggerInstrument.getDebugger(engine);
+    }
+
+    /**
+     * Finds the debugger associated with a given instrument environment.
+     *
+     * @param env the instrument environment to find debugger for
+     * @return an instance of associated debugger, never <code>null</code>
+     * @since 0.33
+     */
+    public static Debugger find(TruffleInstrument.Env env) {
+        return env.lookup(env.getInstruments().get("debugger"), Debugger.class);
+    }
+
+    /**
+     * Finds the debugger associated with a given polyglot engine.
+     *
+     * @param env the instrument environment to find debugger for
+     * @return an instance of associated debugger, never <code>null</code>
+     * @since 0.33
+     */
+    public static Debugger find(Engine engine) {
+        return engine.getInstruments().get("debugger").lookup(Debugger.class);
     }
 
     /**

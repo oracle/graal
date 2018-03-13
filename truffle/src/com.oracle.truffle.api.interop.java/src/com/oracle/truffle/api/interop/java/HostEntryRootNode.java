@@ -35,6 +35,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<String> {
 
     HostEntryRootNode() {
@@ -57,7 +58,7 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
     protected abstract Object executeImpl(Object languageContext, T receiver, Object[] args, int offset);
 
     protected static CallTarget createTarget(HostEntryRootNode<?> node) {
-        EngineSupport support = JavaInterop.ACCESSOR.engine();
+        EngineSupport support = JavaInteropAccessor.ACCESSOR.engine();
         if (support == null) {
             return Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
@@ -71,7 +72,7 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
     }
 
     protected static BiFunction<Object, Object, Object> createToGuestValueNode() {
-        EngineSupport support = JavaInterop.ACCESSOR.engine();
+        EngineSupport support = JavaInteropAccessor.ACCESSOR.engine();
         if (support == null) {
             return new BiFunction<Object, Object, Object>() {
                 public Object apply(Object context, Object value) {
@@ -83,7 +84,7 @@ abstract class HostEntryRootNode<T> extends ExecutableNode implements Supplier<S
     }
 
     protected static BiFunction<Object, Object[], Object[]> createToGuestValuesNode() {
-        EngineSupport support = JavaInterop.ACCESSOR.engine();
+        EngineSupport support = JavaInteropAccessor.ACCESSOR.engine();
         if (support == null) {
             // legacy support
             return new BiFunction<Object, Object[], Object[]>() {

@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
+@SuppressWarnings("deprecation")
 public class PolyglotEngineProfileTest {
 
     private static final Class<?> CONTEXT_STORE_PROFILE = loadRelative(PolyglotEngineProfileTest.class, "PolyglotEngineProfile");

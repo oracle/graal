@@ -29,6 +29,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 @MessageResolution(receiverType = JavaFunctionObject.class)
 class JavaFunctionMessageResolution {
 
@@ -44,7 +45,6 @@ class JavaFunctionMessageResolution {
             }
             return doExecute.execute(function.method, function.obj, args, function.languageContext);
         }
-
     }
 
     @Resolve(message = "IS_EXECUTABLE")

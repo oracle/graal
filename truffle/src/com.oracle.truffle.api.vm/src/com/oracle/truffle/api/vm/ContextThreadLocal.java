@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
+@SuppressWarnings("deprecation")
 final class ContextThreadLocal extends ThreadLocal<Object> {
 
     private final Assumption singleThread = Truffle.getRuntime().createAssumption("constant context store");

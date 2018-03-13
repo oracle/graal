@@ -51,6 +51,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * problems with debugging later on. That is what the other part of this test - once it obtains
  * Debugger instance simulates.
  */
+@SuppressWarnings("deprecation")
 public class InitializationTest {
 
     private PolyglotEngine vm;

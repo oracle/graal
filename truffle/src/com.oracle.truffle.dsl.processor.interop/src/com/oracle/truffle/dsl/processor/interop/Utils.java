@@ -94,6 +94,12 @@ final class Utils {
         w.append(indent).append(" */\n");
     }
 
+    static void suppressDeprecationWarnings(Writer w, String indent) throws IOException {
+        w.append("\n");
+        w.append(indent).append("@SuppressWarnings(\"deprecation\")");
+        w.append("\n");
+    }
+
     static void appendMessagesGeneratedByInformation(Writer w, String indent, String generatedBy, String generatedFor) throws IOException {
         w.append("\n");
         w.append(indent).append("/**\n");

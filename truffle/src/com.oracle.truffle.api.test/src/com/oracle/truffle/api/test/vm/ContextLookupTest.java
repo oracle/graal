@@ -49,6 +49,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine.Value;
 import com.oracle.truffle.api.vm.PolyglotRuntime;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("deprecation")
 public class ContextLookupTest {
 
     protected PolyglotEngine.Builder createBuilder() {
@@ -352,7 +353,6 @@ public class ContextLookupTest {
             });
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(LanguageLookupContext context) {
             assertContext(context);

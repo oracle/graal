@@ -33,6 +33,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
+@SuppressWarnings("deprecation")
 class PolyglotInstrument extends AbstractInstrumentImpl implements VMObject {
 
     Instrument api;

@@ -40,13 +40,13 @@ import java.util.TreeSet;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl;
 import java.io.PrintStream;
 
 /**
  * Ahead-of-time initialization. If the JVM is started with {@link TruffleOptions#AOT}, it populates
  * runtimeCache with languages found in application classloader.
  */
+@SuppressWarnings("deprecation")
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static volatile Map<String, LanguageCache> runtimeCache;
@@ -65,7 +65,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     static {
         if (VMAccessor.SPI == null) {
-            VMAccessor.initialize(new LegacyEngineImpl());
+            VMAccessor.initialize(new com.oracle.truffle.api.vm.PolyglotEngine.LegacyEngineImpl());
         }
     }
 

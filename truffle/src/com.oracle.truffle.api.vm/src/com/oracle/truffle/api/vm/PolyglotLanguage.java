@@ -42,6 +42,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
+@SuppressWarnings("deprecation")
 final class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
 
     final PolyglotEngineImpl engine;

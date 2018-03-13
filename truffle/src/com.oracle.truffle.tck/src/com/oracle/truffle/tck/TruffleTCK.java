@@ -136,7 +136,11 @@ import com.oracle.truffle.tck.impl.TestObject;
  * our best to analyze your case and adjust the <em>TCK</em> to suite everyone's needs.
  *
  * @since 0.8 or earlier
+ * @deprecated Use the {@link https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md new
+ *             TCK}. instead.
  */
+@Deprecated
+@SuppressWarnings("deprecation")
 public abstract class TruffleTCK {
 
     private static volatile PolyglotEngine previousVMReference;

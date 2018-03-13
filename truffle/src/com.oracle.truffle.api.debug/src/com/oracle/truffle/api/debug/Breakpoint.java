@@ -42,12 +42,13 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -57,7 +58,6 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
  * A request that guest language program execution be suspended at specified locations on behalf of
@@ -1167,16 +1167,16 @@ public class Breakpoint {
 class BreakpointSnippets {
 
     public void example() {
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
         SuspendedCallback suspendedCallback = new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
             }
         };
         Source someCode = Source.newBuilder("").mimeType("").name("").build();
+        TruffleInstrument.Env instrumentEnvironment = null;
 
         // @formatter:off
         // BEGIN: BreakpointSnippets.example
-        try (DebuggerSession session = Debugger.find(engine).
+        try (DebuggerSession session = Debugger.find(instrumentEnvironment).
                         startSession(suspendedCallback)) {
 
             // install breakpoint in someCode at line 3.

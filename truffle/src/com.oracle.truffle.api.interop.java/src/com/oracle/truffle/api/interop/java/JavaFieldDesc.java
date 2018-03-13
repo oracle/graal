@@ -46,6 +46,7 @@ interface JavaFieldDesc {
     }
 }
 
+@SuppressWarnings("deprecation")
 abstract class SingleFieldDesc implements JavaFieldDesc {
     private final Class<?> type;
     private final Type genericType;

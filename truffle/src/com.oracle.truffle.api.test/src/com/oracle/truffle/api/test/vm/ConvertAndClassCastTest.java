@@ -29,6 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
+@SuppressWarnings("deprecation")
 public class ConvertAndClassCastTest {
     @Test(expected = ClassCastException.class)
     public void convertStringToIntThrowsClassCastException() {

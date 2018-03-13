@@ -26,14 +26,12 @@ package com.oracle.truffle.nfi.test.interop;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 
 public class BoxedPrimitive implements TruffleObject {
 
     final Object primitive;
 
     public BoxedPrimitive(Object primitive) {
-        assert JavaInterop.isPrimitive(primitive);
         this.primitive = primitive;
     }
 

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * A default frame slot based implementation of variables contained in the (default) frame scope.
  */
+@SuppressWarnings("deprecation")
 final class DefaultScope {
 
     static Iterable<Scope> topScope(Object global) {
@@ -191,7 +192,11 @@ final class DefaultScope {
                 @TruffleBoundary
                 public Object access(VariablesMapObject varMap, String name) {
                     if (varMap.slots.containsKey(name)) {
-                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
+                        if (varMap.frame == null) {
+                            return KeyInfo.READABLE;
+                        } else {
+                            return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
+                        }
                     } else {
                         return 0;
                     }
@@ -204,7 +209,7 @@ final class DefaultScope {
                 @TruffleBoundary
                 public Object access(VariablesMapObject varMap, String name) {
                     if (varMap.frame == null) {
-                        throw UnsupportedMessageException.raise(Message.READ);
+                        return NullValue.INSTANCE;
                     }
                     FrameSlot slot = varMap.slots.get(name);
                     if (slot == null) {
@@ -234,6 +239,33 @@ final class DefaultScope {
             }
 
         }
+    }
+
+    @MessageResolution(receiverType = NullValue.class)
+    final static class NullValue implements TruffleObject {
+
+        private static final NullValue INSTANCE = new NullValue();
+
+        NullValue() {
+        }
+
+        @Resolve(message = "IS_NULL")
+        abstract static class IsNull extends Node {
+
+            public Object access(@SuppressWarnings("unused") NullValue receiver) {
+                return true;
+            }
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NullValueForeign.ACCESS;
+        }
+
+        static boolean isInstance(TruffleObject array) {
+            return array instanceof NullValue;
+        }
+
     }
 
     static final class VariableNamesObject implements TruffleObject {
@@ -310,15 +342,6 @@ final class DefaultScope {
 
         @MessageResolution(receiverType = ArgumentsArrayObject.class)
         static final class ArguentsArrayMessageResolution {
-
-            @Resolve(message = "HAS_KEYS")
-            abstract static class ArgsArrHasKeysNode extends Node {
-
-                @SuppressWarnings("unused")
-                public Object access(ArgumentsArrayObject argsArr) {
-                    return false;
-                }
-            }
 
             @Resolve(message = "HAS_SIZE")
             abstract static class ArgsArrHasSizeNode extends Node {

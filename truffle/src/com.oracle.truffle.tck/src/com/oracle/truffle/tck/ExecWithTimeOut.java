@@ -41,6 +41,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * javadoc.
  */
 // BEGIN: com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets
+@SuppressWarnings("deprecation")
 class ExecWithTimeOut {
 
     boolean pauseRequested;

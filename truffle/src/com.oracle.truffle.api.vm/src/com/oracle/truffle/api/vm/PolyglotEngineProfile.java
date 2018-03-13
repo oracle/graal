@@ -32,6 +32,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
+@SuppressWarnings("deprecation")
 final class PolyglotEngineProfile {
 
     // single context per engines

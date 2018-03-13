@@ -32,6 +32,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
 import org.junit.After;
 import org.junit.Before;
 
+@SuppressWarnings("deprecation")
 public class IsMimeTypeSupportedTest {
 
     private static final String MIME_TYPE = "application/x-test-mime-type-supported";

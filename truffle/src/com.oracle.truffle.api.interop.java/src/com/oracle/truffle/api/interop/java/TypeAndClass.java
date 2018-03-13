@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop.java;
 import java.lang.reflect.Type;
 import java.util.Objects;
 
+@SuppressWarnings("deprecation")
 final class TypeAndClass<T> {
     static final TypeAndClass<Object> ANY = new TypeAndClass<>(null, Object.class);
 

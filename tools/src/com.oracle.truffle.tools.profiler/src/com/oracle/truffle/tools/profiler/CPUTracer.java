@@ -24,6 +24,16 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.io.Closeable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -35,18 +45,9 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
-
-import java.io.Closeable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Implementation of a tracing based profiler for {@linkplain com.oracle.truffle.api.TruffleLanguage
@@ -86,8 +87,22 @@ public final class CPUTracer implements Closeable {
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link CPUTracer}
      * @since 0.30
+     * @deprecated use {@link #find(Engine)} instead
      */
-    public static CPUTracer find(PolyglotEngine engine) {
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static CPUTracer find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
+        return CPUTracerInstrument.getTracer(engine);
+    }
+
+    /**
+     * Finds {@link CPUTracer} associated with given engine.
+     *
+     * @param engine the engine to find debugger for
+     * @return an instance of associated {@link CPUTracer}
+     * @since 0.30
+     */
+    public static CPUTracer find(Engine engine) {
         return CPUTracerInstrument.getTracer(engine);
     }
 
@@ -313,13 +328,10 @@ class CPUTracerSnippets {
     public void example() {
         // @formatter:off
         // BEGIN: CPUTracerSnippets#example
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-        CPUTracer tracer = CPUTracer.find(engine);
+        Context context = Context.create();
+        CPUTracer tracer = CPUTracer.find(context.getEngine());
         tracer.setCollecting(true);
-        Source someCode = Source.newBuilder("...").
-                mimeType("...").
-                name("example").build();
-        engine.eval(someCode);
+        context.eval("...", "...");
         tracer.setCollecting(false);
         tracer.close();
         // Read information about execution counts of elements.

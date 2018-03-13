@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 abstract class ArrayRemoveNode extends Node {
 
     protected abstract boolean executeWithTarget(JavaObject receiver, Object index);

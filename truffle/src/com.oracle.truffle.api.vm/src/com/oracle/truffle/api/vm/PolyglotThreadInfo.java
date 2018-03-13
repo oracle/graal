@@ -26,6 +26,7 @@ package com.oracle.truffle.api.vm;
 
 import java.util.LinkedList;
 
+@SuppressWarnings("deprecation")
 final class PolyglotThreadInfo {
 
     static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null);

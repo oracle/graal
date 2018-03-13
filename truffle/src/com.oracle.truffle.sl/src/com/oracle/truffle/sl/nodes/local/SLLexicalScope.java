@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
@@ -65,6 +66,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
  * Simple language lexical scope. There can be a block scope, or function scope.
@@ -356,13 +358,29 @@ public final class SLLexicalScope {
                 }
             }
 
+            @Resolve(message = "KEY_INFO")
+            abstract static class KeyInfoNode extends Node {
+
+                @TruffleBoundary
+                public int access(VariablesMapObject varMap, String name) {
+                    if (varMap.frame == null) {
+                        return KeyInfo.READABLE;
+                    }
+                    FrameSlot slot = varMap.slots.get(name);
+                    if (slot != null) {
+                        return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
+                    }
+                    return KeyInfo.NONE;
+                }
+            }
+
             @Resolve(message = "READ")
             abstract static class VarsMapReadNode extends Node {
 
                 @TruffleBoundary
                 public Object access(VariablesMapObject varMap, String name) {
                     if (varMap.frame == null) {
-                        throw UnsupportedMessageException.raise(Message.READ);
+                        return SLNull.SINGLETON;
                     }
                     FrameSlot slot = varMap.slots.get(name);
                     if (slot == null) {

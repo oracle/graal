@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.dsl.processor.ExpectError;
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 /**
@@ -85,14 +86,19 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     }
 
     private void process0(RoundEnvironment roundEnv) {
-        for (Element e : roundEnv.getElementsAnnotatedWith(MessageResolution.class)) {
-            try {
-                processElement(e);
-            } catch (Throwable ex) {
-                ex.printStackTrace();
-                String message = "Uncaught error in " + this.getClass();
-                processingEnv.getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(ex), e);
+        try {
+            ProcessorContext.setThreadLocalInstance(new ProcessorContext(processingEnv, null));
+            for (Element e : roundEnv.getElementsAnnotatedWith(MessageResolution.class)) {
+                try {
+                    processElement(e);
+                } catch (Throwable ex) {
+                    ex.printStackTrace();
+                    String message = "Uncaught error in " + this.getClass();
+                    processingEnv.getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(ex), e);
+                }
             }
+        } finally {
+            ProcessorContext.setThreadLocalInstance(null);
         }
     }
 

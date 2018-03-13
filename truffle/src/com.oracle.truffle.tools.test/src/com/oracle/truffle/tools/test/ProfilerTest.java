@@ -30,6 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -40,8 +41,8 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.Profiler;
 import com.oracle.truffle.tools.Profiler.Counter;
-import org.graalvm.polyglot.Source;
 
+@SuppressWarnings("deprecation")
 public class ProfilerTest extends AbstractInstrumentationTest {
 
     private Profiler profiler;

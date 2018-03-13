@@ -63,13 +63,13 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
  * Client access to {@link PolyglotEngine} {@linkplain Debugger debugging services}.
@@ -1226,11 +1226,12 @@ public final class DebuggerSession implements Closeable {
 class DebuggerSessionSnippets {
 
     public void example() {
+
+        TruffleInstrument.Env instrumentEnv = null;
+
         // @formatter:off
         // BEGIN: DebuggerSessionSnippets#example
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-
-        try (DebuggerSession session = Debugger.find(engine).
+        try (DebuggerSession session = Debugger.find(instrumentEnv).
                         startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
                 // step into the next event
@@ -1243,11 +1244,7 @@ class DebuggerSessionSnippets {
 
             // install line breakpoint
             session.install(Breakpoint.newBuilder(someCode).lineIs(3).build());
-
-            // should print suspended at for each debugger step.
-            engine.eval(someCode);
         }
-
         // END: DebuggerSessionSnippets#example
         // @formatter:on
     }

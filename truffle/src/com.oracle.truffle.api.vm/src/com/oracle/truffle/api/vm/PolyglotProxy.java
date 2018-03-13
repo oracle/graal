@@ -49,6 +49,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 final class PolyglotProxy {
 
     public static boolean isProxyGuestObject(TruffleObject value) {
@@ -169,7 +170,6 @@ final class PolyglotProxy {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static final class ProxyIsBoxedNode extends ProxyRootNode {
 
         @Override
@@ -178,7 +178,6 @@ final class PolyglotProxy {
         }
     }
 
-    @SuppressWarnings("deprecation")
     private static final class ProxyUnboxNode extends ProxyRootNode {
 
         @Override

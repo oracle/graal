@@ -48,9 +48,10 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 public class TestMemberAccess {
 
     private final Node newNode = Message.createNew(0).createNode();

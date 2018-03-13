@@ -55,7 +55,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.PolyglotImpl.EngineImpl;
@@ -63,6 +62,7 @@ import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToHostValueNode;
 
+@SuppressWarnings("deprecation")
 abstract class PolyglotValue extends AbstractValueImpl {
 
     private static final double DOUBLE_MAX_SAFE_INTEGER = 9007199254740991d; // 2 ** 53 - 1
@@ -1242,7 +1242,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
             this.hasMembers = createTarget(new HasMembersNode(this));
             this.asPrimitive = createTarget(new AsPrimitiveNode(this));
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiver);
-            this.isJava = JavaInterop.isJavaObject(receiver);
+            this.isJava = VMAccessor.JAVAINTEROP.isHostObject(receiver);
         }
 
         @Override
@@ -1347,12 +1347,11 @@ abstract class PolyglotValue extends AbstractValueImpl {
 
         @Override
         public Object asHostObject(Object receiver) {
-            TruffleObject castReceiver = (TruffleObject) receiver;
             // TODO temporary allow proxies as host objects GR-8034
             if (isProxy) {
                 return PolyglotProxy.toProxyHostObject((TruffleObject) receiver);
             } else if (isJava) {
-                return JavaInterop.asJavaObject(castReceiver);
+                return VMAccessor.JAVAINTEROP.asHostObject(receiver);
             } else {
                 return super.asHostObject(receiver);
             }

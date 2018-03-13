@@ -27,6 +27,7 @@ package com.oracle.truffle.api.interop.java;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 
+@SuppressWarnings("deprecation")
 final class JavaObject implements TruffleObject {
 
     static final JavaObject NULL = new JavaObject(null, null, false);

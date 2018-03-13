@@ -32,9 +32,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.tools.profiler.CPUTracer;
 
 public class CPUTracerTest extends AbstractProfilerTest {
 
@@ -42,9 +40,7 @@ public class CPUTracerTest extends AbstractProfilerTest {
 
     @Before
     public void setupTracer() {
-        Instrument instrument = context.getEngine().getInstruments().get(CPUTracerInstrument.ID);
-        Assert.assertNotNull(instrument);
-        tracer = instrument.lookup(CPUTracer.class);
+        tracer = CPUTracer.find(context.getEngine());
         Assert.assertNotNull(tracer);
     }
 

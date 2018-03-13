@@ -55,7 +55,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -370,7 +369,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected void initializeContext(BenchmarkContext context) throws Exception {
-            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", JavaInterop.asTruffleValue(context));
+            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", context.env.asGuestValue(context));
         }
 
         @Override
@@ -475,9 +474,9 @@ public class EngineBenchmark extends TruffleBenchmark {
                 @TruffleBoundary
                 public Object access(TopScopeObject ts, String name) {
                     if ("context".equals(name)) {
-                        return JavaInterop.asTruffleObject(ts.context);
+                        return ts.context.env.asGuestValue(ts.context);
                     } else {
-                        return JavaInterop.asTruffleObject(ts.context.object);
+                        return ts.context.env.asGuestValue(ts.context.object);
                     }
                 }
             }

@@ -39,6 +39,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
+@SuppressWarnings("deprecation")
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
     private final PolyglotLanguage language;

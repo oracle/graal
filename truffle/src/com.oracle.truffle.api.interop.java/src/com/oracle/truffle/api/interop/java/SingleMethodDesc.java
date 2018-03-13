@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
+@SuppressWarnings("deprecation")
 abstract class SingleMethodDesc implements JavaMethodDesc {
     private final boolean varArgs;
     @CompilationFinal(dimensions = 1) private final Class<?>[] parameterTypes;

@@ -4,6 +4,12 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 0.33
 
+* As announced in 0.27 all classes in package com.oracle.truffle.api.vm are now deprecated.
+	* Deprecated all classes in com.oracle.truffle.api.vm. Replacements can be found in the org.graalvm.polyglot package.
+	* Deprecated all classes in com.oracle.truffle.api.interop.java. Replacements for embedders can be found in org.graalvm.polyglot. Replacements for language implementations can be found in TruffleLanguage.Env. See deprecated documentation on the individual methods for details.
+	* Deprecated TruffleTCK. Use the [new TCK](https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md) instead.
+	* Deprecated Debugger#find(PolyglotEngine)
+	* Added Debugger#find(TruffleInstrument.Env) and Debugger#find(Engine)
 * This release contains major changes to the instrumentation framework.
 	* Deprecated @[Instrumentable](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumentable.html) and replaced it with [InstrumentableNode](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html). Please see [InstrumentableNode](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html) on how to specify instrumentable nodes in 0.32.
 	* Added @[GenerateWrapper](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/GenerateWrapper.html) for automatic wrapper generation.
@@ -46,6 +52,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * The [ReportPolymorphism](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html) and [ReportPolymorphism.Exclude](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html) annotations which the DSL uses to generate (or not generate) calls to [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize--).
 * Added `TruffleException.getSourceLocation()` for syntax errors which don't have a `Node`.
 * Changed member lookup on `Class` host objects (as obtained by e.g. `obj.getClass()`) to expose `Class` instance members, while `TruffleLanguage.Env.lookupHostSymbol(String)` returns a companion object providing the static members of the class and serving as a constructor.
+
+
 
 ## Version 0.32
 

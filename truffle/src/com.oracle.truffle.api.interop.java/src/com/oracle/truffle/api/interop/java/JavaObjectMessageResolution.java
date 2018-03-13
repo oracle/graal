@@ -42,6 +42,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 @MessageResolution(receiverType = JavaObject.class)
 class JavaObjectMessageResolution {
 
@@ -257,7 +258,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return JavaInterop.isPrimitive(object.obj);
+            return JavaInteropAccessor.isGuestPrimitive(object);
         }
 
     }
@@ -267,7 +268,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            if (JavaInterop.isPrimitive(object.obj)) {
+            if (JavaInteropAccessor.isGuestPrimitive(object.obj)) {
                 return object.obj;
             } else {
                 return UnsupportedMessageException.raise(Message.UNBOX);

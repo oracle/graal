@@ -35,4 +35,5 @@
  *
  * @since 0.8 or older
  */
+@java.lang.Deprecated
 package com.oracle.truffle.api.vm;

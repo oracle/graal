@@ -33,8 +33,9 @@ import java.net.URLClassLoader;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.InitializationError;
 
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 
+@SuppressWarnings("deprecation")
 public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner {
     public SeparateClassloaderTestRunner(Class<?> clazz) throws InitializationError {
         super(getFromTestClassloader(clazz));

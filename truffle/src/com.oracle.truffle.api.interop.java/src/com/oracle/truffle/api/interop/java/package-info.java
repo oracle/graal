@@ -32,7 +32,8 @@
 /**
  * {@link com.oracle.truffle.api.interop.java.JavaInterop Helper methods} to simplify co-operation
  * of <b>Java</b> and {@link com.oracle.truffle.api.interop.TruffleObject Truffle objects}.
- * 
+ *
  * @since 0.8 or older
  */
+@java.lang.Deprecated
 package com.oracle.truffle.api.interop.java;
