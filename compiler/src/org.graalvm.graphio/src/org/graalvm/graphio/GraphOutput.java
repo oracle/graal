@@ -110,7 +110,8 @@ public final class GraphOutput<G, M> implements Closeable {
      */
     public static final class Builder<G, N, M> {
         private final GraphStructure<G, N, ?, ?> structure;
-        private GraphElements<M, ?, ?, ?> elements = null;
+        private ElementsAndLocations<M, ?, ?> elementsAndLocations;
+
         private GraphTypes types = DefaultGraphTypes.DEFAULT;
         private GraphBlocks<G, ?, N> blocks = DefaultGraphBlocks.empty();
         private int major = 4;
@@ -165,8 +166,10 @@ public final class GraphOutput<G, M> implements Closeable {
          * @return this builder
          */
         @SuppressWarnings({"unchecked", "rawtypes"})
-        public <E> Builder<G, N, E> elements(GraphElements<E, ?, ?, ?> graphElements) {
-            this.elements = (GraphElements) graphElements;
+        public <E, P> Builder<G, N, E> elements(GraphElements<E, ?, ?, P> graphElements) {
+            StackLocations<E, P> loc = new StackLocations<>(graphElements);
+            ElementsAndLocations both = new ElementsAndLocations<>(graphElements, loc);
+            this.elementsAndLocations = both;
             return (Builder<G, N, E>) this;
         }
 
@@ -179,8 +182,7 @@ public final class GraphOutput<G, M> implements Closeable {
          * @throws IOException if something goes wrong when writing to the channel
          */
         public GraphOutput<G, M> build(WritableByteChannel channel) throws IOException {
-            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?> p = new ProtocolImpl<>(major, minor, structure, types, blocks, elements, channel);
-            return new GraphOutput<>(p);
+            return buildImpl(elementsAndLocations, channel);
         }
 
         /**
@@ -200,8 +202,52 @@ public final class GraphOutput<G, M> implements Closeable {
          * @return new output sharing {@code channel} and other internals with {@code parent}
          */
         public GraphOutput<G, M> build(GraphOutput<?, ?> parent) {
-            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?> p = new ProtocolImpl<>(parent.printer, structure, types, blocks, elements);
+            return buildImpl(elementsAndLocations, parent);
+        }
+
+        private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, WritableByteChannel channel) throws IOException {
+            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(major, minor, structure, types, blocks, e.elements, e.locations, channel);
             return new GraphOutput<>(p);
+        }
+
+        private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, GraphOutput<?, ?> parent) {
+            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(parent.printer, structure, types, blocks, e.elements, e.locations);
+            return new GraphOutput<>(p);
+        }
+    }
+
+    private static final class ElementsAndLocations<M, P, L> {
+        final GraphElements<M, ?, ?, P> elements;
+        final GraphLocations<M, P, L> locations;
+
+        ElementsAndLocations(GraphElements<M, ?, ?, P> elements, GraphLocations<M, P, L> locations) {
+            elements.getClass();
+            locations.getClass();
+            this.elements = elements;
+            this.locations = locations;
+        }
+    }
+
+    private static final class StackLocations<M, P> implements GraphLocations<M, P, StackTraceElement> {
+        private final GraphElements<M, ?, ?, P> graphElements;
+
+        StackLocations(GraphElements<M, ?, ?, P> graphElements) {
+            this.graphElements = graphElements;
+        }
+
+        @Override
+        public StackTraceElement methodStackTraceElement(M method, int bci, P pos) {
+            return this.graphElements.methodStackTraceElement(method, bci, pos);
+        }
+
+        @Override
+        public String locationFileName(StackTraceElement location) {
+            return location.getFileName();
+        }
+
+        @Override
+        public int locationLineNumber(StackTraceElement location) {
+            return location.getLineNumber();
         }
     }
 }
