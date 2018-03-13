@@ -10,6 +10,7 @@ Please note that this command aborts as soon as one testsuite has failed.
 |---------------|---------------------|-----------------------------------------|
 | sulong        | SulongSuite         | Sulong's internal tests                 |
 | interop       | LLVMInteropTest     | Truffle Language interoperability tests |
+| debug         | LLVMDebugTest       | Debug support test suite                |
 | llvm          | LLVMSuite           | LLVM 3.2 test suite                     |
 | parser        | ParserTortureSuite  | Parser test using GCC suite             |
 | nwcc          | NWCCSuite           | Test suite of the NWCC compiler v0.8.3  |
@@ -44,7 +45,7 @@ For easier use there are also some compound tags to execute smaller testsuites t
 
 | Tag          | Contained tags                                               |
 |--------------|--------------------------------------------------------------|
-| sulongBasic  | sulong, interop                                              |
+| sulongBasic  | sulong, interop, debug                                       |
 | sulongMisc   | benchmarks, type, pipe, assembly, args, callback, vaargs     |
 
 The full `mx gate` command also performs various code quality checks.
