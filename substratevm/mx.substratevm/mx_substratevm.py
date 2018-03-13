@@ -649,7 +649,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    native_image(['--python', '--tool.profiler'])
+    native_image(['--python', '--tool.profiler', 'com.oracle.graal.python.shell.GraalPythonMain', '-H:Name=python'])
 
 def test_python_smoke(args):
     """
@@ -663,6 +663,8 @@ def test_python_smoke(args):
     with tempfile.NamedTemporaryFile() as f:
         f.write("print('%s')\n" % expected_output)
         f.flush()
+        os.system("ls -l %s" % args[0])
+        os.system("ls -l %s" % f.name)
         exitcode = mx.run([args[0], f.name], nonZeroIsFatal=False, out=out)
         if exitcode != 0:
             mx.abort("Python binary failed to execute: " + out.data)
