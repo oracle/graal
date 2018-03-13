@@ -22,62 +22,37 @@
  */
 package com.oracle.svm.driver;
 
+import java.util.HashSet;
 import java.util.Queue;
 
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
-import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
+import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
+    private HashSet<MacroOption> addedCheck;
+
     MacroOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
+        addedCheck = new HashSet<>();
     }
 
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
 
-        String polyglotPrefix = "--polyglot=";
-        if (headArg.startsWith(polyglotPrefix)) {
-            String languagesRaw = headArg.substring(polyglotPrefix.length());
+        if (headArg.startsWith(MacroOption.macroOptionPrefix)) {
+            String targetString = headArg.substring(MacroOption.macroOptionPrefix.length());
             try {
-                nativeImage.optionRegistry.enableOptions(languagesRaw.replace(',', ' '), MacroOptionKind.Language);
+                nativeImage.optionRegistry.enableOptions(targetString, addedCheck, null);
             } catch (VerboseInvalidMacroException e1) {
                 NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException e2) {
-                NativeImage.showError(e2.getMessage());
-            }
-            args.poll();
-            return true;
-        }
-
-        String toolsPrefix = "--tool.";
-        if (headArg.startsWith(toolsPrefix)) {
-            String toolString = headArg.substring(toolsPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(toolString, MacroOptionKind.Tool);
-            } catch (VerboseInvalidMacroException e1) {
-                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException e) {
+            } catch (InvalidMacroException | AddedTwiceException e) {
                 NativeImage.showError(e.getMessage());
             }
             args.poll();
             return true;
-        }
-
-        String langPrefix = "--";
-        if (headArg.startsWith("--")) {
-            String langString = headArg.substring(langPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(langString, MacroOptionKind.Language);
-                args.poll();
-                return true;
-            } catch (VerboseInvalidMacroException e1) {
-                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
-            }
         }
 
         return false;

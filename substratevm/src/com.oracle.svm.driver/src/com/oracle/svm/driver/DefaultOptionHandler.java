@@ -45,32 +45,32 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
-            case "-?":
-            case "-help":
+            case "--help":
                 args.poll();
                 nativeImage.showMessage(helpText);
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
                 nativeImage.showMessage("");
                 System.exit(0);
                 return true;
-            case "-version":
+            case "--version":
                 args.poll();
                 nativeImage.showMessage("SubstrateVM Version Info");
                 nativeImage.showMessage(NativeImage.svmVersion.replace(',', '\n'));
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
-            case "-help-advanced":
+            case "--help-advanced":
                 args.poll();
                 nativeImage.showMessage(helpTextAdvanced);
                 System.exit(0);
                 return true;
             case "-cp":
             case "-classpath":
+            case "--class-path":
                 args.poll();
                 String cpArgs = args.poll();
                 if (cpArgs == null) {
-                    NativeImage.showError("-cp requires class path specification");
+                    NativeImage.showError(headArg + " requires class path specification");
                 }
                 for (String cp : cpArgs.split(":")) {
                     nativeImage.addCustomImageClasspath(Paths.get(cp));
@@ -84,11 +84,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 handleJarFileArg(Paths.get(jarFilePathStr).toFile());
                 return true;
-            case "-verbose":
+            case "--verbose":
                 args.poll();
                 nativeImage.setVerbose(true);
                 return true;
-            case "-dry-run":
+            case "--dry-run":
                 args.poll();
                 nativeImage.setDryRun(true);
                 return true;
@@ -104,14 +104,14 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
                 return true;
-            case "-expert-options":
+            case "--expert-options":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
                 nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
                 return true;
         }
 
-        String debugAttach = "-debug-attach";
+        String debugAttach = "--debug-attach";
         if (headArg.startsWith(debugAttach)) {
             String debugAttachArg = args.poll();
             String portSuffix = debugAttachArg.substring(debugAttach.length());
@@ -120,7 +120,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 try {
                     debugPort = Integer.parseInt(portSuffix.substring(1));
                 } catch (NumberFormatException e) {
-                    NativeImage.showError("Invalid -debug-attach option: " + debugAttachArg);
+                    NativeImage.showError("Invalid --debug-attach option: " + debugAttachArg);
                 }
             }
             nativeImage.addImageBuilderJavaArgs("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
@@ -177,7 +177,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return;
             }
             nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
-            String jarFileName = file.getName().toString();
+            String jarFileName = file.getName();
             String jarFileNameBase = jarFileName.substring(0, jarFileName.length() - 4);
             nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
             Path filePath = file.toPath();

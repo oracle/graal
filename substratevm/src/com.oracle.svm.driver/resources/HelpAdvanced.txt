@@ -1,9 +1,9 @@
 Non-standard options help:
 
-   -expert-options        lists image build options for experts
+   --expert-options      lists image build options for experts
 
-   -debug-attach[=<port>] attach to debugger during image building
-                          (default port is 8000)
+   --debug-attach[=<port>]
+                          attach to debugger during image building (default port is 8000)
 
-   -dry-run               output the command line that would be used for building
+   --dry-run              output the command line that would be used for building
  

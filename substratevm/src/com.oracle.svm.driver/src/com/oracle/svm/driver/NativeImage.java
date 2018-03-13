@@ -457,7 +457,11 @@ class NativeImage {
                 }
             }
             if (!leftoverArgs.isEmpty()) {
-                showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unhandled leftover args: [", "]")));
+                if (leftoverArgs.size() == 1) {
+                    showError("Unrecognized option: " + leftoverArgs.get(0));
+                } else {
+                    showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unrecognized options: ", "")));
+                }
             }
 
             /* Main-class from customImageBuilderArgs counts as explicitMainClass */
@@ -465,7 +469,7 @@ class NativeImage {
 
             if (extraImageArgs.isEmpty()) {
                 if (mainClass == null || mainClass.isEmpty()) {
-                    showError("Please specify class containing the main entry point method. (see -help)");
+                    showError("Please specify class containing the main entry point method. (see --help)");
                 }
             } else {
                 /* extraImageArgs main-class overrules previous main-class specification */
