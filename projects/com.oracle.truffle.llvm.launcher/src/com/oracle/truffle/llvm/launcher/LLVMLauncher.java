@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.launcher;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -190,27 +191,20 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     }
 
     protected int execute(Context.Builder contextBuilder) {
-        int status;
         contextBuilder.arguments(getLanguageId(), programArgs);
         try (Context context = contextBuilder.build()) {
-            status = context.eval(Source.newBuilder(getLanguageId(), file).build()).asInt();
+            int status = context.eval(Source.newBuilder(getLanguageId(), file).build()).asInt();
             if (printResult) {
                 System.out.println("Result: " + status);
             }
-        } catch (PolyglotException t) {
-            if (printResult) {
-                t.printStackTrace(System.err);
+            return status;
+        } catch (PolyglotException e) {
+            if (e.isExit()) {
+                return e.getExitStatus();
             }
-            if (t.isExit()) {
-                status = t.getExitStatus();
-            } else if (t.isGuestException()) {
-                status = 255;
-            } else {
-                status = 255;
-            }
-        } catch (Throwable t) {
-            status = 255;
+            throw e;
+        } catch (IOException e) {
+            throw abort(e);
         }
-        return status;
     }
 }
