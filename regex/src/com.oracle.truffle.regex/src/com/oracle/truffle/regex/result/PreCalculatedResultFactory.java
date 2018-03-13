@@ -27,6 +27,7 @@ package com.oracle.truffle.regex.result;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
 
@@ -81,9 +82,8 @@ public final class PreCalculatedResultFactory {
         this.length = length;
     }
 
-    public void updateIndices(byte[] updateIndices, int index) {
-        for (byte b : updateIndices) {
-            int i = Byte.toUnsignedInt(b);
+    public void updateIndices(CompilationFinalBitSet updateIndices, int index) {
+        for (int i : updateIndices) {
             indices[i] = index;
         }
     }

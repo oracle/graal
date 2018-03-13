@@ -29,6 +29,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.PrimitiveIterator;
 
 /**
@@ -95,7 +96,7 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
     }
 
     private void ensureCapacity(int nWords) {
-        if (nWords >= words.length) {
+        if (words.length < nWords) {
             words = Arrays.copyOf(words, Math.max(2 * words.length, nWords));
         }
     }
@@ -145,6 +146,7 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
     }
 
     public void union(CompilationFinalBitSet other) {
+        ensureCapacity(other.words.length);
         for (int i = 0; i < Math.min(words.length, other.words.length); i++) {
             words[i] |= other.words[i];
         }
@@ -156,22 +158,12 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
                 return false;
             }
         }
-        for (int i = other.words.length; i < words.length; i++) {
-            if (words[i] != 0) {
-                return false;
-            }
-        }
-        for (int i = words.length; i < other.words.length; i++) {
-            if (other.words[i] != 0) {
-                return false;
-            }
-        }
         return true;
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj != null && obj instanceof CompilationFinalBitSet && Arrays.equals(words, ((CompilationFinalBitSet) obj).words);
+        return obj == this || (obj instanceof CompilationFinalBitSet && Arrays.equals(words, ((CompilationFinalBitSet) obj).words));
     }
 
     @Override

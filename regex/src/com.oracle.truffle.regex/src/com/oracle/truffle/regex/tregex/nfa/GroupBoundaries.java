@@ -29,26 +29,15 @@ import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
-import java.util.Arrays;
+import java.util.Objects;
 
 public class GroupBoundaries {
 
-    private static final byte[] EMPTY_INDEX_ARRAY = {};
-
-    private byte[] updateIndices;
-    private byte[] clearIndices;
+    private CompilationFinalBitSet updateIndices;
+    private CompilationFinalBitSet clearIndices;
 
     private boolean hashComputed = false;
     private int cachedHash;
-
-    public GroupBoundaries() {
-        this(EMPTY_INDEX_ARRAY, EMPTY_INDEX_ARRAY);
-    }
-
-    private GroupBoundaries(byte[] updateIndices, byte[] clearIndices) {
-        this.updateIndices = updateIndices;
-        this.clearIndices = clearIndices;
-    }
 
     /**
      * Returns an array containing the indices of all capture group boundaries traversed in this
@@ -57,29 +46,32 @@ public class GroupBoundaries {
      *
      * @return indices of all boundaries traversed.
      */
-    public byte[] getUpdateIndices() {
+    public CompilationFinalBitSet getUpdateIndices() {
         return updateIndices;
     }
 
-    public byte[] getClearIndices() {
+    public CompilationFinalBitSet getClearIndices() {
         return clearIndices;
     }
 
     public boolean hasIndexUpdates() {
-        return updateIndices.length > 0;
+        assert updateIndices == null || !updateIndices.isEmpty();
+        return updateIndices != null;
     }
 
     public boolean hasIndexClears() {
-        return clearIndices.length > 0;
+        assert clearIndices == null || !clearIndices.isEmpty();
+        return clearIndices != null;
     }
 
-    public void setIndices(
-                    CompilationFinalBitSet updateStarts,
-                    CompilationFinalBitSet updateEnds,
-                    CompilationFinalBitSet clearStarts,
-                    CompilationFinalBitSet clearEnds) {
-        updateIndices = createIndexArray(updateStarts, updateEnds);
-        clearIndices = createIndexArray(clearStarts, clearEnds);
+    public void setIndices(CompilationFinalBitSet updates, CompilationFinalBitSet clears) {
+        if (!updates.isEmpty()) {
+            updateIndices = updates.copy();
+        }
+        if (!clears.isEmpty()) {
+            clearIndices = clears.copy();
+        }
+        hashComputed = false;
     }
 
     /**
@@ -88,36 +80,25 @@ public class GroupBoundaries {
      * @param o other GroupBoundaries object. Assumed to be disjoint with this.
      */
     public void addAll(GroupBoundaries o) {
-        updateIndices = concatIndexArrays(updateIndices, o.updateIndices);
-        clearIndices = concatIndexArrays(clearIndices, o.clearIndices);
-    }
-
-    private static byte[] concatIndexArrays(byte[] a, byte[] b) {
-        if (b.length == 0) {
-            return a;
+        if (updateIndices == null) {
+            if (o.updateIndices != null) {
+                updateIndices = o.updateIndices.copy();
+            }
+        } else {
+            if (o.updateIndices != null) {
+                updateIndices.union(o.updateIndices);
+            }
         }
-        if (a.length == 0) {
-            return b;
+        if (clearIndices == null) {
+            if (o.clearIndices != null) {
+                clearIndices = o.clearIndices.copy();
+            }
+        } else {
+            if (o.clearIndices != null) {
+                clearIndices.union(o.clearIndices);
+            }
         }
-        final byte[] concat = new byte[a.length + b.length];
-        System.arraycopy(a, 0, concat, 0, a.length);
-        System.arraycopy(b, 0, concat, a.length, b.length);
-        return concat;
-    }
-
-    private static byte[] createIndexArray(CompilationFinalBitSet starts, CompilationFinalBitSet ends) {
-        if (starts.isEmpty() && ends.isEmpty()) {
-            return EMPTY_INDEX_ARRAY;
-        }
-        byte[] indices = new byte[starts.numberOfSetBits() + ends.numberOfSetBits()];
-        int i = 0;
-        for (int g : starts) {
-            indices[i++] = (byte) (g * 2);
-        }
-        for (int g : ends) {
-            indices[i++] = (byte) (g * 2 + 1);
-        }
-        return indices;
+        hashComputed = false;
     }
 
     @Override
@@ -129,13 +110,13 @@ public class GroupBoundaries {
             return false;
         }
         GroupBoundaries o = (GroupBoundaries) obj;
-        return Arrays.equals(updateIndices, o.updateIndices) && Arrays.equals(clearIndices, o.clearIndices);
+        return Objects.equals(updateIndices, o.updateIndices) && Objects.equals(clearIndices, o.clearIndices);
     }
 
     @Override
     public int hashCode() {
         if (!hashComputed) {
-            cachedHash = Arrays.hashCode(updateIndices) * 31 + Arrays.hashCode(clearIndices);
+            cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
             hashComputed = true;
         }
         return cachedHash;
@@ -158,13 +139,13 @@ public class GroupBoundaries {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (hasIndexUpdates()) {
-            sb.append(gbArrayGroupExitsToString(updateIndices, 0, false)).append(")");
-            sb.append("(").append(gbArrayGroupEntriesToString(updateIndices, 0, false));
+            sb.append(gbBitSetGroupExitsToString(updateIndices)).append(")");
+            sb.append("(").append(gbBitSetGroupEntriesToString(updateIndices));
         }
         if (hasIndexClears()) {
             sb.append(" clr{");
-            sb.append(gbArrayGroupExitsToString(clearIndices, 0, false)).append(")");
-            sb.append("(").append(gbArrayGroupEntriesToString(clearIndices, 0, false));
+            sb.append(gbBitSetGroupExitsToString(clearIndices)).append(")");
+            sb.append("(").append(gbBitSetGroupEntriesToString(clearIndices));
             sb.append("}");
         }
         return sb.toString();
@@ -173,15 +154,40 @@ public class GroupBoundaries {
     @CompilerDirectives.TruffleBoundary
     public DebugUtil.Table toTable() {
         return new DebugUtil.Table("GroupBoundaries",
-                        new DebugUtil.Value("updateEnter", gbArrayGroupEntriesToString(updateIndices)),
-                        new DebugUtil.Value("updateExit", gbArrayGroupExitsToString(updateIndices)),
-                        new DebugUtil.Value("clearEnter", gbArrayGroupEntriesToString(clearIndices)),
-                        new DebugUtil.Value("clearExit", gbArrayGroupExitsToString(clearIndices)));
+                        new DebugUtil.Value("updateEnter", gbBitSetGroupEntriesToString(updateIndices)),
+                        new DebugUtil.Value("updateExit", gbBitSetGroupExitsToString(updateIndices)),
+                        new DebugUtil.Value("clearEnter", gbBitSetGroupEntriesToString(clearIndices)),
+                        new DebugUtil.Value("clearExit", gbBitSetGroupExitsToString(clearIndices)));
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static String gbArrayGroupEntriesToString(byte[] gbArray) {
-        return gbArrayGroupEntriesToString(gbArray, 0);
+    private static String gbBitSetGroupEntriesToString(CompilationFinalBitSet gbArray) {
+        return gbBitSetGroupPartToString(gbArray, false, true);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static String gbBitSetGroupExitsToString(CompilationFinalBitSet gbArray) {
+        return gbBitSetGroupPartToString(gbArray, false, false);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static String gbBitSetGroupPartToString(CompilationFinalBitSet gbBitSet, boolean addBrackets, boolean printEntries) {
+        StringBuilder sb = new StringBuilder();
+        if (addBrackets) {
+            sb.append("[");
+        }
+        for (int i : gbBitSet) {
+            if ((i & 1) == (printEntries ? 0 : 1)) {
+                if (sb.length() > (addBrackets ? 1 : 0)) {
+                    sb.append(",");
+                }
+                sb.append(i / 2);
+            }
+        }
+        if (addBrackets) {
+            sb.append("]");
+        }
+        return sb.toString();
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -192,11 +198,6 @@ public class GroupBoundaries {
     @CompilerDirectives.TruffleBoundary
     public static String gbArrayGroupEntriesToString(byte[] gbArray, int startFrom, boolean addBrackets) {
         return gbArrayGroupPartToString(gbArray, startFrom, addBrackets, true);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public static String gbArrayGroupExitsToString(byte[] gbArray) {
-        return gbArrayGroupExitsToString(gbArray, 0);
     }
 
     @CompilerDirectives.TruffleBoundary

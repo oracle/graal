@@ -152,6 +152,40 @@ public class Group extends Term implements RegexASTVisitorIterable {
     }
 
     /**
+     * Returns the index corresponding to this capture group's BEGIN in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public int getBoundaryIndexStart() {
+        assert isCapturing();
+        return groupNumberToBoundaryIndexStart(groupNumber);
+    }
+
+    /**
+     * Returns the index corresponding to this capture group's END in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public int getBoundaryIndexEnd() {
+        assert isCapturing();
+        return groupNumberToBoundaryIndexEnd(groupNumber);
+    }
+
+    /**
+     * Returns the index corresponding to a capture group's BEGIN in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public static int groupNumberToBoundaryIndexStart(int groupNumber) {
+        return groupNumber * 2;
+    }
+
+    /**
+     * Returns the index corresponding to a capture group's END in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public static int groupNumberToBoundaryIndexEnd(int groupNumber) {
+        return groupNumber * 2 + 1;
+    }
+
+    /**
      * Returns whether this group is a capturing group.
      * <p>
      * This is the case when this Group was built using the {@link #Group(int)} constructor or if

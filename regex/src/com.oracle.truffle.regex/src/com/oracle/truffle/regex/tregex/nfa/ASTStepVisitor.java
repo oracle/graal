@@ -63,20 +63,16 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     private final List<ASTStep> curLookAheads = new ArrayList<>();
     private final List<ASTStep> curLookBehinds = new ArrayList<>();
     private final Deque<ASTStep> lookAroundExpansionQueue = new ArrayDeque<>();
-    private final CompilationFinalBitSet updateStarts;
-    private final CompilationFinalBitSet updateEnds;
-    private final CompilationFinalBitSet clearStarts;
-    private final CompilationFinalBitSet clearEnds;
+    private final CompilationFinalBitSet captureGroupUpdates;
+    private final CompilationFinalBitSet captureGroupClears;
 
     private final CompilationBuffer compilationBuffer;
 
     public ASTStepVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
         super(ast);
         this.compilationBuffer = compilationBuffer;
-        updateStarts = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
-        updateEnds = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
-        clearStarts = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
-        clearEnds = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
+        captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
+        captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
     }
 
     public ASTStep step(NFAState expandState) {
@@ -141,10 +137,8 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         ASTSuccessor successor = new ASTSuccessor(compilationBuffer);
         ASTTransition transition = new ASTTransition();
         PositionAssertion dollar = null;
-        updateStarts.clear();
-        updateEnds.clear();
-        clearStarts.clear();
-        clearEnds.clear();
+        captureGroupUpdates.clear();
+        captureGroupClears.clear();
         Group outerPassThrough = null;
         for (PathElement element : path) {
             final RegexASTNode node = element.getNode();
@@ -156,16 +150,16 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                             outerPassThrough = group;
                         }
                         if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
-                            updateStarts.set(group.getGroupNumber());
-                            clearStarts.clear(group.getGroupNumber());
+                            captureGroupUpdates.set(group.getBoundaryIndexStart());
+                            captureGroupClears.clear(group.getBoundaryIndexStart());
                         }
                         if (!element.isGroupPassThrough() && (group.isLoop() || group.isExpandedQuantifier())) {
                             for (int i = group.getEnclosedCaptureGroupsLow(); i < group.getEnclosedCaptureGroupsHigh(); i++) {
-                                if (!updateStarts.get(i)) {
-                                    clearStarts.set(i);
+                                if (!captureGroupUpdates.get(Group.groupNumberToBoundaryIndexStart(i))) {
+                                    captureGroupClears.set(Group.groupNumberToBoundaryIndexStart(i));
                                 }
-                                if (!updateEnds.get(i)) {
-                                    clearEnds.set(i);
+                                if (!captureGroupUpdates.get(Group.groupNumberToBoundaryIndexEnd(i))) {
+                                    captureGroupClears.set(Group.groupNumberToBoundaryIndexEnd(i));
                                 }
                             }
                         }
@@ -174,8 +168,8 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                     assert element.isGroupExit();
                     if (outerPassThrough == null) {
                         if (group.isCapturing() && !(element.isGroupPassThrough() && group.isExpandedQuantifier())) {
-                            updateEnds.set(group.getGroupNumber());
-                            clearEnds.clear(group.getGroupNumber());
+                            captureGroupUpdates.set(group.getBoundaryIndexEnd());
+                            captureGroupClears.clear(group.getBoundaryIndexEnd());
                         }
                     } else if (outerPassThrough == group) {
                         outerPassThrough = null;
@@ -185,7 +179,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 dollar = (PositionAssertion) node;
             }
         }
-        transition.getGroupBoundaries().setIndices(updateStarts, updateEnds, clearStarts, clearEnds);
+        transition.getGroupBoundaries().setIndices(captureGroupUpdates, captureGroupClears);
         final RegexASTNode lastNode = path.get(path.size() - 1).getNode();
         if (dollar == null) {
             if (lastNode instanceof CharacterClass) {

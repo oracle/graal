@@ -34,6 +34,7 @@ import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupLazyTransitionNode;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
 
@@ -124,10 +125,14 @@ public class DFACaptureGroupTransitionBuilder {
                         indexClears.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS));
     }
 
-    private static byte[] createIndexManipulationArray(int targetIndex, byte[] groupBoundaryIndices) {
-        final byte[] indexUpdate = new byte[groupBoundaryIndices.length + 1];
+    private static byte[] createIndexManipulationArray(int targetIndex, CompilationFinalBitSet groupBoundaryIndices) {
+        final byte[] indexUpdate = new byte[groupBoundaryIndices.numberOfSetBits() + 1];
         indexUpdate[0] = (byte) targetIndex;
-        System.arraycopy(groupBoundaryIndices, 0, indexUpdate, 1, groupBoundaryIndices.length);
+        int i = 1;
+        for (int j : groupBoundaryIndices) {
+            assert j < 256;
+            indexUpdate[i++] = (byte) j;
+        }
         return indexUpdate;
     }
 
