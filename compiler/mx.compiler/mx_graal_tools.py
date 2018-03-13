@@ -112,6 +112,7 @@ def hsdis(args, copyToDir=None):
         'intel/hsdis-amd64-darwin-%s.dylib' : '67f6d23cbebd8998450a88b5bef362171f66f11a',
         'hsdis-sparcv9-solaris-%s.so': '970640a9af0bd63641f9063c11275b371a59ee60',
         'hsdis-sparcv9-linux-%s.so': '0c375986d727651dee1819308fbbc0de4927d5d9',
+        'hsdis-aarch64-linux-%s.so': 'fcc9b70ac91c00db8a50b0d4345490a68e3743e1',
     }
 
     if flavor:
