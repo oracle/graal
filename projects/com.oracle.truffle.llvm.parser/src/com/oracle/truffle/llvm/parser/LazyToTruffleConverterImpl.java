@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -57,12 +62,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
-
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final LLVMParserRuntime runtime;
@@ -144,7 +143,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         List<FunctionParameter> parameters = method.getParameters();
         List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
         LLVMExpressionNode stackPointerNode = nodeFactory.createFunctionArgNode(0, PrimitiveType.I64);
-        formalParamInits.add(nodeFactory.createFrameWrite(runtime, new PointerType(VoidType.INSTANCE), stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID), null));
+        formalParamInits.add(nodeFactory.createFrameWrite(runtime, PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID), null));
 
         int argIndex = 1;
         if (method.getType().getReturnType() instanceof StructureType) {

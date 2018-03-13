@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class PointerType extends AggregateType {
     public static final PointerType I8 = new PointerType(PrimitiveType.I8);
+    public static final PointerType VOID = new PointerType(VoidType.INSTANCE);
 
     @CompilationFinal private Type pointeeType;
     @CompilationFinal private Assumption pointeeTypeAssumption;

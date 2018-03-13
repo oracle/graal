@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
@@ -178,6 +177,6 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
             throw new IllegalArgumentException("Can't truffle_managed_malloc for more than 2^31 objects");
         }
 
-        return new LLVMTruffleObject(new ManagedMallocObject((int) sizeInWords), new PointerType(VoidType.INSTANCE));
+        return new LLVMTruffleObject(new ManagedMallocObject((int) sizeInWords), PointerType.VOID);
     }
 }
