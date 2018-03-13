@@ -210,18 +210,17 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         }
         ShowConfigurationLevel level = Options.ShowConfiguration.getValue(options);
         if (level != ShowConfigurationLevel.none) {
-            URL location = factory.getClass().getResource(factory.getClass().getSimpleName() + ".class");
             switch (level) {
                 case info: {
-                    TTY.printf("Using Graal compiler configuration '%s' provided from %s%n", factory.name, location);
+                    printConfigInfo(factory);
                     break;
                 }
                 case verbose: {
-                    TTY.printf("Using Graal compiler configuration '%s' provided from %s%n", factory.name, location);
+                    printConfigInfo(factory);
                     CompilerConfiguration config = factory.createCompilerConfiguration();
                     TTY.println("High tier: " + phaseNames(config.createHighTier(options)));
-                    TTY.println("Mid tier: " + phaseNames(config.createHighTier(options)));
-                    TTY.println("Low tier: " + phaseNames(config.createHighTier(options)));
+                    TTY.println("Mid tier: " + phaseNames(config.createMidTier(options)));
+                    TTY.println("Low tier: " + phaseNames(config.createLowTier(options)));
                     TTY.println("Pre regalloc stage: " + phaseNames(config.createPreAllocationOptimizationStage(options)));
                     TTY.println("Regalloc stage: " + phaseNames(config.createAllocationStage(options)));
                     TTY.println("Post regalloc stage: " + phaseNames(config.createPostAllocationOptimizationStage(options)));
@@ -231,6 +230,11 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
             }
         }
         return factory;
+    }
+
+    private static void printConfigInfo(CompilerConfigurationFactory factory) {
+        URL location = factory.getClass().getResource(factory.getClass().getSimpleName() + ".class");
+        TTY.printf("Using Graal compiler configuration '%s' provided by %s loaded from %s%n", factory.name, factory.getClass().getName(), location);
     }
 
     private static <C> List<String> phaseNames(PhaseSuite<C> suite) {
