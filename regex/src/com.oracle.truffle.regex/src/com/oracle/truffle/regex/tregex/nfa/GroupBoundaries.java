@@ -176,12 +176,14 @@ public class GroupBoundaries {
         if (addBrackets) {
             sb.append("[");
         }
-        for (int i : gbBitSet) {
-            if ((i & 1) == (printEntries ? 0 : 1)) {
-                if (sb.length() > (addBrackets ? 1 : 0)) {
-                    sb.append(",");
+        if (gbBitSet != null) {
+            for (int i : gbBitSet) {
+                if ((i & 1) == (printEntries ? 0 : 1)) {
+                    if (sb.length() > (addBrackets ? 1 : 0)) {
+                        sb.append(",");
+                    }
+                    sb.append(i / 2);
                 }
-                sb.append(i / 2);
             }
         }
         if (addBrackets) {

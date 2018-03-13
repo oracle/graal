@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
 import com.oracle.truffle.regex.tregex.dfa.NFATransitionSet;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
@@ -47,7 +48,9 @@ import java.util.stream.Collectors;
 public class DFAExport {
 
     @CompilerDirectives.TruffleBoundary
-    public static void exportDot(Map<NFATransitionSet, DFAStateNodeBuilder> stateMap, short[] entryStates, String path, boolean shortLabels) {
+    public static void exportDot(DFAGenerator dfaGenerator, String path, boolean shortLabels) {
+        short[] entryStates = dfaGenerator.getEntryStates();
+        Map<NFATransitionSet, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
         TreeSet<Short> entryIDs = new TreeSet<>();
         for (short i : entryStates) {
             entryIDs.add(i);

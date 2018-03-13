@@ -108,11 +108,6 @@ public abstract class NFAState implements IndexedState {
         return prev;
     }
 
-    public void addPrev(NFAStateTransition transition) {
-        prev.add(transition);
-        transition.getSource().next.add(transition);
-    }
-
     @Override
     public short getId() {
         return id;

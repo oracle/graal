@@ -125,6 +125,10 @@ public final class TRegexDFAExecutorProperties {
         return forward;
     }
 
+    public boolean isBackward() {
+        return !forward;
+    }
+
     public boolean isSearching() {
         return searching;
     }
