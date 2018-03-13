@@ -25,6 +25,7 @@ package org.graalvm.graphio;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.WritableByteChannel;
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -165,10 +166,23 @@ public final class GraphOutput<G, M> implements Closeable {
          * @param graphElements the elements implementation
          * @return this builder
          */
-        @SuppressWarnings({"unchecked", "rawtypes"})
         public <E, P> Builder<G, N, E> elements(GraphElements<E, ?, ?, P> graphElements) {
             StackLocations<E, P> loc = new StackLocations<>(graphElements);
-            ElementsAndLocations both = new ElementsAndLocations<>(graphElements, loc);
+            return elementsAndLocations(graphElements, loc);
+        }
+
+        /**
+         * Associates implementation of graph elements and an advanced way to interpret their
+         * locations.
+         *
+         * @param graphElements the elements implementation
+         * @param graphLocations the locations for the elements
+         * @return this builder
+         * @since 0.33 GraalVM 0.33
+         */
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        public <E, P> Builder<G, N, E> elementsAndLocations(GraphElements<E, ?, ?, P> graphElements, GraphLocations<E, P, ?> graphLocations) {
+            ElementsAndLocations both = new ElementsAndLocations<>(graphElements, graphLocations);
             this.elementsAndLocations = both;
             return (Builder<G, N, E>) this;
         }
@@ -236,8 +250,9 @@ public final class GraphOutput<G, M> implements Closeable {
         }
 
         @Override
-        public StackTraceElement methodStackTraceElement(M method, int bci, P pos) {
-            return this.graphElements.methodStackTraceElement(method, bci, pos);
+        public Iterable<StackTraceElement> methodStackTraceElement(M method, int bci, P pos) {
+            StackTraceElement ste = this.graphElements.methodStackTraceElement(method, bci, pos);
+            return Collections.singleton(ste);
         }
 
         @Override
@@ -248,6 +263,11 @@ public final class GraphOutput<G, M> implements Closeable {
         @Override
         public int locationLineNumber(StackTraceElement location) {
             return location.getLineNumber();
+        }
+
+        @Override
+        public String locationLanguage(StackTraceElement location) {
+            return "Java";
         }
     }
 }

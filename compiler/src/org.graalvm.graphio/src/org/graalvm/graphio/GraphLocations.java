@@ -42,9 +42,18 @@ public interface GraphLocations<M, P, L> {
      * @param method the method
      * @param bci the index
      * @param pos the position
-     * @return stack trace element for the method, index and position
+     * @return elements representing location for all language strata
      */
-    L methodStackTraceElement(M method, int bci, P pos);
+    Iterable<L> methodStackTraceElement(M method, int bci, P pos);
+
+    /**
+     * Identification of the language. Each location can point to a source in a different language -
+     * e.g. each location can have multiple <em>strata</em>.
+     *
+     * @param location the location
+     * @return id of the language/strata
+     */
+    String locationLanguage(L location);
 
     /**
      * File name of the location.
