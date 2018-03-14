@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.141.0",
+  "mxversion" : "5.145.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -338,6 +338,18 @@ suite = {
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
       "javaCompliance" : "1.8",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot",
+      ],
+      "multiReleaseJarVersion" : "9",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1640,6 +1652,7 @@ suite = {
         "org.graalvm.compiler.hotspot.amd64",
         "org.graalvm.compiler.hotspot.sparc",
         "org.graalvm.compiler.hotspot",
+        "org.graalvm.compiler.hotspot.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",

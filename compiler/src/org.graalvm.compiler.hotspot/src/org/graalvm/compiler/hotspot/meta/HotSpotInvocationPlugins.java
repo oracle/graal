@@ -24,9 +24,7 @@ package org.graalvm.compiler.hotspot.meta;
 
 import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
 
-import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Type;
-import java.util.Set;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -150,43 +148,14 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     /**
-     * Gets the set of modules whose methods can be intrinsified. This set is the module owning the
-     * class of {@code compilerConfiguration} and all its dependencies.
+     * Gets the set of modules trusted by Graal in terms of applying intrinsics. A method declared
+     * in class C can be intrinsified if C is declared by one of the modules returned by this
+     * method. The set of trusted modules is module declaring the
+     * {@code compilerConfiguration.getClass()} and its transitive dependencies.
+     *
+     * @param compilerConfiguration the object from which the set of trusted modules is computed
      */
-    private static EconomicSet<Object> initTrustedModules(CompilerConfiguration compilerConfiguration) throws GraalError {
-        try {
-            EconomicSet<Object> res = EconomicSet.create();
-            Object compilerConfigurationModule = JDK9Method.getModule(compilerConfiguration.getClass());
-            res.add(compilerConfigurationModule);
-            Class<?> moduleClass = compilerConfigurationModule.getClass();
-            Object layer = JDK9Method.lookupMethodHandle(moduleClass, "getLayer").invoke(compilerConfigurationModule);
-            Class<? extends Object> layerClass = layer.getClass();
-            MethodHandle getName = JDK9Method.lookupMethodHandle(moduleClass, "getName");
-            Set<Object> modules = (Set<Object>) JDK9Method.lookupMethodHandle(layerClass, "modules").invoke(layer);
-            Object descriptor = JDK9Method.lookupMethodHandle(moduleClass, "getDescriptor").invoke(compilerConfigurationModule);
-            Class<?> moduleDescriptorClass = descriptor.getClass();
-            Set<Object> requires = (Set<Object>) JDK9Method.lookupMethodHandle(moduleDescriptorClass, "requires").invoke(descriptor);
-            boolean isAutomatic = (Boolean) JDK9Method.lookupMethodHandle(moduleDescriptorClass, "isAutomatic").invoke(descriptor);
-            if (isAutomatic) {
-                throw new IllegalArgumentException(String.format("The module '%s' defining the Graal compiler configuration class '%s' must not be an automatic module",
-                                getName.invoke(compilerConfigurationModule), compilerConfiguration.getClass().getName()));
-            }
-            MethodHandle requireNameGetter = null;
-            for (Object require : requires) {
-                if (requireNameGetter == null) {
-                    requireNameGetter = JDK9Method.lookupMethodHandle(require.getClass(), "name");
-                }
-                String name = (String) requireNameGetter.invoke(require);
-                for (Object module : modules) {
-                    String moduleName = (String) getName.invoke(module);
-                    if (moduleName.equals(name)) {
-                        res.add(module);
-                    }
-                }
-            }
-            return res;
-        } catch (Throwable e) {
-            throw new GraalError(e);
-        }
+    static EconomicSet<Object> initTrustedModules(CompilerConfiguration compilerConfiguration) {
+        return HotSpotTrustedModules.build(compilerConfiguration);
     }
 }
