@@ -40,14 +40,19 @@ import java.util.List;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.ExecuteMainNodeGen;
 import com.oracle.truffle.llvm.parser.BitcodeParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -56,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
@@ -66,16 +72,28 @@ public final class Runner {
     private final NodeFactory nodeFactory;
 
     /**
-     * Object that is returned when a bitcode library is loaded via the Truffle NFI API.
+     * Object that is returned when a bitcode library is parsed.
      */
     static final class SulongLibrary implements TruffleObject {
 
-        private final LLVMContext context;
+        private final LLVMScope scope;
         private final ExternalLibrary library;
+        private final CallTarget main;
 
-        private SulongLibrary(LLVMContext context, ExternalLibrary library) {
-            this.context = context;
+        private SulongLibrary(LLVMScope scope, ExternalLibrary library, CallTarget main) {
+            this.scope = scope;
             this.library = library;
+            this.main = main;
+        }
+
+        private LLVMFunctionDescriptor lookup(String name) {
+            if (scope.functionExists(name)) {
+                LLVMFunctionDescriptor d = scope.getFunctionDescriptor(name);
+                if (d.getLibrary().equals(library)) {
+                    return d;
+                }
+            }
+            return null;
         }
 
         @Override
@@ -87,41 +105,70 @@ public final class Runner {
     @MessageResolution(receiverType = SulongLibrary.class)
     abstract static class SulongLibraryMessageResolution {
 
-        @Resolve(message = "IS_NULL")
-        abstract static class IsNullNode extends Node {
-
-            Object access(SulongLibrary boxed) {
-                return boxed.context == null;
-            }
-        }
-
         @Resolve(message = "READ")
         abstract static class ReadNode extends Node {
 
             @TruffleBoundary
             Object access(SulongLibrary boxed, String name) {
+                if (name.startsWith("@")) {
+                    // safeguard: external users are never supposed to see the "@"
+                    // TODO remove after getting rid of the @
+                    return null;
+                }
+
                 String atname = "@" + name;
-                LLVMFunctionDescriptor d = lookup(boxed, atname);
+                LLVMFunctionDescriptor d = boxed.lookup(atname);
                 if (d != null) {
                     return d;
                 }
-                return lookup(boxed, name);
+                return boxed.lookup(name);
             }
         }
 
-        private static LLVMFunctionDescriptor lookup(SulongLibrary boxed, String name) {
-            LLVMContext context = boxed.context;
-            if (context.getGlobalScope().functionExists(name)) {
-                LLVMFunctionDescriptor d = context.getGlobalScope().getFunctionDescriptor(name);
-                if (d.getLibrary().equals(boxed.library)) {
-                    return d;
-                }
+        @Resolve(message = "IS_EXECUTABLE")
+        abstract static class IsExecutableNode extends Node {
+
+            boolean access(SulongLibrary library) {
+                return library.main != null;
             }
-            return null;
+        }
+
+        abstract static class ExecuteMainNode extends Node {
+
+            abstract Object execute(SulongLibrary library, Object[] args);
+
+            @Specialization(guards = "library == cachedLibrary")
+            @SuppressWarnings("unused")
+            Object executeCached(SulongLibrary library, Object[] args,
+                            @Cached("library") SulongLibrary cachedLibrary,
+                            @Cached("createMainCall(cachedLibrary)") DirectCallNode call) {
+                return call.call(args);
+            }
+
+            static DirectCallNode createMainCall(SulongLibrary library) {
+                return DirectCallNode.create(library.main);
+            }
+
+            @Specialization(replaces = "executeCached")
+            Object executeGeneric(SulongLibrary library, Object[] args,
+                            @Cached("create()") IndirectCallNode call) {
+                return call.call(library.main, args);
+            }
+        }
+
+        @Resolve(message = "EXECUTE")
+        abstract static class ExecuteNode extends Node {
+
+            @Child ExecuteMainNode executeMain = ExecuteMainNodeGen.create();
+
+            Object access(SulongLibrary library, Object[] args) {
+                assert library.main != null;
+                return executeMain.execute(library, args);
+            }
         }
 
         @CanResolve
-        abstract static class CanResolveNoMain extends Node {
+        abstract static class CanResolveSulongLibrary extends Node {
 
             boolean test(TruffleObject object) {
                 return object instanceof SulongLibrary;
@@ -159,7 +206,7 @@ public final class Runner {
 
             LLVMParserResult parserResult = parse(language, context, source, library, bytes);
             handleParserResult(context, parserResult);
-            return createMainCallTarget(context, library, parserResult);
+            return createLibraryCallTarget(context, library, parserResult);
         } catch (Throwable t) {
             throw new IOException("Error while trying to parse " + source.getPath(), t);
         }
@@ -258,14 +305,13 @@ public final class Runner {
         }
     }
 
-    private static CallTarget createMainCallTarget(LLVMContext context, ExternalLibrary library, LLVMParserResult parserResult) {
-        CallTarget mainFunction = parserResult.getMainCallTarget();
+    private static CallTarget createLibraryCallTarget(LLVMContext context, ExternalLibrary library, LLVMParserResult parserResult) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
-        } else if (mainFunction == null) {
-            mainFunction = Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new SulongLibrary(context, library)));
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+        } else {
+            SulongLibrary lib = new SulongLibrary(parserResult.getScope(), library, parserResult.getMainCallTarget());
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(lib));
         }
-        return mainFunction;
     }
 
 }

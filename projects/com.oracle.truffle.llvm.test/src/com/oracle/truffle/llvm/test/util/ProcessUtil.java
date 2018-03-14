@@ -144,10 +144,10 @@ public class ProcessUtil {
         Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).build();
         try {
             Value result = context.eval(source);
-            if (result.isNull()) {
+            if (!result.canExecute()) {
                 throw new LinkageError("No main function found.");
             }
-            return result.asInt();
+            return result.execute().asInt();
         } finally {
             context.close();
         }
