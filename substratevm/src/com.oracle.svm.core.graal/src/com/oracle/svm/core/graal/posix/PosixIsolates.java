@@ -72,13 +72,6 @@ public class PosixIsolates {
         Word size = IMAGE_HEAP_END.get().subtract(begin);
 
         /*
-         * Read-protect image heap to catch illegal write accesses. While read accesses from Java
-         * code are also illegal and we could guard against them as well, we need read access when
-         * we spawn further isolates, which would require some synchronization.
-         */
-        Mman.NoTransitions.mprotect(begin, size, PROT_READ());
-
-        /*
          * Request an anonymous memory mapping for this isolate's clone of the image heap. The start
          * address of that mapping becomes the isolate's heap base address. We want extra heap
          * chunks that we allocate later to be at a higher address than the heap base so that we can
