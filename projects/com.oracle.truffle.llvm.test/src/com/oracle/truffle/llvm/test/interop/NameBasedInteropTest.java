@@ -244,9 +244,9 @@ public final class NameBasedInteropTest {
             @TruffleBoundary
             int access(StructObject obj, String name) {
                 if (!obj.properties.containsKey(name)) {
-                    return 0;
+                    return KeyInfo.NONE;
                 }
-                return KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
+                return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
             }
         }
 

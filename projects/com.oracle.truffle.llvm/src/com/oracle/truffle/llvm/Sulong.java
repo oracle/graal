@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import java.util.Collections;
 
 @TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "0.01", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
@@ -113,6 +114,7 @@ public final class Sulong extends LLVMLanguage {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // for compatibility, will be removed in a future release
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
         String atname = "@" + globalName; // for interop
         if (context.getGlobalScope().functionExists(atname)) {
@@ -125,8 +127,9 @@ public final class Sulong extends LLVMLanguage {
     }
 
     @Override
-    protected Object getLanguageGlobal(LLVMContext context) {
-        return context.getGlobalScope();
+    protected Iterable<Scope> findTopScopes(LLVMContext context) {
+        Scope scope = Scope.newBuilder("llvm-global", context.getGlobalScope()).build();
+        return Collections.singleton(scope);
     }
 
     @Override
