@@ -31,11 +31,8 @@ import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
-    private HashSet<MacroOption> addedCheck;
-
     MacroOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
-        addedCheck = new HashSet<>();
     }
 
     @Override
@@ -45,7 +42,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith(MacroOption.macroOptionPrefix)) {
             String targetString = headArg.substring(MacroOption.macroOptionPrefix.length());
             try {
-                nativeImage.optionRegistry.enableOptions(targetString, addedCheck, null);
+                nativeImage.optionRegistry.enableOptions(targetString, new HashSet<>(), null);
             } catch (VerboseInvalidMacroException e1) {
                 NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
             } catch (InvalidMacroException | AddedTwiceException e) {
