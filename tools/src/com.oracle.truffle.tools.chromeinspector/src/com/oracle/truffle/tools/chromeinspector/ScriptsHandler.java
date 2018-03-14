@@ -29,7 +29,6 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +42,7 @@ public final class ScriptsHandler implements LoadSourceListener {
 
     private final Map<Source, Integer> sourceIDs = new HashMap<>(100);
     private final List<Script> scripts = new ArrayList<>(100);
-    private final List<LoadScriptListener> listeners = new LinkedList<>();
+    private final List<LoadScriptListener> listeners = new ArrayList<>();
 
     public ScriptsHandler() {
     }
@@ -71,13 +70,19 @@ public final class ScriptsHandler implements LoadSourceListener {
     }
 
     void addLoadScriptListener(LoadScriptListener listener) {
-        listeners.add(listener);
         List<Script> scriptsToNotify;
         synchronized (sourceIDs) {
             scriptsToNotify = new ArrayList<>(scripts);
+            listeners.add(listener);
         }
         for (Script scr : scriptsToNotify) {
             listener.loadedScript(scr);
+        }
+    }
+
+    void removeLoadScriptListener(LoadScriptListener listener) {
+        synchronized (sourceIDs) {
+            listeners.remove(listener);
         }
     }
 
@@ -85,6 +90,7 @@ public final class ScriptsHandler implements LoadSourceListener {
         Script scr;
         URI uri = source.getURI();
         int id;
+        LoadScriptListener[] listenersToNotify;
         synchronized (sourceIDs) {
             Integer eid = sourceIDs.get(source);
             if (eid != null) {
@@ -95,8 +101,9 @@ public final class ScriptsHandler implements LoadSourceListener {
             scr = new Script(id, sourceUrl, source);
             sourceIDs.put(source, id);
             scripts.add(scr);
+            listenersToNotify = listeners.toArray(new LoadScriptListener[listeners.size()]);
         }
-        for (LoadScriptListener l : listeners) {
+        for (LoadScriptListener l : listenersToNotify) {
             l.loadedScript(scr);
         }
         return id;

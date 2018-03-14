@@ -29,17 +29,27 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.junit.Assert;
 
+import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
 import org.graalvm.polyglot.Context;
@@ -75,7 +85,7 @@ public final class DebuggerTester implements AutoCloseable {
     private final ByteArrayOutputStream err = new ByteArrayOutputStream();
 
     private volatile boolean closed;
-    private volatile ExecutingSource source;
+    private volatile ExecutingSource executingSource;
 
     private static void trace(String message) {
         if (TRACE) {
@@ -192,7 +202,7 @@ public final class DebuggerTester implements AutoCloseable {
      */
     @Deprecated
     public void startEval(com.oracle.truffle.api.source.Source s) {
-        if (this.source != null) {
+        if (this.executingSource != null) {
             throw new IllegalStateException("Already executing other source " + s);
         }
         throw new UnsupportedOperationException("Call startEval(org.graalvm.polyglot.Source) instead.");
@@ -207,10 +217,10 @@ public final class DebuggerTester implements AutoCloseable {
      * @since 0.27
      */
     public void startEval(Source s) {
-        if (this.source != null) {
+        if (this.executingSource != null) {
             throw new IllegalStateException("Already executing other source " + s);
         }
-        this.source = new ExecutingSource(s);
+        this.executingSource = new ExecutingSource(s);
     }
 
     /**
@@ -320,7 +330,7 @@ public final class DebuggerTester implements AutoCloseable {
                 throw new AssertionError("Got unknown: " + event);
             }
         } finally {
-            source = null;
+            executingSource = null;
         }
     }
 
@@ -381,6 +391,288 @@ public final class DebuggerTester implements AutoCloseable {
             throw new AssertionError("Interrupted while joining eval thread.", iex);
         }
         engine.close();
+    }
+
+    /**
+     * Utility method that checks proper resolution of line breakpoints. Breakpoints are submitted
+     * to every line of the source and their resolution location is checked.
+     * <p>
+     * The source need to contain resolution marks in the form of
+     * "<code>R&lt;line number&gt;_</code>" where &lt;line number&gt; is line number of the original
+     * breakpoint position and <code>R</code> is the resolved mark name. These marks need to be
+     * placed at the proper breakpoint resolution line/column position, for a breakpoint submitted
+     * to every line. When several submitted breakpoints resolve to the same position, an interval
+     * can be specified in the form of
+     * "<code>R&lt;line start number&gt;-&lt;line end number&gt;_</code>", where both start and end
+     * line numbers are inclusive. The marks are stripped off before execution.
+     * <p>
+     * The guest language code with marks may look like:
+     *
+     * <pre>
+     * // test
+     * function test(n) {
+     *   if (R1-3_n &lt;= 1) {
+     *     return R4_2 * n;
+     *   }
+     *   return R5-7_n - 1;
+     * }
+     * </pre>
+     *
+     * @param sourceWithMarks a source text, which contains the resolution marks
+     * @param resolvedMarkName the mark name. It is used in a regular expression, therefore the mark
+     *            must not have a special meaning in a regular expression.
+     * @param language the source language
+     * @since 0.33
+     */
+    public void assertLineBreakpointsResolution(String sourceWithMarks, String resolvedMarkName, String language) throws IOException {
+        Pattern br = Pattern.compile("(" + resolvedMarkName + "\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
+        Map<Integer, Integer> bps = new HashMap<>();
+        String sourceString = sourceWithMarks;
+        Matcher bm = br.matcher(sourceString);
+        while (bm.find()) {
+            String bg = bm.group();
+            int index = bm.start();
+            int bn1;
+            int bn2;
+            String bpNums = bg.substring(1, bg.length() - 1);
+            int rangeIndex = bpNums.indexOf('-');
+            if (rangeIndex > 0) {
+                bn1 = Integer.parseInt(bpNums.substring(0, rangeIndex));
+                bn2 = Integer.parseInt(bpNums.substring(rangeIndex + 1));
+            } else {
+                bn1 = bn2 = Integer.parseInt(bpNums);
+            }
+            for (int bn = bn1; bn <= bn2; bn++) {
+                Integer bp = bps.get(bn);
+                if (bp == null) {
+                    bps.put(bn, index + 1);
+                } else {
+                    Assert.fail(bg + " specified more than once.");
+                }
+            }
+            sourceString = bm.replaceFirst("");
+            bm.reset(sourceString);
+        }
+        if (TRACE) {
+            trace("sourceString = '" + sourceString + "'");
+        }
+        final Source source = Source.newBuilder(language, sourceString, "testMisplacedLineBreakpoint." + language).build();
+        com.oracle.truffle.api.source.Source tsource = DebuggerTester.getSourceImpl(source);
+        for (int l = 1; l < source.getLineCount(); l++) {
+            if (!bps.containsKey(l)) {
+                Assert.fail("Line " + l + " is missing.");
+            }
+        }
+        for (Map.Entry<Integer, Integer> bentry : bps.entrySet()) {
+            int line = bentry.getKey();
+            int indexResolved = bentry.getValue();
+            int lineResolved = source.getLineNumber(indexResolved - 1);
+            if (TRACE) {
+                trace("TESTING breakpoint '" + line + "' => " + lineResolved + ":");
+            }
+            try (DebuggerSession session = startSession()) {
+
+                startEval(source);
+                int[] resolvedIndexPtr = new int[]{0};
+                Breakpoint breakpoint = session.install(Breakpoint.newBuilder(tsource).lineIs(line).oneShot().resolveListener(new Breakpoint.ResolveListener() {
+                    @Override
+                    public void breakpointResolved(Breakpoint brkp, SourceSection section) {
+                        resolvedIndexPtr[0] = section.getCharIndex() + 1;
+                        if (TRACE) {
+                            trace("BREAKPOINT resolved to " + section.getStartLine() + ":" + section.getStartColumn());
+                        }
+                    }
+                }).build());
+
+                expectSuspended((SuspendedEvent event) -> {
+                    Assert.assertEquals("Expected " + line + " => " + lineResolved,
+                                    lineResolved, event.getSourceSection().getStartLine());
+                    Assert.assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                    event.prepareContinue();
+                });
+                expectDone();
+                Assert.assertEquals("Expected resolved " + line + " => " + indexResolved,
+                                indexResolved, resolvedIndexPtr[0]);
+            }
+        }
+    }
+
+    /**
+     * Utility method that checks proper resolution of column breakpoints. Breakpoints are submitted
+     * to marked positions and their resolution location is checked.
+     * <p>
+     * The source need to contain both breakpoint submission marks in the form of "B&lt;number&gt;_"
+     * and breakpoint resolution marks in the form of "R&lt;number&gt;_" where &lt;number&gt; is an
+     * identification of the breakpoint. These marks need to be placed at the proper breakpoint
+     * submission/resolution line/column position. When several submitted breakpoints resolve to the
+     * same position, an interval can be specified in the form of
+     * "R&lt;start number&gt;-&lt;end number&gt;_", where both start and end line numbers are
+     * inclusive. The marks are stripped off before execution.
+     * <p>
+     * The guest language code with marks may look like:
+     *
+     * <pre>
+     * // B1_test
+     * function B2_test(n) {B3_
+     *   if (R1-4_n &lt;= B4_1) {B5_
+     *     return R5_2 * n;
+     *   }
+     *   return R6_n - 1;
+     * B6_}
+     * </pre>
+     *
+     * @param sourceWithMarks a source text, which contains the resolution marks
+     * @param breakpointMarkName the breakpoint submission mark name. It is used in a regular
+     *            expression, therefore the mark must not have a special meaning in a regular
+     *            expression.
+     * @param resolvedMarkName the resolved mark name. It is used in a regular expression, therefore
+     *            the mark must not have a special meaning in a regular expression.
+     * @param language the source language
+     * @since 0.33
+     */
+    public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language) throws IOException {
+        Pattern br = Pattern.compile("([" + breakpointMarkName + resolvedMarkName + "]\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
+        Map<Integer, int[]> bps = new HashMap<>();
+        String sourceString = sourceWithMarks;
+        Matcher bm = br.matcher(sourceString);
+        while (bm.find()) {
+            String bg = bm.group();
+            int index = bm.start();
+            int state = (bg.charAt(0) == 'B') ? 0 : 1;
+            String bpNums = bg.substring(1, bg.length() - 1);
+            int bn1;
+            int bn2;
+            int rangeIndex = bpNums.indexOf('-');
+            if (rangeIndex > 0) {
+                bn1 = Integer.parseInt(bpNums.substring(0, rangeIndex));
+                bn2 = Integer.parseInt(bpNums.substring(rangeIndex + 1));
+            } else {
+                bn1 = bn2 = Integer.parseInt(bpNums);
+            }
+            for (int bn = bn1; bn <= bn2; bn++) {
+                int[] bp = bps.get(bn);
+                if (bp == null) {
+                    bp = new int[2];
+                    bps.put(bn, bp);
+                }
+                if (bp[state] > 0) {
+                    Assert.fail(bg + " specified more than once.");
+                }
+                bp[state] = index + 1;
+            }
+            sourceString = bm.replaceFirst("");
+            bm.reset(sourceString);
+        }
+        if (TRACE) {
+            trace("sourceString = '" + sourceString + "'");
+        }
+        final Source source = Source.newBuilder(language, sourceString, "testMisplacedColumnBreakpoint." + language).build();
+
+        for (Map.Entry<Integer, int[]> bentry : bps.entrySet()) {
+            int bpId = bentry.getKey();
+            int[] bp = bentry.getValue();
+            Assert.assertTrue(Integer.toString(bpId), bp[0] > 0);
+            Assert.assertTrue(Integer.toString(bpId), bp[1] > 0);
+            int line = source.getLineNumber(bp[0] - 1);
+            int column = source.getColumnNumber(bp[0] - 1);
+            if (TRACE) {
+                trace("TESTING BP_" + bpId + ": " + bp[0] + " (" + line + ":" + column + ") => " + bp[1] + ":");
+            }
+            try (DebuggerSession session = startSession()) {
+
+                startEval(source);
+                int[] resolvedIndexPtr = new int[]{0};
+                Breakpoint breakpoint = session.install(
+                                Breakpoint.newBuilder(DebuggerTester.getSourceImpl(source)).lineIs(line).columnIs(column).oneShot().resolveListener(new Breakpoint.ResolveListener() {
+                                    @Override
+                                    public void breakpointResolved(Breakpoint brkp, SourceSection section) {
+                                        resolvedIndexPtr[0] = section.getCharIndex() + 1;
+                                        if (TRACE) {
+                                            trace("  resolved: " + (resolvedIndexPtr[0]));
+                                        }
+                                    }
+                                }).build());
+
+                expectSuspended((SuspendedEvent event) -> {
+                    Assert.assertEquals("Expected " + bp[0] + " => " + bp[1] + ", resolved at " + resolvedIndexPtr[0],
+                                    bp[1], event.getSourceSection().getCharIndex() + 1);
+                    Assert.assertSame(breakpoint, event.getBreakpoints().iterator().next());
+                    event.prepareContinue();
+                });
+                expectDone();
+                Assert.assertEquals("Expected resolved " + bp[0] + " => " + bp[1],
+                                bp[1], resolvedIndexPtr[0]);
+            }
+        }
+    }
+
+    /**
+     * Utility method that tests if a breakpoint submitted to any location in the source code
+     * suspends the execution. A two-pass test is performed. In the first pass, line breakpoints are
+     * submitted to every line. In the second pass, breakpoints are submitted to every line and
+     * column combination, even outside the source scope. It is expected that the breakpoints
+     * resolve to a nearest suspendable location and it is checked that all breakpoints are hit.
+     *
+     * @param source a source to evaluate with breakpoints submitted everywhere
+     * @since 0.33
+     */
+    public void assertBreakpointsBreakEverywhere(Source source) {
+        int numLines = source.getLineCount();
+        int numColumns = 0;
+        for (int i = 1; i <= numLines; i++) {
+            int ll = source.getLineLength(i);
+            if (ll > numColumns) {
+                numColumns = ll;
+            }
+        }
+        com.oracle.truffle.api.source.Source tsource = DebuggerTester.getSourceImpl(source);
+        final List<Breakpoint> breakpoints = new ArrayList<>();
+        final Set<Breakpoint> breakpointsResolved = new HashSet<>();
+        final List<Breakpoint> breakpointsHit = new ArrayList<>();
+        Breakpoint.ResolveListener resolveListener = new Breakpoint.ResolveListener() {
+            @Override
+            public void breakpointResolved(Breakpoint breakpoint, SourceSection section) {
+                Assert.assertFalse(breakpointsResolved.contains(breakpoint));
+                breakpointsResolved.add(breakpoint);
+            }
+        };
+        // Test all line breakpoints
+        for (int l = 1; l < (numLines + 5); l++) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).oneShot().resolveListener(resolveListener).build();
+            breakpoints.add(breakpoint);
+        }
+        assertBreakpoints(source, breakpoints, breakpointsResolved, breakpointsHit);
+
+        breakpoints.clear();
+        breakpointsResolved.clear();
+        breakpointsHit.clear();
+
+        // Test all line/column breakpoints
+        for (int l = 1; l < (numLines + 5); l++) {
+            for (int c = 1; c < (numColumns + 5); c++) {
+                Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).columnIs(c).oneShot().resolveListener(resolveListener).build();
+                breakpoints.add(breakpoint);
+            }
+        }
+        assertBreakpoints(source, breakpoints, breakpointsResolved, breakpointsHit);
+    }
+
+    private void assertBreakpoints(Source source, List<Breakpoint> breakpoints, Set<Breakpoint> breakpointsResolved, List<Breakpoint> breakpointsHit) {
+        try (DebuggerSession session = startSession()) {
+            for (Breakpoint breakpoint : breakpoints) {
+                session.install(breakpoint);
+            }
+            startEval(source);
+            while (breakpointsHit.size() != breakpoints.size()) {
+                expectSuspended((SuspendedEvent event) -> {
+                    breakpointsHit.addAll(event.getBreakpoints());
+                    event.prepareContinue();
+                });
+            }
+            expectDone();
+        }
+        Assert.assertEquals(breakpoints.size(), breakpointsResolved.size());
+        Assert.assertEquals(breakpoints.size(), breakpointsHit.size());
     }
 
     /**
@@ -538,7 +830,7 @@ public final class DebuggerTester implements AutoCloseable {
                     if (closed) {
                         return;
                     }
-                    ExecutingSource s = source;
+                    ExecutingSource s = executingSource;
                     try {
                         trace("Start executing " + this);
                         s.returnValue = context.eval(s.source).toString();

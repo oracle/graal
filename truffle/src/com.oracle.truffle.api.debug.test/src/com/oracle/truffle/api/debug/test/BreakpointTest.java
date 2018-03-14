@@ -27,6 +27,7 @@ package com.oracle.truffle.api.debug.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -769,26 +770,32 @@ public class BreakpointTest extends AbstractDebugTest {
 
             // Both sessions should break here:
             expectSuspended((SuspendedEvent event) -> {
+                assertSame(session1, event.getSession());
                 checkState(event, 2, true, "STATEMENT").prepareContinue();
             });
             expectSuspended((SuspendedEvent event) -> {
+                assertSame(session2, event.getSession());
                 checkState(event, 2, true, "STATEMENT").prepareContinue();
             });
             // We close session2 after the next BP:
             expectSuspended((SuspendedEvent event) -> {
+                assertSame(session1, event.getSession());
                 checkState(event, 4, true, "STATEMENT");
             });
         }
 
         expectSuspended((SuspendedEvent event) -> {
+            assertNotSame(session1, event.getSession());
             checkState(event, 4, true, "STATEMENT").prepareContinue();
         });
 
         // The last breakpoint is hit once only in the session1:
         expectSuspended((SuspendedEvent event) -> {
+            assertSame(session1, event.getSession());
             checkState(event, 6, true, "STATEMENT").prepareStepOver(1);
         });
         expectSuspended((SuspendedEvent event) -> {
+            assertSame(session1, event.getSession());
             checkState(event, 7, true, "STATEMENT");
             session1.close();
             event.prepareContinue();
@@ -799,4 +806,41 @@ public class BreakpointTest extends AbstractDebugTest {
 
     }
 
+    @Test
+    public void testResolveListener() {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" + // break here
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        Breakpoint sessionBreakpoint = null;
+        try (DebuggerSession session = startSession()) {
+            Breakpoint[] resolvedBp = new Breakpoint[1];
+            SourceSection[] resolvedSection = new SourceSection[1];
+            Breakpoint.ResolveListener bpResolveListener = (Breakpoint breakpoint, SourceSection section) -> {
+                resolvedBp[0] = breakpoint;
+                resolvedSection[0] = section;
+            };
+            Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).resolveListener(bpResolveListener).build());
+            Assert.assertNull(resolvedBp[0]);
+            Assert.assertNull(resolvedSection[0]);
+            sessionBreakpoint = breakpoint;
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertSame(breakpoint, resolvedBp[0]);
+                Assert.assertEquals(event.getSourceSection(), resolvedSection[0]);
+                checkState(event, 4, true, "STATEMENT");
+                Assert.assertEquals(1, event.getBreakpoints().size());
+                Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
+            });
+            Assert.assertEquals(1, breakpoint.getHitCount());
+            Assert.assertEquals(true, breakpoint.isEnabled());
+            Assert.assertEquals(true, breakpoint.isResolved());
+            expectDone();
+        }
+        Assert.assertEquals(false, sessionBreakpoint.isResolved());
+
+    }
 }
