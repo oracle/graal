@@ -445,28 +445,6 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoNode extends Node {
-<<<<<<< HEAD
-
-        @TruffleBoundary
-        public int access(JavaObject receiver, Number index) {
-            int i = index.intValue();
-            if (i != index.doubleValue() || i < 0) {
-                return KeyInfo.NONE;
-            }
-            if (receiver.isArray()) {
-                int length = Array.getLength(receiver.obj);
-                if (i < length) {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-                }
-            } else if (receiver.obj instanceof List) {
-                int length = ((List<?>) receiver.obj).size();
-                if (i < length) {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
-                } else if (i == length) {
-                    // we can append to an array list
-                    return KeyInfo.INSERTABLE;
-=======
-        private static final int READABLE_WRITABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
 
         @Child private KeyInfoCacheNode keyInfoCache;
 
@@ -477,16 +455,17 @@ class JavaObjectMessageResolution {
             if (receiver.isArray()) {
                 int length = Array.getLength(receiver.obj);
                 if (index < length) {
-                    return READABLE_WRITABLE;
+                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
                 }
             } else if (receiver.obj instanceof List) {
                 int length = listSize((List<?>) receiver.obj);
                 if (index < length) {
-                    return READABLE_WRITABLE;
->>>>>>> master
+                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+                } else if (index == length) {
+                    return KeyInfo.INSERTABLE;
                 }
             }
-            return 0;
+            return KeyInfo.NONE;
         }
 
         @TruffleBoundary
@@ -509,24 +488,8 @@ class JavaObjectMessageResolution {
                 throw UnsupportedMessageException.raise(Message.KEY_INFO);
             }
             if (TruffleOptions.AOT) {
-                return KeyInfo.NONE;
+                return 0;
             }
-<<<<<<< HEAD
-            if (JavaInteropReflect.isField(receiver, name)) {
-                return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-            }
-            if (JavaInteropReflect.isMethod(receiver, name)) {
-                if (JavaInteropReflect.isInternalMethod(receiver, name)) {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.INVOCABLE | KeyInfo.INTERNAL;
-                } else {
-                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.INVOCABLE;
-                }
-            }
-            if (JavaInteropReflect.isMemberType(receiver, name)) {
-                return KeyInfo.READABLE;
-            }
-            return KeyInfo.NONE;
-=======
             return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isClass());
         }
 
@@ -536,7 +499,6 @@ class JavaObjectMessageResolution {
                 keyInfoCache = insert(KeyInfoCacheNode.create());
             }
             return keyInfoCache;
->>>>>>> master
         }
     }
 
