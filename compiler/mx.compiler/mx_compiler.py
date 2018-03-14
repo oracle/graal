@@ -34,18 +34,22 @@ import tarfile
 import subprocess
 import tempfile
 import shutil
+
 import mx_truffle
+import mx_sdk
 
 import mx
+import mx_gate
 from mx_gate import Task
 
-from mx_unittest import unittest
-from mx_javamodules import as_java_module
-import mx_gate
 import mx_unittest
+from mx_unittest import unittest
+
+from mx_javamodules import as_java_module
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
+
 import argparse
 import shlex
 import glob
@@ -1080,6 +1084,17 @@ def makegraaljdk(args):
             create_archive(dstJdk, args.archive, basename(args.dest) + '/')
     else:
         mx.abort('Can only make GraalJDK for JDK 8 currently')
+
+
+mx_sdk.register_component(mx_sdk.GraalVmJvmciComponent(
+    name='Graal compiler',
+    id='graal',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=[],
+    jvmci_jars=['dependency:compiler:GRAAL'],
+))
+
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
