@@ -149,6 +149,10 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         }
     }
 
+    /**
+     * Gets the set of modules whose methods can be intrinsified. This set is the module owning the
+     * class of {@code compilerConfiguration} and all its dependencies.
+     */
     private static EconomicSet<Object> initTrustedModules(CompilerConfiguration compilerConfiguration) throws GraalError {
         try {
             EconomicSet<Object> res = EconomicSet.create();
@@ -162,6 +166,11 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             Object descriptor = JDK9Method.lookupMethodHandle(moduleClass, "getDescriptor").invoke(compilerConfigurationModule);
             Class<?> moduleDescriptorClass = descriptor.getClass();
             Set<Object> requires = (Set<Object>) JDK9Method.lookupMethodHandle(moduleDescriptorClass, "requires").invoke(descriptor);
+            boolean isAutomatic = (Boolean) JDK9Method.lookupMethodHandle(moduleDescriptorClass, "isAutomatic").invoke(descriptor);
+            if (isAutomatic) {
+                throw new IllegalArgumentException(String.format("The module '%s' defining the Graal compiler configuration class '%s' must not be an automatic module",
+                                getName.invoke(compilerConfigurationModule), compilerConfiguration.getClass().getName()));
+            }
             MethodHandle requireNameGetter = null;
             for (Object require : requires) {
                 if (requireNameGetter == null) {
