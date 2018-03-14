@@ -30,11 +30,10 @@ import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 /**
  * Builds the result for {@link HotSpotInvocationPlugins#initTrustedModules(CompilerConfiguration)}.
  *
- * This version of the class is used on JDK 9+. It presides over the JDK 8 class of the same name in
- * a multi-release jar and uses API made available since JDK 9 to return a non-empty set.
+ * This version of the class is used on JDK 9 or later. It replaces the JDK 8 class of the same
+ * qualified name in a multi-release jar.
  *
  * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
- * @see "https://download.java.net/java/jdk10/docs/specs/jar/jar.html#multi-release-jar-files"
  */
 public final class HotSpotTrustedModules {
     static EconomicSet<Object> build(CompilerConfiguration compilerConfiguration) {

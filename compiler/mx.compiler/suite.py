@@ -135,6 +135,16 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.compiler.serviceprovider.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9",
+      "multiReleaseJarVersion" : "9",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.compiler.serviceprovider.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1632,6 +1642,7 @@ suite = {
         "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
       ],
       "dependencies" : [
+        "org.graalvm.compiler.serviceprovider.jdk9",
         "org.graalvm.compiler.options",
         "org.graalvm.compiler.nodeinfo",
         "org.graalvm.compiler.api.replacements",

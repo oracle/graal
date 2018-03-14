@@ -23,7 +23,6 @@
 package org.graalvm.compiler.serviceprovider;
 
 import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.addOpens;
 import static org.graalvm.compiler.serviceprovider.JDK9Method.getModule;
 import static org.graalvm.compiler.serviceprovider.JDK9Method.getPackages;
 import static org.graalvm.compiler.serviceprovider.JDK9Method.isOpenTo;
@@ -61,11 +60,7 @@ public final class GraalServices {
             for (String pkg : packages) {
                 boolean opened = isOpenTo(jvmci, pkg, otherModule);
                 if (!opened) {
-                    try {
-                        addOpens.invoke(jvmci, pkg, otherModule);
-                    } catch (Throwable throwable) {
-                        throw new InternalError(throwable);
-                    }
+                    JDK9Method.addOpens(jvmci, pkg, otherModule);
                 }
             }
         }

@@ -23,22 +23,21 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 /**
  * Builds the result for {@link HotSpotInvocationPlugins#initTrustedModules(CompilerConfiguration)}.
  *
- * This version of the class is used on JDK 8 and thus returns an empty set. It is expected to be
- * overridden by another class in a multi-release jar that uses API made available since JDK 9 to
- * return a non-empty set.
+ * This version of the class is used on JDK 8. It is expected to be replaced by another class in a
+ * multi-release jar when running on JDK 9 or later.
  *
  * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
- * @see "https://download.java.net/java/jdk10/docs/specs/jar/jar.html#multi-release-jar-files"
  */
 public final class HotSpotTrustedModules {
 
     @SuppressWarnings("unused")
     static EconomicSet<Object> build(CompilerConfiguration compilerConfiguration) {
-        return EconomicSet.create();
+        throw GraalError.shouldNotReachHere();
     }
 }

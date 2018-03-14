@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Set;
 
@@ -36,8 +37,8 @@ import java.util.Set;
  * }
  * </pre>
  *
- * This version of the class is used on JDK 8. It is expected to be replaced by another class in a
- * multi-release jar when running on JDK 9 or later.
+ * This version of the class is used on JDK 9 or later. It replaces the JDK 8 class of the same
+ * qualified name in a multi-release jar.
  *
  * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
  */
@@ -63,42 +64,37 @@ public final class JDK9Method {
     public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
 
     /**
-     * Wrapper for {@code Class.getModule()}.
+     * Wrapper for {@link Class#getModule()}.
      */
-    @SuppressWarnings("unused")
     public static Object getModule(Class<?> clazz) {
-        throw new InternalError();
+        return clazz.getModule();
     }
 
     /**
-     * Wrapper for {@code Module.getPackages()}.
+     * Wrapper for {@link Module#getPackages()}.
      */
-    @SuppressWarnings("unused")
     public static Set<String> getPackages(Object module) {
-        throw new InternalError();
+        return ((Module) module).getPackages();
     }
 
     /**
-     * Wrapper for {@code Module.getResourceAsStream(String)}.
+     * Wrapper for {@link Module#getResourceAsStream(String)}.
      */
-    @SuppressWarnings("unused")
-    public static InputStream getResourceAsStream(Object module, String resource) {
-        throw new InternalError();
+    public static InputStream getResourceAsStream(Object module, String resource) throws IOException {
+        return ((Module) module).getResourceAsStream(resource);
     }
 
     /**
-     * Wrapper for {@code Module.addOpens(String, Module)}.
+     * Wrapper for {@link Module#addOpens(String, Module)}.
      */
-    @SuppressWarnings("unused")
     static void addOpens(Object thisModule, String packageName, Object otherModule) {
-        throw new InternalError();
+        ((Module) thisModule).addOpens(packageName, (Module) otherModule);
     }
 
     /**
-     * Wrapper for {@code Module.isOpen(String, Module)}.
+     * Wrapper for {@link Module#isOpen(String, Module)}.
      */
-    @SuppressWarnings("unused")
     public static boolean isOpenTo(Object module1, String pkg, Object module2) {
-        throw new InternalError();
+        return ((Module) module1).isOpen(pkg, (Module) module2);
     }
 }
