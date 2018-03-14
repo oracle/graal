@@ -445,11 +445,27 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoNode extends Node {
-
-        private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
         private static final int READABLE_WRITABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
-        private static final int READABLE_WRITABLE_INVOCABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).setInvocable(true).build();
-        private static final int READABLE_WRITABLE_INVOCABLE_INTERNAL = KeyInfo.newBuilder().setReadable(true).setWritable(true).setInvocable(true).setInternal(true).build();
+
+        @Child private KeyInfoCacheNode keyInfoCache;
+
+        public int access(JavaObject receiver, int index) {
+            if (index < 0) {
+                return 0;
+            }
+            if (receiver.isArray()) {
+                int length = Array.getLength(receiver.obj);
+                if (index < length) {
+                    return READABLE_WRITABLE;
+                }
+            } else if (receiver.obj instanceof List) {
+                int length = listSize((List<?>) receiver.obj);
+                if (index < length) {
+                    return READABLE_WRITABLE;
+                }
+            }
+            return 0;
+        }
 
         @TruffleBoundary
         public int access(JavaObject receiver, Number index) {
@@ -458,24 +474,14 @@ class JavaObjectMessageResolution {
                 // No non-integer indexes
                 return 0;
             }
-            if (i < 0) {
-                return 0;
-            }
-            if (receiver.isArray()) {
-                int length = Array.getLength(receiver.obj);
-                if (i < length) {
-                    return READABLE_WRITABLE;
-                }
-            } else if (receiver.obj instanceof List) {
-                int length = ((List<?>) receiver.obj).size();
-                if (i < length) {
-                    return READABLE_WRITABLE;
-                }
-            }
-            return 0;
+            return access(receiver, i);
         }
 
         @TruffleBoundary
+        private static int listSize(List<?> list) {
+            return list.size();
+        }
+
         public int access(JavaObject receiver, String name) {
             if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.KEY_INFO);
@@ -483,20 +489,15 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 return 0;
             }
-            if (JavaInteropReflect.isField(receiver, name)) {
-                return READABLE_WRITABLE;
+            return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isClass());
+        }
+
+        private KeyInfoCacheNode keyInfoCache() {
+            if (keyInfoCache == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                keyInfoCache = insert(KeyInfoCacheNode.create());
             }
-            if (JavaInteropReflect.isMethod(receiver, name)) {
-                if (JavaInteropReflect.isInternalMethod(receiver, name)) {
-                    return READABLE_WRITABLE_INVOCABLE_INTERNAL;
-                } else {
-                    return READABLE_WRITABLE_INVOCABLE;
-                }
-            }
-            if (JavaInteropReflect.isMemberType(receiver, name)) {
-                return READABLE;
-            }
-            return 0;
+            return keyInfoCache;
         }
     }
 
