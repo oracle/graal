@@ -288,14 +288,19 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend {
     }
 
     private static void emitCodeBody(CompilationResultBuilder crb, LIR lir, AArch64MacroAssembler masm) {
-        /*
-         * Insert a nop at the start of the prolog so we can patch in a branch if we need to
-         * invalidate the method later.
-         */
+        emitInvalidatePlaceholder(crb, masm);
+        crb.emit(lir);
+    }
+
+    /**
+     * Insert a nop at the start of the prolog so we can patch in a branch if we need to invalidate
+     * the method later.
+     *
+     * @see "http://mail.openjdk.java.net/pipermail/aarch64-port-dev/2013-September/000273.html"
+     */
+    public static void emitInvalidatePlaceholder(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         crb.blockComment("[nop for method invalidation]");
         masm.nop();
-
-        crb.emit(lir);
     }
 
     private void emitCodeSuffix(CompilationResultBuilder crb, AArch64MacroAssembler masm, FrameMap frameMap) {

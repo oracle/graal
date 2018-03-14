@@ -679,6 +679,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private boolean finalBarrierRequired;
     private ValueNode originalReceiver;
+    private final boolean eagerInitializing;
+    private final boolean uninitializedIsError;
 
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
@@ -701,6 +703,14 @@ public class BytecodeParser implements GraphBuilderContext {
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
         this.parent = parent;
+
+        ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
+        if (classInitializationPlugin != null && graphBuilderConfig.eagerResolving()) {
+            uninitializedIsError = eagerInitializing = !classInitializationPlugin.supportsLazyInitialization(constantPool);
+        } else {
+            eagerInitializing = graphBuilderConfig.eagerResolving();
+            uninitializedIsError = graphBuilderConfig.unresolvedIsError();
+        }
 
         assert code.getCode() != null : "method must contain bytecodes: " + method;
 
@@ -1346,6 +1356,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void genInvokeStatic(int cpi, int opcode) {
         JavaMethod target = lookupMethod(cpi, opcode);
+        assert !uninitializedIsError ||
+                        (target instanceof ResolvedJavaMethod && ((ResolvedJavaMethod) target).getDeclaringClass().isInitialized()) : target;
         genInvokeStatic(target);
     }
 
@@ -3727,6 +3739,17 @@ public class BytecodeParser implements GraphBuilderContext {
         genIf(x, cond, y);
     }
 
+    private static void initialize(ResolvedJavaType resolvedType) {
+        /*
+         * Since we're potentially triggering class initialization here, we need synchronization to
+         * mitigate the potential for class initialization related deadlock being caused by the
+         * compiler (e.g., https://github.com/graalvm/graal-core/pull/232/files#r90788550).
+         */
+        synchronized (BytecodeParser.class) {
+            resolvedType.initialize();
+        }
+    }
+
     protected JavaType lookupType(int cpi, int bytecode) {
         maybeEagerlyResolve(cpi, bytecode);
         JavaType result = constantPool.lookupType(cpi, bytecode);
@@ -3737,32 +3760,26 @@ public class BytecodeParser implements GraphBuilderContext {
     private JavaMethod lookupMethod(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         JavaMethod result = constantPool.lookupMethod(cpi, opcode);
-        /*
-         * In general, one cannot assume that the declaring class being initialized is useful, since
-         * the actual concrete receiver may be a different class (except for static calls). Also,
-         * interfaces are initialized only under special circumstances, so that this assertion would
-         * often fail for interface calls.
-         */
-        assert !graphBuilderConfig.unresolvedIsError() ||
-                        (result instanceof ResolvedJavaMethod && (opcode != INVOKESTATIC || ((ResolvedJavaMethod) result).getDeclaringClass().isInitialized())) : result;
+        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaMethod : result;
         return result;
     }
 
     protected JavaField lookupField(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         JavaField result = constantPool.lookupField(cpi, method, opcode);
-
-        if (graphBuilderConfig.eagerResolving()) {
-            assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaField : "Not resolved: " + result;
+        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaField : "Not resolved: " + result;
+        if (parsingIntrinsic() || eagerInitializing) {
             if (result instanceof ResolvedJavaField) {
                 ResolvedJavaType declaringClass = ((ResolvedJavaField) result).getDeclaringClass();
                 if (!declaringClass.isInitialized()) {
-                    assert declaringClass.isInterface() : "Declaring class not initialized but not an interface? " + declaringClass;
-                    declaringClass.initialize();
+                    // Even with eager initialization, superinterfaces are not always initialized.
+                    // See StaticInterfaceFieldTest
+                    assert !eagerInitializing || declaringClass.isInterface() : "Declaring class not initialized but not an interface? " + declaringClass;
+                    initialize(declaringClass);
                 }
             }
         }
-        assert !graphBuilderConfig.unresolvedIsError() || (result instanceof ResolvedJavaField && ((ResolvedJavaField) result).getDeclaringClass().isInitialized()) : result;
+        assert !uninitializedIsError || (result instanceof ResolvedJavaField && ((ResolvedJavaField) result).getDeclaringClass().isInitialized()) : result;
         return result;
     }
 
@@ -3783,7 +3800,12 @@ public class BytecodeParser implements GraphBuilderContext {
              * the compiler (e.g., https://github.com/graalvm/graal-core/pull/232/files#r90788550).
              */
             synchronized (BytecodeParser.class) {
-                constantPool.loadReferencedType(cpi, bytecode);
+                ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
+                if (classInitializationPlugin != null) {
+                    classInitializationPlugin.loadReferencedType(this, constantPool, cpi, bytecode);
+                } else {
+                    constantPool.loadReferencedType(cpi, bytecode);
+                }
             }
         }
     }
@@ -3910,11 +3932,16 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     void genNewInstance(JavaType type) {
-        if (!(type instanceof ResolvedJavaType) || !((ResolvedJavaType) type).isInitialized()) {
+        if (!(type instanceof ResolvedJavaType)) {
             handleUnresolvedNewInstance(type);
             return;
         }
         ResolvedJavaType resolvedType = (ResolvedJavaType) type;
+        ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
+        if (!resolvedType.isInitialized() && classInitializationPlugin == null) {
+            handleUnresolvedNewInstance(type);
+            return;
+        }
 
         ResolvedJavaType[] skippedExceptionTypes = this.graphBuilderConfig.getSkippedExceptionTypes();
         if (skippedExceptionTypes != null) {
@@ -3926,7 +3953,6 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        ClassInitializationPlugin classInitializationPlugin = graphBuilderConfig.getPlugins().getClassInitializationPlugin();
         if (classInitializationPlugin != null && classInitializationPlugin.shouldApply(this, resolvedType)) {
             FrameState stateBefore = frameState.create(bci(), getNonIntrinsicAncestor(), false, null, null);
             classInitializationPlugin.apply(this, resolvedType, stateBefore);
@@ -4201,7 +4227,7 @@ public class BytecodeParser implements GraphBuilderContext {
     private ResolvedJavaField resolveStaticFieldAccess(JavaField field, ValueNode value) {
         if (field instanceof ResolvedJavaField) {
             ResolvedJavaField resolvedField = (ResolvedJavaField) field;
-            if (resolvedField.getDeclaringClass().isInitialized()) {
+            if (resolvedField.getDeclaringClass().isInitialized() || graphBuilderConfig.getPlugins().getClassInitializationPlugin() != null) {
                 return resolvedField;
             }
             /*

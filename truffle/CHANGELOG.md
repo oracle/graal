@@ -26,6 +26,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Remove deprecated `TruffleInstrument#describeOptions` and TruffleLanguage#describeOptions
 * Remove deprecated `TruffleLanguage.Env#lookupSymbol` without replacement.
 * Remove deprecated `TruffleLanguage.Env#importSymbols`, use the polyglot bindings instead.
+* Removed deprecated APIs and public debug classes in truffle.api.object and truffle.object packages, respectively.
+* Removed internal truffle.object package from javadoc.
 
 ## Version 0.32
 

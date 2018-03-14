@@ -445,6 +445,7 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoNode extends Node {
+<<<<<<< HEAD
 
         @TruffleBoundary
         public int access(JavaObject receiver, Number index) {
@@ -464,12 +465,45 @@ class JavaObjectMessageResolution {
                 } else if (i == length) {
                     // we can append to an array list
                     return KeyInfo.INSERTABLE;
+=======
+        private static final int READABLE_WRITABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
+
+        @Child private KeyInfoCacheNode keyInfoCache;
+
+        public int access(JavaObject receiver, int index) {
+            if (index < 0) {
+                return 0;
+            }
+            if (receiver.isArray()) {
+                int length = Array.getLength(receiver.obj);
+                if (index < length) {
+                    return READABLE_WRITABLE;
+                }
+            } else if (receiver.obj instanceof List) {
+                int length = listSize((List<?>) receiver.obj);
+                if (index < length) {
+                    return READABLE_WRITABLE;
+>>>>>>> master
                 }
             }
             return 0;
         }
 
         @TruffleBoundary
+        public int access(JavaObject receiver, Number index) {
+            int i = index.intValue();
+            if (i != index.doubleValue()) {
+                // No non-integer indexes
+                return 0;
+            }
+            return access(receiver, i);
+        }
+
+        @TruffleBoundary
+        private static int listSize(List<?> list) {
+            return list.size();
+        }
+
         public int access(JavaObject receiver, String name) {
             if (receiver.isNull()) {
                 throw UnsupportedMessageException.raise(Message.KEY_INFO);
@@ -477,6 +511,7 @@ class JavaObjectMessageResolution {
             if (TruffleOptions.AOT) {
                 return KeyInfo.NONE;
             }
+<<<<<<< HEAD
             if (JavaInteropReflect.isField(receiver, name)) {
                 return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
             }
@@ -491,6 +526,17 @@ class JavaObjectMessageResolution {
                 return KeyInfo.READABLE;
             }
             return KeyInfo.NONE;
+=======
+            return keyInfoCache().execute(receiver.getLookupClass(), name, receiver.isClass());
+        }
+
+        private KeyInfoCacheNode keyInfoCache() {
+            if (keyInfoCache == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                keyInfoCache = insert(KeyInfoCacheNode.create());
+            }
+            return keyInfoCache;
+>>>>>>> master
         }
     }
 

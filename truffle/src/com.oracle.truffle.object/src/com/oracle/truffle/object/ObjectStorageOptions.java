@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -65,9 +67,9 @@ public final class ObjectStorageOptions {
     static final String DumpShapesPath = System.getProperty(OPTION_PREFIX + "DumpShapesPath", "");
 
     /** @since 0.17 or earlier */
-    @Deprecated public static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
+    static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
     /** @since 0.17 or earlier */
-    @Deprecated public static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
+    static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
 
     /** @since 0.17 or earlier */
     public static boolean booleanOption(String name, boolean defaultValue) {
