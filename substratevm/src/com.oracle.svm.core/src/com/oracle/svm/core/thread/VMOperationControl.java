@@ -32,8 +32,10 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
@@ -108,6 +110,11 @@ public final class VMOperationControl {
     public static void enqueue(VMOperation operation) {
         final Log trace = SubstrateOptions.TraceVMOperations.getValue() ? Log.log() : Log.noopLog();
         trace.string("[VMOperationControl.enqueue:").string("  operation: ").string(operation.getName());
+
+        boolean needsCallback = ThreadingSupportImpl.singleton().needsCallbackOnSafepointCheckSlowpath();
+        long callbackTime = 0;
+        int callbackValue = 0;
+
         /*
          * Policy: Only one thread at a time can drain the queues. This mimics HotSpot's single
          * "VMThread", which probably saves a lot of locking or atomics.
@@ -118,6 +125,16 @@ public final class VMOperationControl {
          */
         final boolean needLockUnlock = !isLockOwner();
         if (needLockUnlock) {
+            if (needsCallback) {
+                /*
+                 * While a VMOperation is running, periodic callbacks are suspended because we
+                 * cannot let arbitrary user code run, e.g., during GC. We save the state here so
+                 * that we can restore it below after releasing the lock again.
+                 */
+                callbackTime = System.nanoTime();
+                callbackValue = Safepoint.getSafepointRequested(KnownIntrinsics.currentVMThread());
+            }
+
             getVMOperationControl().acquireLock();
         }
         try {
@@ -137,6 +154,10 @@ public final class VMOperationControl {
         } finally {
             if (needLockUnlock) {
                 getVMOperationControl().releaseLock();
+
+                if (needsCallback) {
+                    ThreadingSupportImpl.singleton().onSafepointCheckSlowpath(callbackTime, callbackValue);
+                }
             }
         }
         trace.string("]").newline();
@@ -214,7 +235,8 @@ public final class VMOperationControl {
      * Methods to use the thread-local int "isOwner" as a boolean.
      */
 
-    private static boolean isLockOwner() {
+    @Uninterruptible(reason = "Called from Uninterruptible code", mayBeInlined = true)
+    protected static boolean isLockOwner() {
         return isLockOwner.get() == 1;
     }
 
