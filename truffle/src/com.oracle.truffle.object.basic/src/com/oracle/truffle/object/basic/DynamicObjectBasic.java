@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,6 +23,8 @@
  * questions.
  */
 package com.oracle.truffle.object.basic;
+
+import java.io.PrintStream;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -212,8 +216,9 @@ public class DynamicObjectBasic extends DynamicObjectImpl {
         ShapeImpl oldShape = getShape();
         ShapeImpl commonAncestor = ShapeImpl.findCommonAncestor(oldShape, newShape);
         if (ObjectStorageOptions.TraceReshape) {
-            int limit = 150;
-            System.out.printf("RESHAPE\nOLD %s\nNEW %s\nLCA %s\nDIFF %s\n---\n", oldShape.toStringLimit(limit), newShape.toStringLimit(limit), commonAncestor.toStringLimit(limit),
+            int limit = 200;
+            PrintStream out = System.out;
+            out.printf("RESHAPE\nOLD %s\nNEW %s\nLCA %s\nDIFF %s\n---\n", oldShape.toStringLimit(limit), newShape.toStringLimit(limit), commonAncestor.toStringLimit(limit),
                             ShapeImpl.diff(oldShape, newShape));
         }
 

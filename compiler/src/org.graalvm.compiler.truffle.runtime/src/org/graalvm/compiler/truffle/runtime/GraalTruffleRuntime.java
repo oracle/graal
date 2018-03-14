@@ -680,14 +680,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, TruffleInliningPolicy.getInliningPolicy(options));
         CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
-        DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null;
-        try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
-            maybeDumpTruffleTree(debug, options, callTarget, inlining);
-            compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new InternalError(e);
+        try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
+            try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+                maybeDumpTruffleTree(debug, options, callTarget, inlining);
+                compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+            } catch (RuntimeException | Error e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new InternalError(e);
+            }
         }
         dequeueInlinedCallSites(inlining, callTarget);
     }

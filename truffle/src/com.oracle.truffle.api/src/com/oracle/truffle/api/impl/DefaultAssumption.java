@@ -47,6 +47,11 @@ final class DefaultAssumption extends AbstractAssumption {
 
     @Override
     public void invalidate() {
+        invalidate("");
+    }
+
+    @Override
+    public void invalidate(String message) {
         isValid = false;
     }
 

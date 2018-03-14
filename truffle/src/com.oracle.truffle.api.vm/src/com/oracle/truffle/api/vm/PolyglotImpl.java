@@ -210,11 +210,26 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException wrapHostException(T e) {
+    static <T extends Throwable> RuntimeException wrapHostException(PolyglotLanguageContext context, T e) {
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
         } else if (e instanceof PolyglotException) {
-            return (PolyglotException) e;
+            PolyglotException polyglot = (PolyglotException) e;
+            if (context != null) {
+                PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getImpl(polyglot));
+                if (exceptionImpl.context == context.context || exceptionImpl.isHostException()) {
+                    // for values of the same context the TruffleException is allowed to be unboxed
+                    // for host exceptions no guest values are bound therefore it can also be
+                    // unboxed
+                    Throwable original = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getImpl(polyglot)).exception;
+                    if (original instanceof RuntimeException) {
+                        throw (RuntimeException) original;
+                    } else if (original instanceof Error) {
+                        throw (Error) original;
+                    }
+                }
+                // fall-through and treat it as any other host exception
+            }
         } else if (e instanceof EngineException) {
             return ((EngineException) e).e;
         } else if (e instanceof HostException) {
@@ -614,12 +629,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public Object toGuestValue(Object obj, Object context) {
-            PolyglotLanguageContext languageContext;
-            if (context instanceof VMObject && obj instanceof Value) {
-                PolyglotValue valueImpl = (PolyglotValue) ((VMObject) context).getAPIAccess().getImpl((Value) obj);
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
+            if (obj instanceof Value) {
+                PolyglotValue valueImpl = (PolyglotValue) languageContext.getImpl().getAPIAccess().getImpl((Value) obj);
                 languageContext = valueImpl.languageContext;
-            } else {
-                languageContext = (PolyglotLanguageContext) context;
             }
             return languageContext.toGuestValue(obj);
         }
@@ -713,8 +726,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public RuntimeException wrapHostException(Throwable exception) {
-            return PolyglotImpl.wrapHostException(exception);
+        public RuntimeException wrapHostException(Object languageContext, Throwable exception) {
+            return PolyglotImpl.wrapHostException((PolyglotLanguageContext) languageContext, exception);
         }
 
         @Override

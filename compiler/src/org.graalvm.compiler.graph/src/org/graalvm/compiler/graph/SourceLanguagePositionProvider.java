@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.object;
+package org.graalvm.compiler.graph;
 
-import com.oracle.truffle.api.object.Shape;
+import jdk.vm.ci.meta.JavaConstant;
 
-/** @since 0.17 or earlier */
-@Deprecated
-public interface ShapeVisitor<R> {
-    /** @since 0.17 or earlier */
-    R visitShape(Shape shape);
+/**
+ * Provider of {@link SourceLanguagePosition} for a constant if it represents an AST node.
+ */
+public interface SourceLanguagePositionProvider {
+    SourceLanguagePosition getPosition(JavaConstant node);
 }

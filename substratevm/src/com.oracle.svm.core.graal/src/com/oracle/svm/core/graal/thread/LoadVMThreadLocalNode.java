@@ -32,13 +32,15 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
-import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
@@ -67,7 +69,18 @@ public class LoadVMThreadLocalNode extends FixedWithNextNode implements Lowerabl
 
         ConstantNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), threadLocalInfo.offset, holder.graph());
         AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-        ReadNode read = graph().add(new CInterfaceReadNode(address, threadLocalInfo.locationIdentity, stamp(NodeView.DEFAULT), barrierType, threadLocalInfo.name));
+
+        FixedAccessNode read;
+        if (SubstrateOptions.MultiThreaded.getValue()) {
+            read = new CInterfaceReadNode(address, threadLocalInfo.locationIdentity, stamp(NodeView.DEFAULT), barrierType, threadLocalInfo.name);
+        } else {
+            read = new JavaReadNode(threadLocalInfo.storageKind, address, threadLocalInfo.locationIdentity, barrierType, true);
+        }
+        read = graph().add(read);
         graph().replaceFixedWithFixed(this, read);
+
+        if (!SubstrateOptions.MultiThreaded.getValue()) {
+            tool.getLowerer().lower(read, tool);
+        }
     }
 }

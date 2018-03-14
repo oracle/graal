@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -45,6 +46,7 @@ public class RuntimeConfiguration {
     private final SnippetReflectionProvider snippetReflection;
     private final EnumMap<ConfigKind, Backend> backends;
     private final Iterable<DebugHandlersFactory> debugHandlersFactories;
+    private final WordTypes wordTypes;
 
     private int vtableBaseOffset;
     private int vtableEntrySize;
@@ -52,11 +54,12 @@ public class RuntimeConfiguration {
     private int componentHubOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, Backend> backends) {
+    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, Backend> backends, WordTypes wordTypes) {
         this.providers = providers;
         this.snippetReflection = snippetReflection;
         this.backends = backends;
         this.debugHandlersFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
+        this.wordTypes = wordTypes;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -116,5 +119,9 @@ public class RuntimeConfiguration {
 
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
+    }
+
+    public WordTypes getWordTypes() {
+        return wordTypes;
     }
 }

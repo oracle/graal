@@ -67,4 +67,19 @@ public interface OptionValues {
      */
     boolean hasBeenSet(OptionKey<?> optionKey);
 
+    /**
+     * Determines if a value for any of the option keys in {@link #getDescriptors() option
+     * descriptors} has been {@link #set} in this set of option values.
+     *
+     * @since 1.0
+     */
+    default boolean hasSetOptions() {
+        for (OptionDescriptor descriptor : getDescriptors()) {
+            if (hasBeenSet(descriptor.getKey())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

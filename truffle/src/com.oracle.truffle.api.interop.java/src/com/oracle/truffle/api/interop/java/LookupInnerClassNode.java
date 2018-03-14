@@ -41,7 +41,7 @@ abstract class LookupInnerClassNode extends Node {
     public abstract Class<?> execute(Class<?> outerclass, String name);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedInnerClass != null", "clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
+    @Specialization(guards = {"clazz == cachedClazz", "cachedName.equals(name)"}, limit = "LIMIT")
     static Class<?> doCached(Class<?> clazz, String name,
                     @Cached("clazz") Class<?> cachedClazz,
                     @Cached("name") String cachedName,

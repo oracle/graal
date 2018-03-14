@@ -270,7 +270,12 @@ public final class SuspendedEvent {
      * @since 0.17
      */
     public DebugValue getReturnValue() {
-        return getTopStackFrame().wrapHeapValue(returnValue);
+        verifyValidState(false);
+        Object ret = returnValue;
+        if (ret == null) {
+            return null;
+        }
+        return getTopStackFrame().wrapHeapValue(ret);
     }
 
     // TODO CHumer: we also want to provide access to guest language errors. The API for that is not

@@ -38,7 +38,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * All instances of classes implementing {@code Assumption} must be held in {@code final} fields for
  * compiler optimizations to take effect.
- * 
+ *
  * @since 0.8 or earlier
  */
 public interface Assumption {
@@ -64,10 +64,20 @@ public interface Assumption {
 
     /**
      * Invalidates this assumption. Performs no operation, if the assumption is already invalid.
-     * 
+     *
      * @since 0.8 or earlier
      */
     void invalidate();
+
+    /**
+     * Invalidates this assumption. Performs no operation, if the assumption is already invalid.
+     *
+     * @param message a message stating the reason of the invalidation
+     * @since 0.33
+     */
+    default void invalidate(String message) {
+        invalidate();
+    }
 
     /**
      * A name for the assumption that is used for debug output.

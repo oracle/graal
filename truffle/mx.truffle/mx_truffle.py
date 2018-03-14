@@ -175,6 +175,8 @@ def _truffle_gate_runner(args, tasks):
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
+    with Task('File name length check', tasks) as t:
+        if t: check_filename_length([])
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
@@ -388,4 +390,25 @@ def _tck(args):
 
 mx.update_commands(_suite, {
     'tck' : [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+})
+
+def check_filename_length(args):
+    """check that all file name lengths are short enough for eCryptfs"""
+    # For eCryptfs, see https://bugs.launchpad.net/ecryptfs/+bug/344878
+    parser = ArgumentParser(prog="mx check-filename-length", description="Check file name length")
+    parser.parse_known_args(args)
+    max_length = 143
+    too_long = []
+    for _, _, filenames in os.walk('.'):
+        for filename in filenames:
+            if len(filename) > max_length:
+                too_long.append(filename)
+    if too_long:
+        mx.log_error("The following file names are too long for eCryptfs: ")
+        for x in too_long:
+            mx.log_error(x)
+        mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
+
+mx.update_commands(_suite, {
+    'check-filename-length' : [check_filename_length, ""],
 })

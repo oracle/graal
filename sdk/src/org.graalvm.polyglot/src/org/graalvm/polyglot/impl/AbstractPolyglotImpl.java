@@ -89,6 +89,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractValueImpl getImpl(Value value);
 
+        public abstract AbstractExceptionImpl getImpl(PolyglotException value);
+
         public abstract AbstractStackFrameImpl getImpl(StackFrame value);
 
         public abstract AbstractLanguageImpl getImpl(Language value);

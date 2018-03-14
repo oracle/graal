@@ -32,7 +32,6 @@ import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.TypedLocation;
 import com.oracle.truffle.object.basic.DefaultLayoutFactory;
 
 public class SharedShapeTest {
@@ -41,6 +40,10 @@ public class SharedShapeTest {
     final Layout layout = new DefaultLayoutFactory().createLayout(builder);
     final Shape rootShape = layout.createShape(new ObjectType());
     final Shape sharedShape = rootShape.makeSharedShape();
+
+    private static Class<?> getLocationType(Location location) {
+        return ((com.oracle.truffle.api.object.TypedLocation) location).getType();
+    }
 
     @Test
     public void testDifferentLocationsImplicitCast() {
@@ -51,7 +54,7 @@ public class SharedShapeTest {
         Location location2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertNotSameLocation(location1, location2);
-        Assert.assertEquals(Object.class, ((TypedLocation) location2).getType());
+        Assert.assertEquals(Object.class, getLocationType(location2));
 
         // The old location can still be read
         Assert.assertEquals(1, location1.get(object));
@@ -67,7 +70,7 @@ public class SharedShapeTest {
         Location location2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertNotSameLocation(location1, location2);
-        Assert.assertEquals(Object.class, ((TypedLocation) location2).getType());
+        Assert.assertEquals(Object.class, getLocationType(location2));
 
         object.define("b", 3);
         Location locationB = object.getShape().getProperty("b").getLocation();
@@ -93,7 +96,7 @@ public class SharedShapeTest {
         Location locationA2 = object.getShape().getProperty("a").getLocation();
 
         DOTestAsserts.assertSameLocation(locationA1, locationA2);
-        Assert.assertEquals(long.class, ((TypedLocation) locationA2).getType());
+        Assert.assertEquals(long.class, getLocationType(locationA2));
         DOTestAsserts.assertShape("{\"a\":long@0\n}", object.getShape());
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
@@ -108,7 +111,7 @@ public class SharedShapeTest {
         object.define("c", 5);
 
         DOTestAsserts.assertNotSameLocation(locationB1, locationB2);
-        Assert.assertEquals(Object.class, ((TypedLocation) locationB2).getType());
+        Assert.assertEquals(Object.class, getLocationType(locationB2));
         DOTestAsserts.assertShape("{" +
                         "\"c\":int@2,\n" +
                         "\"b\":Object@0,\n" +

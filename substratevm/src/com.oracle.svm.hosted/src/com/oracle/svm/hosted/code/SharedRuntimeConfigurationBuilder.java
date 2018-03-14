@@ -102,7 +102,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             backends.put(config, GraalConfiguration.instance().createBackend(newProviders));
         }
 
-        runtimeConfig = new RuntimeConfiguration(p, snippetReflection, backends);
+        runtimeConfig = new RuntimeConfiguration(p, snippetReflection, backends, wordTypes);
         return this;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.api.interop.java;
 
-/*
- @ApiInfo(
- group="Internal"
- )
- */
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 
-/**
- * Ignore: Internal API. Don't use, rather copy.
- * 
- * @since 0.8 or older
- */
-package com.oracle.truffle.object;
+abstract class LookupConstructorNode extends Node {
+    static final int LIMIT = 3;
+
+    LookupConstructorNode() {
+    }
+
+    static LookupConstructorNode create() {
+        return LookupConstructorNodeGen.create();
+    }
+
+    public abstract JavaMethodDesc execute(Class<?> clazz);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"clazz == cachedClazz"}, limit = "LIMIT")
+    static JavaMethodDesc doCached(Class<?> clazz,
+                    @Cached("clazz") Class<?> cachedClazz,
+                    @Cached("doUncached(clazz)") JavaMethodDesc cachedMethod) {
+        assert cachedMethod == doUncached(clazz);
+        return cachedMethod;
+    }
+
+    @Specialization(replaces = "doCached")
+    static JavaMethodDesc doUncached(Class<?> clazz) {
+        return JavaClassDesc.forClass(clazz).lookupConstructor();
+    }
+}

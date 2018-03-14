@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,32 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.object;
+package org.graalvm.compiler.graph;
 
-import com.oracle.truffle.api.object.Shape;
-import java.util.Collections;
 import java.util.Map;
 
-/** @since 0.17 or earlier */
-@SuppressWarnings("all")
-@Deprecated
-public abstract class DebugShapeVisitor<R> implements ShapeVisitor<R> {
+/**
+ * Provides a path to report information about a high level language source position to the Graph
+ * Visualizer.
+ */
+public interface SourceLanguagePosition {
+
     /**
-     * @since 0.17 or earlier
+     * This is called during dumping of Nodes. The implementation should add any properties which
+     * describe this source position. The actual keys and values used are a private contract between
+     * the language implementation and the Graph Visualizer.
      */
-    protected DebugShapeVisitor() {
-    }
+    void addSourceInformation(Map<String, Object> props);
 
-    /** @since 0.17 or earlier */
-    public R visitShape(Shape shape) {
-        return visitShape(shape, Collections.unmodifiableMap(((ShapeImpl) shape).getTransitionMapForRead()));
-    }
-
-    /** @since 0.17 or earlier */
-    public abstract R visitShape(Shape shape, Map<? extends Transition, ? extends Shape> transitions);
-
-    /** @since 0.17 or earlier */
-    public static String getId(Shape shape) {
-        return Integer.toHexString(shape.hashCode());
-    }
+    /**
+     * Produce a compact description of this position suitable for printing.
+     */
+    String toShortString();
 }

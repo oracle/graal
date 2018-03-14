@@ -474,7 +474,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         @Override
         public Object nodeClassType(ASTNodeClass nodeClass) {
-            return nodeClass.getClass();
+            return nodeClass.node.source.getClass();
         }
 
         @Override
