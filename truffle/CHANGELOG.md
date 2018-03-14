@@ -24,6 +24,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * The [Assumption](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Assumption.html) interface has an additional override for the `invalidate` method to provide a message for debugging purposes.
 * Removed deprecated APIs and public debug classes in truffle.api.object and truffle.object packages, respectively.
 * Removed internal truffle.object package from javadoc.
+* Added the compiler directive [castExact](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#castExact-java.lang.Object-java.lang.Class-).
+* Added skipped exception types: `IndexOutOfBoundsException`, `BufferOverflowException`, and `BufferUnderflowException`.
 
 ## Version 0.32
 
