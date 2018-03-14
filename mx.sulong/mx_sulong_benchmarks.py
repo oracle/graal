@@ -189,7 +189,7 @@ class SulongVm(GuestVm):
             '-Dgraal.TruffleCompilationExceptionsAreFatal=true',
             mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>'),
             '-Dpolyglot.llvm.libraries=libgmp.so.10']
-        sulongCmdLine = suTruffleOptions + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.Sulong"] + ['bench.bc']
+        sulongCmdLine = suTruffleOptions + mx_sulong.getClasspathOptions() + ['-XX:-UseJVMCIClassLoader', "com.oracle.truffle.llvm.launcher.LLVMLauncher"] + ['bench.bc']
         result = self.host_vm().run(cwd, sulongCmdLine + args)
 
         # reset current Directory
