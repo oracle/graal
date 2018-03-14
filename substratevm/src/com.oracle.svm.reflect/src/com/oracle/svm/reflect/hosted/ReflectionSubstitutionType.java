@@ -173,7 +173,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         JavaConstant expected = graphKit.getConstantReflection().asJavaClass(expectedType);
         ValueNode expectedNode = graphKit.createConstant(expected, JavaKind.Object);
 
-        ValueNode exception = graphKit.createJavaCall(InvokeKind.Static, createFailedCast, expectedNode, actual);
+        ValueNode exception = graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, createFailedCast, expectedNode, actual);
         graphKit.append(new UnwindNode(exception));
     }
 
@@ -229,7 +229,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             }
         }
 
-        graphKit.createJavaCall(InvokeKind.Special, cons, ite, exception);
+        graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, exception);
 
         graphKit.append(new UnwindNode(ite));
     }
@@ -248,7 +248,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         JavaConstant msg = graphKit.getConstantReflection().forString(message);
         ValueNode msgNode = graphKit.createConstant(msg, JavaKind.Object);
         ValueNode cause = graphKit.createConstant(JavaConstant.NULL_POINTER, JavaKind.Object);
-        graphKit.createJavaCall(InvokeKind.Special, cons, ite, msgNode, cause);
+        graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, msgNode, cause);
 
         graphKit.append(new UnwindNode(ite));
     }
