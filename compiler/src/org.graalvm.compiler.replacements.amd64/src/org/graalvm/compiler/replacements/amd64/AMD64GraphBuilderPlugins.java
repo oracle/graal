@@ -194,7 +194,8 @@ public class AMD64GraphBuilderPlugins {
                 r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", char[].class, int.class,
                                 int.class, char[].class, int.class, int.class, int.class);
             }
-            r.registerMethodSubstitution(AMD64StringSubstitutions.class, "compareTo", Receiver.class, String.class);
+            // r.registerMethodSubstitution(AMD64StringSubstitutions.class, "compareTo",
+            // Receiver.class, String.class);
         }
     }
 
