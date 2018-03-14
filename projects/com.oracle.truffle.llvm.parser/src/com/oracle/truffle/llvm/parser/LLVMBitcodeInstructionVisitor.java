@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMPhiManager.Phi;
@@ -95,10 +98,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
-
-import java.util.ArrayList;
-import java.util.List;
 
 final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -225,7 +224,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
         // stack pointer
-        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
+        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, PointerType.VOID, getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -332,7 +331,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
+        args[argIndex] = nodeFactory.createFrameRead(runtime, PointerType.VOID, getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 
@@ -369,7 +368,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
         final Type[] argTypes = new Type[argumentCount];
         int argIndex = 0;
-        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
+        argNodes[argIndex] = nodeFactory.createFrameRead(runtime, PointerType.VOID, getStackSlot());
         argTypes[argIndex] = new PointerType(null);
         argIndex++;
         if (targetType instanceof StructureType) {
@@ -438,7 +437,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type[] argsType = new Type[argumentCount];
 
         int argIndex = 0;
-        args[argIndex] = nodeFactory.createFrameRead(runtime, new PointerType(VoidType.INSTANCE), getStackSlot());
+        args[argIndex] = nodeFactory.createFrameRead(runtime, PointerType.VOID, getStackSlot());
         argsType[argIndex] = new PointerType(null);
         argIndex++;
 

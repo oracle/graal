@@ -49,7 +49,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = int.class, name = "numberExplicitArguments")
@@ -70,8 +69,8 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
         this.pointerArithmeticStructInit = LLVMIncrementPointerNodeGen.create();
         this.gpOffsetStore = LLVMI32StoreNodeGen.create();
         this.fpOffsetStore = LLVMI32StoreNodeGen.create();
-        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(new PointerType(VoidType.INSTANCE));
-        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(new PointerType(VoidType.INSTANCE));
+        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
+        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
 
         this.gpOffsetLoad = LLVMI32LoadNodeGen.create();
         this.fpOffsetLoad = LLVMI32LoadNodeGen.create();
@@ -90,12 +89,12 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
     }
 
     private void setOverflowArgArea(VirtualFrame frame, Object address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, PointerType.VOID);
         overflowArgAreaStore.executeWithTarget(frame, p, value);
     }
 
     private void setRegSaveArea(VirtualFrame frame, Object address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, PointerType.VOID);
         regSaveAreaStore.executeWithTarget(frame, p, value);
     }
 
@@ -110,12 +109,12 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
     }
 
     private Object getOverflowArgArea(VirtualFrame frame, Object address) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, PointerType.VOID);
         return overflowArgAreaLoad.executeWithTarget(frame, p);
     }
 
     private Object getRegSaveArea(VirtualFrame frame, Object address) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, PointerType.VOID);
         return regSaveAreaLoad.executeWithTarget(frame, p);
     }
 

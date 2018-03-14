@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 abstract class ToPointer extends ForeignToLLVM {
 
@@ -133,7 +132,7 @@ abstract class ToPointer extends ForeignToLLVM {
 
     @Specialization(guards = {"!checkIsPointer(obj)", "notLLVM(obj)"})
     protected LLVMTruffleObject fromTruffleObject(TruffleObject obj) {
-        return new LLVMTruffleObject(obj, new PointerType(VoidType.INSTANCE));
+        return new LLVMTruffleObject(obj, PointerType.VOID);
     }
 
     @TruffleBoundary
@@ -163,7 +162,7 @@ abstract class ToPointer extends ForeignToLLVM {
                 throw new IllegalStateException("Foreign value is not a pointer!", ex);
             }
         } else if (value instanceof TruffleObject && !thiz.checkIsPointer((TruffleObject) value) && notLLVM((TruffleObject) value)) {
-            return new LLVMTruffleObject((TruffleObject) value, new PointerType(VoidType.INSTANCE));
+            return new LLVMTruffleObject((TruffleObject) value, PointerType.VOID);
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

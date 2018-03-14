@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
 @NodeChild
@@ -100,8 +99,8 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         this.pointerArithmeticStructInit = LLVMIncrementPointerNodeGen.create();
         this.gpOffsetStore = LLVMI32StoreNodeGen.create();
         this.fpOffsetStore = LLVMI32StoreNodeGen.create();
-        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(new PointerType(VoidType.INSTANCE));
-        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(new PointerType(VoidType.INSTANCE));
+        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
+        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
 
         this.memmove = memmove;
     }
@@ -117,12 +116,12 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
     }
 
     private void setOverflowArgArea(VirtualFrame frame, Object address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.OVERFLOW_ARG_AREA, PointerType.VOID);
         overflowArgAreaStore.executeWithTarget(frame, p, value);
     }
 
     private void setRegSaveArea(VirtualFrame frame, Object address, Object value) {
-        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, new PointerType(VoidType.INSTANCE));
+        Object p = pointerArithmeticStructInit.executeWithTarget(frame, address, X86_64BitVarArgs.REG_SAVE_AREA, PointerType.VOID);
         regSaveAreaStore.executeWithTarget(frame, p, value);
     }
 

@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 public final class StackManager {
 
@@ -50,7 +49,7 @@ public final class StackManager {
 
     public static FrameDescriptor createRootFrame() {
         final FrameDescriptor rootFrame = new FrameDescriptor();
-        rootFrame.addFrameSlot(LLVMStack.FRAME_ID, new PointerType(VoidType.INSTANCE), FrameSlotKind.Object);
+        rootFrame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
         return rootFrame;
     }
 
@@ -58,7 +57,7 @@ public final class StackManager {
         final FrameDescriptor frame = new FrameDescriptor();
 
         frame.addFrameSlot(LLVMException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
-        frame.addFrameSlot(LLVMStack.FRAME_ID, new PointerType(VoidType.INSTANCE), FrameSlotKind.Object);
+        frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
 
         for (FunctionParameter parameter : function.getParameters()) {
             Type type = parameter.getType();
