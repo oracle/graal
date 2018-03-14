@@ -455,7 +455,7 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    if jdk.javaCompliance >= '9':
+    if jdk.javaCompliance >= '9' and jdk.javaCompliance < '11':
         vmargs += ['--add-modules', 'java.corba']
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
@@ -548,6 +548,8 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalaxb':    1,
         'tmt':        1
     }
+    if jdk.javaCompliance >= '11':
+        del scala_dacapos['actors'] # Ignoring actors since it requires corba which is removed in JDK11, JEP-320
     for name, iterations in sorted(scala_dacapos.iteritems()):
         with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
@@ -581,7 +583,11 @@ graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
 ]
 
-_registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
+_registers = {
+    'sparcv9': 'o0,o1,o2,o3,f8,f9,d32,d34',
+    'amd64': 'rbx,r11,r10,r14,xmm3,xmm11,xmm14',
+    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
+}
 
 _defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
@@ -592,7 +598,7 @@ _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
 _exceptionFlags = ['-Dgraal.StressInvokeWithExceptionNode=true']
-_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers]
+_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers[mx.get_arch()]]
 _immutableCodeFlags = ['-Dgraal.ImmutableCode=true']
 
 graal_bootstrap_tests = [
