@@ -33,8 +33,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 /**
  * A polyglot exception represents errors that contain Graal guest languages on the stack trace. In
  * addition to the Java stack trace it also returns a {@link #getPolyglotStackTrace() polyglot stack
- * trace}. Methods like {@link #printStackTrace()} are implemented in a from that print host and
- * guest language stack trace nicely.
+ * trace}. Methods like {@link #printStackTrace()} are implemented such that host and guest language
+ * stack traces are printed nicely.
  * <p>
  * A polyglot exception may have the following properties:
  * <ul>

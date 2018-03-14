@@ -128,7 +128,7 @@ public final class Value {
      * Returns the array element of a given index. Polyglot arrays start with index <code>0</code>,
      * independent of the guest language. The given array index must be greater or equal 0.
      *
-     * @throws ArrayIndexOutOfBoundsException if the array index does not exist
+     * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
      * @throws UnsupportedOperationException if the value does not have any
      *             {@link #hasArrayElements() array elements} or if the index exists but is not
      *             readable.
@@ -145,7 +145,7 @@ public final class Value {
      * of the guest language. The array element value is subject to polyglot value mapping rules as
      * described in {@link Context#asValue(Object)}.
      *
-     * @throws ArrayIndexOutOfBoundsException if the array index does not exist
+     * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
      * @throws UnsupportedOperationException if the value does not have any
      *             {@link #hasArrayElements() array elements} or if the index exists but is not
      *             modifiable.
@@ -161,7 +161,7 @@ public final class Value {
      * Removes an array element at a given index. Returns <code>true</code> if the underlying array
      * element could be removed, otherwise <code>false</code>.
      *
-     * @throws ArrayIndexOutOfBoundsException if the array index does not exist
+     * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
      * @throws UnsupportedOperationException if the value does not have any
      *             {@link #hasArrayElements() array elements} or if the index exists but is not
      *             removable.
@@ -219,8 +219,8 @@ public final class Value {
     }
 
     /**
-     * Returns the member with a given <code>identifier</code> or <code>null</code> if it does not
-     * exist.
+     * Returns the member with a given <code>identifier</code> or <code>null</code> if the member
+     * does not exist.
      *
      * @throws UnsupportedOperationException if the value {@link #hasMembers() has no members} or
      *             the given identifier exists but is not readable.
@@ -282,7 +282,7 @@ public final class Value {
     /**
      * Returns <code>true</code> if the value can be {@link #execute(Object...) executed}.
      *
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #execute(Object...)
      * @since 1.0
      */
@@ -296,7 +296,7 @@ public final class Value {
      * performance. All arguments are subject to polyglot value mapping rules as described in
      * {@link Context#asValue(Object)}.
      *
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @throws IllegalArgumentException if a wrong number of arguments was provided or one of the
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be executed.
@@ -317,7 +317,7 @@ public final class Value {
      * Executes this value if it {@link #canExecute() can} be executed. All arguments are subject to
      * polyglot value mapping rules as described in {@link Context#asValue(Object)}.
      *
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @throws IllegalArgumentException if a wrong number of arguments was provided or one of the
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be executed.
@@ -348,7 +348,7 @@ public final class Value {
      * Instantiates this value if it {@link #canInstantiate() can} be instantiated. All arguments
      * are subject to polyglot value mapping rules as described in {@link Context#asValue(Object)}.
      *
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @throws IllegalArgumentException if a wrong number of arguments was provided or one of the
      *             arguments was not applicable.
      * @throws UnsupportedOperationException if this value cannot be instantiated.
@@ -363,7 +363,7 @@ public final class Value {
      * Returns <code>true</code> if this value represents a string.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean isString() {
@@ -388,7 +388,7 @@ public final class Value {
      * fits in <code>int</code>, else <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asInt()
      * @since 1.0
      */
@@ -400,10 +400,10 @@ public final class Value {
      * Returns an <code>int</code> representation if this value if it is {@link #isNumber() number}
      * and the value {@link #fitsInInt() fits}.
      *
-     * @throws NullPointerException if this value represents {@link #isNull() null}
+     * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public int asInt() {
@@ -414,7 +414,7 @@ public final class Value {
      * Returns <code>true</code> if this value represents a boolean value.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asBoolean()
      * @since 1.0
      */
@@ -429,7 +429,7 @@ public final class Value {
      * @throws NullPointerException if this value represents {@link #isNull() null}
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean asBoolean() {
@@ -443,7 +443,7 @@ public final class Value {
      * float} or {@link #asDouble() double} value.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean isNumber() {
@@ -455,7 +455,7 @@ public final class Value {
      * fits in <code>long</code>, else <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asLong()
      * @since 1.0
      */
@@ -470,7 +470,7 @@ public final class Value {
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted to long.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public long asLong() {
@@ -482,7 +482,7 @@ public final class Value {
      * fits in <code>double</code>, else <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asDouble()
      * @since 1.0
      */
@@ -497,7 +497,7 @@ public final class Value {
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public double asDouble() {
@@ -509,7 +509,7 @@ public final class Value {
      * fits in <code>float</code>, else <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asFloat()
      * @since 1.0
      */
@@ -524,7 +524,7 @@ public final class Value {
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public float asFloat() {
@@ -536,7 +536,7 @@ public final class Value {
      * fits in <code>byte</code>, else <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asByte()
      * @since 1.0
      */
@@ -551,7 +551,7 @@ public final class Value {
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public byte asByte() {
@@ -563,7 +563,7 @@ public final class Value {
      * fits in <code>short</code>, else <code>false</code>.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @see #asShort()
      * @since 1.0
      */
@@ -578,7 +578,7 @@ public final class Value {
      * @throws NullPointerException if this value represents {@link #isNull() null}.
      * @throws ClassCastException if this value could not be converted.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public short asShort() {
@@ -589,7 +589,7 @@ public final class Value {
      * Returns <code>true</code> if this value is a <code>null</code> like.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean isNull() {
@@ -601,7 +601,7 @@ public final class Value {
      * accessed using {@link #asNativePointer()}.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean isNativePointer() {
@@ -613,7 +613,7 @@ public final class Value {
      *
      * @throws UnsupportedOperationException if the value is not a pointer.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public long asNativePointer() {
@@ -625,7 +625,7 @@ public final class Value {
      * the value can be accessed using {@link #asHostObject()}.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean isHostObject() {
@@ -637,7 +637,7 @@ public final class Value {
      *
      * @throws UnsupportedOperationException if {@link #isHostObject()} is <code>false</code>.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     @SuppressWarnings("unchecked")
@@ -650,7 +650,7 @@ public final class Value {
      * can be unboxed using {@link #asProxyObject()}.
      *
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     public boolean isProxyObject() {
@@ -663,7 +663,7 @@ public final class Value {
      *
      * @throws UnsupportedOperationException if a value is not a proxy object.
      * @throws PolyglotException if a guest language error occurred during execution.
-     * @throws IllegalStateException if the underlying context was closed
+     * @throws IllegalStateException if the underlying context was closed.
      * @since 1.0
      */
     @SuppressWarnings("unchecked")

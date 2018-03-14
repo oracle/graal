@@ -256,8 +256,9 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         * Sets the output stream used by this engine. If not specified then the engine will use
-         * {@link System#out System.out} by default or the one specified by a single bound Context.
+         * Sets the standard output stream to be used for this engine. Every context that uses this
+         * engine will inherit the configured output stream if it is not specified in the context.
+         * If not set then the system output stream will be used.
          *
          * @since 1.0
          */
@@ -268,7 +269,9 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         *
+         * Sets the standard error stream to be used for this engine. Every context that uses this
+         * engine will inherit the configured error stream if it is not specified in the context. If
+         * not set then the system error stream will be used.
          *
          * @since 1.0
          */
@@ -279,7 +282,9 @@ public final class Engine implements AutoCloseable {
         }
 
         /**
-         *
+         * Sets the standard input stream to be used for this engine. Every context that uses this
+         * engine will inherit the configured input stream if it is not specified in the context. If
+         * not set then the system input stream will be used.
          *
          * @since 1.0
          */
@@ -504,7 +509,8 @@ public final class Engine implements AutoCloseable {
     }
 
     /*
-     * Use static factory method with AbstractPolyglotImpl to avoid class loading if not used.
+     * Use static factory method with AbstractPolyglotImpl to avoid class loading of the
+     * PolyglotInvalid class by the Java verifier.
      */
     static AbstractPolyglotImpl createInvalidPolyglotImpl() {
         return new PolyglotInvalid();

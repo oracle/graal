@@ -37,12 +37,12 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
 /**
- * A polyglot context for Graal guest languages that allows to {@link #eval(Source) evaluate} code
- * and exchange runtime {@link Value values}. A polyglot context represents the global runtime state
- * of all {@link Engine#getLanguages() installed} and {@link #newBuilder(String...) permitted}
- * languages. Permitted languages are {@link #initialize(String) initialized} lazily, when they are
- * used for the first time. For many operations of the context, a <i>language identifier</i> needs
- * to be specified. A <i>language identifier</i> is unique for each language.
+ * A polyglot context for Graal guest languages that allows to {@link #eval(Source) evaluate} code.
+ * A polyglot context represents the global runtime state of all {@link Engine#getLanguages()
+ * installed} and {@link #newBuilder(String...) permitted} languages. Permitted languages are
+ * {@link #initialize(String) initialized} lazily, when they are used for the first time. For many
+ * operations of the context, a <i>language identifier</i> needs to be specified. A language
+ * identifier is unique for each language.
  *
  * <h3>Evaluation</h3>
  *
@@ -282,7 +282,7 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Evaluates a source with using the {@linkplain Source#getLanguage() language} specified in the
+     * Evaluates a source by using the {@linkplain Source#getLanguage() language} specified in the
      * source. The result is accessible as {@link Value value} and never <code>null</code>. The
      * first time a source is evaluated it will be parsed, consecutive invocations of eval with the
      * same source will only execute the already parsed code.
@@ -366,15 +366,17 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Returns polyglot bindings that may be used to exchange symbols between host and guest
-     * language. All languages have unrestricted access to the polyglot bindings. The returned
+     * Returns polyglot bindings that may be used to exchange symbols between the host and guest
+     * languages. All languages have unrestricted access to the polyglot bindings. The returned
      * bindings object always has {@link Value#hasMembers() members} and its members are
      * {@link Value#getMember(String) readable}, {@link Value#putMember(String, Object) writable}
      * and {@link Value#removeMember(String) removable}.
      * <p>
      * Guest languages may put and get members through language specific APIs. For example, in
      * JavaScript symbols of the polyglot bindings can be accessed using
-     * <code>Interop.import("name")</code> and set using <code>Interop.put("name", value)</code>.
+     * <code>Polyglot.import("name")</code> and set using
+     * <code>Polyglot.export("name", value)</code>. Please see the individual language reference on
+     * how to access these symbols.
      *
      * @throws IllegalStateException if context is already closed.
      * @since 1.0
@@ -418,8 +420,8 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Converts a host value to a polyglot value representation. This conversion is applied
-     * implicitly whenever {@link Value#execute(Object...) execution} or
+     * Converts a host value to a polyglot {@link Value value} representation. This conversion is
+     * applied implicitly whenever {@link Value#execute(Object...) execution} or
      * {@link Value#newInstance(Object...) instantiation} arguments are provided,
      * {@link Value#putMember(String, Object) members} and
      * {@link Value#setArrayElement(long, Object) array elements} are set or when a value is
