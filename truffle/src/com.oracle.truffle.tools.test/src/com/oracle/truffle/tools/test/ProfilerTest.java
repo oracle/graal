@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package com.oracle.truffle.tools.test;
+
+import static org.junit.Assume.assumeFalse;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -63,6 +65,7 @@ public class ProfilerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testInvocationCounts() throws IOException {
+        assumeFalse("Crashes on AArch64 in C2 (GR-8733)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
 
         profiler.setCollecting(true);
         profiler.setTiming(false);

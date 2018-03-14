@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.sl.test;
 
+import static org.junit.Assume.assumeFalse;
+
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -49,6 +52,11 @@ public class SLSimpleTestSuite {
 
     public static void main(String[] args) throws Exception {
         SLTestRunner.runInMain(SLSimpleTestSuite.class, args);
+    }
+
+    @BeforeClass
+    public static void before() {
+        assumeFalse("Crashes on AArch64 in C2 (GR-8733)", System.getProperty("os.arch").equalsIgnoreCase("aarch64"));
     }
 
     /*
