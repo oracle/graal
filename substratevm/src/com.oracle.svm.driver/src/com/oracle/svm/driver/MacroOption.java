@@ -72,7 +72,7 @@ final class MacroOption {
         return optionName;
     }
 
-    static final String macroOptionPrefix = "--target=";
+    private static final String macroOptionPrefix = "--";
 
     String getDescription(boolean commandLineStyle) {
         StringBuilder sb = new StringBuilder();
@@ -108,11 +108,17 @@ final class MacroOption {
 
         public String getMessage(Registry registry) {
             StringBuilder sb = new StringBuilder();
+            String message = super.getMessage();
             if (context != null) {
                 sb.append(context.getDescription(false) + " contains ");
+                if (!message.isEmpty()) {
+                    sb.append(Character.toLowerCase(message.charAt(0)));
+                    sb.append(message.substring(1));
+                }
+            } else {
+                sb.append(message);
             }
-            Consumer<String> lineOut = s -> sb.append(s + "\n");
-            lineOut.accept(super.getMessage());
+            Consumer<String> lineOut = s -> sb.append("\n" + s);
             registry.showOptions(forKind, context == null, lineOut);
             return sb.toString();
         }
@@ -263,47 +269,62 @@ final class MacroOption {
                 }
             }
             if (!optionsToShow.isEmpty()) {
-                lineOut.accept("Available " + (forKind != null ? forKind.name() : macroOptionPrefix) + " options are:");
+                StringBuilder sb = new StringBuilder().append("Available ");
+                if (forKind != null) {
+                    sb.append(forKind.name()).append(' ');
+                }
+                lineOut.accept(sb.append("options are:").toString());
                 optionsToShow.forEach(lineOut);
             }
         }
 
-        void enableOptions(String optionsSpec, HashSet<MacroOption> addedCheck, MacroOption context) {
-            if (optionsSpec.isEmpty()) {
-                return;
-            }
-
-            for (String specString : optionsSpec.split(" ")) {
-                MacroOptionKind kindPart;
-                String specNameParts;
-
-                String[] specParts = specString.split(":");
-                if (specParts.length != 2) {
-                    throw new VerboseInvalidMacroException("Invalid option specification: " + specString, context);
-                }
-                try {
-                    kindPart = MacroOptionKind.valueOf(specParts[0]);
-                } catch (Exception e) {
-                    throw new VerboseInvalidMacroException("Unknown kind in option specification: " + specString, context);
-                }
-                specNameParts = specParts[1];
-                if (specNameParts.isEmpty()) {
-                    throw new VerboseInvalidMacroException("Empty option specification: " + specString, context);
-                }
-                String[] parts = specNameParts.split("=");
-                String optionName = parts[0];
-                String optionArg = null;
-                if (parts.length == 2) {
-                    /* We have an option argument */
-                    optionArg = parts[1];
-                }
-                MacroOption option = supported.get(kindPart).get(optionName);
-                if (option != null) {
-                    enableResolved(option, optionArg, addedCheck, context);
+        boolean enableOption(String optionString, HashSet<MacroOption> addedCheck, MacroOption context) {
+            String specString;
+            if (context == null) {
+                if (optionString.startsWith(macroOptionPrefix)) {
+                    specString = optionString.substring(macroOptionPrefix.length());
                 } else {
-                    throw new VerboseInvalidMacroException("unknown name in option specification: " + kindPart + ":" + optionName, kindPart, context);
+                    return false;
+                }
+            } else {
+                specString = optionString;
+            }
+
+            String[] specParts = specString.split(":", 2);
+            if (specParts.length != 2) {
+                if (context == null) {
+                    return false;
+                } else {
+                    throw new VerboseInvalidMacroException("Invalid option specification: " + optionString, context);
                 }
             }
+
+            MacroOptionKind kindPart;
+            try {
+                kindPart = MacroOptionKind.valueOf(specParts[0]);
+            } catch (Exception e) {
+                if (context == null) {
+                    return false;
+                } else {
+                    throw new VerboseInvalidMacroException("Unknown kind in option specification: " + optionString, context);
+                }
+            }
+
+            String specNameParts = specParts[1];
+            if (specNameParts.isEmpty()) {
+                throw new VerboseInvalidMacroException("Empty option specification: " + optionString, kindPart, context);
+            }
+
+            String[] parts = specNameParts.split("=", 2);
+            String optionName = parts[0];
+            MacroOption option = supported.get(kindPart).get(optionName);
+            if (option != null) {
+                String optionArg = parts.length == 2 ? parts[1] : null;
+                enableResolved(option, optionArg, addedCheck, context);
+            } else {
+                throw new VerboseInvalidMacroException("Unknown name in option specification: " + kindPart + ":" + optionName, kindPart, context);
+            }
+            return true;
         }
 
         private void enableResolved(MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context) {
@@ -315,9 +336,11 @@ final class MacroOption {
             }
             addedCheck.add(option);
             EnabledOption enabledOption = new EnabledOption(option, optionArg);
-            String requires = enabledOption.getProperty("Requires");
-            if (requires != null) {
-                enableOptions(requires, addedCheck, option);
+            String requires = enabledOption.getProperty("Requires", "");
+            if (!requires.isEmpty()) {
+                for (String specString : requires.split(" ")) {
+                    enableOption(specString, addedCheck, option);
+                }
             }
             enabled.add(enabledOption);
         }

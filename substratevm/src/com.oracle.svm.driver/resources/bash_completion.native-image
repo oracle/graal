@@ -1,8 +1,8 @@
-_nativeimage_complete () 
-{ 
+_nativeimage_complete ()
+{
     local cur prev words cword split;
     _init_completion -s || return;
-    case "${prev,,}" in 
+    case "${prev,,}" in
         --help | --version)
             return
     esac;

@@ -38,20 +38,17 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
-
-        if (headArg.startsWith(MacroOption.macroOptionPrefix)) {
-            String targetString = headArg.substring(MacroOption.macroOptionPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(targetString, new HashSet<>(), null);
-            } catch (VerboseInvalidMacroException e1) {
-                NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
-            } catch (InvalidMacroException | AddedTwiceException e) {
-                NativeImage.showError(e.getMessage());
-            }
-            args.poll();
-            return true;
+        boolean consumed = false;
+        try {
+            consumed = nativeImage.optionRegistry.enableOption(headArg, new HashSet<>(), null);
+        } catch (VerboseInvalidMacroException e1) {
+            NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
+        } catch (InvalidMacroException | AddedTwiceException e) {
+            NativeImage.showError(e.getMessage());
         }
-
-        return false;
+        if (consumed) {
+            args.poll();
+        }
+        return consumed;
     }
 }

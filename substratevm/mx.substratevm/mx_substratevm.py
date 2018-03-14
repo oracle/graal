@@ -35,6 +35,7 @@ from contextlib import contextmanager
 from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname, islink
 import functools
+import collections
 
 import mx
 import mx_compiler
@@ -170,17 +171,17 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
         mkpath(target_dir)
         relsymlink(option_properties, target_path)
 
-flag_suitename_map = {
-    'js' : ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
-    'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
-    'llvm' : ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC']),
-    'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
-}
+flag_suitename_map = collections.OrderedDict([
+    ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
+    ('js', ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
+    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP'])),
+    ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP']))
+])
 
 class ToolDescriptor:
     def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
         """
-        By adding a new ToolDescriptor entry in the tools_map a new --target=Tool:<keyname>
+        By adding a new ToolDescriptor entry in the tools_map a new --Tool:<keyname>
         option is made available to native-image and also makes the tool available as
         Tool:<keyname> in a native-image properties file Requires statement.  The tool is
         represented in the <native_image_root>/tools/<keyname> directory. If a
@@ -226,11 +227,9 @@ def remove_option_prefix(text, prefix):
 
 def extract_target_name(arg, kind):
     target_name, target_value = None, None
-    is_target, option_tail = remove_option_prefix(arg, '--target=')
-    if is_target:
-        is_kind, option_tail = remove_option_prefix(option_tail, kind + ':')
-        if is_kind:
-            target_name, _, target_value = option_tail.partition('=')
+    is_kind, option_tail = remove_option_prefix(arg, '--' + kind + ':')
+    if is_kind:
+        target_name, _, target_value = option_tail.partition('=')
     return target_name, target_value
 
 def native_image_extract_dependencies(args):
@@ -575,7 +574,7 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        native_image(build_args + extra_image_args + ['--target=Tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
+        native_image(build_args + extra_image_args + ['--Tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         unittest_image = join(junit_tmp_dir, 'svmjunit')
         mx.run([unittest_image] + run_args)
     finally:
@@ -586,13 +585,13 @@ def gate_sulong(native_image, tasks):
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            native_image(['--target=Language:llvm'])
+            native_image(['--Language:llvm'])
             sulong.extensions.testLLVMImage(join(svmbuild_dir(), 'lli'), unittestArgs=['--enable-timing'])
 
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--target=Language:llvm']))
+            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--Language:llvm']))
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None):
     jsruncmd = [binary, join(bench_location, 'harness.js'), '--',
@@ -628,7 +627,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    native_image(['--target=Language:js', '--target=Tool:chromeinspector'])
+    native_image(['--Language:js', '--Tool:chromeinspector'])
 
 def test_js(benchmarks):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -652,7 +651,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    native_image(['--target=Language:python', '--target=Tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', '-H:Name=python'])
+    native_image(['--Language:python', '--Tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
 
 def test_python_smoke(args):
     """
@@ -678,7 +677,7 @@ def test_python_smoke(args):
 def build_ruby(native_image):
     truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
-    native_image(['--target=Language:ruby'])
+    native_image(['--Language:ruby'])
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
@@ -782,13 +781,13 @@ def native_image_context_run(func, func_args=None):
 
 def fetch_languages(args):
     if args:
-        requested = dict()
+        requested = collections.OrderedDict()
         for arg in args:
             language_flag, version_info = extract_target_name(arg, 'Language')
             version = version_info.partition('version=')[2]
             requested[language_flag] = version
     else:
-        requested = dict((lang, None) for lang in flag_suitename_map)
+        requested = collections.OrderedDict((lang, None) for lang in flag_suitename_map)
 
     for language_flag in requested:
         version = requested[language_flag]
