@@ -109,8 +109,13 @@ public abstract class LLVMOffsetToNameNode extends Node {
             return findMember.execute(type.getBaseType(), offset, elementSize);
         }
 
-        @Specialization(guards = "!dereferencedPointer")
+        @Specialization
         protected int doArray(@SuppressWarnings("unused") LLVMSourceArrayLikeType type, long offset, int elementSize) {
+            /*
+             * Here we don't care whether dereferencedPointer is true or false. A pointer to an
+             * array is the same as a flat multi-dimensional array, which is the same as a
+             * one-dimensional array.
+             */
             return (int) (offset / elementSize);
         }
 
