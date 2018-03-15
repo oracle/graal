@@ -34,6 +34,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed internal truffle.object package from javadoc.
 * Added the compiler directive [castExact](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#castExact-java.lang.Object-java.lang.Class-).
 * Added skipped exception types: `IndexOutOfBoundsException`, `BufferOverflowException`, and `BufferUnderflowException`.
+* Introduced support for the experimental automated monomorphization feature:
+    * The [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize) method which notifies the runtime that a node has specialized to a more polymorphic state.
+    * The [ReportPolymorphism](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html) and [ReportPolymorphism.Exclude](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html) annotations which the DSL uses to generate (or not generate) calls to [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize--).
 
 ## Version 0.32
 
