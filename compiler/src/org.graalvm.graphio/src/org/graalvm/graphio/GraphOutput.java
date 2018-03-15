@@ -222,12 +222,24 @@ public final class GraphOutput<G, M> implements Closeable {
         }
 
         private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, WritableByteChannel channel) throws IOException {
-            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(major, minor, structure, types, blocks, e.elements, e.locations, channel);
+            // @formatter:off
+            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(
+                major, minor, structure, types, blocks,
+                e == null ? null : e.elements,
+                e == null ? null : e.locations, channel
+            );
+            // @formatter:on
             return new GraphOutput<>(p);
         }
 
         private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, GraphOutput<?, ?> parent) {
-            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(parent.printer, structure, types, blocks, e.elements, e.locations);
+            // @formatter:off
+            ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(
+                parent.printer, structure, types, blocks,
+                e == null ? null : e.elements,
+                e == null ? null : e.locations
+            );
+            // @formatter:on
             return new GraphOutput<>(p);
         }
     }
