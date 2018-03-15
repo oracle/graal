@@ -17,8 +17,8 @@ jdks: {
 # Overlay placeholder for pinning mx to a specific revision
 mx : {}
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk9} ]} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk9} ]} }}
 
 # GR-5675
 # openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
