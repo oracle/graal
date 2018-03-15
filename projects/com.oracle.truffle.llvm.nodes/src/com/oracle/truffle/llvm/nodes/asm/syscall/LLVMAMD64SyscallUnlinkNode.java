@@ -34,13 +34,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallUnlinkNode extends LLVMAMD64SyscallOperationNode {
+public abstract class LLVMAMD64SyscallUnlinkNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode unlink;
 
     public LLVMAMD64SyscallUnlinkNode() {
-        super("unlink");
         unlink = LLVMAMD64PosixCallNodeGen.create("unlink", "(UINT64):SINT32", 1);
+    }
+
+    @Override
+    public final String getName() {
+        return "unlink";
     }
 
     @Specialization

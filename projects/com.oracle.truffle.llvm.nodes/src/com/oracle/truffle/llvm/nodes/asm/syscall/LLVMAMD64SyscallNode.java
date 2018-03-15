@@ -39,6 +39,8 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.SystemContextExtension;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 
@@ -46,145 +48,22 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     protected static final int NUM_SYSCALLS = 332;
 
-    protected static LLVMAMD64SyscallOperationNode createNode(long rax) {
-        switch ((int) rax) {
-            case LLVMAMD64Syscall.SYS_read:
-                return LLVMAMD64SyscallReadNodeGen.create();
-            case LLVMAMD64Syscall.SYS_write:
-                return LLVMAMD64SyscallWriteNodeGen.create();
-            case LLVMAMD64Syscall.SYS_open:
-                return LLVMAMD64SyscallOpenNodeGen.create();
-            case LLVMAMD64Syscall.SYS_close:
-                return new LLVMAMD64SyscallCloseNode();
-            case LLVMAMD64Syscall.SYS_stat:
-                return LLVMAMD64SyscallStatNodeGen.create();
-            case LLVMAMD64Syscall.SYS_fstat:
-                return LLVMAMD64SyscallFstatNodeGen.create();
-            case LLVMAMD64Syscall.SYS_lstat:
-                return LLVMAMD64SyscallLstatNodeGen.create();
-            case LLVMAMD64Syscall.SYS_poll:
-                return LLVMAMD64SyscallPollNodeGen.create();
-            case LLVMAMD64Syscall.SYS_lseek:
-                return new LLVMAMD64SyscallLseekNode();
-            case LLVMAMD64Syscall.SYS_mmap:
-                return LLVMAMD64SyscallMmapNodeGen.create();
-            case LLVMAMD64Syscall.SYS_brk:
-                return LLVMAMD64SyscallBrkNodeGen.create();
-            case LLVMAMD64Syscall.SYS_rt_sigaction:
-                return LLVMAMD64SyscallRtSigactionNodeGen.create();
-            case LLVMAMD64Syscall.SYS_rt_sigprocmask:
-                return LLVMAMD64SyscallRtSigprocmaskNodeGen.create();
-            case LLVMAMD64Syscall.SYS_ioctl:
-                return LLVMAMD64SyscallIoctlNodeGen.create();
-            case LLVMAMD64Syscall.SYS_readv:
-                return LLVMAMD64SyscallReadvNodeGen.create();
-            case LLVMAMD64Syscall.SYS_writev:
-                return LLVMAMD64SyscallWritevNodeGen.create();
-            case LLVMAMD64Syscall.SYS_access:
-                return LLVMAMD64SyscallAccessNodeGen.create();
-            case LLVMAMD64Syscall.SYS_pipe:
-                return LLVMAMD64SyscallPipeNodeGen.create();
-            case LLVMAMD64Syscall.SYS_dup:
-                return new LLVMAMD64SyscallDupNode();
-            case LLVMAMD64Syscall.SYS_dup2:
-                return new LLVMAMD64SyscallDup2Node();
-            case LLVMAMD64Syscall.SYS_getpid:
-                return new LLVMAMD64SyscallGetpidNode();
-            case LLVMAMD64Syscall.SYS_sendfile:
-                return LLVMAMD64SyscallSendfileNodeGen.create();
-            case LLVMAMD64Syscall.SYS_socket:
-                return new LLVMAMD64SyscallSocketNode();
-            case LLVMAMD64Syscall.SYS_connect:
-                return LLVMAMD64SyscallConnectNodeGen.create();
-            case LLVMAMD64Syscall.SYS_accept:
-                return LLVMAMD64SyscallAcceptNodeGen.create();
-            case LLVMAMD64Syscall.SYS_sendto:
-                return LLVMAMD64SyscallSendtoNodeGen.create();
-            case LLVMAMD64Syscall.SYS_recvfrom:
-                return LLVMAMD64SyscallRecvfromNodeGen.create();
-            case LLVMAMD64Syscall.SYS_sendmsg:
-                return LLVMAMD64SyscallSendmsgNodeGen.create();
-            case LLVMAMD64Syscall.SYS_recvmsg:
-                return LLVMAMD64SyscallRecvmsgNodeGen.create();
-            case LLVMAMD64Syscall.SYS_bind:
-                return LLVMAMD64SyscallBindNodeGen.create();
-            case LLVMAMD64Syscall.SYS_listen:
-                return new LLVMAMD64SyscallListenNode();
-            case LLVMAMD64Syscall.SYS_getsockname:
-                return LLVMAMD64SyscallGetsocknameNodeGen.create();
-            case LLVMAMD64Syscall.SYS_setsockopt:
-                return LLVMAMD64SyscallSetsockoptNodeGen.create();
-            case LLVMAMD64Syscall.SYS_getsockopt:
-                return LLVMAMD64SyscallGetsockoptNodeGen.create();
-            case LLVMAMD64Syscall.SYS_exit:
-            case LLVMAMD64Syscall.SYS_exit_group: // TODO: implement difference to SYS_exit
-                return new LLVMAMD64SyscallExitNode();
-            case LLVMAMD64Syscall.SYS_uname:
-                return LLVMAMD64SyscallUnameNodeGen.create();
-            case LLVMAMD64Syscall.SYS_fcntl:
-                return LLVMAMD64SyscallFcntlNodeGen.create();
-            case LLVMAMD64Syscall.SYS_ftruncate:
-                return new LLVMAMD64SyscallFtruncateNode();
-            case LLVMAMD64Syscall.SYS_getcwd:
-                return LLVMAMD64SyscallGetcwdNodeGen.create();
-            case LLVMAMD64Syscall.SYS_rename:
-                return LLVMAMD64SyscallRenameNodeGen.create();
-            case LLVMAMD64Syscall.SYS_unlink:
-                return LLVMAMD64SyscallUnlinkNodeGen.create();
-            case LLVMAMD64Syscall.SYS_getuid:
-                return new LLVMAMD64SyscallGetuidNode();
-            case LLVMAMD64Syscall.SYS_syslog:
-                return LLVMAMD64SyscallSyslogNodeGen.create();
-            case LLVMAMD64Syscall.SYS_getgid:
-                return new LLVMAMD64SyscallGetgidNode();
-            case LLVMAMD64Syscall.SYS_setuid:
-                return new LLVMAMD64SyscallSetuidNode();
-            case LLVMAMD64Syscall.SYS_setgid:
-                return new LLVMAMD64SyscallSetgidNode();
-            case LLVMAMD64Syscall.SYS_geteuid:
-                return new LLVMAMD64SyscallGeteuidNode();
-            case LLVMAMD64Syscall.SYS_getegid:
-                return new LLVMAMD64SyscallGetegidNode();
-            case LLVMAMD64Syscall.SYS_getppid:
-                return new LLVMAMD64SyscallGetPpidNode();
-            case LLVMAMD64Syscall.SYS_getgroups:
-                return LLVMAMD64SyscallGetgroupsNodeGen.create();
-            case LLVMAMD64Syscall.SYS_getpgid:
-                return new LLVMAMD64SyscallGetpgidNode();
-            case LLVMAMD64Syscall.SYS_statfs:
-                return LLVMAMD64SyscallStatfsNodeGen.create();
-            case LLVMAMD64Syscall.SYS_fstatfs:
-                return LLVMAMD64SyscallFstatfsNodeGen.create();
-            case LLVMAMD64Syscall.SYS_arch_prctl:
-                return LLVMAMD64SyscallArchPrctlNodeGen.create();
-            case LLVMAMD64Syscall.SYS_gettid:
-                return new LLVMAMD64SyscallGettidNode();
-            case LLVMAMD64Syscall.SYS_futex:
-                return LLVMAMD64SyscallFutexNodeGen.create();
-            case LLVMAMD64Syscall.SYS_getdents64:
-                return LLVMAMD64SyscallGetdents64NodeGen.create();
-            case LLVMAMD64Syscall.SYS_set_tid_address:
-                return LLVMAMD64SyscallSetTidAddressNodeGen.create();
-            case LLVMAMD64Syscall.SYS_clock_gettime:
-                return LLVMAMD64SyscallClockGetTimeNodeGen.create();
-            case LLVMAMD64Syscall.SYS_renameat:
-                return LLVMAMD64SyscallRenameatNodeGen.create();
-            case LLVMAMD64Syscall.SYS_faccessat:
-                return LLVMAMD64SyscallFaccessatNodeGen.create();
-            case LLVMAMD64Syscall.SYS_pipe2:
-                return LLVMAMD64SyscallPipe2NodeGen.create();
-            default:
-                return new LLVMAMD64UnknownSyscallNode((int) rax);
-        }
+    protected LLVMSyscallOperationNode createNode(long rax) {
+        return getContextReference().get().getContextExtension(SystemContextExtension.class).createSyscallNode(rax);
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
     protected long cachedSyscall(VirtualFrame frame, @SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
-                    @Cached("createNode(rax)") LLVMAMD64SyscallOperationNode node, @SuppressWarnings("unused") @Cached("rax") long cachedRax) {
+                    @Cached("rax") @SuppressWarnings("unused") long cachedRax,
+                    @Cached("createNode(rax)") LLVMSyscallOperationNode node) {
         if (traceEnabled()) {
-            trace(node);
+            trace("[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", node.getName(), rdi, rsi, rdx, r10, r8, r9);
         }
-        return node.execute(frame, rdi, rsi, rdx, r10, r8, r9);
+        long result = node.execute(frame, rdi, rsi, rdx, r10, r8, r9);
+        if (traceEnabled()) {
+            trace("         result: %d\n", result);
+        }
+        return result;
     }
 
     @Specialization(replaces = "cachedSyscall")
@@ -200,8 +79,8 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     private void cacheTrace() {
         if (traceStream == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            traceStream = SulongEngineOption.getStream(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
-            traceEnabledFlag = SulongEngineOption.isTrue(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
+            traceStream = SulongEngineOption.getStream(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
+            traceEnabledFlag = SulongEngineOption.isTrue(getContextReference().get().getEnv().getOptions().get(SulongEngineOption.DEBUG_SYSCALLS));
         }
     }
 
@@ -216,7 +95,7 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @TruffleBoundary
-    private void trace(LLVMAMD64SyscallOperationNode statement) {
-        traceStream().println(("[sulong] syscall: " + statement.getName()));
+    private void trace(String format, Object... args) {
+        traceStream().printf(format, args);
     }
 }

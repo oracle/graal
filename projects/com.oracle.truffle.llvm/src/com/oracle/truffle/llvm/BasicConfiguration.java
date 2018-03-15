@@ -37,6 +37,7 @@ import org.graalvm.options.OptionDescriptor;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
+import com.oracle.truffle.llvm.parser.factories.BasicSystemContextExtension;
 import com.oracle.truffle.llvm.parser.factories.NFIIntrinsicsProvider;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -64,7 +65,7 @@ public final class BasicConfiguration implements Configuration {
 
     @Override
     public List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language) {
-        return Arrays.asList(new ContextExtension[]{new NFIContextExtension(env), new NFIIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory())});
+        return Arrays.asList(new ContextExtension[]{new NFIContextExtension(env), new NFIIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory()), new BasicSystemContextExtension()});
     }
 
     @Override

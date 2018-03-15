@@ -114,7 +114,7 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
     @TruffleBoundary
     @Override
     public String toString() {
-        return super.toString() + "(offset=" + getOffset() + ")";
+        return getClass().getSimpleName() + "(" + object.getClass().getSimpleName() + ":" + getOffset() + ")";
     }
 
     @Override

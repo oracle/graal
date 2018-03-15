@@ -33,15 +33,18 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMAMD64SyscallOperationNode {
-    public LLVMAMD64SyscallSetTidAddressNode() {
-        super("set_tid_address");
-    }
+public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOperationNode {
 
     @Specialization
     protected long doOp(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress tidptr) {
         return exec(tidptr);
+    }
+
+    @Override
+    public final String getName() {
+        return "set_tid_address";
     }
 
     @Specialization

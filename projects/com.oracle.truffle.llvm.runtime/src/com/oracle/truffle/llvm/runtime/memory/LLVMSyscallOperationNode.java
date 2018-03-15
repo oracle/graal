@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,31 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm.syscall;
+package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMAMD64SyscallUnameNode extends LLVMSyscallOperationNode {
+public abstract class LLVMSyscallOperationNode extends LLVMNode {
 
-    @Override
-    public final String getName() {
-        return "uname";
-    }
+    public abstract long execute(VirtualFrame frame, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5);
 
-    @Specialization
-    protected long doOp(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress name,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return LLVMInfo.uname(memory, name);
-    }
-
-    @Specialization
-    protected long doOp(VirtualFrame frame, long name,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doOp(frame, LLVMAddress.fromLong(name), memory);
-    }
+    public abstract String getName();
 }

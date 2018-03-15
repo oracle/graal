@@ -32,13 +32,18 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public class LLVMAMD64SyscallSetuidNode extends LLVMAMD64SyscallOperationNode {
+public class LLVMAMD64SyscallSetuidNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode setuid;
 
     public LLVMAMD64SyscallSetuidNode() {
-        super("setuid");
         setuid = LLVMAMD64PosixCallNodeGen.create("setuid", "(SINT32):SINT32", 1);
+    }
+
+    @Override
+    public final String getName() {
+        return "setuid";
     }
 
     @Override

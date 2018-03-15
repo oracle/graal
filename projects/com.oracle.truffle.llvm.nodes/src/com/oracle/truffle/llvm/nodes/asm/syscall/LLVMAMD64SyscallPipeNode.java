@@ -34,13 +34,18 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-public abstract class LLVMAMD64SyscallPipeNode extends LLVMAMD64SyscallOperationNode {
+public abstract class LLVMAMD64SyscallPipeNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode pipe;
 
     public LLVMAMD64SyscallPipeNode() {
-        super("pipe");
         pipe = LLVMAMD64PosixCallNodeGen.create("pipe", "(UINT64):SINT32", 1);
+    }
+
+    @Override
+    public final String getName() {
+        return "pipe";
     }
 
     @Specialization

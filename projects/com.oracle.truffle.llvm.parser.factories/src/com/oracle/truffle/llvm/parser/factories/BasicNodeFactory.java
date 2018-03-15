@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.List;
+
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -385,10 +389,6 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
-
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.List;
 
 public class BasicNodeFactory implements NodeFactory {
 

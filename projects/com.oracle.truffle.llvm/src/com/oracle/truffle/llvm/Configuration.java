@@ -57,4 +57,5 @@ public interface Configuration {
      * language-level.
      */
     <E> E getCapability(Class<E> type);
+
 }
