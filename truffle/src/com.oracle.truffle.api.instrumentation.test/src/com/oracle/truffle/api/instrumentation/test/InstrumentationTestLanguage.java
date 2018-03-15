@@ -30,6 +30,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.AbstractSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -1221,13 +1223,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     }
 
     @Override
-    protected Object findExportedSymbol(Context context, String globalName, boolean onlyExplicit) {
-        return context.callFunctions.findFunction(globalName);
-    }
-
-    @Override
-    protected Object getLanguageGlobal(Context context) {
-        return context.callFunctions;
+    protected Iterable<Scope> findTopScopes(Context context) {
+        return Arrays.asList(Scope.newBuilder("global", context.callFunctions).build());
     }
 
     @Override
@@ -1395,14 +1392,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             @Resolve(message = "KEY_INFO")
             abstract static class FunctionsObjectKeyInfoNode extends Node {
 
-                private static final int EXISTING_KEY = KeyInfo.newBuilder().setReadable(true).build();
-
                 @TruffleBoundary
                 public Object access(FunctionsObject fo, String name) {
                     if (fo.callTargets.containsKey(name)) {
-                        return EXISTING_KEY;
+                        return KeyInfo.READABLE;
                     } else {
-                        return 0;
+                        return KeyInfo.NONE;
                     }
                 }
             }
@@ -1523,11 +1518,9 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
         @Resolve(message = "KEY_INFO")
         abstract static class KeyInfoNode extends Node {
 
-            private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
-
             @SuppressWarnings("unused")
             public int access(TruffleObject obj, String prop) {
-                return READABLE;
+                return KeyInfo.READABLE;
             }
         }
 

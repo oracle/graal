@@ -445,7 +445,6 @@ class JavaObjectMessageResolution {
 
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoNode extends Node {
-        private static final int READABLE_WRITABLE = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
 
         @Child private KeyInfoCacheNode keyInfoCache;
 
@@ -456,15 +455,17 @@ class JavaObjectMessageResolution {
             if (receiver.isArray()) {
                 int length = Array.getLength(receiver.obj);
                 if (index < length) {
-                    return READABLE_WRITABLE;
+                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
                 }
             } else if (receiver.obj instanceof List) {
                 int length = listSize((List<?>) receiver.obj);
                 if (index < length) {
-                    return READABLE_WRITABLE;
+                    return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+                } else if (index == length) {
+                    return KeyInfo.INSERTABLE;
                 }
             }
-            return 0;
+            return KeyInfo.NONE;
         }
 
         @TruffleBoundary

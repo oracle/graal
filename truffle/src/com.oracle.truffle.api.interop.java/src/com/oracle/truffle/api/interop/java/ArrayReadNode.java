@@ -59,7 +59,12 @@ abstract class ArrayReadNode extends Node {
     @TruffleBoundary
     @Specialization(guards = {"isList(receiver)"})
     protected Object doListIntIndex(JavaObject receiver, int index) {
-        return JavaInterop.toGuestValue(((List<?>) receiver.obj).get(index), receiver.languageContext);
+        try {
+            return JavaInterop.toGuestValue(((List<?>) receiver.obj).get(index), receiver.languageContext);
+        } catch (IndexOutOfBoundsException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.raise(String.valueOf(index));
+        }
     }
 
     @TruffleBoundary

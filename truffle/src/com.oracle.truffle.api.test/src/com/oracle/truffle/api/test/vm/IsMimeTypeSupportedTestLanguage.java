@@ -51,11 +51,6 @@ public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
     }
 
     @Override
-    protected Object getLanguageGlobal(Env context) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         throw new UnsupportedOperationException();
     }

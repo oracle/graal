@@ -42,9 +42,9 @@ package com.oracle.truffle.sl.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,15 +55,12 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
-public class PassItselfBackViaPolyglotEngineTest {
-    private PolyglotEngine engine;
+public class PassItselfBackViaContextTest {
+    private Context context;
     private MyObj myObj;
-    private PolyglotEngine.Value myObjWrapped;
+    private Value myObjWrapped;
     private CallWithValue myObjCall;
 
     @Test
@@ -74,7 +71,7 @@ public class PassItselfBackViaPolyglotEngineTest {
 
     @Test
     public void callbackWithParamTruffleObject() {
-        myObjWrapped.execute(myObjWrapped.get());
+        myObjWrapped.execute(myObjWrapped);
         assertEquals("Assigned to itself", myObj, myObj.value);
     }
 
@@ -86,24 +83,24 @@ public class PassItselfBackViaPolyglotEngineTest {
 
     @Test
     public void callbackWithValueTruffleObject() {
-        myObjCall.call(myObjWrapped.get());
+        myObjCall.call(myObjWrapped);
         assertEquals("Assigned to itself", myObj, myObj.value);
     }
 
     @Before
     public void prepareSystem() {
         myObj = new MyObj();
-        engine = PolyglotEngine.newBuilder().globalSymbol("myObj", myObj).build();
-        myObjWrapped = engine.eval(Source.newBuilder("" + "function main() {\n" + "  return import(\"myObj\");\n" + "}\n").mimeType("application/x-sl").name("myObjWrapped.sl").build());
-        assertNotNull(myObjWrapped.get());
-        assertTrue(myObjWrapped.get() instanceof TruffleObject);
-        assertFalse(myObjWrapped.get() instanceof MyObj);
+        context = Context.create();
+        context.getPolyglotBindings().putMember("myObj", myObj);
+        context.eval("sl", "function main() {\n" + "  return import(\"myObj\");\n" + "}\n");
+        myObjWrapped = context.getBindings("sl").getMember("main").execute();
+        assertFalse(myObjWrapped.isNull());
         myObjCall = myObjWrapped.as(CallWithValue.class);
     }
 
     @After
     public void disposeSystem() {
-        engine.dispose();
+        context.close();
     }
 
     @MessageResolution(receiverType = MyObj.class)
@@ -133,7 +130,6 @@ public class PassItselfBackViaPolyglotEngineTest {
 
     @FunctionalInterface
     interface CallWithValue {
-        @MethodMessage(message = "EXECUTE")
         void call(Object value);
     }
 }

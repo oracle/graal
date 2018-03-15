@@ -233,12 +233,7 @@ final class TestContext implements Closeable {
     }
 
     Value getValue(Object object) {
-        String conversionSymbol = "tmp_conversionSymbol";
-        Value old = context.importSymbol(conversionSymbol);
-        context.exportSymbol(conversionSymbol, object);
-        Value value = context.importSymbol(conversionSymbol);
-        context.exportSymbol(conversionSymbol, old);
-        return value;
+        return context.asValue(object);
     }
 
     void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {

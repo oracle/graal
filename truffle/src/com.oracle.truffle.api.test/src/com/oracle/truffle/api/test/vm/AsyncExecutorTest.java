@@ -116,11 +116,6 @@ public class AsyncExecutorTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(AsyncContext context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }

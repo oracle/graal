@@ -81,11 +81,6 @@ public class SLParseInContextTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(Env context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }

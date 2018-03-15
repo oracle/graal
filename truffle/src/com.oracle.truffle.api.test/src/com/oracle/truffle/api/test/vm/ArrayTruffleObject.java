@@ -117,7 +117,7 @@ final class ArrayTruffleObject implements TruffleObject, ForeignAccess.StandardF
 
     @Override
     public CallTarget accessKeyInfo() {
-        return target(RootNode.createConstantNode(KeyInfo.newBuilder().setInvocable(true).setReadable(true).build()));
+        return target(RootNode.createConstantNode(KeyInfo.READABLE | KeyInfo.INVOCABLE));
     }
 
     @Override

@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
@@ -37,6 +38,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -167,9 +169,10 @@ public class ClassInteropTest {
     @Test
     public void staticInnerTypeIsNotWritable() {
         Object type = JavaInteropTest.message(Message.KEY_INFO, obj, "Zed");
-        assertTrue("Key exists", ((Integer) type & 0b1) > 0);
-        assertTrue("Key readable", ((Integer) type & 0b10) > 0);
-        assertTrue("Key NOT writable", ((Integer) type & 0b100) == 0);
+        int keyInfo = (int) type;
+        assertTrue("Key exists", KeyInfo.isExisting(keyInfo));
+        assertTrue("Key readable", KeyInfo.isReadable(keyInfo));
+        assertFalse("Key NOT writable", KeyInfo.isModifiable(keyInfo));
     }
 
     @Test(expected = com.oracle.truffle.api.interop.UnknownIdentifierException.class)

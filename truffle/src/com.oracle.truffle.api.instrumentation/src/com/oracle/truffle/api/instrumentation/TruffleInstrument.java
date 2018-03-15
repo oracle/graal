@@ -152,15 +152,6 @@ public abstract class TruffleInstrument {
     }
 
     /**
-     * @since 0.27
-     * @deprecated in 0.27 use {@link #getOptionDescriptors()} instead.
-     */
-    @Deprecated
-    protected List<OptionDescriptor> describeOptions() {
-        return null;
-    }
-
-    /**
      * Returns a set of option descriptors that are supported by this instrument. Option values are
      * accessible using the {@link Env#getOptions() environment} when the instrument is
      * {@link #onCreate(Env) created}. By default no options are available for an instrument.
@@ -175,7 +166,7 @@ public abstract class TruffleInstrument {
      * @since 0.27
      */
     protected OptionDescriptors getOptionDescriptors() {
-        return OptionDescriptors.create(describeOptions());
+        return OptionDescriptors.EMPTY;
     }
 
     /**
@@ -675,21 +666,21 @@ public abstract class TruffleInstrument {
         /**
          * A custom machine identifier for this instrument. If not defined then the fully qualified
          * class name is used.
-         * 
+         *
          * @since 0.12
          */
         String id() default "";
 
         /**
          * The name of the instrument in an arbitrary format for humans.
-         * 
+         *
          * @since 0.12
          */
         String name() default "";
 
         /**
          * The version for instrument in an arbitrary format.
-         * 
+         *
          * @since 0.12
          */
         String version() default "";

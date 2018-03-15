@@ -45,13 +45,11 @@ final class ExecuteGenerator extends MessageGenerator {
     // Invoke: TruffleObject receiver, String identifier, Object[] args
     // New: TruffleObject receiver, Object[] args
     private final String targetableExecuteNode;
-    private final String executeRootNode;
 
     ExecuteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, resolveAnnotation, messageResolutionAnnotation, element, containingForeignAccessFactory);
         this.targetableExecuteNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("Node").insert(0, "Targetable").toString();
-        this.executeRootNode = (new StringBuilder(messageName)).replace(0, 1, messageName.substring(0, 1).toUpperCase()).append("RootNode").toString();
         if (Message.createExecute(0).toString().equalsIgnoreCase(messageName)) {
             numberOfArguments = 2;
         } else if (Message.createInvoke(0).toString().equalsIgnoreCase(messageName)) {
@@ -81,13 +79,14 @@ final class ExecuteGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append(indent).append("    private static final class ").append(executeRootNode).append(" extends RootNode {\n");
-        w.append(indent).append("        protected ").append(executeRootNode).append("() {\n");
+        w.append(indent).append("    private static final class ").append(rootNodeName).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(rootNodeName).append("() {\n");
         w.append(indent).append("            super(null);\n");
         w.append(indent).append("        }\n");
         w.append("\n");
         w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
+        appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            try {\n");
@@ -114,11 +113,6 @@ final class ExecuteGenerator extends MessageGenerator {
         w.append(indent).append("        }\n");
         w.append(indent).append("    }\n");
         w.append("\n");
-    }
-
-    @Override
-    String getRootNodeName() {
-        return executeRootNode;
     }
 
     @Override

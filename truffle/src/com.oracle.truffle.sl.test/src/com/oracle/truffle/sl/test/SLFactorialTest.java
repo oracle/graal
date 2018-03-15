@@ -42,42 +42,37 @@ package com.oracle.truffle.sl.test;
 
 import static org.junit.Assert.assertEquals;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-
 public class SLFactorialTest {
 
-    private PolyglotEngine engine;
-    private PolyglotEngine.Value factorial;
+    private Context context;
+    private Value factorial;
 
     @Before
     public void initEngine() throws Exception {
-        engine = PolyglotEngine.newBuilder().build();
+        context = Context.create();
         // @formatter:off
-        engine.eval(
-            Source.newBuilder("\n" +
+        context.eval("sl", "\n" +
                 "function fac(n) {\n" +
                 "  if (n <= 1) {\n" +
                 "    return 1;\n" +
                 "  }\n" +
                 "  prev = fac(n - 1);\n" +
                 "  return prev * n;\n" +
-                "}\n").
-            name("factorial.sl").
-            mimeType("application/x-sl").
-            build()
+                "}\n"
         );
         // @formatter:on
-        factorial = engine.findGlobalSymbol("fac");
+        factorial = context.getBindings("sl").getMember("fac");
     }
 
     @After
     public void dispose() {
-        engine.dispose();
+        context.close();
     }
 
     @Test

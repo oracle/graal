@@ -42,13 +42,9 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 
 public class ContextAPITest {
@@ -80,10 +76,11 @@ public class ContextAPITest {
         }
 
         try {
-            context.lookup(ContextAPITestInternalLanguage.ID, "foobar");
+            context.getBindings(ContextAPITestInternalLanguage.ID);
             fail();
         } catch (IllegalStateException e) {
         }
+
         assertFalse(context.getEngine().getLanguages().containsKey(ContextAPITestInternalLanguage.ID));
     }
 
@@ -99,17 +96,18 @@ public class ContextAPITest {
     @Test
     public void testImportExport() {
         Context context = Context.create();
-        context.exportSymbol("string", "bar");
-        context.exportSymbol("null", null);
-        context.exportSymbol("int", 42);
+        Value polyglotBindings = context.getPolyglotBindings();
+        polyglotBindings.putMember("string", "bar");
+        polyglotBindings.putMember("null", null);
+        polyglotBindings.putMember("int", 42);
         Object object = new Object();
-        context.exportSymbol("object", object);
+        polyglotBindings.putMember("object", object);
 
-        assertEquals("bar", context.importSymbol("string").asString());
-        assertTrue(context.importSymbol("null").isNull());
-        assertEquals(42, context.importSymbol("int").asInt());
-        assertSame(object, context.importSymbol("object").asHostObject());
-        assertNull(context.importSymbol("notexisting"));
+        assertEquals("bar", polyglotBindings.getMember("string").asString());
+        assertTrue(polyglotBindings.getMember("null").isNull());
+        assertEquals(42, polyglotBindings.getMember("int").asInt());
+        assertSame(object, polyglotBindings.getMember("object").asHostObject());
+        assertNull(polyglotBindings.getMember("notexisting"));
         context.close();
     }
 
@@ -166,7 +164,7 @@ public class ContextAPITest {
         } catch (IllegalStateException e) {
         }
 
-        context.importSymbol("");
+        context.getPolyglotBindings().getMember("");
         context.enter();
 
         try {
@@ -175,7 +173,7 @@ public class ContextAPITest {
         } catch (IllegalStateException e) {
         }
 
-        context.importSymbol("");
+        context.getPolyglotBindings().getMember("");
         context.enter();
 
         try {
@@ -273,7 +271,17 @@ public class ContextAPITest {
     }
 
     private static void testExecute(Context context) {
-        ContextAPITestLanguage.runinside = (env) -> new MyTruffleObject();
+        ContextAPITestLanguage.runinside = (env) -> new ProxyInteropObject() {
+            @Override
+            public boolean isExecutable() {
+                return true;
+            }
+
+            @Override
+            public Object execute(Object[] args) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+                return 42;
+            }
+        };
         Value executable = context.eval(ContextAPITestLanguage.ID, "");
         assertEquals(42, executable.execute().asInt());
         assertEquals(42, executable.execute(42).asInt());
@@ -281,73 +289,4 @@ public class ContextAPITest {
         executable.executeVoid(42);
     }
 
-    private static class MyTruffleObject implements TruffleObject {
-
-        public ForeignAccess getForeignAccess() {
-            return MyTruffleObjectFactory.INSTANCE;
-        }
-
-    }
-
-    private static class MyTruffleObjectFactory implements StandardFactory {
-
-        private static final ForeignAccess INSTANCE = ForeignAccess.create(MyTruffleObject.class, new MyTruffleObjectFactory());
-
-        public CallTarget accessIsExecutable() {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
-        }
-
-        public CallTarget accessExecute(int argumentsLength) {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
-        }
-
-        public CallTarget accessIsNull() {
-            return null;
-        }
-
-        public CallTarget accessIsBoxed() {
-            return null;
-        }
-
-        public CallTarget accessHasSize() {
-            return null;
-        }
-
-        public CallTarget accessGetSize() {
-            return null;
-        }
-
-        public CallTarget accessUnbox() {
-            return null;
-        }
-
-        public CallTarget accessRead() {
-            return null;
-        }
-
-        public CallTarget accessWrite() {
-            return null;
-        }
-
-        public CallTarget accessInvoke(int argumentsLength) {
-            return null;
-        }
-
-        public CallTarget accessNew(int argumentsLength) {
-            return null;
-        }
-
-        public CallTarget accessKeys() {
-            return null;
-        }
-
-        public CallTarget accessKeyInfo() {
-            return null;
-        }
-
-        public CallTarget accessMessage(Message unknown) {
-            return null;
-        }
-
-    }
 }

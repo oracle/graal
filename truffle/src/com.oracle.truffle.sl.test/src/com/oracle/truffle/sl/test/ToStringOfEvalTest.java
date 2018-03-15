@@ -40,49 +40,41 @@
  */
 package com.oracle.truffle.sl.test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.sl.SLLanguage;
-
 public class ToStringOfEvalTest {
-    PolyglotEngine engine;
+    Context context;
 
     @Before
     public void initialize() {
-        engine = PolyglotEngine.newBuilder().build();
+        context = Context.create();
     }
 
     @After
     public void dispose() {
-        engine.dispose();
+        context.close();
     }
 
     @Test
     public void checkToStringOnAFunction() {
-        PolyglotEngine.Language sl = engine.getLanguages().get(SLLanguage.MIME_TYPE);
-        sl.eval(Source.newBuilder("function checkName() {}").name("defineFn").mimeType("content/unknown").build());
-        PolyglotEngine.Value value1 = engine.findGlobalSymbol("checkName");
-        PolyglotEngine.Value value2 = engine.findGlobalSymbol("checkName");
+        context.eval("sl", "function checkName() {}");
+        Value value1 = context.getBindings("sl").getMember("checkName");
+        Value value2 = context.getBindings("sl").getMember("checkName");
 
         assertNotNull("Symbol is not null", value1);
         assertNotNull("Symbol is not null either", value2);
 
-        Object global1 = value1.get();
-        Object global2 = value2.get();
+        assertFalse("Symbol is not null", value1.isNull());
+        assertFalse("Symbol is not null either", value2.isNull());
 
-        assertNotNull("Symbol is not null", global1);
-        assertNotNull("Symbol is not null either", global2);
-
-        assertEquals("Symbols are the same", global1, global2);
-
-        assertTrue("Contans checkName text: " + global2, global2.toString().contains("checkName"));
+        assertTrue("Contans checkName text: " + value2, value2.toString().contains("checkName"));
     }
 }

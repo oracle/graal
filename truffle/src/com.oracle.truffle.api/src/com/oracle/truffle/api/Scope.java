@@ -69,7 +69,9 @@ public final class Scope {
      *
      * @param name name of the scope, a name description like block, name of a function, closure,
      *            script, module, etc.
-     * @param variables variables declared in this scope, must not be <code>null</code>
+     * @param variables a {@link com.oracle.truffle.api.interop.TruffleObject} containing the
+     *            variables as its properties, never <code>null</code>. Must respond true to
+     *            HAS_KEYS.
      * @since 0.30
      */
     public static Builder newBuilder(String name, Object variables) {

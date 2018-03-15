@@ -56,7 +56,7 @@ public class DebuggerRetrievalTest {
 
     @Test
     public void testFromLanguage() {
-        Value debuggerValue = Context.create(LanguageThatNeedsDebugger.ID).lookup(LanguageThatNeedsDebugger.ID, "debugger");
+        Value debuggerValue = Context.create(LanguageThatNeedsDebugger.ID).getBindings(LanguageThatNeedsDebugger.ID).getMember("debugger");
         Assert.assertTrue(debuggerValue.asBoolean());
     }
 
@@ -79,11 +79,6 @@ public class DebuggerRetrievalTest {
             Debugger debugger = env.lookup(debuggerInfo, Debugger.class);
             Assert.assertEquals(debugger, Debugger.find(env));
             return debugger;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Debugger context) {
-            return null;
         }
 
         @Override
@@ -114,15 +109,22 @@ public class DebuggerRetrievalTest {
                 @Resolve(message = "KEY_INFO")
                 abstract static class VarsMapInfoNode extends Node {
 
-                    private static final int EXISTING_INFO = KeyInfo.newBuilder().setReadable(true).build();
-
                     @SuppressWarnings("unused")
                     public Object access(TopScopeObject ts, String name) {
                         if ("debugger".equals(name)) {
-                            return EXISTING_INFO;
+                            return KeyInfo.READABLE;
                         } else {
                             return 0;
                         }
+                    }
+                }
+
+                @Resolve(message = "HAS_KEYS")
+                abstract static class HasKeysNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(TopScopeObject ts) {
+                        return true;
                     }
                 }
 

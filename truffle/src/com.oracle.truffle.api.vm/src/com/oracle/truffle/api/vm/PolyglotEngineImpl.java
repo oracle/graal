@@ -58,6 +58,7 @@ import org.graalvm.polyglot.Language;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -850,6 +851,16 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             return true;
         }
 
+    }
+
+    @Override
+    public String getImplementationName() {
+        String name = Truffle.getRuntime().getName();
+        if (name.contains("Graal")) {
+            return "Graal Engine";
+        } else {
+            return "Default Engine";
+        }
     }
 
     @Override

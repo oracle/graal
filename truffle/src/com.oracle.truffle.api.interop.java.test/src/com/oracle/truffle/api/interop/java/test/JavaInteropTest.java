@@ -1566,7 +1566,20 @@ public class JavaInteropTest {
                     boolean writable = (receiver.wBits & (1 << d)) > 0;
                     boolean invocable = (receiver.iBits & (1 << d)) > 0;
                     boolean internal = (receiver.nBits & (1 << d)) > 0;
-                    return KeyInfo.newBuilder().setReadable(readable).setWritable(writable).setInvocable(invocable).setInternal(internal).build();
+                    int info = KeyInfo.NONE;
+                    if (readable) {
+                        info |= KeyInfo.READABLE;
+                    }
+                    if (writable) {
+                        info |= KeyInfo.MODIFIABLE;
+                    }
+                    if (invocable) {
+                        info |= KeyInfo.INVOCABLE;
+                    }
+                    if (internal) {
+                        info |= KeyInfo.INTERNAL;
+                    }
+                    return info;
                 }
             }
         }

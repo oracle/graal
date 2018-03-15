@@ -165,11 +165,6 @@ public class InteractiveEvalTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(InteractiveContext context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
@@ -212,11 +207,6 @@ public class InteractiveEvalTest {
         @Override
         protected boolean isVisible(InteractiveContext context, Object value) {
             return false;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(InteractiveContext context) {
-            return null;
         }
 
         @Override

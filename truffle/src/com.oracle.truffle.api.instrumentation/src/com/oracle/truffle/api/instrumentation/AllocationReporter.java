@@ -383,11 +383,6 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     // @formatter:on
 
     @Override
-    protected Object getLanguageGlobal(ContextObject context) {
-        return null;
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
     }

@@ -221,17 +221,14 @@ class LibFFIFunctionMessageResolution {
     @Resolve(message = "KEY_INFO")
     abstract static class LibFFIFunctionKeyInfoNode extends Node {
 
-        private static final int INVOCABLE = KeyInfo.newBuilder().setInvocable(true).build();
-        private static final int NOT_EXISTING = 0;
-
         @Child AsStringNode asString = AsStringNodeGen.create(true);
 
         @SuppressWarnings("unused")
         public int access(LibFFIFunction receiver, Object identifier) {
             if ("bind".equals(asString.execute(identifier))) {
-                return INVOCABLE;
+                return KeyInfo.INVOCABLE;
             } else {
-                return NOT_EXISTING;
+                return KeyInfo.NONE;
             }
         }
     }

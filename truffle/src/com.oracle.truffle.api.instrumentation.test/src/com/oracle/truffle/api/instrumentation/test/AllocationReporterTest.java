@@ -572,7 +572,7 @@ public class AllocationReporterTest {
         }, (info) -> {
         });
         context.eval(source);
-        AllocationReporter reporter = (AllocationReporter) context.importSymbol(AllocationReporter.class.getSimpleName()).asHostObject();
+        AllocationReporter reporter = (AllocationReporter) context.getPolyglotBindings().getMember(AllocationReporter.class.getSimpleName()).asHostObject();
         AtomicInteger listenerCalls = new AtomicInteger(0);
         AllocationReporterListener activatedListener = AllocationReporterListener.register(listenerCalls, reporter);
         assertEquals(0, listenerCalls.get());
@@ -611,20 +611,9 @@ public class AllocationReporterTest {
 
         @Override
         protected AllocationReporter createContext(Env env) {
-            return env.lookup(AllocationReporter.class);
-        }
-
-        @Override
-        protected Object findExportedSymbol(AllocationReporter context, String globalName, boolean onlyExplicit) {
-            if (AllocationReporter.class.getSimpleName().equals(globalName)) {
-                return context;
-            }
-            return null;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(AllocationReporter context) {
-            return null;
+            AllocationReporter context = env.lookup(AllocationReporter.class);
+            env.exportSymbol(AllocationReporter.class.getSimpleName(), context);
+            return context;
         }
 
         @Override

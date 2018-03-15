@@ -174,11 +174,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
-    protected Object getLanguageGlobal(HostContext context) {
-        return null;
-    }
-
-    @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return new HostContext(env);
     }
@@ -334,13 +329,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             @Resolve(message = "KEY_INFO")
             abstract static class VarsMapInfoNode extends Node {
 
-                private static final int EXISTING_INFO = KeyInfo.newBuilder().setReadable(true).build();
-
                 @TruffleBoundary
                 public Object access(TopScopeObject ts, String name) {
                     Class<?> clazz = ts.context.findClass(name);
                     if (clazz != null) {
-                        return EXISTING_INFO;
+                        return KeyInfo.READABLE;
                     } else {
                         return 0;
                     }

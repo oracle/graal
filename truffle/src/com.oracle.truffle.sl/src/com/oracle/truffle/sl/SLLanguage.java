@@ -253,17 +253,14 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return Truffle.getRuntime().createCallTarget(evalMain);
     }
 
+    /*
+     * Still necessary for the old SL TCK to pass. We should remove with the old TCK. New language
+     * should not override this.
+     */
+    @SuppressWarnings("deprecation")
     @Override
     protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
         return context.getFunctionRegistry().lookup(globalName, false);
-    }
-
-    @Override
-    protected Object getLanguageGlobal(SLContext context) {
-        /*
-         * The context itself is the global function registry. SL does not have global variables.
-         */
-        return context;
     }
 
     @Override
