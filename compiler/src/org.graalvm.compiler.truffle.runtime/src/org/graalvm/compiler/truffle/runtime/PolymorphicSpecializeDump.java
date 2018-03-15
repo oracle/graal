@@ -48,7 +48,7 @@ class PolymorphicSpecializeDump {
             Collections.reverse(toDump);
             PolymorphicSpecializeDump.PolymorphicSpecializeGraph graph = new PolymorphicSpecializeDump.PolymorphicSpecializeGraph(knownCallNodes, toDump);
             final GraphOutput<PolymorphicSpecializeGraph, ?> output = debugContext.buildOutput(GraphOutput.newBuilder(new PolymorphicSpecializeDump.PolymorphicSpecializeGraphStructure()));
-            output.beginGroup(graph, "Polymorphic Specialize [" + knownCallNodes.get(0).getCurrentCallTarget() + "]" , "Polymorphic Specialize", null, 0, null);
+            output.beginGroup(graph, "Polymorphic Specialize [" + knownCallNodes.get(0).getCurrentCallTarget() + "]", "Polymorphic Specialize", null, 0, null);
             output.print(graph, null, 0, toDump.get(toDump.size() - 1).toString());
             output.endGroup();
             output.close();
@@ -110,7 +110,8 @@ class PolymorphicSpecializeDump {
         }
     }
 
-    static class PolymorphicSpecializeGraphStructure implements GraphStructure<PolymorphicSpecializeGraph, PolymorphicSpecializeGraph.DumpNode, PolymorphicSpecializeGraph.DumpNode, PolymorphicSpecializeGraph.DumpEdge> {
+    static class PolymorphicSpecializeGraphStructure
+                    implements GraphStructure<PolymorphicSpecializeGraph, PolymorphicSpecializeGraph.DumpNode, PolymorphicSpecializeGraph.DumpNode, PolymorphicSpecializeGraph.DumpEdge> {
 
         @Override
         public PolymorphicSpecializeGraph graph(PolymorphicSpecializeGraph currentGraph, Object obj) {
@@ -212,7 +213,8 @@ class PolymorphicSpecializeDump {
         }
 
         @Override
-        public Collection<? extends PolymorphicSpecializeGraph.DumpNode> edgeNodes(PolymorphicSpecializeGraph graph, PolymorphicSpecializeGraph.DumpNode node, PolymorphicSpecializeGraph.DumpEdge port, int index) {
+        public Collection<? extends PolymorphicSpecializeGraph.DumpNode> edgeNodes(PolymorphicSpecializeGraph graph, PolymorphicSpecializeGraph.DumpNode node, PolymorphicSpecializeGraph.DumpEdge port,
+                        int index) {
             return Collections.singleton(node.edge.node);
         }
     }

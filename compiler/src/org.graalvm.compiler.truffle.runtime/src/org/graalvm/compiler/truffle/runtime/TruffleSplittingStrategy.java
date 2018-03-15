@@ -79,7 +79,7 @@ final class TruffleSplittingStrategy {
             final SplitStatisticsReporter reporter = getReporter();
             reporter.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             reporter.splitCount++;
-            reporter.splitTargets.put(call.getCallTarget(), reporter.splitTargets.getOrDefault(call.getCallTarget(), 0)  + 1);
+            reporter.splitTargets.put(call.getCallTarget(), reporter.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
         }
     }
 

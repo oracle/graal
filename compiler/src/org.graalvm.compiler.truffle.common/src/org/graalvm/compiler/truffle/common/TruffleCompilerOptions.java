@@ -184,7 +184,7 @@ public class TruffleCompilerOptions {
     public static final OptionKey<Integer> TruffleSplittingMaxPollutionDepth = new OptionKey<>(5);
 
     @Option(help = "Use the splitting strategy that relies on language implamentations marking nodes for splitting", type = OptionType.Expert)
-    public static final OptionKey<Boolean> TruffleUsePollutionBasedSplittingStrategy= new OptionKey<>(false);
+    public static final OptionKey<Boolean> TruffleUsePollutionBasedSplittingStrategy = new OptionKey<>(false);
 
     @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleTraceSplittingSummary = new OptionKey<>(false);
