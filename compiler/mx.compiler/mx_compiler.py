@@ -266,7 +266,13 @@ def ctw(args, extraVMarguments=None):
         # Default to the CompileTheWorld.SUN_BOOT_CLASS_PATH token
         cp = None
 
-    vmargs.append('-DCompileTheWorld.ExcludeMethodFilter=sun.awt.X11.*.*')
+    foundExcludeMethodFilter = False
+    for i in range(len(vmargs)):
+        if vmargs[i].startswith('-DCompileTheWorld.ExcludeMethodFilter='):
+            vmargs[i] = vmargs[i] + ',sun.awt.X11.*.*'
+            foundExcludeMethodFilter = True
+    if not foundExcludeMethodFilter:
+        vmargs.append('-DCompileTheWorld.ExcludeMethodFilter=sun.awt.X11.*.*')
 
     if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')

@@ -66,6 +66,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -379,6 +381,11 @@ public final class CompileTheWorld {
             return new URLClassLoader(new URL[]{url});
         }
 
+        /**
+         * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
+         */
+        static Pattern MultiReleaseJarVersionedClassRE = Pattern.compile("META-INF/versions/[1-9][0-9]*/(.+)");
+
         @Override
         public List<String> getClassNames() throws IOException {
             Enumeration<JarEntry> e = jarFile.entries();
@@ -389,6 +396,17 @@ public final class CompileTheWorld {
                     continue;
                 }
                 String className = je.getName().substring(0, je.getName().length() - ".class".length());
+                if (className.equals("module-info")) {
+                    continue;
+                }
+                if (className.startsWith("META-INF/versions/")) {
+                    Matcher m = MultiReleaseJarVersionedClassRE.matcher(className);
+                    if (m.matches()) {
+                        className = m.group(1);
+                    } else {
+                        continue;
+                    }
+                }
                 classNames.add(className.replace('/', '.'));
             }
             return classNames;
