@@ -50,6 +50,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
@@ -1163,6 +1164,22 @@ public final class LLVMInteropTest {
         Assert.assertEquals("construct\n", buf.toString());
         runner.close();
         Assert.assertEquals("construct\ndestruct\n", buf.toString());
+    }
+
+    @Test
+    public void testScaleVector() {
+        Runner runner = new Runner("scaleVector");
+        runner.load();
+        Value fn = runner.findGlobalSymbol("scale_vector");
+
+        ProxyArray proxy = ProxyArray.fromArray(1.0, 2.0, 3.0, 4.0, 5.0);
+        fn.execute(proxy, proxy.getSize(), 0.1);
+
+        for (int i = 0; i < proxy.getSize(); i++) {
+            double expected = 0.1 * (i + 1);
+            Value actual = (Value) proxy.get(i);
+            Assert.assertEquals("index " + i, expected, actual.asDouble(), 0.0001);
+        }
     }
 
     @Test
