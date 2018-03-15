@@ -1224,6 +1224,11 @@ class FlatNodeGenFactory {
     }
 
     private void generateSaveOldPolymorphismState(CodeTreeBuilder builder) {
+        // TODO: use state.createMaskedReference()
+        // TODO: use camelCase
+        // TODO: call cashe count only if state is not 0, use ternary old_state == 0 ? 0 : countCaches();
+        // TODO: guard checkForPolymorphicSpecialize with the if that is in the method
+        // TODO: Tests
         builder.declaration(state.bitSetType, OLD_STATE, "state & " + getMaskForReportPolymorphism());
         if (requiresExclude()) {
             builder.declaration(exclude.bitSetType, OLD_EXCLUDE, "exclude");

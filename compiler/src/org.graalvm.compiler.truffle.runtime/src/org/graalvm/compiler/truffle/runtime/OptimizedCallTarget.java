@@ -687,6 +687,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    // TODO get rid of toPollute by using recursion
+    // TODO use pullOutParentChain ONLY to get the dump data and not to extract root
+    // TODO get rid of needsSplit in OptimizedDirectCallNode keep it only in the callTarget, profilePolluted goes away
     private void polluteProfile(int depth, List<RootCallTarget> toPollute, List<Node> toDump) {
         if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || profilePolluted || knownCallNodes.size() == 0 ||
                         compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
