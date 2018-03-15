@@ -168,8 +168,8 @@ final class MacroOption {
                 /* Substitute ${*} -> optionArg in resultVal (always possible) */
                 resultVal = resultVal.replace("${*}", optionArg);
                 /*
-                 * If optionArg consists of "<argName>:<argValue>,..." additionally perform substitutions of kind
-                 * ${<argName>} -> <argValue> on resultVal.
+                 * If optionArg consists of "<argName>:<argValue>,..." additionally perform
+                 * substitutions of kind ${<argName>} -> <argValue> on resultVal.
                  */
                 for (String argNameValue : optionArg.split(",")) {
                     String[] splitted = argNameValue.split(":");
