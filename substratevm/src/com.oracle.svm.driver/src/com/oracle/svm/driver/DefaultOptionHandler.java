@@ -76,6 +76,16 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addCustomImageClasspath(Paths.get(cp));
                 }
                 return true;
+            case "--configurations-path":
+                args.poll();
+                String configPath = args.poll();
+                if (configPath == null) {
+                    NativeImage.showError(headArg + " requires a : separated list of directories");
+                }
+                for (String configDir : configPath.split(":")) {
+                    nativeImage.addMacroOptionRoot(Paths.get(configDir));
+                }
+                return true;
             case "-jar":
                 args.poll();
                 String jarFilePathStr = args.poll();

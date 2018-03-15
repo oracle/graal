@@ -216,7 +216,7 @@ final class MacroOption {
     }
 
     static final class Registry {
-        private final Map<MacroOptionKind, Map<String, MacroOption>> supported;
+        private final Map<MacroOptionKind, Map<String, MacroOption>> supported = new HashMap<>();
         private final LinkedHashSet<EnabledOption> enabled = new LinkedHashSet<>();
 
         private static Map<MacroOptionKind, Map<String, MacroOption>> collectMacroOptions(Path rootDir) throws IOException {
@@ -238,11 +238,22 @@ final class MacroOption {
         }
 
         Registry(Path rootDir) {
-            /* Discover supported MacroOptions */
+            addMacroOptionRoot(rootDir);
+        }
+
+        void addMacroOptionRoot(Path rootDir) {
+            /* Discover MacroOptions and add to supported */
             try {
-                supported = collectMacroOptions(rootDir);
+                collectMacroOptions(rootDir).forEach((optionKind, optionMap) -> {
+                    Map<String, MacroOption> existingOptionMap = supported.get(optionKind);
+                    if (existingOptionMap == null) {
+                        supported.put(optionKind, optionMap);
+                    } else {
+                        existingOptionMap.putAll(optionMap);
+                    }
+                });
             } catch (IOException e) {
-                throw new InvalidMacroException("Error while discovering supported MacroOptions: " + e.getMessage());
+                throw new InvalidMacroException("Error while discovering supported MacroOptions in " + rootDir + ": " + e.getMessage());
             }
         }
 

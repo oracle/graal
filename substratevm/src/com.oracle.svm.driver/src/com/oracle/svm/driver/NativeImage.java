@@ -249,6 +249,10 @@ class NativeImage {
         registerOptionHandler(new MacroOptionHandler(this));
     }
 
+    void addMacroOptionRoot(Path configDir) {
+        optionRegistry.addMacroOptionRoot(canonicalize(configDir));
+    }
+
     protected void registerOptionHandler(OptionHandler<? extends NativeImage> handler) {
         optionHandlers.add(handler);
     }
