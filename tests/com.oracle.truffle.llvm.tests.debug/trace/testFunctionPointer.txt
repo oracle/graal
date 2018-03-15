@@ -1,4 +1,4 @@
-BREAK 9 CONTINUE "main"
+BREAK 9 CONTINUE "start"
     OPEN_SCOPE
         MEMBER any "int(void)*" "funcPtr"
         MEMBER int "int" "res" 5

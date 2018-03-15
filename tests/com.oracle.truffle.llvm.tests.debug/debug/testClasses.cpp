@@ -142,7 +142,7 @@ public:
     }
 };
 
-int main()
+int start() __attribute__((constructor))
 {
     SimpleClass a(7, 28L, 302.4);
     a.print();

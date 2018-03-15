@@ -34,7 +34,7 @@ END_MEMBERS
 
 
 
-BREAK "86" "CONTINUE" "main"
+BREAK "86" "CONTINUE" "start"
 
 OPEN_SCOPE
 

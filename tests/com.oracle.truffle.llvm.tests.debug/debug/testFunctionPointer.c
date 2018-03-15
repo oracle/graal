@@ -2,7 +2,7 @@ int getFive() {
     return 5;
 }
 
-int main() {
+int start() __attribute__((constructor)) {
     int (*funcPtr)() = &getFive;
     int res = funcPtr();
     printf("%d", res);

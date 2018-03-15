@@ -45,7 +45,7 @@ int getX() {
     return x;
 }
 
-int main() {
+int start() __attribute__((constructor)) {
     int x = 0;
     printf("x = %d\n", x);
     x = getX();

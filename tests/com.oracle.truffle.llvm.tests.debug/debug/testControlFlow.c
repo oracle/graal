@@ -8,7 +8,7 @@ void foo()
     bar();
 }
 
-int main()
+int start() __attribute__((constructor))
 {
     foo();
     foo();
