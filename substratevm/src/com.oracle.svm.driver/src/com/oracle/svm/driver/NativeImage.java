@@ -170,7 +170,6 @@ class NativeImage {
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
 
-    private static final String defaultProperties = "default.properties";
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
     private final LinkedHashSet<String> imageBuilderArgs = new LinkedHashSet<>();
@@ -187,7 +186,7 @@ class NativeImage {
     private final Path workDir;
     private final Path rootDir;
     private final Path homeDir;
-    private final Map<String, String> userConfigProperties;
+    private final Map<String, String> userConfigProperties = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean dryRun = false;
@@ -210,7 +209,16 @@ class NativeImage {
         String homeDirString = System.getProperty("user.home");
         homeDir = Paths.get(homeDirString);
         assert homeDir != null;
-        userConfigProperties = loadProperties(getUserConfigDir().resolve(defaultProperties));
+
+        String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
+        String configFile = System.getenv(configFileEnvVarKey);
+        if (configFile != null && !configFile.isEmpty()) {
+            try {
+                userConfigProperties.putAll(loadProperties(canonicalize(Paths.get(configFile))));
+            } catch (NativeImageError | Exception e) {
+                showError("Invalid environment variable " + configFileEnvVarKey, e);
+            }
+        }
 
         // Default javaArgs needed for image building
         addImageBuilderJavaArgs("-server", "-d64", "-noverify");
@@ -538,9 +546,9 @@ class NativeImage {
     }
 
     public static void main(String[] args) {
-        NativeImage nativeImage = new NativeImageServer();
-
         try {
+            NativeImage nativeImage = new NativeImageServer();
+
             if (args.length == 0) {
                 nativeImage.showMessage(usageText);
                 System.exit(0);
