@@ -252,7 +252,7 @@ public final class GraphOutput<G, M> implements Closeable {
         }
 
         @Override
-        public Iterable<StackTraceElement> methodStackTraceElement(M method, int bci, P pos) {
+        public Iterable<StackTraceElement> methodLocation(M method, int bci, P pos) {
             StackTraceElement ste = this.graphElements.methodStackTraceElement(method, bci, pos);
             return Collections.singleton(ste);
         }
