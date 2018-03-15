@@ -4,9 +4,9 @@ overlay = 6f4b88a4acc9895abdd60473e21aac1257ee8fca
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
-  labsjdk8 : {name : labsjdk, version : "8u161-jvmci-0.41", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u161-jvmci-0.42", platformspecific: true}
   labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u161-jvmci-0.41-fastdebug", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u161-jvmci-0.42-fastdebug", platformspecific: true}
 
   # Strictly speaking, this is labsjdk-jdk-hs-snapshot but for
   # readability we use the java.specification.version reported by the snapshot.
