@@ -51,7 +51,7 @@ __attribute__((noinline)) int testSplittedStructArg(struct splittableStruct str)
     return 0;
 }
 
-int main()
+int start() __attribute__((constructor))
 {
     myGlobalStruct.a = 123;
     myGlobalStruct.b = 124.5f;

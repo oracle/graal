@@ -1,4 +1,4 @@
-BREAK "50" "CONTINUE" "main"
+BREAK "50" "CONTINUE" "start"
 
 OPEN_SCOPE
 
@@ -59,7 +59,7 @@ MEMBER int "int" "lastId" "72"
 
 
 
-BREAK "56" "CONTINUE" "main"
+BREAK "56" "CONTINUE" "start"
 
 OPEN_SCOPE
 
@@ -78,7 +78,7 @@ MEMBER int "int" "lastId" "72"
 
 
 
-BREAK "60" "CONTINUE" "main"
+BREAK "60" "CONTINUE" "start"
 
 OPEN_SCOPE
 

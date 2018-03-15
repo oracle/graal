@@ -1271,13 +1271,16 @@ public final class LLVMInteropTest {
         private final String testName;
         private final Context context;
 
+        private Value library;
+
         Runner(String testName) {
             this.testName = testName;
             this.context = Context.create();
+            this.library = null;
         }
 
         public Value findGlobalSymbol(String string) {
-            return context.lookup("llvm", string);
+            return library.getMember(string);
         }
 
         void export(Object foreignObject, String name) {
@@ -1289,19 +1292,22 @@ public final class LLVMInteropTest {
         }
 
         Value load() {
-            try {
-                File file = new File(TEST_DIR.toFile(), testName + "/" + FILENAME);
-                Source source = Source.newBuilder("llvm", file).build();
-                return context.eval(source);
-            } catch (RuntimeException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+            if (library == null) {
+                try {
+                    File file = new File(TEST_DIR.toFile(), testName + "/" + FILENAME);
+                    Source source = Source.newBuilder("llvm", file).build();
+                    library = context.eval(source);
+                } catch (RuntimeException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
+            return library;
         }
 
         int run() {
-            return load().asInt();
+            return load().execute().asInt();
         }
     }
 }

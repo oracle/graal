@@ -41,7 +41,7 @@ double D3 = -1.0;
 double D4 = 1.25;
 double D5 = -1.25;
 
-int main()
+int start() __attribute__((constructor))
 {
     char c1 = 'A';
     char c2 = 'a';

@@ -30,25 +30,33 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.llvm.runtime.LLVMScope;
 
 public final class LLVMParserResult {
 
+    private final LLVMScope scope;
     private final RootCallTarget mainCallTarget;
     private final RootCallTarget globalVarInits;
     private final RootCallTarget globalVarDeallocs;
     private final RootCallTarget constructorFunctions;
     private final RootCallTarget destructorFunctions;
 
-    LLVMParserResult(RootCallTarget mainCallTarget,
+    LLVMParserResult(LLVMScope scope,
+                    RootCallTarget mainCallTarget,
                     RootCallTarget globalVarInits,
                     RootCallTarget globalVarDeallocs,
                     RootCallTarget constructorFunctions,
                     RootCallTarget destructorFunctions) {
+        this.scope = scope;
         this.mainCallTarget = mainCallTarget;
         this.globalVarInits = globalVarInits;
         this.globalVarDeallocs = globalVarDeallocs;
         this.constructorFunctions = constructorFunctions;
         this.destructorFunctions = destructorFunctions;
+    }
+
+    public LLVMScope getScope() {
+        return scope;
     }
 
     public RootCallTarget getMainCallTarget() {

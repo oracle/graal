@@ -14,3 +14,7 @@ int main(int argc, char **argv) {
   int i = 10;
   return fnc(i = i + 1, 20);
 }
+
+void start() __attribute__((constructor)) {
+  main(0, NULL);
+}

@@ -33,7 +33,7 @@ union floatUnion myGlobalFloatUnion;
 union doubleUnion myGlobalDoubleUnion;
 union pointerUnion myGlobalPointerUnion;
 
-int main()
+int start() __attribute__((constructor))
 {
     myGlobalSimpleUnion.a = 1 << 4;
     myGlobalSimpleUnion.b = 1 << 5;

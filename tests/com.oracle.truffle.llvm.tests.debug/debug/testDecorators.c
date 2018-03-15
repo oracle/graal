@@ -1,6 +1,6 @@
 typedef unsigned int myUnsignedInt;
 
-int main()
+int start() __attribute__((constructor))
 {
     myUnsignedInt typedefedVal = 15;
     const int constVal = 234;
