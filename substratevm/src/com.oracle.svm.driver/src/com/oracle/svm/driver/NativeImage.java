@@ -108,7 +108,8 @@ class NativeImage {
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-            return reader.lines().collect(Collectors.joining("\n"));
+            String resourceString = reader.lines().collect(Collectors.joining("\n"));
+            return resourceString.replace("%pathsep%", File.pathSeparator);
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }

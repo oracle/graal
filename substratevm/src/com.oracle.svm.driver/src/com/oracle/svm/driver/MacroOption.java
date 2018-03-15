@@ -283,6 +283,8 @@ final class MacroOption {
                 StringBuilder sb = new StringBuilder().append("Available ");
                 if (forKind != null) {
                     sb.append(forKind.name()).append(' ');
+                } else {
+                    sb.append("macro-");
                 }
                 lineOut.accept(sb.append("options are:").toString());
                 optionsToShow.forEach(lineOut);

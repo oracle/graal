@@ -72,7 +72,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (cpArgs == null) {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
-                for (String cp : cpArgs.split(":")) {
+                for (String cp : cpArgs.split(File.pathSeparator)) {
                     nativeImage.addCustomImageClasspath(Paths.get(cp));
                 }
                 return true;
@@ -80,9 +80,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 String configPath = args.poll();
                 if (configPath == null) {
-                    NativeImage.showError(headArg + " requires a : separated list of directories");
+                    NativeImage.showError(headArg + " requires a " + File.pathSeparator + " separated list of directories");
                 }
-                for (String configDir : configPath.split(":")) {
+                for (String configDir : configPath.split(File.pathSeparator)) {
                     nativeImage.addMacroOptionRoot(Paths.get(configDir));
                 }
                 return true;

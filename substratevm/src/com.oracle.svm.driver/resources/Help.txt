@@ -11,7 +11,7 @@ where options include:
     -cp <class search path of directories and zip/jar files>
     -classpath <class search path of directories and zip/jar files>
     --class-path <class search path of directories and zip/jar files>
-                          A : separated list of directories, JAR archives,
+                          A %pathsep% separated list of directories, JAR archives,
                           and ZIP archives to search for class files.
     -shared               build shared library
     -D<name>=<value>      set a system property
