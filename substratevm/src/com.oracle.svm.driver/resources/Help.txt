@@ -10,7 +10,8 @@ Usage: native-image [options] class
 where options include:
     -cp <class search path of directories and zip/jar files>
     -classpath <class search path of directories and zip/jar files>
-                          A : separated list of directories, JAR archives,
+    --class-path <class search path of directories and zip/jar files>
+                          A %pathsep% separated list of directories, JAR archives,
                           and ZIP archives to search for class files.
     -shared               build shared library
     -D<name>=<value>      set a system property
@@ -18,9 +19,9 @@ where options include:
     -g                    enable debuginfo generation
     -O<level>             0 - no optimizations, 1 - basic optimizations (default).
     -ea                   enable assertions in the generated image
-    -verbose              enable verbose output
-    -version              print product version and exit
-    -? -help              print this help message
+    --verbose             enable verbose output
+    --version             print product version and exit
+    --help                print this help message
 
-    -help-advanced        print help on non-standard options
+    --help-advanced       print help on non-standard options
  

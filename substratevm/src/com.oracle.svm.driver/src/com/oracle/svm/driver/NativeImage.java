@@ -108,7 +108,8 @@ class NativeImage {
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-            return reader.lines().collect(Collectors.joining("\n"));
+            String resourceString = reader.lines().collect(Collectors.joining("\n"));
+            return resourceString.replace("%pathsep%", File.pathSeparator);
         } catch (IOException e) {
             VMError.shouldNotReachHere(e);
         }
@@ -170,7 +171,6 @@ class NativeImage {
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
 
-    private static final String defaultProperties = "default.properties";
     private static final String pKeyNativeImageArgs = "NativeImageArgs";
 
     private final LinkedHashSet<String> imageBuilderArgs = new LinkedHashSet<>();
@@ -187,7 +187,7 @@ class NativeImage {
     private final Path workDir;
     private final Path rootDir;
     private final Path homeDir;
-    private final Map<String, String> userConfigProperties;
+    private final Map<String, String> userConfigProperties = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
     private boolean dryRun = false;
@@ -210,7 +210,16 @@ class NativeImage {
         String homeDirString = System.getProperty("user.home");
         homeDir = Paths.get(homeDirString);
         assert homeDir != null;
-        userConfigProperties = loadProperties(getUserConfigDir().resolve(defaultProperties));
+
+        String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
+        String configFile = System.getenv(configFileEnvVarKey);
+        if (configFile != null && !configFile.isEmpty()) {
+            try {
+                userConfigProperties.putAll(loadProperties(canonicalize(Paths.get(configFile))));
+            } catch (NativeImageError | Exception e) {
+                showError("Invalid environment variable " + configFileEnvVarKey, e);
+            }
+        }
 
         // Default javaArgs needed for image building
         addImageBuilderJavaArgs("-server", "-d64", "-noverify");
@@ -247,6 +256,10 @@ class NativeImage {
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
         registerOptionHandler(new MacroOptionHandler(this));
+    }
+
+    void addMacroOptionRoot(Path configDir) {
+        optionRegistry.addMacroOptionRoot(canonicalize(configDir));
     }
 
     protected void registerOptionHandler(OptionHandler<? extends NativeImage> handler) {
@@ -457,7 +470,11 @@ class NativeImage {
                 }
             }
             if (!leftoverArgs.isEmpty()) {
-                showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unhandled leftover args: [", "]")));
+                if (leftoverArgs.size() == 1) {
+                    showError("Unrecognized option: " + leftoverArgs.get(0));
+                } else {
+                    showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unrecognized options: ", "")));
+                }
             }
 
             /* Main-class from customImageBuilderArgs counts as explicitMainClass */
@@ -465,7 +482,7 @@ class NativeImage {
 
             if (extraImageArgs.isEmpty()) {
                 if (mainClass == null || mainClass.isEmpty()) {
-                    showError("Please specify class containing the main entry point method. (see -help)");
+                    showError("Please specify class containing the main entry point method. (see --help)");
                 }
             } else {
                 /* extraImageArgs main-class overrules previous main-class specification */
@@ -530,9 +547,9 @@ class NativeImage {
     }
 
     public static void main(String[] args) {
-        NativeImage nativeImage = new NativeImageServer();
-
         try {
+            NativeImage nativeImage = new NativeImageServer();
+
             if (args.length == 0) {
                 nativeImage.showMessage(usageText);
                 System.exit(0);
