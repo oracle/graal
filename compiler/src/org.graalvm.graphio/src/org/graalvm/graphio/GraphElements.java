@@ -189,7 +189,10 @@ public interface GraphElements<M, F, S, P> {
     int nodeSourcePositionBCI(P pos);
 
     /**
-     * Stack trace element for a method, index and position.
+     * Stack trace element for a method, index and position. This is the basic version of the method
+     * that works with {@link StackTraceElement} and is suitable for Java-like languages. Should you
+     * need to provide more details about the location of multiple strata, see
+     * {@link GraphLocations} interface that gives more control over the provided location data.
      *
      * @param method the method
      * @param bci the index
@@ -198,7 +201,4 @@ public interface GraphElements<M, F, S, P> {
      */
     StackTraceElement methodStackTraceElement(M method, int bci, P pos);
 
-    interface Stratas<M, F, S, P> extends GraphElements<M, F, S, P> {
-        Map<String, StackTraceElement> stackElement(M method, P pos);
-    }
 }
