@@ -784,8 +784,9 @@ def fetch_languages(args):
         requested = collections.OrderedDict()
         for arg in args:
             language_flag, version_info = extract_target_name(arg, 'Language')
-            version = version_info.partition('version=')[2]
-            requested[language_flag] = version
+            if language_flag:
+                version = version_info.partition('version=')[2] if version_info else None
+                requested[language_flag] = version
     else:
         requested = collections.OrderedDict((lang, None) for lang in flag_suitename_map)
 
