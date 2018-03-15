@@ -24,7 +24,7 @@ labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug} }}
 # openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-labsjdk10 :     { downloads : { JAVA_HOME : ${jdks.labsjdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+labsjdk10 :     { downloads : { JAVA_HOME : ${jdks.labsjdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.labsjdk9} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"
