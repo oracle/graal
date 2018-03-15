@@ -269,5 +269,15 @@ public final class GraphOutput<G, M> implements Closeable {
         public String locationLanguage(StackTraceElement location) {
             return "Java";
         }
+
+        @Override
+        public int locationOffsetStart(StackTraceElement location) {
+            return -1;
+        }
+
+        @Override
+        public int locationOffsetEnd(StackTraceElement location) {
+            return -1;
+        }
     }
 }

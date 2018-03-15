@@ -64,10 +64,35 @@ public interface GraphLocations<M, P, L> {
     String locationFileName(L location);
 
     /**
-     * Line number of a location.
+     * Line number of a location. The first line in the source file is one. Negative value means the
+     * line location isn't available. In such situation one can provide an offset driven location
+     * co-ordinates via {@link #locationOffsetStart(java.lang.Object)} and
+     * {@link #locationOffsetEnd(java.lang.Object) methods.
      * 
      * @param location the location
-     * @return the line number for given location
+     * @return the line number for given location, negative value means no line
      */
     int locationLineNumber(L location);
+
+    /**
+     * Offset of the location. In certain situations it is preferrable to specify offset rather than
+     * {@link #locationLineNumber(java.lang.Object) line number} of a location in source. In such
+     * case return the start offset from this method and end offset via
+     * {@link #locationOffsetEnd(java.lang.Object)} method. Offsets are counted from {@code 0}.
+     *
+     * @param location the location
+     * @return the starting offset of the location, negative value means no offset
+     */
+    int locationOffsetStart(L location);
+
+    /**
+     * Offset of the location. In certain situations it is preferrable to specify offset rather than
+     * {@link #locationLineNumber(java.lang.Object) line number} of a location in source. In such
+     * case return the start offset via {@link #locationOffsetStart(java.lang.Object)} method and
+     * end from this method. Offsets are counted from {@code 0}.
+     *
+     * @param location the location
+     * @return the end offset (exclusive) of the location, negative value means no offset
+     */
+    int locationOffsetEnd(L location);
 }
