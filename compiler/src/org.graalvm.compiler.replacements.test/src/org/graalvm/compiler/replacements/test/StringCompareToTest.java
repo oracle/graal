@@ -26,6 +26,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -47,7 +48,16 @@ public class StringCompareToTest extends MethodSubstitutionTest {
                     "ABCDEFGH\uFF21\uFF21", "\uFF22", "\uFF21\uFF22", "\uFF21A",
                     "\uFF21\uFF21",
                     "\u043c\u0430\u043c\u0430\u0020\u043c\u044b\u043b\u0430\u0020\u0440\u0430\u043c\u0443\u002c\u0020\u0440\u0430\u043c\u0430\u0020\u0441\u044a\u0435\u043b\u0430\u0020\u043c\u0430\u043c\u0443",
-                    "crazy dog jumps over laszy fox"
+                    "crazy dog jumps over laszy fox",
+                    "XMM-XMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM+YMM-YMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-YMM-YMM+ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM+",
+                    "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-XMM-XMM+YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM+ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
+                    "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM+",
+                    ""
     };
 
     public StringCompareToTest() {
@@ -81,17 +91,20 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     @Test
+    @Ignore("GR-8748")
     public void testEqualString() {
         String s = "equal-string";
         executeStringCompareTo(s, new String(s.toCharArray()));
     }
 
     @Test
+    @Ignore("GR-8748")
     public void testDifferentString() {
         executeStringCompareTo("some-string", "different-string");
     }
 
     @Test
+    @Ignore("GR-8748")
     public void testAllStrings() {
         for (String s0 : testData) {
             for (String s1 : testData) {
