@@ -679,24 +679,23 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     void polymorphicSpecialize(Node source) {
         if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
-            List<Node> toDump = new ArrayList<>();
+            List<Node> toDump = null;
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
+                toDump = new ArrayList<>();
                 pullOutParentChain(source, toDump);
             }
-            this.polluteProfile(0, new ArrayList<>(), toDump);
+            this.polluteProfile(0, toDump);
         }
     }
 
-    // TODO get rid of toPollute by using recursion
     // TODO use pullOutParentChain ONLY to get the dump data and not to extract root
     // TODO get rid of needsSplit in OptimizedDirectCallNode keep it only in the callTarget, profilePolluted goes away
-    private void polluteProfile(int depth, List<RootCallTarget> toPollute, List<Node> toDump) {
+    private boolean polluteProfile(int depth, List<Node> toDump) {
         if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || profilePolluted || knownCallNodes.size() == 0 ||
-                        compilationProfile.getInterpreterCallCount() == 1 || toPollute.containsAll(Arrays.asList(this, this))) {
-            return;
+                        compilationProfile.getInterpreterCallCount() == 1) {
+            return false;
         }
         if (knownCallNodes.size() == 1) {
-            toPollute.add(this);
             final OptimizedDirectCallNode callNode = knownCallNodes.iterator().next();
             final OptimizedCallTarget callTarget;
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
@@ -704,19 +703,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             } else {
                 callTarget = (OptimizedCallTarget) callNode.getRootNode().getCallTarget();
             }
-            callTarget.polluteProfile(depth + 1, toPollute, toDump);
+            profilePolluted = callTarget.polluteProfile(depth + 1, toDump);
         } else {
             for (OptimizedDirectCallNode node : knownCallNodes) {
                 node.setNeedsSplit(true);
             }
-            profilePolluted = true;
-            for (RootCallTarget target : toPollute) {
-                ((OptimizedCallTarget) target).profilePolluted = true;
-            }
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
                 PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, knownCallNodes);
             }
+            profilePolluted = true;
         }
+        return profilePolluted;
     }
 
     private static RootNode pullOutParentChain(Node node, List<Node> toDump) {
