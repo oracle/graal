@@ -22,6 +22,8 @@
  */
 package org.graalvm.graphio;
 
+import java.net.URI;
+
 /**
  * Provides source location information about compiled code. This interface is an extension of
  * {@link GraphElements} - by default the elements work with classical {@link StackTraceElement}.
@@ -58,12 +60,25 @@ public interface GraphLocations<M, P, L> {
     String locationLanguage(L location);
 
     /**
-     * File name of the location.
+     * The universal resource identification that contains the location. If the location can be
+     * found in an assummably accessible resource, then use such resource identification. It is up
+     * to the side processing the URI to load the content from the location. Protocols scheme
+     * {@code file}, {@code http}, or {@code https} are assumed to be accessible.
+     * <p>
+     * If the location is inside of a virtual source, or source which is unlikely to be accessible
+     * outside of running program, then it may be better to encode the whole source into the
+     * resource identifier. This can be done by using
+     * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs">data
+     * URIs</a> like:
+     * 
+     * <pre>
+     * data:text/javascript,alert('Vivat graphs!')
+     * </pre>
      * 
      * @param location the location
-     * @return the file name for the given location
+     * @return the file name for the given location or {@code null} if it is not known
      */
-    String locationFileName(L location);
+    URI locationURI(L location);
 
     /**
      * Line number of a location. The first line in the source file is one. Negative value means the

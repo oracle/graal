@@ -23,7 +23,9 @@
 package org.graalvm.graphio;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collections;
 import java.util.Map;
@@ -256,8 +258,9 @@ public final class GraphOutput<G, M> implements Closeable {
         }
 
         @Override
-        public String locationFileName(StackTraceElement location) {
-            return location.getFileName();
+        public URI locationURI(StackTraceElement location) {
+            String path = location.getFileName();
+            return path == null ? null : new File(path).toURI();
         }
 
         @Override
