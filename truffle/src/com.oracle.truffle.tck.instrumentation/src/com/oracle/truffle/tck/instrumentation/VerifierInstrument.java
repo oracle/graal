@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tck.tests;
+package com.oracle.truffle.tck.instrumentation;
 
 import java.util.function.Predicate;
 
@@ -51,12 +51,14 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
+import org.graalvm.polyglot.PolyglotException;
 
 /**
  * Verify constraints of Truffle languages.
  */
-@TruffleInstrument.Registration(name = VerifierInstrument.ID, id = VerifierInstrument.ID, services = VerifierInstrument.class)
-public class VerifierInstrument extends TruffleInstrument {
+@TruffleInstrument.Registration(name = VerifierInstrument.ID, id = VerifierInstrument.ID, services = InlineVerifier.class)
+public class VerifierInstrument extends TruffleInstrument implements InlineVerifier {
 
     static final String ID = "TckVerifierInstrument";
 
@@ -73,7 +75,8 @@ public class VerifierInstrument extends TruffleInstrument {
                         new RootFrameChecker());
     }
 
-    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
+    @Override
+    public void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
         if (inlineSnippet != null) {
             inlineScriptsRunner = new InlineScriptsRunner();
             inlineBinding = env.getInstrumenter().attachExecutionEventListener(
@@ -93,7 +96,7 @@ public class VerifierInstrument extends TruffleInstrument {
         @CompilationFinal private volatile Predicate<SourceSection> predicate;
         @CompilationFinal private volatile ExecutableNode inlineNode;
         @CompilationFinal private volatile FrameDescriptor inlineDescriptor;
-        @CompilationFinal private InlineResultVerifier resultVerifier;
+        @CompilationFinal private InlineVerifier.ResultVerifier resultVerifier;
         @CompilationFinal private Assumption inlineSnippetChanged = Truffle.getRuntime().createAssumption("Inline Snippet Changed");
 
         InlineScriptsRunner() {
@@ -127,7 +130,7 @@ public class VerifierInstrument extends TruffleInstrument {
                         } catch (ThreadDeath t) {
                             throw t;
                         } catch (Throwable t) {
-                            resultVerifier.verify(t);
+                            verify(t);
                             throw t;
                         }
                         inlineDescriptor = frame.getFrameDescriptor();
@@ -135,17 +138,28 @@ public class VerifierInstrument extends TruffleInstrument {
                     try {
                         Object ret = inlineNode.execute(frame);
                         if (resultVerifier != null) {
-                            resultVerifier.verify(ret);
+                            verify(ret);
                         }
                     } catch (ThreadDeath t) {
                         throw t;
                     } catch (Throwable t) {
                         CompilerDirectives.transferToInterpreter();
-                        resultVerifier.verify(t);
+                        verify(t);
                         throw t;
                     }
                 }
             }
+        }
+
+        @TruffleBoundary
+        private void verify(final Throwable exception) {
+            final PolyglotException pe = VerifierInstrument.TruffleTCKAccessor.engineAccess().wrapGuestException(snippet.getLanguage(), exception);
+            resultVerifier.verify(pe);
+        }
+
+        @TruffleBoundary
+        private void verify(final Object result) {
+            resultVerifier.verify(result);
         }
 
         @TruffleBoundary
@@ -154,7 +168,7 @@ public class VerifierInstrument extends TruffleInstrument {
             return predicate.test(section);
         }
 
-        private void setSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
+        private void setSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
             if (inlineSnippet != null) {
                 CharSequence code = inlineSnippet.getCode();
                 this.snippet = Source.newBuilder(code).language(languageId).name("inline_source").build();

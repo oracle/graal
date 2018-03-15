@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,7 +59,7 @@ final class TestContext implements Closeable {
     private final Map<String, Collection<? extends Snippet>> scripts;
     private final Map<String, Collection<? extends InlineSnippet>> inlineScripts;
     private Context context;
-    private VerifierInstrument verifierInstrument;
+    private InlineVerifier inlineVerifier;
     private State state;
 
     TestContext() {
@@ -104,8 +105,8 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
             this.context = Context.newBuilder().out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE).build();
-            this.verifierInstrument = context.getEngine().getInstruments().get(VerifierInstrument.ID).lookup(VerifierInstrument.class);
-            Assert.assertNotNull(this.verifierInstrument);
+            this.inlineVerifier = context.getEngine().getInstruments().get("TckVerifierInstrument").lookup(InlineVerifier.class);
+            Assert.assertNotNull(this.inlineVerifier);
         }
         return context;
     }
@@ -236,8 +237,8 @@ final class TestContext implements Closeable {
         return context.asValue(object);
     }
 
-    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineResultVerifier verifier) {
-        verifierInstrument.setInlineSnippet(languageId, inlineSnippet, verifier);
+    void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
+        inlineVerifier.setInlineSnippet(languageId, inlineSnippet, verifier);
     }
 
     private enum State {

@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
@@ -41,8 +42,6 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 @RunWith(Parameterized.class)
 public class InlineExecutionTest {
@@ -110,12 +109,11 @@ public class InlineExecutionTest {
         }
     }
 
-    private class TestResultVerifier implements InlineResultVerifier {
+    private class TestResultVerifier implements InlineVerifier.ResultVerifier {
 
         Exception exception;
 
         @Override
-        @TruffleBoundary
         public void verify(Object ret) {
             Value result = context.getValue(ret);
             InlineSnippet inlineSnippet = testRun.getInlineSnippet();
@@ -123,9 +121,7 @@ public class InlineExecutionTest {
         }
 
         @Override
-        @TruffleBoundary
-        public void verify(Throwable ex) {
-            PolyglotException pe = VerifierInstrument.TruffleTCKAccessor.engineAccess().wrapGuestException(testRun.getID(), ex);
+        public void verify(PolyglotException pe) {
             InlineSnippet inlineSnippet = testRun.getInlineSnippet();
             try {
                 TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, null, pe);
