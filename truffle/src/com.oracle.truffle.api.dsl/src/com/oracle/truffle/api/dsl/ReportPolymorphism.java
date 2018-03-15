@@ -31,8 +31,8 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Target;
 
 /**
- * Nodes annotated with this annotation (and their subclasses) will, if processed by the DSL, automatically
- * {@link Node#reportPolymorphicSpecialize() report polymorphic specializations}.
+ * Nodes annotated with this annotation (and their subclasses) will, if processed by the DSL,
+ * automatically {@link Node#reportPolymorphicSpecialize() report polymorphic specializations}.
  *
  * @since 0.33
  */
@@ -41,8 +41,9 @@ import java.lang.annotation.Target;
 public @interface ReportPolymorphism {
 
     /**
-     * Nodes (and their subclasses) or specializations annotated with this annotation will be excluded
-     * from consideration when {@link Node#reportPolymorphicSpecialize() reporting polymorphic specializations}.
+     * Nodes (and their subclasses) or specializations annotated with this annotation will be
+     * excluded from consideration when {@link Node#reportPolymorphicSpecialize() reporting
+     * polymorphic specializations}.
      *
      * @since 0.33
      */
