@@ -51,7 +51,6 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -671,10 +670,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         knownCallNodes.remove(directCallNode);
     }
 
-    private boolean profilePolluted = false;
+    private boolean needsSplit;
 
-    boolean isProfilePolluted() {
-        return profilePolluted;
+    boolean isNeedsSplit() {
+        return needsSplit;
     }
 
     void polymorphicSpecialize(Node source) {
@@ -684,13 +683,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 toDump = new ArrayList<>();
                 pullOutParentChain(source, toDump);
             }
-            this.polluteProfile(0, toDump);
+            this.maybeSetNeedsSplit(0, toDump);
         }
     }
 
-    // TODO get rid of needsSplit in OptimizedDirectCallNode keep it only in the callTarget, profilePolluted goes away
-    private boolean polluteProfile(int depth, List<Node> toDump) {
-        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || profilePolluted || knownCallNodes.size() == 0 ||
+    private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
+        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || needsSplit || knownCallNodes.size() == 0 ||
                         compilationProfile.getInterpreterCallCount() == 1) {
             return false;
         }
@@ -700,17 +698,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
                 pullOutParentChain(callNode, toDump);
             }
-            profilePolluted = callTarget.polluteProfile(depth + 1, toDump);
+            needsSplit = callTarget.maybeSetNeedsSplit(depth + 1, toDump);
         } else {
-            for (OptimizedDirectCallNode node : knownCallNodes) {
-                node.setNeedsSplit(true);
-            }
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
                 PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, knownCallNodes);
             }
-            profilePolluted = true;
+            needsSplit = true;
         }
-        return profilePolluted;
+        return needsSplit;
     }
 
     private static void pullOutParentChain(Node node, List<Node> toDump) {
