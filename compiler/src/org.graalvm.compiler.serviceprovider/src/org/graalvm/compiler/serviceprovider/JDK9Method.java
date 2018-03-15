@@ -36,8 +36,7 @@ import java.util.Set;
  * }
  * </pre>
  *
- * This version of the class is used on JDK 8. It is expected to be replaced by another class in a
- * multi-release jar when running on JDK 9 or later.
+ * This version of the class must be used on JDK 8.
  *
  * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
  */

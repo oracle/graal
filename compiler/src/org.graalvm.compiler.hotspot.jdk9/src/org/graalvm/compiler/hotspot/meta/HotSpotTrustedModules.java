@@ -30,8 +30,7 @@ import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 /**
  * Builds the result for {@link HotSpotInvocationPlugins#initTrustedModules(CompilerConfiguration)}.
  *
- * This version of the class is used on JDK 9 or later. It replaces the JDK 8 class of the same
- * qualified name in a multi-release jar.
+ * This version of the class must be used on JDK 9 or later.
  *
  * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
  */
