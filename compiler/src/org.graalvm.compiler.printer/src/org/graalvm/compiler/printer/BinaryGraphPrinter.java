@@ -87,12 +87,14 @@ public class BinaryGraphPrinter implements
     private final GraphOutput<BinaryGraphPrinter.GraphInfo, ResolvedJavaMethod> output;
 
     public BinaryGraphPrinter(DebugContext ctx, SnippetReflectionProvider snippetReflection) throws IOException {
-        this.output = ctx.buildOutput(GraphOutput.newBuilder(this). //
-                        protocolVersion(5, 0). //
-                        blocks(this). //
-                        elementsAndLocations(this, this). //
-                        types(this) //
+        // @formatter:off
+        this.output = ctx.buildOutput(GraphOutput.newBuilder(this).
+                        protocolVersion(5, 0).
+                        blocks(this).
+                        elementsAndLocations(this, this).
+                        types(this)
         );
+        // @formatter:on
         this.snippetReflection = snippetReflection;
     }
 
@@ -539,12 +541,13 @@ public class BinaryGraphPrinter implements
 
         List<SourceLanguagePosition> arr = new ArrayList<>();
         arr.add(new JavaSourcePosition());
-        while (pos != null) {
-            SourceLanguagePosition cur = pos.getSourceLanguage();
+        NodeSourcePosition at = pos;
+        while (at != null) {
+            SourceLanguagePosition cur = at.getSourceLanguage();
             if (cur != null) {
                 arr.add(cur);
             }
-            pos = pos.getCaller();
+            at = at.getCaller();
         }
         return arr;
     }

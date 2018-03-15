@@ -70,11 +70,11 @@ public interface GraphLocations<M, P, L> {
      * resource identifier. This can be done by using
      * <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs">data
      * URIs</a> like:
-     * 
+     *
      * <pre>
      * data:text/javascript,alert('Vivat graphs!')
      * </pre>
-     * 
+     *
      * @param location the location
      * @return the file name for the given location or {@code null} if it is not known
      */
@@ -84,8 +84,8 @@ public interface GraphLocations<M, P, L> {
      * Line number of a location. The first line in the source file is one. Negative value means the
      * line location isn't available. In such situation one can provide an offset driven location
      * co-ordinates via {@link #locationOffsetStart(java.lang.Object)} and
-     * {@link #locationOffsetEnd(java.lang.Object) methods.
-     * 
+     * {@link #locationOffsetEnd(java.lang.Object)} methods.
+     *
      * @param location the location
      * @return the line number for given location, negative value means no line
      */

@@ -22,8 +22,6 @@
  */
 package org.graalvm.graphio;
 
-import java.util.Map;
-
 /**
  * Representation of methods, fields, their signatures and code locations.
  *

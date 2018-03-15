@@ -35,13 +35,18 @@ public interface SourceLanguagePosition {
      */
     String toShortString();
 
-    public int getOffsetEnd();
+    /** Mimics GraphLocations operation. */
+    int getOffsetEnd();
 
-    public int getOffsetStart();
+    /** Mimics GraphLocations operation. */
+    int getOffsetStart();
 
-    public int getLineNumber();
+    /** Mimics GraphLocations operation. */
+    int getLineNumber();
 
-    public URI getURI();
+    /** Mimics GraphLocations operation. */
+    URI getURI();
 
-    public String getLanguage();
+    /** Mimics GraphLocations operation. */
+    String getLanguage();
 }
