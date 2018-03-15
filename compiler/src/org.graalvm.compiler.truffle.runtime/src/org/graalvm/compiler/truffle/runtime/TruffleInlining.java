@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.source.SourceSection;
 
+import java.net.URI;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class TruffleInlining implements Iterable<TruffleInliningDecision>, TruffleInliningPlan {
@@ -251,16 +252,33 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         }
 
         @Override
-        public void addSourceInformation(Map<String, Object> props) {
-            props.put("truffle.SourceSection", sourceSection.getSource().getURI());
-            props.put("truffle.line", sourceSection.getStartLine());
-            props.put("truffle.charIndex", sourceSection.getCharIndex());
-            props.put("truffle.column", sourceSection.getStartColumn());
+        public String toShortString() {
+            return sourceSection.getSource().getURI() + " " + sourceSection.getStartLine() + ":" + sourceSection.getStartColumn();
         }
 
         @Override
-        public String toShortString() {
-            return sourceSection.getSource().getURI() + " " + sourceSection.getStartLine() + ":" + sourceSection.getStartColumn();
+        public int getOffsetEnd() {
+            return sourceSection.getCharEndIndex();
+        }
+
+        @Override
+        public int getOffsetStart() {
+            return sourceSection.getCharIndex();
+        }
+
+        @Override
+        public int getLineNumber() {
+            return sourceSection.getStartLine();
+        }
+
+        @Override
+        public URI getURI() {
+            return sourceSection.getSource().getURI();
+        }
+
+        @Override
+        public String getLanguage() {
+            return sourceSection.getSource().getLanguage();
         }
     }
 
