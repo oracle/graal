@@ -299,6 +299,9 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
 
     @Override
     protected String findLocationFile(Location loc) {
+        if (loc == null) {
+            return null;
+        }
         URI u = locations.locationURI(loc);
         return u == null || !"file".equals(u.getScheme()) ? null : new File(u).getPath();
     }
@@ -306,6 +309,26 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
     @Override
     protected int findLocationLine(Location loc) {
         return locations.locationLineNumber(loc);
+    }
+
+    @Override
+    protected URI findLocationURI(Location loc) {
+        return locations.locationURI(loc);
+    }
+
+    @Override
+    protected String findLocationLanguage(Location loc) {
+        return locations.locationLanguage(loc);
+    }
+
+    @Override
+    protected int findLocationStart(Location loc) {
+        return locations.locationOffsetStart(loc);
+    }
+
+    @Override
+    protected int findLocationEnd(Location loc) {
+        return locations.locationOffsetEnd(loc);
     }
 
     @Override

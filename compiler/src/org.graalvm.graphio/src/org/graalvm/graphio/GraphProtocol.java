@@ -24,6 +24,7 @@ package org.graalvm.graphio;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
@@ -77,7 +78,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     final int versionMinor;
 
     GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
-        if (major > 5 || (major == 5 && minor > 0)) {
+        if (major > 6 || (major == 6 && minor > 0)) {
             throw new IllegalArgumentException("Unrecognized version " + major + "." + minor);
         }
         this.versionMajor = major;
@@ -260,6 +261,14 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     protected abstract String findLocationFile(Location loc);
 
     protected abstract int findLocationLine(Location loc);
+
+    protected abstract URI findLocationURI(Location loc);
+
+    protected abstract String findLocationLanguage(Location loc);
+
+    protected abstract int findLocationStart(Location loc);
+
+    protected abstract int findLocationEnd(Location loc);
 
     private void writeVersion() throws IOException {
         writeBytesRaw(MAGIC_BYTES);
@@ -556,13 +565,29 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             final int bci = findNodeSourcePositionBCI(pos);
             writeInt(bci);
             Iterator<Location> ste = findLocation(method, bci, pos).iterator();
-            Location first = ste.hasNext() ? ste.next() : null;
-            String fileName = first != null ? findLocationFile(first) : null;
-            if (fileName != null) {
-                writePoolObject(fileName);
-                writeInt(findLocationLine(first));
-            } else {
+            if (versionMajor >= 6) {
+                while (ste.hasNext()) {
+                    Location loc = ste.next();
+                    URI uri = findLocationURI(loc);
+                    if (uri == null) {
+                        throw new IOException("No URI for " + loc);
+                    }
+                    writePoolObject(uri.toString());
+                    writeString(findLocationLanguage(loc));
+                    writeInt(findLocationLine(loc));
+                    writeInt(findLocationStart(loc));
+                    writeInt(findLocationEnd(loc));
+                }
                 writePoolObject(null);
+            } else {
+                Location first = ste.hasNext() ? ste.next() : null;
+                String fileName = first != null ? findLocationFile(first) : null;
+                if (fileName != null) {
+                    writePoolObject(fileName);
+                    writeInt(findLocationLine(first));
+                } else {
+                    writePoolObject(null);
+                }
             }
             writePoolObject(findNodeSourcePositionCaller(pos));
         } else {
