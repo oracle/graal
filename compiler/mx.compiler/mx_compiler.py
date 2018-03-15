@@ -255,7 +255,7 @@ def ctw(args, extraVMarguments=None):
     elif not configArgs:
         vmargs.append('-DCompileTheWorld.Config=Inline=false')
 
-    # suppress menubar and dock when running on Mac; exclude x11 classes as they may cause VM crashes (on Solaris)
+    # suppress menubar and dock when running on Mac
     vmargs = ['-Djava.awt.headless=true'] + vmargs
 
     if args.cp:
@@ -266,13 +266,10 @@ def ctw(args, extraVMarguments=None):
         # Default to the CompileTheWorld.SUN_BOOT_CLASS_PATH token
         cp = None
 
-    foundExcludeMethodFilter = False
-    for i in range(len(vmargs)):
-        if vmargs[i].startswith('-DCompileTheWorld.ExcludeMethodFilter='):
-            vmargs[i] = vmargs[i] + ',sun.awt.X11.*.*'
-            foundExcludeMethodFilter = True
-    if not foundExcludeMethodFilter:
-        vmargs.append('-DCompileTheWorld.ExcludeMethodFilter=sun.awt.X11.*.*')
+    # Exclude X11 classes as they may cause VM crashes (on Solaris)
+    exclusionPrefix = '-DCompileTheWorld.ExcludeMethodFilter='
+    exclusions = ','.join([a[len(exclusionPrefix):] for a in vmargs if a.startswith(exclusionPrefix)] + ['sun.awt.X11.*.*'])
+    vmargs.append(exclusionPrefix + exclusions)
 
     if _get_XX_option_value(vmargs + _remove_empty_entries(extraVMarguments), 'UseJVMCICompiler', False):
         vmargs.append('-XX:+BootstrapJVMCI')

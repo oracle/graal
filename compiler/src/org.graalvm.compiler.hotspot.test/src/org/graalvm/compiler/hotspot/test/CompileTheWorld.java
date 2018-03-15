@@ -580,6 +580,10 @@ public final class CompileTheWorld {
                         continue;
                     }
 
+                    if (!isClassIncluded(className)) {
+                        continue;
+                    }
+
                     try {
                         // Load and initialize class
                         Class<?> javaClass = Class.forName(className, true, loader);
@@ -596,14 +600,6 @@ public final class CompileTheWorld {
                             if (isClassIncluded(className)) {
                                 println("Preloading failed for (%d) %s: %s", classFileCounter, className, t);
                             }
-                            continue;
-                        }
-
-                        /*
-                         * Only check filters after class loading and resolution to mitigate impact
-                         * on reproducibility.
-                         */
-                        if (!isClassIncluded(className)) {
                             continue;
                         }
 
