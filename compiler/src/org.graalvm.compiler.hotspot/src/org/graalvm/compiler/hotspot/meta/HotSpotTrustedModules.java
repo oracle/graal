@@ -22,8 +22,9 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
+import static org.graalvm.compiler.serviceprovider.JDK9Method.JAVA_SPECIFICATION_VERSION;
+
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 /**
@@ -37,6 +38,6 @@ public final class HotSpotTrustedModules {
 
     @SuppressWarnings("unused")
     static EconomicSet<Object> build(CompilerConfiguration compilerConfiguration) {
-        throw GraalError.shouldNotReachHere();
+        throw new InternalError("Cannot use API introduced in Java 9 or later on Java " + JAVA_SPECIFICATION_VERSION);
     }
 }
