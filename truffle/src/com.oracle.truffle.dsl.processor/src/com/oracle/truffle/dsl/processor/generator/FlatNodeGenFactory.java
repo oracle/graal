@@ -1126,14 +1126,14 @@ class FlatNodeGenFactory {
     }
 
     // Polymorphism reporting constants
-    private static final String OLD_PREFIX = "old_";
-    private static final String NEW_PREFIX = "new_";
-    private static final String COUNT_SUFIX = "_count";
-    private static final String OLD_STATE = OLD_PREFIX + "state";
-    private static final String OLD_EXCLUDE = OLD_PREFIX + "exclude";
-    private static final String OLD_CACHE_COUNT = OLD_PREFIX + "cache" + COUNT_SUFIX;
-    private static final String NEW_STATE = NEW_PREFIX + "state";
-    private static final String NEW_EXCLUDE = NEW_PREFIX + "exclude";
+    private static final String OLD_PREFIX = "old";
+    private static final String NEW_PREFIX = "new";
+    private static final String COUNT_SUFIX = "Count";
+    private static final String OLD_STATE = OLD_PREFIX + "State";
+    private static final String OLD_EXCLUDE = OLD_PREFIX + "Exclude";
+    private static final String OLD_CACHE_COUNT = OLD_PREFIX + "Cache" + COUNT_SUFIX;
+    private static final String NEW_STATE = NEW_PREFIX + "State";
+    private static final String NEW_EXCLUDE = NEW_PREFIX + "Exclude";
     private static final String REPORT_POLYMORPHIC_SPECIALIZE = "reportPolymorphicSpecialize";
     private static final String CHECK_FOR_POLYMORPHIC_SPECIALIZE = "checkForPolymorphicSpecialize";
     private static final String COUNT_CACHES = "countCaches";
@@ -1224,7 +1224,6 @@ class FlatNodeGenFactory {
     }
 
     private void generateSaveOldPolymorphismState(CodeTreeBuilder builder, FrameState frameState) {
-        // TODO: use camelCase
         // TODO: call cashe count only if state is not 0, use ternary old_state == 0 ? 0 : countCaches();
         // TODO: guard checkForPolymorphicSpecialize with the if that is in the method
         // TODO: Tests
