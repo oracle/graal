@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,7 +126,7 @@ public final class TruffleDebugger extends DebuggerDomain {
         ds = tdbg.startSession(new SuspendedCallbackImpl());
         ds.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).includeInternal(false).build());
         slh = context.getScriptsHandler();
-        bph = new BreakpointsHandler(ds, slh);
+        bph = new BreakpointsHandler(ds, slh, () -> eventHandler);
     }
 
     @Override
@@ -175,9 +175,37 @@ public final class TruffleDebugger extends DebuggerDomain {
     }
 
     @Override
-    public Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction) {
+    public Params getPossibleBreakpoints(Location start, Location end, boolean restrictToFunction) throws CommandProcessException {
+        int scriptId = start.getScriptId();
+        if (scriptId != end.getScriptId()) {
+            throw new CommandProcessException("Different location scripts: " + scriptId + ", " + end.getScriptId());
+        }
+        Script script = slh.getScript(scriptId);
+        if (script == null) {
+            throw new CommandProcessException("Unknown scriptId: " + scriptId);
+        }
+        Source source = script.getSource();
+        int o1 = source.getLineStartOffset(start.getLine());
+        if (start.getColumn() > 0) {
+            o1 += start.getColumn() - 1;
+        }
+        int o2;
+        if (end.getLine() > source.getLineCount()) {
+            o2 = source.getLength();
+        } else {
+            o2 = source.getLineStartOffset(end.getLine());
+            if (end.getColumn() > 0) {
+                o2 += end.getColumn() - 1;
+            }
+        }
+        SourceSection range = source.createSection(o1, o2 - o1);
+        Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, context.getEnv());
         JSONObject json = new JSONObject();
-        json.put("locations", new JSONArray());
+        JSONArray arr = new JSONArray();
+        for (SourceSection ss : locations) {
+            arr.put(new Location(scriptId, ss.getStartLine(), ss.getStartColumn()).toJSON());
+        }
+        json.put("locations", arr);
         return new Params(json);
     }
 
@@ -562,9 +590,6 @@ public final class TruffleDebugger extends DebuggerDomain {
             Params params = new Params(jsonParams);
             Event scriptParsed = new Event("Debugger.scriptParsed", params);
             eventHandler.event(scriptParsed);
-            bph.resolveURLBreakpoints(script).stream().map(locationParams -> new Event("Debugger.breakpointResolved", locationParams)).forEach(breakpointResolved -> {
-                eventHandler.event(breakpointResolved);
-            });
         }
 
         private CharSequence getSourceMapURL(Source source, int lastLine) {

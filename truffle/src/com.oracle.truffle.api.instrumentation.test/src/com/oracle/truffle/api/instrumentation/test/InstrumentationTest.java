@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -62,13 +63,20 @@ import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
 import com.oracle.truffle.api.instrumentation.AllocationListener;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
+import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -76,6 +84,8 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
+import java.util.Collections;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
@@ -884,6 +894,98 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return parseOriginal(request);
         }
 
+    }
+
+    @Test
+    public void testNearestExecutionNode() throws IOException {
+        TestNearestExecutionNode.Tester tester = engine.getInstruments().get("testNearestExecutionNode").lookup(TestNearestExecutionNode.Tester.class);
+        Source source = Source.create(InstrumentationTestLanguage.ID,
+                        "ROOT(DEFINE(foo1, ROOT(STATEMENT, VARIABLE(a, 10), STATEMENT, EXPRESSION))," +
+                                        "DEFINE(foo2, ROOT(EXPRESSION, CALL(foo1), STATEMENT, STATEMENT(EXPRESSION))))");
+        tester.set(StandardTags.StatementTag.class, (offset, node) -> {
+            int pos = node.getSourceSection().getCharIndex();
+            if (offset <= 33) {
+                return pos == 23;
+            } else if (offset <= 75) {
+                return pos == 51;
+            } else if (offset <= 125) {
+                return pos == 117;
+            } else {
+                return pos == 128;
+            }
+        });
+        run(source);
+        assertNull(tester.getFailures());
+    }
+
+    @Registration(name = "", version = "", id = "testNearestExecutionNode", services = TestNearestExecutionNode.Tester.class)
+    public static class TestNearestExecutionNode extends TruffleInstrument {
+
+        @Override
+        protected void onCreate(final Env env) {
+            final Tester tester = new Tester();
+            env.registerService(tester);
+            env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    int length = event.getSource().getLength();
+                    env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
+                        @Override
+                        public void onLoad(LoadSourceSectionEvent evt) {
+                            if (!(evt.getNode() instanceof InstrumentableNode)) {
+                                return;
+                            }
+                            InstrumentableNode node = (InstrumentableNode) evt.getNode();
+                            SourceSection ss = evt.getNode().getSourceSection();
+                            if (ss == null) {
+                                return;
+                            }
+                            Class<? extends Tag> tag = tester.getTag();
+                            Set<Class<? extends Tag>> tags = Collections.singleton(tag);
+                            for (int offset = 0; offset < length; offset++) {
+                                if (ss.getCharIndex() <= offset && offset < ss.getCharEndIndex()) {
+                                    Node nearestNode = node.findNearestNodeAt(offset, tags);
+                                    tester.checkNearest(offset, nearestNode);
+                                }
+                            }
+                        }
+                    }, true);
+                }
+            }, true);
+        }
+
+        static class Tester {
+
+            private BiFunction<Integer, Node, Boolean> nearestNodeChecker;
+            private Class<? extends Tag> tag;
+            private List<String> failures;
+
+            void set(Class<? extends Tag> tag, BiFunction<Integer, Node, Boolean> nearestNodeChecker) {
+                this.tag = tag;
+                this.nearestNodeChecker = nearestNodeChecker;
+            }
+
+            private Class<? extends Tag> getTag() {
+                return tag;
+            }
+
+            private void checkNearest(int offset, Node nearestNode) {
+                if (!nearestNodeChecker.apply(offset, nearestNode)) {
+                    if (failures == null) {
+                        failures = new ArrayList<>();
+                    }
+                    failures.add("Wrong nearest node for offset " + offset + ": " + nearestNode + " with section " + nearestNode.getSourceSection());
+                }
+            }
+
+            String getFailures() {
+                if (failures == null) {
+                    return null;
+                } else {
+                    return failures.toString();
+                }
+            }
+        }
     }
 
     /*

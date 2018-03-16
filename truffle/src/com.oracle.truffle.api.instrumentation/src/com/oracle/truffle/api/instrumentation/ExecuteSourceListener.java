@@ -24,35 +24,33 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * A listener attached by an {@link Instrumenter} to specific locations of a guest language program
- * to listen to load source events.
+ * A listener attached by an {@link Instrumenter} to specific sources of a guest language program to
+ * listen to execute source events.
  *
- * @since 0.15
+ * @since 0.33
  */
-public interface LoadSourceListener {
+public interface ExecuteSourceListener {
 
     /**
-     * Invoked whenever a new {@link Source source} is loaded. The order in which multiple source
+     * Invoked whenever a new {@link Source source} is executed. The order in which multiple source
      * event listeners are notified matches the order they are
-     * {@link Instrumenter#attachLoadSourceListener(SourceFilter, LoadSourceListener, boolean)
+     * {@link Instrumenter#attachExecuteSourceListener(SourceFilter, ExecuteSourceListener, boolean)
      * attached}.
      * <p>
-     * <b>Implementation Note:</b> Source load events are notified when the guest language
-     * implementation uses a new {@link Source source} by invoking
-     * {@link TruffleRuntime#createCallTarget(RootNode)} with a root node that uses a new source in
-     * {@link Node#getSourceSection()}. It assumes that all nodes of an AST have the same
-     * {@link Source source} as their root.
+     * <b>Implementation Note:</b> Source execute events are notified when the guest language
+     * implementation executes a new {@link Source source} by invoking any {@link RootNode} that
+     * uses the new source in {@link Node#getSourceSection()}. It assumes that all nodes of an AST
+     * have the same {@link Source source} as their root.
      * </p>
      *
      * @param event an event with context information
-     * @since 0.15
+     * @since 0.33
      */
-    void onLoad(LoadSourceEvent event);
+    void onExecute(ExecuteSourceEvent event);
 
 }

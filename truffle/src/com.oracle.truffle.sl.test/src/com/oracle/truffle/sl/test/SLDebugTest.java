@@ -789,6 +789,120 @@ public class SLDebugTest {
         }
     }
 
+    @Test
+    public void testMisplacedLineBreakpoints() throws Throwable {
+        final String sourceStr = "// A comment\n" +              // 1
+                        "function invocable(n) {\n" +
+                        "  if (R1-3_R27_n <= 1) {\n" +
+                        "    R4-6_one \n" +
+                        "        =\n" +                 // 5
+                        "          1;\n" +
+                        "    R7-9_return\n" +
+                        "        one;\n" +
+                        "  } else {\n" +
+                        "    // A comment\n" +          // 10
+                        "    while (\n" +
+                        "        R10-13_n > 0\n" +
+                        "          ) { \n" +
+                        "      R14-16_one \n" +
+                        "          = \n" +              // 15
+                        "            2;\n" +
+                        "      R17-20_n = n -\n" +
+                        "          one *\n" +
+                        "          one;\n" +
+                        "    }\n" +                     // 20
+                        "    R21_n =\n" +
+                        "        n - 1; R22_n = n + 1;\n" +
+                        "    R23-26_return\n" +
+                        "        n * n;\n" +
+                        "    \n" +                      // 25
+                        "  }\n" +
+                        "}\n" +
+                        "\n" +
+                        "function\n" +
+                        "   main()\n" +                 // 30
+                        "         {\n" +
+                        "  R28-34_return invocable(1) + invocable(2);\n" +
+                        "}\n" +
+                        "\n";
+        tester.assertLineBreakpointsResolution(sourceStr, "R", "sl");
+    }
+
+    @Test
+    public void testMisplacedColumnBreakpoints() throws Throwable {
+        final String sourceStr = "// A B1_comment\n" +              // 1
+                        "function B2_ invocable(B3_n) {\n" +
+                        "  if (R1-4_R16_n <= 1) B4_ B5_{B6_\n" +
+                        "    R5-7_one \n" +
+                        "        =\n" +                 // 5
+                        "          B7_1;\n" +
+                        "    R8_return\n" +
+                        "        one;\n" +
+                        "  B8_}B9_ else B10_ {\n" +
+                        "    // A commentB11_\n" +          // 10
+                        "    while (\n" +
+                        "        R9-12_n > 0\n" +
+                        "          ) B12_ { \n" +
+                        "      one \n" +
+                        "          = \n" +              // 15
+                        "            2;\n" +
+                        "      R13-14_n = n -\n" +
+                        "          one *\n" +
+                        "          one;\n" +
+                        "   B13_ B14_}B15_\n" +                    // 20
+                        "    R15_return\n" +
+                        "        n * n;\n" +
+                        "    \n" +
+                        "  }B16_\n" +
+                        "}\n" +                         // 25
+                        "\n" +
+                        "function\n" +
+                        "   main()\n" +
+                        "         {\n" +
+                        "  return invocable(1) + invocable(2);\n" +
+                        "}\n" +
+                        "\n";
+        tester.assertColumnBreakpointsResolution(sourceStr, "B", "R", "sl");
+    }
+
+    @Test
+    public void testBreakpointEverywhereBreaks() throws Throwable {
+        final String sourceCode = "// A comment\n" +              // 1
+                        "function invocable(n) {\n" +
+                        "  if (n <= 1) {\n" +
+                        "    one \n" +
+                        "        =\n" +                 // 5
+                        "          1;\n" +
+                        "    return\n" +
+                        "        one;\n" +
+                        "  } else {\n" +
+                        "    // A comment\n" +          // 10
+                        "    while (\n" +
+                        "        n > 0\n" +
+                        "          ) { \n" +
+                        "      one \n" +
+                        "          = \n" +              // 15
+                        "            2;\n" +
+                        "      n = n -\n" +
+                        "          one *\n" +
+                        "          one;\n" +
+                        "    }\n" +                    // 20
+                        "    return\n" +
+                        "        n * n;\n" +
+                        "    \n" +
+                        "  }\n" +
+                        "}\n" +                         // 25
+                        "\n" +
+                        "function\n" +
+                        "   main()\n" +
+                        "         {\n" +
+                        "  return invocable(1) + invocable(2);\n" +
+                        "}\n" +
+                        "\n";
+        Source source = Source.newBuilder("sl", sourceCode, "testBreakpointsAnywhere.sl").build();
+        tester.assertBreakpointsBreakEverywhere(source);
+    }
+
     private static void assertNumber(Object real, double expected) {
         if (real instanceof Number) {
             assertEquals(expected, ((Number) real).doubleValue(), 0.1);

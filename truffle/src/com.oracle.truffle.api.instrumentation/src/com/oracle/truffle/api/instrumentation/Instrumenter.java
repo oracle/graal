@@ -218,6 +218,26 @@ public abstract class Instrumenter {
     public abstract <T extends LoadSourceListener> EventBinding<T> attachLoadSourceListener(SourceFilter filter, T listener, boolean includeExistingSources);
 
     /**
+     * Starts notifications for each newly executed {@link Source} and returns a
+     * {@linkplain EventBinding binding} that can be used to terminate notifications. Only
+     * subsequent executions will be notified unless {@code includeExecutedSources} is true, in
+     * which case a notification for each previously executed source will be delivered before this
+     * method returns. A source is reported as executed if any of it's {@link RootNode}s start to be
+     * executed.
+     *
+     * @param filter a filter on which source events are triggered.
+     * @param listener a listener that gets notified if a source was loaded
+     * @param includeExecutedSources whether or not this listener should be notified for sources
+     *            which were already executed at the time when this listener was attached.
+     * @return a handle for stopping the notification stream
+     *
+     * @see ExecuteSourceListener#onExecute(ExecuteSourceEvent)
+     *
+     * @since 0.33
+     */
+    public abstract <T extends ExecuteSourceListener> EventBinding<T> attachExecuteSourceListener(SourceFilter filter, T listener, boolean includeExecutedSources);
+
+    /**
      * Starts notifications for each {@link SourceSection} in every newly loaded {@link Source} and
      * returns a {@linkplain EventBinding binding} that can be used to terminate notifications. Only
      * subsequent loads will be notified unless {@code includeExistingSourceSections} is true, in
