@@ -1099,7 +1099,7 @@ class FlatNodeGenFactory {
             builder.tree(exclude.createLoad(frameState));
         }
         if (node.isReportPolymorphism()) {
-            generateSaveOldPolymorphismState(builder);
+            generateSaveOldPolymorphismState(builder, frameState);
         }
         builder.startTryBlock();
 
@@ -1167,7 +1167,7 @@ class FlatNodeGenFactory {
         builder.end();
 
         builder.startBlock();
-        builder.declaration(state.bitSetType, NEW_STATE, "state_ & " + getMaskForReportPolymorphism());
+        builder.declaration(state.bitSetType, NEW_STATE, state.createMaskedReference(FrameState.load(this), reachableSpecializations.toArray()));
         if (requiresExclude) {
             builder.declaration(exclude.bitSetType, NEW_EXCLUDE, exclude.createReference(FrameState.load(this)));
         }
@@ -1223,31 +1223,18 @@ class FlatNodeGenFactory {
         builder.string(");").newLine();
     }
 
-    private void generateSaveOldPolymorphismState(CodeTreeBuilder builder) {
-        // TODO: use state.createMaskedReference()
+    private void generateSaveOldPolymorphismState(CodeTreeBuilder builder, FrameState frameState) {
         // TODO: use camelCase
         // TODO: call cashe count only if state is not 0, use ternary old_state == 0 ? 0 : countCaches();
         // TODO: guard checkForPolymorphicSpecialize with the if that is in the method
         // TODO: Tests
-        builder.declaration(state.bitSetType, OLD_STATE, "state & " + getMaskForReportPolymorphism());
+        builder.declaration(state.bitSetType, OLD_STATE, state.createMaskedReference(frameState, reachableSpecializations.toArray()));
         if (requiresExclude()) {
             builder.declaration(exclude.bitSetType, OLD_EXCLUDE, "exclude");
         }
         if (requiresCacheCheck()) {
             builder.declaration(context.getType(int.class), OLD_CACHE_COUNT, COUNT_CACHES + "()");
         }
-    }
-
-    private String getMaskForReportPolymorphism() {
-        StringBuilder stateMaskBuilder = new StringBuilder("0b");
-        for (SpecializationData specialization : reachableSpecializations) {
-            if (specialization.getMessageElement().getAnnotation(ReportPolymorphism.Exclude.class) == null) {
-                stateMaskBuilder.append("1");
-            } else {
-                stateMaskBuilder.append("0");
-            }
-        }
-        return stateMaskBuilder.toString();
     }
 
     private CodeTree createThrowUnsupported(final CodeTreeBuilder parent, final FrameState frameState) {
