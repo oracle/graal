@@ -3179,7 +3179,7 @@ public class BytecodeParser implements GraphBuilderContext {
         genIf(condition, trueSuccessor, falseSuccessor, probability);
     }
 
-    private double getProfileProbability(boolean negate) {
+    protected double getProfileProbability(boolean negate) {
         double probability;
         if (profilingInfo == null) {
             probability = 0.5;
