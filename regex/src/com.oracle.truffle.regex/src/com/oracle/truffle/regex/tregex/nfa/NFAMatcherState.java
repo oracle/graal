@@ -24,15 +24,17 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class NFAMatcherState extends NFAState {
 
@@ -75,9 +77,9 @@ public class NFAMatcherState extends NFAState {
         return matcherBuilder.toString();
     }
 
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return toTable("NFAMatcherState").append(new DebugUtil.Value("matcherBuilder", toString()));
+    public JsonValue toJson() {
+        return toJson("NFAMatcherState").append(Json.prop("matcherBuilder", matcherBuilder));
     }
 }

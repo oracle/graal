@@ -24,11 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,7 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-final class ASTSuccessor {
+final class ASTSuccessor implements JsonConvertible {
 
     private ArrayList<ASTTransitionSetBuilder> mergedStates = new ArrayList<>();
     private boolean lookAroundsMerged = false;
@@ -117,16 +119,13 @@ final class ASTSuccessor {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table("ASTStepSuccessor",
-                        new DebugUtil.Value("lookAheads", lookAheads.stream().map(x -> String.valueOf(x.getRoot().toStringWithID())).collect(
-                                        Collectors.joining(", ", "[", "]"))),
-                        new DebugUtil.Value("lookBehinds", lookBehinds.stream().map(x -> String.valueOf(x.getRoot().toStringWithID())).collect(
-                                        Collectors.joining(", ", "[", "]"))));
-        for (ASTTransitionSetBuilder mergeBuilder : mergedStates) {
-            table.append(mergeBuilder.toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        // ensure merged states are calculated
+        getMergedStates(new ASTTransitionCanonicalizer());
+        return Json.obj(Json.prop("lookAheads", lookAheads.stream().map(x -> Json.val(x.getRoot().getId())).collect(Collectors.toList())),
+                        Json.prop("lookBehinds", lookBehinds.stream().map(x -> Json.val(x.getRoot().getId())).collect(Collectors.toList())),
+                        Json.prop("mergedStates", mergedStates));
     }
 }

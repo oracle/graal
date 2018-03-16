@@ -24,16 +24,21 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public final class DFAStateNodeBuilder {
+public final class DFAStateNodeBuilder implements JsonConvertible {
 
     private final short id;
     private final NFATransitionSet nfaStateSet;
@@ -161,29 +166,31 @@ public final class DFAStateNodeBuilder {
         return sb.toString();
     }
 
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
     public String toString() {
         StringBuilder sb = new StringBuilder();
         return DebugUtil.appendNodeId(sb, id).append(": ").append(stateSetToString()).toString();
     }
 
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table("DFAState",
-                        new DebugUtil.Value("stateSet", stateSetToString()),
-                        new DebugUtil.Value("finalState", isFinalState()),
-                        new DebugUtil.Value("anchoredFinalState", isAnchoredFinalState()));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        JsonArray transitions = Json.array();
         if (successors != null) {
             for (int i = 0; i < successors.length; i++) {
-                DebugUtil.Table transition = new DebugUtil.Table("Transition",
-                                new DebugUtil.Value("target", successors[i].stateSetToString()),
-                                new DebugUtil.Value("matcher", matcherBuilders[i]));
+                JsonObject transition = Json.obj(
+                                Json.prop("target", successors[i].getId()),
+                                Json.prop("matcher", matcherBuilders[i]));
                 if (captureGroupTransitions != null) {
-                    transition.append(captureGroupTransitions[i].toTable());
+                    transition.append(Json.prop("captureGroupTransition", captureGroupTransitions[i]));
                 }
-                table.append(transition);
+                transitions.append(transition);
             }
         }
-        return table;
+        return Json.obj(Json.prop("stateSet", Json.array(nfaStateSet.stream().map(x -> Json.val(x.getTarget().getId())))),
+                        Json.prop("finalState", isFinalState()),
+                        Json.prop("anchoredFinalState", isAnchoredFinalState()),
+                        Json.prop("transitions", transitions));
     }
 }

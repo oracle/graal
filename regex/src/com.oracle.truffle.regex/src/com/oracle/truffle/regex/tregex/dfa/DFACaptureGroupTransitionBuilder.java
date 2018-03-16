@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
@@ -33,12 +34,14 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupLazyTransitionNode;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
 import com.oracle.truffle.regex.tregex.parser.Counter;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
 
-public class DFACaptureGroupTransitionBuilder {
+public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
 
     private final NFA nfa;
     private final DFAStateTransitionBuilder transitionBuilder;
@@ -156,14 +159,9 @@ public class DFACaptureGroupTransitionBuilder {
         return lazyTransition;
     }
 
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table("CGTransition");
-        for (NFAStateTransition nfaTransition : transitionBuilder.getTransitionSet()) {
-            table.append(new DebugUtil.Value("nfaTransition", String.format("%s -> %s",
-                            nfaTransition.getSource().idToString(),
-                            nfaTransition.getTarget().idToString())),
-                            nfaTransition.getGroupBoundaries().toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(transitionBuilder.getTransitionSet().stream().map(x -> Json.val(x.getId())));
     }
 }

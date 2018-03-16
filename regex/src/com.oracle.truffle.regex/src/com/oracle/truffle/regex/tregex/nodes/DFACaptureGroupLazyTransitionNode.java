@@ -25,9 +25,16 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class DFACaptureGroupLazyTransitionNode extends Node {
+import java.util.Arrays;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public final class DFACaptureGroupLazyTransitionNode extends Node implements JsonConvertible {
 
     private final short id;
     @Children private final DFACaptureGroupPartialTransitionNode[] partialTransitions;
@@ -60,21 +67,17 @@ public final class DFACaptureGroupLazyTransitionNode extends Node {
         return transitionToAnchoredFinalState;
     }
 
-    public DebugUtil.Table toTable() {
-        return toTable("DFACaptureGroupLazyTransition");
-    }
-
-    public DebugUtil.Table toTable(String name) {
-        DebugUtil.Table table = new DebugUtil.Table(name);
-        for (int i = 0; i < partialTransitions.length; i++) {
-            table.append(partialTransitions[i].toTable("Transition " + i));
-        }
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        JsonObject json = Json.obj(Json.prop("partialTransitions", Arrays.asList(partialTransitions)));
         if (transitionToAnchoredFinalState != null) {
-            table.append(transitionToAnchoredFinalState.toTable("TransitionAF"));
+            json.append(Json.prop("transitionToAnchoredFinalState", transitionToAnchoredFinalState));
         }
         if (transitionToFinalState != null) {
-            table.append(transitionToFinalState.toTable("TransitionF"));
+            json.append(Json.prop("transitionToFinalState", transitionToFinalState));
         }
-        return table;
+        return json;
     }
+
 }

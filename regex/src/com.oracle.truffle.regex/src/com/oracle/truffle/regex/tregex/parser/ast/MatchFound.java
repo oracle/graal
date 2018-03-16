@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * {@link MatchFound} nodes are {@link RegexASTNode}s that represent the initial/final states of the
@@ -68,8 +70,9 @@ public class MatchFound extends Term {
         return "::";
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("MatchFound");
+    public JsonValue toJson() {
+        return toJson("MatchFound");
     }
 }

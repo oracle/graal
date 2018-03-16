@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -35,12 +34,16 @@ import com.oracle.truffle.regex.tregex.parser.CodePointSet;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class RegexAST implements StateIndex<RegexASTNode> {
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     /**
      * Original pattern as seen by the parser.
@@ -422,22 +425,17 @@ public class RegexAST implements StateIndex<RegexASTNode> {
         addToIndex(node);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("RegexAST",
-                        source.toTable(),
-                        new DebugUtil.Value("root", root),
-                        new DebugUtil.Value("debugAST", ASTDebugDumpVisitor.getDump(wrappedRoot)),
-                        new DebugUtil.Value("wrappedRoot", wrappedRoot),
-                        new DebugUtil.Value("reachableCarets", reachableCarets),
-                        new DebugUtil.Value("startsWithCaret", root.startsWithCaret()),
-                        new DebugUtil.Value("endsWithDollar", root.endsWithDollar()),
-                        new DebugUtil.Value("reachableDollars", reachableDollars)).append(properties.toTable());
-    }
-
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public String toString() {
-        return toTable().toString();
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("source", source),
+                        Json.prop("root", root),
+                        Json.prop("debugAST", ASTDebugDumpVisitor.getDump(wrappedRoot)),
+                        Json.prop("wrappedRoot", wrappedRoot),
+                        Json.prop("reachableCarets", reachableCarets),
+                        Json.prop("startsWithCaret", root.startsWithCaret()),
+                        Json.prop("endsWithDollar", root.endsWithDollar()),
+                        Json.prop("reachableDollars", reachableDollars),
+                        Json.prop("properties", properties));
     }
 }

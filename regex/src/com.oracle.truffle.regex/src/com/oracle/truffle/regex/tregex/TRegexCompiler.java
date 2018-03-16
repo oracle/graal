@@ -74,6 +74,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 import com.oracle.truffle.regex.tregex.util.DFAExport;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
+import com.oracle.truffle.regex.tregex.util.json.Json;
 
 public final class TRegexCompiler extends RegexCompiler {
 
@@ -147,7 +148,7 @@ public final class TRegexCompiler extends RegexCompiler {
         TRegexExecRootNode tRegexRootNode = new TRegexExecRootNode(
                         language, this, source, options.isRegressionTestMode(), preCalculatedResults, executorNodeForward, executorNodeBackward, executorNodeCaptureGroups);
         if (DebugUtil.LOG_AUTOMATON_SIZES) {
-            logAutomatonSizes(source, ast, nfa, traceFinder, executorNodeCaptureGroups, executorNodeForward, executorNodeBackward);
+            logAutomatonSizesJson(source, ast, nfa, traceFinder, executorNodeCaptureGroups, executorNodeForward, executorNodeBackward);
             logAutomatonSizesCSV(source, ast, nfa, traceFinder, executorNodeCaptureGroups, executorNodeForward, executorNodeBackward);
         }
         return new CompiledRegexObject(tRegexRootNode);
@@ -229,9 +230,8 @@ public final class TRegexCompiler extends RegexCompiler {
 
     private static void debugAST(RegexAST ast) {
         if (DebugUtil.DEBUG) {
-            System.out.println(ast);
             ASTLaTexExportVisitor.exportLatex(ast, "./ast.tex", ASTLaTexExportVisitor.DrawPointers.LOOKBEHIND_ENTRIES);
-            System.out.println(ast.getWrappedRoot().toTable());
+            ast.getWrappedRoot().toJson().dump("ast.json");
         }
     }
 
@@ -240,21 +240,21 @@ public final class TRegexCompiler extends RegexCompiler {
             NFAExport.exportDot(nfa, "./nfa.gv", true);
             NFAExport.exportLaTex(nfa, "./nfa.tex", false);
             NFAExport.exportDotReverse(nfa, "./nfa_reverse.gv", true);
+            nfa.toJson().dump("nfa.json");
         }
     }
 
     private static void debugTraceFinder(NFA traceFinder) {
         if (DebugUtil.DEBUG) {
             NFAExport.exportDotReverse(traceFinder, "./trace_finder.gv", true);
-            for (int i = 0; i < traceFinder.getPreCalculatedResults().length; i++) {
-                System.out.println(i + ": " + traceFinder.getPreCalculatedResults()[i].toTable());
-            }
+            traceFinder.toJson().dump("nfa_trace_finder.json");
         }
     }
 
     private static void debugDFA(String name, DFAGenerator dfa) {
         if (DebugUtil.DEBUG) {
             DFAExport.exportDot(dfa, "dfa_" + name + ".gv", false);
+            dfa.toJson().dump("dfa_" + name + ".json");
         }
     }
 
@@ -271,17 +271,17 @@ public final class TRegexCompiler extends RegexCompiler {
         }
     }
 
-    private void logAutomatonSizes(RegexSource source, RegexAST ast, NFA nfa, NFA traceFinder,
+    private void logAutomatonSizesJson(RegexSource source, RegexAST ast, NFA nfa, NFA traceFinder,
                     TRegexDFAExecutorNode captureGroupExecutor, TRegexDFAExecutorNode executorNode, TRegexDFAExecutorNode executorNodeB) {
-        logSizes.log(new DebugUtil.Table("AutomatonSizes",
-                        new DebugUtil.Value("pattern", source.getPattern()),
-                        new DebugUtil.Value("flags", source.getFlags()),
-                        new DebugUtil.Value("ASTNodes", ast.getNumberOfNodes()),
-                        new DebugUtil.Value("NFAStates", nfa.getStates().length),
-                        new DebugUtil.Value("DFAStatesFwd", executorNode.getNumberOfStates()),
-                        new DebugUtil.Value("DFAStatesBck", traceFinder == null ? executorNodeB.getNumberOfStates() : 0),
-                        new DebugUtil.Value("TraceFinderStates", traceFinder == null ? 0 : executorNodeB.getNumberOfStates()),
-                        new DebugUtil.Value("CGDFAStates", captureGroupExecutor == null ? 0 : captureGroupExecutor.getNumberOfStates())).toString());
+        logSizes.log(Json.obj(
+                        Json.prop("pattern", source.getPattern()),
+                        Json.prop("flags", source.getFlags()),
+                        Json.prop("ASTNodes", ast.getNumberOfNodes()),
+                        Json.prop("NFAStates", nfa.getStates().length),
+                        Json.prop("DFAStatesFwd", executorNode.getNumberOfStates()),
+                        Json.prop("DFAStatesBck", traceFinder == null ? executorNodeB.getNumberOfStates() : 0),
+                        Json.prop("TraceFinderStates", traceFinder == null ? 0 : executorNodeB.getNumberOfStates()),
+                        Json.prop("CGDFAStates", captureGroupExecutor == null ? 0 : captureGroupExecutor.getNumberOfStates())).toString());
     }
 
     private void logAutomatonSizesCSV(RegexSource source, RegexAST ast, NFA nfa, NFA traceFinder,

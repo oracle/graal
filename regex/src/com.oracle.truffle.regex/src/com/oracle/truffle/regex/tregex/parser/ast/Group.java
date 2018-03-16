@@ -24,13 +24,15 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Groups are the top-most elements of regular expression ASTs.
@@ -315,7 +317,7 @@ public class Group extends Term implements RegexASTVisitorIterable {
         visitorIterationIndex = 0;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String alternativesToString() {
         return alternatives.stream().map(Sequence::toString).collect(Collectors.joining("|"));
     }
@@ -325,19 +327,19 @@ public class Group extends Term implements RegexASTVisitorIterable {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return "(" + (isCapturing() ? "" : "?:") + alternativesToString() + ")" + loopToString();
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("Group").append(
-                        new DebugUtil.Value("groupNumber", groupNumber),
-                        new DebugUtil.Value("isCapturing", isCapturing()),
-                        new DebugUtil.Value("isLoop", isLoop()),
-                        new DebugUtil.Value("isExpandedLoop", isExpandedQuantifier()),
-                        new DebugUtil.Value("enclosedCaptureGroupsLow", enclosedCaptureGroupsLow),
-                        new DebugUtil.Value("enclosedCaptureGroupsHigh", enclosedCaptureGroupsHigh)).append(alternatives.stream().map(Sequence::toTable));
+    public JsonValue toJson() {
+        return toJson("Group").append(
+                        Json.prop("groupNumber", groupNumber),
+                        Json.prop("isCapturing", isCapturing()),
+                        Json.prop("isLoop", isLoop()),
+                        Json.prop("isExpandedLoop", isExpandedQuantifier()),
+                        Json.prop("alternatives", alternatives));
     }
 }

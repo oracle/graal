@@ -36,7 +36,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -105,9 +104,6 @@ public final class NFAGenerator {
             }
             deadStates.clear();
             findDeadStates(deadStates);
-        }
-        if (DebugUtil.DEBUG) {
-            dumpNFA();
         }
         return new NFA(ast, anchoredInitialStates, initialStates, anchoredFinalState, finalState, nfaStates.values(), stateID, transitionID, null);
     }
@@ -197,13 +193,5 @@ public final class NFAGenerator {
             nfaStates.put(state.getStateSet(), state);
             return state;
         }
-    }
-
-    private void dumpNFA() {
-        System.out.println("NFA:");
-        for (NFAState state : nfaStates.values()) {
-            System.out.println(state.toTable());
-        }
-        System.out.println();
     }
 }

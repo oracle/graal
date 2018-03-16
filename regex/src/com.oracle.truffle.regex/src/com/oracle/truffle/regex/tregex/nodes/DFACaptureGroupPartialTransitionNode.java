@@ -25,15 +25,21 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.nfa.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Arrays;
 
-public final class DFACaptureGroupPartialTransitionNode extends Node {
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public final class DFACaptureGroupPartialTransitionNode extends Node implements JsonConvertible {
 
     public static final int FINAL_STATE_RESULT_INDEX = 0;
 
@@ -41,10 +47,10 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
     public static final byte[][] EMPTY_INDEX_UPDATES = {};
     public static final byte[][] EMPTY_INDEX_CLEARS = {};
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] newOrder;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final byte[] arrayCopies;
-    @CompilerDirectives.CompilationFinal(dimensions = 2) private final byte[][] indexUpdates;
-    @CompilerDirectives.CompilationFinal(dimensions = 2) private final byte[][] indexClears;
+    @CompilationFinal(dimensions = 1) private final byte[] newOrder;
+    @CompilationFinal(dimensions = 1) private final byte[] arrayCopies;
+    @CompilationFinal(dimensions = 2) private final byte[][] indexUpdates;
+    @CompilationFinal(dimensions = 2) private final byte[][] indexClears;
 
     private DFACaptureGroupPartialTransitionNode(byte[] newOrder, byte[] arrayCopies, byte[][] indexUpdates, byte[][] indexClears) {
         this.newOrder = newOrder;
@@ -221,33 +227,52 @@ public final class DFACaptureGroupPartialTransitionNode extends Node {
         }
     }
 
-    public DebugUtil.Table toTable() {
-        return toTable("DfaCGTransition");
-    }
-
-    public DebugUtil.Table toTable(String name) {
-        DebugUtil.Table table = new DebugUtil.Table(name);
-        table.append(new DebugUtil.Value("newOrder", Arrays.toString(newOrder)));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        JsonObject json = Json.obj(Json.prop("newOrder", Json.arrayUnsigned(newOrder)));
+        JsonArray copies = Json.array();
         for (int i = 0; i < arrayCopies.length; i += 2) {
             final int source = Byte.toUnsignedInt(arrayCopies[i]);
             final int target = Byte.toUnsignedInt(arrayCopies[i + 1]);
-            table.append(new DebugUtil.Table("ArrayCopy",
-                            new DebugUtil.Value("source", source),
-                            new DebugUtil.Value("target", target)));
+            copies.append(Json.obj(Json.prop("source", source), Json.prop("target", target)));
         }
+        json.append(Json.prop("arrayCopies", copies));
         for (byte[] indexUpdate : indexUpdates) {
-            table.append(indexManipulationToTable("IndexUpdate", indexUpdate));
+            json.append(indexManipulationToProp("indexUpdates", indexUpdate));
         }
         for (byte[] indexClear : indexClears) {
-            table.append(indexManipulationToTable("IndexClear", indexClear));
+            json.append(indexManipulationToProp("indexClears", indexClear));
         }
-        return table;
+        return json;
     }
 
-    private static DebugUtil.Table indexManipulationToTable(String name, byte[] values) {
-        return new DebugUtil.Table(name,
-                        new DebugUtil.Value("target", Byte.toUnsignedInt(values[0])),
-                        new DebugUtil.Value("groupStarts", GroupBoundaries.gbArrayGroupEntriesToString(values, 1)),
-                        new DebugUtil.Value("groupEnds", GroupBoundaries.gbArrayGroupExitsToString(values, 1)));
+    private static JsonObject.JsonObjectProperty indexManipulationToProp(String name, byte[] values) {
+        return Json.prop(name, Json.obj(
+                        Json.prop("target", Byte.toUnsignedInt(values[0])),
+                        Json.prop("groupStarts", groupEntriesToJsonArray(values)),
+                        Json.prop("groupEnds", groupExitsToJsonArray(values))));
+    }
+
+    @TruffleBoundary
+    private static JsonArray groupEntriesToJsonArray(byte[] gbArray) {
+        return groupBoundariesToJsonArray(gbArray, true);
+    }
+
+    @TruffleBoundary
+    private static JsonArray groupExitsToJsonArray(byte[] gbArray) {
+        return groupBoundariesToJsonArray(gbArray, false);
+    }
+
+    @TruffleBoundary
+    private static JsonArray groupBoundariesToJsonArray(byte[] gbArray, boolean entries) {
+        JsonArray array = Json.array();
+        for (int i = 1; i < gbArray.length; i++) {
+            int intValue = Byte.toUnsignedInt(gbArray[i]);
+            if ((intValue & 1) == (entries ? 0 : 1)) {
+                array.append(Json.val(intValue / 2));
+            }
+        }
+        return array;
     }
 }

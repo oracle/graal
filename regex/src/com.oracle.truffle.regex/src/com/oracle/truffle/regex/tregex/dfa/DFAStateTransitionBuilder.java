@@ -24,16 +24,18 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.List;
 
-public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> {
+public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
 
     private final NFATransitionSet transitions;
     private MatcherBuilder matcherBuilder;
@@ -74,15 +76,10 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         return transitions;
     }
 
+    @TruffleBoundary
     @Override
-    public String toString() {
-        return toTable("DFAStateConnectionBuilder").toString();
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable(String name) {
-        return new DebugUtil.Table(name,
-                        new DebugUtil.Value("matcherBuilder", getMatcherBuilder()),
-                        new DebugUtil.Value("transitions", getTransitionSet()));
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()),
+                        Json.prop("transitions", (JsonConvertible) getTransitionSet()));
     }
 }

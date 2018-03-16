@@ -29,7 +29,6 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public final class LiteralRegexEngine {
 
@@ -44,13 +43,7 @@ public final class LiteralRegexEngine {
         if ((caret || dollar) && ast.getSource().getFlags().isMultiline()) {
             return null;
         }
-        final LiteralRegexExecRootNode literalNode = createLiteralNode(language, ast, caret, dollar, preCalcResultVisitor);
-        if (DebugUtil.DEBUG) {
-            if (literalNode != null) {
-                System.out.println(literalNode.toTable());
-            }
-        }
-        return literalNode;
+        return createLiteralNode(language, ast, caret, dollar, preCalcResultVisitor);
     }
 
     private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar, PreCalcResultVisitor preCalcResultVisitor) {

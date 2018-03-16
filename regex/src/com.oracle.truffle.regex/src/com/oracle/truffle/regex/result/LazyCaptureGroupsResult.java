@@ -25,14 +25,15 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexLazyFindStartRootNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.Arrays;
-
-public final class LazyCaptureGroupsResult extends RegexResult {
+public final class LazyCaptureGroupsResult extends RegexResult implements JsonConvertible {
 
     private final int fromIndex;
     private final int end;
@@ -119,12 +120,12 @@ public final class LazyCaptureGroupsResult extends RegexResult {
         return new Object[]{this, getFromIndex(), getEnd()};
     }
 
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("NFAExecutorResult",
-                        new DebugUtil.Value("input", getInput()),
-                        new DebugUtil.Value("fromIndex", fromIndex),
-                        new DebugUtil.Value("end", end),
-                        new DebugUtil.Value("result", Arrays.toString(result)),
-                        new DebugUtil.Value("captureGroupCallTarget", captureGroupCallTarget));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("input", getInput().toString()),
+                        Json.prop("fromIndex", fromIndex),
+                        Json.prop("end", end),
+                        Json.prop("result", Json.array(result)));
     }
 }

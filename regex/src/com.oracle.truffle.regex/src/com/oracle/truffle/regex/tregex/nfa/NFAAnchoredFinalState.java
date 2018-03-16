@@ -24,9 +24,10 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class NFAAnchoredFinalState extends NFAAbstractFinalState {
 
@@ -43,9 +44,9 @@ public class NFAAnchoredFinalState extends NFAAbstractFinalState {
         return "$end";
     }
 
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return toTable("NFAAnchoredFinalState");
+    public JsonValue toJson() {
+        return toJson("NFAAnchoredFinalState");
     }
 }

@@ -25,8 +25,11 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexObject;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
@@ -35,7 +38,7 @@ import java.util.Arrays;
  * Predefined lists of capture group start and end indices. Used for regular expressions like
  * /(\w)(\d)/
  */
-public final class PreCalculatedResultFactory {
+public final class PreCalculatedResultFactory implements JsonConvertible {
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final int[] indices;
     @CompilerDirectives.CompilationFinal private int length;
@@ -134,9 +137,10 @@ public final class PreCalculatedResultFactory {
         return length == o.length && Arrays.equals(indices, o.indices);
     }
 
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("IndicesResultFactory",
-                        new DebugUtil.Value("indices", Arrays.toString(indices)),
-                        new DebugUtil.Value("length", length));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("indices", Json.array(indices)),
+                        Json.prop("length", length));
     }
 }

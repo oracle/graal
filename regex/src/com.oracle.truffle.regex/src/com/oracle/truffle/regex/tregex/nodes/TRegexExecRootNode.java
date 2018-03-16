@@ -80,7 +80,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         if (eagerCompilation && captureGroupExecutor != null) {
             compileEagerSearchNode();
         }
-        if (DebugUtil.DEBUG_ALWAYS_EAGER && captureGroupExecutor != null) {
+        if (captureGroupExecutor != null && DebugUtil.DEBUG_ALWAYS_EAGER) {
             switchToEagerSearch(null);
         }
     }

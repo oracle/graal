@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAAnchoredFinalState;
 import com.oracle.truffle.regex.tregex.nfa.NFAFinalState;
@@ -31,7 +32,9 @@ import com.oracle.truffle.regex.tregex.nfa.NFAMatcherState;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Iterator;
 import java.util.List;
@@ -39,7 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public final class NFATransitionSet implements Iterable<NFAStateTransition> {
+public final class NFATransitionSet implements Iterable<NFAStateTransition>, JsonConvertible {
 
     private static final byte FLAG_FORWARD = 1;
     private static final byte FLAG_PRIORITY_SENSITIVE = 1 << 1;
@@ -343,16 +346,15 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition> {
         return StreamSupport.stream(spliterator(), false);
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         return stream().map(x -> x.getTarget(isForward()).idToString()).collect(Collectors.joining(",", "{", "}"));
     }
 
-    public DebugUtil.Table toTable(String name) {
-        DebugUtil.Table table = new DebugUtil.Table(name);
-        for (NFAStateTransition transition : this) {
-            table.append(transition.toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(this);
     }
 }

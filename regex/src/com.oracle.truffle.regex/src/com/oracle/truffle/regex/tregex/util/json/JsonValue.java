@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+package com.oracle.truffle.regex.tregex.util.json;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
-public class NFAFinalState extends NFAAbstractFinalState {
+public abstract class JsonValue implements JsonConvertible {
 
-    public NFAFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet) {
-        super(id, stateSet);
-    }
-
-    public NFAFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
-        super(id, stateSet, preCalculatedResultIndex);
-    }
-
-    @Override
-    public String toString() {
-        return "end";
-    }
-
-    @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return toJson("NFAFinalState");
+        return this;
+    }
+
+    public void dump(String path) {
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(Paths.get(path)));) {
+            dump(writer, 0);
+            writer.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public abstract void dump(PrintWriter writer, int indent);
+
+    static void printIndent(PrintWriter writer, int indent) {
+        for (int i = 0; i < indent; i++) {
+            writer.print(' ');
+        }
     }
 }

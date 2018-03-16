@@ -24,12 +24,14 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A Sequence is a concatenation of {@link Term}s.
@@ -169,14 +171,15 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
         return terms.get(visitorIterationIndex++);
     }
 
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
     public String toString() {
         return terms.stream().map(Term::toString).collect(Collectors.joining(""));
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("Sequence").append(terms.stream().map(RegexASTNode::toTable));
+    public JsonValue toJson() {
+        return toJson("Sequence").append(Json.prop("terms", terms));
     }
 }

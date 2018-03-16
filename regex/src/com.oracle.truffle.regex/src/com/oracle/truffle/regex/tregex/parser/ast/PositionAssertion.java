@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds when encountered at the beginning or at the end of the string we are
@@ -98,8 +100,9 @@ public class PositionAssertion extends Term {
         throw new IllegalStateException();
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("PositionAssertion " + toString());
+    public JsonValue toJson() {
+        return toJson("PositionAssertion" + type);
     }
 }

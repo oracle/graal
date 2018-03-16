@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds depending on whether or not text preceding the current position
@@ -96,8 +98,9 @@ public class LookBehindAssertion extends RegexASTSubtreeRootNode {
         return "?<=";
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("LookBehindAssertion");
+    public JsonValue toJson() {
+        return toJson("LookBehindAssertion");
     }
 }

@@ -31,6 +31,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Arrays;
 
@@ -515,28 +518,16 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     @TruffleBoundary
-    private DebugUtil.Table transitionToTable(int i) {
-        return new DebugUtil.Table("Transition",
-                        new DebugUtil.Value("matcher", matchers[i]),
-                        new DebugUtil.Value("target", DebugUtil.nodeID(successors[i])));
-    }
-
-    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table(DebugUtil.nodeID(id));
-        if (isAnchoredFinalState()) {
-            table.append(new DebugUtil.Value("anchoredFinalState", "true"));
-        }
-        if (isFinalState()) {
-            table.append(new DebugUtil.Value("finalState", "true"));
-        }
-        if (hasLoopToSelf()) {
-            table.append(new DebugUtil.Value("loopToSelf", "true"));
-        }
+    public JsonValue toJson() {
+        JsonArray transitions = Json.array();
         for (int i = 0; i < matchers.length; i++) {
-            table.append(transitionToTable(i));
+            transitions.append(Json.obj(Json.prop("matcher", matchers[i].toString()), Json.prop("target", successors[i])));
         }
-        return table;
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("anchoredFinalState", isAnchoredFinalState()),
+                        Json.prop("finalState", isFinalState()),
+                        Json.prop("loopToSelf", hasLoopToSelf()),
+                        Json.prop("transitions", transitions));
     }
 }

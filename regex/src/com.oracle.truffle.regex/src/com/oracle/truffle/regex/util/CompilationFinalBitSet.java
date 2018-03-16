@@ -29,7 +29,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.PrimitiveIterator;
 
 /**

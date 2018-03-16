@@ -24,9 +24,12 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class RegexSource {
+public final class RegexSource implements JsonConvertible {
 
     private final String pattern;
     private final RegexFlags flags;
@@ -70,9 +73,10 @@ public final class RegexSource {
         return "/" + pattern + "/" + flags;
     }
 
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("RegexSource",
-                        new DebugUtil.Value("pattern", pattern),
-                        new DebugUtil.Value("flags", flags));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("pattern", pattern),
+                        Json.prop("flags", flags));
     }
 }

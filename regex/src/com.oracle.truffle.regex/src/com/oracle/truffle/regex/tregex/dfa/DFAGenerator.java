@@ -50,10 +50,13 @@ import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorProperties;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException;
 import com.oracle.truffle.regex.tregex.parser.Counter;
-import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -64,7 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public final class DFAGenerator {
+public final class DFAGenerator implements JsonConvertible {
 
     private static final DFAStateNodeBuilder[] EMPTY_SUCCESSORS_ARRAY = new DFAStateNodeBuilder[0];
     private static final MatcherBuilder[] EMPTY_MATCHER_BUILDERS_ARRAY = new MatcherBuilder[0];
@@ -510,11 +513,9 @@ public final class DFAGenerator {
         return new DFAStateTransitionBuilder(matcherState.getMatcherBuilder(), forward ? matcherState.getNext() : matcherState.getPrev(), nfa, forward, forward);
     }
 
-    private void dumpDFA() {
-        System.out.println("DFA:");
-        for (DFAStateNodeBuilder s : stateMap.values()) {
-            System.out.println(s.toTable());
-        }
-        System.out.println();
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("states", stateMap.values()),
+                        Json.prop("entryStates", Json.array(entryStates)));
     }
 }

@@ -24,12 +24,16 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Provides information about a transition from one NFAState to another state.
  */
-public class NFAStateTransition {
+public class NFAStateTransition implements JsonConvertible {
 
     private final short id;
     private final NFAState source;
@@ -70,9 +74,12 @@ public class NFAStateTransition {
         return groupBoundaries;
     }
 
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("NFATransition",
-                        new DebugUtil.Value("target", target.idToString()),
-                        groupBoundaries.toTable());
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("source", source.getId()),
+                        Json.prop("target", target.getId()),
+                        Json.prop("groupBoundaries", groupBoundaries));
     }
 }

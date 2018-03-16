@@ -27,9 +27,12 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public abstract class RegexASTNode implements IndexedState {
+public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     private static final byte FLAG_PREFIX = 1;
     private static final byte FLAG_DEAD = 1 << 1;
@@ -224,18 +227,16 @@ public abstract class RegexASTNode implements IndexedState {
         return String.format("%d (%s)", id, toString());
     }
 
-    protected static String astNodeId(RegexASTNode astNode) {
-        return astNode == null ? "null" : String.valueOf(astNode.id);
+    protected static JsonValue astNodeId(RegexASTNode astNode) {
+        return astNode == null ? Json.nullValue() : Json.val(astNode.id);
     }
 
-    public abstract DebugUtil.Table toTable();
-
-    protected DebugUtil.Table toTable(String name) {
-        return new DebugUtil.Table(name,
-                        new DebugUtil.Value("id", id),
-                        new DebugUtil.Value("parent", astNodeId(parent)),
-                        new DebugUtil.Value("minPath", minPath),
-                        new DebugUtil.Value("isPrefix", isPrefix()),
-                        new DebugUtil.Value("isDead", isDead()));
+    protected JsonObject toJson(String typeName) {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("type", typeName),
+                        Json.prop("parent", astNodeId(parent)),
+                        Json.prop("minPath", minPath),
+                        Json.prop("isPrefix", isPrefix()),
+                        Json.prop("isDead", isDead()));
     }
 }

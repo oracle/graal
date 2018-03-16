@@ -30,8 +30,8 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import com.oracle.truffle.regex.util.Constants;
-import java.math.BigInteger;
 
+import java.math.BigInteger;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;

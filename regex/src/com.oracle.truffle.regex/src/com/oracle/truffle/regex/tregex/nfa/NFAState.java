@@ -24,15 +24,19 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Represents a single state in the NFA form of a regular expression. States may either be matcher
@@ -43,7 +47,7 @@ import java.util.stream.Collectors;
  * matches both the 'a' in the lookahead assertion as well as following 'a' in the expression, and
  * therefore will have a state set containing two AST nodes.
  */
-public abstract class NFAState implements IndexedState {
+public abstract class NFAState implements IndexedState, JsonConvertible {
 
     private final short id;
     private final ASTNodeSet<? extends RegexASTNode> stateSet;
@@ -142,30 +146,28 @@ public abstract class NFAState implements IndexedState {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String idToString() {
         return getStateSet().stream().map(x -> String.valueOf(x.getId())).collect(Collectors.joining(",", "(", ")")) + "[" + id + "]";
     }
 
+    @TruffleBoundary
     @Override
     public String toString() {
         return idToString();
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return toTable("NFAState");
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return toJson("NFAState");
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable(String name) {
-        DebugUtil.Table table = new DebugUtil.Table("next");
-        for (NFAStateTransition transition : next) {
-            table.append(transition.toTable());
-        }
-        return new DebugUtil.Table(name,
-                        new DebugUtil.Value("id", id),
-                        new DebugUtil.Value("stateSet", idToString()),
-                        table);
+    @TruffleBoundary
+    public JsonObject toJson(String typeName) {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("type", typeName),
+                        Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("next", next.stream().map(x -> Json.val(x.getId()))));
     }
 }

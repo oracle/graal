@@ -24,14 +24,18 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Objects;
 
-public class GroupBoundaries {
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public class GroupBoundaries implements JsonConvertible {
 
     private CompilationFinalBitSet updateIndices;
     private CompilationFinalBitSet clearIndices;
@@ -139,96 +143,47 @@ public class GroupBoundaries {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (hasIndexUpdates()) {
-            sb.append(gbBitSetGroupExitsToString(updateIndices)).append(")");
-            sb.append("(").append(gbBitSetGroupEntriesToString(updateIndices));
+            sb.append(gbBitSetGroupExitsToJsonArray(updateIndices)).append(")");
+            sb.append("(").append(gbBitSetGroupEntriesToJsonArray(updateIndices));
         }
         if (hasIndexClears()) {
             sb.append(" clr{");
-            sb.append(gbBitSetGroupExitsToString(clearIndices)).append(")");
-            sb.append("(").append(gbBitSetGroupEntriesToString(clearIndices));
+            sb.append(gbBitSetGroupExitsToJsonArray(clearIndices)).append(")");
+            sb.append("(").append(gbBitSetGroupEntriesToJsonArray(clearIndices));
             sb.append("}");
         }
         return sb.toString();
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("GroupBoundaries",
-                        new DebugUtil.Value("updateEnter", gbBitSetGroupEntriesToString(updateIndices)),
-                        new DebugUtil.Value("updateExit", gbBitSetGroupExitsToString(updateIndices)),
-                        new DebugUtil.Value("clearEnter", gbBitSetGroupEntriesToString(clearIndices)),
-                        new DebugUtil.Value("clearExit", gbBitSetGroupExitsToString(clearIndices)));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("updateEnter", gbBitSetGroupEntriesToJsonArray(updateIndices)),
+                        Json.prop("updateExit", gbBitSetGroupExitsToJsonArray(updateIndices)),
+                        Json.prop("clearEnter", gbBitSetGroupEntriesToJsonArray(clearIndices)),
+                        Json.prop("clearExit", gbBitSetGroupExitsToJsonArray(clearIndices)));
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static String gbBitSetGroupEntriesToString(CompilationFinalBitSet gbArray) {
-        return gbBitSetGroupPartToString(gbArray, false, true);
+    @TruffleBoundary
+    private static JsonArray gbBitSetGroupEntriesToJsonArray(CompilationFinalBitSet gbArray) {
+        return gbBitSetGroupPartToJsonArray(gbArray, true);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static String gbBitSetGroupExitsToString(CompilationFinalBitSet gbArray) {
-        return gbBitSetGroupPartToString(gbArray, false, false);
+    @TruffleBoundary
+    private static JsonArray gbBitSetGroupExitsToJsonArray(CompilationFinalBitSet gbArray) {
+        return gbBitSetGroupPartToJsonArray(gbArray, false);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static String gbBitSetGroupPartToString(CompilationFinalBitSet gbBitSet, boolean addBrackets, boolean printEntries) {
-        StringBuilder sb = new StringBuilder();
-        if (addBrackets) {
-            sb.append("[");
-        }
+    @TruffleBoundary
+    private static JsonArray gbBitSetGroupPartToJsonArray(CompilationFinalBitSet gbBitSet, boolean entries) {
+        JsonArray array = Json.array();
         if (gbBitSet != null) {
             for (int i : gbBitSet) {
-                if ((i & 1) == (printEntries ? 0 : 1)) {
-                    if (sb.length() > (addBrackets ? 1 : 0)) {
-                        sb.append(",");
-                    }
-                    sb.append(i / 2);
+                if ((i & 1) == (entries ? 0 : 1)) {
+                    array.append(Json.val(i / 2));
                 }
             }
         }
-        if (addBrackets) {
-            sb.append("]");
-        }
-        return sb.toString();
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public static String gbArrayGroupEntriesToString(byte[] gbArray, int startFrom) {
-        return gbArrayGroupEntriesToString(gbArray, startFrom, true);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public static String gbArrayGroupEntriesToString(byte[] gbArray, int startFrom, boolean addBrackets) {
-        return gbArrayGroupPartToString(gbArray, startFrom, addBrackets, true);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public static String gbArrayGroupExitsToString(byte[] gbArray, int startFrom) {
-        return gbArrayGroupExitsToString(gbArray, startFrom, true);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public static String gbArrayGroupExitsToString(byte[] gbArray, int startFrom, boolean addBrackets) {
-        return gbArrayGroupPartToString(gbArray, startFrom, addBrackets, false);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static String gbArrayGroupPartToString(byte[] gbArray, int startFrom, boolean addBrackets, boolean printEntries) {
-        StringBuilder sb = new StringBuilder();
-        if (addBrackets) {
-            sb.append("[");
-        }
-        for (int i = startFrom; i < gbArray.length; i++) {
-            if ((gbArray[i] & 1) == (printEntries ? 0 : 1)) {
-                if (sb.length() > (addBrackets ? 1 : 0)) {
-                    sb.append(",");
-                }
-                sb.append(Byte.toUnsignedInt(gbArray[i]) / 2);
-            }
-        }
-        if (addBrackets) {
-            sb.append("]");
-        }
-        return sb.toString();
+        return array;
     }
 }

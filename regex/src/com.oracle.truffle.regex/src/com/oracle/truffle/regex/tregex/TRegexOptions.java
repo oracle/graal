@@ -32,9 +32,9 @@ import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 
 public class TRegexOptions {
 

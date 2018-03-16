@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
@@ -31,12 +32,15 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public class NFA implements StateIndex<NFAState> {
+public class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     private final RegexAST ast;
     private final List<NFAAnchoredFinalState> anchoredEntry;
@@ -154,5 +158,17 @@ public class NFA implements StateIndex<NFAState> {
         assert states[ret.getId()] == null;
         states[ret.getId()] = ret;
         return ret;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("states", Json.array(states)),
+                        Json.prop("transitions", Json.array(transitions)),
+                        Json.prop("anchoredEntry", anchoredEntry.stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("unAnchoredEntry", unAnchoredEntry.stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("reverseAnchoredEntry", reverseAnchoredEntry.getId()),
+                        Json.prop("reverseUnAnchoredEntry", reverseUnAnchoredEntry.getId()),
+                        Json.prop("preCalculatedResults", Json.array(preCalculatedResults)));
     }
 }

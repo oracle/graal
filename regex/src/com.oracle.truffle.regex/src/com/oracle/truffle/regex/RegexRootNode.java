@@ -30,7 +30,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-import static com.oracle.truffle.api.CompilerDirectives.*;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class RegexRootNode extends RootNode {
 
