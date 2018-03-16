@@ -1169,17 +1169,12 @@ class FlatNodeGenFactory {
             builder.string(" || ");
             builder.string("(" + OLD_EXCLUDE + " ^ " + NEW_EXCLUDE + ") != 0");
         }
+        if (requiresCacheCheck) {
+            builder.string(" || " + OLD_CACHE_COUNT + " < " + COUNT_CACHES + "()");
+        }
         builder.end(); // if
         builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2);
         builder.end(); // true block
-        if (requiresCacheCheck) {
-            builder.startElseBlock();
-            builder.startIf().string(COUNT_CACHES + "() > " + OLD_CACHE_COUNT);
-            builder.end();
-            builder.startBlock().startStatement().startCall("this", REPORT_POLYMORPHIC_SPECIALIZE).end(2);
-            builder.end();
-        }
-        builder.end();
         return executable;
     }
 
