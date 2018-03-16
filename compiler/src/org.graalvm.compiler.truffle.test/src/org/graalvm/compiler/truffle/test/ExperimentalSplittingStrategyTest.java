@@ -1,3 +1,25 @@
+/*
+ * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -57,6 +79,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
 
         @Fallback
+        @SuppressWarnings("unused")
         static int do3(VirtualFrame frame, Object value) {
             return 0;
         }
@@ -76,6 +99,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
 
         @Fallback
+        @SuppressWarnings("unused")
         int do3(VirtualFrame frame, Object value) {
             return 0;
         }
@@ -95,6 +119,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
 
         @Fallback
+        @SuppressWarnings("unused")
         int do3(VirtualFrame frame, Object value) {
             return 0;
         }
@@ -124,6 +149,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
     @NodeChild
     @ReportPolymorphism
     abstract static class HasInlineCacheNode extends SplittingTestNode {
+        @SuppressWarnings("unused")
         @Specialization(limit = "2", //
                         guards = "target.getRootNode() == cachedNode")
         protected static Object doDirect(RootCallTarget target, @Cached("target.getRootNode()") RootNode cachedNode) {
@@ -175,7 +201,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         testSplitsDirectCallsHelper(callTarget, new Object[]{1}, new Object[]{0});
     }
 
-    private void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+    private static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
         // two callers for a target are needed
         runtime.createDirectCallNode(callTarget);
         final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
