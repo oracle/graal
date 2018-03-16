@@ -37,13 +37,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleAllowForcedSplits;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingAllowForcedSplits;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingGrowthLimit;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxCalleeSize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleTraceSplittingSummary;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
 
 final class TruffleSplittingStrategy {
 
@@ -55,7 +55,7 @@ final class TruffleSplittingStrategy {
                 reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             }
         }
-        if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
             if (pollutionBasedShouldSplit(call, engineData)) {
                 engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
                 doSplit(call);
@@ -97,7 +97,7 @@ final class TruffleSplittingStrategy {
     }
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
-        if (!TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy) || TruffleCompilerOptions.getValue(TruffleAllowForcedSplits)) {
+        if (!TruffleCompilerOptions.getValue(TruffleExperimentalSplitting) || TruffleCompilerOptions.getValue(TruffleExperimentalSplittingAllowForcedSplits)) {
             final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
             if (!canSplit(call)) {
                 return;
@@ -249,7 +249,7 @@ final class TruffleSplittingStrategy {
     }
 
     static void newCallNodeCreated(OptimizedDirectCallNode directCallNode) {
-        if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
             final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
             callTarget.addKnownCallNode(directCallNode);
         }

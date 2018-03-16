@@ -69,7 +69,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleDumpPolymorphicSpecialize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxPollutionDepth;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUsePollutionBasedSplittingStrategy;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
@@ -677,7 +677,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     void polymorphicSpecialize(Node source) {
-        if (TruffleCompilerOptions.getValue(TruffleUsePollutionBasedSplittingStrategy)) {
+        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
             List<Node> toDump = null;
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
                 toDump = new ArrayList<>();
