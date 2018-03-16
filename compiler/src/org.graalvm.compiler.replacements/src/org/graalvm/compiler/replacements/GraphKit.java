@@ -29,10 +29,12 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
@@ -99,9 +101,20 @@ public class GraphKit implements GraphBuilderTool {
     protected abstract static class Structure {
     }
 
-    public GraphKit(StructuredGraph graph, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
+    public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name) {
         this.providers = providers;
-        this.graph = graph;
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).compilationId(compilationId);
+        if (name != null) {
+            builder.name(name);
+        } else {
+            builder.method(stubMethod);
+        }
+        this.graph = builder.build();
+        graph.disableUnsafeAccessTracking();
+        graph.setTrackNodeSourcePosition();
+        if (graph.trackNodeSourcePosition()) {
+            graph.withNodeSourcePosition(NodeSourcePosition.substitution(stubMethod));
+        }
         this.wordTypes = wordTypes;
         this.graphBuilderPlugins = graphBuilderPlugins;
         this.lastFixedNode = graph.start();

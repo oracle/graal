@@ -658,7 +658,8 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
     }
 
     /**
-     * Set the source position to {@code sourcePosition}.
+     * Set the source position to {@code sourcePosition}. Setting it to null is ignored so that it's
+     * not accidentally cleared. Use {@link #clearNodeSourcePosition()} instead.
      */
     public void setNodeSourcePosition(NodeSourcePosition sourcePosition) {
         if (sourcePosition == null) {

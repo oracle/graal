@@ -44,7 +44,6 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -83,7 +82,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
                     CompilationIdentifier compilationId) {
-        super(new StructuredGraph.Builder(debug.getOptions(), debug).method(stubMethod).compilationId(compilationId).build(), providers, wordTypes, graphBuilderPlugins);
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
