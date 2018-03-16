@@ -593,7 +593,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * Set the source position to {@code sourcePosition}.
      */
     public void setNodeSourcePosition(NodeSourcePosition sourcePosition) {
-        assert sourcePosition != null || this.sourcePosition == null || this.sourcePosition.isPlaceholder();
+        assert sourcePosition != null || this.sourcePosition == null || this.sourcePosition.isPlaceholder() : "Invalid source position at node with id " + id;
         this.sourcePosition = sourcePosition;
         // assert sourcePosition == null || graph == null || graph.trackNodeSourcePosition;
     }
