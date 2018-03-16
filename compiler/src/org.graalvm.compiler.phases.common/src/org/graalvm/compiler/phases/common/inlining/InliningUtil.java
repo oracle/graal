@@ -45,6 +45,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
@@ -684,25 +685,38 @@ public class InliningUtil extends ValueMergeUtil {
         newNodes.addAll(invokeGraph.getNewNodes(mark));
         EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
         UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
+        ResolvedJavaMethod inlineeRoot = null;
         while (cursor.advance()) {
-            if (!newNodes.contains(cursor.getValue())) {
+            Node value = cursor.getValue();
+            if (!newNodes.contains(value)) {
                 continue;
             }
-            NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
-            if (pos != null) {
-                NodeSourcePosition callerPos = posMap.get(pos);
-                if (callerPos == null) {
-                    callerPos = pos.addCaller(invokePos, isSubstitution);
-                    posMap.put(pos, callerPos);
-                }
-                cursor.getValue().setNodeSourcePosition(callerPos);
+            if (isSubstitution && invokePos == null) {
+                // There's no caller information so the source position for this node will be
+                // invalid, so it should be cleared.
+                value.clearNodeSourcePosition();
             } else {
-                if (isSubstitution) {
-                    /*
-                     * If no other position is provided at least attribute the substituted node to
-                     * the original invoke.
-                     */
-                    cursor.getValue().setNodeSourcePosition(invokePos);
+                NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
+                if (pos != null) {
+                    if (inlineeRoot == null) {
+                        assert (inlineeRoot = pos.getRootMethod()) != null;
+                    } else {
+                        assert inlineeRoot.equals(pos.getRootMethod());
+                    }
+                    NodeSourcePosition callerPos = posMap.get(pos);
+                    if (callerPos == null) {
+                        callerPos = pos.addCaller(invokePos, isSubstitution);
+                        posMap.put(pos, callerPos);
+                    }
+                    value.setNodeSourcePosition(callerPos);
+                } else {
+                    if (isSubstitution) {
+                        /*
+                         * If no other position is provided at least attribute the substituted node
+                         * to the original invoke.
+                         */
+                        value.setNodeSourcePosition(invokePos);
+                    }
                 }
             }
         }
@@ -942,37 +956,42 @@ public class InliningUtil extends ValueMergeUtil {
      * Gets the receiver for an invoke, adding a guard if necessary to ensure it is non-null, and
      * ensuring that the resulting type is compatible with the method being invoked.
      */
+    @SuppressWarnings("try")
     public static ValueNode nonNullReceiver(Invoke invoke) {
-        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
-        assert !callTarget.isStatic() : callTarget.targetMethod();
-        StructuredGraph graph = callTarget.graph();
-        ValueNode oldReceiver = callTarget.arguments().get(0);
-        ValueNode newReceiver = oldReceiver;
-        if (newReceiver.getStackKind() == JavaKind.Object) {
+        try (DebugCloseable position = invoke.asNode().withNodeSourcePosition()) {
+            MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+            assert !callTarget.isStatic() : callTarget.targetMethod();
+            StructuredGraph graph = callTarget.graph();
+            ValueNode oldReceiver = callTarget.arguments().get(0);
+            ValueNode newReceiver = oldReceiver;
+            if (newReceiver.getStackKind() == JavaKind.Object) {
 
-            if (invoke.getInvokeKind() == InvokeKind.Special) {
-                Stamp paramStamp = newReceiver.stamp(NodeView.DEFAULT);
-                Stamp stamp = paramStamp.join(StampFactory.object(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
-                if (!stamp.equals(paramStamp)) {
-                    // The verifier and previous optimizations guarantee unconditionally that the
-                    // receiver is at least of the type of the method holder for a special invoke.
-                    newReceiver = graph.unique(new PiNode(newReceiver, stamp));
+                if (invoke.getInvokeKind() == InvokeKind.Special) {
+                    Stamp paramStamp = newReceiver.stamp(NodeView.DEFAULT);
+                    Stamp stamp = paramStamp.join(StampFactory.object(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
+                    if (!stamp.equals(paramStamp)) {
+                        // The verifier and previous optimizations guarantee unconditionally that
+                        // the
+                        // receiver is at least of the type of the method holder for a special
+                        // invoke.
+                        newReceiver = graph.unique(new PiNode(newReceiver, stamp));
+                    }
+                }
+
+                if (!StampTool.isPointerNonNull(newReceiver)) {
+                    LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
+                    FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
+                    PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
+                    graph.addBeforeFixed(invoke.asNode(), fixedGuard);
+                    newReceiver = nonNullReceiver;
                 }
             }
 
-            if (!StampTool.isPointerNonNull(newReceiver)) {
-                LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
-                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-                PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
-                graph.addBeforeFixed(invoke.asNode(), fixedGuard);
-                newReceiver = nonNullReceiver;
+            if (newReceiver != oldReceiver) {
+                callTarget.replaceFirstInput(oldReceiver, newReceiver);
             }
+            return newReceiver;
         }
-
-        if (newReceiver != oldReceiver) {
-            callTarget.replaceFirstInput(oldReceiver, newReceiver);
-        }
-        return newReceiver;
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {

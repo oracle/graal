@@ -2953,7 +2953,7 @@ public class BytecodeParser implements GraphBuilderContext {
             // Create the loop header block, which later will merge the backward branches of
             // the loop.
             controlFlowSplit = true;
-            LoopBeginNode loopBegin = appendLoopBegin(this.lastInstr);
+            LoopBeginNode loopBegin = appendLoopBegin(this.lastInstr, block.startBci);
             lastInstr = loopBegin;
 
             // Create phi functions for all local variables and operand stack slots.
@@ -3097,16 +3097,19 @@ public class BytecodeParser implements GraphBuilderContext {
         return parsingIntrinsic();
     }
 
-    private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext) {
-        EndNode preLoopEnd = graph.add(new EndNode());
-        LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
-        if (disableLoopSafepoint()) {
-            loopBegin.disableSafepoint();
+    @SuppressWarnings("try")
+    private LoopBeginNode appendLoopBegin(FixedWithNextNode fixedWithNext, int startBci) {
+        try (DebugCloseable context = openNodeContext(frameState, startBci)) {
+            EndNode preLoopEnd = graph.add(new EndNode());
+            LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
+            if (disableLoopSafepoint()) {
+                loopBegin.disableSafepoint();
+            }
+            fixedWithNext.setNext(preLoopEnd);
+            // Add the single non-loop predecessor of the loop header.
+            loopBegin.addForwardEnd(preLoopEnd);
+            return loopBegin;
         }
-        fixedWithNext.setNext(preLoopEnd);
-        // Add the single non-loop predecessor of the loop header.
-        loopBegin.addForwardEnd(preLoopEnd);
-        return loopBegin;
     }
 
     /**

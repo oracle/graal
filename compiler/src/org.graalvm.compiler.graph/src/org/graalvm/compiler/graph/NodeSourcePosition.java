@@ -64,6 +64,14 @@ public class NodeSourcePosition extends BytecodePosition {
         return this;
     }
 
+    public ResolvedJavaMethod getRootMethod() {
+        NodeSourcePosition cur = this;
+        while (cur.getCaller() != null) {
+            cur = cur.getCaller();
+        }
+        return cur.getMethod();
+    }
+
     enum Marker {
         None,
         Placeholder,
