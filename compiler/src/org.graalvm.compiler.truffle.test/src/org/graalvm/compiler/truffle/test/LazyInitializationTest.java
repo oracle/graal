@@ -173,6 +173,7 @@ public class LazyInitializationTest {
                     for (OptionDescriptor option : optionDescriptors) {
                         whitelist.add(option.getDeclaringClass());
                         whitelist.add(option.getType());
+                        whitelist.add(option.getOptionType().getDeclaringClass());
                     }
                 } catch (ReflectiveOperationException e) {
                 }
