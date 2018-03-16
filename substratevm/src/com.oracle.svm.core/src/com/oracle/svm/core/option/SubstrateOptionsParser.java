@@ -303,7 +303,7 @@ public class SubstrateOptionsParser {
     static void printFlags(EnumSet<OptionType> optionTypes, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
         for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
             OptionDescriptor descriptor = entry.getValue();
-            if(!optionTypes.contains(descriptor.getOptionType())) {
+            if (!optionTypes.contains(descriptor.getOptionType())) {
                 continue;
             }
             String helpMsg = descriptor.getHelp();

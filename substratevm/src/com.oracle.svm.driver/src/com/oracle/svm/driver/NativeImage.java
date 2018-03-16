@@ -55,7 +55,6 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
