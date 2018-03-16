@@ -502,7 +502,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      *
      * @since 0.33
      */
-    protected void reportPolymorphicSpecialize() {
+    protected final void reportPolymorphicSpecialize() {
         CompilerAsserts.neverPartOfCompilation();
         Node.ACCESSOR.nodes().reportPolymorphicSpecialize(this);
     }
