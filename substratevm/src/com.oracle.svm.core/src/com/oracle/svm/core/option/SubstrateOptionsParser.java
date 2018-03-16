@@ -24,15 +24,19 @@ package com.oracle.svm.core.option;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionsParser;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -52,32 +56,32 @@ public class SubstrateOptionsParser {
      * The result of {@link SubstrateOptionsParser#parseOption}.
      */
     static final class OptionParseResult {
-        private final boolean printFlags;
+        private final EnumSet<OptionType> printFlags;
         private final String error;
 
-        private OptionParseResult(boolean printFlags, String error) {
+        private OptionParseResult(EnumSet<OptionType> printFlags, String error) {
             this.printFlags = printFlags;
             this.error = error;
         }
 
         static OptionParseResult error(String message) {
-            return new OptionParseResult(false, message);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message);
         }
 
         static OptionParseResult correct() {
-            return new OptionParseResult(false, null);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null);
         }
 
-        static OptionParseResult printFlags() {
-            return new OptionParseResult(true, null);
+        static OptionParseResult printFlags(EnumSet<OptionType> selectedOptionTypes) {
+            return new OptionParseResult(selectedOptionTypes, null);
         }
 
-        boolean shouldPrintFlags() {
+        EnumSet<OptionType> printFlags() {
             return printFlags;
         }
 
         public boolean isValid() {
-            return !shouldPrintFlags() && error == null;
+            return printFlags.isEmpty() && error == null;
         }
 
         public String getError() {
@@ -152,7 +156,7 @@ public class SubstrateOptionsParser {
                     msg.append(' ').append(match.getName());
                 }
             }
-            msg.append(". Use " + optionPrefix + '+' + SubstrateOptions.PrintFlags.getName() + " to list available options.");
+            msg.append(". Use " + optionPrefix + SubstrateOptions.PrintFlags.getName() + "= to list all available options.");
             return OptionParseResult.error(msg.toString());
         }
 
@@ -203,8 +207,26 @@ public class SubstrateOptionsParser {
 
         desc.getOptionKey().update(valuesMap, value);
 
-        if (SubstrateOptions.PrintFlags.getName().equals(optionName) && (Boolean) value) {
-            return OptionParseResult.printFlags();
+        if (SubstrateOptions.PrintFlags.getName().equals(optionName)) {
+            String optionValue = (String) value;
+            EnumSet<OptionType> selectedOptionTypes;
+            if (optionValue.isEmpty()) {
+                selectedOptionTypes = EnumSet.allOf(OptionType.class);
+            } else {
+                selectedOptionTypes = EnumSet.noneOf(OptionType.class);
+                String enumString = null;
+                try {
+                    String[] enumStrings = optionValue.split(",");
+                    for (int i = 0; i < enumStrings.length; i++) {
+                        enumString = enumStrings[i];
+                        selectedOptionTypes.add(OptionType.valueOf(enumString));
+                    }
+                } catch (IllegalArgumentException e) {
+                    String possibleValues = Arrays.stream(OptionType.values()).map(OptionType::name).collect(Collectors.joining(", ", "", ""));
+                    return OptionParseResult.error("Invalid value for option '" + optionName + ". " + enumString + "' is not one of: " + possibleValues);
+                }
+            }
+            return OptionParseResult.printFlags(selectedOptionTypes);
         }
 
         return OptionParseResult.correct();
@@ -229,8 +251,8 @@ public class SubstrateOptionsParser {
         }
 
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
-        if (optionParseResult.shouldPrintFlags()) {
-            SubstrateOptionsParser.printFlags(options, optionPrefix, out);
+        if (!optionParseResult.printFlags().isEmpty()) {
+            SubstrateOptionsParser.printFlags(optionParseResult.printFlags(), options, optionPrefix, out);
             throw new InterruptImageBuilding();
         }
         if (!optionParseResult.isValid()) {
@@ -278,10 +300,12 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static void printFlags(SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
+    static void printFlags(EnumSet<OptionType> optionTypes, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
         for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-            entry.getKey();
             OptionDescriptor descriptor = entry.getValue();
+            if(!optionTypes.contains(descriptor.getOptionType())) {
+                continue;
+            }
             String helpMsg = descriptor.getHelp();
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {

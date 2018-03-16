@@ -55,6 +55,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
@@ -131,9 +132,8 @@ class NativeImage {
     static final String oH = "-H:";
     static final String oR = "-R:";
 
-    /* Boolean arguments */
     static final String enableRuntimeAssertions = "+" + SubstrateOptions.RuntimeAssertions.getName();
-    static final String enablePrintFlags = "+" + SubstrateOptions.PrintFlags.getName();
+    static final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";

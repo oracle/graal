@@ -31,6 +31,7 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
+import org.graalvm.compiler.options.OptionType;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -115,6 +116,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
                 return true;
             case "--expert-options":
+                args.poll();
+                String expertUserOption = OptionType.User.name();
+                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + expertUserOption);
+                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + expertUserOption);
+                return true;
+            case "--expert-options-all":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
                 nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);

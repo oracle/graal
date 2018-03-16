@@ -33,6 +33,7 @@ import java.util.List;
 public final class OptionDescriptor {
 
     protected final String name;
+    protected final OptionType optionType;
     protected final Class<?> type;
     protected final String help;
     protected final List<String> extraHelp;
@@ -42,24 +43,25 @@ public final class OptionDescriptor {
 
     private static final String[] NO_EXTRA_HELP = {};
 
-    public static OptionDescriptor create(String name, Class<?> type, String help, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
-        return create(name, type, help, NO_EXTRA_HELP, declaringClass, fieldName, option);
+    public static OptionDescriptor create(String name, OptionType optionType, Class<?> type, String help, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
+        return create(name, optionType, type, help, NO_EXTRA_HELP, declaringClass, fieldName, option);
     }
 
-    public static OptionDescriptor create(String name, Class<?> type, String help, String[] extraHelp, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
+    public static OptionDescriptor create(String name, OptionType optionType, Class<?> type, String help, String[] extraHelp, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
         assert option != null : declaringClass + "." + fieldName;
         OptionDescriptor result = option.getDescriptor();
         if (result == null) {
             List<String> extraHelpList = extraHelp == null || extraHelp.length == 0 ? Collections.emptyList() : Collections.unmodifiableList(Arrays.asList(extraHelp));
-            result = new OptionDescriptor(name, type, help, extraHelpList, declaringClass, fieldName, option);
+            result = new OptionDescriptor(name, optionType, type, help, extraHelpList, declaringClass, fieldName, option);
             option.setDescriptor(result);
         }
         assert result.name.equals(name) && result.type == type && result.declaringClass == declaringClass && result.fieldName.equals(fieldName) && result.optionKey == option;
         return result;
     }
 
-    private OptionDescriptor(String name, Class<?> type, String help, List<String> extraHelp, Class<?> declaringClass, String fieldName, OptionKey<?> optionKey) {
+    private OptionDescriptor(String name, OptionType optionType, Class<?> type, String help, List<String> extraHelp, Class<?> declaringClass, String fieldName, OptionKey<?> optionKey) {
         this.name = name;
+        this.optionType = optionType;
         this.type = type;
         this.help = help;
         this.extraHelp = extraHelp;
@@ -101,6 +103,13 @@ public final class OptionDescriptor {
      */
     public String getName() {
         return name;
+    }
+
+    /**
+     * Gets the type of the option.
+     */
+    public OptionType getOptionType() {
+        return optionType;
     }
 
     /**

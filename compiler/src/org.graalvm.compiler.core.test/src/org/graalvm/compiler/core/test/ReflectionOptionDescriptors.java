@@ -37,6 +37,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 /**
@@ -109,7 +110,7 @@ public class ReflectionOptionDescriptors implements OptionDescriptors {
             Type[] actualTypeArguments = pt.getActualTypeArguments();
             assert actualTypeArguments.length == 1;
             Class<?> optionType = (Class<?>) actualTypeArguments[0];
-            descriptors.put(fieldName, OptionDescriptor.create(fieldName, optionType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
+            descriptors.put(fieldName, OptionDescriptor.create(fieldName, OptionType.Debug, optionType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalArgumentException(e);
         }
