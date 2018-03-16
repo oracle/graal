@@ -79,9 +79,14 @@ abstract class ToJavaNode extends Node {
     private Object convertImpl(Object value, Class<?> targetType, Type genericType, Object languageContext) {
         Object convertedValue;
         if (isAssignableFromTrufflePrimitiveType(targetType)) {
-            convertedValue = primitive.toPrimitive(value, targetType);
+            convertedValue = primitive.toPrimitive(value, targetType, 0);
             if (convertedValue != null) {
                 return convertedValue;
+            } else if (targetType == char.class || targetType == Character.class) {
+                convertedValue = primitive.toPrimitive(value, targetType, 1);
+                if (convertedValue != null) {
+                    return convertedValue;
+                }
             }
         }
         if (targetType == Value.class && languageContext != null) {

@@ -30,11 +30,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 
-public final class CallbackConvertTest {
+public final class CallbackWithOverloadConvertTest {
     private char ch;
+    private int i;
 
     public void callback(char v) {
         this.ch = v;
+    }
+
+    public void callback(int v) {
+        this.i = v;
     }
 
     public interface CallWithInt {
@@ -50,15 +55,16 @@ public final class CallbackConvertTest {
         TruffleObject truffle = JavaInterop.asTruffleObject(this);
         CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
         callback.callback(32);
-        assertEquals(' ', ch);
+        assertEquals("Char not changed", 0, ch);
+        assertEquals("Int changed", 32, i);
     }
 
-    @Test(expected = IllegalArgumentException.class)
     public void callWithHugeIntTest() {
         TruffleObject truffle = JavaInterop.asTruffleObject(this);
         CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
         callback.callback(Integer.MAX_VALUE / 2);
-        fail("Should thrown an exception as the int value is too big for char: " + ch);
+        assertEquals("Char not changed", 0, ch);
+        assertEquals("Int changed", Integer.MAX_VALUE / 2, i);
     }
 
     @Test
@@ -67,22 +73,7 @@ public final class CallbackConvertTest {
         CallWithChar callback = JavaInterop.asJavaObject(CallWithChar.class, truffle);
         callback.callback('A');
         assertEquals('A', ch);
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void callWithNegativeNumberTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
-        callback.callback(-32);
-        assertEquals("The call will not get here", 0, ch);
-    }
-
-    @Test
-    public void callWithPositiveNumberTest() {
-        TruffleObject truffle = JavaInterop.asTruffleObject(this);
-        CallWithInt callback = JavaInterop.asJavaObject(CallWithInt.class, truffle);
-        callback.callback(65504);
-        assertEquals(65504, ch);
+        assertEquals("Int remains zero", 0, i);
     }
 
 }
