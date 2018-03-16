@@ -41,7 +41,7 @@ public class SubstrateOptions {
 
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
-    @Option(help = "Show available options based on comma-separated option-types (allowed types: User, Expert, Debug).")//
+    @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
     public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
 
     @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.")//
