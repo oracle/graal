@@ -97,8 +97,8 @@ final class ToPrimitiveNode extends Node {
                     return str.charAt(0);
                 }
             } else {
-                Object safeChar = toShort(value);
-                if (safeChar instanceof Short) {
+                Short safeChar = toShort(value);
+                if (safeChar != null) {
                     return (char) (short) safeChar;
                 }
             }
@@ -151,7 +151,7 @@ final class ToPrimitiveNode extends Node {
         return null;
     }
 
-    private static Object toShort(Object value) {
+    private static Short toShort(Object value) {
         if (value instanceof Short) {
             Short s = (Short) value;
             return s;
