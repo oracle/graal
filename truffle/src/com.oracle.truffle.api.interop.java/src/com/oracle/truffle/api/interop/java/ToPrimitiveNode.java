@@ -102,7 +102,7 @@ final class ToPrimitiveNode extends Node {
                 }
             } else {
                 if (conversionLevel > 0) {
-                    Integer safeChar = toInt(value);
+                    Integer safeChar = toInt(attr);
                     if (safeChar != null) {
                         int v = safeChar;
                         if (v >= 0 && v < 65536) {
