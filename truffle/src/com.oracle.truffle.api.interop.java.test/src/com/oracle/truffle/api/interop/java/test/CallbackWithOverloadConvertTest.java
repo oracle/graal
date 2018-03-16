@@ -27,7 +27,6 @@ package com.oracle.truffle.api.interop.java.test;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 import org.junit.Test;
 
 public final class CallbackWithOverloadConvertTest {
