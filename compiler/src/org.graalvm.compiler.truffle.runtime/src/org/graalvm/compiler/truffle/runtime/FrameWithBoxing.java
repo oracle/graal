@@ -54,7 +54,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
 
     @Override
     public Object[] getArguments() {
-        return unsafeCast(arguments, Object[].class, true, true);
+        return unsafeCast(arguments, Object[].class, true, true, true);
     }
 
     @Override
@@ -73,7 +73,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
     }
 
     private Object[] getLocals() {
-        return unsafeCast(locals, Object[].class, true, true);
+        return unsafeCast(locals, Object[].class, true, true, true);
     }
 
     @Override
@@ -234,7 +234,7 @@ public final class FrameWithBoxing implements VirtualFrame, MaterializedFrame {
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
 }

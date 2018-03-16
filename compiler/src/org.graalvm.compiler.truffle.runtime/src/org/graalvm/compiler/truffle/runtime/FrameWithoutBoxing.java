@@ -82,7 +82,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     @Override
     public Object[] getArguments() {
-        return unsafeCast(arguments, Object[].class, true, true);
+        return unsafeCast(arguments, Object[].class, true, true, true);
     }
 
     @Override
@@ -99,15 +99,15 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     private Object[] getLocals() {
-        return unsafeCast(locals, Object[].class, true, true);
+        return unsafeCast(locals, Object[].class, true, true, true);
     }
 
     private long[] getPrimitiveLocals() {
-        return unsafeCast(this.primitiveLocals, long[].class, true, true);
+        return unsafeCast(this.primitiveLocals, long[].class, true, true, true);
     }
 
     byte[] getTags() {
-        return unsafeCast(tags, byte[].class, true, true);
+        return unsafeCast(tags, byte[].class, true, true, true);
     }
 
     Object getObjectUnsafe(int slotIndex, FrameSlot slot, boolean condition) {
@@ -400,7 +400,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    private static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
 

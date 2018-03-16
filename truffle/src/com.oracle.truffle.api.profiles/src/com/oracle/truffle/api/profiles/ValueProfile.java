@@ -46,9 +46,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * <pre>
  * class SampleNode extends Node {
- * 
+ *
  * final ValueProfile profile = ValueProfile.create{Identity,Class}Profile();
- * 
+ *
  *     Object execute(Object input) {
  *         Object profiledValue = profile.profile(input);
  *         // compiler may know now more about profiledValue
@@ -112,7 +112,7 @@ public abstract class ValueProfile extends Profile {
      * object identity. If two identities have been seen on a single profile instance then this
      * profile will transition to a generic state with no overhead.
      * </p>
-     * 
+     *
      * @since 0.10
      */
     public static ValueProfile createIdentityProfile() {
@@ -137,7 +137,7 @@ public abstract class ValueProfile extends Profile {
      * seen on a single profile instance then this profile will transition to a generic state with
      * no overhead.
      * </p>
-     * 
+     *
      * @since 0.10
      */
     public static ValueProfile createEqualityProfile() {
@@ -212,7 +212,7 @@ public abstract class ValueProfile extends Profile {
 
         @Override
         public String toString() {
-            return toString(ValueProfile.class, isUninitialized(), isGeneric(), //
+            return toString(ValueProfile.class, isUninitialized(), isGeneric(),
                             String.format("value == %s@%x", cachedValue != null ? cachedValue.getClass().getSimpleName() : "null", Objects.hash(cachedValue)));
         }
 
@@ -267,7 +267,7 @@ public abstract class ValueProfile extends Profile {
 
         @Override
         public String toString() {
-            return toString(ValueProfile.class, isUninitialized(), isGeneric(), //
+            return toString(ValueProfile.class, isUninitialized(), isGeneric(),
                             String.format("value == %s@%x", cachedValue != null ? cachedValue.getClass().getSimpleName() : "null", Objects.hash(cachedValue)));
         }
 
@@ -295,16 +295,8 @@ public abstract class ValueProfile extends Profile {
             // Field needs to be cached in local variable for thread safety and startup speed.
             Class<?> clazz = cachedClass;
             if (clazz != Object.class) {
-                if (clazz != null && value != null && clazz == value.getClass()) {
-                    /*
-                     * The cast is really only for the compiler relevant. It does not perform any
-                     * useful action in the interpreter and only takes time.
-                     */
-                    if (CompilerDirectives.inInterpreter()) {
-                        return value;
-                    } else {
-                        return (T) clazz.cast(value);
-                    }
+                if (clazz != null && value != null && value.getClass() == clazz) {
+                    return (T) CompilerDirectives.castExact(value, clazz);
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (clazz == null && value != null) {
@@ -331,7 +323,7 @@ public abstract class ValueProfile extends Profile {
 
         @Override
         public String toString() {
-            return toString(ValueProfile.class, cachedClass == null, cachedClass == Object.class, //
+            return toString(ValueProfile.class, cachedClass == null, cachedClass == Object.class,
                             String.format("value.getClass() == %s.class", cachedClass != null ? cachedClass.getSimpleName() : "null"));
         }
 

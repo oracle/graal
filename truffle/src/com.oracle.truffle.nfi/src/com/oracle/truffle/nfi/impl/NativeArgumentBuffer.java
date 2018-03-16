@@ -81,7 +81,7 @@ abstract class NativeArgumentBuffer {
 
         @Override
         protected ByteBuffer getPrimBuffer() {
-            return heapByteBuffer.cast(primBuffer);
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer);
         }
     }
 
@@ -93,12 +93,12 @@ abstract class NativeArgumentBuffer {
 
         Direct(ByteBuffer primBuffer, int objCount) {
             super(objCount);
-            this.primBuffer = directByteBuffer.cast(primBuffer).slice().order(ByteOrder.nativeOrder());
+            this.primBuffer = CompilerDirectives.castExact(primBuffer, directByteBuffer).slice().order(ByteOrder.nativeOrder());
         }
 
         @Override
         protected ByteBuffer getPrimBuffer() {
-            return directByteBuffer.cast(primBuffer);
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer);
         }
     }
 
