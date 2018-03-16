@@ -279,11 +279,11 @@ final class JavaClassDesc {
             }
             return null;
         }
+    }
 
-        private static boolean isObjectMethodOverride(Method m) {
-            return ((m.getParameterCount() == 0 && (m.getName().equals("hashCode") || m.getName().equals("toString"))) ||
-                            (m.getParameterCount() == 1 && m.getName().equals("equals") && m.getParameterTypes()[0] == Object.class));
-        }
+    static boolean isObjectMethodOverride(Method m) {
+        return ((m.getParameterCount() == 0 && (m.getName().equals("hashCode") || m.getName().equals("toString"))) ||
+                        (m.getParameterCount() == 1 && m.getName().equals("equals") && m.getParameterTypes()[0] == Object.class));
     }
 
     private static class JNIMembers {
@@ -424,10 +424,6 @@ final class JavaClassDesc {
 
     public JavaMethodDesc getFunctionalMethod() {
         return getMembers().functionalMethod;
-    }
-
-    public boolean implementsFunctionalInterface() {
-        return getFunctionalMethod() != null;
     }
 
     @Override

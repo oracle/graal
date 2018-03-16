@@ -627,7 +627,12 @@ public class SLDebugTest {
                 assertEquals("main", dsf.getName());
                 assertEquals(2, dsf.getSourceSection().getStartLine());
                 assertFalse(dsf.isInternal());
-                assertFalse(sfIt.hasNext());
+
+                // skip internal frames
+                while (sfIt.hasNext()) {
+                    dsf = sfIt.next();
+                    assertTrue(dsf.isInternal());
+                }
             });
             expectDone();
         }
@@ -645,7 +650,7 @@ public class SLDebugTest {
 
         Context context = Context.create("sl");
         context.eval(stackSource);
-        Value fac = context.importSymbol("fac");
+        Value fac = context.getBindings("sl").getMember("fac");
         Object multiply = new Multiply();
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
         boolean[] done = new boolean[1];

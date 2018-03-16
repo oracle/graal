@@ -36,6 +36,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -596,7 +597,7 @@ public final class TruffleDebugger extends DebuggerDomain {
 
     private class SuspendedCallbackImpl implements SuspendedCallback {
 
-        private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, new SchedulerThreadFactory());
         private final AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();
         private Thread locked = null;
 
@@ -714,6 +715,24 @@ public final class TruffleDebugger extends DebuggerDomain {
         private synchronized void unlock() {
             locked = null;
             notify();
+        }
+
+        private class SchedulerThreadFactory implements ThreadFactory {
+
+            private final ThreadGroup group;
+
+            SchedulerThreadFactory() {
+                SecurityManager s = System.getSecurityManager();
+                this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+            }
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(group, r, "Suspend Unlocking Scheduler");
+                t.setDaemon(true);
+                t.setPriority(Thread.NORM_PRIORITY);
+                return t;
+            }
         }
     }
 

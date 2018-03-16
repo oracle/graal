@@ -25,7 +25,6 @@ package com.oracle.svm.hosted.snippets;
 import java.lang.reflect.Array;
 import java.util.Arrays;
 
-import com.oracle.svm.core.graal.nodes.HeapBaseFixedNode;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -74,7 +73,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
-import com.oracle.svm.core.graal.nodes.CurrentVMThreadFixedNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.graal.nodes.FormatObjectNode;
@@ -82,6 +80,7 @@ import com.oracle.svm.core.graal.nodes.NewPinnedArrayNode;
 import com.oracle.svm.core.graal.nodes.NewPinnedInstanceNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.ReadInstructionPointerNode;
+import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
 import com.oracle.svm.core.graal.nodes.ReadStackPointerNode;
 import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
@@ -235,7 +234,7 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, new CurrentVMThreadFixedNode());
+                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forIsolateThread());
                 } else {
                     /*
                      * In single-threaded mode, we do not have a VMThread. The specification of
@@ -249,7 +248,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("heapBase", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Object, new HeapBaseFixedNode());
+                b.addPush(JavaKind.Object, ReadRegisterFixedNode.forHeapBase());
                 return true;
             }
         });
@@ -479,7 +478,7 @@ public class SubstrateGraphBuilderPlugins {
                     b.addPush(JavaKind.Object, object);
                 } else {
                     FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, new DynamicPiNode(object, fixedGuard, toType));
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, toType));
                 }
                 return true;
             }

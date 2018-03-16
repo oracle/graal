@@ -22,6 +22,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -41,7 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class HostedType implements SharedType, WrappedJavaType {
+public abstract class HostedType implements SharedType, WrappedJavaType, Comparable<HostedType> {
 
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
@@ -427,5 +429,37 @@ public abstract class HostedType implements SharedType, WrappedJavaType {
 
     public void setEnclosingType(HostedType enclosingType) {
         this.enclosingType = enclosingType;
+    }
+
+    @Override
+    public int compareTo(HostedType other) {
+        if (this.equals(other)) {
+            return 0;
+        }
+        if (this.getClass().equals(other.getClass())) {
+            return compareToEqualClass(other);
+        }
+        int result = this.ordinal() - other.ordinal();
+        assert result != 0 : "Types not distinguishable: " + this + ", " + other;
+        return result;
+    }
+
+    int compareToEqualClass(HostedType other) {
+        assert getClass().equals(other.getClass());
+        return getName().compareTo(other.getName());
+    }
+
+    private int ordinal() {
+        if (isInterface()) {
+            return 4;
+        } else if (isArray()) {
+            return 3;
+        } else if (isInstanceClass()) {
+            return 2;
+        } else if (getJavaKind() != JavaKind.Object) {
+            return 1;
+        } else {
+            throw shouldNotReachHere();
+        }
     }
 }

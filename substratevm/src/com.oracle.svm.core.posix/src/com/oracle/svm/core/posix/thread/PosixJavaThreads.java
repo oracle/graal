@@ -44,6 +44,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
@@ -55,10 +56,13 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -118,6 +122,10 @@ public final class PosixJavaThreads extends JavaThreads {
         startData.setIsolate(CEntryPointContext.getCurrentIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
 
+        if (!thread.isDaemon()) {
+            JavaThreads.singleton().signalNonDaemonThreadStart();
+        }
+
         Pthread.pthread_tPointer newThread = StackValue.get(SizeOf.get(Pthread.pthread_tPointer.class));
         PosixUtils.checkStatusIs0(
                         Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
@@ -176,9 +184,14 @@ public final class PosixJavaThreads extends JavaThreads {
     private static final CEntryPointLiteral<CFunctionPointer> pthreadStartRoutine = CEntryPointLiteral.create(PosixJavaThreads.class, "pthreadStartRoutine", ThreadStartData.class);
 
     private static class PthreadStartRoutinePrologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
+
         @SuppressWarnings("unused")
         static void enter(ThreadStartData data) {
-            CEntryPointActions.enterAttachThread(data.getIsolate());
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate());
+            if (code != 0) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
         }
     }
 
@@ -190,7 +203,7 @@ public final class PosixJavaThreads extends JavaThreads {
 
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
 
-        boolean status = singleton().assignJavaThread(thread);
+        boolean status = singleton().assignJavaThread(thread, false);
         VMError.guarantee(status, "currentThread already initialized");
 
         /*
@@ -311,15 +324,28 @@ class PosixParkEvent extends ParkEvent {
                     return result;
                 }
                 final int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
-                /* If I was awakened because I ran out of time, then do not wait for the ticket. */
                 if (status == Errno.ETIMEDOUT()) {
+                    /* If I was awakened because I ran out of time, do not wait for the ticket. */
                     result = WaitResult.TIMED_OUT;
                     break;
-                } else if (status == Errno.EINTR()) {
+                }
+                if (status == Errno.EINTR()) {
+                    /* If I was awakened because I was interrupted, do not wait for the ticket. */
                     result = WaitResult.INTERRUPTED;
                     break;
                 }
-                PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                if (status != 0) {
+                    /* Detailed error message. */
+                    Log.log().newline()
+                                    .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
+                                    .string("  mutex: ").hex(mutex)
+                                    .string("  cond: ").hex(cond)
+                                    .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
+                                    .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
+                                    .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
+                                    .string("]").newline();
+                    PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                }
             }
 
             if (event) {

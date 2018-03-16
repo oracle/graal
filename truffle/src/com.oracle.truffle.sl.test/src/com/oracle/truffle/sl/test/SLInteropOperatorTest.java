@@ -45,7 +45,6 @@ import java.io.IOException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -69,9 +68,7 @@ public class SLInteropOperatorTest {
         final Source src = Source.newBuilder("sl", "function testAdd(a,b) {return a + b;} function main() {return testAdd;}", "testAdd.sl").build();
         final Value fnc = context.eval(src);
         Assert.assertTrue(fnc.canExecute());
-        final ProxyPrimitive left = () -> 1;
-        final ProxyPrimitive right = () -> 2;
-        final Value res = fnc.execute(left, right);
+        final Value res = fnc.execute(1, 2);
         Assert.assertTrue(res.isNumber());
         Assert.assertEquals(3, res.asInt());
     }
@@ -80,9 +77,7 @@ public class SLInteropOperatorTest {
     public void testSub() throws IOException {
         final Source src = Source.newBuilder("sl", "function testSub(a,b) {return a - b;} function main() {return testSub;}", "testSub.sl").build();
         final Value fnc = context.eval(src);
-        final ProxyPrimitive left = () -> 1;
-        final ProxyPrimitive right = () -> 2;
-        final Value res = fnc.execute(left, right);
+        final Value res = fnc.execute(1, 2);
         Assert.assertTrue(res.isNumber());
         Assert.assertEquals(-1, res.asInt());
     }

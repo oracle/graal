@@ -72,11 +72,6 @@ public class SourceAPITestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     @Override
-    protected Object getLanguageGlobal(LanguageContext context) {
-        return null;
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
     }

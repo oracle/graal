@@ -163,10 +163,8 @@ public class AArch64HotSpotMove {
 
         public static void emitUncompressCode(AArch64MacroAssembler masm, Register inputRegister, Register resReg, Register baseReg, int shift, boolean nonNull) {
             // result = base + (ptr << shift)
-            if (nonNull) {
-                masm.add(64, resReg, baseReg, inputRegister, AArch64Assembler.ShiftType.LSL, shift);
-            } else if (baseReg == null) {
-                masm.add(64, resReg, zr, inputRegister, AArch64Assembler.ShiftType.LSL, shift);
+            if (nonNull || baseReg == null) {
+                masm.add(64, resReg, baseReg == null ? zr : baseReg, inputRegister, AArch64Assembler.ShiftType.LSL, shift);
             } else {
                 // if ptr is null it has to be null after decompression
                 Label done = new Label();

@@ -428,8 +428,8 @@ public class SLInspectDebugTest {
                                                  "\"functionLocation\":{\"scriptId\":\"1\",\"columnNumber\":9,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"1\",\"columnNumber\":4,\"lineNumber\":4}}]}}\n"));
         tester.sendMessage("{\"id\":7,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"3\"}}");
-        assertEquals("{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"10\",\"type\":\"Number\",\"value\":\"10\"},\"configurable\":true,\"writable\":true}," +
-                                              "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"2\",\"type\":\"Number\",\"value\":\"2\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":7}",
+        assertEquals("{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"10\",\"type\":\"number\",\"value\":\"10\"},\"configurable\":true,\"writable\":true}," +
+                                              "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"2\",\"type\":\"number\",\"value\":\"2\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":7}",
                         tester.getMessages(true).trim());
         // Step over:
         tester.sendMessage("{\"id\":8,\"method\":\"Debugger.stepOver\"}");
@@ -446,9 +446,9 @@ public class SLInspectDebugTest {
         tester.sendMessage("{\"id\":9,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"5\"}}");
         tester.sendMessage("{\"id\":10,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"6\"}}");
         assertTrue(tester.compareReceivedMessages(
-                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"c\",\"value\":{\"description\":\"12\",\"type\":\"Number\",\"value\":\"12\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":9}\n" +
-                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"10\",\"type\":\"Number\",\"value\":\"10\"},\"configurable\":true,\"writable\":true}," +
-                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"2\",\"type\":\"Number\",\"value\":\"2\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":10}\n"));
+                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"c\",\"value\":{\"description\":\"12\",\"type\":\"number\",\"value\":\"12\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":9}\n" +
+                        "{\"result\":{\"result\":[{\"isOwn\":true,\"enumerable\":true,\"name\":\"a\",\"value\":{\"description\":\"10\",\"type\":\"number\",\"value\":\"10\"},\"configurable\":true,\"writable\":true}," +
+                                                 "{\"isOwn\":true,\"enumerable\":true,\"name\":\"b\",\"value\":{\"description\":\"2\",\"type\":\"number\",\"value\":\"2\"},\"configurable\":true,\"writable\":true}],\"internalProperties\":[]},\"id\":10}\n"));
 
         // Resume to finish:
         tester.sendMessage("{\"id\":45,\"method\":\"Debugger.resume\"}");

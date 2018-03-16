@@ -58,11 +58,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(Object context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
@@ -86,11 +81,6 @@ public class LanguageRegistrationTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(Object context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }
@@ -110,11 +100,6 @@ public class LanguageRegistrationTest {
 
         @ExpectError("Using a singleton field is deprecated. Please provide a public no-argument constructor instead.") //
         public static final MyLangGood INSTANCE = new MyLangGood();
-
-        @Override
-        protected Object getLanguageGlobal(Object context) {
-            return null;
-        }
 
         @Override
         protected boolean isObjectOfLanguage(Object object) {

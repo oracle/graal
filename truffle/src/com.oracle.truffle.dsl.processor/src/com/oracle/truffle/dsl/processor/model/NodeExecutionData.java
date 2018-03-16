@@ -36,18 +36,18 @@ public class NodeExecutionData {
     private final NodeChildData child;
     private final String name;
     private final int index;
-    private final int childIndex;
+    private final int childArrayIndex;
     private final List<TypeMirror> typeRestrictions = new ArrayList<>();
 
-    public NodeExecutionData(NodeChildData child, int index, int childIndex) {
+    public NodeExecutionData(NodeChildData child, int index, int childArrayIndex) {
         this.child = child;
         this.index = index;
-        this.childIndex = childIndex;
+        this.childArrayIndex = childArrayIndex;
         this.name = createName();
     }
 
     private String createName() {
-        return child != null ? createName(child.getName(), childIndex) : ("arg" + index);
+        return child != null ? createName(child.getName(), childArrayIndex) : ("arg" + index);
     }
 
     public int getIndex() {
@@ -76,16 +76,16 @@ public class NodeExecutionData {
         return child;
     }
 
-    public int getChildIndex() {
-        return childIndex;
+    public int getChildArrayIndex() {
+        return childArrayIndex;
     }
 
-    public boolean isIndexed() {
-        return childIndex > -1;
+    public boolean hasChildArrayIndex() {
+        return childArrayIndex > -1;
     }
 
     public String getIndexedName() {
-        return createIndexedName(child, childIndex);
+        return createIndexedName(child, childArrayIndex);
     }
 
     public static String createIndexedName(NodeChildData child, int varArgsIndex) {

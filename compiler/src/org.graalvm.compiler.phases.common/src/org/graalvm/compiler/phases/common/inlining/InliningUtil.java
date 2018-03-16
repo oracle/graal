@@ -48,7 +48,6 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -85,6 +84,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -553,7 +553,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
         } else {
             if (unwindNode != null && unwindNode.isAlive()) {
-                DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                DeoptimizeNode deoptimizeNode = addDeoptimizeNode(graph, DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                 unwindNode.replaceAndDelete(deoptimizeNode);
             }
         }
@@ -753,7 +753,15 @@ public class InliningUtil extends ValueMergeUtil {
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
-        } else if (frameState.bci == BytecodeFrame.UNWIND_BCI || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage() == GuardsStage.FLOATING_GUARDS) || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            /*
+             * This path converts the frame states relevant for exception unwinding to
+             * deoptimization. This is only allowed in configurations when Graal compiles code for
+             * speculative execution (e.g., JIT compilation in HotSpot) but not when compiled code
+             * must be deoptimization free (e.g., AOT compilation for native image generation).
+             * There is currently no global flag in StructuredGraph to distinguish such modes, but
+             * the GuardsStage during inlining indicates the mode in which Graal operates.
+             */
             handleMissingAfterExceptionFrameState(frameState, invoke, replacements, alwaysDuplicateStateAfter);
             return frameState;
         } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
@@ -817,7 +825,6 @@ public class InliningUtil extends ValueMergeUtil {
         assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI : frameState;
         assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
         assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
-        assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
         if (frameState.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             ResolvedJavaMethod method = frameState.getMethod();
             if (method.equals(inlinedMethod)) {
@@ -849,7 +856,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     public static FrameState handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState, Invoke invoke, EconomicMap<Node, Node> replacements, boolean alwaysDuplicateStateAfter) {
-        Graph graph = nonReplaceableFrameState.graph();
+        StructuredGraph graph = nonReplaceableFrameState.graph();
         NodeWorkList workList = graph.createNodeWorkList();
         workList.add(nonReplaceableFrameState);
         for (Node node : workList) {
@@ -867,7 +874,7 @@ public class InliningUtil extends ValueMergeUtil {
                         AbstractMergeNode merge = (AbstractMergeNode) fixedStateSplit;
                         while (merge.isAlive()) {
                             AbstractEndNode end = merge.forwardEnds().first();
-                            DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                            DeoptimizeNode deoptimizeNode = addDeoptimizeNode(graph, DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                             end.replaceAtPredecessor(deoptimizeNode);
                             GraphUtil.killCFG(end);
                         }
@@ -886,7 +893,7 @@ public class InliningUtil extends ValueMergeUtil {
                         }
                         handleAfterBciFrameState(newInvoke.stateAfter(), invoke, alwaysDuplicateStateAfter);
                     } else {
-                        FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                        FixedNode deoptimizeNode = addDeoptimizeNode(graph, DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                         if (fixedStateSplit instanceof AbstractBeginNode) {
                             deoptimizeNode = BeginNode.begin(deoptimizeNode);
                         }
@@ -897,6 +904,11 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
         return nonReplaceableFrameState;
+    }
+
+    private static DeoptimizeNode addDeoptimizeNode(StructuredGraph graph, DeoptimizationAction action, DeoptimizationReason reason) {
+        GraalError.guarantee(graph.getGuardsStage() == GuardsStage.FLOATING_GUARDS, "Cannot introduce speculative deoptimization when Graal is used with fixed guards");
+        return graph.add(new DeoptimizeNode(action, reason));
     }
 
     /**
@@ -967,8 +979,8 @@ public class InliningUtil extends ValueMergeUtil {
         return replacements.hasSubstitution(target, invokeBci);
     }
 
-    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci, boolean trackNodeSourcePosition) {
-        return replacements.getSubstitution(target, invokeBci, trackNodeSourcePosition);
+    public static StructuredGraph getIntrinsicGraph(Replacements replacements, ResolvedJavaMethod target, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition) {
+        return replacements.getSubstitution(target, invokeBci, trackNodeSourcePosition, replaceePosition);
     }
 
     public static FixedWithNextNode inlineMacroNode(Invoke invoke, ResolvedJavaMethod concrete, Class<? extends FixedWithNextNode> macroNodeClass) throws GraalError {

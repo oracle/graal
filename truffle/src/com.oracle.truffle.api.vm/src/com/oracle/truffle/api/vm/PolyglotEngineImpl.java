@@ -58,6 +58,7 @@ import org.graalvm.polyglot.Language;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -791,7 +792,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         private synchronized void enableCancel() {
             if (cancellationBinding == null) {
-                cancellationBinding = instrumenter.attachListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+                cancellationBinding = instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
                     public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
                         cancelExecution(context);
                     }
@@ -850,6 +851,16 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             return true;
         }
 
+    }
+
+    @Override
+    public String getImplementationName() {
+        String name = Truffle.getRuntime().getName();
+        if (name.contains("Graal")) {
+            return "Graal Engine";
+        } else {
+            return "Default Engine";
+        }
     }
 
     @Override

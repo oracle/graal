@@ -936,11 +936,6 @@ public class ContextPreInitializationTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(CountingContext context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }

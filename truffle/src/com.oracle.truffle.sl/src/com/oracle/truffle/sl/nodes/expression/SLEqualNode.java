@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,6 +47,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
+import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -72,7 +71,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization
     @TruffleBoundary
-    protected boolean equal(BigInteger left, BigInteger right) {
+    protected boolean equal(SLBigNumber left, SLBigNumber right) {
         return left.equals(right);
     }
 

@@ -74,9 +74,15 @@ public class CyclicAssumption {
     /** @since 0.8 or earlier */
     @TruffleBoundary
     public void invalidate() {
+        invalidate("");
+    }
+
+    /** @since 0.33 */
+    @TruffleBoundary
+    public void invalidate(String message) {
         Assumption newAssumption = Truffle.getRuntime().createAssumption(name);
         Assumption oldAssumption = ASSUMPTION_UPDATER.getAndSet(this, newAssumption);
-        oldAssumption.invalidate();
+        oldAssumption.invalidate(message);
     }
 
     /** @since 0.8 or earlier */

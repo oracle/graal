@@ -259,7 +259,7 @@ public class ThreadsEventsTest {
 
         @Override
         protected void onCreate(Env env) {
-            env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), this);
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StatementTag.class).build(), this);
             env.registerService(this);
         }
 

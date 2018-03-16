@@ -89,6 +89,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractValueImpl getImpl(Value value);
 
+        public abstract AbstractExceptionImpl getImpl(PolyglotException value);
+
         public abstract AbstractStackFrameImpl getImpl(StackFrame value);
 
         public abstract AbstractLanguageImpl getImpl(Language value);
@@ -216,12 +218,6 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Value lookup(String language, String key);
-
-        public abstract Value importSymbol(String key);
-
-        public abstract void exportSymbol(String key, Object value);
-
         public abstract boolean initializeLanguage(String languageId);
 
         public abstract Value eval(String language, Object sourceImpl);
@@ -236,6 +232,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void explicitLeave();
 
+        public abstract Value getBindings(String language);
+
+        public abstract Value getPolyglotBindings();
     }
 
     public abstract static class AbstractEngineImpl {
@@ -262,6 +261,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         boolean allowCreateThread, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages);
+
+        public abstract String getImplementationName();
 
     }
 
@@ -362,8 +363,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract OptionDescriptors getOptions();
 
         public abstract Engine getEngineAPI();
-
-        public abstract boolean isHost();
 
     }
 

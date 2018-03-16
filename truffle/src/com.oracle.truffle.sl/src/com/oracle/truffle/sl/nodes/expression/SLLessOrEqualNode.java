@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
+import com.oracle.truffle.sl.runtime.SLBigNumber;
 
 /**
  * This class is similar to the {@link SLLessThanNode}.
@@ -62,7 +61,7 @@ public abstract class SLLessOrEqualNode extends SLBinaryNode {
 
     @Specialization
     @TruffleBoundary
-    protected boolean lessOrEqual(BigInteger left, BigInteger right) {
+    protected boolean lessOrEqual(SLBigNumber left, SLBigNumber right) {
         return left.compareTo(right) <= 0;
     }
 

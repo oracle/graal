@@ -110,18 +110,15 @@ class NativePointerMessageResolution {
     @Resolve(message = "KEY_INFO")
     abstract static class NativePointerKeyInfoNode extends Node {
 
-        private static final int INVOCABLE = KeyInfo.newBuilder().setInvocable(true).build();
-        private static final int NOT_EXISTING = 0;
-
         @Child private AsStringNode asString = AsStringNodeGen.create(true);
 
         @SuppressWarnings("unused")
         public int access(NativePointer receiver, Object arg) {
             String identifier = asString.execute(arg);
             if ("bind".equals(identifier)) {
-                return INVOCABLE;
+                return KeyInfo.INVOCABLE;
             } else {
-                return NOT_EXISTING;
+                return KeyInfo.NONE;
             }
         }
     }

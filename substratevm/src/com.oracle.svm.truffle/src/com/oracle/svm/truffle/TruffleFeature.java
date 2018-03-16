@@ -115,7 +115,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
-import com.oracle.truffle.api.instrumentation.InstrumentableFactory;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.Profile;
@@ -369,6 +368,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         return true;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
@@ -376,7 +376,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         getLanguageClasses().forEach(config::registerForReflectiveInstantiation);
 
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
-        config.registerHierarchyForReflectiveInstantiation(InstrumentableFactory.class);
+        config.registerHierarchyForReflectiveInstantiation(com.oracle.truffle.api.instrumentation.InstrumentableFactory.class);
 
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();

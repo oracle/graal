@@ -25,6 +25,7 @@ package com.oracle.svm.hosted.c;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -139,7 +140,7 @@ public class CGlobalDataFeature implements GraalFeature {
         return totalSize;
     }
 
-    public void writeData(RelocatableBuffer buffer) {
+    public void writeData(RelocatableBuffer buffer, BiFunction<Integer, String, ?> createSymbol) {
         assert isLayouted() : "Not layouted yet";
         int start = buffer.getPosition();
         assert IntStream.range(0, totalSize).allMatch(i -> buffer.getByte(i) == 0) : "Buffer must be zero-initialized";
@@ -148,6 +149,10 @@ public class CGlobalDataFeature implements GraalFeature {
             if (bytes != null) {
                 buffer.setPosition(start + info.getOffset());
                 buffer.putBytes(bytes, 0, bytes.length);
+            }
+            CGlobalDataImpl<?> data = info.getData();
+            if (data.symbolName != null && !info.isSymbolReference()) {
+                createSymbol.apply(info.getOffset(), data.symbolName);
             }
         }
     }

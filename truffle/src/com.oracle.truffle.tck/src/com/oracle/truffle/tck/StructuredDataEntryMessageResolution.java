@@ -53,13 +53,11 @@ class StructuredDataEntryMessageResolution {
     @Resolve(message = "KEY_INFO")
     abstract static class StructuredDataEntryKeyInfoNode extends Node {
 
-        private static final int readable = KeyInfo.newBuilder().setReadable(true).build();
-
         public Object access(StructuredDataEntry data, Object identifier) {
             if (data.getSchema().getNames().contains(identifier)) {
-                return readable;
+                return KeyInfo.READABLE;
             } else {
-                return 0;
+                return KeyInfo.NONE;
             }
         }
     }

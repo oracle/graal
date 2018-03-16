@@ -108,6 +108,16 @@ public class SubstrateOptions {
     @Option(help = "Use heap base register. ")//
     public static final HostedOptionKey<Boolean> UseHeapBaseRegister = new HostedOptionKey<>(false);
 
+    @Option(help = "Support multiple isolates (disable for legacy mode with a single isolate). ")//
+    public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                UseHeapBaseRegister.update(values, true);
+            }
+        }
+    };
+
     @Option(help = "Trace VMOperation execution.")//
     public static final RuntimeOptionKey<Boolean> TraceVMOperations = new RuntimeOptionKey<>(false);
 

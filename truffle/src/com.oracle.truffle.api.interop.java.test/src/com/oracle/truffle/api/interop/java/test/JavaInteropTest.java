@@ -52,7 +52,9 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import org.graalvm.polyglot.Context;
 import org.hamcrest.CoreMatchers;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -103,12 +105,21 @@ public class JavaInteropTest {
     private Data data;
     private XYPlus xyp;
     private boolean assertThisCalled;
+    private Context context;
 
     @Before
     public void initObjects() {
+        context = Context.create();
+        context.enter();
         data = new Data();
         obj = JavaInterop.asTruffleObject(data);
         xyp = JavaInterop.asJavaObject(XYPlus.class, obj);
+    }
+
+    @After
+    public void cleanup() {
+        context.leave();
+        context.close();
     }
 
     @Test
@@ -859,7 +870,7 @@ public class JavaInteropTest {
         keyInfo = getKeyInfo(d, "toString");
         assertTrue(KeyInfo.isExisting(keyInfo));
         assertTrue(KeyInfo.isReadable(keyInfo));
-        assertTrue(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
         assertTrue(KeyInfo.isInvocable(keyInfo));
         assertFalse(KeyInfo.isRemovable(keyInfo));
     }
@@ -1555,7 +1566,20 @@ public class JavaInteropTest {
                     boolean writable = (receiver.wBits & (1 << d)) > 0;
                     boolean invocable = (receiver.iBits & (1 << d)) > 0;
                     boolean internal = (receiver.nBits & (1 << d)) > 0;
-                    return KeyInfo.newBuilder().setReadable(readable).setWritable(writable).setInvocable(invocable).setInternal(internal).build();
+                    int info = KeyInfo.NONE;
+                    if (readable) {
+                        info |= KeyInfo.READABLE;
+                    }
+                    if (writable) {
+                        info |= KeyInfo.MODIFIABLE;
+                    }
+                    if (invocable) {
+                        info |= KeyInfo.INVOCABLE;
+                    }
+                    if (internal) {
+                        info |= KeyInfo.INTERNAL;
+                    }
+                    return info;
                 }
             }
         }

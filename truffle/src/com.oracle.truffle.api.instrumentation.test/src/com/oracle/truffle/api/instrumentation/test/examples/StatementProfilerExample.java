@@ -57,7 +57,7 @@ public class StatementProfilerExample extends TruffleInstrument {
                 throw new RuntimeException(e);
             }
         }
-        env.getInstrumenter().attachFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+        env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(final EventContext context) {
                 return new ExecutionEventNode() {
                     private final Counter counter = createCounter(context.getInstrumentedSourceSection());

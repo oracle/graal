@@ -40,31 +40,34 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
- * Built-in function that goes through the other registered languages to find an exported global
- * symbol of the specified name. See <link>SLContext#import(String)</link>.
+ * Built-in function that goes through to import a symbol from the polyglot bindings.
  */
 @NodeInfo(shortName = "import")
-@SuppressWarnings("unused")
 public abstract class SLImportBuiltin extends SLBuiltinNode {
 
-    @Specialization(guards = "stringsEqual(cachedName, name)")
-    public Object importSymbol(String name,
-                    @Cached("name") String cachedName,
-                    @Cached("doImport(name)") Object symbol) {
-        return symbol;
-    }
+    @Child private Node readNode = Message.READ.createNode();
 
-    protected Object doImport(String name) {
-        return getContext().importSymbol(name);
-    }
-
-    /* Work around findbugs warning in generate code. */
-    protected static boolean stringsEqual(String a, String b) {
-        return a.equals(b);
+    @Specialization
+    public Object importSymbol(String name) {
+        try {
+            return ForeignAccess.sendRead(readNode, getContext().getPolyglotBindings(), name);
+        } catch (UnknownIdentifierException e) {
+            return SLNull.SINGLETON;
+        } catch (UnsupportedMessageException e) {
+            // polyglot bindings should always support reading
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError(e);
+        }
     }
 }

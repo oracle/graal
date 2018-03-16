@@ -50,7 +50,6 @@ import jdk.vm.ci.meta.JavaMethodProfile.ProfiledMethod;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.JavaTypeProfile.ProfiledType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.TriState;
 
 public class StaticAnalysisResultsBuilder {
@@ -269,13 +268,13 @@ public class StaticAnalysisResultsBuilder {
     }
 
     private JavaTypeProfile createTypeProfile(TypeState typeState) {
-        ProfiledType[] pitems = new ProfiledType[typeState.typesCount()];
-        double probability = 1d / pitems.length;
-        int idx = 0;
-        for (AnalysisType exactType : typeState.types()) {
-            ResolvedJavaType convertedType = converter == null ? exactType : converter.lookup(exactType);
-            pitems[idx++] = new ProfiledType(convertedType, probability);
-        }
+        double probability = 1d / typeState.typesCount();
+        ProfiledType[] pitems = typeState.typesStream()
+                        .map(analysisType -> converter == null ? analysisType : converter.lookup(analysisType))
+                        .sorted()
+                        .map(type -> new ProfiledType(type, probability))
+                        .toArray(ProfiledType[]::new);
+
         return new JavaTypeProfile(TriState.get(typeState.canBeNull()), 0, pitems);
     }
 

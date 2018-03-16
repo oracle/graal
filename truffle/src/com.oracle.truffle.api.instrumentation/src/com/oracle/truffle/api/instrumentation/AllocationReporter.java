@@ -326,6 +326,7 @@ public final class AllocationReporter {
 
     @TruffleBoundary
     private void allocatedCheck(Object value, long oldSize, long newSize) {
+        assert value != null : "Allocated value must not be null.";
         LinkedList<Reference<Object>> list = valueCheck.get();
         assert list != null && !list.isEmpty() : "onEnter() was not called";
         Object orig = list.removeLast().get();
@@ -380,11 +381,6 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     }
     // END: AllocationReporterSnippets#example
     // @formatter:on
-
-    @Override
-    protected Object getLanguageGlobal(ContextObject context) {
-        return null;
-    }
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {

@@ -31,8 +31,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleProfilingEnabled;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplitting;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingLimitGrowth;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplits;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleUseFrameWithoutBoxing;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValue;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.overrideOptions;
@@ -637,12 +637,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
         CompilerAsserts.neverPartOfCompilation();
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) createClonedCallTarget(null, rootNode);
         if (TruffleCompilerOptions.getValue(TruffleSplitting)) {
             final GraalTVMCI.EngineData engineData = tvmci.getEngineData(rootNode);
-            final int newLimit = engineData.splitLimit + TruffleCompilerOptions.getValue(TruffleSplittingLimitGrowth);
-            engineData.splitLimit = Math.min(newLimit, TruffleCompilerOptions.getValue(TruffleSplittingMaxNumberOfSplits));
+            final int newLimit = (int) (engineData.splitLimit + TruffleCompilerOptions.getValue(TruffleSplittingGrowthLimit) * callTarget.getUninitializedNodeCount());
+            engineData.splitLimit = Math.min(newLimit, TruffleCompilerOptions.getValue(TruffleSplittingMaxNumberOfSplitNodes));
         }
-        return createClonedCallTarget(null, rootNode);
+        return callTarget;
     }
 
     @SuppressWarnings("deprecation")
@@ -679,14 +680,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         TruffleCompiler compiler = getTruffleCompiler();
         TruffleInlining inlining = new TruffleInlining(callTarget, new DefaultInliningPolicy());
         CompilationIdentifier compilationId = compiler.getCompilationIdentifier(callTarget);
-        DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null;
-        try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
-            maybeDumpTruffleTree(debug, options, callTarget, inlining);
-            compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw new InternalError(e);
+        try (DebugContext debug = compilationId != null ? compiler.openDebugContext(options, compilationId, callTarget) : null) {
+            try (Scope s = debug != null ? debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget)) : null) {
+                maybeDumpTruffleTree(debug, options, callTarget, inlining);
+                compiler.doCompile(debug, compilationId, options, callTarget, inlining, task, listeners.isEmpty() ? null : listeners);
+            } catch (RuntimeException | Error e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new InternalError(e);
+            }
         }
         dequeueInlinedCallSites(inlining, callTarget);
     }

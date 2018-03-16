@@ -303,11 +303,6 @@ public class LanguageSPIOrderTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(OrderContext context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             return false;
         }

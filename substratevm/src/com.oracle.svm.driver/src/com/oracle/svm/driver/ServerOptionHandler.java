@@ -26,6 +26,8 @@ import java.util.Queue;
 
 class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
 
+    private static final String helpTextServer = NativeImage.getResource("/HelpServer.txt");
+
     ServerOptionHandler(NativeImageServer nativeImage) {
         super(nativeImage);
     }
@@ -34,17 +36,24 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
-            case "-no-server":
+            case "--help-advanced":
+                args.poll();
+                nativeImage.showMessage(DefaultOptionHandler.helpTextAdvanced);
+                nativeImage.showMessage(helpTextServer);
+                System.exit(0);
+                return true;
+
+            case "--no-server":
                 args.poll();
                 nativeImage.setUseServer(false);
                 return true;
-            case "-verbose-server":
+            case "--verbose-server":
                 args.poll();
                 nativeImage.setVerboseServer(true);
                 return true;
         }
 
-        String oServer = "-server";
+        String oServer = "--server";
         if (headArg.startsWith(oServer)) {
             String optionTail = args.poll().substring(oServer.length());
             String oAll = "-all";

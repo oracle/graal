@@ -24,6 +24,11 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
+import static org.junit.Assert.assertEquals;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -32,6 +37,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.nodes.Node;
 
 public class VarArgsTest {
     @Test
@@ -87,6 +93,34 @@ public class VarArgsTest {
         Assert.assertEquals("Hello World", result);
     }
 
+    @Test
+    public void testPathsGet() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        TruffleObject paths = JavaInterop.asTruffleObject(Paths.class);
+        TruffleObject result;
+        result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir");
+        assertEquals("dir", JavaInterop.asJavaObject(Path.class, result).toString());
+        result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", "dir2");
+        assertEquals("dir1/dir2", JavaInterop.asJavaObject(Path.class, result).toString());
+        result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", "dir2", "dir3");
+        assertEquals("dir1/dir2/dir3", JavaInterop.asJavaObject(Path.class, result).toString());
+        result = (TruffleObject) ForeignAccess.sendInvoke(n, paths, "get", "dir1", JavaInterop.asTruffleObject(new String[]{"dir2", "dir3"}));
+        assertEquals("dir1/dir2/dir3", JavaInterop.asJavaObject(Path.class, result).toString());
+    }
+
+    @Test
+    public void testOverloadedVarArgsPrimitive() throws InteropException {
+        Node n = Message.createInvoke(1).createNode();
+        TruffleObject paths = JavaInterop.asTruffleObject(Sum.class);
+        Object result;
+        result = ForeignAccess.sendInvoke(n, paths, "sum", 10);
+        assertEquals("I", result);
+        result = ForeignAccess.sendInvoke(n, paths, "sum", 10, 20);
+        assertEquals("DD", result);
+        result = ForeignAccess.sendInvoke(n, paths, "sum", 10, 20, 30);
+        assertEquals("I[I", result);
+    }
+
     public static class Join {
         public static String stringEllipsis(String... args) {
             return String.join(" ", args);
@@ -94,6 +128,29 @@ public class VarArgsTest {
 
         public static String charSequenceEllipsis(CharSequence... args) {
             return String.join(" ", args);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class Sum {
+        public static String sum(int first) {
+            return "I";
+        }
+
+        public static String sum(int first, int... more) {
+            return "I[I";
+        }
+
+        public static String sum(double first) {
+            return "D";
+        }
+
+        public static String sum(double first, double second) {
+            return "DD";
+        }
+
+        public static String sum(double first, double... more) {
+            return "D[D";
         }
     }
 }

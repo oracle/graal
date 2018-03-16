@@ -124,7 +124,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
 
-        PolyglotEngineImpl engine = exception.engine;
+        PolyglotEngineImpl engine = exception.context.getEngine();
         PolyglotLanguage language = engine.idToLanguage.get(info.getId());
         String rootName = targetRoot.getName();
 
@@ -146,7 +146,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.engine.hostLanguage;
+        PolyglotLanguage language = exception.context.getEngine().hostLanguage;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language

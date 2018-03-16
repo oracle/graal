@@ -84,7 +84,7 @@ public class CPUTracerInstrument extends TruffleInstrument {
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
      * {@link CPUTracer}.
-     * 
+     *
      * @since 0.30
      */
     public static CPUTracer getTracer(PolyglotEngine engine) {
@@ -104,9 +104,18 @@ public class CPUTracerInstrument extends TruffleInstrument {
      */
     @Override
     protected void onCreate(Env env) {
+
         tracer = factory.create(env);
         if (env.getOptions().get(CPUTracerCLI.ENABLED)) {
-            tracer.setFilter(getSourceSectionFilter(env));
+            try {
+                tracer.setFilter(getSourceSectionFilter(env));
+            } catch (IllegalArgumentException e) {
+                new PrintStream(env.err()).println(ID + " error: " + e.getMessage());
+                env.getOptions().set(CPUTracerCLI.ENABLED, false);
+                tracer.setCollecting(false);
+                env.registerService(tracer);
+                return;
+            }
             tracer.setCollecting(true);
         }
         env.registerService(tracer);

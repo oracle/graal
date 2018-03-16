@@ -96,12 +96,6 @@ public class PointstoOptions {
     @Option(help = "Report analysis statistics.")//
     public static final OptionKey<Boolean> ReportAnalysisStatistics = new OptionKey<>(false);
 
-    @Option(help = "Print analysis call tree.")//
-    public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);
-
-    @Option(help = "Print analysis type hierarcy.")//
-    public static final OptionKey<Boolean> PrintBootImageHeap = new OptionKey<>(false);
-
     @Option(help = "Path to the contents of the Inspect web server.")//
     public static final OptionKey<String> InspectServerContentPath = new OptionKey<>("inspect");
 

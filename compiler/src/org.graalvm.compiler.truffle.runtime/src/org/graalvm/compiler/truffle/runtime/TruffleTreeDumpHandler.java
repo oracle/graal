@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Introspection;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
@@ -34,7 +35,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
-
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphOutput;
@@ -339,20 +339,39 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
         ASTNode(Node source, int id) {
             this.source = source;
             this.id = id;
+            setNewClass();
+
+            setBasicProperties(properties, source);
+            readNodeProperties(this, source);
+            copyDebugProperties(this, source);
+
+        }
+
+        private static void setBasicProperties(Map<String, ? super Object> properties, Node source) {
             String className = className(source.getClass());
             properties.put("label", dropNodeSuffix(className));
+            properties.put("cost", source.getCost());
             NodeInfo nodeInfo = source.getClass().getAnnotation(NodeInfo.class);
-            setNewClass();
             if (nodeInfo != null) {
-                properties.put("cost", nodeInfo.cost());
                 if (!nodeInfo.shortName().isEmpty()) {
                     properties.put("shortName", nodeInfo.shortName());
                 }
             }
-
-            readNodeProperties(this, source);
-            copyDebugProperties(this, source);
-
+            if (Introspection.isIntrospectable(source)) {
+                final List<Introspection.SpecializationInfo> specializations = Introspection.getSpecializations(source);
+                for (Introspection.SpecializationInfo specialization : specializations) {
+                    final String methodName = specialization.getMethodName();
+                    properties.put(methodName + ".isActive", specialization.isActive());
+                    properties.put(methodName + ".isExcluded", specialization.isExcluded());
+                    properties.put(methodName + ".instances", specialization.getInstances());
+                    for (int i = 0; i < specialization.getInstances(); i++) {
+                        final List<Object> cachedData = specialization.getCachedData(i);
+                        for (Object o : cachedData) {
+                            properties.put(methodName + "-cachedData[" + i + "]", o);
+                        }
+                    }
+                }
+            }
         }
 
         static String className(Class<?> clazz) {
@@ -455,7 +474,7 @@ public class TruffleTreeDumpHandler implements DebugDumpHandler {
 
         @Override
         public Object nodeClassType(ASTNodeClass nodeClass) {
-            return nodeClass.getClass();
+            return nodeClass.node.source.getClass();
         }
 
         @Override

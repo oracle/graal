@@ -76,11 +76,15 @@ public class SLJavaInteropTest {
     public void asFunction() throws Exception {
         String scriptText = "function test() {\n" + "    println(\"Called!\");\n" + "}\n";
         context.eval("sl", scriptText);
-        Value main = context.lookup("sl", "test");
+        Value main = lookup("test");
         Runnable runnable = main.as(Runnable.class);
         runnable.run();
 
         assertEquals("Called!\n", os.toString("UTF-8"));
+    }
+
+    private Value lookup(String symbol) {
+        return context.getBindings("sl").getMember(symbol);
     }
 
     @Test
@@ -89,7 +93,7 @@ public class SLJavaInteropTest {
                         "  println(\"Called with \" + a + \" and \" + b);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
         PassInValues valuesIn = fn.as(PassInValues.class);
         valuesIn.call("OK", "Fine");
 
@@ -105,7 +109,7 @@ public class SLJavaInteropTest {
     }
 
     @FunctionalInterface
-    interface PassInValues {
+    public interface PassInValues {
         void call(Object a, Object b);
     }
 
@@ -115,7 +119,7 @@ public class SLJavaInteropTest {
                         "  println(\"Called with \" + a[0] + a[1] + \" and \" + b);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
         PassInArray valuesIn = fn.as(PassInArray.class);
         valuesIn.call(new Object[]{"OK", "Fine"});
         assertEquals("Called with OKFine and null\n", os.toString("UTF-8"));
@@ -127,7 +131,7 @@ public class SLJavaInteropTest {
                         "  println(\"Called with \" + a + \" and \" + b);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
         PassInVarArg valuesIn = fn.as(PassInVarArg.class);
 
         valuesIn.call("OK", "Fine");
@@ -140,7 +144,7 @@ public class SLJavaInteropTest {
                         "  println(\"Called with \" + a + \" and \" + b + c);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
         PassInArgAndVarArg valuesIn = fn.as(PassInArgAndVarArg.class);
 
         valuesIn.call("OK", "Fine", "Well");
@@ -156,7 +160,7 @@ public class SLJavaInteropTest {
                         "  return sum.sum(obj);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
 
         Sum javaSum = new Sum();
         Object sum = javaSum;
@@ -179,7 +183,7 @@ public class SLJavaInteropTest {
                         "  return sum.sum(obj);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Values fn = context.lookup("sl", "values").as(Values.class);
+        Values fn = lookup("values").as(Values.class);
 
         Sum sum = new Sum();
         Object ret1 = fn.values(sum, "one", 1);
@@ -201,7 +205,7 @@ public class SLJavaInteropTest {
                         "  return sum.sum(obj);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        ValuesRaw fn = context.lookup("sl", "values").as(ValuesRaw.class);
+        ValuesRaw fn = lookup("values").as(ValuesRaw.class);
 
         Sum sum = new Sum();
         Object ret1 = fn.values(sum, "one", 1);
@@ -229,7 +233,7 @@ public class SLJavaInteropTest {
                         "  return obj;\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        DoSums fn = context.lookup("sl", "create").execute().as(DoSums.class);
+        DoSums fn = lookup("create").execute().as(DoSums.class);
 
         Sum sum = new Sum();
         Object ret1 = fn.doSum1(sum, "one", 1);
@@ -248,7 +252,7 @@ public class SLJavaInteropTest {
                         "  sum.sumArray(arr);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
 
         Sum javaSum = new Sum();
 
@@ -267,7 +271,7 @@ public class SLJavaInteropTest {
                         "  sum.sumArrayArray(arr);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
 
         Sum javaSum = new Sum();
 
@@ -290,7 +294,7 @@ public class SLJavaInteropTest {
                         "  sum.sumArrayMap(arr);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
 
         Sum javaSum = new Sum();
 
@@ -313,7 +317,7 @@ public class SLJavaInteropTest {
                         "  sum.sumMapArray(arr);\n" + //
                         "}\n"; //
         context.eval("sl", scriptText);
-        Value fn = context.lookup("sl", "values");
+        Value fn = lookup("values");
 
         Sum javaSum = new Sum();
 
@@ -338,8 +342,8 @@ public class SLJavaInteropTest {
                         "  return map.get(key);\n" +
                         "}\n";
         context.eval("sl", scriptText);
-        Value read = context.lookup("sl", "read");
-        Value write = context.lookup("sl", "write");
+        Value read = lookup("read");
+        Value write = lookup("write");
 
         Map<Object, Object> map = new HashMap<>();
         map.put("a", 42);
@@ -354,33 +358,33 @@ public class SLJavaInteropTest {
     }
 
     @FunctionalInterface
-    interface Values {
+    public interface Values {
         Sum values(Sum sum, String key, int value);
     }
 
     @FunctionalInterface
-    interface ValuesRaw {
+    public interface ValuesRaw {
         Object values(Object sum, String key, int value);
     }
 
-    interface DoSums {
+    public interface DoSums {
         Object doSum1(Sum sum, String key, int value);
 
         Sum doSum2(Sum sum, String key, Integer value);
     }
 
     @FunctionalInterface
-    interface PassInArray {
+    public interface PassInArray {
         void call(Object[] arr);
     }
 
     @FunctionalInterface
-    interface PassInVarArg {
+    public interface PassInVarArg {
         void call(Object... arr);
     }
 
     @FunctionalInterface
-    interface PassInArgAndVarArg {
+    public interface PassInArgAndVarArg {
         void call(Object first, Object... arr);
     }
 

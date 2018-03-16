@@ -40,7 +40,7 @@ final class TruffleSplittingStrategy {
         if (call.getCallCount() == 2) {
             final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
             if (shouldSplit(call, engineData)) {
-                engineData.splitCount++;
+                engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
                 call.split();
             }
         }
@@ -51,7 +51,7 @@ final class TruffleSplittingStrategy {
         if (!canSplit(call)) {
             return;
         }
-        engineData.splitCount++;
+        engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
         call.split();
     }
 
@@ -69,7 +69,10 @@ final class TruffleSplittingStrategy {
     }
 
     private static boolean shouldSplit(OptimizedDirectCallNode call, GraalTVMCI.EngineData engineData) {
-        if (!canSplit(call) || engineData.splitCount >= engineData.splitLimit) {
+        if (engineData.splitCount + call.getCurrentCallTarget().getUninitializedNodeCount() > engineData.splitLimit) {
+            return false;
+        }
+        if (!canSplit(call)) {
             return false;
         }
 

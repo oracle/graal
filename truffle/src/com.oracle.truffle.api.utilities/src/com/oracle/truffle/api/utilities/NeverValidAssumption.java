@@ -30,7 +30,7 @@ import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 /**
  * An assumption that is never valid. Used as a placeholder where an assumption is needed that
  * should be invalid from the start.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class NeverValidAssumption implements Assumption {
@@ -49,6 +49,11 @@ public final class NeverValidAssumption implements Assumption {
     /** @since 0.8 or earlier */
     @Override
     public void invalidate() {
+    }
+
+    /** @since 0.33 */
+    @Override
+    public void invalidate(String message) {
     }
 
     /** @since 0.8 or earlier */

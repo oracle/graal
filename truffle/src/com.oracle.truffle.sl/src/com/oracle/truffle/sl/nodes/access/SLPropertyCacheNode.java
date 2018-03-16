@@ -40,16 +40,14 @@
  */
 package com.oracle.truffle.sl.nodes.access;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
+import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -72,7 +70,7 @@ public abstract class SLPropertyCacheNode extends Node {
      * Property names can be arbitrary SL objects. We could call {@link Object.equals}, but that is
      * generally a bad idea and therefore discouraged in Truffle.{@link Object.equals} is a virtual
      * call that can call possibly large methods that we do not want in compiled code. For example,
-     * we do not want {@link BigInteger#equals} in compiled code but behind a
+     * we do not want {@link SLBigNumber#equals} in compiled code but behind a
      * {@link TruffleBoundary). Therfore, we check types individually. The checks are semantically
      * the same as {@link SLEqualNode}.
      * <p>
@@ -84,8 +82,8 @@ public abstract class SLPropertyCacheNode extends Node {
     protected static boolean namesEqual(Object cachedName, Object name) {
         if (cachedName instanceof Long && name instanceof Long) {
             return (long) cachedName == (long) name;
-        } else if (cachedName instanceof BigInteger && name instanceof BigInteger) {
-            return equalBigInteger((BigInteger) cachedName, (BigInteger) name);
+        } else if (cachedName instanceof SLBigNumber && name instanceof SLBigNumber) {
+            return ((SLBigNumber) cachedName).equals(name);
         } else if (cachedName instanceof Boolean && name instanceof Boolean) {
             return (boolean) cachedName == (boolean) name;
         } else if (cachedName instanceof String && name instanceof String) {
@@ -100,8 +98,4 @@ public abstract class SLPropertyCacheNode extends Node {
         }
     }
 
-    @TruffleBoundary
-    private static boolean equalBigInteger(BigInteger left, BigInteger right) {
-        return left.equals(right);
-    }
 }

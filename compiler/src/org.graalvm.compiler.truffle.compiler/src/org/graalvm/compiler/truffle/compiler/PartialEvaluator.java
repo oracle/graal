@@ -53,6 +53,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.SourceLanguagePosition;
+import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -306,6 +308,20 @@ public abstract class PartialEvaluator {
         }
     }
 
+    public static class TruffleSourceLanguagePositionProvider implements SourceLanguagePositionProvider {
+
+        private TruffleInliningPlan inliningPlan;
+
+        public TruffleSourceLanguagePositionProvider(TruffleInliningPlan inliningPlan) {
+            this.inliningPlan = inliningPlan;
+        }
+
+        @Override
+        public SourceLanguagePosition getPosition(JavaConstant node) {
+            return inliningPlan.getPosition(node);
+        }
+    }
+
     private class ParsingInlineInvokePlugin implements InlineInvokePlugin {
 
         private final ReplacementsImpl replacements;
@@ -374,7 +390,8 @@ public abstract class PartialEvaluator {
 
     @SuppressWarnings("unused")
     protected PEGraphDecoder createGraphDecoder(StructuredGraph graph, final HighTierContext tierContext, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList, ResolvedJavaMethod callInlined) {
+                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePluginList, ResolvedJavaMethod callInlined,
+                    SourceLanguagePositionProvider sourceLanguagePositionProvider) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         if (newConfig.trackNodeSourcePosition()) {
             graph.setTrackNodeSourcePosition();
@@ -392,7 +409,7 @@ public abstract class PartialEvaluator {
 
         Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
         return new CachingPEGraphDecoder(architecture, graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations, AllowAssumptions.ifNonNull(graph.getAssumptions()),
-                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined);
+                        loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined, sourceLanguagePositionProvider);
     }
 
     protected void doGraphPE(CompilableTruffleAST compilable, StructuredGraph graph, HighTierContext tierContext, TruffleInliningPlan inliningDecision) {
@@ -411,7 +428,9 @@ public abstract class PartialEvaluator {
             inlineInvokePlugins = new InlineInvokePlugin[]{replacements, inlineInvokePlugin};
         }
 
-        PEGraphDecoder decoder = createGraphDecoder(graph, tierContext, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod);
+        SourceLanguagePositionProvider sourceLanguagePosition = new TruffleSourceLanguagePositionProvider(inliningDecision);
+        PEGraphDecoder decoder = createGraphDecoder(graph, tierContext, loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, callInlinedMethod,
+                        sourceLanguagePosition);
         decoder.decode(graph.method(), graph.trackNodeSourcePosition());
 
         if (TruffleCompilerOptions.getValue(PrintTruffleExpansionHistogram)) {
@@ -460,7 +479,8 @@ public abstract class PartialEvaluator {
         new ConvertDeoptimizeToGuardPhase().apply(graph, tierContext);
 
         for (MethodCallTargetNode methodCallTargetNode : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition());
+            StructuredGraph inlineGraph = providers.getReplacements().getSubstitution(methodCallTargetNode.targetMethod(), methodCallTargetNode.invoke().bci(), graph.trackNodeSourcePosition(),
+                            methodCallTargetNode.asNode().getNodeSourcePosition());
             if (inlineGraph != null) {
                 InliningUtil.inline(methodCallTargetNode.invoke(), inlineGraph, true, methodCallTargetNode.targetMethod());
             }

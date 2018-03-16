@@ -175,6 +175,8 @@ def _truffle_gate_runner(args, tasks):
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
     with Task('Truffle Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
+    with Task('File name length check', tasks) as t:
+        if t: check_filename_length([])
 
 mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 
@@ -184,15 +186,35 @@ mx.update_commands(_suite, {
 })
 
 def _unittest_config_participant_tck(config):
+
+    def find_path_arg(vmArgs, prefix):
+        for index in reversed(range(len(vmArgs) - 1)):
+            if prefix in vmArgs[index]:
+                return index, vmArgs[index][len(prefix):]
+        return None, None
+
+    def is_graalvm(jdk):
+        releaseFile = os.path.join(jdk.home, "release")
+        if exists(releaseFile):
+            with open(releaseFile) as f:
+                pattern = re.compile('^GRAALVM_VERSION=*')
+                for line in f.readlines():
+                    if pattern.match(line):
+                        return True
+        return False
+
     def create_filter(requiredResource):
-        def has_resource(jar):
-            with zipfile.ZipFile(jar, "r") as zf:
-                try:
-                    zf.getinfo(requiredResource)
-                except KeyError:
-                    return False
-                else:
-                    return True
+        def has_resource(dist):
+            if dist.isJARDistribution() and exists(dist.path):
+                with zipfile.ZipFile(dist.path, "r") as zf:
+                    try:
+                        zf.getinfo(requiredResource)
+                    except KeyError:
+                        return False
+                    else:
+                        return True
+            else:
+                return False
         return has_resource
 
     def import_visitor(suite, suite_import, predicate, collector, javaProperties, seenSuites, **extra_args):
@@ -204,7 +226,7 @@ def _unittest_config_participant_tck(config):
         seenSuites.add(suite.name)
         suite.visit_imports(import_visitor, predicate=predicate, collector=collector, javaProperties=javaProperties, seenSuites=seenSuites)
         for dist in suite.dists:
-            if dist.isJARDistribution() and exists(dist.path) and predicate(dist.path):
+            if predicate(dist):
                 for distCpEntry in mx.classpath_entries(dist):
                     if hasattr(distCpEntry, "getJavaProperties"):
                         for key, value in dist.getJavaProperties().items():
@@ -221,16 +243,48 @@ def _unittest_config_participant_tck(config):
     suite_collector(mx.primary_suite(), create_filter("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"), providers, javaPropertiesToAdd, set())
     languages = OrderedDict()
     suite_collector(mx.primary_suite(), create_filter("META-INF/truffle/language"), languages, javaPropertiesToAdd, set())
+    suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_INSTRUMENTATION" == dist.name and exists(dist.path), languages, javaPropertiesToAdd, set())
     vmArgs, mainClass, mainClassArgs = config
     cpIndex, cpValue = mx.find_classpath_arg(vmArgs)
     cpBuilder = OrderedDict()
     if cpValue:
         for cpElement in cpValue.split(os.pathsep):
             cpBuilder[cpElement] = None
-    for langCpElement in languages:
-        cpBuilder[langCpElement] = None
     for providerCpElement in providers:
         cpBuilder[providerCpElement] = None
+
+    if is_graalvm(mx.get_jdk()):
+        common = OrderedDict()
+        suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_COMMON" == dist.name and exists(dist.path), common, javaPropertiesToAdd, set())
+        tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
+        tpBuilder = OrderedDict()
+        if tpValue:
+            for cpElement in tpValue.split(os.pathsep):
+                tpBuilder[cpElement] = None
+        for langCpElement in languages:
+            tpBuilder[langCpElement] = None
+        bpIndex, bpValue = find_path_arg(vmArgs, '-Xbootclasspath/a:')
+        bpBuilder = OrderedDict()
+        if bpValue:
+            for cpElement in bpValue.split(os.pathsep):
+                bpBuilder[cpElement] = None
+        for bootCpElement in common:
+            bpBuilder[bootCpElement] = None
+            cpBuilder.pop(bootCpElement, None)
+            tpBuilder.pop(bootCpElement, None)
+        tpValue = '-Dtruffle.class.path.append=' + os.pathsep.join((e for e in tpBuilder))
+        if tpIndex:
+            vmArgs[tpIndex] = tpValue
+        else:
+            vmArgs.append(tpValue)
+        bpValue = '-Xbootclasspath/a:' + os.pathsep.join((e for e in bpBuilder))
+        if bpIndex:
+            vmArgs[bpIndex] = bpValue
+        else:
+            vmArgs.append(bpValue)
+    else:
+        for langCpElement in languages:
+            cpBuilder[langCpElement] = None
     cpValue = os.pathsep.join((e for e in cpBuilder))
     if cpIndex:
         vmArgs[cpIndex] = cpValue
@@ -388,4 +442,25 @@ def _tck(args):
 
 mx.update_commands(_suite, {
     'tck' : [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+})
+
+def check_filename_length(args):
+    """check that all file name lengths are short enough for eCryptfs"""
+    # For eCryptfs, see https://bugs.launchpad.net/ecryptfs/+bug/344878
+    parser = ArgumentParser(prog="mx check-filename-length", description="Check file name length")
+    parser.parse_known_args(args)
+    max_length = 143
+    too_long = []
+    for _, _, filenames in os.walk('.'):
+        for filename in filenames:
+            if len(filename) > max_length:
+                too_long.append(filename)
+    if too_long:
+        mx.log_error("The following file names are too long for eCryptfs: ")
+        for x in too_long:
+            mx.log_error(x)
+        mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
+
+mx.update_commands(_suite, {
+    'check-filename-length' : [check_filename_length, ""],
 })

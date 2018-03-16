@@ -349,8 +349,7 @@ public abstract class TruffleTCK {
     /**
      * Name of a function to return global object. The function can be executed without providing
      * any arguments and should return global object of the language, if the language supports it.
-     * Global object is the one accessible via
-     * {@link TruffleLanguage#getLanguageGlobal(java.lang.Object)}.
+     * The global scopes are accessible via {@link TruffleLanguage#findTopScopes(java.lang.Object)}.
      *
      * @return name of globally exported symbol, return <code>null</code> if the language doesn't
      *         support the concept of global object
@@ -2030,66 +2029,67 @@ public abstract class TruffleTCK {
         assertIsObjectOfLanguage(obj);
         KeyInfoInterface object = JavaInterop.asJavaObject(KeyInfoInterface.class, obj);
 
-        int numKeys = 0;
-        assertEquals("An unknown property", 0, object.unknown());
+        int numKeys = KeyInfo.NONE;
+        int keyInfo = object.unknown();
+        assertFalse("An unknown property", KeyInfo.isExisting(keyInfo));
         int ro = object.ro();
-        if (ro != 0) {
+        if (KeyInfo.isExisting(ro)) {
             assertTrue(KeyInfo.isReadable(ro));
             assertFalse(KeyInfo.isWritable(ro));
             assertFalse(KeyInfo.isInternal(ro));
             numKeys++;
         }
         int wo = object.wo();
-        if (wo != 0) {
+        if (KeyInfo.isExisting(wo)) {
             assertFalse(KeyInfo.isReadable(wo));
             assertTrue(KeyInfo.isWritable(wo));
             assertFalse(KeyInfo.isInternal(wo));
             numKeys++;
         }
         int rw = object.rw();
-        if (rw != 0) {
+        if (KeyInfo.isExisting(rw)) {
             assertTrue(KeyInfo.isReadable(rw));
             assertTrue(KeyInfo.isWritable(rw));
             assertFalse(KeyInfo.isInternal(rw));
             numKeys++;
         }
         int rm = object.rm();
-        if (rm != 0) {
+        if (KeyInfo.isExisting(rm)) {
             assertTrue(KeyInfo.isRemovable(rm));
             numKeys++;
         }
         int invocable = object.invocable();
-        if (invocable != 0) {
+        if (KeyInfo.isExisting(invocable)) {
             assertTrue(KeyInfo.isInvocable(invocable));
             assertFalse(KeyInfo.isInternal(invocable));
             numKeys++;
         }
         int intern = object.intern();
-        if (intern != 0) {
+        if (KeyInfo.isExisting(intern)) {
             assertTrue(KeyInfo.isInternal(intern));
         }
 
         Map map = JavaInterop.asJavaObject(Map.class, obj);
         assertEquals(map.toString(), numKeys, map.size());
-        if (ro != 0) {
+        if (KeyInfo.isExisting(ro)) {
             assertTrue(map.containsKey("ro"));
         }
-        if (wo != 0) {
+        if (KeyInfo.isExisting(wo)) {
             assertTrue(map.containsKey("wo"));
         }
-        if (rw != 0) {
+        if (KeyInfo.isExisting(rw)) {
             assertTrue(map.containsKey("rw"));
         }
-        if (rm != 0) {
+        if (KeyInfo.isExisting(rm)) {
             assertTrue(map.containsKey("rm"));
         }
-        if (invocable != 0) {
+        if (KeyInfo.isExisting(invocable)) {
             assertTrue(map.containsKey("invocable"));
         }
         assertFalse(map.containsKey("intern"));
 
         map = JavaInterop.getMapView(map, true);
-        if (intern != 0) {
+        if (KeyInfo.isExisting(intern)) {
             assertEquals(numKeys + 1, map.size());
             assertTrue(map.containsKey("intern"));
         } else {

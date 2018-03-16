@@ -95,16 +95,9 @@ public class EngineAPITest {
         Assert.assertNotNull(Engine.newBuilder().useSystemProperties(false).build());
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void getGetLanguageUnknown() {
         Engine engine = Engine.create();
-
-        try {
-            engine.getLanguage("someUnknownId");
-            fail();
-        } catch (IllegalStateException e) {
-        }
 
         assertNull(engine.getLanguages().get("someUnknownId"));
         assertFalse(engine.getLanguages().containsKey("someUnknownId"));
@@ -113,11 +106,10 @@ public class EngineAPITest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void getLanguageMeta() {
         Engine engine = Engine.create();
 
-        Language language = engine.getLanguage(EngineAPITestLanguage.ID);
+        Language language = engine.getLanguages().get(EngineAPITestLanguage.ID);
         assertNotNull(language);
         assertEquals(EngineAPITestLanguage.ID, language.getId());
         assertEquals(EngineAPITestLanguage.NAME, language.getName());
@@ -130,11 +122,10 @@ public class EngineAPITest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void getLanguageOptions() {
         Engine engine = Engine.create();
 
-        Language language = engine.getLanguage(EngineAPITestLanguage.ID);
+        Language language = engine.getLanguages().get(EngineAPITestLanguage.ID);
         OptionDescriptor descriptor1 = language.getOptions().get(EngineAPITestLanguage.Option1_NAME);
         OptionDescriptor descriptor2 = language.getOptions().get(EngineAPITestLanguage.Option2_NAME);
         OptionDescriptor descriptor3 = language.getOptions().get(EngineAPITestLanguage.Option3_NAME);

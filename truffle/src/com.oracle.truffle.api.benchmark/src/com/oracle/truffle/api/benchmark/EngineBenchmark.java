@@ -203,7 +203,7 @@ public class EngineBenchmark extends TruffleBenchmark {
         final Context context = Context.create(TEST_LANGUAGE);
         final Value value = context.eval(source);
         final Integer intValue = 42;
-        final Value hostValue = context.importSymbol("context");
+        final Value hostValue = context.getPolyglotBindings().getMember("context");
 
         @TearDown
         public void tearDown() {
@@ -265,7 +265,7 @@ public class EngineBenchmark extends TruffleBenchmark {
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);
-        final Value hostValue = context.lookup(TEST_LANGUAGE, "context");
+        final Value hostValue = context.getBindings(TEST_LANGUAGE).getMember("context");
         final BenchmarkContext internalContext = hostValue.asHostObject();
         final Node executeNode = Message.createExecute(0).createNode();
         final Integer intValue = 42;
@@ -370,7 +370,7 @@ public class EngineBenchmark extends TruffleBenchmark {
 
         @Override
         protected void initializeContext(BenchmarkContext context) throws Exception {
-            context.env.exportSymbol("context", JavaInterop.asTruffleValue(context));
+            ForeignAccess.sendWrite(Message.WRITE.createNode(), (TruffleObject) context.env.getPolyglotBindings(), "context", JavaInterop.asTruffleValue(context));
         }
 
         @Override
@@ -408,11 +408,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         @Override
         protected Iterable<Scope> findTopScopes(BenchmarkContext context) {
             return context.topScopes;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(BenchmarkContext context) {
-            return context.object;
         }
 
         @Override
@@ -489,11 +484,10 @@ public class EngineBenchmark extends TruffleBenchmark {
 
             @Resolve(message = "KEY_INFO")
             abstract static class VarsMapKeyInfoNode extends Node {
-                private static final int EXISTING = KeyInfo.newBuilder().setReadable(true).build();
 
                 public int access(@SuppressWarnings("unused") TopScopeObject ts, String propertyName) {
                     if ("context".equals(propertyName)) {
-                        return EXISTING;
+                        return KeyInfo.READABLE;
                     }
                     return 0;
                 }

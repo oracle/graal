@@ -46,6 +46,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -224,7 +225,9 @@ public class SLExceptionTest {
             assertProxyException(proxy, e);
 
             for (PolyglotException seenException : proxy.seenExceptions) {
-                assertSame(e, seenException);
+                // exceptions are unwrapped and wrapped again
+                assertNotSame(e, seenException);
+                assertSame(e.asHostException(), seenException.asHostException());
             }
         }
     }

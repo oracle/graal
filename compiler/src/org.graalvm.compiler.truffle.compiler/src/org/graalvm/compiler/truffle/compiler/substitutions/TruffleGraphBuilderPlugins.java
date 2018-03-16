@@ -43,6 +43,8 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConditionAnchorNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.DynamicPiNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -66,6 +68,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.ResolvedJavaSymbol;
+import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
@@ -316,6 +319,20 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register2("castExact", Object.class, Class.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode javaClass) {
+                ValueNode nullCheckedClass = b.addNonNullCast(javaClass);
+                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, true, true));
+                if (condition.isTautology()) {
+                    b.addPush(JavaKind.Object, object);
+                } else {
+                    FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, nullCheckedClass, true));
+                }
+                return true;
+            }
+        });
     }
 
     public static void registerCompilerAssertsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
@@ -541,18 +558,22 @@ public class TruffleGraphBuilderPlugins {
     }
 
     public static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification) {
-        r.register4("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, new InvocationPlugin() {
+        r.register5("unsafeCast", Object.class, Class.class, boolean.class, boolean.class, boolean.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull) {
-                if (clazz.isConstant() && nonNull.isConstant()) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
+                            ValueNode isExactType) {
+                if (clazz.isConstant() && nonNull.isConstant() && isExactType.isConstant()) {
                     ConstantReflectionProvider constantReflection = b.getConstantReflection();
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
                     if (javaType == null) {
                         b.push(JavaKind.Object, object);
                     } else {
-                        TypeReference type = TypeReference.createTrusted(b.getAssumptions(), javaType);
-                        if (javaType.isArray()) {
-                            type = type.asExactReference();
+                        TypeReference type;
+                        if (isExactType.asJavaConstant().asInt() != 0) {
+                            assert javaType.isConcrete() || javaType.isArray() : "exact type is not a concrete class: " + javaType;
+                            type = TypeReference.createExactTrusted(javaType);
+                        } else {
+                            type = TypeReference.createTrusted(b.getAssumptions(), javaType);
                         }
                         Stamp piStamp = StampFactory.object(type, nonNull.asJavaConstant().asInt() != 0);
                         ConditionAnchorNode valueAnchorNode = null;
@@ -580,7 +601,7 @@ public class TruffleGraphBuilderPlugins {
                 } else if (canDelayIntrinsification) {
                     return false;
                 } else {
-                    throw b.bailout("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull);
+                    throw b.bailout("unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull + ", " + isExactType);
                 }
             }
         });

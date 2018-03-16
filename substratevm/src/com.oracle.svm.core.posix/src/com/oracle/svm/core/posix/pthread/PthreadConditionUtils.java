@@ -94,10 +94,10 @@ public class PthreadConditionUtils {
         getAbsoluteTimeNanos(currentTimespec);
 
         assert delayNanos >= 0;
-        long sec = currentTimespec.tv_sec() + TimeUtils.divideNanosToSeconds(delayNanos);
+        long sec = TimeUtils.addOrMaxValue(currentTimespec.tv_sec(), TimeUtils.divideNanosToSeconds(delayNanos));
         long nsec = currentTimespec.tv_nsec() + TimeUtils.remainderNanosToSeconds(delayNanos);
         if (nsec > TimeUtils.nanosPerSecond) {
-            sec += 1;
+            sec = TimeUtils.addOrMaxValue(sec, 1);
             nsec -= TimeUtils.nanosPerSecond;
         }
         assert nsec < TimeUtils.nanosPerSecond;

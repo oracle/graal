@@ -142,12 +142,19 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     @Override
     public void invalidate() {
         if (isValid) {
-            invalidateImpl();
+            invalidateImpl("");
+        }
+    }
+
+    @Override
+    public void invalidate(String message) {
+        if (isValid) {
+            invalidateImpl(message);
         }
     }
 
     @TruffleBoundary
-    private synchronized void invalidateImpl() {
+    private synchronized void invalidateImpl(String message) {
         /*
          * Check again, now that we are holding the lock. Since isValid is defined volatile,
          * double-checked locking is allowed.
@@ -164,7 +171,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                 OptimizedCallTarget callTarget = invalidateWithReason(dependency, "assumption invalidated");
                 invalidatedADependency = true;
                 if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
-                    logInvalidatedDependency(dependency);
+                    logInvalidatedDependency(dependency, message);
                 }
                 if (callTarget != null) {
                     callTarget.getCompilationProfile().reportInvalidated();
@@ -222,9 +229,15 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
     }
 
     /**
-     * Registers some dependent code with this object.
+     * Registers some dependent code with this assumption.
      *
-     * @return a consumer that will be supplied the dependent code once it is available
+     * As the dependent code may not yet be available, a {@link Consumer} is returned that must be
+     * {@linkplain Consumer#accept(Object) notified} when the code becomes available. If there is an
+     * error while compiling or installing the code, the returned consumer must be called with a
+     * {@code null} argument.
+     *
+     * If this assumption is already invalid, then {@code null} is returned in which case the caller
+     * (e.g., the compiler) must ensure the dependent code is never executed.
      */
     public synchronized Consumer<OptimizedAssumptionDependency> registerDependency() {
         if (isValid) {
@@ -237,18 +250,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
             size++;
             return e;
         } else {
-            return new Consumer<OptimizedAssumptionDependency>() {
-                @Override
-                public void accept(OptimizedAssumptionDependency dependency) {
-                    if (dependency != null) {
-                        invalidateWithReason(dependency, "assumption already invalidated when installing code");
-                        if (TruffleCompilerOptions.getValue(TraceTruffleAssumptions)) {
-                            logInvalidatedDependency(dependency);
-                            logStackTrace();
-                        }
-                    }
-                }
-            };
+            return null;
         }
     }
 
@@ -268,8 +270,12 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         return isValid;
     }
 
-    private void logInvalidatedDependency(OptimizedAssumptionDependency dependency) {
-        TTY.out().out().printf("assumption '%s' invalidated installed code '%s'\n", name, dependency);
+    private void logInvalidatedDependency(OptimizedAssumptionDependency dependency, String message) {
+        if (message != null && message.length() > 0) {
+            TTY.out().out().printf("assumption '%s' invalidated installed code '%s' with message '%s'\n", name, dependency, message);
+        } else {
+            TTY.out().out().printf("assumption '%s' invalidated installed code '%s'\n", name, dependency);
+        }
     }
 
     private static void logStackTrace() {

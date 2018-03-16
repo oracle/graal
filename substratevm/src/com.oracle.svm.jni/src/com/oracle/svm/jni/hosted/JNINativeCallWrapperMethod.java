@@ -28,11 +28,18 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -49,6 +56,8 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -117,7 +126,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
         StructuredGraph graph = kit.getGraph();
 
-        InvokeNode handleFrame = kit.nativeCallPrologue();
+        InvokeWithExceptionNode handleFrame = kit.nativeCallPrologue();
 
         ValueNode callAddress = kit.nativeCallAddress(kit.createObject(linkage));
         ValueNode environment = kit.environment();
@@ -185,16 +194,33 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         }
 
         if (javaReturnType.getJavaKind().isObject()) {
-            returnValue = kit.unboxHandle(returnValue);
-            returnValue = kit.castObject(returnValue, (ResolvedJavaType) javaReturnType);
+            returnValue = kit.unboxHandle(returnValue); // before destroying handles in epilogue
         }
         kit.nativeCallEpilogue(handleFrame);
         kit.rethrowPendingException();
+        if (javaReturnType.getJavaKind().isObject()) {
+            // Just before return to always run the epilogue and never suppress a pending exception
+            returnValue = castObject(kit, returnValue, (ResolvedJavaType) javaReturnType);
+        }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
         kit.mergeUnwinds();
 
         assert graph.verify();
         return graph;
+    }
+
+    private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type) {
+        ValueNode casted = object;
+        if (!type.isJavaLangObject()) { // safe cast to expected type
+            TypeReference typeRef = TypeReference.createTrusted(kit.getAssumptions(), type);
+            LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
+            if (!condition.isTautology()) {
+                ObjectStamp stamp = StampFactory.object(typeRef, false);
+                FixedGuardNode fixedGuard = kit.append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
+                casted = kit.append(PiNode.create(object, stamp, fixedGuard));
+            }
+        }
+        return casted;
     }
 }

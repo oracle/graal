@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -51,25 +52,29 @@ import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
 @TruffleInstrument.Registration(id = InspectorInstrument.INSTRUMENT_ID, name = "Chrome Inspector", version = InspectorInstrument.VERSION)
 public final class InspectorInstrument extends TruffleInstrument {
 
-    static final int DEFAULT_PORT = 9229;
-    static final OptionType<Integer> PORT_OR_BOOLEAN = new OptionType<>("PortOrBoolean", DEFAULT_PORT, (s) -> {
-        if (s.isEmpty() || s.equals("true")) {
-            return DEFAULT_PORT;
-        } else {
-            try {
-                return Integer.parseInt(s);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Port is not a number: " + s);
-            }
-        }
-    }, (port) -> {
-        if (port <= 0 || port > 65535) {
-            throw new IllegalArgumentException("Invalid port number: " + port);
-        }
-    });
+    private static final int DEFAULT_PORT = 9229;
+    private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
 
-    @com.oracle.truffle.api.Option(name = "", help = "Start the Chrome inspector. Default port is " + DEFAULT_PORT, category = OptionCategory.USER) //
-    static final OptionKey<Integer> Inspect = new OptionKey<>(DEFAULT_PORT, PORT_OR_BOOLEAN);
+    static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", DEFAULT_ADDRESS, (address) -> {
+        if (address.isEmpty() || address.equals("true")) {
+            return DEFAULT_ADDRESS;
+        } else {
+            int colon = address.indexOf(':');
+            String port;
+            String host;
+            if (colon >= 0) {
+                port = address.substring(colon + 1);
+                host = address.substring(0, colon);
+            } else {
+                port = address;
+                host = null;
+            }
+            return new HostAndPort(host, port);
+        }
+    }, (address) -> address.verify());
+
+    @com.oracle.truffle.api.Option(name = "", help = "Start the Chrome inspector on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT + ")", category = OptionCategory.USER) //
+    static final OptionKey<HostAndPort> Inspect = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
     @com.oracle.truffle.api.Option(help = "Suspend the execution at first executed source line. (default:true)", category = OptionCategory.USER) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
@@ -83,7 +88,7 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. (default: randomly generated)", category = OptionCategory.EXPERT) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
-    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.USER) //
+    @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> Remote = new OptionKey<>(false);
 
     public static final String INSTRUMENT_ID = "inspect";
@@ -92,10 +97,11 @@ public final class InspectorInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         OptionValues options = env.getOptions();
-        if (options.hasBeenSet(Inspect)) {
+        if (options.hasSetOptions()) {
             Server server = new Server(env);
             try {
-                server.start("Main Context", options.get(Inspect), options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path), options.get(Remote));
+                InetSocketAddress socketAddress = options.get(Inspect).createSocket(options.get(Remote));
+                server.start("Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -107,6 +113,60 @@ public final class InspectorInstrument extends TruffleInstrument {
         return new InspectorInstrumentOptionDescriptors();
     }
 
+    private static final class HostAndPort {
+
+        private final String host;
+        private String portStr;
+        private int port;
+        private InetAddress inetAddress;
+
+        HostAndPort(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        HostAndPort(String host, String portStr) {
+            this.host = host;
+            this.portStr = portStr;
+        }
+
+        void verify() {
+            // Check port:
+            if (port == 0) {
+                try {
+                    port = Integer.parseInt(portStr);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Port is not a number: " + portStr);
+                }
+            }
+            if (port <= 0 || port > 65535) {
+                throw new IllegalArgumentException("Invalid port number: " + port);
+            }
+            // Check host:
+            if (host != null && !host.isEmpty()) {
+                try {
+                    inetAddress = InetAddress.getByName(host);
+                } catch (UnknownHostException ex) {
+                    throw new IllegalArgumentException(ex.getLocalizedMessage(), ex);
+                }
+            }
+        }
+
+        InetSocketAddress createSocket(boolean remote) throws UnknownHostException {
+            InetAddress ia;
+            if (inetAddress == null) {
+                if (remote) {
+                    ia = InetAddress.getLocalHost();
+                } else {
+                    ia = InetAddress.getLoopbackAddress();
+                }
+            } else {
+                ia = inetAddress;
+            }
+            return new InetSocketAddress(ia, port);
+        }
+    }
+
     static final class Server {
 
         private final Env env;
@@ -116,7 +176,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             this.env = env;
         }
 
-        String start(String contextName, int port, boolean debugBreak, boolean waitAttached, boolean hideErrors, String path, boolean remote) throws IOException {
+        String start(String contextName, InetSocketAddress socketAdress, boolean debugBreak, boolean waitAttached, boolean hideErrors, String path) throws IOException {
             PrintWriter info = new PrintWriter(env.err());
             String wsspath;
             if (path == null || path.isEmpty()) {
@@ -162,15 +222,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                     }
                 }, true);
             }
-            InetAddress ia;
-            if (remote) {
-                ia = InetAddress.getLocalHost();
-            } else {
-                ia = InetAddress.getLoopbackAddress();
-            }
-            InetSocketAddress isa = new InetSocketAddress(ia, port);
-            wss = WebSocketServer.get(isa, wsspath, executionContext, debugBreak);
-            String address = buildAddress(isa.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
+            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak);
+            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
             info.println("Debugger listening on port " + wss.getListeningPort() + ".");
             info.println("To start debugging, open the following URL in Chrome:");
             info.println("    " + address);

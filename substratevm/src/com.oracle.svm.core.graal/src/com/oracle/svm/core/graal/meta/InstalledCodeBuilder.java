@@ -59,6 +59,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.PinnedAllocator;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceMapDecoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -66,6 +67,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -339,22 +341,39 @@ public class InstalledCodeBuilder {
             metaInfoAllocator.close();
         }
 
-        CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
+        Throwable[] errorBox = {null};
+        VMOperation.enqueueBlockingSafepoint("Install code", () -> {
+            try {
+                CodeInfoTable.getRuntimeCodeCache().addMethod(runtimeMethodInfo);
 
-        /*
-         * This call makes the new code visible, i.e., other threads can start executing it
-         * immediately. So all metadata must be registered at this point.
-         */
-        installedCode.setAddress(code.rawValue(), method);
+                /*
+                 * This call makes the new code visible, i.e., other threads can start executing it
+                 * immediately. So all metadata must be registered at this point.
+                 */
+                installedCode.setAddress(code.rawValue(), method);
+            } catch (Throwable e) {
+                errorBox[0] = e;
+            }
+        });
+        if (errorBox[0] != null) {
+            throw rethrow(errorBox[0]);
+        }
 
         compilation = null;
     }
 
+    @SuppressWarnings({"unchecked"})
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
+    }
+
     @Uninterruptible(reason = "Operates on raw pointers to objects")
     private void writeObjectConstantsToCode(ObjectConstantsHolder objectConstants) {
+        boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
         Pointer constantsStart = code.add(constantsOffset);
         for (int i = 0; i < objectConstants.count; i++) {
-            constantsStart.writeObject(objectConstants.offsets[i], objectConstants.values[i]);
+            Pointer address = constantsStart.add(objectConstants.offsets[i]);
+            ReferenceAccess.singleton().writeObjectAt(address, objectConstants.values[i], compressed);
         }
         /* From now on the constantsWalker will operate on the constants area. */
         constantsWalker.pointerMapValid = true;

@@ -25,6 +25,7 @@ package com.oracle.svm.hosted.code;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
@@ -58,8 +59,9 @@ public class SubstrateGraphMaker extends GraphMaker {
     }
 
     @Override
-    protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, boolean trackNodeSourcePosition) {
-        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, trackNodeSourcePosition);
+    protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition) {
+        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, trackNodeSourcePosition, replaceePosition);
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
         return graph;
     }

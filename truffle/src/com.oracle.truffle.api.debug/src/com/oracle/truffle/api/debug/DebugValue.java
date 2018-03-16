@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -76,13 +77,15 @@ public abstract class DebugValue {
      * <ul>
      * <li>{@link String}.class converts the value to its language specific string representation.
      * </li>
+     * <li>{@link Number}.class converts the value to a Number representation, if any.</li>
+     * <li>{@link Boolean}.class converts the value to a Boolean representation, if any.</li>
      * </ul>
      * No optional conversions are currently available. If a conversion is not supported then an
      * {@link UnsupportedOperationException} is thrown. If the value is not {@link #isReadable()
      * readable} then an {@link IllegalStateException} is thrown.
      *
      * @param clazz the type to convert to
-     * @return the converted Java type
+     * @return the converted Java type, or <code>null</code> when the conversion was not possible.
      * @since 0.17
      */
     public abstract <T> T as(Class<T> clazz);
@@ -194,6 +197,9 @@ public abstract class DebugValue {
      * @since 0.19
      */
     public final boolean isArray() {
+        if (!isReadable()) {
+            return false;
+        }
         Object value = get();
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
@@ -212,6 +218,9 @@ public abstract class DebugValue {
      * @since 0.19
      */
     public final List<DebugValue> getArray() {
+        if (!isReadable()) {
+            return null;
+        }
         List<DebugValue> arrayList = null;
         Object value = get();
         if (value instanceof TruffleObject) {
@@ -244,6 +253,9 @@ public abstract class DebugValue {
      * @since 0.22
      */
     public final DebugValue getMetaObject() {
+        if (!isReadable()) {
+            return null;
+        }
         Object obj = get();
         if (obj == null) {
             return null;
@@ -266,6 +278,9 @@ public abstract class DebugValue {
      * @since 0.22
      */
     public final SourceSection getSourceLocation() {
+        if (!isReadable()) {
+            return null;
+        }
         Object obj = get();
         if (obj == null) {
             return null;
@@ -289,6 +304,9 @@ public abstract class DebugValue {
      * @since 0.27
      */
     public final LanguageInfo getOriginalLanguage() {
+        if (!isReadable()) {
+            return null;
+        }
         Object obj = get();
         if (obj == null) {
             return null;
@@ -361,8 +379,31 @@ public abstract class DebugValue {
                     stringValue = debugger.getEnv().toString(languageInfo, val);
                 }
                 return clazz.cast(stringValue);
+            } else if (clazz == Number.class || clazz == Boolean.class) {
+                return convertToPrimitive(clazz);
             }
             throw new UnsupportedOperationException();
+        }
+
+        private <T> T convertToPrimitive(Class<T> clazz) {
+            Object val = get();
+            if (clazz.isInstance(val)) {
+                return clazz.cast(val);
+            }
+            if (val instanceof TruffleObject) {
+                TruffleObject receiver = (TruffleObject) val;
+                if (ForeignAccess.sendIsBoxed(debugger.msgNodes.isBoxed, receiver)) {
+                    try {
+                        Object unboxed = ForeignAccess.sendUnbox(debugger.msgNodes.unbox, receiver);
+                        if (clazz.isInstance(unboxed)) {
+                            return clazz.cast(unboxed);
+                        }
+                    } catch (UnsupportedMessageException e) {
+                        throw new AssertionError("isBoxed returned true but unbox threw unsupported error.");
+                    }
+                }
+            }
+            return null;
         }
 
         @Override

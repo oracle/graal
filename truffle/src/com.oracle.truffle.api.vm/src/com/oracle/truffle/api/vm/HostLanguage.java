@@ -174,11 +174,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     }
 
     @Override
-    protected Object getLanguageGlobal(HostContext context) {
-        return null;
-    }
-
-    @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return new HostContext(env);
     }
@@ -203,7 +198,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         return true;
     }
 
-    private String arrayToString(Object array, int level) {
+    private String arrayToString(HostContext context, Object array, int level) {
         if (array == null) {
             return "null";
         }
@@ -219,7 +214,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         StringBuilder b = new StringBuilder();
         b.append('[');
         for (int i = 0;; i++) {
-            b.append(toStringImpl(Array.get(array, i), level + 1));
+            b.append(toStringImpl(context, Array.get(array, i), level + 1));
             if (i == iMax) {
                 return b.append(']').toString();
             }
@@ -229,10 +224,10 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
     @Override
     protected String toString(HostContext context, Object value) {
-        return toStringImpl(value, 0);
+        return toStringImpl(context, value, 0);
     }
 
-    private String toStringImpl(Object value, int level) {
+    private String toStringImpl(HostContext context, Object value, int level) {
         if (value instanceof TruffleObject) {
             TruffleObject to = (TruffleObject) value;
             if (JavaInterop.isJavaObject(to)) {
@@ -241,21 +236,21 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                     if (javaObject == null) {
                         return "null";
                     } else if (javaObject.getClass().isArray()) {
-                        return arrayToString(javaObject, level);
+                        return arrayToString(context, javaObject, level);
                     } else if (javaObject instanceof Class) {
                         return ((Class<?>) javaObject).getTypeName();
                     } else {
                         return Objects.toString(javaObject);
                     }
                 } catch (Throwable t) {
-                    throw PolyglotImpl.wrapHostException(t);
+                    throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
             } else if (PolyglotProxy.isProxyGuestObject(to)) {
                 Proxy proxy = PolyglotProxy.toProxyHostObject(to);
                 try {
                     return proxy.toString();
                 } catch (Throwable t) {
-                    throw PolyglotImpl.wrapHostException(t);
+                    throw PolyglotImpl.wrapHostException(context.internalContext, t);
                 }
             } else if (VMAccessor.JAVAINTEROP.isJavaFunction(value)) {
                 return VMAccessor.JAVAINTEROP.javaFunctionToString(value);
@@ -334,13 +329,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             @Resolve(message = "KEY_INFO")
             abstract static class VarsMapInfoNode extends Node {
 
-                private static final int EXISTING_INFO = KeyInfo.newBuilder().setReadable(true).build();
-
                 @TruffleBoundary
                 public Object access(TopScopeObject ts, String name) {
                     Class<?> clazz = ts.context.findClass(name);
                     if (clazz != null) {
-                        return EXISTING_INFO;
+                        return KeyInfo.READABLE;
                     } else {
                         return 0;
                     }

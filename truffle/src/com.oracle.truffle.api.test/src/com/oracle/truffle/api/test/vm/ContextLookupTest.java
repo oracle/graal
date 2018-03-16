@@ -352,6 +352,7 @@ public class ContextLookupTest {
             });
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(LanguageLookupContext context) {
             assertContext(context);

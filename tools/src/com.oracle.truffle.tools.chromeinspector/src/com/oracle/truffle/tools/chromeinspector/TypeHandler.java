@@ -68,7 +68,7 @@ public final class TypeHandler {
         if (currentBinding.get() == null) {
             final SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).includeInternal(false).build();
             final Instrumenter instrumenter = env.getInstrumenter();
-            final EventBinding<TypeProfileEventFactory> binding = instrumenter.attachFactory(filter, new TypeProfileEventFactory());
+            final EventBinding<TypeProfileEventFactory> binding = instrumenter.attachExecutionEventFactory(filter, new TypeProfileEventFactory());
             if (currentBinding.compareAndSet(null, binding)) {
                 return true;
             } else {

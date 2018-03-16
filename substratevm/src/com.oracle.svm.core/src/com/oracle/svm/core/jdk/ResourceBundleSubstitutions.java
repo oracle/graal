@@ -61,6 +61,12 @@ final class Target_java_util_ResourceBundle {
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, Control control) {
         return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, targetLocale);
     }
+
+    @Substitute
+    public static ResourceBundle getBundle(String baseName, Locale locale, ClassLoader loader) {
+        return ImageSingletons.lookup(LocalizationSupport.class).getCached(baseName, locale);
+    }
+
 }
 
 @TargetClass(java.util.ListResourceBundle.class)

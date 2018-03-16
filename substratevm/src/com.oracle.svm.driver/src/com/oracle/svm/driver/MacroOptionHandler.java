@@ -22,10 +22,12 @@
  */
 package com.oracle.svm.driver;
 
+import java.util.HashSet;
 import java.util.Queue;
 
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
-import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
+import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -36,43 +38,17 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
-
-        String polyglotPrefix = "--polyglot=";
-        if (headArg.startsWith(polyglotPrefix)) {
-            String languagesRaw = headArg.substring(polyglotPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(languagesRaw.replace(',', ' '), MacroOptionKind.Language);
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
-            }
+        boolean consumed = false;
+        try {
+            consumed = nativeImage.optionRegistry.enableOption(headArg, new HashSet<>(), null);
+        } catch (VerboseInvalidMacroException e1) {
+            NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
+        } catch (InvalidMacroException | AddedTwiceException e) {
+            NativeImage.showError(e.getMessage());
+        }
+        if (consumed) {
             args.poll();
-            return true;
         }
-
-        String toolsPrefix = "--tool.";
-        if (headArg.startsWith(toolsPrefix)) {
-            String toolString = headArg.substring(toolsPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(toolString, MacroOptionKind.Tool);
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
-            }
-            args.poll();
-            return true;
-        }
-
-        String langPrefix = "--";
-        if (headArg.startsWith("--")) {
-            String langString = headArg.substring(langPrefix.length());
-            try {
-                nativeImage.optionRegistry.enableOptions(langString, MacroOptionKind.Language);
-                args.poll();
-                return true;
-            } catch (InvalidMacroException e) {
-                NativeImage.showError(e.getMessage());
-            }
-        }
-
-        return false;
+        return consumed;
     }
 }

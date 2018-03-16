@@ -58,7 +58,7 @@ public class ProfilerRetrievalTest {
 
     @Test
     public void testFromLanguage() {
-        Value profilerValue = Context.create(LanguageThatNeedsProfiler.ID).lookup(LanguageThatNeedsProfiler.ID, "profiler");
+        Value profilerValue = Context.create(LanguageThatNeedsProfiler.ID).getBindings(LanguageThatNeedsProfiler.ID).getMember("profiler");
         Assert.assertTrue(profilerValue.asBoolean());
     }
 
@@ -81,11 +81,6 @@ public class ProfilerRetrievalTest {
             Profiler profiler = env.lookup(profilerInfo, Profiler.class);
             Assert.assertNotNull(profiler);
             return profiler;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Profiler context) {
-            return null;
         }
 
         @Override
@@ -116,15 +111,22 @@ public class ProfilerRetrievalTest {
                 @Resolve(message = "KEY_INFO")
                 abstract static class VarsMapInfoNode extends Node {
 
-                    private static final int EXISTING_INFO = KeyInfo.newBuilder().setReadable(true).build();
-
                     @SuppressWarnings("unused")
                     public Object access(TopScopeObject ts, String name) {
                         if ("profiler".equals(name)) {
-                            return EXISTING_INFO;
+                            return KeyInfo.READABLE;
                         } else {
                             return 0;
                         }
+                    }
+                }
+
+                @Resolve(message = "HAS_KEYS")
+                abstract static class HasKeysNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(TopScopeObject ts) {
+                        return true;
                     }
                 }
 

@@ -470,6 +470,7 @@ class AveragingBenchmarkMixin(object):
             averageResult = next(result for result in warmupResults if result["metric.iteration"] == 0).copy()
             averageResult["metric.value"] = totalTimeForAverage / resultIterations
             averageResult["metric.name"] = "time"
+            averageResult["metric.average-over"] = resultIterations
             results.append(averageResult)
 
 
@@ -826,6 +827,12 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
                 ]
         return skip_patterns
 
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = super(ScalaDaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        if mx_compiler.jdk.javaCompliance >= '9':
+            vmArgs += ["--add-modules", "java.corba"]
+        return vmArgs
+
 
 mx_benchmark.add_bm_suite(ScalaDaCapoBenchmarkSuite())
 
@@ -890,6 +897,9 @@ _allSpecJVM2008Benches = [
     'xml.transform',
     'xml.validation'
 ]
+_allSpecJVM2008BenchesJDK9 = list(_allSpecJVM2008Benches)
+_allSpecJVM2008BenchesJDK9.remove('compiler.compiler') # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
+_allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
 
 
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
@@ -937,8 +947,19 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar"] + [self.specJvmPath()] + runArgs + benchmarks
 
+    def runArgs(self, bmSuiteArgs):
+        runArgs = super(SpecJvm2008BenchmarkSuite, self).runArgs(bmSuiteArgs)
+        if mx_compiler.jdk.javaCompliance >= '9':
+            # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
+            # Skips initial check benchmark which tests for javac.jar on classpath.
+            runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
+        return runArgs
+
     def benchmarkList(self, bmSuiteArgs):
-        return _allSpecJVM2008Benches
+        if mx_compiler.jdk.javaCompliance >= '9':
+            return _allSpecJVM2008BenchesJDK9
+        else:
+            return _allSpecJVM2008Benches
 
     def successPatterns(self):
         return [
@@ -1215,6 +1236,8 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         if benchmarks is not None:
             mx.abort("No benchmark should be specified for the selected suite.")
         vmArgs = self.vmArgs(bmSuiteArgs)
+        if mx_compiler.jdk.javaCompliance >= '9':
+            vmArgs += ["--add-modules", "java.xml.bind"]
         runArgs = self.runArgs(bmSuiteArgs)
         return vmArgs + ["-jar", self.specJbbClassPath(), "-m", "composite"] + runArgs
 

@@ -403,7 +403,7 @@ public abstract class Launcher {
     /**
      * Returns true if the current launcher was compiled ahead-of-time to native code.
      */
-    protected static boolean isAOT() {
+    public static boolean isAOT() {
         return IS_AOT;
     }
 
@@ -1004,8 +1004,10 @@ public abstract class Launcher {
                 setSystemProperty(arg.substring("D".length()));
             } else if (arg.startsWith("XX:")) {
                 setRuntimeOption(arg.substring("XX:".length()));
+            } else if (arg.startsWith("X") && isXOption(arg)) {
+                setXOption(arg.substring("X".length()));
             } else {
-                throw abort("Unrecognized --native option: '--native." + arg + "'. Such arguments should start with '--native.D' or '--native.XX:'");
+                throw abort("Unrecognized --native option: '--native." + arg + "'. Such arguments should start with '--native.D', '--native.XX:', or '--native.X'");
             }
         }
 
@@ -1086,6 +1088,27 @@ public abstract class Launcher {
             RuntimeOptions.set(key, value);
         }
 
+        /* Is an option that starts with an 'X' one of the recognized X options? */
+        private boolean isXOption(String arg) {
+            return (arg.startsWith("Xmn") || arg.startsWith("Xms") || arg.startsWith("Xmx") || arg.startsWith("Xss"));
+        }
+
+        /* Set a `-X` option, given something like "mx2g". */
+        private void setXOption(String arg) {
+            try {
+                RuntimeOptions.set(arg, null);
+            } catch (RuntimeException re) {
+                throw abort("Invalid argument: '--native.X" + arg + "' does not specify a valid number.");
+            }
+        }
+
+        private void helpXOption() {
+            printOption("--native.Xmn<value>", "Sets the maximum size of the young generation, in bytes.");
+            printOption("--native.Xmx<value>", "Sets the maximum size of the heap, in bytes.");
+            printOption("--native.Xms<value>", "Sets the minimum size of the heap, in bytes.");
+            printOption("--native.Xss<value>", "Sets the size of each thread stack, in bytes.");
+        }
+
         private boolean isBooleanOption(OptionDescriptor descriptor) {
             return descriptor.getKey().getType().equals(OptionType.defaultType(Boolean.class));
         }
@@ -1144,6 +1167,7 @@ public abstract class Launcher {
             }
             System.out.println("System properties:");
             printOption("--native.D<property>=<value>", "Sets a system property");
+            helpXOption();
         }
 
         private void execNativePolyglot(List<String> args, Map<String, String> polyglotOptions) {

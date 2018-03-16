@@ -1,0 +1,14 @@
+Server options help:
+
+    --no-server           do not use image-build server
+
+    --server-list         lists current image-build servers
+    --server-list-details same as -server-list with more details
+    --server-cleanup      remove stale image-build servers entries
+    --server-shutdown     shutdown image-build servers under current session ID
+    --server-shutdown-all shutdown all image-build servers
+
+    --server-session=<custom-session-name>
+                          use custom session name instead of system provided
+                          session ID of the calling process
+ 

@@ -39,8 +39,8 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
-import com.oracle.svm.core.graal.nodes.CurrentVMThreadFixedNode;
-import com.oracle.svm.core.graal.nodes.CurrentVMThreadFloatingNode;
+import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadRegisterFloatingNode;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
@@ -189,9 +189,9 @@ public class VMThreadMTFeature implements GraalFeature {
          */
         boolean isDeoptTarget = b.getMethod() instanceof SharedMethod && ((SharedMethod) b.getMethod()).isDeoptTarget();
         if (isDeoptTarget || usedForAddress) {
-            return b.add(new CurrentVMThreadFixedNode());
+            return b.add(ReadRegisterFixedNode.forIsolateThread());
         } else {
-            return b.add(new CurrentVMThreadFloatingNode());
+            return b.add(ReadRegisterFloatingNode.forIsolateThread());
         }
     }
 
@@ -257,7 +257,8 @@ public class VMThreadMTFeature implements GraalFeature {
             assert nextOffset % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextOffset;
 
             if (info.isObject) {
-                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes);
+                final boolean isCompressed = false;
+                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes, isCompressed);
             }
             info.offset = nextOffset;
             nextOffset += info.sizeInBytes;

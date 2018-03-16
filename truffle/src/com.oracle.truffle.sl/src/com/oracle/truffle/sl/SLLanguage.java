@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.sl;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -49,6 +48,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -69,7 +70,6 @@ import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
-import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNode;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyNode;
@@ -123,7 +123,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * <b>Types:</b>
  * <ul>
  * <li>Number: arbitrary precision integer numbers. The implementation uses the Java primitive type
- * {@code long} to represent numbers that fit into the 64 bit range, and {@link BigInteger} for
+ * {@code long} to represent numbers that fit into the 64 bit range, and {@link SLBigNumber} for
  * numbers that exceed the range. Using a primitive type such as {@code long} is crucial for
  * performance.
  * <li>Boolean: implemented as the Java primitive type {@code boolean}.
@@ -191,7 +191,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * </ul>
  */
 @TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", version = "0.30", mimeType = SLLanguage.MIME_TYPE)
-@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
+@ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static volatile int counter;
 
@@ -210,7 +210,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        Map<String, SLRootNode> functions;
+        Map<String, RootCallTarget> functions;
         /*
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
          * the functions with the SLContext happens lazily in SLEvalRootNode.
@@ -233,8 +233,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             functions = Parser.parseSL(this, decoratedSource);
         }
 
-        SLRootNode main = functions.get("main");
-        SLRootNode evalMain;
+        RootCallTarget main = functions.get("main");
+        RootNode evalMain;
         if (main != null) {
             /*
              * We have a main function, so "evaluating" the parsed source means invoking that main
@@ -242,28 +242,25 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
              * we cannot use the original SLRootNode for the main function. Instead, we create a new
              * SLEvalRootNode that does everything we need.
              */
-            evalMain = new SLEvalRootNode(this, main.getFrameDescriptor(), main.getBodyNode(), main.getSourceSection(), main.getName(), functions);
+            evalMain = new SLEvalRootNode(this, main, functions);
         } else {
             /*
              * Even without a main function, "evaluating" the parsed source needs to register the
              * functions into the SLContext.
              */
-            evalMain = new SLEvalRootNode(this, null, null, null, "[no_main]", functions);
+            evalMain = new SLEvalRootNode(this, null, functions);
         }
         return Truffle.getRuntime().createCallTarget(evalMain);
     }
 
+    /*
+     * Still necessary for the old SL TCK to pass. We should remove with the old TCK. New language
+     * should not override this.
+     */
+    @SuppressWarnings("deprecation")
     @Override
     protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
         return context.getFunctionRegistry().lookup(globalName, false);
-    }
-
-    @Override
-    protected Object getLanguageGlobal(SLContext context) {
-        /*
-         * The context itself is the global function registry. SL does not have global variables.
-         */
-        return context;
     }
 
     @Override

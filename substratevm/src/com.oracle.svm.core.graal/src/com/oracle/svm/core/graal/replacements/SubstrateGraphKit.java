@@ -84,6 +84,7 @@ public class SubstrateGraphKit extends GraphKit {
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
                     CompilationIdentifier compilationId) {
         super(new StructuredGraph.Builder(debug.getOptions(), debug).method(stubMethod).compilationId(compilationId).build(), providers, wordTypes, graphBuilderPlugins);
+        assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
@@ -140,16 +141,16 @@ public class SubstrateGraphKit extends GraphKit {
         return append(new UnboxNode(boxed, targetKind));
     }
 
-    public ValueNode createInvoke(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
-        return createInvoke(declaringClass, name, invokeKind, frameState, bci(), args);
-    }
-
-    public ValueNode createJavaCall(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-        return createInvoke(targetMethod, kind, frameState, bci(), arguments);
+    public ValueNode createInvokeWithExceptionAndUnwind(Class<?> declaringClass, String name, InvokeKind invokeKind, ValueNode... args) {
+        return createInvokeWithExceptionAndUnwind(findMethod(declaringClass, name, invokeKind == InvokeKind.Static), invokeKind, frameState, bci(), bci(), args);
     }
 
     public ValueNode createJavaCallWithException(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
         return startInvokeWithException(targetMethod, kind, frameState, bci(), bci(), arguments);
+    }
+
+    public ValueNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
+        return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), bci(), arguments);
     }
 
     public ConstantNode createConstant(Constant value, JavaKind kind) {

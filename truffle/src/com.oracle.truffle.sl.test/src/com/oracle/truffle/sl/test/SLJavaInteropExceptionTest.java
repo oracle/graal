@@ -75,7 +75,7 @@ public class SLJavaInteropExceptionTest {
                             "}";
             try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
                 context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-                Value test = context.lookup(SLLanguage.ID, "test");
+                Value test = context.getBindings(SLLanguage.ID).getMember("test");
                 test.execute(Validator.this);
             }
         }
@@ -96,7 +96,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
                 test.execute(new Validator());
                 fail("expected a PolyglotException but did not throw");
@@ -115,7 +115,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
                 test.execute(new Validator());
                 fail("expected a PolyglotException but did not throw");
@@ -144,7 +144,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             try {
                 test.execute(new Validator());
                 fail("expected a PolyglotException but did not throw");
@@ -174,7 +174,7 @@ public class SLJavaInteropExceptionTest {
                         "}";
         try (Context context = Context.newBuilder(SLLanguage.ID).build()) {
             context.eval(Source.newBuilder(SLLanguage.ID, sourceText, "Test").build());
-            Value test = context.lookup(SLLanguage.ID, "test");
+            Value test = context.getBindings(SLLanguage.ID).getMember("test");
             test.execute(new Validator());
         }
     }

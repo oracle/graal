@@ -37,6 +37,27 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 public final class RemoteObject {
 
+    private enum TYPE {
+
+        OBJECT("object"),
+        FUNCTION("function"),
+        UNDEFINED("undefined"),
+        STRING("string"),
+        NUMBER("number"),
+        BOOLEAN("boolean"),
+        SYMBOL("symbol");
+
+        private final String id;
+
+        TYPE(String id) {
+            this.id = id;
+        }
+
+        String getId() {
+            return id;
+        }
+    }
+
     private static final AtomicLong LAST_ID = new AtomicLong(0);
 
     private final DebugValue valueValue;
@@ -88,6 +109,7 @@ public final class RemoteObject {
                 }
             }
         }
+        String descriptionType = null;
         if (vtype != null && (vsubtype != null || vclassName != null)) {
             this.type = vtype;
             this.subtype = vsubtype;
@@ -99,12 +121,19 @@ public final class RemoteObject {
                 this.subtype = null;
             }
             if (isObject) {
-                this.type = "object";
+                this.type = TYPE.OBJECT.getId();
                 this.className = (metaObject != null) ? metaObject.as(String.class) : null;
             } else {
-                this.type = (metaObject != null) ? metaObject.as(String.class) : "object";
+                String metaType = (metaObject != null) ? metaObject.as(String.class) : null;
+                this.type = getType(debugValue, metaType);
                 this.className = null;
+                if (TYPE.OBJECT.getId().equals(this.type)) {
+                    descriptionType = metaType;
+                }
             }
+        }
+        if (descriptionType == null) {
+            descriptionType = this.className;
         }
         String toString;
         try {
@@ -117,8 +146,8 @@ public final class RemoteObject {
             toString = null;
         }
         this.value = (!isObject) ? toString : null;
-        if ((vdescription == null || vdescription.equals(toString)) && this.className != null) {
-            this.description = this.className + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
+        if ((vdescription == null || vdescription.equals(toString)) && descriptionType != null) {
+            this.description = descriptionType + ((toString != null && !toString.isEmpty()) ? " " + toString : "");
         } else if (vdescription != null && !vdescription.isEmpty()) {
             this.description = vdescription;
         } else {
@@ -180,6 +209,29 @@ public final class RemoteObject {
             isObject = false;
         }
         return isObject;
+    }
+
+    /**
+     * The type must be one of {@link TYPE}.
+     */
+    private static String getType(DebugValue value, String metaObject) {
+        if (metaObject == null) {
+            return TYPE.OBJECT.getId();
+        }
+        for (TYPE type : TYPE.values()) {
+            if (metaObject.equalsIgnoreCase(type.getId())) {
+                return type.getId();
+            }
+        }
+        Number number = value.as(Number.class);
+        if (number != null) {
+            return TYPE.NUMBER.getId();
+        }
+        Boolean bool = value.as(Boolean.class);
+        if (bool != null) {
+            return TYPE.BOOLEAN.getId();
+        }
+        return TYPE.OBJECT.getId();
     }
 
     /**

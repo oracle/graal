@@ -34,6 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -47,21 +48,25 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Instrumentable;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.polyglot.Source;
 
 /**
  * Test of value association with language and language-specific view of values.
@@ -333,11 +338,6 @@ public class ValueLanguageTest extends AbstractDebugTest {
         }
 
         @Override
-        protected Object getLanguageGlobal(Context context) {
-            return null;
-        }
-
-        @Override
         protected boolean isObjectOfLanguage(Object object) {
             if (!(object instanceof PropertiesMapObject)) {
                 return false;
@@ -443,26 +443,19 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @Override
-            protected boolean isTaggedWith(Class<?> tag) {
-                if (tag == StandardTags.RootTag.class) {
-                    return children != null;
-                }
-                return false;
-            }
-
-            @Override
             public SourceSection getSourceSection() {
                 return sourceSection;
             }
         }
 
-        @Instrumentable(factory = VarNodeWrapper.class)
-        public static class VarNode extends Node {
+        @GenerateWrapper
+        public static class VarNode extends Node implements InstrumentableNode {
 
             private final SourceSection sourceSection;
             private final String name;
             protected final Object value;
             protected final ContextReference<Context> contextReference;
+            @Child private Node writeNode = Message.WRITE.createNode();
             @CompilerDirectives.CompilationFinal protected FrameSlot slot;
 
             VarNode(String name, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
@@ -479,6 +472,22 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 this.contextReference = node.contextReference;
             }
 
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new VarNodeWrapper(this, this, probe);
+            }
+
+            public boolean isInstrumentable() {
+                return sourceSection != null;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                if (tag == StandardTags.StatementTag.class) {
+                    return true;
+                }
+                return false;
+            }
+
             public Object execute(VirtualFrame frame) {
                 if (slot == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -491,16 +500,14 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 } else {
                     frame.setObject(slot, value);
                 }
-                contextReference.get().getEnv().exportSymbol(name, value);
-                return value;
-            }
-
-            @Override
-            protected final boolean isTaggedWith(Class<?> tag) {
-                if (tag == StandardTags.StatementTag.class) {
-                    return true;
+                try {
+                    ForeignAccess.sendWrite(writeNode, (TruffleObject) contextReference.get().getEnv().getPolyglotBindings(), name, value);
+                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    // should not happen for polyglot bindings.
+                    throw new AssertionError(e);
                 }
-                return false;
+                return value;
             }
 
             @Override
@@ -509,11 +516,12 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
         }
 
-        @Instrumentable(factory = PropNodeWrapper.class)
+        @GenerateWrapper
         public static class PropNode extends ValuesLanguage.VarNode {
 
             private final String var;
             private final String prop;
+            @Child private Node readNode = Message.READ.createNode();
 
             PropNode(String var, String prop, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
                 super(null, value, sourceSection, contextReference);
@@ -528,13 +536,38 @@ public class ValueLanguageTest extends AbstractDebugTest {
             }
 
             @Override
+            public WrapperNode createWrapper(ProbeNode probeNode) {
+                return new PropNodeWrapper(this, this, probeNode);
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return getSourceSection() != null;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                if (tag == StandardTags.StatementTag.class) {
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
             public Object execute(VirtualFrame frame) {
                 Object varObj = null;
                 if (slot == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     slot = frame.getFrameDescriptor().findFrameSlot(var);
                     if (slot == null) {
-                        varObj = contextReference.get().getEnv().importSymbol(var);
+                        try {
+                            varObj = ForeignAccess.sendRead(readNode, (TruffleObject) contextReference.get().getEnv().getPolyglotBindings(), var);
+                        } catch (UnknownIdentifierException e) {
+                            varObj = null;
+                        } catch (UnsupportedMessageException e) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw new AssertionError(e);
+                        }
                         slot = frame.getFrameDescriptor().addFrameSlot(var);
                         frame.setObject(slot, varObj);
                     }

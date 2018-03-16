@@ -31,6 +31,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
@@ -106,13 +107,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     Assumption.class, "nodeRewritingAssumption");
     private volatile OptimizedDirectCallNode callSiteForSplit;
     @CompilationFinal private volatile String nameCache;
+    private final int uninitializedNodeCount;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        this.rootNode.adoptChildren();
+        uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -166,6 +168,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             initialize();
             return compilationProfile;
         }
+    }
+
+    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
+        return getCompilationProfile().getProfiledTypesAssumptions();
     }
 
     protected Class<?>[] getProfiledArgumentTypes() {
@@ -489,7 +495,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
-    static Object castArrayFixedLength(Object[] args, int length) {
+    static Object[] castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -498,10 +504,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param type the type the compiler should assume for {@code value}
      * @param condition the condition that guards the assumptions expressed by this directive
-     * @param nonNull the nullness info the compiler should assume for {@code args}
+     * @param nonNull the nullness info the compiler should assume for {@code value}
+     * @param exact if {@code true}, the compiler should assume exact type info
      */
     @SuppressWarnings({"unchecked"})
-    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
 
@@ -607,6 +614,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     public OptimizedDirectCallNode getCallSiteForSplit() {
         return callSiteForSplit;
+    }
+
+    int getUninitializedNodeCount() {
+        return uninitializedNodeCount;
     }
 
     private static final class NonTrivialNodeCountVisitor implements NodeVisitor {

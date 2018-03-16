@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.graal.posix.PosixCEntryPointSnippets;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -55,13 +54,13 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
+import com.oracle.svm.core.graal.posix.PosixIsolates;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -267,15 +266,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // - The constants go at the beginning of the read-only data section.
             codeCache.writeConstants(roDataBuffer);
             // - Non-heap global data goes at the beginning of the read-write data section.
-            cGlobals.writeData(rwDataBuffer);
+            cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> objectFile.createDefinedDataSymbol(symbolName, rwDataSection, Math.toIntExact(offset + RWDATA_CGLOBALS_PARTITION_OFFSET)));
             objectFile.createDefinedDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET));
             // The read-only and writable partitions of the native image heap follow in the
             // read-only and read-write sections, respectively.
             heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
 
-            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
-                objectFile.createDefinedDataSymbol(PosixCEntryPointSnippets.HEAP_BASE, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset));
-            }
+            objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset));
+            objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_END_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset + heap.getWritableSectionSize()));
 
             // Mark the sections with the relocations from the maps.
             // - "null" as the objectMap is because relocations from text are always to constants.
@@ -395,17 +393,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
             CGlobalDataImpl<?> data = dataInfo.getData();
             long addend = RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset() - info.getExplicitAddend();
             sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), rwDataSection.getName(), false, addend);
-            if (data.symbolName != null) {
-                int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
-                if (data.bytesSupplier != null || data.sizeSupplier != null) { // Create symbol
-                    objectFile.createDefinedDataSymbol(data.symbolName, rwDataSection, offsetInSection);
-                } else { // No data, so this is purely a symbol reference: create relocation
-                    if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
-                        objectFile.createUndefinedSymbol(data.symbolName, true);
-                    }
-                    ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
-                    baseSectionImpl.markRelocationSite(offsetInSection, wordSize, RelocationKind.DIRECT, data.symbolName, false, 0L);
+            if (dataInfo.isSymbolReference()) { // create relocation for referenced symbol
+                if (objectFile.getSymbolTable().getSymbol(data.symbolName) == null) {
+                    objectFile.createUndefinedSymbol(data.symbolName, true);
                 }
+                ProgbitsSectionImpl baseSectionImpl = (ProgbitsSectionImpl) rwDataSection.getImpl();
+                int offsetInSection = Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET + dataInfo.getOffset());
+                baseSectionImpl.markRelocationSite(offsetInSection, wordSize, RelocationKind.DIRECT, data.symbolName, false, 0L);
             }
         } else {
             throw shouldNotReachHere("Unsupported target object for relocation in text section");

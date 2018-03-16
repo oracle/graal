@@ -62,7 +62,8 @@ public final class CoverageExample extends TruffleInstrument {
         SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         SourceSectionFilter filter = builder.tagIs(EXPRESSION).build();
         Instrumenter instrumenter = env.getInstrumenter();
-        instrumenter.attachFactory(filter, new CoverageEventFactory(env));
+        instrumenter.attachExecutionEventFactory(filter,
+                        new CoverageEventFactory(env));
     }
 
     private class CoverageEventFactory implements ExecutionEventNodeFactory {

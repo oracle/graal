@@ -33,8 +33,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
  * to the language's meta-data, including the language's {@link #getId() id}, {@link #getName()
  * name}, {@link #getVersion() version} and {@link #getOptions() options}.
  *
- * @see Engine#getLanguages() To return a map of all installed languages
- *
+ * @see Engine#getLanguages()
  * @since 1.0
  */
 public final class Language {
@@ -94,17 +93,6 @@ public final class Language {
      */
     public boolean isInteractive() {
         return impl.isInteractive();
-    }
-
-    /**
-     * Returns <code>true</code> if this language object represents the Java host language.
-     *
-     * @since 1.0
-     * @deprecated no replacement
-     */
-    @Deprecated
-    public boolean isHost() {
-        return impl.isHost();
     }
 
     /**

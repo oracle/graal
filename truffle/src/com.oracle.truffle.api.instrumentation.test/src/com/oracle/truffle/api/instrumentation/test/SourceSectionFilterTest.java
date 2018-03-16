@@ -35,7 +35,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -90,29 +93,50 @@ public class SourceSectionFilterTest {
         }
     }
 
-    private static Node createNode(final SourceSection section, final Class<?>... tags) {
-        return new Node() {
+    static class SourceSectionNode extends Node implements InstrumentableNode {
+        private final SourceSection sourceSection;
+        private final Class<?>[] tags;
 
-            @Override
-            public SourceSection getSourceSection() {
-                return section;
-            }
+        SourceSectionNode(SourceSection sourceSection, final Class<?>... tags) {
+            this.sourceSection = sourceSection;
+            this.tags = tags;
+        }
 
-            @Override
-            protected boolean isTaggedWith(Class<?> tag) {
-                for (int i = 0; i < tags.length; i++) {
-                    if (tags[i] == tag) {
-                        return true;
-                    }
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
+        }
+
+        public boolean isInstrumentable() {
+            return sourceSection != null;
+        }
+
+        public boolean hasTag(Class<? extends Tag> tag) {
+            for (int i = 0; i < tags.length; i++) {
+                if (tags[i] == tag) {
+                    return true;
                 }
-                return super.isTaggedWith(tag);
             }
+            return false;
+        }
 
-        };
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return null;
+        }
+
     }
 
-    private static RootNode createRootNode(final SourceSection section, final Boolean internal) throws Exception {
-        Language language = Engine.create().getLanguages().get(InstrumentationTestLanguage.ID);
+    private static Node createNode(final SourceSection section, final Class<?>... tags) {
+        return new SourceSectionNode(section, tags);
+    }
+
+    static RootNode createRootNode(final SourceSection section, final Boolean internal, Node... children) throws Exception {
+        Engine engine = Engine.create();
+        return createRootNode(engine, section, internal, children);
+    }
+
+    static RootNode createRootNode(Engine engine, final SourceSection section, final Boolean internal, Node... children) throws Exception {
+        Language language = engine.getLanguages().get(InstrumentationTestLanguage.ID);
         Field impl = Language.class.getDeclaredField("impl");
         ReflectionUtils.setAccessible(impl, true);
         Object polyglotLanguage = impl.get(language);
@@ -127,6 +151,13 @@ public class SourceSectionFilterTest {
         TruffleLanguage<?> truffleLanguage = (TruffleLanguage<?>) spi.get(languageInfo);
 
         return new RootNode(truffleLanguage) {
+
+            @Node.Children Node[] rootChildren = children;
+
+            @Override
+            protected boolean isInstrumentable() {
+                return true;
+            }
 
             @Override
             public SourceSection getSourceSection() {
@@ -597,10 +628,6 @@ public class SourceSectionFilterTest {
         Assert.assertFalse(
                         isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(2, 6), sampleSource1.createSection(2, 7)).build(),
                                         null, createNode(sampleSource1.createUnavailableSection())));
-
-        Assert.assertFalse(
-                        isInstrumented(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(2, 6), sampleSource1.createSection(2, 7)).build(),
-                                        root1, null));
 
         Assert.assertNotNull(SourceSectionFilter.newBuilder().sourceSectionEquals(sampleSource1.createSection(1, 6)).build().toString());
     }

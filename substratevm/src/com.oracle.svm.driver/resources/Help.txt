@@ -1,25 +1,27 @@
 
-GraalVM ${TOOL_NAME} building tool
+GraalVM native-image building tool
 
 This tool can be used to generate an image that contains ahead-of-time compiled Java code.
 
-Usage: ${TOOL_NAME} [options] class
+Usage: native-image [options] class
            (to build an image for a class)
-   or  ${TOOL_NAME} [options] -jar jarfile
+   or  native-image [options] -jar jarfile
            (to build an image for a jar file)
 where options include:
     -cp <class search path of directories and zip/jar files>
     -classpath <class search path of directories and zip/jar files>
-                  A : separated list of directories, JAR archives,
-                  and ZIP archives to search for class files.
-    -shared       build shared library
-    -D<name>=<value>
-                  set a system property
-    -J<flag>      pass <flag> directly to the JVM running the image generator
-    -g            enable debuginfo generation
-    -O<level>     0 - no optimizations, 1 - basic optimizations (default).
-    -ea           enable assertions in the generated image
-    -verbose      enable verbose output
-    -version      print product version and exit
-    -? -help      print this help message
-    -X            print help on non-standard options
+    --class-path <class search path of directories and zip/jar files>
+                          A %pathsep% separated list of directories, JAR archives,
+                          and ZIP archives to search for class files.
+    -shared               build shared library
+    -D<name>=<value>      set a system property
+    -J<flag>              pass <flag> directly to the JVM running the image generator
+    -g                    enable debuginfo generation
+    -O<level>             0 - no optimizations, 1 - basic optimizations (default).
+    -ea                   enable assertions in the generated image
+    --verbose             enable verbose output
+    --version             print product version and exit
+    --help                print this help message
+
+    --help-advanced       print help on non-standard options
+ 

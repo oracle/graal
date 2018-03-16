@@ -57,7 +57,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * etc.) are executed.
  * <p>
  * Usage example: {@link CPUTracerSnippets#example}
- * 
+ *
  * @since 0.30
  */
 public final class CPUTracer implements Closeable {
@@ -188,7 +188,7 @@ public final class CPUTracer implements Closeable {
         if (f == null) {
             f = DEFAULT_FILTER;
         }
-        this.activeBinding = env.getInstrumenter().attachFactory(f, new ExecutionEventNodeFactory() {
+        this.activeBinding = env.getInstrumenter().attachExecutionEventFactory(f, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
                 return new CounterNode(getCounter(context));

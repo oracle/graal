@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.processing.FilerException;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -87,6 +88,12 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 writer = w;
                 writeRootClass(e);
             } catch (IOException ex) {
+                if (ex instanceof FilerException) {
+                    if (ex.getMessage().startsWith("Source file already created")) {
+                        // ignore source file already created errors
+                        return null;
+                    }
+                }
                 throw new RuntimeException(ex);
             } finally {
                 if (w != null) {

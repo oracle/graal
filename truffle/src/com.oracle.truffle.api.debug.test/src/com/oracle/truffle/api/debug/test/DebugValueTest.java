@@ -30,6 +30,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
@@ -93,7 +94,7 @@ public class DebugValueTest extends AbstractDebugTest {
                         "))\n");
         Context context = Context.create();
         context.eval(source);
-        Value functionValue = context.importSymbol("function");
+        Value functionValue = context.getBindings(InstrumentationTestLanguage.ID).getMember("function");
         assertNotNull(functionValue);
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
 
@@ -259,7 +260,9 @@ public class DebugValueTest extends AbstractDebugTest {
 
                 @SuppressWarnings("unused")
                 public int access(ModifiableAttributesTruffleObject ato, String propName) {
-                    return KeyInfo.newBuilder().setReadable(ato.isReadable).setWritable(ato.isWritable).setInternal(ato.isInternal).build();
+                    return (ato.isReadable ? KeyInfo.READABLE : 0) |
+                                    (ato.isWritable ? KeyInfo.MODIFIABLE : 0) |
+                                    (ato.isInternal ? KeyInfo.INTERNAL : 0);
                 }
             }
         }

@@ -52,12 +52,13 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleTreeDebugHandlersFactory;
 import org.junit.Assert;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class PartialEvaluationTest extends GraalCompilerTest {
+public abstract class PartialEvaluationTest extends GraalCompilerTest {
     protected final TruffleCompilerImpl truffleCompiler;
 
     public PartialEvaluationTest() {
@@ -110,11 +111,14 @@ public class PartialEvaluationTest extends GraalCompilerTest {
     }
 
     protected void assertPartialEvalNoInvokes(RootNode root, Object[] arguments) {
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(root);
-        StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, INVALID_COMPILATION_ID);
-        removeFrameStates(actual);
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
+        assertPartialEvalNoInvokes(callTarget, arguments);
+    }
+
+    protected void assertPartialEvalNoInvokes(CallTarget callTarget, Object[] arguments) {
+        StructuredGraph actual = partialEval((OptimizedCallTarget) callTarget, arguments, AllowAssumptions.YES, INVALID_COMPILATION_ID);
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
-            Assert.fail("Found invalid method call target node: " + node);
+            Assert.fail("Found invalid method call target node: " + node + " (" + node.targetMethod() + ")");
         }
     }
 

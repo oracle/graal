@@ -531,17 +531,17 @@ public class ValueAssert {
         }
     }
 
-    interface EmptyInterface {
+    public interface EmptyInterface {
 
     }
 
-    interface NonFunctionalInterface {
+    public interface NonFunctionalInterface {
         void foobarbaz();
 
     }
 
     @FunctionalInterface
-    interface IsFunctionalInterfaceVarArgs {
+    public interface IsFunctionalInterfaceVarArgs {
         Object foobarbaz(Object... args);
     }
 

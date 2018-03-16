@@ -35,6 +35,7 @@ from contextlib import contextmanager
 from distutils.dir_util import mkpath, copy_tree, remove_tree # pylint: disable=no-name-in-module
 from os.path import join, exists, basename, dirname, islink
 import functools
+import collections
 
 import mx
 import mx_compiler
@@ -170,17 +171,17 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
         mkpath(target_dir)
         relsymlink(option_properties, target_path)
 
-flag_suitename_map = {
-    'js' : ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js'),
-    'ruby' : ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP']),
-    'llvm' : ('sulong', ['SULONG'], ['SULONG_LIBS', 'SULONG_DOC']),
-    'python': ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP'])
-}
+flag_suitename_map = collections.OrderedDict([
+    ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
+    ('js', ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
+    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP'])),
+    ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP']))
+])
 
 class ToolDescriptor:
     def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
         """
-        By adding a new ToolDescriptor entry in the tools_map a new --tool.<keyname>
+        By adding a new ToolDescriptor entry in the tools_map a new --Tool:<keyname>
         option is made available to native-image and also makes the tool available as
         Tool:<keyname> in a native-image properties file Requires statement.  The tool is
         represented in the <native_image_root>/tools/<keyname> directory. If a
@@ -224,29 +225,30 @@ def remove_option_prefix(text, prefix):
         return True, text[len(prefix):]
     return False, text
 
+def extract_target_name(arg, kind):
+    target_name, target_value = None, None
+    is_kind, option_tail = remove_option_prefix(arg, '--' + kind + ':')
+    if is_kind:
+        target_name, _, target_value = option_tail.partition('=')
+    return target_name, target_value
+
 def native_image_extract_dependencies(args):
     deps = []
     for arg in args:
-        macro, option = remove_option_prefix(arg, '--')
-        if not macro:
-            continue
-        tool, option = remove_option_prefix(option, 'tool.')
-        if tool:
-            tool_name = option.partition('=')[0]
-            if tool_name in tools_map:
-                tool_descriptor = tools_map[tool_name]
-                deps += tool_descriptor.builder_deps
-                deps += tool_descriptor.image_deps
-                deps += tool_descriptor.native_deps
-        else:
-            language_flag = option
-            if language_flag in flag_suitename_map:
-                language_entry = flag_suitename_map[language_flag]
-                language_suite_name = language_entry[0]
-                language_deps = language_entry[1]
-                deps += [language_suite_name + ':' + dep for dep in language_deps]
-                language_native_deps = language_entry[2]
-                deps += [language_suite_name + ':' + dep for dep in language_native_deps]
+        tool_name = extract_target_name(arg, 'Tool')[0]
+        if tool_name in tools_map:
+            tool_descriptor = tools_map[tool_name]
+            deps += tool_descriptor.builder_deps
+            deps += tool_descriptor.image_deps
+            deps += tool_descriptor.native_deps
+        language_flag = extract_target_name(arg, 'Language')[0]
+        if language_flag in flag_suitename_map:
+            language_entry = flag_suitename_map[language_flag]
+            language_suite_name = language_entry[0]
+            language_deps = language_entry[1]
+            deps += [language_suite_name + ':' + dep for dep in language_deps]
+            language_native_deps = language_entry[2]
+            deps += [language_suite_name + ':' + dep for dep in language_native_deps]
     return deps
 
 def native_image_symlink_path(native_image_root, platform_specific=True):
@@ -366,15 +368,22 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         prefix = "Bootstrapping " if self._allow_bootstrapping() else "Skip bootstrapping "
         return prefix + self.subject.name
 
-    def build(self):
+    def _shouldRebuildNativeImage(self):
         # Only bootstrap native-image for the most-specific svm_suite
         if not self._allow_bootstrapping():
-            return
+            return False, 'Skip bootstrapping'
 
         # Only bootstrap if it doesn't already exist
         symlink_path = native_image_symlink_path(self.subject.native_image_root)
         if exists(symlink_path):
             mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
+            return False, 'Already bootstrapped'
+
+        return True, ''
+
+    def build(self):
+        shouldRebuild = self._shouldRebuildNativeImage()[0]
+        if not shouldRebuild:
             return
 
         bootstrap_native_image(
@@ -395,15 +404,9 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
 
     def needsBuild(self, newestInput):
-        # Only bootstrap native-image for the most-specific svm_suite
-        if not self._allow_bootstrapping():
-            return False, 'Skip bootstrapping'
-
-        # Only bootstrap if it doesn't already exist
-        symlink_path = native_image_symlink_path(self.subject.native_image_root)
-        if exists(symlink_path):
-            mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
-            return False, 'Already bootstrapped'
+        shouldRebuild, reason = self._shouldRebuildNativeImage()
+        if not shouldRebuild:
+            return False, reason
 
         witness = self.newestOutput()
         if not self._newestOutput or witness.isNewerThan(self._newestOutput):
@@ -517,19 +520,19 @@ def native_image_context(common_args=None, hosted_assertions=True):
     common_args = [] if common_args is None else common_args
     base_args = ['-H:Path=' + svmbuild_dir()]
     if mx.get_opts().verbose:
-        base_args += ['-verbose']
+        base_args += ['--verbose']
     if mx.get_opts().very_verbose:
-        base_args += ['-verbose-server']
+        base_args += ['--verbose-server']
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
     native_image_cmd = native_image_path(suite_native_image_root())
     def native_image_func(args):
         mx.run([native_image_cmd] + base_args + common_args + args)
     try:
-        mx.run([native_image_cmd, '-server-wipe'])
+        mx.run([native_image_cmd, '--server-wipe'])
         yield native_image_func
     finally:
-        mx.run([native_image_cmd, '-server-shutdown'])
+        mx.run([native_image_cmd, '--server-shutdown'])
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 
@@ -571,7 +574,7 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        native_image(build_args + extra_image_args + ['--tool.junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
+        native_image(build_args + extra_image_args + ['--Tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         unittest_image = join(junit_tmp_dir, 'svmjunit')
         mx.run([unittest_image] + run_args)
     finally:
@@ -582,13 +585,13 @@ def gate_sulong(native_image, tasks):
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            native_image(['--llvm'])
+            native_image(['--Language:llvm'])
             sulong.extensions.testLLVMImage(join(svmbuild_dir(), 'lli'), unittestArgs=['--enable-timing'])
 
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--llvm']))
+            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--Language:llvm']))
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None):
     jsruncmd = [binary, join(bench_location, 'harness.js'), '--',
@@ -624,7 +627,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    native_image(['--js', '--tool.chromeinspector'])
+    native_image(['--Language:js', '--Tool:chromeinspector'])
 
 def test_js(benchmarks):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -648,7 +651,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    native_image(['--python', '--tool.profiler'])
+    native_image(['--Language:python', '--Tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
 
 def test_python_smoke(args):
     """
@@ -662,6 +665,8 @@ def test_python_smoke(args):
     with tempfile.NamedTemporaryFile() as f:
         f.write("print('%s')\n" % expected_output)
         f.flush()
+        os.system("ls -l %s" % args[0])
+        os.system("ls -l %s" % f.name)
         exitcode = mx.run([args[0], f.name], nonZeroIsFatal=False, out=out)
         if exitcode != 0:
             mx.abort("Python binary failed to execute: " + out.data)
@@ -670,8 +675,9 @@ def test_python_smoke(args):
         mx.log("Python binary says: " + out.data)
 
 def build_ruby(native_image):
+    truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
-    native_image(['--ruby'])
+    native_image(['--Language:ruby'])
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
@@ -711,7 +717,7 @@ def cinterfacetutorial(native_image, args=None):
     mkpath(buildDir)
 
     # Build the shared library from Java code
-    native_image(['-H:Kind=SHARED_LIBRARY', '-H:Path=' + buildDir, '-H:Name=libcinterfacetutorial',
+    native_image(['-shared', '-H:Path=' + buildDir, '-H:Name=libcinterfacetutorial',
                   '-H:CLibraryPath=' + tutorial_proj.dir, '-cp', tutorial_proj.output_dir()] + args)
 
     # Build the C executable
@@ -732,7 +738,7 @@ def helloworld(native_image, args=None):
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
-    native_image(['-cp', mx_compiler.jdk.toolsjar, "-H:Path=" + helloPath, "-H:Class=com.sun.tools.javac.Main", "-H:Name=javac",
+    native_image(["-H:Path=" + helloPath, '-cp', mx_compiler.jdk.toolsjar, "com.sun.tools.javac.Main", "javac",
            "-H:+ReportUnsupportedElementsAtRuntime", "-H:IncludeResourceBundles=com.sun.tools.javac.resources.compiler,com.sun.tools.javac.resources.javac,com.sun.tools.javac.resources.version"] + args)
 
     helloFile = join(helloPath, 'HelloWorld.java')
@@ -744,7 +750,7 @@ def helloworld(native_image, args=None):
     # and we need to set the bootclasspath manually because our build directory does not contain any .jar files.
     mx.run([join(helloPath, 'javac'), "-proc:none", "-bootclasspath", join(mx_compiler.jdk.home, "jre", "lib", "rt.jar"), helloFile])
 
-    native_image(['-cp', helloPath, "-H:Path=" + helloPath, '-H:Class=HelloWorld', '-H:Name=helloworld'] + args)
+    native_image(["-H:Path=" + helloPath, '-cp', helloPath, 'HelloWorld'] + args)
 
     expectedOutput = [output + '\n']
     actualOutput = []
@@ -775,18 +781,14 @@ def native_image_context_run(func, func_args=None):
 
 def fetch_languages(args):
     if args:
-        requested = dict()
+        requested = collections.OrderedDict()
         for arg in args:
-            macro, option = remove_option_prefix(arg, '--')
-            if not macro:
-                continue
-            tool, option = remove_option_prefix(option, 'tool.')
-            if tool:
-                continue
-            option, _, version = option.partition('.version=')
-            requested[option] = version
+            language_flag, version_info = extract_target_name(arg, 'Language')
+            if language_flag:
+                version = version_info.partition('version=')[2] if version_info else None
+                requested[language_flag] = version
     else:
-        requested = dict((lang, None) for lang in flag_suitename_map)
+        requested = collections.OrderedDict((lang, None) for lang in flag_suitename_map)
 
     for language_flag in requested:
         version = requested[language_flag]

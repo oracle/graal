@@ -144,7 +144,7 @@ public class JavaMainWrapper {
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterCreateIsolatePrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
     public static int run(int paramArgc, CCharPointerPointer paramArgv) throws Exception {
-        JavaThreads.singleton().assignJavaThread(preallocatedThread);
+        JavaThreads.singleton().assignJavaThread(preallocatedThread, true);
 
         JavaMainWrapper.argc = paramArgc;
         JavaMainWrapper.argv = paramArgv;
