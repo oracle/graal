@@ -1301,7 +1301,7 @@ public final class LLVMInteropTest {
         }
 
         void export(Object foreignObject, String name) {
-            context.exportSymbol(name, foreignObject);
+            context.getPolyglotBindings().putMember(name, foreignObject);
         }
 
         void close() {
