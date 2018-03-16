@@ -500,7 +500,7 @@ class NativeImage {
                         replaceArg(imageBuilderArgs, oHName, mainClass.toLowerCase());
                     } else if (imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
                         /* Although very unlikely, report missing image-name if needed. */
-                        showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                        throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
                     }
                 }
             } else {
@@ -538,10 +538,10 @@ class NativeImage {
                 Process p = pb.inheritIO().start();
                 int exitStatus = p.waitFor();
                 if (exitStatus != 0) {
-                    showError("Image building with exit status " + exitStatus);
+                    throw showError("Image building with exit status " + exitStatus);
                 }
             } catch (IOException | InterruptedException e) {
-                showError(e.getMessage());
+                throw showError(e.getMessage());
             }
         }
     }
@@ -698,9 +698,8 @@ class NativeImage {
         try {
             return Files.list(dir).filter(f -> f.getFileName().toString().toLowerCase().endsWith(".jar")).collect(Collectors.toList());
         } catch (IOException e) {
-            showError("Unable to use jar-files from directory " + dir, e);
+            throw showError("Unable to use jar-files from directory " + dir, e);
         }
-        return Collections.emptyList();
     }
 
     private List<String> processNativeImageArgs(String[] args) {

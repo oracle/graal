@@ -41,8 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 
-import jdk.vm.ci.amd64.AMD64;
-
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -66,7 +64,11 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 
+import jdk.vm.ci.amd64.AMD64;
+
 public class NativeImageGeneratorRunner implements ImageBuildTask {
+
+    private volatile NativeImageGenerator generator;
 
     public static void main(String[] args) {
         ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
@@ -134,11 +136,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     @SuppressWarnings("try")
-    private static int buildImage(String[] arguments, String[] classpath, ClassLoader classLoader) {
+    private int buildImage(String[] arguments, String[] classpath, ClassLoader classLoader) {
         if (!verifyValidJavaVersionAndPlatform()) {
             return -1;
         }
         Timer totalTimer = new Timer("[total]", false);
+        ForkJoinPool analysisExecutor = null;
+        ForkJoinPool compilationExecutor = null;
         try (StopTimer ignored = totalTimer.start()) {
             ImageClassLoader imageClassLoader;
             Timer classlistTimer = new Timer("classlist", false);
@@ -230,12 +234,18 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
 
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
-            ForkJoinPool analysisExecutor = Inflation.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
-            ForkJoinPool compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
-            NativeImageGenerator generator = new NativeImageGenerator(imageClassLoader);
-            generator.run(optionParser, entryPoints, mainEntryPoint, javaMainSupport, imageName, k, SubstitutionProcessor.IDENTITY,
+            analysisExecutor = Inflation.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
+            compilationExecutor = Inflation.createExecutor(debug, maxConcurrentThreads);
+            generator = new NativeImageGenerator(imageClassLoader, optionParser);
+            generator.run(entryPoints, mainEntryPoint, javaMainSupport, imageName, k, SubstitutionProcessor.IDENTITY,
                             analysisExecutor, compilationExecutor, optionParser.getRuntimeOptionNames());
         } catch (InterruptImageBuilding e) {
+            if (analysisExecutor != null) {
+                analysisExecutor.shutdownNow();
+            }
+            if (compilationExecutor != null) {
+                compilationExecutor.shutdownNow();
+            }
             e.getReason().ifPresent(NativeImageGeneratorRunner::info);
             return 0;
         } catch (UserException e) {
@@ -325,5 +335,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     @Override
     public int build(String[] args, String[] classpath, ClassLoader compilationClassLoader) {
         return buildImage(args, classpath, compilationClassLoader);
+    }
+
+    @Override
+    public void interruptBuild() {
+        final NativeImageGenerator generatorInstance = generator;
+        if (generatorInstance != null) {
+            generatorInstance.interruptBuild();
+        }
     }
 }
