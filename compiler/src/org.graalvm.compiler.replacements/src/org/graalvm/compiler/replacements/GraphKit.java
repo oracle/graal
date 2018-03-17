@@ -111,8 +111,8 @@ public class GraphKit implements GraphBuilderTool {
         }
         this.graph = builder.build();
         graph.disableUnsafeAccessTracking();
-        graph.setTrackNodeSourcePosition();
         if (graph.trackNodeSourcePosition()) {
+            // Set up a default value that everything constructed by GraphKit will use.
             graph.withNodeSourcePosition(NodeSourcePosition.substitution(stubMethod));
         }
         this.wordTypes = wordTypes;
@@ -242,7 +242,7 @@ public class GraphKit implements GraphBuilderTool {
      */
     @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.placeholder(method))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
             assert method.isStatic() == (invokeKind == InvokeKind.Static);
             Signature signature = method.getSignature();
             JavaType returnType = signature.getReturnType(null);
@@ -267,15 +267,17 @@ public class GraphKit implements GraphBuilderTool {
         }
     }
 
+    @SuppressWarnings("try")
     public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(ResolvedJavaMethod method, InvokeKind invokeKind,
                     FrameStateBuilder frameStateBuilder, int invokeBci, int exceptionEdgeBci, ValueNode... args) {
-
-        InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, exceptionEdgeBci, args);
-        exceptionPart();
-        ExceptionObjectNode exception = exceptionObject();
-        append(new UnwindNode(exception));
-        endInvokeWithException();
-        return result;
+        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
+            InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, exceptionEdgeBci, args);
+            exceptionPart();
+            ExceptionObjectNode exception = exceptionObject();
+            append(new UnwindNode(exception));
+            endInvokeWithException();
+            return result;
+        }
     }
 
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, @SuppressWarnings("unused") int bci) {

@@ -1196,6 +1196,10 @@ public class Graph {
                 }
             }
         }
+        return true;
+    }
+
+    public boolean verifySourcePositions() {
         if (trackNodeSourcePosition()) {
             ResolvedJavaMethod root = null;
             for (Node node : getNodes()) {
@@ -1204,7 +1208,7 @@ public class Graph {
                     if (root == null) {
                         root = pos.getRootMethod();
                     } else {
-                        assert root.equals(pos.getRootMethod()) : root + " " + pos.getRootMethod();
+                        assert pos.verifyRootMethod(root) : node;
                     }
                 }
             }

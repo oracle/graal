@@ -701,7 +701,7 @@ public class InliningUtil extends ValueMergeUtil {
                     if (inlineeRoot == null) {
                         assert (inlineeRoot = pos.getRootMethod()) != null;
                     } else {
-                        assert inlineeRoot.equals(pos.getRootMethod());
+                        assert pos.verifyRootMethod(inlineeRoot);
                     }
                     NodeSourcePosition callerPos = posMap.get(pos);
                     if (callerPos == null) {
@@ -720,6 +720,7 @@ public class InliningUtil extends ValueMergeUtil {
                 }
             }
         }
+        assert invokeGraph.verifySourcePositions();
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {

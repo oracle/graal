@@ -86,7 +86,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
 
     public static final NodeClass<?> TYPE = null;
 
-    public static final boolean TRACK_CREATION_POSITION = Boolean.getBoolean("debug.graal.TrackCreationPosition");
+    public static final boolean TRACK_CREATION_POSITION = Boolean.getBoolean("debug.graal.TrackNodeCreationPosition");
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
@@ -239,12 +239,24 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             this.stackTrace = new Throwable().getStackTrace();
         }
 
-        public String getStrackTraceString() {
+        private String getString(String label) {
             StringBuilder sb = new StringBuilder();
+            if (label != null) {
+                sb.append(label).append(": ");
+            }
             for (StackTraceElement ste : stackTrace) {
                 sb.append("at ").append(ste.toString()).append('\n');
             }
             return sb.toString();
+        }
+
+        String getStrackTraceString() {
+            return getString(null);
+        }
+
+        @Override
+        public String toString() {
+            return getString(getClass().getSimpleName());
         }
     }
 
