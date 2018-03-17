@@ -337,4 +337,33 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         directCallNode.call(new Object[]{0});
         Assert.assertFalse("Target needs split after first execution", getNeedsSplit(callTarget));
     }
+
+    @Test
+    public void testIncreaseInPolymorphism() {
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.createCallTarget(
+                        new SplittingTestRootNode(ExperimentalSplittingStrategyTestFactory.TurnsPolymorphicOnZeroNodeGen.create(new ReturnsArgumentNode())));
+        final RootCallTarget outerTarget = runtime.createCallTarget(new CallsInnerNode(callTarget));
+        Object[] firstArgs = new Object[]{1};
+        outerTarget.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        outerTarget.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        Object[] secondArgs = new Object[]{0};
+        // Turns polymorphic
+        outerTarget.call(secondArgs);
+        Assert.assertFalse("Target needs split even though there is only 1 caller", getNeedsSplit(callTarget));
+
+        // Add second caller
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        outerTarget.call(secondArgs);
+        Assert.assertFalse("Target needs split with no increase in polymorphism", getNeedsSplit(callTarget));
+
+        outerTarget.call(new Object[]{"foo"});
+        Assert.assertTrue("Target does not need split after increase in polymorphism", getNeedsSplit(callTarget));
+
+        // Test new dirrectCallNode will split
+        outerTarget.call(firstArgs);
+        directCallNode.call(firstArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", directCallNode.isCallTargetCloned());
+    }
 }
