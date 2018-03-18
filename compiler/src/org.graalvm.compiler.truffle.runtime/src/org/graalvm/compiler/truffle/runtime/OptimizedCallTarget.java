@@ -68,7 +68,7 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleDumpPolymorphicSpecialize;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxPollutionDepth;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxPropagationDepth;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
 
 /**
@@ -688,7 +688,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
-        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPollutionDepth) || needsSplit || knownCallNodes.size() == 0 ||
+        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPropagationDepth) || needsSplit || knownCallNodes.size() == 0 ||
                         compilationProfile.getInterpreterCallCount() == 1) {
             return false;
         }
