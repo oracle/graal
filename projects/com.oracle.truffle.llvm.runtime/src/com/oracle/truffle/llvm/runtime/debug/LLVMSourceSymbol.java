@@ -29,23 +29,29 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-import java.util.Objects;
+public abstract class LLVMSourceSymbol {
 
-public final class LLVMSourceSymbol {
+    public static LLVMSourceSymbol create(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isStatic) {
+        if (isStatic) {
+            return new Static(name, location, type);
+        } else {
+            return new Dynamic(name, location, type);
+        }
+    }
 
     private final String name;
     private final LLVMSourceLocation location;
     private final LLVMSourceType type;
-    private final boolean isGlobal;
 
-    public LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type, boolean isGlobal) {
+    private LLVMSourceSymbol(String name, LLVMSourceLocation location, LLVMSourceType type) {
         this.name = name;
         this.location = location;
         this.type = type;
-        this.isGlobal = isGlobal;
     }
 
     public String getName() {
@@ -60,9 +66,7 @@ public final class LLVMSourceSymbol {
         return type;
     }
 
-    public boolean isGlobal() {
-        return isGlobal;
-    }
+    public abstract boolean isStatic();
 
     @Override
     public String toString() {
@@ -82,10 +86,6 @@ public final class LLVMSourceSymbol {
 
         final LLVMSourceSymbol symbol = (LLVMSourceSymbol) o;
 
-        if (isGlobal != symbol.isGlobal) {
-            return false;
-        }
-
         if (!name.equals(symbol.name)) {
             return false;
         }
@@ -97,5 +97,29 @@ public final class LLVMSourceSymbol {
     @TruffleBoundary
     public int hashCode() {
         return name.hashCode();
+    }
+
+    private static final class Static extends LLVMSourceSymbol {
+
+        private Static(String name, LLVMSourceLocation location, LLVMSourceType type) {
+            super(name, location, type);
+        }
+
+        @Override
+        public boolean isStatic() {
+            return true;
+        }
+    }
+
+    private static final class Dynamic extends LLVMSourceSymbol {
+
+        private Dynamic(String name, LLVMSourceLocation location, LLVMSourceType type) {
+            super(name, location, type);
+        }
+
+        @Override
+        public boolean isStatic() {
+            return false;
+        }
     }
 }

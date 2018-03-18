@@ -154,7 +154,7 @@ public final class LLVMSourceScope {
         sourceScope.setName(scope.getName());
 
         for (LLVMSourceSymbol symbol : scope.getSymbols()) {
-            if (symbol.isGlobal() || isDeclaredBefore(symbol, sourceSection)) {
+            if (symbol.isStatic() || isDeclaredBefore(symbol, sourceSection)) {
                 symbols.add(symbol);
             }
         }

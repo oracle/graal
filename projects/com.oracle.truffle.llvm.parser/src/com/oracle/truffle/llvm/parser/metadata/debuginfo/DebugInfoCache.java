@@ -63,7 +63,7 @@ final class DebugInfoCache {
         this.typeExtractor = new DITypeExtractor(scopeBuilder, metadata, staticMembers);
     }
 
-    LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isGlobal) {
+    LLVMSourceSymbol getSourceSymbol(MDBaseNode mdVariable, boolean isStatic) {
         if (parsedVariables.containsKey(mdVariable)) {
             return parsedVariables.get(mdVariable);
         }
@@ -72,7 +72,7 @@ final class DebugInfoCache {
         final LLVMSourceType type = typeExtractor.parseType(mdVariable);
         final String varName = MDNameExtractor.getName(mdVariable);
 
-        final LLVMSourceSymbol symbol = new LLVMSourceSymbol(varName, location, type, isGlobal);
+        final LLVMSourceSymbol symbol = LLVMSourceSymbol.create(varName, location, type, isStatic);
         parsedVariables.put(mdVariable, symbol);
 
         if (location != null) {
