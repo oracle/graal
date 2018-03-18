@@ -694,11 +694,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
         if (knownCallNodes.size() == 1) {
             final OptimizedDirectCallNode callNode = knownCallNodes.iterator().next();
-            final OptimizedCallTarget callTarget = (OptimizedCallTarget) callNode.getRootNode().getCallTarget();
-            if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
-                pullOutParentChain(callNode, toDump);
+            final RootNode rootNode = callNode.getRootNode();
+            if (rootNode != null && rootNode.getCallTarget() != null) {
+                final OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
+                if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
+                    pullOutParentChain(callNode, toDump);
+                }
+                needsSplit = callTarget.maybeSetNeedsSplit(depth + 1, toDump);
             }
-            needsSplit = callTarget.maybeSetNeedsSplit(depth + 1, toDump);
         } else {
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
                 PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, knownCallNodes);
