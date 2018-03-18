@@ -498,7 +498,9 @@ public abstract class Node implements NodeInterface, Cloneable {
     /**
      * Notifies the runtime that this node specialized to a polymorphic state. This includes
      * specializations that increase "level" of polymorphism (e.g. Adding another element to an
-     * existing inline cache).
+     * existing inline cache). The runtime can use this information to, if
+     * {@link RootNode#isCloningAllowed() allowed}, create a deep copy of the {@link RootNode}
+     * hosting this node and gather context sensitive profiling feedback.
      *
      * @since 0.33
      */

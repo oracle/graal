@@ -34,6 +34,12 @@ import java.lang.annotation.Target;
  * Nodes annotated with this annotation (and their subclasses) will, if processed by the DSL,
  * automatically {@link Node#reportPolymorphicSpecialize() report polymorphic specializations}.
  *
+ * Polymorphic specializations include, but are not limited to, activating another specialization,
+ * increasing the number of instances of an active specialization, excluding a specialization, etc.
+ * Individual specializations can be excluded from this consideration buy using the
+ * {@link ReportPolymorphism.Exclude} Polymorphic specializations are never reported on the first
+ * specialization.
+ *
  * @since 0.33
  */
 @Target(ElementType.TYPE)
