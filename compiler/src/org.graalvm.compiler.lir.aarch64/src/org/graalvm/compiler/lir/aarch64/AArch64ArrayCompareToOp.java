@@ -146,11 +146,11 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
 
         // Byte is expanded to short if we compare strings with different encoding
         if (kind1 != kind2 || kind1 == JavaKind.Char) {
-           CHAR_SIZE_BYTES = 2;
+            CHAR_SIZE_BYTES = 2;
         }
 
         if (kind1 != kind2) {
-           VECTOR_COUNT_BYTES = 4;
+            	VECTOR_COUNT_BYTES = 4;
         }
 
         // Load array base addresses.
@@ -247,14 +247,14 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         masm.bind(STRING_DIFFER_LABEL);
         masm.rbit(64, tailCount, result);
         masm.clz(64, vecCount, tailCount);
-        masm.and(64, vecCount, vecCount, ~((8 * CHAR_SIZE_BYTES) - 1)); // Round to byte or two bytes boundary
+        masm.and(64, vecCount, vecCount, ~((8 * CHAR_SIZE_BYTES) - 1)); // Round to byte or short
 
         masm.eor(64, result, temp, result);
         masm.ashr(64, result, result, vecCount);
         masm.ashr(64, temp, temp, vecCount);
 
         masm.and(64, result, result, 0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES))); // 0xFF or 0xFFFF
-        masm.and(64, temp, temp,  0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES)));
+        masm.and(64, temp, temp, 0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES)));
 
         masm.sub(64, result, temp, result);
         masm.branchConditionally(ConditionFlag.AL, BREAK_LABEL);

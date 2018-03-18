@@ -93,12 +93,14 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     @Test
+    @Ignore("GR-8748")
     public void testEqualString() {
         String s = "equal-string";
         executeStringCompareTo(s, new String(s.toCharArray()));
     }
 
     @Test
+    @Ignore("GR-8748")
     public void testDifferentString() {
         // Smoke test for primary cases
         executeStringCompareTo("AAAAAAAA", "");
@@ -111,6 +113,7 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     @Test
+    @Ignore("GR-8748")
     public void testAllStrings() {
         for (String s0 : testData) {
             for (String s1 : testData) {
