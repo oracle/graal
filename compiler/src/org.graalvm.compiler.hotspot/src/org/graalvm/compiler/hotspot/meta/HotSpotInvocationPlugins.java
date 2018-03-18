@@ -22,13 +22,9 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
-
 import java.lang.reflect.Type;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
@@ -41,7 +37,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
-import org.graalvm.compiler.serviceprovider.JDK9Method;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.JavaKind;
@@ -52,18 +47,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final GraalHotSpotVMConfig config;
-    private final EconomicSet<Object> trustedModules;
-    private final ClassLoader extLoader;
+    private final IntrinsificationPredicate intrinsificationPredicate;
 
     HotSpotInvocationPlugins(GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration) {
         this.config = config;
-        if (Java8OrEarlier) {
-            extLoader = getExtLoader();
-            trustedModules = null;
-        } else {
-            extLoader = null;
-            trustedModules = initTrustedModules(compilerConfiguration);
-        }
+        intrinsificationPredicate = new IntrinsificationPredicate(compilerConfiguration);
     }
 
     @Override
@@ -112,50 +100,12 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         return type != null && "Ljava/lang/Class;".equals(type.getName());
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * On JDK 8, only classes loaded by the boot, JVMCI or extension class loaders are trusted.
-     *
-     * On JDK 9 and later, only classes in the {@link CompilerConfiguration} defining module or any
-     * of its module dependencies are trusted.
-     */
     @Override
     public boolean canBeIntrinsified(ResolvedJavaType declaringClass) {
         if (declaringClass instanceof HotSpotResolvedJavaType) {
-            Class<?> javaClass = ((HotSpotResolvedJavaType) declaringClass).mirror();
-            if (Java8OrEarlier) {
-                ClassLoader cl = javaClass.getClassLoader();
-                return cl == null || cl == getClass().getClassLoader() || cl == extLoader;
-            } else {
-                Object module = JDK9Method.getModule(javaClass);
-                return trustedModules.contains(module);
-            }
+            HotSpotResolvedJavaType type = (HotSpotResolvedJavaType) declaringClass;
+            return intrinsificationPredicate.apply(type.mirror());
         }
         return false;
-    }
-
-    private static ClassLoader getExtLoader() {
-        try {
-            Object launcher = Class.forName("sun.misc.Launcher").getMethod("getLauncher").invoke(null);
-            ClassLoader appLoader = (ClassLoader) launcher.getClass().getMethod("getClassLoader").invoke(launcher);
-            ClassLoader extLoader = appLoader.getParent();
-            assert extLoader.getClass().getName().equals("sun.misc.Launcher$ExtClassLoader") : extLoader;
-            return extLoader;
-        } catch (Exception e) {
-            throw new GraalError(e);
-        }
-    }
-
-    /**
-     * Gets the set of modules trusted by Graal in terms of applying intrinsics. A method declared
-     * in class C can be intrinsified if C is declared by one of the modules returned by this
-     * method. The set of trusted modules is module declaring the
-     * {@code compilerConfiguration.getClass()} and its transitive dependencies.
-     *
-     * @param compilerConfiguration the object from which the set of trusted modules is computed
-     */
-    static EconomicSet<Object> initTrustedModules(CompilerConfiguration compilerConfiguration) {
-        return HotSpotTrustedModules.build(compilerConfiguration);
     }
 }

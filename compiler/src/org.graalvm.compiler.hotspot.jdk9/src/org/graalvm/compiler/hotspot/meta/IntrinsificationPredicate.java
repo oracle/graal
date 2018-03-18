@@ -28,28 +28,39 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 
 /**
- * Builds the result for {@link HotSpotInvocationPlugins#initTrustedModules(CompilerConfiguration)}.
+ * Determines if methods in a given class can be intrinsified.
+ *
+ * Only classes loaded from the module defining the compiler configuration or any of its transitive
+ * dependencies can be intrinsified.
  *
  * This version of the class must be used on JDK 9 or later.
- *
- * @see "https://docs.oracle.com/javase/9/docs/specs/jar/jar.html#Multi-release"
  */
-public final class HotSpotTrustedModules {
-    static EconomicSet<Object> build(CompilerConfiguration compilerConfiguration) {
-        EconomicSet<Object> res = EconomicSet.create();
+public final class IntrinsificationPredicate {
+    /**
+     * Set of modules composed of the module defining the compiler configuration and its transitive
+     * dependencies.
+     */
+    private final EconomicSet<Module> trustedModules;
+
+    IntrinsificationPredicate(CompilerConfiguration compilerConfiguration) {
+        trustedModules = EconomicSet.create();
         Module compilerConfigurationModule = compilerConfiguration.getClass().getModule();
         if (compilerConfigurationModule.getDescriptor().isAutomatic()) {
             throw new IllegalArgumentException(String.format("The module '%s' defining the Graal compiler configuration class '%s' must not be an automatic module",
                             compilerConfigurationModule.getName(), compilerConfiguration.getClass().getName()));
         }
-        res.add(compilerConfigurationModule);
+        trustedModules.add(compilerConfigurationModule);
         for (Requires require : compilerConfigurationModule.getDescriptor().requires()) {
             for (Module module : compilerConfigurationModule.getLayer().modules()) {
                 if (module.getName().equals(require.name())) {
-                    res.add(module);
+                    trustedModules.add(module);
                 }
             }
         }
-        return res;
+    }
+
+    public boolean apply(Class<?> declaringClass) {
+        Module module = declaringClass.getModule();
+        return trustedModules.contains(module);
     }
 }

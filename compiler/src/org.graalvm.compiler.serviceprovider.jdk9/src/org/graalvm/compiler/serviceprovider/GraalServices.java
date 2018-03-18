@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
 
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
@@ -65,7 +66,50 @@ public final class GraalServices {
      */
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        return Services.load(service);
+        Iterable<S> iterable = ServiceLoader.load(service);
+        return new Iterable<>() {
+            @Override
+            public Iterator<S> iterator() {
+                Iterator<S> iterator = iterable.iterator();
+                return new Iterator<>() {
+                    @Override
+                    public boolean hasNext() {
+                        return iterator.hasNext();
+                    }
+
+                    @Override
+                    public S next() {
+                        S provider = iterator.next();
+                        // Allow Graal extensions to access JVMCI
+                        openJVMCITo(provider.getClass());
+                        return provider;
+                    }
+
+                    @Override
+                    public void remove() {
+                        iterator.remove();
+                    }
+                };
+            }
+        };
+    }
+
+    /**
+     * Opens all JVMCI packages to the module of a given class. This relies on JVMCI already having
+     * opened all its packages to the module defining {@link GraalServices}.
+     *
+     * @param other all JVMCI packages will be opened to the module defining this class
+     */
+    static void openJVMCITo(Class<?> other) {
+        Module jvmciModule = JVMCI_MODULE;
+        Module otherModule = other.getModule();
+        if (jvmciModule != otherModule) {
+            for (String pkg : jvmciModule.getPackages()) {
+                if (!jvmciModule.isOpen(pkg, otherModule)) {
+                    jvmciModule.addOpens(pkg, otherModule);
+                }
+            }
+        }
     }
 
     /**
@@ -104,20 +148,19 @@ public final class GraalServices {
     /**
      * Gets the class file bytes for {@code c}.
      */
-    @SuppressWarnings("unused")
     public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
         String classfilePath = c.getName().replace('.', '/') + ".class";
-        ClassLoader cl = c.getClassLoader();
-        if (cl == null) {
-            return ClassLoader.getSystemResourceAsStream(classfilePath);
-        }
-        return cl.getResourceAsStream(classfilePath);
+        return c.getModule().getResourceAsStream(classfilePath);
     }
 
-    private static final ClassLoader JVMCI_LOADER = GraalServices.class.getClassLoader();
-    private static final ClassLoader JVMCI_PARENT_LOADER = JVMCI_LOADER == null ? null : JVMCI_LOADER.getParent();
+    private static final Module JVMCI_MODULE = Services.class.getModule();
+
+    /**
+     * A JVMCI package dynamically exported to trusted modules.
+     */
+    private static final String JVMCI_RUNTIME_PACKAGE = "jdk.vm.ci.runtime";
     static {
-        assert JVMCI_PARENT_LOADER == null || JVMCI_PARENT_LOADER.getParent() == null;
+        assert JVMCI_MODULE.getPackages().contains(JVMCI_RUNTIME_PACKAGE);
     }
 
     /**
@@ -125,7 +168,14 @@ public final class GraalServices {
      * trusted code.
      */
     public static boolean isToStringTrusted(Class<?> c) {
-        ClassLoader cl = c.getClassLoader();
-        return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
+        Module module = c.getModule();
+        Module jvmciModule = JVMCI_MODULE;
+        assert jvmciModule.getPackages().contains("jdk.vm.ci.runtime");
+        if (module == jvmciModule || jvmciModule.isOpen(JVMCI_RUNTIME_PACKAGE, module)) {
+            // Can access non-statically-exported package in JVMCI
+            return true;
+        }
+        return false;
     }
+
 }

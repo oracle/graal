@@ -43,7 +43,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
@@ -214,17 +213,12 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (JDK9Method.JAVA_SPECIFICATION_VERSION >= 9 && cls.equals(JDK9Method.class)) {
-            // Graal initialization needs access to Module API on JDK 9.
-            return true;
-        }
-
         if (cls.equals(jvmciVersionCheck)) {
             // The Graal initialization needs to check the JVMCI version.
             return true;
         }
 
-        if (JVMCICompilerFactory.class.isAssignableFrom(cls)) {
+        if (JVMCICompilerFactory.class.isAssignableFrom(cls) || cls.getName().equals("org.graalvm.compiler.hotspot.IsGraalPredicate")) {
             // The compiler factories have to be loaded and instantiated by the JVMCI.
             return true;
         }
