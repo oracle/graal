@@ -100,7 +100,7 @@ public class StringCompareToTest extends MethodSubstitutionTest {
 
     @Test
     public void testDifferentString() {
-        // Smoke test for primary cases 
+        // Smoke test for primary cases
         executeStringCompareTo("AAAAAAAA", "");
         // LL
         executeStringCompareTo("some-stringA", "some-string\0xff");

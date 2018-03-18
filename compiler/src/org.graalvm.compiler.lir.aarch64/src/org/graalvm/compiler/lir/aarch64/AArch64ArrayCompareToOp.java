@@ -24,18 +24,15 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
-import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -43,7 +40,6 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 import sun.misc.Unsafe;
@@ -120,6 +116,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
     }
 
+    @Override
     protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
 
         Register result = asRegister(resultValue);
@@ -258,7 +255,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
 
         masm.and(64, result, result, 0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES))); // 0xFF or 0xFFFF
         masm.and(64, temp, temp,  0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES)));
-       
+
         masm.sub(64, result, temp, result);
         masm.branchConditionally(ConditionFlag.AL, BREAK_LABEL);
         // End of STRING_DIFFER
