@@ -58,14 +58,12 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 
@@ -117,25 +115,6 @@ public class Inflation extends BigBang {
     public Object getRoot(JavaConstant constant) {
         SubstrateObjectConstant sConstant = (SubstrateObjectConstant) constant;
         return sConstant.getRoot();
-    }
-
-    @Override
-    public void checkUnsupportedSynchronization(AnalysisMethod method, int bci, AnalysisType aType) {
-        /*
-         * We want DynamicHub instances to be immutable, but synchronization would require
-         * installing a Lock object. Static synchronized methods are handled by synchronizing on a
-         * dedicated type instead.
-         */
-        checkUnsupportedSynchronization(!aType.equals(metaAccess.lookupJavaType(DynamicHub.class)), method, bci, aType);
-    }
-
-    private static void checkUnsupportedSynchronization(boolean condition, AnalysisMethod method, int bci, AnalysisType aType) {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            return;
-        }
-        UserError.guarantee(condition,
-                        "Not supported: Synchronization on '%s' in %s",
-                        aType.toJavaName(true), method.asStackTraceElement(bci).toString());
     }
 
     @Override
