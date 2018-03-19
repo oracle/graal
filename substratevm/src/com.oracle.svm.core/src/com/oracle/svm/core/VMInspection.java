@@ -42,6 +42,7 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import org.graalvm.compiler.api.replacements.Fold;
 
 //Checkstyle: stop
 import sun.misc.Signal;
@@ -53,7 +54,7 @@ public class VMInspection implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.AllowVMInspection.getValue();
+        return isEnabled();
     }
 
     @Override
@@ -63,6 +64,11 @@ public class VMInspection implements Feature {
             DumpHeapReport.install();
             DumpRuntimeCompilation.install();
         });
+    }
+
+    @Fold
+    public static boolean isEnabled() {
+        return VMInspectionOptions.AllowVMInspection.getValue();
     }
 }
 
