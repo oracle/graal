@@ -58,6 +58,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -887,6 +888,7 @@ public class GCImpl implements GC {
      */
     void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
         if (requestingEpoch.belowThan(getCollectionEpoch())) {
+            SunMiscSupport.drainCleanerQueue();
             visitWatchersReport();
         }
     }
