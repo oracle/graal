@@ -30,9 +30,9 @@
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 
 public interface LLVMFrameValueAccess {
 
-    LLVMDebugValue getValue(Frame frame);
+    LLVMDebugObjectBuilder getValue(Frame frame);
 }

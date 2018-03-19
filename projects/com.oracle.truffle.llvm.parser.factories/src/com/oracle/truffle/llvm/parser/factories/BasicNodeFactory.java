@@ -118,7 +118,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNode
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugBuilder;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugInitNodeFactory;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugSimpleValue;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMDebugWriteNodeFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMFrameValueAccessImpl;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug.LLVMToDebugValueNodeGen;
@@ -349,6 +349,8 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
@@ -1851,12 +1853,12 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMDebugValue createDebugStaticValue(LLVMExpressionNode valueNode) {
+    public LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode) {
         if (valueNode == null) {
-            return LLVMDebugValue.UNAVAILABLE;
+            return LLVMDebugObjectBuilder.UNAVAILABLE;
         }
 
-        final LLVMDebugValueProvider.Builder toDebugNode = LLVMToDebugValueNodeGen.create(LLVMLanguage.getLLVMContextReference());
+        final LLVMDebugValue.Builder toDebugNode = LLVMToDebugValueNodeGen.create(LLVMLanguage.getLLVMContextReference());
         Object value;
         try {
             value = valueNode.executeGeneric(null);
@@ -1866,16 +1868,16 @@ public class BasicNodeFactory implements NodeFactory {
         }
 
         if (value != null) {
-            return LLVMDebugSimpleValue.create(toDebugNode, value);
+            return LLVMDebugSimpleObjectBuilder.create(toDebugNode, value);
         } else {
-            return LLVMDebugValue.UNAVAILABLE;
+            return LLVMDebugObjectBuilder.UNAVAILABLE;
         }
     }
 
     @Override
     public LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration) {
         final TruffleLanguage.ContextReference<LLVMContext> contextRef = LLVMLanguage.getLLVMContextReference();
-        final LLVMDebugValueProvider.Builder builder = getDebugBuilder(isDeclaration).createBuilder(contextRef);
+        final LLVMDebugValue.Builder builder = getDebugBuilder(isDeclaration).createBuilder(contextRef);
         return new LLVMFrameValueAccessImpl(slot, builder);
     }
 

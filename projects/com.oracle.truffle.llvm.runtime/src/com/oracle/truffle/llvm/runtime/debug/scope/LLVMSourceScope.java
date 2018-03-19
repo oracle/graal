@@ -37,7 +37,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
@@ -223,9 +223,9 @@ public final class LLVMSourceScope {
 
         if (frame != null && !symbols.isEmpty()) {
             for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-                if (slot.getIdentifier() instanceof LLVMSourceSymbol && frame.getValue(slot) instanceof LLVMDebugValue) {
+                if (slot.getIdentifier() instanceof LLVMSourceSymbol && frame.getValue(slot) instanceof LLVMDebugObjectBuilder) {
                     final LLVMSourceSymbol symbol = (LLVMSourceSymbol) slot.getIdentifier();
-                    final LLVMDebugObject value = ((LLVMDebugValue) frame.getValue(slot)).getValue(symbol);
+                    final LLVMDebugObject value = ((LLVMDebugObjectBuilder) frame.getValue(slot)).getValue(symbol);
                     if (symbols.contains(symbol)) {
                         vars.put(symbol.getName(), value);
                     }
@@ -235,7 +235,7 @@ public final class LLVMSourceScope {
 
         for (LLVMSourceSymbol symbol : symbols) {
             if (!vars.containsKey(symbol.getName())) {
-                LLVMDebugValue dbgVal = context.getStatic(symbol);
+                LLVMDebugObjectBuilder dbgVal = context.getStatic(symbol);
 
                 if (dbgVal == null) {
                     final LLVMFrameValueAccess allocation = context.getFrameValue(symbol);
@@ -245,7 +245,7 @@ public final class LLVMSourceScope {
                 }
 
                 if (dbgVal == null) {
-                    dbgVal = LLVMDebugValue.UNAVAILABLE;
+                    dbgVal = LLVMDebugObjectBuilder.UNAVAILABLE;
                 }
 
                 vars.put(symbol.getName(), dbgVal.getValue(symbol));

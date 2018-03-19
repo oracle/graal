@@ -27,39 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-@ValueType
-public final class LLVMDebugSimpleValue extends LLVMDebugValue {
+public abstract class LLVMDebugObjectBuilder {
 
-    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
-        return new LLVMDebugSimpleValue(builder, value);
+    public static final LLVMDebugObjectBuilder UNAVAILABLE = new LLVMDebugObjectBuilder() {
+
+        @Override
+        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
+        }
+
+    };
+
+    protected LLVMDebugObjectBuilder() {
     }
 
-    private final LLVMDebugValueProvider.Builder builder;
-    private final Object value;
-
-    LLVMDebugSimpleValue(LLVMDebugValueProvider.Builder builder, Object value) {
-        this.builder = builder;
-        this.value = value;
+    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
+        if (symbol != null) {
+            return getValue(symbol.getType(), symbol.getLocation());
+        } else {
+            return getValue(LLVMSourceType.UNKNOWN, null);
+        }
     }
 
-    private LLVMDebugValueProvider getProvider() {
-        return builder != null ? builder.build(value) : LLVMDebugValueProvider.UNAVAILABLE;
-    }
-
-    @Override
-    @TruffleBoundary
-    public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-        final LLVMDebugValueProvider valueProvider = getProvider();
-        return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
-    }
+    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
 }

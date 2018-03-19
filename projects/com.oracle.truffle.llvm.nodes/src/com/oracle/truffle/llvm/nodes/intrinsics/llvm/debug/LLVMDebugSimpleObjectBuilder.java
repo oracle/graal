@@ -29,40 +29,37 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public abstract class LLVMDebugInitNode extends LLVMExpressionNode {
+@ValueType
+public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
 
-    private final FrameSlot frameSlot;
-
-    protected LLVMDebugInitNode(FrameSlot frameSlot) {
-        this.frameSlot = frameSlot;
+    public static LLVMDebugObjectBuilder create(LLVMDebugValue.Builder builder, Object value) {
+        return new LLVMDebugSimpleObjectBuilder(builder, value);
     }
 
-    protected FrameSlot getFrameSlot() {
-        return frameSlot;
+    private final LLVMDebugValue.Builder builder;
+    private final Object value;
+
+    LLVMDebugSimpleObjectBuilder(LLVMDebugValue.Builder builder, Object value) {
+        this.builder = builder;
+        this.value = value;
     }
 
-    public abstract static class AggregateInitNode extends LLVMDebugInitNode {
-
-        @CompilationFinal(dimensions = 1) private int[] offsets;
-        @CompilationFinal(dimensions = 1) private int[] lengths;
-
-        protected AggregateInitNode(FrameSlot frameSlot, int[] offsets, int[] lengths) {
-            super(frameSlot);
-            this.offsets = offsets;
-            this.lengths = lengths;
-        }
-
-        @Specialization
-        protected Object init(VirtualFrame frame) {
-            frame.setObject(getFrameSlot(), new LLVMDebugAggregateObjectBuilder(offsets, lengths));
-            return null;
-        }
+    private LLVMDebugValue getProvider() {
+        return builder != null ? builder.build(value) : LLVMDebugValue.UNAVAILABLE;
     }
 
+    @Override
+    @TruffleBoundary
+    public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+        final LLVMDebugValue valueProvider = getProvider();
+        return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
+    }
 }

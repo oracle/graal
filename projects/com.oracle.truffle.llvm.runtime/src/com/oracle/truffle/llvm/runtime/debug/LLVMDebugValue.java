@@ -29,29 +29,141 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import java.math.BigInteger;
 
-public abstract class LLVMDebugValue {
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-    public static final LLVMDebugValue UNAVAILABLE = new LLVMDebugValue() {
+public interface LLVMDebugValue {
+
+    String UNAVAILABLE_VALUE = "<unavailable>";
+
+    LLVMDebugValue UNAVAILABLE = new LLVMDebugValue() {
+        @Override
+        public String describeValue(long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
 
         @Override
-        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValueProvider.UNAVAILABLE, declaration);
+        public Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
         }
 
+        @Override
+        public Object unavailable(long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public boolean canRead(long bitOffset, int bits) {
+            return false;
+        }
+
+        @Override
+        public Object readBoolean(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readFloat(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readDouble(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object read80BitFloat(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readAddress(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readUnknown(long bitOffset, int bitSize) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object computeAddress(long bitOffset) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public Object readBigInteger(long bitOffset, int bitSize, boolean signed) {
+            return UNAVAILABLE_VALUE;
+        }
+
+        @Override
+        public LLVMDebugValue dereferencePointer(long bitOffset) {
+            return null;
+        }
+
+        @Override
+        public boolean isInteropValue() {
+            return false;
+        }
+
+        @Override
+        public Object asInteropValue() {
+            return null;
+        }
     };
 
-    protected LLVMDebugValue() {
-    }
-
-    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
-        if (symbol != null) {
-            return getValue(symbol.getType(), symbol.getLocation());
-        } else {
-            return getValue(LLVMSourceType.UNKNOWN, null);
+    @TruffleBoundary
+    static String toHexString(BigInteger value) {
+        final byte[] bytes = value.toByteArray();
+        final StringBuilder builder = new StringBuilder(bytes.length * 2 + 2);
+        builder.append("0x");
+        for (byte b : bytes) {
+            builder.append(String.format("%02x", b));
         }
+        return builder.toString();
     }
 
-    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
+    interface Builder {
+
+        LLVMDebugValue build(Object irValue);
+
+    }
+
+    String describeValue(long bitOffset, int bitSize);
+
+    @TruffleBoundary
+    default Object cannotInterpret(String intendedType, long bitOffset, int bitSize) {
+        return String.format("<cannot interpret as %s: %s>", intendedType, describeValue(bitOffset, bitSize));
+    }
+
+    @TruffleBoundary
+    default Object unavailable(long bitOffset, int bitSize) {
+        return String.format("<unavailable: %s>", describeValue(bitOffset, bitSize));
+    }
+
+    boolean canRead(long bitOffset, int bits);
+
+    Object readBoolean(long bitOffset);
+
+    Object readFloat(long bitOffset);
+
+    Object readDouble(long bitOffset);
+
+    Object read80BitFloat(long bitOffset);
+
+    Object readAddress(long bitOffset);
+
+    Object readUnknown(long bitOffset, int bitSize);
+
+    Object computeAddress(long bitOffset);
+
+    Object readBigInteger(long bitOffset, int bitSize, boolean signed);
+
+    LLVMDebugValue dereferencePointer(long bitOffset);
+
+    boolean isInteropValue();
+
+    Object asInteropValue();
 }

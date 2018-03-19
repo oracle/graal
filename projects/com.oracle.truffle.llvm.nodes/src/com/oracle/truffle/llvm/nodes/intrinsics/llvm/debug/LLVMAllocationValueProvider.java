@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 import java.math.BigInteger;
 
-final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
+final class LLVMAllocationValueProvider implements LLVMDebugValue {
 
     private final LLVMNativePointer basePointer;
     private final LLVMMemory memory;
@@ -123,7 +123,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
         if (canRead(bitOffset, bitSize)) {
             final Object integerObject = readBigInteger(bitOffset, bitSize, false);
             if (integerObject instanceof BigInteger) {
-                return LLVMDebugValueProvider.toHexString((BigInteger) integerObject);
+                return LLVMDebugValue.toHexString((BigInteger) integerObject);
             }
         }
         return unavailable(bitOffset, bitSize);
@@ -144,7 +144,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
-    public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+    public LLVMDebugValue dereferencePointer(long bitOffset) {
         if (!canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE) || !isByteAligned(bitOffset)) {
             return null;
         }
