@@ -71,8 +71,10 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value array1Value;
     @Alive({REG}) protected Value array2Value;
-    @Alive({REG}) protected Value length1Value;
-    @Alive({REG}) protected Value length2Value;
+    @Use({REG}) protected Value length1Value;
+    @Use({REG}) protected Value length2Value;
+    @Temp({REG}) protected Value length1ValueT;
+    @Temp({REG}) protected Value length2ValueT;
     @Temp({REG}) protected Value temp1;
     @Temp({REG}) protected Value temp2;
 
@@ -94,6 +96,8 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         this.array2Value = array2;
         this.length1Value = length1;
         this.length2Value = length2;
+        this.length1ValueT = length1;
+        this.length2ValueT = length2;
 
         // Allocate some temporaries.
         this.temp1 = tool.newVariable(LIRKind.unknownReference(tool.target().arch.getWordKind()));
