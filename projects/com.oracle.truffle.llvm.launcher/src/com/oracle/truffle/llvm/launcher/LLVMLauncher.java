@@ -56,6 +56,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     boolean printResult = false;
     String[] programArgs;
     File file;
+    private VersionAction versionAction = VersionAction.None;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -86,6 +87,12 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     break;
                 case "--print-result":
                     printResult = true;
+                    break;
+                case "--show-version":
+                    versionAction = VersionAction.PrintAndContinue;
+                    break;
+                case "--version":
+                    versionAction = VersionAction.PrintAndExit;
                     break;
                 default:
                     // options with argument
@@ -168,16 +175,20 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         System.out.println("Run LLVM bitcode files on the GraalVM's lli.\n");
         System.out.println("Mandatory arguments to long options are mandatory for short options too.\n");
         System.out.println("Options:");
-        printOption("--print-result",        "print the return value");
-        printOption("-L <path>",        "set path where lli searches for libraries");
-        printOption("--lib <libraries>",        "add library (*.bc or precompiled library *.so/*.dylib)");
+        printOption("--print-result",    "print the return value");
+        printOption("-L <path>",         "set path where lli searches for libraries");
+        printOption("--lib <libraries>", "add library (*.bc or precompiled library *.so/*.dylib)");
+        printOption("--version",         "print the version and exit");
+        printOption("--show-version",    "print the version and continue");
     }
 
     @Override
     protected void collectArguments(Set<String> args) {
         args.addAll(Arrays.asList(
-                        "-L<path>", "--lib<libraries>",
-                        "--print-result"));
+                        "-L", "--lib",
+                        "--print-result",
+                        "--version",
+                        "--show-version"));
     }
 
     protected static void printOption(String option, String description) {
@@ -194,6 +205,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     protected int execute(Context.Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), programArgs);
         try (Context context = contextBuilder.build()) {
+            runVersionAction(versionAction, context.getEngine());
             Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
             if (!library.canExecute()) {
                 throw abort("no main function found");
