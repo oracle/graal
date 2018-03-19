@@ -367,6 +367,7 @@ class NativeImage {
     private void enableTruffle() {
         Path truffleDir = getRootDir().resolve(Paths.get("lib", "truffle"));
         addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
+        addImageBuilderArg(oHFeatures + "com.oracle.svm.truffle.TruffleFeature");
         addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
         addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
 
