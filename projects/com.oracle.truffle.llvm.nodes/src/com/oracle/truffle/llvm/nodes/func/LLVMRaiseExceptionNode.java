@@ -27,26 +27,22 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-/**
- * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
- */
-public final class LLVMException extends ControlFlowException {
+public final class LLVMRaiseExceptionNode extends LLVMExpressionNode {
 
-    public static final String FRAME_SLOT_ID = "<function exception value>";
+    @Child private LLVMExpressionNode unwindHeader;
 
-    private static final long serialVersionUID = 1L;
-
-    private final Object unwindHeader;
-
-    public LLVMException(Object unwindHeader) {
+    public LLVMRaiseExceptionNode(LLVMExpressionNode unwindHeader) {
         this.unwindHeader = unwindHeader;
     }
 
-    public Object getUnwindHeader() {
-        return unwindHeader;
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        throw new LLVMException(unwindHeader.executeGeneric(frame));
     }
 }

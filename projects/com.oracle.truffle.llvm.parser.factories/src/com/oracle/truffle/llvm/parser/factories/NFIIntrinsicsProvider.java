@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,11 +41,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
-import com.oracle.truffle.llvm.nodes.func.LLVMBeginCatchNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMEndCatchNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMFreeExceptionNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMRethrowNode;
-import com.oracle.truffle.llvm.nodes.func.LLVMThrowExceptionNode;
+import com.oracle.truffle.llvm.nodes.func.LLVMRaiseExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMAbortNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMACosNodeGen;
@@ -1419,39 +1415,11 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
     }
 
     protected void registerExceptionIntrinsics() {
-        factories.put("@__cxa_throw", new LLVMNativeIntrinsicFactory(true, true) {
+        factories.put("@_Unwind_RaiseException", new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@__cxa_throw", new LLVMThrowExceptionNode(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2), LLVMArgNodeGen.create(3)));
-            }
-        });
-        factories.put("@__cxa_rethrow", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@__cxa_rethrow", new LLVMRethrowNode());
-            }
-        });
-        factories.put("@__cxa_begin_catch", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@__cxa_begin_catch", new LLVMBeginCatchNode(LLVMArgNodeGen.create(1)));
-            }
-        });
-        factories.put("@__cxa_end_catch", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@__cxa_end_catch", new LLVMEndCatchNode(LLVMArgNodeGen.create(0)));
-            }
-        });
-        factories.put("@__cxa_free_exception", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@__cxa_free_exception", new LLVMFreeExceptionNode(LLVMArgNodeGen.create(1)));
+                return wrap("@_Unwind_RaiseException", new LLVMRaiseExceptionNode(LLVMArgNodeGen.create(1)));
             }
         });
         factories.put("@__cxa_call_unexpected", new LLVMNativeIntrinsicFactory(true, true) {

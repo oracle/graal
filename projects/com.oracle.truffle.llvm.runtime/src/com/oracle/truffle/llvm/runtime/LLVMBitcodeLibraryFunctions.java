@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,24 +29,34 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 
-/**
- * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
- */
-public final class LLVMException extends ControlFlowException {
+public final class LLVMBitcodeLibraryFunctions {
 
-    public static final String FRAME_SLOT_ID = "<function exception value>";
+    protected abstract static class LibraryFunctionNode extends Node {
 
-    private static final long serialVersionUID = 1L;
+        @Child protected DirectCallNode callNode;
 
-    private final Object unwindHeader;
+        protected LibraryFunctionNode(LLVMContext context, String name) {
+            LLVMFunctionDescriptor descriptor = context.getGlobalScope().getFunctionDescriptor(name);
+            callNode = DirectCallNode.create(descriptor.getLLVMIRFunction());
+        }
 
-    public LLVMException(Object unwindHeader) {
-        this.unwindHeader = unwindHeader;
+        protected Object execute(Object... args) {
+            return callNode.call(args);
+        }
     }
 
-    public Object getUnwindHeader() {
-        return unwindHeader;
+    public static final class SulongCanCatchNode extends LibraryFunctionNode {
+
+        public SulongCanCatchNode(LLVMContext context) {
+            super(context, "@sulong_eh_canCatch");
+        }
+
+        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMAddress catchType) {
+            return (int) execute(stack, unwindHeader, catchType.copy());
+        }
     }
 }

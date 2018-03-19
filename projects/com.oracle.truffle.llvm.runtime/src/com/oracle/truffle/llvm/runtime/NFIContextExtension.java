@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,6 +123,8 @@ public final class NFIContextExtension implements ContextExtension {
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         context.addExternalLibrary("libsulong." + getNativeLibrarySuffix());
+        // dummy library for C++, see {@link #handleSpecialLibraries}
+        context.addExternalLibrary("libsulong++." + getNativeLibrarySuffix());
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.getPath().toString().contains("." + getNativeLibrarySuffix()));
         for (ExternalLibrary l : libraries) {
             addLibrary(l);
@@ -132,7 +133,7 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibrary(ExternalLibrary lib) throws UnsatisfiedLinkError {
         CompilerAsserts.neverPartOfCompilation();
-        if (!libraryHandles.containsKey(lib) && !handledBySulong(lib.getPath())) {
+        if (!libraryHandles.containsKey(lib) && !handleSpecialLibraries(lib)) {
             try {
                 libraryHandles.put(lib, loadLibrary(lib));
             } catch (UnsatisfiedLinkError e) {
@@ -150,21 +151,50 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
-    private static boolean handledBySulong(Path l) {
-        String fileName = l.getFileName().toString().trim();
-        return fileName.startsWith("libstdc++.so") || fileName.startsWith("libc.so");
+    private boolean handleSpecialLibraries(ExternalLibrary lib) {
+        String fileName = lib.getPath().getFileName().toString().trim();
+        if (fileName.startsWith("libc.")) {
+            // nothing to do, since libsulong.so already links against libc.so
+            return true;
+        } else if (fileName.startsWith("libsulong++.")) {
+            /*
+             * Dummy library that doesn't actually exist, but is implicitly replaced by libc++ if
+             * available. The libc++ dependency is optional. The bitcode interpreter will still work
+             * if it is not found, but C++ programs might not work because of unresolved symbols.
+             */
+            TruffleObject cxxlib;
+            if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+                cxxlib = loadLibrary("libc++.dylib", true);
+            } else {
+                cxxlib = loadLibrary("libc++.so.1", true);
+            }
+            if (cxxlib != null) {
+                libraryHandles.put(lib, cxxlib);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 
     private TruffleObject loadLibrary(ExternalLibrary lib) {
         CompilerAsserts.neverPartOfCompilation();
         assert lib.getLibrariesToReplace() == null;
         String libName = lib.getPath().toString();
+        return loadLibrary(libName, false);
+    }
+
+    private TruffleObject loadLibrary(String libName, boolean optional) {
         String loadExpression = String.format("load \"%s\"", libName);
         final Source source = Source.newBuilder(loadExpression).name("(load " + libName + ")").mimeType("application/x-native").build();
         try {
             return (TruffleObject) env.parse(source).call();
-        } catch (Exception ex) {
-            throw new IllegalArgumentException(loadExpression, ex);
+        } catch (UnsatisfiedLinkError ex) {
+            if (optional) {
+                return null;
+            } else {
+                throw new IllegalArgumentException(loadExpression, ex);
+            }
         }
     }
 

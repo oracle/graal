@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -26,36 +26,17 @@
 .PHONY: default
 default: bin/${LIBSULONG}
 
-# build Sulong's EH library:
-# the implementation of this library requires llvm v3.8
-# on earlier versions, a fallback stub library is produced
-
 ifeq ($(OS), darwin)
-# darwin has at least LLVM 3.8
-LLVM_VERSION := 308
-LLVM_GE_38 := 1
 LDFLAGS=-dynamiclib -g
 else
-LLVM_VERSION := $(shell clang --version | grep -e 'clang version' | sed -e 's/clang version \([0-9]\+\)\.\([0-9]\+\).*/\1 \2/' | xargs printf "%d%02d")
-LLVM_GE_38 := $(shell expr ${LLVM_VERSION} \>= 308)
 LDFLAGS=-shared -g
 endif
 
 CFLAGS=-g -fPIC -DPIC -O3
-CXXFLAGS=${CFLAGS} -DLLVM_VERSION=${LLVM_VERSION}
 
-ifeq (${LLVM_GE_38},1)
-CXXFLAGS+=-stdlib=libc++ -std=c++11
-LDFLAGS+=-stdlib=libc++ -std=c++11 -lc++abi
-endif
-
-bin/${LIBSULONG}: bin/sulongeh.o bin/misc.o bin/posix.o bin/fp80.o
-	clang++ ${LDFLAGS} -o $@ $+
+bin/${LIBSULONG}: bin/misc.o bin/posix.o bin/fp80.o
+	clang ${LDFLAGS} -lm -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin
 	clang ${CPPFLAGS} ${CFLAGS} -c $< -o $@
-
-bin/%.o: src/%.cpp
-	@mkdir -p bin
-	clang++ ${CPPFLAGS} ${CXXFLAGS} -c $< -o $@

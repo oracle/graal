@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1544,7 +1544,7 @@ public class BasicNodeFactory implements NodeFactory {
 
     @Override
     public LLVMExpressionNode createLandingPad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionValueSlot, boolean cleanup, long[] clauseKinds,
-                    LLVMExpressionNode[] entries) {
+                    LLVMExpressionNode[] entries, LLVMExpressionNode getStack) {
 
         LLVMLandingpadNode.LandingpadEntryNode[] landingpadEntries = new LLVMLandingpadNode.LandingpadEntryNode[entries.length];
         for (int i = 0; i < entries.length; i++) {
@@ -1558,7 +1558,7 @@ public class BasicNodeFactory implements NodeFactory {
                 throw new IllegalStateException();
             }
         }
-        return new LLVMLandingpadNode(allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
+        return new LLVMLandingpadNode(getStack, allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
     }
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {
