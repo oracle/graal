@@ -297,6 +297,8 @@ public class ValueAssert {
                         if (value.isNumber() && value.fitsInInt() && value.asInt() >= 0 && value.asInt() < 65536) {
                             char ch = value.as(Character.class);
                             assertEquals(ch, value.asInt());
+                            ch = value.as(char.class);
+                            assertEquals(ch, value.asInt());
                         } else {
                             assertFails(() -> value.as(Character.class), ClassCastException.class);
                         }
