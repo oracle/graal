@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild, @NodeChild, @NodeChild})
 public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
@@ -47,14 +46,12 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
     protected final long offset;
     @Child private LLVMStoreNode store;
     @Child private LLVMMemMoveNode memMove;
-    private final Type type;
 
-    public LLVMInsertValueNode(LLVMStoreNode store, LLVMMemMoveNode memMove, long sourceAggregateSize, long offset, Type type) {
+    public LLVMInsertValueNode(LLVMStoreNode store, LLVMMemMoveNode memMove, long sourceAggregateSize, long offset) {
         this.sourceAggregateSize = sourceAggregateSize;
         this.offset = offset;
         this.store = store;
         this.memMove = memMove;
-        this.type = type;
     }
 
     @Specialization
@@ -67,7 +64,7 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
     @Specialization
     protected Object doVoid(VirtualFrame frame, LLVMTruffleObject sourceAggr, LLVMTruffleObject targetAggr, Object element) {
         memMove.executeWithTarget(frame, targetAggr, sourceAggr, sourceAggregateSize);
-        store.executeWithTarget(frame, targetAggr.increment(offset, type), element);
+        store.executeWithTarget(frame, targetAggr.increment(offset), element);
         return targetAggr;
     }
 }

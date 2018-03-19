@@ -88,7 +88,7 @@ public abstract class LLVMI1ArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             boolean currentValue = LLVMTypesGen.asBoolean(values[i].executeGeneric(frame));
             foreignWrite.execute(frame, currentPtr, currentValue);
-            currentPtr = currentPtr.increment(stride, currentPtr.getType());
+            currentPtr = currentPtr.increment(stride);
         }
         return addr;
     }

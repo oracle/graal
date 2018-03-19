@@ -66,7 +66,7 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base) {
-            return base.increment(displacement, base.getType());
+            return base.increment(displacement);
         }
     }
 
@@ -106,12 +106,12 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, int offset) {
-            return base.increment(displacement + (offset << shift), base.getType());
+            return base.increment(displacement + (offset << shift));
         }
 
         @Specialization
         protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, long offset) {
-            return base.increment(displacement + (offset << shift), base.getType());
+            return base.increment(displacement + (offset << shift));
         }
     }
 

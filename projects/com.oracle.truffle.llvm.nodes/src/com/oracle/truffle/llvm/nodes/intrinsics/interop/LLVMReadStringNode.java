@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMInc
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMReadStringNode extends Node {
 
@@ -58,7 +57,7 @@ public abstract class LLVMReadStringNode extends Node {
         int length = 0;
         while ((byte) read.executeWithTarget(frame, ptr) != 0) {
             length++;
-            ptr = inc.executeWithTarget(frame, ptr, Byte.BYTES, PrimitiveType.I8);
+            ptr = inc.executeWithTarget(frame, ptr, Byte.BYTES);
         }
 
         char[] string = new char[length];
@@ -66,7 +65,7 @@ public abstract class LLVMReadStringNode extends Node {
         ptr = address;
         for (int i = 0; i < length; i++) {
             string[i] = (char) Byte.toUnsignedInt((byte) read.executeWithTarget(frame, ptr));
-            ptr = inc.executeWithTarget(frame, ptr, Byte.BYTES, PrimitiveType.I8);
+            ptr = inc.executeWithTarget(frame, ptr, Byte.BYTES);
         }
 
         return toString(string);

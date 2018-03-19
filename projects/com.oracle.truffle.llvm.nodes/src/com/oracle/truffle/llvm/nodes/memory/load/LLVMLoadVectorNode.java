@@ -84,7 +84,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Boolean) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES);
             }
             return LLVMI1Vector.create(vector);
         }
@@ -116,7 +116,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Byte) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
             }
             return LLVMI8Vector.create(vector);
         }
@@ -148,7 +148,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Short) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES);
             }
             return LLVMI16Vector.create(vector);
         }
@@ -180,7 +180,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Integer) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES);
             }
             return LLVMI32Vector.create(vector);
         }
@@ -212,7 +212,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Long) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
             }
             return LLVMI64Vector.create(vector);
         }
@@ -244,7 +244,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Float) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES);
             }
             return LLVMFloatVector.create(vector);
         }
@@ -276,7 +276,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
             LLVMTruffleObject currentPtr = addr;
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (Double) foreignReads[i].execute(frame, currentPtr);
-                currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES, currentPtr.getType());
+                currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES);
             }
             return LLVMDoubleVector.create(vector);
         }

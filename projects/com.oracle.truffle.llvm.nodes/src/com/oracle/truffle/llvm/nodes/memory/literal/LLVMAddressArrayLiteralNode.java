@@ -108,7 +108,7 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             Object currentValue = values[i].execute(frame);
             foreignWrites[i].execute(frame, currentPtr, currentValue);
-            currentPtr = currentPtr.increment(stride, currentPtr.getType());
+            currentPtr = currentPtr.increment(stride);
         }
         return addr;
     }

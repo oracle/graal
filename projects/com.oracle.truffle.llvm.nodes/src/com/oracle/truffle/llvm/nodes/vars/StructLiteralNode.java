@@ -38,20 +38,17 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class StructLiteralNode extends LLVMExpressionNode {
 
     @CompilationFinal(dimensions = 1) private final int[] offsets;
-    @CompilationFinal(dimensions = 1) private final Type[] types;
     @Children private final LLVMStoreNode[] elementWriteNodes;
     @Children private final LLVMExpressionNode[] values;
 
-    public StructLiteralNode(int[] offsets, Type[] types, LLVMStoreNode[] elementWriteNodes, LLVMExpressionNode[] values) {
+    public StructLiteralNode(int[] offsets, LLVMStoreNode[] elementWriteNodes, LLVMExpressionNode[] values) {
         assert offsets.length == elementWriteNodes.length && elementWriteNodes.length == values.length;
         this.offsets = offsets;
-        this.types = types;
         this.elementWriteNodes = elementWriteNodes;
         this.values = values;
     }
@@ -71,7 +68,7 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
     @Specialization
     protected LLVMTruffleObject doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject address) {
         for (int i = 0; i < offsets.length; i++) {
-            LLVMTruffleObject currentAddr = address.increment(offsets[i], types[i]);
+            LLVMTruffleObject currentAddr = address.increment(offsets[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
             elementWriteNodes[i].executeWithTarget(frame, currentAddr, value);
         }
