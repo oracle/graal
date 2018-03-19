@@ -79,6 +79,7 @@ public class StringCompareToOnJava8Test extends MethodSubstitutionTest {
 
     @Test
     public void testTreeMap() throws InterruptedException {
+        // This reproduces a correctness issue
         TreeMap<String, String> treeMap = new TreeMap<>();
         treeMap.put("A", "A");
         treeMap.put("BB", "BB");
@@ -88,4 +89,18 @@ public class StringCompareToOnJava8Test extends MethodSubstitutionTest {
         }
         test("getFromTreeMap", treeMap, testData, new String("BB"));
     }
+
+    @Test
+    public void testTreeMapCrash() throws InterruptedException {
+        // This reproduces a SIGSEGV
+        TreeMap<String, String> treeMap = new TreeMap<>();
+        treeMap.put("\u0001", "key");
+        treeMap.put("\u0001A", "key1");
+        for (int i = 0; i < 2000; i++) {
+            getFromTreeMap(treeMap, testData, "BB");
+            getFromTreeMap(treeMap, testData, "");
+        }
+        test("getFromTreeMap", treeMap, testData, "\u0001B");
+    }
+
 }
