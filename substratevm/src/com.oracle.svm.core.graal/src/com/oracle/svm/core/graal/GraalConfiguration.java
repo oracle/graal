@@ -32,7 +32,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.MatchRuleRegistry;
 import org.graalvm.compiler.core.match.MatchStatement;
-import org.graalvm.compiler.core.phases.CoreCompilerConfiguration;
+import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -69,7 +69,7 @@ public class GraalConfiguration {
     }
 
     public Suites createSuites(OptionValues options, @SuppressWarnings("unused") boolean hosted) {
-        return Suites.createSuites(new CoreCompilerConfiguration(), options);
+        return Suites.createSuites(new CommunityCompilerConfiguration(), options);
     }
 
     public void populateMatchRuleRegistry(HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry) {

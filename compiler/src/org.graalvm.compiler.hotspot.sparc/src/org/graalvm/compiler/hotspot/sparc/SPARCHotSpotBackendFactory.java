@@ -72,7 +72,7 @@ public class SPARCHotSpotBackendFactory implements HotSpotBackendFactory {
 
     @Override
     public String getName() {
-        return "core";
+        return "community";
     }
 
     @Override
