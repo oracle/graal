@@ -280,7 +280,6 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
         '-H:Path=' + dirname(native_image_path(native_image_root)),
         '-H:Class=com.oracle.svm.driver.NativeImage',
         '-H:Name=' + basename(native_image_path(native_image_root)),
-        '-H:-TruffleFeature',
         '-H:-ParseRuntimeOptions',
         '-H:ReflectionConfigurationResources=com/oracle/svm/driver/ReflectionConfiguration.json'
     ]

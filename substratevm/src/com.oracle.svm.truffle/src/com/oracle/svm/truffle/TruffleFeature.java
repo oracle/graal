@@ -101,7 +101,6 @@ import com.oracle.svm.graal.hosted.GraalFeature.RuntimeBytecodeParser;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
@@ -137,18 +136,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         public boolean getAsBoolean() {
             return ImageSingletons.contains(TruffleFeature.class);
         }
-    }
-
-    public static final class HasTruffleOnClassPath implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return ImageSingletons.contains(TruffleFeature.class);
-        }
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return NativeImageOptions.TruffleFeature.getValue();
     }
 
     public static class Options {

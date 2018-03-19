@@ -159,9 +159,6 @@ public class NativeImageOptions {
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
-    @Option(help = "Automatically enable TruffleFeature when Truffle API is on bootstrap class path.)")//
-    public static final HostedOptionKey<Boolean> TruffleFeature = new HostedOptionKey<>(true);
-
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
         if (maxNumberOfThreads < 0) {
