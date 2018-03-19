@@ -50,6 +50,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQ
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -58,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -110,6 +112,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile OptimizedDirectCallNode callSiteForSplit;
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
+
+    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes = new ArrayList<>();
+    private boolean needsSplit;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
@@ -656,21 +661,27 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return PolyglotCompilerOptions.getValue(rootNode, key);
     }
 
-    private volatile List<OptimizedDirectCallNode> knownCallNodes = new ArrayList<>();
-
     void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
         // Keeping all the known call sites can be too much to handle in some cases
         // so we are limiting to a 100 call sites for now
-        if (knownCallNodes.size() < 100) {
-            knownCallNodes.add(directCallNode);
+        synchronized (knownCallNodes) {
+            if (knownCallNodes.size() < 100) {
+                knownCallNodes.add(new WeakReference<>(directCallNode));
+            }
         }
     }
 
-    public void removeKnownCallSite(OptimizedDirectCallNode directCallNode) {
-        knownCallNodes.remove(directCallNode);
+    // Also removes references to reclaimed objects
+    void removeKnownCallSite(OptimizedDirectCallNode callNodeToRemove) {
+        synchronized (knownCallNodes) {
+            knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
+                @Override
+                public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
+                    return nodeWeakReference.get() == callNodeToRemove || nodeWeakReference.get() == null;
+                }
+            });
+        }
     }
-
-    private boolean needsSplit;
 
     boolean isNeedsSplit() {
         return needsSplit;
@@ -688,23 +699,38 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
-        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPropagationDepth) || needsSplit || knownCallNodes.size() == 0 ||
+        final int numberOfKnownCallNodes;
+        final OptimizedDirectCallNode onlyCaller;
+        synchronized (knownCallNodes) {
+            numberOfKnownCallNodes = knownCallNodes.size();
+            onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
+        }
+        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
                         compilationProfile.getInterpreterCallCount() == 1) {
             return false;
         }
-        if (knownCallNodes.size() == 1) {
-            final OptimizedDirectCallNode callNode = knownCallNodes.iterator().next();
-            final RootNode rootNode = callNode.getRootNode();
-            if (rootNode != null && rootNode.getCallTarget() != null) {
-                final OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-                if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
-                    pullOutParentChain(callNode, toDump);
+        if (numberOfKnownCallNodes == 1) {
+            if (onlyCaller != null) {
+                final RootNode rootNode = onlyCaller.getRootNode();
+                if (rootNode != null && rootNode.getCallTarget() != null) {
+                    final OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
+                    if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
+                        pullOutParentChain(onlyCaller, toDump);
+                    }
+                    needsSplit = callTarget.maybeSetNeedsSplit(depth + 1, toDump);
                 }
-                needsSplit = callTarget.maybeSetNeedsSplit(depth + 1, toDump);
             }
         } else {
             if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
-                PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, knownCallNodes);
+                final List<OptimizedDirectCallNode> callers = new ArrayList<>();
+                synchronized (knownCallNodes) {
+                    for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
+                        if (nodeRef.get() != null) {
+                            callers.add(nodeRef.get());
+                        }
+                    }
+                }
+                PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, callers);
             }
             needsSplit = true;
         }
