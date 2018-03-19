@@ -403,7 +403,7 @@ final class NativeImageServer extends NativeImage {
                                 showWarning("Cannot acquire new server port despite removing " + victim);
                             }
                         } else {
-                            showWarning("Native image server limit exceeded. Use options -server{-list,-shutdown[-all]} to fix the problem.");
+                            showWarning("Native image server limit exceeded. Use options --server{-list,-shutdown[-all]} to fix the problem.");
                         }
                     }
                     if (serverPort >= 0) {
