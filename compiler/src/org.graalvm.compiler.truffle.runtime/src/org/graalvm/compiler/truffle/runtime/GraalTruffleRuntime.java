@@ -25,7 +25,7 @@ package org.graalvm.compiler.truffle.runtime;
 import static java.util.Collections.singletonList;
 import static org.graalvm.compiler.debug.DebugContext.DEFAULT_LOG_STREAM;
 import static org.graalvm.compiler.debug.DebugContext.NO_GLOBAL_METRIC_VALUES;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompileOnly;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilerThreads;
