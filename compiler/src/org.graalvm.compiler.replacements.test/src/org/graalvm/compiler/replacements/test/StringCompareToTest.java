@@ -26,7 +26,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -91,20 +90,17 @@ public class StringCompareToTest extends MethodSubstitutionTest {
     }
 
     @Test
-    @Ignore("GR-8748")
     public void testEqualString() {
         String s = "equal-string";
         executeStringCompareTo(s, new String(s.toCharArray()));
     }
 
     @Test
-    @Ignore("GR-8748")
     public void testDifferentString() {
         executeStringCompareTo("some-string", "different-string");
     }
 
     @Test
-    @Ignore("GR-8748")
     public void testAllStrings() {
         for (String s0 : testData) {
             for (String s1 : testData) {
