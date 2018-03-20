@@ -40,6 +40,11 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     private final NFATransitionSet transitions;
     private MatcherBuilder matcherBuilder;
 
+    private int id = -1;
+    private DFAStateNodeBuilder source;
+    private DFAStateNodeBuilder target;
+    private DFACaptureGroupTransitionBuilder captureGroupTransition;
+
     DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, List<NFAStateTransition> transitions, NFA nfa, boolean forward, boolean prioritySensitive) {
         this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transitions);
         this.matcherBuilder = matcherBuilder;
@@ -76,10 +81,46 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         return transitions;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public DFAStateNodeBuilder getSource() {
+        return source;
+    }
+
+    public void setSource(DFAStateNodeBuilder source) {
+        this.source = source;
+    }
+
+    public DFAStateNodeBuilder getTarget() {
+        return target;
+    }
+
+    public void setTarget(DFAStateNodeBuilder target) {
+        this.target = target;
+    }
+
+    public DFACaptureGroupTransitionBuilder getCaptureGroupTransition() {
+        return captureGroupTransition;
+    }
+
+    public void setCaptureGroupTransition(DFACaptureGroupTransitionBuilder captureGroupTransition) {
+        this.captureGroupTransition = captureGroupTransition;
+    }
+
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("matcherBuilder", getMatcherBuilder()),
-                        Json.prop("transitions", (JsonConvertible) getTransitionSet()));
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("source", source.getId()),
+                        Json.prop("target", target.getId()),
+                        Json.prop("matcherBuilder", getMatcherBuilder().toString()),
+                        Json.prop("nfaTransitions", getTransitionSet().stream().map(t -> Json.val(t.getId()))),
+                        Json.prop("captureGroupTransition", captureGroupTransition));
     }
 }

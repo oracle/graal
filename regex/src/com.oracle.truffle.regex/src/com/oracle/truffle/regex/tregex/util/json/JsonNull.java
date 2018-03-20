@@ -27,7 +27,7 @@ package com.oracle.truffle.regex.tregex.util.json;
 
 import java.io.PrintWriter;
 
-public class JsonNull extends JsonValue {
+public final class JsonNull extends JsonValue {
 
     public static final JsonNull INSTANCE = new JsonNull();
 

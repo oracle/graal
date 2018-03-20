@@ -25,16 +25,14 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -44,9 +42,7 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     private final NFATransitionSet nfaStateSet;
     private byte unAnchoredResult;
     private boolean overrideFinalState = false;
-    private DFAStateNodeBuilder[] successors;
-    private MatcherBuilder[] matcherBuilders;
-    private DFACaptureGroupTransitionBuilder[] captureGroupTransitions;
+    private DFAStateTransitionBuilder[] transitions;
     private boolean isFinalStateSuccessor = false;
     private List<DFACaptureGroupTransitionBuilder> precedingTransitions;
     private short backwardPrefixState = -1;
@@ -77,36 +73,20 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         return nfaStateSet.containsAnchoredFinalState();
     }
 
-    public DFAStateNodeBuilder[] getSuccessors() {
-        return successors;
-    }
-
     public int getNumberOfSuccessors() {
-        return successors.length + (hasBackwardPrefixState() ? 1 : 0);
+        return transitions.length + (hasBackwardPrefixState() ? 1 : 0);
     }
 
     public boolean hasBackwardPrefixState() {
         return backwardPrefixState >= 0;
     }
 
-    public void setSuccessors(DFAStateNodeBuilder[] successors) {
-        this.successors = successors;
+    public DFAStateTransitionBuilder[] getTransitions() {
+        return transitions;
     }
 
-    public MatcherBuilder[] getMatcherBuilders() {
-        return matcherBuilders;
-    }
-
-    public void setMatcherBuilders(MatcherBuilder[] matcherBuilders) {
-        this.matcherBuilders = matcherBuilders;
-    }
-
-    public DFACaptureGroupTransitionBuilder[] getCaptureGroupTransitions() {
-        return captureGroupTransitions;
-    }
-
-    public void setCaptureGroupTransitions(DFACaptureGroupTransitionBuilder[] captureGroupTransitions) {
-        this.captureGroupTransitions = captureGroupTransitions;
+    public void setTransitions(DFAStateTransitionBuilder[] transitions) {
+        this.transitions = transitions;
     }
 
     /**
@@ -176,21 +156,10 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        JsonArray transitions = Json.array();
-        if (successors != null) {
-            for (int i = 0; i < successors.length; i++) {
-                JsonObject transition = Json.obj(
-                                Json.prop("target", successors[i].getId()),
-                                Json.prop("matcher", matcherBuilders[i]));
-                if (captureGroupTransitions != null) {
-                    transition.append(Json.prop("captureGroupTransition", captureGroupTransitions[i]));
-                }
-                transitions.append(transition);
-            }
-        }
-        return Json.obj(Json.prop("stateSet", Json.array(nfaStateSet.stream().map(x -> Json.val(x.getTarget().getId())))),
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("stateSet", Json.array(nfaStateSet.stream().map(x -> Json.val(x.getTarget().getId())))),
                         Json.prop("finalState", isFinalState()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
-                        Json.prop("transitions", transitions));
+                        Json.prop("transitions", Arrays.stream(transitions).map(x -> Json.val(x.getTarget().getId()))));
     }
 }

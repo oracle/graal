@@ -165,8 +165,8 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
     public JsonValue toJson() {
         return Json.obj(Json.prop("states", Json.array(states)),
                         Json.prop("transitions", Json.array(transitions)),
-                        Json.prop("anchoredEntry", anchoredEntry.stream().map(x -> Json.val(x.getId()))),
-                        Json.prop("unAnchoredEntry", unAnchoredEntry.stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("anchoredEntry", anchoredEntry == null ? null : anchoredEntry.stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("unAnchoredEntry", unAnchoredEntry == null ? null : unAnchoredEntry.stream().map(x -> Json.val(x.getId()))),
                         Json.prop("reverseAnchoredEntry", reverseAnchoredEntry.getId()),
                         Json.prop("reverseUnAnchoredEntry", reverseUnAnchoredEntry.getId()),
                         Json.prop("preCalculatedResults", Json.array(preCalculatedResults)));

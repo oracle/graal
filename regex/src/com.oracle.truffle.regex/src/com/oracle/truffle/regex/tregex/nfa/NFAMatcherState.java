@@ -80,6 +80,6 @@ public class NFAMatcherState extends NFAState {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return toJson("NFAMatcherState").append(Json.prop("matcherBuilder", matcherBuilder));
+        return toJson("NFAMatcherState").append(Json.prop("matcherBuilder", matcherBuilder.toString()));
     }
 }

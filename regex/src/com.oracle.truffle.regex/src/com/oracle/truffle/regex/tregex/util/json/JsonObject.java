@@ -68,7 +68,11 @@ public class JsonObject extends JsonValue {
             writer.print('"');
             writer.print(p.name);
             writer.print("\": ");
-            p.value.toJson().dump(writer, indent + 2);
+            if (p.value == null) {
+                Json.nullValue().dump(writer, indent + 2);
+            } else {
+                p.value.toJson().dump(writer, indent + 2);
+            }
         }
         writer.println();
         printIndent(writer, indent);

@@ -77,11 +77,13 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         regexCallTarget = Truffle.getRuntime().createCallTarget(new RegexRootNode(language, forwardExecutor.getProperties().getFrameDescriptor(), this));
         this.tRegexCompiler = tRegexCompiler;
         this.eagerCompilation = eagerCompilation;
-        if (eagerCompilation && captureGroupExecutor != null) {
-            compileEagerSearchNode();
-        }
-        if (captureGroupExecutor != null && DebugUtil.DEBUG_ALWAYS_EAGER) {
-            switchToEagerSearch(null);
+        if (canSwitchToEagerSearch()) {
+            if (eagerCompilation) {
+                compileEagerSearchNode();
+            }
+            if (DebugUtil.DEBUG_ALWAYS_EAGER) {
+                switchToEagerSearch(null);
+            }
         }
     }
 
@@ -89,7 +91,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
     public final RegexResult execute(VirtualFrame frame, RegexObject regex, Object input, int fromIndex) {
         final RegexResult result = runRegexSearchNode.run(frame, regex, input, fromIndex);
         assert !eagerCompilation || eagerAndLazySearchNodesProduceSameResult(frame, regex, input, fromIndex, result);
-        if (CompilerDirectives.inInterpreter() && runRegexSearchNode == lazySearchNode) {
+        if (CompilerDirectives.inInterpreter() && canSwitchToEagerSearch() && runRegexSearchNode == lazySearchNode) {
             RegexProfile profile = regex.getRegexProfile();
             if (profile.atEvaluationTripPoint() && profile.shouldUseEagerMatching()) {
                 switchToEagerSearch(profile);
@@ -102,6 +104,10 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
         return result;
     }
 
+    private boolean canSwitchToEagerSearch() {
+        return lazySearchNode.captureGroupExecutorNode != null;
+    }
+
     private void switchToEagerSearch(RegexProfile profile) {
         compileEagerSearchNode();
         if (eagerSearchNode != EAGER_SEARCH_BAILED_OUT) {
@@ -109,6 +115,18 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
                 System.out.println("regex " + getSource() + ": switching to eager matching." + (profile == null ? "" : " profile: " + profile));
             }
             runRegexSearchNode = insert(eagerSearchNode);
+        }
+    }
+
+    private void compileEagerSearchNode() {
+        if (eagerSearchNode == null) {
+            try {
+                TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
+                eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
+            } catch (UnsupportedRegexException e) {
+                LOG_BAILOUT.log(e.getMessage() + ": " + source);
+                eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
+            }
         }
     }
 
@@ -145,18 +163,6 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             System.out.println("Eager Result: " + Arrays.toString(eagerResultC.getResult()));
         }
         return equal;
-    }
-
-    private void compileEagerSearchNode() {
-        if (eagerSearchNode == null) {
-            try {
-                TRegexDFAExecutorNode executorNode = tRegexCompiler.compileEagerDFAExecutor(getSource());
-                eagerSearchNode = new EagerCaptureGroupRegexSearchNode(executorNode);
-            } catch (UnsupportedRegexException e) {
-                LOG_BAILOUT.log(e.getMessage() + ": " + source);
-                eagerSearchNode = EAGER_SEARCH_BAILED_OUT;
-            }
-        }
     }
 
     @Override

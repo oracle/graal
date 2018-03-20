@@ -924,12 +924,18 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
     @TruffleBoundary
     public static String rangesToString(char[] ranges, boolean numeric) {
         StringBuilder sb = new StringBuilder();
+        if (!numeric && ranges.length > 2) {
+            sb.append("[");
+        }
         for (int i = 0; i < ranges.length; i += 2) {
             if (numeric) {
                 sb.append("[").append((int) ranges[i]).append("-").append((int) ranges[i + 1]).append("]");
             } else {
-                sb.append("[").append(rangeToString(ranges[i], ranges[i + 1])).append("]");
+                sb.append(rangeToString(ranges[i], ranges[i + 1]));
             }
+        }
+        if (!numeric && ranges.length > 2) {
+            sb.append("]");
         }
         return sb.toString();
     }

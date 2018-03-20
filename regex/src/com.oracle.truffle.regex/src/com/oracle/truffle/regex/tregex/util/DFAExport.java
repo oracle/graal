@@ -27,12 +27,12 @@ package com.oracle.truffle.regex.tregex.util;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
+import com.oracle.truffle.regex.tregex.dfa.DFAStateTransitionBuilder;
 import com.oracle.truffle.regex.tregex.dfa.NFATransitionSet;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.BitSetMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.EmptyMatcher;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
@@ -81,12 +81,8 @@ public class DFAExport {
                         }
                     }
                 }
-                DFAStateNodeBuilder[] successors = state.getSuccessors();
-                MatcherBuilder[] matchers = state.getMatcherBuilders();
-                if (successors != null) {
-                    for (int i = 0; i < successors.length; i++) {
-                        DotExport.printConnection(writer, dotState(state, shortLabels), dotState(successors[i], shortLabels), matchers[i].toString());
-                    }
+                for (DFAStateTransitionBuilder t : state.getTransitions()) {
+                    DotExport.printConnection(writer, dotState(state, shortLabels), dotState(t.getTarget(), shortLabels), t.getMatcherBuilder().toString());
                 }
             }
             writer.write("}");

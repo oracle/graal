@@ -44,24 +44,22 @@ import java.util.Arrays;
 public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
 
     private final NFA nfa;
-    private final DFAStateTransitionBuilder transitionBuilder;
-    private final DFAStateNodeBuilder successor;
+    private final DFAStateTransitionBuilder transition;
     private final boolean isInitialTransition;
     private NFAStateSet requiredStates = null;
     private DFACaptureGroupLazyTransitionNode lazyTransition = null;
 
-    public DFACaptureGroupTransitionBuilder(NFA nfa, DFAStateTransitionBuilder transitionBuilder, DFAStateNodeBuilder successor, boolean isInitialTransition) {
+    public DFACaptureGroupTransitionBuilder(NFA nfa, DFAStateTransitionBuilder transition, boolean isInitialTransition) {
         this.nfa = nfa;
-        this.transitionBuilder = transitionBuilder;
-        this.successor = successor;
+        this.transition = transition;
         this.isInitialTransition = isInitialTransition;
     }
 
     private NFAStateSet getRequiredStates() {
         if (requiredStates == null) {
             requiredStates = new NFAStateSet(nfa);
-            for (NFAStateTransition transition : transitionBuilder.getTransitionSet()) {
-                requiredStates.add(transition.getSource());
+            for (NFAStateTransition nfaTransition : transition.getTransitionSet()) {
+                requiredStates.add(nfaTransition.getSource());
             }
         }
         return requiredStates;
@@ -75,7 +73,7 @@ public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
         ObjectArrayBuffer indexUpdates = compilationBuffer.getObjectBuffer1();
         ObjectArrayBuffer indexClears = compilationBuffer.getObjectBuffer2();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
-        for (NFAStateTransition nfaTransition : transitionBuilder.getTransitionSet()) {
+        for (NFAStateTransition nfaTransition : transition.getTransitionSet()) {
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getRequiredStates().getStateIndex(nfaTransition.getSource());
                 int targetIndex = targetStates.getStateIndex(nfaTransition.getTarget());
@@ -141,9 +139,10 @@ public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
 
     public DFACaptureGroupLazyTransitionNode toLazyTransition(Counter idCounter, CompilationBuffer compilationBuffer) {
         if (lazyTransition == null) {
-            DFACaptureGroupPartialTransitionNode[] partialTransitions = new DFACaptureGroupPartialTransitionNode[successor.getCaptureGroupTransitions().length];
-            for (int i = 0; i < successor.getCaptureGroupTransitions().length; i++) {
-                DFACaptureGroupTransitionBuilder successorTransition = successor.getCaptureGroupTransitions()[i];
+            DFAStateNodeBuilder successor = transition.getTarget();
+            DFACaptureGroupPartialTransitionNode[] partialTransitions = new DFACaptureGroupPartialTransitionNode[successor.getTransitions().length];
+            for (int i = 0; i < successor.getTransitions().length; i++) {
+                DFACaptureGroupTransitionBuilder successorTransition = successor.getTransitions()[i].getCaptureGroupTransition();
                 partialTransitions[i] = createPartialTransition(successorTransition.getRequiredStates(), compilationBuffer);
             }
             DFACaptureGroupPartialTransitionNode transitionToFinalState = null;
@@ -162,6 +161,6 @@ public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.array(transitionBuilder.getTransitionSet().stream().map(x -> Json.val(x.getId())));
+        return Json.array(transition.getTransitionSet().stream().map(x -> Json.val(x.getId())));
     }
 }
