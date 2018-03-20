@@ -160,7 +160,7 @@ public class SubstrateOptionsParser {
             return OptionParseResult.error(msg.toString());
         }
 
-        Class<?> optionType = desc.getType();
+        Class<?> optionType = desc.getOptionValueType();
 
         if (value == null) {
             if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
@@ -311,7 +311,7 @@ public class SubstrateOptionsParser {
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
             }
-            if (descriptor.getType() == Boolean.class) {
+            if (descriptor.getOptionValueType() == Boolean.class) {
                 Boolean val = (Boolean) descriptor.getOptionKey().getDefaultValue();
                 if (helpLen != 0) {
                     helpMsg += ' ';

@@ -109,8 +109,8 @@ public class ReflectionOptionDescriptors implements OptionDescriptors {
             ParameterizedType pt = (ParameterizedType) declaredType;
             Type[] actualTypeArguments = pt.getActualTypeArguments();
             assert actualTypeArguments.length == 1;
-            Class<?> optionType = (Class<?>) actualTypeArguments[0];
-            descriptors.put(fieldName, OptionDescriptor.create(fieldName, OptionType.Debug, optionType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
+            Class<?> optionValueType = (Class<?>) actualTypeArguments[0];
+            descriptors.put(fieldName, OptionDescriptor.create(fieldName, OptionType.Debug, optionValueType, help, declaringClass, fieldName, (OptionKey<?>) f.get(null)));
         } catch (IllegalAccessException | NoSuchFieldException e) {
             throw new IllegalArgumentException(e);
         }

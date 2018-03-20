@@ -274,7 +274,7 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("            return " + desc + ".create(\n");
                 out.printf("                /*name*/ \"%s\",\n", name);
                 out.printf("                /*optionType*/ %s.%s,\n", optionType.getDeclaringClass().getSimpleName(), optionType.name());
-                out.printf("                /*type*/ %s.class,\n", type);
+                out.printf("                /*optionValueType*/ %s.class,\n", type);
                 out.printf("                /*help*/ \"%s\",\n", help);
                 if (extraHelp.length != 0) {
                     out.printf("                /*extraHelp*/ new String[] {\n");
