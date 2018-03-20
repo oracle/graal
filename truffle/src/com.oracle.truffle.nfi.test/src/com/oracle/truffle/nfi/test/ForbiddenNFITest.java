@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,45 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.TruffleRunner;
+import org.graalvm.polyglot.Context;
+import org.junit.Rule;
+import org.junit.Test;
 
-final class NFILibrary implements TruffleObject {
+public class ForbiddenNFITest {
 
-    private final TruffleObject library;
-    private final Map<String, TruffleObject> symbols;
+    private final String nativeTestLib = System.getProperty("native.test.lib");
 
-    NFILibrary(TruffleObject library) {
-        this.library = library;
-        this.symbols = new HashMap<>();
+    @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
+
+    private TruffleObject eval(String format, Object... args) {
+        Source source = Source.newBuilder(String.format(format, args)).name("ForbiddenNFITest").mimeType("application/x-native").build();
+        return (TruffleObject) runWithPolyglot.getTruffleTestEnv().parse(source).call();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return NFILibraryMessageResolutionForeign.ACCESS;
+    @Test(expected = UnsatisfiedLinkError.class)
+    public void loadDefault() {
+        eval("default");
     }
 
-    TruffleObject getLibrary() {
-        return library;
-    }
-
-    @TruffleBoundary
-    TruffleObject findSymbol(String name) {
-        return symbols.get(name);
-    }
-
-    @TruffleBoundary
-    void preBindSymbol(String name, TruffleObject symbol) {
-        symbols.put(name, symbol);
-    }
-
-    @TruffleBoundary
-    String[] getSymbols() {
-        return symbols.keySet().toArray(new String[0]);
+    @Test(expected = UnsatisfiedLinkError.class)
+    public void loadTestLib() {
+        eval("load '%s'", nativeTestLib);
     }
 }
