@@ -37,7 +37,7 @@ import org.graalvm.compiler.options.OptionType;
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
-    static final String helpTextAdvanced = NativeImage.getResource("/HelpAdvanced.txt");
+    static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -61,9 +61,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
-            case "--help-advanced":
+            case "--help-extra":
                 args.poll();
-                nativeImage.showMessage(helpTextAdvanced);
+                nativeImage.showMessage(helpExtraText);
                 System.exit(0);
                 return true;
             case "-cp":

@@ -22,7 +22,7 @@ where options include:
     --verbose             enable verbose output
     --version             print product version and exit
     --help                print this help message
-    --help-advanced       print help on non-standard options
+    --help-extra          print help on non-standard options
 
     --report-unsupported-elements-at-runtime
                           report usage of unsupported methods and fields at run time when

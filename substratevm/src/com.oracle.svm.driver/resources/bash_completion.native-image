@@ -9,7 +9,7 @@ _nativeimage_complete ()
     $split && return;
     if [[ "$cur" == -* ]]; then
         COMPARG_HELP=$($1 --help | command sed -ne 's/ *\(--[-A-Za-z0-9]\{1,\}\(=[^ ]\+\)\{0,1\}\).*/\1/p')
-        COMPARG_HELP_ADVANCED=$($1 --help-advanced | command sed -ne 's/ *\(--[-A-Za-z0-9]\{1,\}=\{0,1\}\).*/\1/p')
+        COMPARG_HELP_ADVANCED=$($1 --help-extra | command sed -ne 's/ *\(--[-A-Za-z0-9]\{1,\}=\{0,1\}\).*/\1/p')
         COMPREPLY=($( compgen -W "$(echo ${COMPARG_HELP} ${COMPARG_HELP_ADVANCED} | sort -u)" -- "$cur"));
         [[ $COMPREPLY == *= ]] && compopt -o nospace;
     fi

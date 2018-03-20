@@ -36,9 +36,9 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
     public boolean consume(Queue<String> args) {
         String headArg = args.peek();
         switch (headArg) {
-            case "--help-advanced":
+            case "--help-extra":
                 args.poll();
-                nativeImage.showMessage(DefaultOptionHandler.helpTextAdvanced);
+                nativeImage.showMessage(DefaultOptionHandler.helpExtraText);
                 nativeImage.showMessage(helpTextServer);
                 System.exit(0);
                 return true;
