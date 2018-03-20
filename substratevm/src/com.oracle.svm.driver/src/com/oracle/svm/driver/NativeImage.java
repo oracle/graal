@@ -427,8 +427,11 @@ class NativeImage {
         imageClasspath.addAll(customImageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        consolidateArgs(imageBuilderJavaArgs, oXmx, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
-        consolidateArgs(imageBuilderJavaArgs, oXms, NativeImage::parseSize, String::valueOf, () -> parseSize(getXmsValue()), Math::min);
+        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
+        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, NativeImage::parseSize, String::valueOf, () -> parseSize(getXmsValue()), Math::min);
+        if (Word.unsigned(xmsValue).aboveThan(Word.unsigned(xmxValue))) {
+            replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
+        }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
@@ -742,7 +745,7 @@ class NativeImage {
     }
 
     /* Taken from org.graalvm.compiler.options.OptionsParser.parseLong(String) */
-    private static long parseSize(String v) {
+    protected static long parseSize(String v) {
         String valueString = v.toLowerCase();
         long scale = 1;
         if (valueString.endsWith("k")) {
@@ -760,7 +763,7 @@ class NativeImage {
             valueString = valueString.substring(0, valueString.length() - 1);
         }
 
-        return Long.parseLong(valueString) * scale;
+        return Long.parseUnsignedLong(valueString) * scale;
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
