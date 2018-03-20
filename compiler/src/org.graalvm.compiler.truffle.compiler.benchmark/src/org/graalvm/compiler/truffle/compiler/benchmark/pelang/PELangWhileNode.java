@@ -54,7 +54,7 @@ public final class PELangWhileNode extends PELangExpressionNode {
 
         private Object lastResult = PELangNull.Instance;
 
-        public PELangWhileRepeatingNode(PELangExpressionNode conditionNode, PELangExpressionNode bodyNode) {
+        PELangWhileRepeatingNode(PELangExpressionNode conditionNode, PELangExpressionNode bodyNode) {
             this.conditionNode = conditionNode;
             this.bodyNode = bodyNode;
         }
@@ -78,7 +78,7 @@ public final class PELangWhileNode extends PELangExpressionNode {
 
         private final Object lastResult;
 
-        public PELangResultException(Object lastResult) {
+        PELangResultException(Object lastResult) {
             this.lastResult = lastResult;
         }
 
