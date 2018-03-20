@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,6 +109,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     Predicate<String> classFilter;  // effectively final
     boolean hostAccessAllowed;      // effectively final
     boolean hostClassLoadingAllowed;      // effectively final
+    boolean nativeAccessAllowed;    // effectively final
     @CompilationFinal boolean createThreadAllowed;
 
     // map from class to language index
@@ -138,6 +139,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     OutputStream err,
                     InputStream in,
                     boolean hostAccessAllowed,
+                    boolean nativeAccessAllowed,
                     boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed,
                     Predicate<String> classFilter,
@@ -149,7 +151,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.parent = null;
         this.engine = engine;
         this.fileSystem = fileSystem;
-        patchInstance(out, err, in, hostAccessAllowed, createThreadAllowed, hostClassLoadingAllowed, classFilter, applicationArguments, allowedPublicLanguages);
+        patchInstance(out, err, in, hostAccessAllowed, nativeAccessAllowed, createThreadAllowed, hostClassLoadingAllowed, classFilter, applicationArguments, allowedPublicLanguages);
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
         PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
@@ -218,6 +220,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.parent = creator.context;
         this.hostAccessAllowed = parent.hostAccessAllowed;
         this.hostClassLoadingAllowed = parent.hostClassLoadingAllowed;
+        this.nativeAccessAllowed = parent.nativeAccessAllowed;
         this.createThreadAllowed = parent.createThreadAllowed;
         this.applicationArguments = parent.applicationArguments;
         this.classFilter = parent.classFilter;
@@ -993,10 +996,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     boolean patch(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
-                    boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
+                    boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
                     Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem) {
         CompilerAsserts.neverPartOfCompilation();
-        patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newCreateThreadAllowed, newHostClassLoadingAllowed, newClassFilter, newApplicationArguments, newAllowedPublicLanguages);
+        patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newNativeAccessAllowed, newCreateThreadAllowed, newHostClassLoadingAllowed, newClassFilter, newApplicationArguments, newAllowedPublicLanguages);
         ((FileSystems.PreInitializeContextFileSystem) fileSystem).patchDelegate(newFileSystem);
         final Map<String, Map<String, String>> optionsByLanguage = new HashMap<>();
         for (String optionKey : newOptions.keySet()) {
@@ -1024,9 +1027,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     private void patchInstance(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
-                    boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
+                    boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
                     Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages) {
         this.hostAccessAllowed = newHostAccessAllowed;
+        this.nativeAccessAllowed = newNativeAccessAllowed;
         this.createThreadAllowed = newCreateThreadAllowed;
         this.hostClassLoadingAllowed = newHostClassLoadingAllowed;
         this.applicationArguments = newApplicationArguments;

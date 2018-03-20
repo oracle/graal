@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -874,7 +874,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     @Override
     @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                    boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
+                    boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
@@ -899,7 +899,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         if (contextImpl != null) {
             boolean patchResult;
             try {
-                patchResult = contextImpl.patch(out, err, in, allowHostAccess, allowCreateThread, allowHostClassLoading, classFilter, options, arguments, allowedLanguages, fs);
+                patchResult = contextImpl.patch(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, classFilter, options, arguments, allowedLanguages, fs);
             } catch (RuntimeException re) {
                 contextImpl.closeImpl(false, false);
                 PolyglotContextImpl.disposeStaticContext(null);
@@ -912,7 +912,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
         if (contextImpl == null) {
-            contextImpl = new PolyglotContextImpl(this, out, err, in, allowHostAccess, allowCreateThread, allowHostClassLoading, classFilter, options, arguments, allowedLanguages, fs);
+            contextImpl = new PolyglotContextImpl(this, out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowHostClassLoading, classFilter, options, arguments, allowedLanguages, fs);
             addContext(contextImpl);
         }
         Context api = impl.getAPIAccess().newContext(contextImpl);
