@@ -47,6 +47,9 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 
 final class TruffleSplittingStrategy {
 
+    private static Set<OptimizedCallTarget> waste = new HashSet<>();
+    private static SplitStatisticsReporter reporter = new SplitStatisticsReporter();
+
     static void beforeCall(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         final GraalTVMCI.EngineData engineData = tvmci.getEngineData(call.getRootNode());
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
@@ -223,8 +226,6 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    static Set<OptimizedCallTarget> waste = new HashSet<>();
-
     private static void calculateSplitWasteImpl(OptimizedCallTarget callTarget) {
         final List<OptimizedDirectCallNode> callNodes = NodeUtil.findAllNodeInstances(callTarget.getRootNode(), OptimizedDirectCallNode.class);
         callNodes.removeIf(callNode -> !callNode.isCallTargetCloned());
@@ -237,8 +238,6 @@ final class TruffleSplittingStrategy {
             }
         }
     }
-
-    private static SplitStatisticsReporter reporter = new SplitStatisticsReporter();
 
     static void newPolymorphicSpecialize(Node node) {
         if (TruffleCompilerOptions.getValue(TruffleTraceSplittingSummary)) {
