@@ -63,7 +63,7 @@ public class NodeClassFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(TruffleFeature.class, GraalFeature.class);
+        return Arrays.asList(GraalFeature.class);
     }
 
     @Override
