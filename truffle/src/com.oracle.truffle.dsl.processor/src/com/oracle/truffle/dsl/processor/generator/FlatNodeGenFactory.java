@@ -391,7 +391,7 @@ class FlatNodeGenFactory {
         }
 
         clazz.addOptional(createExecuteAndSpecialize());
-        if (node.isReportPolymorphism()) {
+        if (shouldReportPolymorphism(node, reachableSpecializations)) {
             clazz.addOptional(createCheckForPolymorphicSpecialize());
             if (requiresCacheCheck()) {
                 clazz.addOptional(createCountCaches());
@@ -430,6 +430,13 @@ class FlatNodeGenFactory {
         }
 
         return clazz;
+    }
+
+    private static boolean shouldReportPolymorphism(NodeData node, List<SpecializationData> reachableSpecializations) {
+        if (reachableSpecializations.size() == 1 && reachableSpecializations.get(0).getMaximumNumberOfInstances() == 1) {
+            return false;
+        }
+        return node.isReportPolymorphism();
     }
 
     private void generateReflectionInfo(CodeTypeElement clazz) {
@@ -1097,7 +1104,7 @@ class FlatNodeGenFactory {
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
         }
-        if (node.isReportPolymorphism()) {
+        if (shouldReportPolymorphism(node, reachableSpecializations)) {
             generateSaveOldPolymorphismState(builder, frameState);
         }
         builder.startTryBlock();
@@ -1113,7 +1120,7 @@ class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
         builder.end().startFinallyBlock();
-        if (node.isReportPolymorphism()) {
+        if (shouldReportPolymorphism(node, reachableSpecializations)) {
             generateCheckNewPolymorphismState(builder);
         }
         builder.startIf().string("hasLock").end().startBlock();
