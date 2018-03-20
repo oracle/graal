@@ -1,6 +1,7 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  truffle_execute(truffle_import("foo"), truffle_read_string("bar"));
+  void (*fn)(void *) = polyglot_import("foo");
+  fn(polyglot_from_string("bar", "ascii"));
   return 14;
 }

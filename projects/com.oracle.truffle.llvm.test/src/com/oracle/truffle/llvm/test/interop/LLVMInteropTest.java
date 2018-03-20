@@ -58,8 +58,7 @@ import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
-@SuppressWarnings({"static-method"})
-public final class LLVMInteropTest {
+public class LLVMInteropTest {
     @Test
     public void test001() {
         Runner runner = new Runner("interop001");
@@ -95,7 +94,6 @@ public final class LLVMInteropTest {
         runner.export(ProxyObject.fromMap(a), "foreign");
         runner.run();
 
-        Assert.assertEquals(false, ((Value) a.get("valueBool")).asBoolean());
         Assert.assertEquals(2, ((Value) a.get("valueI")).asInt());
         Assert.assertEquals(3, ((Value) a.get("valueB")).asByte());
         Assert.assertEquals(4, ((Value) a.get("valueL")).asLong());
@@ -356,16 +354,6 @@ public final class LLVMInteropTest {
         runner.export(result, "foo");
         Assert.assertEquals(72, runner.run());
         Assert.assertEquals("foo\u0000 bar\u0080 ", result.storage);
-    }
-
-    @Test
-    public void test029() {
-        Runner runner = new Runner("interop029");
-        ReturnObject result = new ReturnObject();
-        runner.export(result, "foo");
-        Assert.assertEquals(36, runner.run());
-        byte[] actualResult = (byte[]) result.storage;
-        Assert.assertArrayEquals(new byte[]{102, 111, 111, 0, 32, 98, 97, 114, -128, 32}, actualResult);
     }
 
     // implicit interop

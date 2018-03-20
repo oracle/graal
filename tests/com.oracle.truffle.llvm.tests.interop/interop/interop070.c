@@ -1,5 +1,3 @@
-#include <truffle.h>
-
 int globalInt;
 
 int *returnPointerToGlobal() {

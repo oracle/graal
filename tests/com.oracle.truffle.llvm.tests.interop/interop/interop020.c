@@ -1,7 +1,7 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  int *obj = (int *)truffle_import("foreign");
+  int *obj = (int *)polyglot_import("foreign");
   obj[0] = 30;
   obj[1] = 31;
   obj[2] = 32;

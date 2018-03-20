@@ -1,5 +1,3 @@
-#include <truffle.h>
-
 typedef struct {
   double real;
   double imaginary;

@@ -1,5 +1,3 @@
-#include <truffle.h>
-
 int *needsStack() {
 	int a = 5;
 	return &a;

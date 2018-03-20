@@ -1,5 +1,4 @@
-#include <stdint.h>
-#include <truffle.h>
+#include <polyglot.h>
 
 struct Foreign {
   uint32_t a;
@@ -7,7 +6,7 @@ struct Foreign {
 };
 
 int main() {
-  struct Foreign *foreign = truffle_import("foreign");
+  struct Foreign *foreign = polyglot_import("foreign");
   
   if (foreign->a != 0) {
     return 100 + foreign->a;

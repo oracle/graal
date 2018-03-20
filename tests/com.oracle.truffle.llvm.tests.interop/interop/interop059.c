@@ -1,9 +1,9 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 typedef void *VALUE;
 
 int main() {
-  VALUE *foreign = truffle_import("foreign");
+  VALUE *foreign = polyglot_import("foreign");
   
   if ((int) foreign[0] != 0) {
     return 100 + (int) foreign[0];

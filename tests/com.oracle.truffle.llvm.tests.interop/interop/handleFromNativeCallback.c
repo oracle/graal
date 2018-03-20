@@ -1,10 +1,11 @@
+#include <polyglot.h>
 #include <truffle.h>
 
 int callbackPointerArgTest(int (*callback)(void *), void *arg);
 
 int callback(void *handle) {
     void *managed = truffle_managed_from_handle(handle);
-    return truffle_read_i(managed, "valueI");
+    return polyglot_as_i32(polyglot_get_member(managed, "valueI"));
 }
 
 int testHandleFromNativeCallback(void *managed) {

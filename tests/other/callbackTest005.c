@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <truffle.h>
 
 struct container {
   int (*callback)(int p1, int p2);

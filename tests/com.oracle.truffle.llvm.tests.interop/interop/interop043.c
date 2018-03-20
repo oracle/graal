@@ -1,9 +1,10 @@
+#include <polyglot.h>
 #include <truffle.h>
 
 static void **global;
 
 int main() {
-  void *object = truffle_import("foreign");
+  void *object = polyglot_import("foreign");
 
   global = (void **)truffle_managed_malloc(2 * sizeof(void *));
 

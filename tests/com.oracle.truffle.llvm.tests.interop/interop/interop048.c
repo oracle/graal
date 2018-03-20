@@ -1,10 +1,10 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 typedef void *VALUE;
 
 int main() {
-  VALUE a = (VALUE) truffle_import("a"); 
-  VALUE b = (VALUE) truffle_import("b"); 
+  VALUE a = (VALUE) polyglot_import("a"); 
+  VALUE b = (VALUE) polyglot_import("b"); 
   
 
   if (a >= b) {
