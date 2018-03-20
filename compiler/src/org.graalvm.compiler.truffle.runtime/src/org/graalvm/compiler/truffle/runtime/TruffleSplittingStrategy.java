@@ -248,7 +248,7 @@ final class TruffleSplittingStrategy {
         }
     }
 
-    static void newCallNodeCreated(OptimizedDirectCallNode directCallNode) {
+    static void newDirectCallNodeCreated(OptimizedDirectCallNode directCallNode) {
         if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
             final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
             callTarget.addKnownCallNode(directCallNode);

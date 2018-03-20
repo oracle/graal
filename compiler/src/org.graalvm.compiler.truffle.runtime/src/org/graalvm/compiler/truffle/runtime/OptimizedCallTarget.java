@@ -68,9 +68,9 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.Truffle
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleDumpPolymorphicSpecialize;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingDumpDecisions;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleSplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingMaxPropagationDepth;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
 
 /**
@@ -690,7 +690,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     void polymorphicSpecialize(Node source) {
         if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
             List<Node> toDump = null;
-            if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
+            if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
                 toDump = new ArrayList<>();
                 pullOutParentChain(source, toDump);
             }
@@ -705,7 +705,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
-        if (depth > TruffleCompilerOptions.getValue(TruffleSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
+        if (depth > TruffleCompilerOptions.getValue(TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
                         compilationProfile.getInterpreterCallCount() == 1) {
             return false;
         }
@@ -714,14 +714,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 final RootNode rootNode = onlyCaller.getRootNode();
                 if (rootNode != null && rootNode.getCallTarget() != null) {
                     final OptimizedCallTarget callTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-                    if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
+                    if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
                         pullOutParentChain(onlyCaller, toDump);
                     }
                     needsSplit = callTarget.maybeSetNeedsSplit(depth + 1, toDump);
                 }
             }
         } else {
-            if (TruffleCompilerOptions.getValue(TruffleDumpPolymorphicSpecialize)) {
+            if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
                 final List<OptimizedDirectCallNode> callers = new ArrayList<>();
                 synchronized (knownCallNodes) {
                     for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
