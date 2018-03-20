@@ -82,6 +82,14 @@ abstract class ToJavaNode extends Node {
             convertedValue = primitive.toPrimitive(value, targetType);
             if (convertedValue != null) {
                 return convertedValue;
+            } else if (targetType == char.class || targetType == Character.class) {
+                Integer safeChar = primitive.toInteger(value);
+                if (safeChar != null) {
+                    int v = safeChar;
+                    if (v >= 0 && v < 65536) {
+                        return (char) v;
+                    }
+                }
             }
         }
         if (targetType == Value.class && languageContext != null) {
