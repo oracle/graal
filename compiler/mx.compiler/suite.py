@@ -1530,7 +1530,30 @@ suite = {
       "checkPackagePrefix" : "false",
       "multiReleaseJarVersion" : "9",
       "workingSets" : "Graal,Truffle",
+      "jacoco" : "exclude",
     },
+
+    "org.graalvm.compiler.truffle.compiler.benchmark" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JMH_1_18",
+        "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_SL",
+        "org.graalvm.compiler.microbenchmarks",
+        "org.graalvm.compiler.truffle.compiler",
+        "org.graalvm.compiler.truffle.runtime",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "checkPackagePrefix" : "false",
+      "annotationProcessors" : ["mx:JMH_1_18", "truffle:TRUFFLE_DSL_PROCESSOR"],
+      "findbugsIgnoresGenerated" : True,
+      "workingSets" : "Graal,Truffle,Bench",
+      "testProject" : True,
+    },
+
+
 
     "org.graalvm.compiler.truffle.runtime" : {
       "subDir" : "src",
