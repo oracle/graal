@@ -225,7 +225,7 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
         with _timedelta('IMAGEBUILD: ', out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
             _, image_building_options = _bench_configs[bench_conf]
-            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--js', '-H:Path=' + image_dir,
+            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--Language:js', '-H:Path=' + image_dir,
                        '-H:Name=' + js_image_name] + image_building_options + extra_options
             # Print out the command.
             print(' '.join(command))
