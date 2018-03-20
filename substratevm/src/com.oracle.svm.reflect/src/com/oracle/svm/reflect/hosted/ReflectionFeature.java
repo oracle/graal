@@ -22,9 +22,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import static com.oracle.svm.reflect.hosted.ReflectionFeature.Options.ReflectionConfigurationFiles;
-import static com.oracle.svm.reflect.hosted.ReflectionFeature.Options.ReflectionConfigurationResources;
-
 import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.options.Option;
@@ -92,7 +89,7 @@ public final class ReflectionFeature implements Feature {
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
         ReflectionConfigurationParser parser = new ReflectionConfigurationParser(reflectionData, access.getImageClassLoader());
-        parser.parseAndRegisterConfigurations("reflection", ReflectionConfigurationFiles, ReflectionConfigurationResources);
+        parser.parseAndRegisterConfigurations("reflection", Options.ReflectionConfigurationFiles, Options.ReflectionConfigurationResources);
     }
 
     @Override
