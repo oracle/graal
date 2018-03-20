@@ -384,10 +384,10 @@ public abstract class PartialEvaluator {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (invocationPlugins.lookupInvocation(original) != null || replacements.hasSubstitution(original, builder.bci())) {
                 /*
-                 * During partial evaluation, the invocation plugin or the substitution might
-                 * trigger, so we want the call to remain (we have better type information and more
-                 * constant values during partial evaluation). But there is no guarantee for that,
-                 * so we also need to preserve exception handler information for the call.
+                 * During partial evaluation, the invocation plugin or the substitution might trigger, so we want
+                 * the call to remain (we have better type information and more constant values during partial
+                 * evaluation). But there is no guarantee for that, so we also need to preserve exception handler
+                 * information for the call.
                  */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (loopExplosionPlugin.loopExplosionKind(original) != LoopExplosionPlugin.LoopExplosionKind.NONE) {
@@ -404,8 +404,8 @@ public abstract class PartialEvaluator {
             }
             if (hasMethodHandleArgument(arguments)) {
                 /*
-                 * We want to inline invokes that have a constant MethodHandle parameter to remove
-                 * invokedynamic related calls as early as possible.
+                 * We want to inline invokes that have a constant MethodHandle parameter to remove invokedynamic
+                 * related calls as early as possible.
                  */
                 return inlineInfo;
             }
@@ -513,7 +513,7 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"try", "unused"})
-    private void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
+    public void fastPartialEvaluation(CompilableTruffleAST compilable, TruffleInliningPlan inliningDecision, StructuredGraph graph, PhaseContext baseContext, HighTierContext tierContext) {
         DebugContext debug = graph.getDebug();
         doGraphPE(compilable, graph, tierContext, inliningDecision);
         debug.dump(DebugContext.BASIC_LEVEL, graph, "After Partial Evaluation");
