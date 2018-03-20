@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
@@ -71,6 +70,6 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
             bytes[count++] = c;
             ptr += Byte.BYTES;
         }
-        return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), new PointerType(PrimitiveType.I8));
+        return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), PointerType.I8);
     }
 }
