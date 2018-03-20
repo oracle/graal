@@ -14,11 +14,6 @@ public final class PELang extends TruffleLanguage<PELangContext> {
     }
 
     @Override
-    protected Object getLanguageGlobal(PELangContext context) {
-        return context;
-    }
-
-    @Override
     protected boolean isObjectOfLanguage(Object object) {
         return false;
     }
