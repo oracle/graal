@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 
 public abstract class AbstractLanguageLauncher extends Launcher {
@@ -155,7 +156,35 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
     @Override
     protected void printVersion() {
-        printPolyglotVersions();
+        printVersion(Engine.create());
+    }
+
+    protected void printVersion(Engine engine) {
+        String languageId = getLanguageId();
+        Language language = engine.getLanguages().get(languageId);
+        if (language == null) {
+            throw abort(String.format("Unknown language: '%s'!", languageId));
+        }
+        String implementationName = language.getImplementationName();
+        if (implementationName == null || implementationName.length() == 0) {
+            String languageName = language.getName();
+            if (languageName == null || languageName.length() == 0) {
+                languageName = languageId;
+            }
+            implementationName = "Graal " + languageName;
+        }
+        System.out.println(String.format("%s %s (GraalVM %s)", implementationName, language.getVersion(), engine.getVersion()));
+    }
+
+    protected void runVersionAction(VersionAction action, Engine engine) {
+        switch (action) {
+            case PrintAndContinue:
+                printVersion(engine);
+                break;
+            case PrintAndExit:
+                printVersion(engine);
+                throw exit();
+        }
     }
 
     /**

@@ -71,7 +71,7 @@ class MultiLanguageShell {
         console.setCopyPasteDetection(true);
 
         console.println("GraalVM MultiLanguage Shell " + context.getEngine().getVersion());
-        console.println("Copyright (c) 2013-7, Oracle and/or its affiliates");
+        console.println("Copyright (c) 2013-2018, Oracle and/or its affiliates");
 
         List<Language> languages = new ArrayList<>();
         Set<Language> uniqueValues = new HashSet<>();
