@@ -41,7 +41,6 @@ import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionValuesAccess;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
@@ -232,7 +231,7 @@ public class LazyInitializationTest {
             return true;
         }
 
-        if (cls == Assertions.class || cls == OptionsParser.class || cls == OptionValues.class || OptionValuesAccess.class.isAssignableFrom(cls)) {
+        if (cls == Assertions.class || cls == OptionsParser.class || cls == OptionValues.class || cls.getName().equals("org.graalvm.compiler.hotspot.HotSpotGraalOptionValues")) {
             // Classes implementing Graal option loading
             return true;
         }
