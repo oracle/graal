@@ -416,6 +416,8 @@ public abstract class Accessor {
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 
+        public abstract boolean isInputValueSlotIdentifier(Object identifier);
+
     }
 
     protected abstract static class Frames {

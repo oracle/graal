@@ -25,20 +25,22 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * This class searches for a suspendable location (SourceSection tagged with StatementTag) in a
- * Source file.
+ * This class searches for a suspendable location (SourceSection tagged with one of the element
+ * tags) in a Source file.
  *
  * We can verify whether the initial suspended location is accurate and if yes, no language
  * adjustment is necessary.
@@ -56,7 +58,7 @@ final class SuspendableLocationFinder {
     private SuspendableLocationFinder() {
     }
 
-    static SourceSection findNearest(Source source, int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
+    static SourceSection findNearest(Source source, SourceElement[] sourceElements, int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
         int boundLine = line;
         int boundColumn = column;
         int maxLine = source.getLineCount();
@@ -67,15 +69,27 @@ final class SuspendableLocationFinder {
         if (boundColumn > maxColumn) {
             boundColumn = maxColumn;
         }
-        return findNearestBound(source, boundLine, boundColumn, anchor, env);
+        return findNearestBound(source, getElementTags(sourceElements), boundLine, boundColumn, anchor, env);
     }
 
-    private static SourceSection findNearestBound(Source source, int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
+    private static Set<Class<? extends Tag>> getElementTags(SourceElement[] sourceElements) {
+        if (sourceElements.length == 1) {
+            return Collections.singleton(sourceElements[0].getTag());
+        }
+        Set<Class<? extends Tag>> elementTags = new HashSet<>();
+        for (int i = 0; i < sourceElements.length; i++) {
+            elementTags.add(sourceElements[i].getTag());
+        }
+        return elementTags;
+    }
+
+    private static SourceSection findNearestBound(Source source, Set<Class<? extends Tag>> elementTags,
+                    int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
         int offset = source.getLineStartOffset(line);
         if (column > 0) {
             offset += column - 1;
         }
-        NearestSections sectionsCollector = new NearestSections((column <= 0) ? line : 0, offset, anchor);
+        NearestSections sectionsCollector = new NearestSections(elementTags, (column <= 0) ? line : 0, offset, anchor);
         // All SourceSections of the Source are loaded already when the source was executed
         env.getInstrumenter().attachLoadSourceSectionListener(
                         SourceSectionFilter.newBuilder().sourceIs(source).build(),
@@ -94,7 +108,7 @@ final class SuspendableLocationFinder {
         if (contextNode == null) {
             return null;
         }
-        Node node = contextNode.findNearestNodeAt(offset, Collections.singleton(StandardTags.StatementTag.class));
+        Node node = contextNode.findNearestNodeAt(offset, elementTags);
         if (node == null) {
             return null;
         }
@@ -103,6 +117,7 @@ final class SuspendableLocationFinder {
 
     private static class NearestSections implements LoadSourceSectionListener {
 
+        private final Set<Class<? extends Tag>> elementTags;
         private final int line;
         private final int offset;
         private final SuspendAnchor anchor;
@@ -115,7 +130,8 @@ final class SuspendableLocationFinder {
         private SourceSection nextMatch;
         private InstrumentableNode nextNode;
 
-        NearestSections(int line, int offset, SuspendAnchor anchor) {
+        NearestSections(Set<Class<? extends Tag>> elementTags, int line, int offset, SuspendAnchor anchor) {
+            this.elementTags = elementTags;
             this.line = line;
             this.offset = offset;
             this.anchor = anchor;
@@ -161,7 +177,7 @@ final class SuspendableLocationFinder {
                     default:
                         throw new IllegalArgumentException(anchor.name());
                 }
-                if (line == l && node.hasTag(StandardTags.StatementTag.class)) {
+                if (line == l && isTaggedWith(node, elementTags)) {
                     if (exactLineMatch == null ||
                                     (anchor == SuspendAnchor.BEFORE) && sourceSection.getCharIndex() < exactLineMatch.getCharIndex() ||
                                     (anchor == SuspendAnchor.AFTER) && sourceSection.getCharEndIndex() > exactLineMatch.getCharEndIndex()) {
@@ -187,7 +203,7 @@ final class SuspendableLocationFinder {
                 default:
                     throw new IllegalArgumentException(anchor.name());
             }
-            if (offset == o && node.hasTag(StandardTags.StatementTag.class)) {
+            if (offset == o && isTaggedWith(node, elementTags)) {
                 if (exactIndexMatch == null || sourceSection.getCharLength() > exactIndexMatch.getCharLength()) {
                     exactIndexMatch = sourceSection;
                 }
@@ -223,6 +239,15 @@ final class SuspendableLocationFinder {
                     nextNode = node;
                 }
             }
+        }
+
+        private static boolean isTaggedWith(InstrumentableNode node, Set<Class<? extends Tag>> tags) {
+            for (Class<? extends Tag> tag : tags) {
+                if (node.hasTag(tag)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         SourceSection getExactSection() {

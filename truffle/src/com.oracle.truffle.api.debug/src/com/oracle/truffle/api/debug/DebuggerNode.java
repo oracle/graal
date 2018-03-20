@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.debug.DebuggerSession.SteppingLocation;
+import java.util.Set;
+
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
@@ -58,7 +60,9 @@ abstract class DebuggerNode extends ExecutionEventNode {
 
     abstract boolean isStepNode();
 
-    abstract SteppingLocation getSteppingLocation();
+    abstract Set<SuspendAnchor> getSuspendAnchors();
+
+    abstract boolean isActiveAt(SuspendAnchor anchor);
 
     final EventContext getContext() {
         return context;
@@ -121,5 +125,12 @@ abstract class DebuggerNode extends ExecutionEventNode {
             }
             return value;
         }
+    }
+
+    /** Implemented by nodes that provide input values lazily to the {@link SuspendedEvent}. */
+    interface InputValuesProvider {
+
+        Object[] getDebugInputValues(MaterializedFrame frame);
+
     }
 }
