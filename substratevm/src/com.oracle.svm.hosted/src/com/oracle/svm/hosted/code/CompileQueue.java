@@ -23,6 +23,7 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -87,14 +89,17 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -103,7 +108,10 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
+import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -159,6 +167,8 @@ public class CompileQueue {
     private final LIRSuites regularLIRSuites;
     private final LIRSuites deoptTargetLIRSuites;
     private final ConcurrentMap<Constant, DataSection.Data> dataCache;
+
+    private volatile boolean inliningProgress;
 
     public abstract static class CompileReason {
         /**
@@ -250,6 +260,25 @@ public class CompileQueue {
         }
     }
 
+    protected class TrivialInlineTask implements DebugContextRunnable {
+
+        private final HostedMethod method;
+
+        TrivialInlineTask(HostedMethod method) {
+            this.method = method;
+        }
+
+        @Override
+        public void run(DebugContext debug) {
+            doInlineTrivial(debug, method);
+        }
+
+        @Override
+        public Description getDescription() {
+            return new Description(method, toString());
+        }
+    }
+
     public class ParseTask implements DebugContextRunnable {
 
         protected final CompileReason reason;
@@ -311,6 +340,12 @@ public class CompileQueue {
             // timer.
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
             beforeCompileAll(debug);
+
+            if (SubstrateOptions.AOTInline.getValue()) {
+                try (StopTimer ignored = new Timer("(inline)").start()) {
+                    inlineTrivialMethods(debug);
+                }
+            }
             try (StopTimer t = new Timer("(compile)").start()) {
                 compileAll();
             }
@@ -445,6 +480,126 @@ public class CompileQueue {
 
     @SuppressWarnings("unused")
     protected void beforeCompileAll(DebugContext debug) throws InterruptedException {
+    }
+
+    private void checkTrivial(HostedMethod method) {
+        if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
+            method.compilationInfo.setTrivialMethod(true);
+            inliningProgress = true;
+        }
+    }
+
+    @SuppressWarnings("try")
+    private void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
+        for (HostedMethod method : universe.getMethods()) {
+            try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
+                if (method.compilationInfo.getGraph() != null) {
+                    checkTrivial(method);
+                }
+            } catch (Throwable e) {
+                throw debug.handle(e);
+            }
+        }
+
+        int round = 0;
+        do {
+            inliningProgress = false;
+            round++;
+            try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
+
+                executor.init();
+                universe.getMethods().stream().filter(method -> method.compilationInfo.getGraph() != null).forEach(method -> executor.execute(new TrivialInlineTask(method)));
+
+                universe.getMethods().stream().map(method -> method.compilationInfo.getDeoptTargetMethod()).filter(Objects::nonNull).forEach(
+                                deoptTargetMethod -> executor.execute(new TrivialInlineTask(deoptTargetMethod)));
+                executor.start();
+                executor.complete();
+                executor.shutdown();
+            }
+        } while (inliningProgress);
+    }
+
+    @SuppressWarnings("try")
+    private void doInlineTrivial(DebugContext debug, final HostedMethod method) {
+        /*
+         * Make a copy of the graph to avoid concurrency problems. Graph manipulations are not
+         * thread safe, and another thread can concurrently inline this method.
+         */
+        final StructuredGraph graph = (StructuredGraph) method.compilationInfo.getGraph().copy(debug);
+
+        try (DebugContext.Scope s = debug.scope("InlineTrivial", graph, method, this)) {
+
+            try {
+
+                try (Indent in = debug.logAndIndent("do inline trivial in %s", method)) {
+
+                    boolean inlined = false;
+                    for (Invoke invoke : graph.getInvokes()) {
+                        if (invoke.useForInlining()) {
+                            inlined |= tryInlineTrivial(graph, invoke, !inlined);
+                        }
+                    }
+
+                    if (inlined) {
+                        Providers providers = runtimeConfig.lookupBackend(method).getProviders();
+                        new CanonicalizerPhase().apply(graph, new PhaseContext(providers));
+
+                        /*
+                         * Publish the new graph, it can be picked up immediately by other threads
+                         * trying to inline this method.
+                         */
+                        method.compilationInfo.setGraph(graph);
+                        checkTrivial(method);
+                        inliningProgress = true;
+                    }
+                }
+            } catch (Throwable ex) {
+                GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
+                error.addContext("method: " + method.format("%r %H.%n(%p)"));
+                throw error;
+            }
+
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        }
+    }
+
+    private static boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
+        if (invoke.getInvokeKind().isDirect()) {
+            HostedMethod singleCallee = (HostedMethod) invoke.callTarget().targetMethod();
+            if (makeInlineDecision(invoke, singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
+                if (firstInline) {
+                    graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before inlining");
+                }
+                InliningUtil.inline(invoke, singleCallee.compilationInfo.getGraph(), true, singleCallee);
+
+                graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After inlining %s with trivial callee %s", invoke, singleCallee.format("%H.%n(%p)"));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
+        if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
+            return false;
+        }
+        if (callee.shouldBeInlined() || callerAnnotatedWith(invoke, AlwaysInlineAllCallees.class)) {
+            return true;
+        }
+        if (callee.compilationInfo.isTrivialMethod()) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean mustNotAllocateCallee(HostedMethod method) {
+        return ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
+    }
+
+    private static boolean mustNotAllocate(HostedMethod method) {
+        RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
+        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
@@ -597,12 +752,80 @@ public class CompileQueue {
     }
 
     protected boolean canBeUsedForInlining(Invoke invoke) {
+        HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
+
+        if (canDeoptForTesting(caller) && Modifier.isNative(callee.getModifiers())) {
+            /*
+             * We must not deoptimize in the stubs for native functions, since they don't have a
+             * valid bytecode state.
+             */
+            return false;
+        }
+        if (canDeoptForTesting(caller) && universe.getMethodsWithStackValues().contains(callee.wrapped)) {
+            /*
+             * We must not inline a method that has stack values and can be deoptimized.
+             */
+            return false;
+        }
+
+        if (caller.compilationInfo.isDeoptTarget()) {
+            if (caller.compilationInfo.isDeoptEntry(invoke.bci(), true, false)) {
+                /*
+                 * The call can be on the stack for a deoptimization, so we need an actual
+                 * non-inlined invoke to deoptimize too.
+                 *
+                 * We could lift this restriction by providing an explicit deopt entry point (with
+                 * the correct exception handling edges) in addition to the inlined method.
+                 */
+                return false;
+            }
+            if (CompilationInfoSupport.singleton().isDeoptInliningExclude(callee)) {
+                /*
+                 * The graphs for runtime compilation have an intrinisic for the callee, which might
+                 * alter the behavior. Be safe and do not inline, otherwise we might optimize too
+                 * aggressively.
+                 *
+                 * For example, the Truffle method CompilerDirectives.inCompiledCode is
+                 * intrinisified to return a constant with the opposite value than returned by the
+                 * method we would inline here, i.e., we would constant-fold away the compiled-code
+                 * only code (which is the code we need deoptimization entry points for).
+                 */
+                return false;
+            }
+        }
+
+        if (callee.getAnnotation(Specialize.class) != null) {
+            return false;
+        }
+        if (callerAnnotatedWith(invoke, Specialize.class) && callee.getAnnotation(DeoptTest.class) != null) {
+            return false;
+        }
+        Uninterruptible calleeUninterruptible = callee.getAnnotation(Uninterruptible.class);
+        if (calleeUninterruptible != null && !calleeUninterruptible.mayBeInlined() && caller.getAnnotation(Uninterruptible.class) == null) {
+            return false;
+        }
+        if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {
+            return false;
+        }
+
+        if (isNotExecuted(caller) || isNotExecuted(callee)) {
+            return false;
+        }
 
         if (!callee.canBeInlined()) {
             return false;
         }
         return invoke.useForInlining();
+    }
+
+    /**
+     * Hook for subclasses.
+     *
+     * @param method
+     */
+    protected boolean isNotExecuted(HostedMethod method) {
+        return false;
     }
 
     private static void handleSpecialization(final HostedMethod method, MethodCallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
