@@ -29,7 +29,7 @@
  */
 
 #include <stdlib.h>
-#include <truffle.h>
+#include <polyglot.h>
 #include <limits.h>
 
 char *strncpy(char *dest, const char *source, size_t n) {
@@ -54,8 +54,8 @@ char *strcpy(char *dest, const char *source) {
 }
 
 size_t strlen(const char *s) {
-  if (truffle_has_size(s)) {
-    return (size_t)truffle_get_size(s);
+  if (polyglot_has_array_elements(s)) {
+    return (size_t)polyglot_get_array_size(s);
   }
 
   int len = 0;
@@ -66,11 +66,11 @@ size_t strlen(const char *s) {
 }
 
 int strcmp(const char *s1, const char *s2) {
-  bool s1_has_size = truffle_has_size(s1);
-  bool s2_has_size = truffle_has_size(s2);
+  bool s1_has_size = polyglot_has_array_elements(s1);
+  bool s2_has_size = polyglot_has_array_elements(s2);
 
-  int size1 = s1_has_size ? truffle_get_size(s1) : INT_MAX;
-  int size2 = s2_has_size ? truffle_get_size(s2) : INT_MAX;
+  int size1 = s1_has_size ? polyglot_get_array_size(s1) : INT_MAX;
+  int size2 = s2_has_size ? polyglot_get_array_size(s2) : INT_MAX;
   int len = size1 > size2 ? size2 : size1;
   for (int i = 0; i < len; i++) {
     char c1 = s1[i];

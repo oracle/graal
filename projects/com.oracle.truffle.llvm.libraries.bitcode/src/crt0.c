@@ -31,7 +31,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <truffle.h>
+#include <polyglot.h>
 #ifdef __linux__
 #include <elf.h>
 #else
@@ -55,19 +55,19 @@ const size_t _DYNAMIC[1];
 int main(int argc, char **argv, char **envp);
 
 char *__sulong_byte_array_to_native(void *java_byte_array) {
-  int length = truffle_get_size(java_byte_array);
+  int length = polyglot_get_array_size(java_byte_array);
   char *result = malloc(sizeof(char) * length + 1);
   for (int i = 0; i < length; i++) {
-    result[i] = truffle_read_idx_c(java_byte_array, i);
+    result[i] = polyglot_as_i8(polyglot_get_array_element(java_byte_array, i));
   }
   result[length] = '\0';
   return result;
 }
 
 void __sulong_byte_arrays_to_native(char **dest, void **java_byte_arrays) {
-  int length = truffle_get_size(java_byte_arrays);
+  int length = polyglot_get_array_size(java_byte_arrays);
   for (int i = 0; i < length; i++) {
-    dest[i] = __sulong_byte_array_to_native(truffle_read_idx(java_byte_arrays, i));
+    dest[i] = __sulong_byte_array_to_native(polyglot_get_array_element(java_byte_arrays, i));
   }
 }
 
@@ -76,8 +76,8 @@ void __sulong_init_libc(char **envp, char *pn) {
 }
 
 void __sulong_init_context(void **argv_java_byte_arrays, void **envp_java_byte_arrays) {
-  int argc = truffle_get_size(argv_java_byte_arrays);
-  int envc = truffle_get_size(envp_java_byte_arrays);
+  int argc = polyglot_get_array_size(argv_java_byte_arrays);
+  int envc = polyglot_get_array_size(envp_java_byte_arrays);
   int auxc = 3;
 
   size_t total_argument_size = sizeof(void *) + (argc + 1) * sizeof(char *) + (envc + 1) * sizeof(char *) + auxc * sizeof(Elf64_auxv_t);

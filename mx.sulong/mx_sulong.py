@@ -25,12 +25,10 @@ os.environ["LC_NUMERIC"] = "C"  # required for some testcases
 _suite = mx.suite('sulong')
 _mx = join(_suite.dir, "mx.sulong")
 _root = join(_suite.dir, "projects")
-_libPath = join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src")
 _testDir = join(_suite.dir, "tests")
 _toolDir = join(_suite.dir, "cache", "tools")
 _clangPath = join(_toolDir, "llvm", "bin", "clang")
 
-_captureSrcDir = join(_root, "com.oracle.truffle.llvm.pipe.native", "src")
 
 
 # the supported GCC versions (see dragonegg.llvm.org)
@@ -64,8 +62,9 @@ basicLLVMDependencies = [
 # the file paths that we want to check with clang-format
 clangFormatCheckPaths = [
     join(_suite.dir, "include"),
-    _libPath,
-    _captureSrcDir,
+    join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
+    join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
+    join(_root, "com.oracle.truffle.llvm.pipe.native", "src"),
     join(_testDir, "com.oracle.truffle.llvm.tests.sulong"),
     join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp"),
     join(_testDir, "interoptests"),

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,62 +29,36 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+@SuppressWarnings("unused")
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMTruffleGetSize extends LLVMIntrinsic {
+public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
 
-    @Child private Node foreignGetSize = Message.GET_SIZE.createNode();
-    @Child private ForeignToLLVM toLLVM;
-
-    protected LLVMTruffleGetSize(ForeignToLLVMType type) {
-        this.toLLVM = ForeignToLLVM.create(type);
-    }
-
-    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError("Pointee must be unmodified");
-        }
-    }
-
-    private Object getSize(VirtualFrame frame, TruffleObject value) {
-        try {
-            Object rawValue = ForeignAccess.sendGetSize(foreignGetSize, value);
-            return toLLVM.executeWithTarget(frame, rawValue);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+    @Specialization
+    protected boolean isLLVMTruffleObject(LLVMTruffleObject object) {
+        return object.getOffset() == 0;
     }
 
     @Specialization
-    protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
-        checkLLVMTruffleObject(value);
-        return getSize(frame, value.getObject());
+    protected boolean isBoxedPrimitive(LLVMBoxedPrimitive prim) {
+        return true;
+    }
+
+    @Specialization
+    protected boolean isString(String str) {
+        return true;
     }
 
     @Fallback
-    @TruffleBoundary
-    @SuppressWarnings("unused")
-    public Object fallback(Object value) {
-        System.err.println("Invalid arguments to getSize-builtin.");
-        throw new IllegalArgumentException();
+    public boolean fallback(Object object) {
+        return false;
     }
 }

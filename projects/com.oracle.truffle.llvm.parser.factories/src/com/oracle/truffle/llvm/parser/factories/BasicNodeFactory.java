@@ -1599,7 +1599,7 @@ public class BasicNodeFactory implements NodeFactory {
                 return getLLVMBuiltin(runtime, declaration, args, callerArgumentCount, sourceSection);
             } else if (declaration.getName().startsWith("@__builtin_")) {
                 return getGccBuiltin(declaration, args, sourceSection);
-            } else if (declaration.getName().equals("@truffle_get_arg")) {
+            } else if (declaration.getName().equals("@polyglot_get_arg") || declaration.getName().equals("@truffle_get_arg")) {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgNodeGen.create(args[1], sourceSection);

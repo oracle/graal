@@ -35,7 +35,7 @@ Stores the value in the array at the given position (works only for
 
 ## How to explicitly send messages from Sulong
 
-You can use the built-ins defined in `include\truffle.h`.
+You can use the built-ins defined in `include/polyglot.h`.
 
 ## What messages are sent for LLVM operations on foreign objects
 
