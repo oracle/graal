@@ -29,6 +29,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 
 import java.util.HashMap;
@@ -287,27 +288,27 @@ final class TruffleSplittingStrategy {
         @Override
         public void run() {
             for (GraalTVMCI.EngineData engineData : engineDataSet) {
-                System.out.println(String.format(D_FORMAT, "Split count", engineData.splitCount));
-                System.out.println(String.format(D_FORMAT, "Split limit", engineData.splitLimit));
+                TTY.out().println(String.format(D_FORMAT, "Split count", engineData.splitCount));
+                TTY.out().println(String.format(D_FORMAT, "Split limit", engineData.splitLimit));
             }
-            System.out.println(String.format(D_FORMAT, "Splits", splitCount));
-            System.out.println(String.format(D_FORMAT, "Forced splits", forcedSplitCount));
-            System.out.println(String.format(D_FORMAT, "Nodes created through splitting", splitNodeCount));
-            System.out.println(String.format(D_FORMAT, "Nodes created without splitting", totalCreatedNodeCount));
-            System.out.println(String.format(P_FORMAT, "Increase in nodes", (splitNodeCount * 100.0) / (totalCreatedNodeCount)));
-            System.out.println(String.format(D_FORMAT, "Split nodes wasted", wastedNodeCount));
-            System.out.println(String.format(P_FORMAT, "Percent of split nodes wasted", (wastedNodeCount * 100.0) / (splitNodeCount)));
-            System.out.println(String.format(D_FORMAT, "Targets wasted due to splitting", wastedTargetCount));
-            System.out.println(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
+            TTY.out().println(String.format(D_FORMAT, "Splits", splitCount));
+            TTY.out().println(String.format(D_FORMAT, "Forced splits", forcedSplitCount));
+            TTY.out().println(String.format(D_FORMAT, "Nodes created through splitting", splitNodeCount));
+            TTY.out().println(String.format(D_FORMAT, "Nodes created without splitting", totalCreatedNodeCount));
+            TTY.out().println(String.format(P_FORMAT, "Increase in nodes", (splitNodeCount * 100.0) / (totalCreatedNodeCount)));
+            TTY.out().println(String.format(D_FORMAT, "Split nodes wasted", wastedNodeCount));
+            TTY.out().println(String.format(P_FORMAT, "Percent of split nodes wasted", (wastedNodeCount * 100.0) / (splitNodeCount)));
+            TTY.out().println(String.format(D_FORMAT, "Targets wasted due to splitting", wastedTargetCount));
+            TTY.out().println(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
 
-            System.out.println(String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
+            TTY.out().println(String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
             for (Map.Entry<OptimizedCallTarget, Integer> entry : splitTargets.entrySet()) {
-                System.out.println(String.format(D_FORMAT, entry.getKey(), entry.getValue()));
+                TTY.out().println(String.format(D_FORMAT, entry.getKey(), entry.getValue()));
             }
 
-            System.out.println(String.format(DELIMITER_FORMAT, "NODES"));
+            TTY.out().println(String.format(DELIMITER_FORMAT, "NODES"));
             for (Map.Entry<Class<? extends Node>, Integer> entry : polymorphicNodes.entrySet()) {
-                System.out.println(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
+                TTY.out().println(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
             }
         }
     }
