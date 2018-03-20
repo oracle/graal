@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -217,6 +217,8 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      */
     public static final class RunWithPolyglotRule implements TestRule {
 
+        Context.Builder contextBuilder;
+
         Context context = null;
         Env testEnv = null;
 
@@ -224,6 +226,15 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
          * @since 0.27
          */
         public RunWithPolyglotRule() {
+            this(Context.newBuilder());
+        }
+
+        /**
+         * @param contextBuilder a custom context builder
+         * @since 1.0
+         */
+        public RunWithPolyglotRule(Context.Builder contextBuilder) {
+            this.contextBuilder = contextBuilder;
         }
 
         /**
