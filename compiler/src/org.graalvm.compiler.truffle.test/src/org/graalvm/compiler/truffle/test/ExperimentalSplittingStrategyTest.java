@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -365,5 +366,44 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         outerTarget.call(firstArgs);
         directCallNode.call(firstArgs);
         Assert.assertTrue("new call node to \"needs split\" target is not split", directCallNode.isCallTargetCloned());
+    }
+
+    class ExposesReportPolymorphicSpecializeNode extends Node {
+        void report() {
+            reportPolymorphicSpecialize();
+        }
+    }
+
+
+    @Test
+    public void testUnadopted() {
+        final ExposesReportPolymorphicSpecializeNode node = new ExposesReportPolymorphicSpecializeNode();
+        node.report();
+    }
+
+    class ExposesReportPolymorphicSpecializeRootNode extends RootNode {
+
+        @Child ExposesReportPolymorphicSpecializeNode node = new ExposesReportPolymorphicSpecializeNode();
+
+        protected ExposesReportPolymorphicSpecializeRootNode() {
+            super(null);
+        }
+
+        void report() {
+            node.report();
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return null;
+        }
+    }
+
+    @Test
+    public void testSoloTarget() {
+        final ExposesReportPolymorphicSpecializeRootNode rootNode = new ExposesReportPolymorphicSpecializeRootNode();
+        final RootCallTarget callTarget = runtime.createCallTarget(rootNode);
+        callTarget.call(noArguments);
+        rootNode.report();
     }
 }

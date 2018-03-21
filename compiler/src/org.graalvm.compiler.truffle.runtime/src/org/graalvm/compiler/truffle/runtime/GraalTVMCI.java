@@ -158,7 +158,10 @@ final class GraalTVMCI extends TVMCI {
     @Override
     protected void reportPolymorphicSpecialize(Node source) {
         TruffleSplittingStrategy.newPolymorphicSpecialize(source);
-        final OptimizedCallTarget callTarget = (OptimizedCallTarget) source.getRootNode().getCallTarget();
-        callTarget.polymorphicSpecialize(source);
+        final RootNode rootNode = source.getRootNode();
+        final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
+        if (callTarget != null) {
+            callTarget.polymorphicSpecialize(source);
+        }
     }
 }
