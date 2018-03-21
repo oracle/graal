@@ -306,6 +306,10 @@ public class SubstrateOptionsParser {
             if (!optionTypes.contains(descriptor.getOptionType())) {
                 continue;
             }
+            OptionKey<?> optionKey = descriptor.getOptionKey();
+            if (!(optionKey instanceof HostedOptionKey || optionKey instanceof RuntimeOptionKey)) {
+                continue;
+            }
             String helpMsg = descriptor.getHelp();
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
