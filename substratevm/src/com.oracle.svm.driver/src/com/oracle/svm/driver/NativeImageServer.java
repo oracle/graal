@@ -57,6 +57,7 @@ import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
+import org.graalvm.compiler.word.Word;
 
 final class NativeImageServer extends NativeImage {
 
@@ -359,8 +360,15 @@ final class NativeImageServer extends NativeImage {
                 }
 
                 /* Maximize reuse by using same VM mem-args for all server-based image builds */
-                replaceArg(javaArgs, oXms, getXmsValue());
-                replaceArg(javaArgs, oXmx, getXmxValue(maxPorts));
+                String xmxValueStr = getXmxValue(maxPorts);
+                replaceArg(javaArgs, oXmx, xmxValueStr);
+                String xmsValueStr = getXmsValue();
+                long xmxValue = parseSize(xmxValueStr);
+                long xmsValue = parseSize(xmsValueStr);
+                if (Word.unsigned(xmsValue).aboveThan(Word.unsigned(xmxValue))) {
+                    xmsValueStr = Long.toUnsignedString(xmxValue);
+                }
+                replaceArg(javaArgs, oXms, xmsValueStr);
 
                 Path sessionDir = getSessionDir();
                 String serverUID = imageServerUID(classpath, bootClasspath, javaArgs);
