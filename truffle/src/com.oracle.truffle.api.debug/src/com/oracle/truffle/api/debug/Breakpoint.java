@@ -28,6 +28,7 @@ import java.net.URI;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.Assumption;
@@ -37,7 +38,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.debug.DebuggerSession.SteppingLocation;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -561,16 +561,17 @@ public class Breakpoint {
 
     @TruffleBoundary
     @SuppressWarnings("hiding") // We want to mask "sessions", as we recieve preferred ones
-    private void doBreak(DebuggerNode source, DebuggerSession[] sessions, MaterializedFrame frame, Object result, BreakpointConditionFailure failure) {
+    private void doBreak(DebuggerNode source, DebuggerSession[] sessions, MaterializedFrame frame, boolean onEnter, Object result, BreakpointConditionFailure failure) {
         if (!isEnabled()) {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
             // binding was disposed.
             return;
         }
+        SuspendAnchor anchor = onEnter ? SuspendAnchor.BEFORE : SuspendAnchor.AFTER;
         for (DebuggerSession session : sessions) {
             if (session.isBreakpointsActive()) {
-                session.notifyCallback(source, frame, result, failure);
+                session.notifyCallback(source, frame, anchor, null, result, failure);
             }
         }
     }
@@ -643,6 +644,7 @@ public class Breakpoint {
         private int ignoreCount;
         private boolean oneShot;
         private SourceSection sourceSection;
+        private SourceElement[] sourceElements;
 
         private Builder(Object key) {
             Objects.requireNonNull(key);
@@ -763,16 +765,38 @@ public class Breakpoint {
         }
 
         /**
+         * Specifies which source elements will this breakpoint adhere to. When not specified,
+         * breakpoint adhere to {@link SourceElement#STATEMENT} elements. Can only be invoked once
+         * per builder.
+         *
+         * @param sourceElements a non-empty list of source elements
+         * @since 0.33
+         */
+        public Builder sourceElements(@SuppressWarnings("hiding") SourceElement... sourceElements) {
+            if (this.sourceElements != null) {
+                throw new IllegalStateException("Step source elements can only be set once per the builder.");
+            }
+            if (sourceElements.length == 0) {
+                throw new IllegalArgumentException("At least one source element needs to be provided.");
+            }
+            this.sourceElements = sourceElements;
+            return this;
+        }
+
+        /**
          * @return a new breakpoint instance
          *
          * @since 0.17
          */
         public Breakpoint build() {
+            if (sourceElements == null) {
+                sourceElements = new SourceElement[]{SourceElement.STATEMENT};
+            }
             BreakpointLocation location;
             if (sourceSection != null) {
-                location = new BreakpointLocation(key, sourceSection);
+                location = new BreakpointLocation(key, sourceElements, sourceSection);
             } else {
-                location = new BreakpointLocation(key, line, column);
+                location = new BreakpointLocation(key, sourceElements, line, column);
             }
             Breakpoint breakpoint = new Breakpoint(location, anchor, oneShot, resolveListener);
             breakpoint.setIgnoreCount(ignoreCount);
@@ -826,13 +850,18 @@ public class Breakpoint {
         }
 
         @Override
-        SteppingLocation getSteppingLocation() {
-            return SteppingLocation.BEFORE_STATEMENT;
+        Set<SuspendAnchor> getSuspendAnchors() {
+            return DebuggerSession.ANCHOR_SET_BEFORE;
+        }
+
+        @Override
+        boolean isActiveAt(SuspendAnchor anchor) {
+            return SuspendAnchor.BEFORE == anchor;
         }
 
         @Override
         protected void onEnter(VirtualFrame frame) {
-            onNode(frame, null);
+            onNode(frame, true, null);
         }
     }
 
@@ -843,13 +872,18 @@ public class Breakpoint {
         }
 
         @Override
-        SteppingLocation getSteppingLocation() {
-            return SteppingLocation.AFTER_STATEMENT;
+        Set<SuspendAnchor> getSuspendAnchors() {
+            return DebuggerSession.ANCHOR_SET_AFTER;
+        }
+
+        @Override
+        boolean isActiveAt(SuspendAnchor anchor) {
+            return SuspendAnchor.AFTER == anchor;
         }
 
         @Override
         protected void onReturnValue(VirtualFrame frame, Object result) {
-            onNode(frame, result);
+            onNode(frame, false, result);
         }
 
     }
@@ -899,7 +933,7 @@ public class Breakpoint {
         }
 
         @ExplodeLoop
-        protected final void onNode(VirtualFrame frame, Object result) {
+        protected final void onNode(VirtualFrame frame, boolean onEnter, Object result) {
             if (!sessionsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeSessions();
@@ -933,7 +967,7 @@ public class Breakpoint {
                 conditionError = e;
             }
             breakBranch.enter();
-            breakpoint.doBreak(this, sessions, frame.materialize(), result, conditionError);
+            breakpoint.doBreak(this, sessions, frame.materialize(), onEnter, result, conditionError);
         }
 
         boolean shouldBreak(VirtualFrame frame) throws BreakpointConditionFailure {

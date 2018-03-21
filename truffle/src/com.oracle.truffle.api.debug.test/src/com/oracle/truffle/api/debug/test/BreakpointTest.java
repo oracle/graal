@@ -41,6 +41,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -842,5 +843,58 @@ public class BreakpointTest extends AbstractDebugTest {
         }
         Assert.assertEquals(false, sessionBreakpoint.isResolved());
 
+    }
+
+    @Test
+    public void testBreakAtExpressions() {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  EXPRESSION,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).sourceElements(SourceElement.EXPRESSION).build();
+            session.install(breakpoint);
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
+                checkState(event, 3, true, "EXPRESSION");
+            });
+            expectDone();
+        }
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).sourceElements(SourceElement.EXPRESSION).build();
+            // Will be moved from line 2 to the expression at line 3.
+            session.install(breakpoint);
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
+                checkState(event, 3, true, "EXPRESSION");
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testBreakAtMultipleSourceElements() {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,EXPRESSION,\n" +
+                        "  EXPRESSION,STATEMENT,\n" +
+                        "  STATEMENT,EXPRESSION\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            Breakpoint breakpoint = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).sourceElements(SourceElement.STATEMENT, SourceElement.EXPRESSION).build();
+            session.install(breakpoint);
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
+                checkState(event, 3, true, "EXPRESSION");
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
+                checkState(event, 3, true, "STATEMENT");
+            });
+            expectDone();
+        }
     }
 }

@@ -49,6 +49,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotEngine;
 
@@ -189,6 +190,25 @@ public final class DebuggerTester implements AutoCloseable {
                 DebuggerTester.this.onSuspend(event);
             }
         });
+    }
+
+    /**
+     * Starts a new {@link Debugger#startSession(SuspendedCallback, SourceElement...) debugger
+     * session} in the context's {@link Engine engine}. The debugger session allows to suspend the
+     * execution on the provided source elements and to install breakpoints. If multiple sessions
+     * are created for one {@link #startEval(Source) evaluation} then all suspended events are
+     * delegated to this debugger tester instance.
+     *
+     * @param sourceElements a list of source elements
+     * @return a new debugger session
+     * @since 0.33
+     */
+    public DebuggerSession startSession(SourceElement... sourceElements) {
+        return getDebugger().startSession(new SuspendedCallback() {
+            public void onSuspend(SuspendedEvent event) {
+                DebuggerTester.this.onSuspend(event);
+            }
+        }, sourceElements);
     }
 
     /**

@@ -26,6 +26,8 @@ package com.oracle.truffle.api.debug;
 
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -51,6 +53,8 @@ interface SuspendedContext {
 
     Node getInstrumentedNode();
 
+    boolean hasTag(Class<? extends Tag> tag);
+
     boolean isLanguageContextInitialized();
 
     ThreadDeath createUnwind(Object info, EventBinding<?> unwindBinding);
@@ -74,6 +78,11 @@ interface SuspendedContext {
 
         public Node getInstrumentedNode() {
             return eventContext.getInstrumentedNode();
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return eventContext.hasTag(tag);
         }
 
         public boolean isLanguageContextInitialized() {
@@ -118,6 +127,11 @@ interface SuspendedContext {
         @Override
         public Node getInstrumentedNode() {
             return node;
+        }
+
+        @Override
+        public boolean hasTag(Class<? extends Tag> tag) {
+            return ((node instanceof InstrumentableNode) && ((InstrumentableNode) node).hasTag(tag));
         }
 
         @Override

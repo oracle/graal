@@ -83,6 +83,17 @@ final class DefaultScope {
         }
     }
 
+    private static boolean isInternal(FrameSlot slot) {
+        Object identifier = slot.getIdentifier();
+        if (identifier == null) {
+            return true;
+        }
+        if (VMAccessor.INSTRUMENT.isInputValueSlotIdentifier(identifier)) {
+            return true;
+        }
+        return false;
+    }
+
     private static Object getVariables(RootNode root, Frame frame) {
         List<? extends FrameSlot> slots;
         if (frame == null) {
@@ -93,7 +104,8 @@ final class DefaultScope {
             List<FrameSlot> nonNulls = null;
             int lastI = 0;
             for (int i = 0; i < slots.size(); i++) {
-                if (frame.getValue(slots.get(i)) == null) {
+                FrameSlot slot = slots.get(i);
+                if (frame.getValue(slot) == null || isInternal(slot)) {
                     if (nonNulls == null) {
                         nonNulls = new ArrayList<>(slots.size());
                     }

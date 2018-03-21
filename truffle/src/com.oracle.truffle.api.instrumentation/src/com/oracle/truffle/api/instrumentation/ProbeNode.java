@@ -1228,7 +1228,7 @@ public final class ProbeNode extends Node {
             return inputValues;
         }
 
-        private static final class SavedInputValueID {
+        static final class SavedInputValueID {
 
             private final EventBinding<?> binding;
             private final int index;
