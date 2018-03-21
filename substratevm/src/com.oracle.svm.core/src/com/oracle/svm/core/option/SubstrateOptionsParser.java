@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -265,8 +266,7 @@ public class SubstrateOptionsParser {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s) {
-        final int width = 120;
+    private static String wrap(String s, int width) {
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
         while (cursor + width < sb.length()) {
@@ -284,19 +284,22 @@ public class SubstrateOptionsParser {
         return sb.toString();
     }
 
-    private static void printOption(PrintStream out, String option, String description, int indentation) {
+    private static void printOption(PrintStream out, String option, String description) {
+        printOption(out::println, option, description, 2, 45, 120);
+    }
+
+    public static void printOption(Consumer<String> println, String option, String description, int indentation, int optionWidth, int wrapWidth) {
         String indent = spaces(indentation);
-        String desc = wrap(description != null ? description : "");
+        String desc = wrap(description != null ? description : "", wrapWidth);
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
-        int optionWidth = 45;
         if (option.length() >= optionWidth && description != null) {
-            out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
+            println.accept(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {
-            out.println(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
+            println.accept(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
         }
         for (int i = 1; i < descLines.length; i++) {
-            out.println(indent + spaces(optionWidth) + descLines[i]);
+            println.accept(indent + spaces(optionWidth) + descLines[i]);
         }
     }
 
@@ -325,13 +328,13 @@ public class SubstrateOptionsParser {
                 } else {
                     helpMsg += "Default: + (enabled).";
                 }
-                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg, 2);
+                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
                 Object def = descriptor.getOptionKey().getDefaultValue();
                 if (def instanceof String) {
                     def = '"' + String.valueOf(def) + '"';
                 }
-                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg, 2);
+                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg);
             }
         }
     }

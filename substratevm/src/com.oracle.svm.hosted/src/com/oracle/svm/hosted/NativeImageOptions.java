@@ -34,6 +34,7 @@ import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -103,6 +104,7 @@ public class NativeImageOptions {
     @Option(help = "Suppress console normal output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStdout = new HostedOptionKey<>(false);
 
+    @APIOption(name = "report-unsupported-elements-at-runtime")//
     @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<Boolean>(false) {
         @Override

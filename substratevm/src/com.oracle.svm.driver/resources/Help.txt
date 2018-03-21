@@ -23,9 +23,3 @@ where options include:
     --version             print product version and exit
     --help                print this help message
     --help-extra          print help on non-standard options
-
-    --report-unsupported-elements-at-runtime
-                          report usage of unsupported methods and fields at run time when
-                          they are accessed the first time, instead of as an error during
-                          image building
- 

@@ -30,9 +30,9 @@ import java.util.Queue;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 import org.graalvm.compiler.options.OptionType;
+
+import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -50,8 +50,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--help":
                 args.poll();
                 nativeImage.showMessage(helpText);
+                nativeImage.showNewline();
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage);
+                nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
-                nativeImage.showMessage("");
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case "--version":
@@ -126,10 +129,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
                 nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);
-                return true;
-            case "--report-unsupported-elements-at-runtime":
-                args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + "+" + NativeImageOptions.ReportUnsupportedElementsAtRuntime.getName());
                 return true;
         }
 

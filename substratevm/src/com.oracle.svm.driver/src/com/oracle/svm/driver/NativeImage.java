@@ -128,6 +128,8 @@ class NativeImage {
         abstract boolean consume(Queue<String> args);
     }
 
+    final APIOptionHandler apiOptionHandler;
+
     static final String oH = "-H:";
     static final String oR = "-R:";
 
@@ -254,6 +256,8 @@ class NativeImage {
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
+        apiOptionHandler = new APIOptionHandler(this);
+        registerOptionHandler(apiOptionHandler);
         registerOptionHandler(new MacroOptionHandler(this));
     }
 
@@ -570,7 +574,7 @@ class NativeImage {
         }
     }
 
-    private Path canonicalize(Path path) {
+    Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : workDir.resolve(path);
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
@@ -660,6 +664,10 @@ class NativeImage {
 
     void showMessage(String message) {
         show(System.out::println, message);
+    }
+
+    void showNewline() {
+        System.out.println();
     }
 
     void showMessagePart(String message) {
