@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import java.math.BigInteger;
+import java.util.Map;
+
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
@@ -37,12 +40,10 @@ import com.oracle.truffle.llvm.parser.metadata.MDCompileUnit;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
-import com.oracle.truffle.llvm.parser.metadata.MDKind;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNamedNode;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
-import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -60,9 +61,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
-
-import java.math.BigInteger;
-import java.util.Map;
+import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
 
 public final class DebugInfoModuleProcessor {
 
@@ -91,15 +90,6 @@ public final class DebugInfoModuleProcessor {
     }
 
     private static final class SymbolProcessor implements ModelVisitor {
-
-        private static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
-            if (holder.hasAttachedMetadata()) {
-                return holder.getMetadataAttachment(MDKind.DBG_NAME);
-
-            } else {
-                return null;
-            }
-        }
 
         private final DebugInfoCache cache;
         private final Source bitcodeSource;
