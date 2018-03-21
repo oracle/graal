@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -178,9 +179,9 @@ public interface NodeFactory {
     LLVMExpressionNode createInlineAssemblerExpression(LLVMParserRuntime runtime, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type[] argTypes, Type retType,
                     LLVMSourceLocation sourceSection);
 
-    Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable);
+    Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable, LLVMSourceSymbol sourceSymbol);
 
-    Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant);
+    Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant, LLVMSourceSymbol sourceSymbol);
 
     LLVMExpressionNode createLandingPad(LLVMParserRuntime runtime, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds,
                     LLVMExpressionNode[] entries, LLVMExpressionNode getStack);

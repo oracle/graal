@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -254,19 +255,28 @@ public final class LLVMParserRuntime {
     }
 
     private LLVMExpressionNode getGlobalVariable(LLVMSymbolReadResolver symbolResolver, GlobalValueSymbol global) {
+        LLVMSourceSymbol sourceSymbol = null;
         SymbolImpl g = global;
         while (g instanceof GlobalAlias) {
+            if (sourceSymbol == null) {
+                sourceSymbol = ((GlobalAlias) g).getSourceSymbol();
+            }
             g = aliases.get(g);
+        }
+
+        if (sourceSymbol == null && g instanceof GlobalValueSymbol) {
+            sourceSymbol = ((GlobalValueSymbol) g).getSourceSymbol();
         }
 
         if (g instanceof GlobalValueSymbol) {
             final GlobalValueSymbol variable = (GlobalValueSymbol) g;
+            final LLVMSourceSymbol finalSourceSymbol = sourceSymbol;
             Object globalVariableDescriptor = scope.lookupOrCreateGlobal(variable.getName(), !Linkage.isFileLocal(variable.getLinkage()), () -> {
                 final Object globalValue;
                 if (global instanceof GlobalVariable) {
-                    globalValue = nodeFactory.allocateGlobalVariable(this, (GlobalVariable) global);
+                    globalValue = nodeFactory.allocateGlobalVariable(this, (GlobalVariable) global, finalSourceSymbol);
                 } else if (global instanceof GlobalConstant) {
-                    globalValue = nodeFactory.allocateGlobalConstant(this, (GlobalConstant) global);
+                    globalValue = nodeFactory.allocateGlobalConstant(this, (GlobalConstant) global, finalSourceSymbol);
                 } else {
                     throw new AssertionError("Cannot allocate global: " + global);
                 }

@@ -364,6 +364,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -1507,26 +1508,26 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable) {
-        return allocateGlobalIntern(runtime, globalVariable);
+    public Object allocateGlobalVariable(LLVMParserRuntime runtime, GlobalVariable globalVariable, LLVMSourceSymbol sourceSymbol) {
+        return allocateGlobalIntern(runtime, globalVariable, sourceSymbol);
     }
 
-    private static Object allocateGlobalIntern(LLVMParserRuntime runtime, final GlobalValueSymbol global) {
+    private static Object allocateGlobalIntern(LLVMParserRuntime runtime, final GlobalValueSymbol global, LLVMSourceSymbol sourceSymbol) {
         final Type resolvedType = ((PointerType) global.getType()).getPointeeType();
         final String name = global.getName();
 
         LLVMContext context = runtime.getContext();
         if (global.isExternal()) {
             NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
-            return LLVMGlobal.external(context, global, name, resolvedType, LLVMAddress.fromLong(nfiContextExtension.getNativeHandle(context, name)));
+            return LLVMGlobal.external(context, global, name, resolvedType, LLVMAddress.fromLong(nfiContextExtension.getNativeHandle(context, name)), sourceSymbol);
         } else {
-            return LLVMGlobal.internal(context, global, name, resolvedType);
+            return LLVMGlobal.internal(context, global, name, resolvedType, sourceSymbol);
         }
     }
 
     @Override
-    public Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant) {
-        return allocateGlobalIntern(runtime, globalConstant);
+    public Object allocateGlobalConstant(LLVMParserRuntime runtime, GlobalConstant globalConstant, LLVMSourceSymbol sourceSymbol) {
+        return allocateGlobalIntern(runtime, globalConstant, sourceSymbol);
     }
 
     @Override
