@@ -900,6 +900,22 @@ public class LLVMInteropTest {
     }
 
     @Test
+    public void testTypeCheckNative() {
+        Runner runner = new Runner("typeCheck");
+        runner.load();
+        int ret = runner.findGlobalSymbol("check_types_nativeptr").execute().asInt();
+        Assert.assertEquals(0, ret);
+    }
+
+    @Test
+    public void testFitsInNative() {
+        Runner runner = new Runner("fitsIn");
+        runner.load();
+        int ret = runner.findGlobalSymbol("test_fits_in_nativeptr").execute().asInt();
+        Assert.assertEquals(0, ret);
+    }
+
+    @Test
     public void testIsHandle() {
         Runner runner = new Runner("isHandle");
         Object a = new Object();
