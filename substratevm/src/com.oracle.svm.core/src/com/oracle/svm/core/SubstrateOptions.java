@@ -127,6 +127,9 @@ public class SubstrateOptions {
     @Option(help = "Prefix that is added to the names of API functions.")//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
 
+    @Option(help = "List of comma separated protocols to enable.")//
+    public static final HostedOptionKey<String> EnableURLProtocols = new HostedOptionKey<>("");
+
     /*
      * Object and array allocation options.
      */

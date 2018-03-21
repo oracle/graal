@@ -23,6 +23,7 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -35,9 +36,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -46,7 +47,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
     public static final String NATIVE_MESSAGE = String.format(
                     "Native method. If you intend to use the Java Native Interface (JNI), specify %1$s+JNI and see also %1$sJNIConfigurationFiles=<path> (use %1$s+PrintFlags for details)",
-                    HostedOptionParser.HOSTED_OPTION_PREFIX);
+                    SubstrateOptionsParser.HOSTED_OPTION_PREFIX);
 
     private final Delete deleteAnnotation;
 
@@ -63,6 +64,15 @@ public class DeletedMethod extends CustomSubstitutionMethod {
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
+    }
+
+    @Override
+    public int getModifiers() {
+        /*
+         * We remove the synchonized modifier because our manually constructed graph does not need
+         * to do synchronization (since it is reporting a fatal error anyway).
+         */
+        return original.getModifiers() & ~Modifier.SYNCHRONIZED;
     }
 
     @Override
