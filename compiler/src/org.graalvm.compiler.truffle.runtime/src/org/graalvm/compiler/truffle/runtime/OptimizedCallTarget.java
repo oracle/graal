@@ -113,7 +113,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
 
-    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes = new ArrayList<>();
+    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes = new ArrayList<>(1);
     private boolean needsSplit;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
