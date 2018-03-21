@@ -631,10 +631,10 @@ def build_js(native_image):
     truffle_language_ensure('js')
     native_image(['--Language:js', '--Tool:chromeinspector'])
 
-def test_js(benchmarks):
+def test_js(benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
     for benchmark_name, warmup_iterations, iterations, timeout in benchmarks:
-        js_image_test(join(svmbuild_dir(), 'js'), bench_location, benchmark_name, warmup_iterations, iterations, timeout)
+        js_image_test(join(svmbuild_dir(), 'js'), bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args)
 
 def test_run(cmds, expected_stdout, timeout=10):
     stdoutdata = []

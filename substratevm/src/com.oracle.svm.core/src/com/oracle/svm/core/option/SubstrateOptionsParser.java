@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.SortedMap;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionsParser;
@@ -186,6 +187,8 @@ public class SubstrateOptionsParser {
                     } else {
                         return OptionParseResult.error("Boolean option '" + optionName + "' must have value 'true' or 'false'");
                     }
+                } else if (optionType == CompilationWrapper.ExceptionAction.class) {
+                    value = CompilationWrapper.ExceptionAction.valueOf(valueString);
                 } else {
                     throw VMError.shouldNotReachHere("Unsupported option value class: " + optionType.getSimpleName());
                 }
