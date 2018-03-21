@@ -47,7 +47,8 @@ public final class OptionDescriptor {
         return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option);
     }
 
-    public static OptionDescriptor create(String name, OptionType optionType, Class<?> optionValueType, String help, String[] extraHelp, Class<?> declaringClass, String fieldName, OptionKey<?> option) {
+    public static OptionDescriptor create(String name, OptionType optionType, Class<?> optionValueType, String help, String[] extraHelp, Class<?> declaringClass, String fieldName,
+                    OptionKey<?> option) {
         assert option != null : declaringClass + "." + fieldName;
         OptionDescriptor result = option.getDescriptor();
         if (result == null) {
