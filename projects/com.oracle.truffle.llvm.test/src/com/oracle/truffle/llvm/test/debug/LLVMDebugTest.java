@@ -29,6 +29,16 @@
  */
 package com.oracle.truffle.llvm.test.debug;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
@@ -47,17 +57,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import static com.oracle.truffle.llvm.test.debug.StopRequest.Scope;
 import static org.junit.Assert.assertEquals;
 
@@ -86,13 +85,13 @@ public final class LLVMDebugTest {
     public static Collection<Object[]> getConfigurations() {
         final Map<String, String[]> configs = new HashMap<>();
         configs.put("testPrimitives", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        // configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testUnions", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testDecorators", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        // configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        // configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        // configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testFunctionPointer", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
     }
