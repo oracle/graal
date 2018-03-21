@@ -24,6 +24,7 @@ package org.graalvm.compiler.serviceprovider;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.ServiceConfigurationError;
 
@@ -63,10 +64,24 @@ public final class GraalServices {
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
+    @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        return Services.load(service);
+        try {
+            if (loadMethod == null) {
+                loadMethod = Services.class.getMethod("load", Class.class);
+            }
+            return (Iterable<S>) loadMethod.invoke(null, service);
+        } catch (Exception e) {
+            throw new InternalError(e);
+        }
     }
+
+    /**
+     * {@code Services.load(Class)} is only defined in JVMCI-8 so we use reflection to simplify
+     * compiling with javac on JDK 9 or later.
+     */
+    private static volatile Method loadMethod;
 
     /**
      * Gets the provider for a given service for which at most one provider must be available.
