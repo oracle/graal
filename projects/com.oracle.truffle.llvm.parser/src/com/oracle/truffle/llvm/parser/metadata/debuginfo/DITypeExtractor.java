@@ -29,7 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.metadata.Flags;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
@@ -42,6 +48,7 @@ import com.oracle.truffle.llvm.parser.metadata.MDGlobalVariableExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
 import com.oracle.truffle.llvm.parser.metadata.MDNode;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MDSubrange;
 import com.oracle.truffle.llvm.parser.metadata.MDSubroutine;
 import com.oracle.truffle.llvm.parser.metadata.MDType;
@@ -49,28 +56,19 @@ import com.oracle.truffle.llvm.parser.metadata.MDValue;
 import com.oracle.truffle.llvm.parser.metadata.MDVoidNode;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceEnumLikeType;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-
 import static com.oracle.truffle.llvm.runtime.debug.LLVMSourceType.UNKNOWN;
-import static com.oracle.truffle.llvm.runtime.debug.LLVMSourceType.VOID;
 
 final class DITypeExtractor implements MetadataVisitor {
 
@@ -276,22 +274,8 @@ final class DITypeExtractor implements MetadataVisitor {
             return;
         }
 
-        final LLVMSourceLocation location = scopeBuilder.buildLocation(mdSubroutine);
         final List<LLVMSourceType> members = new ArrayList<>();
-        final LLVMSourceDecoratorType type = new LLVMSourceDecoratorType(0L, 0L, 0L, new Function<String, String>() {
-            @Override
-            @TruffleBoundary
-            public String apply(String ignored) {
-                if (members.isEmpty()) {
-                    return "(void())";
-                } else {
-                    CompilerDirectives.transferToInterpreter();
-                    final LLVMSourceType returnType = members.get(0);
-                    final String returnTypeName = returnType != UNKNOWN ? returnType.getName() : VOID.getName();
-                    return returnTypeName + members.subList(1, members.size()).stream().map(LLVMSourceType::getName).collect(Collectors.joining(", ", "(", ")"));
-                }
-            }
-        }, location);
+        final LLVMSourceFunctionType type = new LLVMSourceFunctionType(members);
         parsedTypes.put(mdSubroutine, type);
         getElements(mdSubroutine.getTypes(), members, true);
     }
@@ -482,6 +466,13 @@ final class DITypeExtractor implements MetadataVisitor {
                 type = newPointer;
             }
             parsedTypes.put(mdLocal, type);
+        }
+    }
+
+    @Override
+    public void visit(MDSubprogram mdSubprogram) {
+        if (!parsedTypes.containsKey(mdSubprogram)) {
+            parsedTypes.put(mdSubprogram, resolve(mdSubprogram.getType()));
         }
     }
 
