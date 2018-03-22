@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -117,6 +118,11 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         RootNode rootNode = nodeFactory.createFunctionStartNode(runtime, body, method.getSourceSection(), frame, method, source, location);
 
         return Truffle.getRuntime().createCallTarget(rootNode);
+    }
+
+    @Override
+    public LLVMSourceFunctionType getSourceType() {
+        return method.getSourceFunction().getSourceType();
     }
 
     private static FrameSlot[][] getNullableFrameSlots(FrameDescriptor frame, BitSet[] nullableBeforeBlock, List<FrameSlot> notNullable) {

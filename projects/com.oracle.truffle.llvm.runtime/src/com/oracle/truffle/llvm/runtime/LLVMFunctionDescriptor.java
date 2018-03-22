@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -133,6 +134,10 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
         }
 
         abstract TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor);
+
+        LLVMSourceFunctionType getSourceType() {
+            return null;
+        }
     }
 
     abstract static class ManagedFunction extends Function {
@@ -173,15 +178,24 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
         @Override
         void resolve(LLVMFunctionDescriptor descriptor) {
-            descriptor.setFunction(new LLVMIRFunction(converter.convert()));
+            final RootCallTarget callTarget = converter.convert();
+            final LLVMSourceFunctionType sourceType = converter.getSourceType();
+            descriptor.setFunction(new LLVMIRFunction(callTarget, sourceType));
         }
     }
 
     static final class LLVMIRFunction extends ManagedFunction {
         private final RootCallTarget callTarget;
+        private final LLVMSourceFunctionType sourceType;
 
-        LLVMIRFunction(RootCallTarget callTarget) {
+        LLVMIRFunction(RootCallTarget callTarget, LLVMSourceFunctionType sourceType) {
             this.callTarget = callTarget;
+            this.sourceType = sourceType;
+        }
+
+        @Override
+        LLVMSourceFunctionType getSourceType() {
+            return sourceType;
         }
     }
 
@@ -283,6 +297,15 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
 
     public interface LazyToTruffleConverter {
         RootCallTarget convert();
+
+        /**
+         * Get an {@link com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType} for the
+         * already converted function. Can be null if no debug information is available in the
+         * bitcode file.
+         *
+         * @return the function's source-level type
+         */
+        LLVMSourceFunctionType getSourceType();
     }
 
     public boolean isLLVMIRFunction() {
@@ -317,7 +340,7 @@ public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<L
     }
 
     public void declareInSulong(RootCallTarget callTarget, boolean newWeak) {
-        declareInSulong(new LLVMIRFunction(callTarget), newWeak, false);
+        declareInSulong(new LLVMIRFunction(callTarget, null), newWeak, false);
     }
 
     public RootCallTarget getLLVMIRFunction() {

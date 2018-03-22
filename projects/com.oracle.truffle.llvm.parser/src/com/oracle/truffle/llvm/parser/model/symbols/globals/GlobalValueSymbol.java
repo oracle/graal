@@ -29,19 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachmentHolder {
 
@@ -59,12 +60,15 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private List<MDAttachment> mdAttachments = null;
 
+    private LLVMSourceSymbol sourceSymbol;
+
     GlobalValueSymbol(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
         this.type = type;
         this.align = align;
         this.linkage = linkage;
         this.visibility = visibility;
         this.value = value > 0 ? symbolTable.getForwardReferenced(value - 1, this) : null;
+        this.sourceSymbol = null;
     }
 
     public abstract void accept(ModelVisitor visitor);
@@ -102,6 +106,14 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     public Visibility getVisibility() {
         return visibility;
+    }
+
+    public LLVMSourceSymbol getSourceSymbol() {
+        return sourceSymbol;
+    }
+
+    public void setSourceSymbol(LLVMSourceSymbol sourceSymbol) {
+        this.sourceSymbol = sourceSymbol;
     }
 
     @Override

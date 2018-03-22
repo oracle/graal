@@ -54,7 +54,9 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruc
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.InstructionVisitorAdapter;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
@@ -93,7 +95,15 @@ public final class DebugInfoFunctionProcessor {
 
     private void initSourceFunction(FunctionDefinition function, Source bitcodeSource) {
         final MDBaseNode debugInfo = getDebugInfo(function);
-        LLVMSourceLocation scope = debugInfo != null ? cache.buildLocation(debugInfo) : null;
+        LLVMSourceLocation scope = null;
+        LLVMSourceFunctionType type = null;
+        if (debugInfo != null) {
+            scope = cache.buildLocation(debugInfo);
+            LLVMSourceType actualType = cache.parseType(debugInfo);
+            if (actualType instanceof LLVMSourceFunctionType) {
+                type = (LLVMSourceFunctionType) actualType;
+            }
+        }
 
         if (scope == null) {
             final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
@@ -102,7 +112,7 @@ public final class DebugInfoFunctionProcessor {
             scope = LLVMSourceLocation.createBitcodeFunction(function.getName(), simpleSection);
         }
 
-        final SourceFunction sourceFunction = new SourceFunction(scope);
+        final SourceFunction sourceFunction = new SourceFunction(scope, type);
         function.setSourceFunction(sourceFunction);
         for (SourceVariable local : sourceFunction.getVariables()) {
             local.processFragments();
