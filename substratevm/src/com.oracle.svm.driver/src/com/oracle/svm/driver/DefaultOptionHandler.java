@@ -108,6 +108,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.setDryRun(true);
                 return true;
             case "-shared":
+            case "--shared":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oHKind + NativeImageKind.SHARED_LIBRARY.name());
                 return true;

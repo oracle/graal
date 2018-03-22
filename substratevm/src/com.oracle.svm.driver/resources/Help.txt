@@ -13,7 +13,7 @@ where options include:
     --class-path <class search path of directories and zip/jar files>
                           A %pathsep% separated list of directories, JAR archives,
                           and ZIP archives to search for class files.
-    -shared               build shared library
+    --shared              build shared library
     -D<name>=<value>      set a system property
     -J<flag>              pass <flag> directly to the JVM running the image generator
     -g                    enable debuginfo generation
