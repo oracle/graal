@@ -31,6 +31,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
@@ -77,8 +78,8 @@ public class SubstrateOptionsParser {
             return new OptionParseResult(selectedOptionTypes, null);
         }
 
-        EnumSet<OptionType> printFlags() {
-            return printFlags;
+        boolean printFlags() {
+            return !printFlags.isEmpty();
         }
 
         public boolean isValid() {
@@ -87,6 +88,20 @@ public class SubstrateOptionsParser {
 
         public String getError() {
             return error;
+        }
+
+        private boolean matchesFlags(OptionDescriptor d, boolean svmOption) {
+            boolean isMatch = printFlags.contains(d.getOptionType());
+            return svmOption ? isMatch : isMatch && printFlags.size() == 1;
+        }
+
+        boolean matchesFlagsRuntime(OptionDescriptor d) {
+            return matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey);
+        }
+
+        boolean matchesFlagsHosted(OptionDescriptor d) {
+            OptionKey<?> key = d.getOptionKey();
+            return matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
         }
     }
 
@@ -252,8 +267,8 @@ public class SubstrateOptionsParser {
         }
 
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
-        if (!optionParseResult.printFlags().isEmpty()) {
-            SubstrateOptionsParser.printFlags(optionParseResult.printFlags(), options, optionPrefix, out);
+        if (optionParseResult.printFlags()) {
+            SubstrateOptionsParser.printFlags(optionParseResult::matchesFlagsHosted, options, optionPrefix, out);
             throw new InterruptImageBuilding();
         }
         if (!optionParseResult.isValid()) {
@@ -303,14 +318,10 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static void printFlags(EnumSet<OptionType> optionTypes, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
+    static void printFlags(Predicate<OptionDescriptor> filter, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
         for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
             OptionDescriptor descriptor = entry.getValue();
-            if (!optionTypes.contains(descriptor.getOptionType())) {
-                continue;
-            }
-            OptionKey<?> optionKey = descriptor.getOptionKey();
-            if (!(optionKey instanceof HostedOptionKey || optionKey instanceof RuntimeOptionKey)) {
+            if (!filter.test(descriptor)) {
                 continue;
             }
             String helpMsg = descriptor.getHelp();

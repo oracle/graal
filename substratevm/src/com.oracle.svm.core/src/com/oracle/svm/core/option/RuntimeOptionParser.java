@@ -166,8 +166,8 @@ public final class RuntimeOptionParser {
      */
     private void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean systemExitOnError) {
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(sortedOptions, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
-        if (!parseResult.printFlags().isEmpty()) {
-            SubstrateOptionsParser.printFlags(parseResult.printFlags(), sortedOptions, optionPrefix, Log.logStream());
+        if (parseResult.printFlags()) {
+            SubstrateOptionsParser.printFlags(parseResult::matchesFlagsRuntime, sortedOptions, optionPrefix, Log.logStream());
             System.exit(0);
         }
         if (!parseResult.isValid()) {

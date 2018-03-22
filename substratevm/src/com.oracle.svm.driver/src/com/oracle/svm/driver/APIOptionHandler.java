@@ -25,8 +25,6 @@ package com.oracle.svm.driver;
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Queue;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -61,7 +59,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    private final Map<String, OptionInfo> apiOptions;
+    private final SortedMap<String, OptionInfo> apiOptions;
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -101,7 +99,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 @AutomaticFeature
 final class APIOptionCollector implements Feature {
 
-    final Map<String, APIOptionHandler.OptionInfo> options = new HashMap<>();
+    final SortedMap<String, APIOptionHandler.OptionInfo> options = new TreeMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     APIOptionCollector() {
