@@ -48,33 +48,31 @@ public class StringTable {
     private Map<String, Integer> stringToIndexMap = new HashMap<>();
     private int totalSize;
 
-    public StringTable(byte[] bytes) {
-        this(AssemblyBuffer.createInputDisassembler(ByteBuffer.wrap(bytes)), bytes.length);
+    public StringTable() {
     }
 
-    public StringTable(InputDisassembler db, int size) {
-        read(db, size);
+    public StringTable(byte[] bytes) {
+        this(ByteBuffer.wrap(bytes));
+    }
+
+    public StringTable(ByteBuffer buffer) {
+        read(AssemblyBuffer.createInputDisassembler(buffer), buffer.limit() - buffer.position());
     }
 
     public void read(InputDisassembler db, int size) {
-        final int charsToRead = size;
-        int charsRead = 0; // also serves as string section index
+        int charsRead = 0;
         // FIXME: this is wrong if suffix encoding is used
-        while (charsRead < charsToRead) {
+        while (charsRead < size) {
             final String s = db.readZeroTerminatedString();
             if (stringMap.get(charsRead) != null) {
                 throw new IllegalStateException("offset cannot be re-used");
             }
-            Integer index = Integer.valueOf(charsRead);
+            Integer index = charsRead;
             stringMap.put(index, s);
             stringToIndexMap.put(s, index);
             charsRead += s.length() + 1; // also count the trailing 0 char
         }
         totalSize = charsRead;
-    }
-
-    public StringTable() {
-        // default constructor, nothing to do
     }
 
     /**
@@ -121,35 +119,6 @@ public class StringTable {
             return toReturn;
         }
         return null;
-        //@formatter:off
-//        if (str == null) {
-//            // Some of those references are into the middle of strings in the section (hack!).
-//            // For such indices, the preferred (non-hack!) strategy will obviously return null.
-//            // We resolve these by finding the closest index and returning a substring.
-//            // The result of this is then stored in the map.
-//            List<Integer> keys = sortedKeys();
-//            for (int i = 0; i < keys.size() - 1; ++i) {
-//                final long ki = keys.get(i);
-//                if (ki < index && index < keys.get(i + 1)) {
-//                    final String superString = stringMap.get(ki);
-//                    str = superString.substring((int) (index - ki));
-//                    stringMap.put(index, str);
-//                    return str;
-//                }
-//            }
-//            final long ki = keys.get(keys.size() - 1);
-//            final String lastString = stringMap.get(ki);
-//            if (ki < index && index - ki < lastString.length()) {
-//                str = lastString.substring((int) (index - ki));
-//                stringMap.put(index, str);
-//                return str;
-//            }
-//            // really, not found
-//            return null;
-//        } else {
-//            return str;
-//        }
-        //@formatter:on
     }
 
     private List<Integer> sortedKeys() {
@@ -170,7 +139,6 @@ public class StringTable {
     }
 
     public void write(OutputAssembler out) {
-        assert totalSize <= Integer.MAX_VALUE;
         byte[] blob = new byte[totalSize];
         int w = 0;
         for (Integer index : sortedKeys()) {
