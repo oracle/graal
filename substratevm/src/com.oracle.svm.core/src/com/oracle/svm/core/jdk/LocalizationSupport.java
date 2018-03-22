@@ -23,8 +23,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Locale;
@@ -73,23 +71,6 @@ public final class LocalizationSupport {
         // Ensure the bundle contents is loaded.
         bundle.getKeys();
 
-        if (bundle instanceof sun.util.resources.OpenListResourceBundle) {
-            try {
-                java.lang.reflect.Field lookupField = sun.util.resources.OpenListResourceBundle.class.getDeclaredField("lookup");
-                lookupField.setAccessible(true);
-                Map<?, ?> lookup = (Map<?, ?>) lookupField.get(bundle);
-
-                /*
-                 * Make sure all the cached sets are allocated, so that the static analysis sees the
-                 * classes as instantiated.
-                 */
-                lookup.keySet();
-                lookup.entrySet();
-                lookup.values();
-            } catch (Throwable ex) {
-                throw shouldNotReachHere(ex);
-            }
-        }
         cache.put(bundleName, bundle);
     }
 

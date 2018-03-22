@@ -52,8 +52,8 @@ public class HostedMetaAccess extends UniverseMetaAccess {
         return result;
     }
 
-    public Optional<? extends ResolvedJavaType> optionalLookupJavaType(Class<?> clazz) {
-        ResolvedJavaType result = getTypeCacheEntry(clazz);
+    public Optional<HostedType> optionalLookupJavaType(Class<?> clazz) {
+        HostedType result = (HostedType) getTypeCacheEntry(clazz);
         if (result != null) {
             return Optional.of(result);
         }

@@ -122,8 +122,6 @@ import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -1563,69 +1561,6 @@ public final class PosixJavaNIOSubstitutions {
             result[i] = cstr.read(i);
         }
         return result;
-    }
-
-    @Platforms({LINUX.class, DARWIN.class})
-    @TargetClass(className = "java.nio.channels.spi.SelectorProvider")
-    static final class Target_java_nio_channels_spi_SelectorProvider {
-
-        /* Aliases to gain visibility. */
-
-        /* Do not re-format commented-out code: @formatter:off */
-        @Substitute
-        /* No reflection at runtime. */
-        /* No system properties at runtime. */
-        // 087     private static boolean loadProviderFromProperty() {
-        private static boolean loadProviderFromProperty() {
-            // 088         String cn = System.getProperty("java.nio.channels.spi.SelectorProvider");
-            // 089         if (cn == null)
-            // 090             return false;
-            /* TODO: The property appears to be unset, so this is easy. */
-            return false;
-            // 091         try {
-            // 092             Class<?> c = Class.forName(cn, true,
-            // 093                                        ClassLoader.getSystemClassLoader());
-            // 094             provider = (SelectorProvider)c.newInstance();
-            // 095             return true;
-            // 096         } catch (ClassNotFoundException x) {
-            // 097             throw new ServiceConfigurationError(null, x);
-            // 098         } catch (IllegalAccessException x) {
-            // 099             throw new ServiceConfigurationError(null, x);
-            // 100         } catch (InstantiationException x) {
-            // 101             throw new ServiceConfigurationError(null, x);
-            // 102         } catch (SecurityException x) {
-            // 103             throw new ServiceConfigurationError(null, x);
-            // 104         }
-        }
-        /* @formatter:on */
-
-        /* Do not re-format commented-out code: @formatter:off */
-        @Substitute
-        // 107     private static boolean loadProviderAsService() {
-        private static boolean loadProviderAsService() {
-            /* TODO: Assume there is no ServiceLoader<SelectorProvider>. */
-            return false;
-            // 108
-            // 109         ServiceLoader<SelectorProvider> sl =
-            // 110             ServiceLoader.load(SelectorProvider.class,
-            // 111                                ClassLoader.getSystemClassLoader());
-            // 112         Iterator<SelectorProvider> i = sl.iterator();
-            // 113         for (;;) {
-            // 114             try {
-            // 115                 if (!i.hasNext())
-            // 116                     return false;
-            // 117                 provider = i.next();
-            // 118                 return true;
-            // 119             } catch (ServiceConfigurationError sce) {
-            // 120                 if (sce.getCause() instanceof SecurityException) {
-            // 121                     // Ignore the security exception, try the next provider
-            // 122                     continue;
-            // 123                 }
-            // 124                 throw sce;
-            // 125             }
-            // 126         }
-        }
-        /* @formatter:on */
     }
 
     /*
