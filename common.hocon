@@ -1,30 +1,30 @@
 # overlay version
 overlay = 6f4b88a4acc9895abdd60473e21aac1257ee8fca
 
+# oraclejdk* are released OracleJDK binaries
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
   labsjdk8 : {name : labsjdk, version : "8u161-jvmci-0.41", platformspecific: true}
-  labsjdk9 : {name : labsjdk, version : "9+181", platformspecific: true}
   labsjdk8Debug : {name : labsjdk, version : "8u161-jvmci-0.41-fastdebug", platformspecific: true}
+  oraclejdk9 : {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
+  oraclejdk10 : {name : oraclejdk, version : "10+46", platformspecific: true}
 
-  # Strictly speaking, this is labsjdk-jdk-hs-snapshot but for
-  # readability we use the java.specification.version reported by the snapshot.
-  # This means the name will change to labsjdk11 at some point.
-  labsjdk10 : {name : labsjdk, version : "20180130-162725", platformspecific: true}
+  # Snapshot of http://hg.openjdk.java.net/jdk/hs
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180130-162725", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
 mx : {}
 
-labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk9} ]} }}
-labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk9} ]} }}
+labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
+labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
 
 # GR-5675
 # openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-labsjdk9 :      { downloads : { JAVA_HOME : ${jdks.labsjdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-labsjdk10 :     { downloads : { JAVA_HOME : ${jdks.labsjdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.labsjdk9} ]} }}
+oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"
