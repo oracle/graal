@@ -339,7 +339,7 @@ public class SubstrateOptionsParser {
         }
     }
 
-    static long parseLong(String v) {
+    public static long parseLong(String v) {
         String valueString = v.toLowerCase();
         long scale = 1;
         if (valueString.endsWith("k")) {
@@ -368,7 +368,7 @@ public class SubstrateOptionsParser {
      *         it returns "-H:Name=file")
      */
     public static String commandArgument(OptionKey<?> option, String value) {
-        if (option.getDescriptor().getType() == Boolean.class) {
+        if (option.getDescriptor().getOptionValueType() == Boolean.class) {
             assert value.equals("+") || value.equals("-") || value.equals("[+|-]") : "Boolean option can be only + or - or [+|-].";
             return HOSTED_OPTION_PREFIX + value + option;
         } else {

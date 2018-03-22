@@ -64,6 +64,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.genscavenge.HeapPolicyOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jdk.LocalizationSupport;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixExecutableName;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
@@ -356,8 +357,8 @@ class NativeImage {
 
         /* Provide more memory for image building if we have more than one language. */
         if (enabledLanguages.size() > 1) {
-            long baseMemRequirements = parseSize("4g");
-            long memRequirements = baseMemRequirements + enabledLanguages.size() * parseSize("1g");
+            long baseMemRequirements = SubstrateOptionsParser.parseLong("4g");
+            long memRequirements = baseMemRequirements + enabledLanguages.size() * SubstrateOptionsParser.parseLong("1g");
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
@@ -430,8 +431,8 @@ class NativeImage {
         imageClasspath.addAll(customImageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
-        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, NativeImage::parseSize, String::valueOf, () -> parseSize(getXmsValue()), Math::max);
+        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
+        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
         if (Word.unsigned(xmsValue).aboveThan(Word.unsigned(xmxValue))) {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
@@ -444,8 +445,8 @@ class NativeImage {
         /* Perform option consolidation of imageBuilderArgs */
         Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
         consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
-        consolidateArgs(imageBuilderArgs, oRYoungGenerationSize, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
-        consolidateArgs(imageBuilderArgs, oROldGenerationSize, NativeImage::parseSize, String::valueOf, () -> 0L, Math::max);
+        consolidateArgs(imageBuilderArgs, oRYoungGenerationSize, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
+        consolidateArgs(imageBuilderArgs, oROldGenerationSize, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
@@ -745,32 +746,10 @@ class NativeImage {
     protected String getXmxValue(int maxInstances) {
         UnsignedWord memMax = PhysicalMemory.size().unsignedDivide(10).multiply(8).unsignedDivide(maxInstances);
         String maxXmx = "14g";
-        if (memMax.aboveOrEqual(Word.unsigned(parseSize(maxXmx)))) {
+        if (memMax.aboveOrEqual(Word.unsigned(SubstrateOptionsParser.parseLong(maxXmx)))) {
             return maxXmx;
         }
         return Long.toUnsignedString(memMax.rawValue());
-    }
-
-    /* Taken from org.graalvm.compiler.options.OptionsParser.parseLong(String) */
-    protected static long parseSize(String v) {
-        String valueString = v.toLowerCase();
-        long scale = 1;
-        if (valueString.endsWith("k")) {
-            scale = 1024L;
-        } else if (valueString.endsWith("m")) {
-            scale = 1024L * 1024L;
-        } else if (valueString.endsWith("g")) {
-            scale = 1024L * 1024L * 1024L;
-        } else if (valueString.endsWith("t")) {
-            scale = 1024L * 1024L * 1024L * 1024L;
-        }
-
-        if (scale != 1) {
-            /* Remove trailing scale character. */
-            valueString = valueString.substring(0, valueString.length() - 1);
-        }
-
-        return Long.parseUnsignedLong(valueString) * scale;
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {
