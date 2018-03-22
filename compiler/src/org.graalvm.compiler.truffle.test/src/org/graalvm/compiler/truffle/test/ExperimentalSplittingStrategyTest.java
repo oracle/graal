@@ -374,7 +374,6 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
     }
 
-
     @Test
     public void testUnadopted() {
         final ExposesReportPolymorphicSpecializeNode node = new ExposesReportPolymorphicSpecializeNode();
