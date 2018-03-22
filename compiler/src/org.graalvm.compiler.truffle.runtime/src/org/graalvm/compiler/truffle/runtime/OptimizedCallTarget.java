@@ -661,26 +661,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return PolyglotCompilerOptions.getValue(rootNode, key);
     }
 
-    void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
+    synchronized void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
         // Keeping all the known call sites can be too much to handle in some cases
         // so we are limiting to a 100 call sites for now
-        synchronized (knownCallNodes) {
-            if (knownCallNodes.size() < 100) {
-                knownCallNodes.add(new WeakReference<>(directCallNode));
-            }
+        if (knownCallNodes.size() < 100) {
+            knownCallNodes.add(new WeakReference<>(directCallNode));
         }
     }
 
     // Also removes references to reclaimed objects
-    void removeKnownCallSite(OptimizedDirectCallNode callNodeToRemove) {
-        synchronized (knownCallNodes) {
-            knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
-                @Override
-                public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
-                    return nodeWeakReference.get() == callNodeToRemove || nodeWeakReference.get() == null;
-                }
-            });
-        }
+    synchronized void removeKnownCallSite(OptimizedDirectCallNode callNodeToRemove) {
+        knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
+            @Override
+            public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
+                return nodeWeakReference.get() == callNodeToRemove || nodeWeakReference.get() == null;
+            }
+        });
     }
 
     boolean isNeedsSplit() {
@@ -701,7 +697,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
         final int numberOfKnownCallNodes;
         final OptimizedDirectCallNode onlyCaller;
-        synchronized (knownCallNodes) {
+        synchronized (this) {
             numberOfKnownCallNodes = knownCallNodes.size();
             onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
         }
@@ -722,15 +718,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         } else {
             needsSplit = true;
-            maybeDump(toDump, knownCallNodes);
+            maybeDump(toDump);
         }
         return needsSplit;
     }
 
-    private static void maybeDump(List<Node> toDump, List<WeakReference<OptimizedDirectCallNode>> knownCallNodes) {
+    private void maybeDump(List<Node> toDump) {
         if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
-            synchronized (knownCallNodes) {
+            synchronized (this) {
                 for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
                     if (nodeRef.get() != null) {
                         callers.add(nodeRef.get());
