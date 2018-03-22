@@ -113,7 +113,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
 
-    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes = new ArrayList<>(1);
+    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
     private boolean needsSplit;
 
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
@@ -122,6 +122,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
+        knownCallNodes =  TruffleCompilerOptions.getValue(TruffleExperimentalSplitting) ? new ArrayList<>(1) : null;
     }
 
     public Assumption getNodeRewritingAssumption() {
