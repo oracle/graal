@@ -136,7 +136,7 @@ final class APIOptionCollector implements Feature {
                 options.put("--" + apiAnnotation.name(), new APIOptionHandler.OptionInfo(builderOption, helpText, apiAnnotation.kind().equals(APIOptionKind.Paths)));
             }
         } catch (NoSuchFieldException e) {
-            VMError.shouldNotReachHere();
+            /* Does not qualify as APIOption */
         }
     }
 }
