@@ -647,7 +647,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             writeByte(POOL_METHOD);
             writePoolObject(findMethodDeclaringClass(method));
             writePoolObject(findMethodName(method));
-            writePoolObject(findMethodSignature(method));
+            final Signature methodSignature = findMethodSignature(method);
+            if (findSignature(methodSignature) == null) {
+                throw new IOException("Should be recognized as signature: " + methodSignature + " for " + method);
+            }
+            writePoolObject(methodSignature);
             writeInt(findMethodModifiers(method));
             writeBytes(findMethodCode(method));
         }
