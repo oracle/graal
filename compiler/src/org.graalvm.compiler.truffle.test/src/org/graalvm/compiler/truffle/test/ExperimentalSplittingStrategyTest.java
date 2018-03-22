@@ -23,7 +23,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -80,8 +79,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
 
         @Fallback
-        @SuppressWarnings("unused")
-        static int do3(VirtualFrame frame, Object value) {
+        static int do3(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object value) {
             return 0;
         }
     }
@@ -100,8 +98,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
 
         @Fallback
-        @SuppressWarnings("unused")
-        int do3(VirtualFrame frame, Object value) {
+        int do3(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object value) {
             return 0;
         }
     }
@@ -120,8 +117,7 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
         }
 
         @Fallback
-        @SuppressWarnings("unused")
-        int do3(VirtualFrame frame, Object value) {
+        int do3(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") Object value) {
             return 0;
         }
     }
@@ -150,10 +146,10 @@ public class ExperimentalSplittingStrategyTest extends AbstractSplittingStrategy
     @NodeChild
     @ReportPolymorphism
     abstract static class HasInlineCacheNode extends SplittingTestNode {
-        @SuppressWarnings("unused")
+
         @Specialization(limit = "2", //
                         guards = "target.getRootNode() == cachedNode")
-        protected static Object doDirect(RootCallTarget target, @Cached("target.getRootNode()") RootNode cachedNode) {
+        protected static Object doDirect(RootCallTarget target, @Cached("target.getRootNode()") @SuppressWarnings("unused") RootNode cachedNode) {
             return target.call(noArguments);
         }
 
