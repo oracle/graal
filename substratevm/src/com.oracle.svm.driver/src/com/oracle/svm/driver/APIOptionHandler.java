@@ -39,7 +39,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
-import com.oracle.svm.core.option.APIOptionKind;
+import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;

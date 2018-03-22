@@ -40,4 +40,31 @@ public @interface APIOption {
     String name();
 
     APIOptionKind kind() default APIOptionKind.Default;
+
+    /**
+     * APIOptionKind can be used to customize how an {@link APIOption} gets rewritten to its
+     * {@link org.graalvm.compiler.options.Option} counterpart.
+     */
+    enum APIOptionKind {
+        /**
+         * A boolean {@link org.graalvm.compiler.options.Option} gets passed as
+         * <code>-{H,R}:+&lt;OptionDescriptor#name&gt;</code>. For other options if there is a
+         * substring after {@code =}, it gets appended to
+         * <code>-{H,R}:&lt;OptionDescriptor#name&gt;=</code>.
+         */
+        Default,
+        /**
+         * A boolean {@link org.graalvm.compiler.options.Option} gets passed as
+         * <code>-{H,R}:-&lt;OptionDescriptor#name&gt;</code>. For other options using
+         * {@code Negated} is not allowed.
+         */
+        Negated,
+        /**
+         * If a {@code String} {@link org.graalvm.compiler.options.Option} uses {@code Paths} any
+         * paths occurring in the {@code String} will be replaced by their fully qualified variants
+         * (relative to current working directory). (Needed for {@code NativeImageBuildServer}
+         * compatibility)
+         */
+        Paths
+    }
 }
