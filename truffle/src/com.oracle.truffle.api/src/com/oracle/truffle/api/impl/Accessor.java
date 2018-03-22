@@ -96,6 +96,10 @@ public abstract class Accessor {
         public abstract void setRootNodeBits(RootNode root, int bits);
 
         public abstract Lock getLock(Node node);
+
+        public void reportPolymorphicSpecialize(Node node) {
+            SUPPORT.reportPolymorphicSpecialize(node);
+        }
     }
 
     public abstract static class DumpSupport {
