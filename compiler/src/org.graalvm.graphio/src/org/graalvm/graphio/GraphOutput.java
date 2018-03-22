@@ -23,9 +23,9 @@
 package org.graalvm.graphio;
 
 import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collections;
 import java.util.Map;
@@ -272,7 +272,11 @@ public final class GraphOutput<G, M> implements Closeable {
         @Override
         public URI locationURI(StackTraceElement location) {
             String path = location.getFileName();
-            return path == null ? null : new File(path).toURI();
+            try {
+                return path == null ? null : new URI(null, null, path, null);
+            } catch (URISyntaxException ex) {
+                throw new IllegalArgumentException(ex);
+            }
         }
 
         @Override

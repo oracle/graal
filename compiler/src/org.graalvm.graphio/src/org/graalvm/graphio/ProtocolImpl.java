@@ -303,7 +303,16 @@ final class ProtocolImpl<Graph, Node, NodeClass, Port, Block, ResolvedJavaMethod
             return null;
         }
         URI u = locations.locationURI(loc);
-        return u == null || !"file".equals(u.getScheme()) ? null : new File(u).getPath();
+        if (u == null) {
+            return null;
+        }
+        if (u.getScheme() == null) {
+            return u.getPath();
+        }
+        if ("file".equals(u.getScheme())) {
+            return new File(u).getPath();
+        }
+        return null;
     }
 
     @Override
