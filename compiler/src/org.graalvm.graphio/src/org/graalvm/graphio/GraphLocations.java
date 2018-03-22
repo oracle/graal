@@ -23,6 +23,7 @@
 package org.graalvm.graphio;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Provides source location information about compiled code. This interface is an extension of
@@ -60,10 +61,10 @@ public interface GraphLocations<M, P, L> {
     String locationLanguage(L location);
 
     /**
-     * The universal resource identification that contains the location. If the location can be
-     * found in an assummably accessible resource, then use such resource identification. It is up
-     * to the side processing the URI to load the content from the location. Protocols scheme
-     * {@code file}, {@code http}, or {@code https} are assumed to be accessible.
+     * The universal resource identification that contains the location.If the location can be found
+     * in an assummably accessible resource, then use such resource identification. It is up to the
+     * side processing the URI to load the content from the location. Protocols scheme {@code file},
+     * {@code http}, or {@code https} are assumed to be accessible.
      * <p>
      * If the location is inside of a virtual source, or source which is unlikely to be accessible
      * outside of running program, then it may be better to encode the whole source into the
@@ -77,8 +78,9 @@ public interface GraphLocations<M, P, L> {
      *
      * @param location the location
      * @return the file name for the given location or {@code null} if it is not known
+     * @throws URISyntaxException yielding this exception aborts the graph dumping
      */
-    URI locationURI(L location);
+    URI locationURI(L location) throws URISyntaxException;
 
     /**
      * Line number of a location. The first line in the source file is one. Negative value means the
