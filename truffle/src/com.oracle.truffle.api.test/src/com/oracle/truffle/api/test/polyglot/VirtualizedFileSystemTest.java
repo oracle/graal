@@ -223,7 +223,7 @@ public class VirtualizedFileSystemTest {
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final StringBuilder content = new StringBuilder();
-                try (final BufferedReader in = file.newBufferedReader()) {
+                try (BufferedReader in = file.newBufferedReader()) {
                     final char[] buffer = new char[512];
                     while (true) {
                         int len = in.read(buffer);

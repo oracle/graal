@@ -163,9 +163,9 @@ final class Target_java_util_zip_Deflater {
     private int deflateBytes(long addr, byte[] b, int off, int len, int flush) {
         z_stream strm = WordFactory.pointer(addr);
 
-        try (PinnedObject pinned_in_buf = PinnedObject.create(this.buf); PinnedObject pinned_out_buf = PinnedObject.create(b)) {
-            strm.set_next_in(pinned_in_buf.addressOfArrayElement(this.off));
-            strm.set_next_out(pinned_out_buf.addressOfArrayElement(off));
+        try (PinnedObject pinnedInBuf = PinnedObject.create(this.buf); PinnedObject pinnedOutBuf = PinnedObject.create(b)) {
+            strm.set_next_in(pinnedInBuf.addressOfArrayElement(this.off));
+            strm.set_next_out(pinnedOutBuf.addressOfArrayElement(off));
             strm.set_avail_in(this.len);
             strm.set_avail_out(len);
 
@@ -289,9 +289,10 @@ final class Target_java_util_zip_Inflater {
     private int inflateBytes(long addr, byte[] b, int off, int len) throws DataFormatException {
         z_stream strm = WordFactory.pointer(addr);
 
-        try (PinnedObject pinned_in_buf = PinnedObject.create(this.buf); PinnedObject pinned_out_buf = PinnedObject.create(b)) {
-            strm.set_next_in(pinned_in_buf.addressOfArrayElement(this.off));
-            strm.set_next_out(pinned_out_buf.addressOfArrayElement(off));
+        try (PinnedObject pinnedInBuf = PinnedObject.create(this.buf); PinnedObject pinnedOutBuf = PinnedObject.create(b)) {
+            strm.set_next_in(pinnedInBuf.addressOfArrayElement(this.off));
+            strm.set_next_out(pinnedOutBuf.addressOfArrayElement(off));
+
             strm.set_avail_in(this.len);
             strm.set_avail_out(len);
 

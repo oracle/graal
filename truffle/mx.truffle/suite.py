@@ -90,6 +90,7 @@ suite = {
         "com.oracle.truffle.api.impl", # exported to the Graal compiler
       ],
       "javaCompliance" : "1.8",
+      "checkstyleVersion" : "8.8",
       "workingSets" : "API,Truffle",
     },
 
@@ -217,6 +218,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.8",
+      "checkstyleVersion" : "8.8",
       "imports" : [
         "com.sun.tools.javac.processing",
         "com.sun.tools.javac.model",
@@ -653,6 +655,7 @@ suite = {
         "TRUFFLE_API",
       ],
       "javaCompliance" : "1.8",
+      "checkstyleVersion" : "8.8",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
       "license" : "UPL",
