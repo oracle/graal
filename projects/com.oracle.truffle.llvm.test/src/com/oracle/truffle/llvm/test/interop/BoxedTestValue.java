@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,12 +38,16 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class MyBoxedInt implements TruffleObject {
-    public int value = 42;
+public final class BoxedTestValue implements TruffleObject {
+    private final Object value;
+
+    public BoxedTestValue(Object value) {
+        this.value = value;
+    }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return ForeignAccess.create(MyBoxedInt.class, new StandardFactory() {
+        return ForeignAccess.create(BoxedTestValue.class, new StandardFactory() {
 
             @Override
             public CallTarget accessWrite() {

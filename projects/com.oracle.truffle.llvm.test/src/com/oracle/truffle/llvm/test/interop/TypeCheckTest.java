@@ -62,7 +62,7 @@ public final class TypeCheckTest extends InteropTestBase {
         tests.add(new Object[]{"byte", (byte) 5});
         tests.add(new Object[]{"short", (short) 5});
         tests.add(new Object[]{"int", 5});
-        tests.add(new Object[]{"boxedint", new MyBoxedInt()});
+        tests.add(new Object[]{"boxedint", new BoxedTestValue(42)});
         tests.add(new Object[]{"long", 5L});
         tests.add(new Object[]{"big_long", Long.MAX_VALUE});
         tests.add(new Object[]{"float", 5.7f});

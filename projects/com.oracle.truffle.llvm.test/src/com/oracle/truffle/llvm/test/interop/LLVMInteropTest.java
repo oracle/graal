@@ -208,14 +208,14 @@ public class LLVMInteropTest {
     @Test
     public void test013() {
         Runner runner = new Runner("interop013");
-        runner.export(new MyBoxedInt(), "foreign");
+        runner.export(new BoxedTestValue(42), "foreign");
         Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test014() {
         Runner runner = new Runner("interop014");
-        runner.export(new MyBoxedInt(), "foreign");
+        runner.export(new BoxedTestValue(42), "foreign");
         Assert.assertEquals(42, runner.run(), 0.1);
     }
 
