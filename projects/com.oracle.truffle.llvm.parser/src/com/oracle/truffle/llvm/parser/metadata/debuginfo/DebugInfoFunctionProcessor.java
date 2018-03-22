@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import java.util.LinkedList;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 import com.oracle.truffle.llvm.parser.metadata.MDLocalVariable;
@@ -53,8 +57,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
-
-import java.util.LinkedList;
+import static com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoCache.getDebugInfo;
 
 public final class DebugInfoFunctionProcessor {
 
@@ -81,10 +84,29 @@ public final class DebugInfoFunctionProcessor {
         this.cache = cache;
     }
 
-    public void process(FunctionDefinition function, IRScope scope) {
+    public void process(FunctionDefinition function, IRScope scope, Source bitcodeSource) {
+        initSourceFunction(function, bitcodeSource);
         function.accept((FunctionVisitor) new SymbolProcessor(function.getSourceFunction()));
         scope.getMetadata().consumeLocals(new MetadataProcessor());
         cache.endLocalScope();
+    }
+
+    private void initSourceFunction(FunctionDefinition function, Source bitcodeSource) {
+        final MDBaseNode debugInfo = getDebugInfo(function);
+        LLVMSourceLocation scope = debugInfo != null ? cache.buildLocation(debugInfo) : null;
+
+        if (scope == null) {
+            final String sourceText = String.format("%s:%s", bitcodeSource.getName(), function.getName());
+            final Source irSource = Source.newBuilder(sourceText).mimeType(DIScopeBuilder.getMimeType(null)).name(sourceText).build();
+            final SourceSection simpleSection = irSource.createSection(1);
+            scope = LLVMSourceLocation.createBitcodeFunction(function.getName(), simpleSection);
+        }
+
+        final SourceFunction sourceFunction = new SourceFunction(scope);
+        function.setSourceFunction(sourceFunction);
+        for (SourceVariable local : sourceFunction.getVariables()) {
+            local.processFragments();
+        }
     }
 
     private static SymbolImpl getArg(VoidCallInstruction call, int index) {

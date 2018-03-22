@@ -29,7 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
+import com.oracle.truffle.llvm.parser.metadata.MDKind;
+import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.MetadataValueList;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStaticMemberType;
@@ -37,10 +42,16 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-import java.util.HashMap;
-import java.util.Map;
-
 final class DebugInfoCache {
+
+    static MDBaseNode getDebugInfo(MetadataAttachmentHolder holder) {
+        if (holder.hasAttachedMetadata()) {
+            return holder.getMetadataAttachment(MDKind.DBG_NAME);
+
+        } else {
+            return null;
+        }
+    }
 
     private final Map<MDBaseNode, LLVMSourceSymbol> parsedVariables;
     private final DIScopeBuilder scopeBuilder;
