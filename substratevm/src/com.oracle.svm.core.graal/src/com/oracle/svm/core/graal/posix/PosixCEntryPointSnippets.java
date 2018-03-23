@@ -174,7 +174,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
-    @Uninterruptible(reason = "Called by an uninterruptible method.", callerMustBe = true, mayBeInlined = true)
+    @Uninterruptible(reason = "Called by an uninterruptible method.")
     private static void setHeapBase(PointerBase isolate) {
         assert SubstrateOptions.UseHeapBaseRegister.getValue();
         writeCurrentVMHeapBase(hasHeapBase() ? isolate : Word.nullPointer());
