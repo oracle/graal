@@ -80,7 +80,6 @@ class JavaObjectMessageResolution {
     abstract static class InvokeNode extends Node {
         private static final Message INVOKE = Message.createInvoke(0);
         @Child private LookupMethodNode lookupMethod;
-        @Child private IsApplicableByArityNode isApplicableByArityNode;
         @Child private ExecuteMethodNode executeMethod;
         @Child private LookupFieldNode lookupField;
         @Child private ReadFieldNode readField;
@@ -98,9 +97,7 @@ class JavaObjectMessageResolution {
             // (1) look for a method; if found, invoke it on obj.
             JavaMethodDesc foundMethod = lookupMethod().execute(lookupClass, name, isStatic);
             if (foundMethod != null) {
-                if (isApplicableByArity().execute(foundMethod, args.length)) {
-                    return executeMethod().execute(foundMethod, object.obj, args, object.languageContext);
-                }
+                return executeMethod().execute(foundMethod, object.obj, args, object.languageContext);
             }
 
             // (2) look for a field; if found, read its value and if that IsExecutable, Execute it.
@@ -145,14 +142,6 @@ class JavaObjectMessageResolution {
                 executeMethod = insert(ExecuteMethodNode.create());
             }
             return executeMethod;
-        }
-
-        private IsApplicableByArityNode isApplicableByArity() {
-            if (isApplicableByArityNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isApplicableByArityNode = insert(IsApplicableByArityNode.create());
-            }
-            return isApplicableByArityNode;
         }
 
         private LookupFieldNode lookupField() {
