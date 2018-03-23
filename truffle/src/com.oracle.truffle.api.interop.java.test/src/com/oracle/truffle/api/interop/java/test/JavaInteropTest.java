@@ -126,7 +126,8 @@ public class JavaInteropTest {
     public void testRecursiveListMarshalling() throws UnknownIdentifierException, UnsupportedMessageException {
         List<GregorianCalendar> testList = Arrays.asList(new GregorianCalendar());
         TruffleObject list = JavaInterop.asTruffleObject(testList);
-        assertTrue(JavaInterop.isJavaObject(ForeignAccess.sendRead(Message.READ.createNode(), list, 0)));
+        Object firstElement = ForeignAccess.sendRead(Message.READ.createNode(), list, 0);
+        assertTrue(JavaInterop.isJavaObject(firstElement));
     }
 
     @Test
