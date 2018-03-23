@@ -26,6 +26,7 @@ package com.oracle.truffle.api;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Represents an exception thrown during the execution of a guest language program. All exceptions
@@ -161,4 +162,15 @@ public interface TruffleException {
         return -1;
     }
 
+    /**
+     * Returns a location where this exception occurred in the AST. This method may return
+     * <code>null</code> to indicate that the location is not available.
+     *
+     * @return the {@link SourceSection} or null
+     * @since 0.33
+     */
+    default SourceSection getSourceLocation() {
+        final Node node = getLocation();
+        return node == null ? null : node.getEncapsulatingSourceSection();
+    }
 }
