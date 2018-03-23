@@ -31,6 +31,7 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
@@ -215,7 +216,6 @@ public class ValueHostConversionTest {
     @Test
     public void testStaticClassProperties() {
         Value recordClass = getStaticClass(JavaRecord.class);
-        assertTrue(recordClass.getMemberKeys().isEmpty());
         assertTrue(recordClass.canInstantiate());
         assertTrue(recordClass.getMetaObject().asHostObject() == Class.class);
         assertFalse(recordClass.hasMember("getName"));
@@ -223,6 +223,7 @@ public class ValueHostConversionTest {
 
         assertTrue(recordClass.hasMember("class"));
         assertSame(JavaRecord.class, recordClass.getMember("class").asHostObject());
+        assertArrayEquals(new String[]{"class"}, recordClass.getMemberKeys().toArray(new String[0]));
 
         Value newInstance = recordClass.newInstance();
         assertTrue(newInstance.isHostObject());
