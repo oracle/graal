@@ -108,7 +108,7 @@ public final class ImageClassLoader {
         try {
             return p.toRealPath();
         } catch (IOException e) {
-            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p);
+            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p, e);
         }
     }
 
