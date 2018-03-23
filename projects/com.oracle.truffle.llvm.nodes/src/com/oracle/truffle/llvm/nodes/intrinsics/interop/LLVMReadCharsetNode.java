@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -51,7 +52,15 @@ public abstract class LLVMReadCharsetNode extends Node {
     @SuppressWarnings("unused")
     protected LLVMCharset doCachedAddress(VirtualFrame frame, LLVMAddress address,
                     @Cached("address") LLVMAddress cachedAddress,
-                    @Cached("doGeneric(frame, address)") LLVMCharset cachedCharset) {
+                    @Cached("doGeneric(frame, cachedAddress)") LLVMCharset cachedCharset) {
+        return cachedCharset;
+    }
+
+    @Specialization(guards = {"foreign.getObject() == cachedForeign.getObject()", "foreign.getOffset() == cachedForeign.getOffset()"})
+    @SuppressWarnings("unused")
+    protected LLVMCharset doCachedForeign(VirtualFrame frame, LLVMTruffleObject foreign,
+                    @Cached("foreign") LLVMTruffleObject cachedForeign,
+                    @Cached("doGeneric(frame, cachedForeign)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
@@ -59,11 +68,11 @@ public abstract class LLVMReadCharsetNode extends Node {
     @SuppressWarnings("unused")
     protected LLVMCharset doCachedOther(VirtualFrame frame, Object address,
                     @Cached("address") Object cachedAddress,
-                    @Cached("doGeneric(frame, address)") LLVMCharset cachedCharset) {
+                    @Cached("doGeneric(frame, cachedAddress)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
-    @Specialization(replaces = {"doCachedAddress", "doCachedOther"})
+    @Specialization(replaces = {"doCachedAddress", "doCachedForeign", "doCachedOther"})
     protected LLVMCharset doGeneric(VirtualFrame frame, Object strPtr) {
         String string = readString.executeWithTarget(frame, strPtr);
         return lookup(string);
