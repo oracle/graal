@@ -1,6 +1,6 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  void *obj = truffle_import("foreign");
-  return truffle_get_size(obj);
+  void *obj = polyglot_import("foreign");
+  return polyglot_get_array_size(obj);
 }

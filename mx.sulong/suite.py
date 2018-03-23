@@ -258,9 +258,11 @@ suite = {
       "results" : [
         "bin/libsulong.bc",
       ],
+      "headers" : [
+        "include/polyglot.h",
+      ],
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs>",
-        "CPPFLAGS" : "-I<sulong_include>",
       },
       "license" : "BSD-new",
     },
@@ -294,8 +296,11 @@ suite = {
       "buildRef" : False,
       "buildEnv" : {
         "CFLAGS" : "<clangImplicitArgs> -g",
-        "CPPFLAGS" : "-I<sulong_include> -g",
+        "CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS> -g",
       },
+      "buildDependencies" : [
+        "SULONG_LIBS",
+      ],
       "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.interop" : {
@@ -304,8 +309,11 @@ suite = {
       "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "CPPFLAGS" : "-I<sulong_include>",
+        "CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS>",
       },
+      "buildDependencies" : [
+        "SULONG_LIBS",
+      ],
       "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.nfi" : {
@@ -314,8 +322,11 @@ suite = {
       "variants" : ["O0_MEM2REG"],
       "buildRef" : False,
       "buildEnv" : {
-        "CPPFLAGS" : "-I<sulong_include>",
+        "CPPFLAGS" : "-I<sulong_include> -I<path:SULONG_LIBS>",
       },
+      "buildDependencies" : [
+        "SULONG_LIBS",
+      ],
       "testProject" : True,
     },
     "com.oracle.truffle.llvm.tests.sulong" : {

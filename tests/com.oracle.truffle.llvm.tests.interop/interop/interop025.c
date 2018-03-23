@@ -1,4 +1,4 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
   foo("foreign");
@@ -7,6 +7,6 @@ int main() {
 }
 
 int foo(const char *name) {
-  void *obj = truffle_import_cached(name);
-  return truffle_read_i(obj, "valueI");
+  void *obj = polyglot_import(name);
+  return polyglot_as_i32(polyglot_get_member(obj, "valueI"));
 }

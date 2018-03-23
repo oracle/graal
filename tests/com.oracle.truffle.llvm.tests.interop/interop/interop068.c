@@ -1,8 +1,8 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  void *boxed_true = truffle_import("boxed_true");
-  void *boxed_false = truffle_import("boxed_false");
+  void *boxed_true = polyglot_import("boxed_true");
+  void *boxed_false = polyglot_import("boxed_false");
   
   if (boxed_true) {
     // correct

@@ -1,9 +1,8 @@
+#include <polyglot.h>
 #include <truffle.h>
 
-
-
 int main() {
-  void *p = truffle_import("object");
+  void *p = polyglot_import("object");
   
   void *p1 = truffle_handle_for_managed(p);
   

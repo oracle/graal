@@ -1,9 +1,8 @@
+#include <polyglot.h>
 #include <truffle.h>
 
-
-
 int main() {
-  void *p = truffle_import("object");
+  void *p = polyglot_import("object");
   void *p1 = truffle_handle_for_managed(p);
   long l_p1 = (long)p1;
   void *n = calloc(sizeof(char), 2);

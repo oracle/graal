@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
@@ -42,33 +41,52 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
+    private final boolean legacyMimeTypeEval;
+
+    public static LLVMPolyglotEval create(LLVMExpressionNode id, LLVMExpressionNode code) {
+        return LLVMPolyglotEvalNodeGen.create(false, id, code);
+    }
+
+    public static LLVMPolyglotEval createLegacy(LLVMExpressionNode mime, LLVMExpressionNode code) {
+        return LLVMPolyglotEvalNodeGen.create(true, mime, code);
+    }
+
+    protected LLVMPolyglotEval(boolean legacyMimeTypeEval) {
+        this.legacyMimeTypeEval = legacyMimeTypeEval;
+    }
+
     @TruffleBoundary
-    protected static CallTarget getCallTarget(String mimeType, String code, ContextReference<LLVMContext> context) {
-        Source sourceObject = Source.newBuilder(code).name("<eval>").mimeType(mimeType).build();
-        CallTarget callTarget = context.get().getEnv().parse(sourceObject);
-        return callTarget;
+    protected CallTarget getCallTarget(String id, String code, ContextReference<LLVMContext> context) {
+        Source sourceObject;
+        if (legacyMimeTypeEval) {
+            sourceObject = Source.newBuilder(code).name("<eval>").mimeType(id).build();
+        } else {
+            sourceObject = Source.newBuilder(code).name("<eval>").language(id).build();
+        }
+        return context.get().getEnv().parse(sourceObject);
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = {"mime.equals(readMime.executeWithTarget(frame, mimePointer))", "src.equals(readSrc.executeWithTarget(frame, srcPointer))"})
-    protected Object doCached(VirtualFrame frame, Object mimePointer, Object srcPointer,
-                    @Cached("createReadString()") LLVMReadStringNode readMime,
+    @Specialization(limit = "2", guards = {"id.equals(readId.executeWithTarget(frame, idPointer))", "src.equals(readSrc.executeWithTarget(frame, srcPointer))"})
+    protected Object doCached(VirtualFrame frame, Object idPointer, Object srcPointer,
+                    @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
-                    @Cached("readMime.executeWithTarget(frame, mimePointer)") String mime,
+                    @Cached("readId.executeWithTarget(frame, idPointer)") String id,
                     @Cached("readSrc.executeWithTarget(frame, srcPointer)") String src,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("getCallTarget(mime, src, context)") CallTarget callTarget) {
+                    @Cached("getCallTarget(id, src, context)") CallTarget callTarget) {
         return callTarget.call();
     }
 
     @Specialization(replaces = "doCached")
-    protected Object uncached(VirtualFrame frame, Object mimePointer, Object srcPointer,
-                    @Cached("createReadString()") LLVMReadStringNode readMime,
+    protected Object uncached(VirtualFrame frame, Object idPointer, Object srcPointer,
+                    @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return getCallTarget(readMime.executeWithTarget(frame, mimePointer), readSrc.executeWithTarget(frame, srcPointer), context).call();
+        return getCallTarget(readId.executeWithTarget(frame, idPointer), readSrc.executeWithTarget(frame, srcPointer), context).call();
     }
 }

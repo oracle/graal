@@ -1,9 +1,9 @@
-#include <truffle.h>
+#include <polyglot.h>
 #include <stdlib.h>
 
 #define CALLBACK(str) { \
-  void (*callback)(const char*) = truffle_import("callback"); \
-  callback(truffle_read_string(str)); \
+  void (*callback)(const char*) = polyglot_import("callback"); \
+  callback(polyglot_from_string(str, "ascii")); \
 }
 
 void func() { CALLBACK("atexit\n"); }

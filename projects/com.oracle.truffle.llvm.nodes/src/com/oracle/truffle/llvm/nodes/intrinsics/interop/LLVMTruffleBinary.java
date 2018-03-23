@@ -104,4 +104,20 @@ public final class LLVMTruffleBinary {
             return false;
         }
     }
+
+    @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+    public abstract static class LLVMTruffleHasKeys extends LLVMIntrinsic {
+
+        @Child private Node foreignHasKeys = Message.HAS_KEYS.createNode();
+
+        @Specialization
+        protected boolean doIntrinsic(LLVMTruffleObject value) {
+            return value.getOffset() == 0 && ForeignAccess.sendHasKeys(foreignHasKeys, value.getObject());
+        }
+
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
+        }
+    }
 }

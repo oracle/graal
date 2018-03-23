@@ -1,8 +1,7 @@
-#include <stdint.h>
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  uint32_t *foreign = truffle_import("foreign");
+  uint32_t *foreign = polyglot_import("foreign");
   
   if (foreign[0] != 0) {
     return 100 + foreign[0];

@@ -1,4 +1,4 @@
-#include <truffle.h>
+#include <stdbool.h>
 
 typedef struct {
   bool valueBool;

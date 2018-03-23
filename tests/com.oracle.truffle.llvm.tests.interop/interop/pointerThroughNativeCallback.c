@@ -1,5 +1,3 @@
-#include <truffle.h>
-
 int callbackPointerArgTest(int (*callback)(struct test *), struct test *arg);
 
 struct test {

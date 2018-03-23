@@ -1,6 +1,7 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  void *obj = truffle_import("foreign");
-  return (int)truffle_execute_c(obj, 40, 2);
+  void *obj = polyglot_import("foreign");
+  char (*fn)(char, char) = (char (*)(char, char)) obj;
+  return (int) fn(40, 2);
 }

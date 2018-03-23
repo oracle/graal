@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,42 +29,57 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen.BoxedGetStringSizeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
 
-    @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
-
-    protected Object resolve(VirtualFrame frame, String name) {
-        return toLLVM.executeWithTarget(frame, importSymbol(name));
+    @Specialization(guards = "object.getOffset() == 0")
+    long getForeignStringSize(LLVMTruffleObject object,
+                    @Cached("create()") BoxedGetStringSize getSize) {
+        return getSize.execute(object.getObject());
     }
 
-    @TruffleBoundary
-    public Object importSymbol(String id) {
-        return getContextReference().get().getEnv().importSymbol(id);
+    @Specialization
+    long getStringSize(String str) {
+        return str.length();
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(limit = "10", guards = {"src.equals(readStr.executeWithTarget(frame, value))"})
-    protected Object cached(VirtualFrame frame, Object value,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(frame, value)") String src,
-                    @Cached("resolve(frame, src)") Object symbol) {
-        return symbol;
-    }
+    abstract static class BoxedGetStringSize extends Node {
 
-    @Specialization(replaces = "cached")
-    protected Object uncached(VirtualFrame frame, Object value,
-                    @Cached("createReadString()") LLVMReadStringNode readStr) {
-        return resolve(frame, readStr.executeWithTarget(frame, value));
+        @Child Node isBoxed = Message.IS_BOXED.createNode();
+        @Child Node unbox = Message.UNBOX.createNode();
+
+        abstract long execute(TruffleObject object);
+
+        boolean checkBoxed(TruffleObject object) {
+            return ForeignAccess.sendIsBoxed(isBoxed, object);
+        }
+
+        @Specialization(guards = "checkBoxed(object)")
+        long doBoxed(TruffleObject object) {
+            try {
+                String unboxed = (String) ForeignAccess.sendUnbox(unbox, object);
+                return unboxed.length();
+            } catch (UnsupportedMessageException ex) {
+                throw ex.raise();
+            }
+        }
+
+        public static BoxedGetStringSize create() {
+            return BoxedGetStringSizeNodeGen.create();
+        }
     }
 }

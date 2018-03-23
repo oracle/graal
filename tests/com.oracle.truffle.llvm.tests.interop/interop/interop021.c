@@ -1,7 +1,7 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 int main() {
-  double *obj = (int *)truffle_import("foreign");
+  double *obj = (double *)polyglot_import("foreign");
   double sum = 0.0;
   sum += obj[0];
   sum += obj[1];

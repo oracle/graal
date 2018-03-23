@@ -1,10 +1,8 @@
-#include <truffle.h>
-#include <stdio.h>
+#include <polyglot.h>
 
 int main() {
-    const char* cstr = truffle_string_to_cstr(truffle_execute(truffle_import("getstring"), 1));
+    void *(*getstring)(int) = polyglot_import("getstring");
     char buffer[100];
-    int l = snprintf(buffer, 100, "%s", cstr);
-    truffle_free_cstr(cstr);
+    int l = polyglot_as_string(getstring(1), buffer, 100, "ascii");
     return l;
 }

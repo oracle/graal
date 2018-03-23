@@ -42,6 +42,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -60,6 +61,11 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
     protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value) {
         checkLLVMTruffleObject(value);
         return doUnbox(frame, value.getObject());
+    }
+
+    @Specialization
+    protected Object doIntrinsic(VirtualFrame frame, LLVMBoxedPrimitive value) {
+        return toLLVM.executeWithTarget(frame, value.getValue());
     }
 
     @Fallback

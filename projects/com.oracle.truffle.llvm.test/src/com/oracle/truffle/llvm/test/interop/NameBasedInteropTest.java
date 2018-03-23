@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,7 +36,6 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -47,42 +44,26 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
-public final class NameBasedInteropTest {
-
-    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
+public final class NameBasedInteropTest extends InteropTestBase {
 
     private static TruffleObject testLibrary;
 
     @BeforeClass
     public static void loadTestBitcode() {
-        File file = new File(TestOptions.TEST_SUITE_PATH, "interop/nameBasedInterop/O0_MEM2REG.bc");
-        Source source;
-        try {
-            source = Source.newBuilder(file).language("llvm").build();
-        } catch (IOException ex) {
-            throw new AssertionError(ex);
-        }
-        CallTarget target = runWithPolyglot.getTruffleTestEnv().parse(source);
-        testLibrary = (TruffleObject) target.call();
+        testLibrary = InteropTestBase.loadTestBitcodeInternal("nameBasedInterop");
     }
 
     @Parameters(name = "{0}")
@@ -100,35 +81,10 @@ public final class NameBasedInteropTest {
     @Parameter(0) public String name;
     @Parameter(1) public Object value;
 
-    public static class SulongTestNode extends RootNode {
-
-        private final TruffleObject function;
-        @Child private Node execute;
-
-        protected SulongTestNode(String fnName, int argCount) {
-            super(null);
-            try {
-                function = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), testLibrary, fnName);
-            } catch (InteropException ex) {
-                throw new AssertionError(ex);
-            }
-            execute = Message.createExecute(argCount).createNode();
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            try {
-                return ForeignAccess.sendExecute(execute, function, frame.getArguments());
-            } catch (InteropException ex) {
-                throw new AssertionError(ex);
-            }
-        }
-    }
-
     public class GetStructNode extends SulongTestNode {
 
         public GetStructNode() {
-            super("getStruct" + name, 1);
+            super(testLibrary, "getStruct" + name, 1);
         }
     }
 
@@ -143,7 +99,7 @@ public final class NameBasedInteropTest {
     public class SetStructNode extends SulongTestNode {
 
         public SetStructNode() {
-            super("setStruct" + name, 2);
+            super(testLibrary, "setStruct" + name, 2);
         }
     }
 
@@ -157,7 +113,7 @@ public final class NameBasedInteropTest {
     public class GetArrayNode extends SulongTestNode {
 
         public GetArrayNode() {
-            super("getArray" + name, 2);
+            super(testLibrary, "getArray" + name, 2);
         }
     }
 
@@ -172,7 +128,7 @@ public final class NameBasedInteropTest {
     public class SetArrayNode extends SulongTestNode {
 
         public SetArrayNode() {
-            super("setArray" + name, 3);
+            super(testLibrary, "setArray" + name, 3);
         }
     }
 

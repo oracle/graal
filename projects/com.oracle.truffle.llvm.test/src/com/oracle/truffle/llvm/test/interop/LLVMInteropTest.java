@@ -58,8 +58,7 @@ import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
-@SuppressWarnings({"static-method"})
-public final class LLVMInteropTest {
+public class LLVMInteropTest {
     @Test
     public void test001() {
         Runner runner = new Runner("interop001");
@@ -95,7 +94,6 @@ public final class LLVMInteropTest {
         runner.export(ProxyObject.fromMap(a), "foreign");
         runner.run();
 
-        Assert.assertEquals(false, ((Value) a.get("valueBool")).asBoolean());
         Assert.assertEquals(2, ((Value) a.get("valueI")).asInt());
         Assert.assertEquals(3, ((Value) a.get("valueB")).asByte());
         Assert.assertEquals(4, ((Value) a.get("valueL")).asLong());
@@ -210,14 +208,14 @@ public final class LLVMInteropTest {
     @Test
     public void test013() {
         Runner runner = new Runner("interop013");
-        runner.export(new MyBoxedInt(), "foreign");
+        runner.export(new BoxedTestValue(42), "foreign");
         Assert.assertEquals(42, runner.run());
     }
 
     @Test
     public void test014() {
         Runner runner = new Runner("interop014");
-        runner.export(new MyBoxedInt(), "foreign");
+        runner.export(new BoxedTestValue(42), "foreign");
         Assert.assertEquals(42, runner.run(), 0.1);
     }
 
@@ -356,16 +354,6 @@ public final class LLVMInteropTest {
         runner.export(result, "foo");
         Assert.assertEquals(72, runner.run());
         Assert.assertEquals("foo\u0000 bar\u0080 ", result.storage);
-    }
-
-    @Test
-    public void test029() {
-        Runner runner = new Runner("interop029");
-        ReturnObject result = new ReturnObject();
-        runner.export(result, "foo");
-        Assert.assertEquals(36, runner.run());
-        byte[] actualResult = (byte[]) result.storage;
-        Assert.assertArrayEquals(new byte[]{102, 111, 111, 0, 32, 98, 97, 114, -128, 32}, actualResult);
     }
 
     // implicit interop
@@ -909,6 +897,22 @@ public final class LLVMInteropTest {
         final String testString = "this is a test";
         runner.export((ProxyExecutable) (Value... t) -> testString, "getstring");
         Assert.assertEquals(testString.length(), runner.run());
+    }
+
+    @Test
+    public void testTypeCheckNative() {
+        Runner runner = new Runner("typeCheck");
+        runner.load();
+        int ret = runner.findGlobalSymbol("check_types_nativeptr").execute().asInt();
+        Assert.assertEquals(0, ret);
+    }
+
+    @Test
+    public void testFitsInNative() {
+        Runner runner = new Runner("fitsIn");
+        runner.load();
+        int ret = runner.findGlobalSymbol("test_fits_in_nativeptr").execute().asInt();
+        Assert.assertEquals(0, ret);
     }
 
     @Test

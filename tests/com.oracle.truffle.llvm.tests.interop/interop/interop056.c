@@ -1,4 +1,4 @@
-#include <truffle.h>
+#include <polyglot.h>
 
 typedef void *VALUE;
 
@@ -8,7 +8,7 @@ int bar = 5;
 
 int main() {
 	
-	void *p = truffle_import("object");
+	void *p = polyglot_import("object");
 
 	global = &bar;
 	global = p;
@@ -17,6 +17,7 @@ int main() {
 	global = &bar;
 	global = p;
 
-	truffle_execute(truffle_import("returnObject"), global);
+	void (*returnObject)(void *) = polyglot_import("returnObject");
+        returnObject(global);
 	return 0;
 }

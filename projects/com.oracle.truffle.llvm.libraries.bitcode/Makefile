@@ -45,11 +45,11 @@ bin/%.bc: bin/%.noopt.bc
 	opt -o $@ $+ ${OPT_FLAGS}
 
 bin/%.noopt.bc: src/%.c deps/%.d
-	clang -c -emit-llvm -o $@ ${CFLAGS} ${CPPFLAGS} ${DEPFLAGS} $<
+	clang -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
-	clang++ -c -emit-llvm -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${CPPFLAGS} ${DEPFLAGS} $<
+	clang++ -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 deps/%.d: ;

@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <truffle.h>
 
 void printArray(int **a);
 
