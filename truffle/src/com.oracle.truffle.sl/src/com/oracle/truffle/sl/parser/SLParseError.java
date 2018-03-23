@@ -53,7 +53,6 @@ public class SLParseError extends RuntimeException implements TruffleException {
     private final int line;
     private final int column;
     private final int length;
-    private volatile Node node;
 
     public SLParseError(Source source, int line, int column, int length, String message) {
         super(message);
@@ -64,18 +63,13 @@ public class SLParseError extends RuntimeException implements TruffleException {
     }
 
     @Override
+    public SourceSection getSourceLocation() {
+        return source.createSection(line, column, length);
+    }
+
+    @Override
     public Node getLocation() {
-        Node n = node;
-        if (n == null) {
-            n = new Node() {
-                @Override
-                public SourceSection getSourceSection() {
-                    return source.createSection(line, column, length);
-                }
-            };
-            node = n;
-        }
-        return n;
+        return null;
     }
 
     @Override

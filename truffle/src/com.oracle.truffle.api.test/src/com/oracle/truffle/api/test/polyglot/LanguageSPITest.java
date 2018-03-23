@@ -79,7 +79,9 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
+import java.util.Objects;
 
 public class LanguageSPITest {
 
@@ -242,6 +244,35 @@ public class LanguageSPITest {
 
         public Node getLocation() {
             return null;
+        }
+    }
+
+    @SuppressWarnings("serial")
+    private static final class ParseException extends RuntimeException implements TruffleException {
+        private final Source source;
+        private final int start;
+        private final int length;
+
+        ParseException(final Source source, final int start, final int length) {
+            Objects.requireNonNull(source, "Source must be non null");
+            this.source = source;
+            this.start = start;
+            this.length = length;
+        }
+
+        @Override
+        public boolean isSyntaxError() {
+            return true;
+        }
+
+        @Override
+        public Node getLocation() {
+            return null;
+        }
+
+        @Override
+        public SourceSection getSourceLocation() {
+            return source.createSection(start, length);
         }
     }
 
@@ -857,6 +888,26 @@ public class LanguageSPITest {
         // clean up the context
         contextOnDispose.set(false);
         c.close();
+    }
+
+    @Test
+    public void testExceptionGetSourceLocation() {
+        try (final Context context = Context.create(LanguageSPITestLanguage.ID)) {
+            final String text = "0123456789";
+            LanguageSPITestLanguage.runinside = (env) -> {
+                Source src = Source.newBuilder(text).mimeType(LanguageSPITestLanguage.ID).name("test.txt").build();
+                throw new ParseException(src, 1, 2);
+            };
+            try {
+                context.eval(LanguageSPITestLanguage.ID, text);
+                Assert.fail("PolyglotException expected.");
+            } catch (PolyglotException pe) {
+                Assert.assertTrue(pe.isSyntaxError());
+                Assert.assertEquals("12", pe.getSourceLocation().getCharacters().toString());
+            } finally {
+                LanguageSPITestLanguage.runinside = null;
+            }
+        }
     }
 
     private static void testFails(Runnable consumer) {

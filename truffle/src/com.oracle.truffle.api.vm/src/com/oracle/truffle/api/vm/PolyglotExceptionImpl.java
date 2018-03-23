@@ -46,7 +46,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObject {
@@ -89,11 +88,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObj
             this.exit = truffleException.isExit();
             this.exitStatus = this.exit ? truffleException.getExitStatus() : 0;
 
-            Node location = truffleException.getLocation();
-            com.oracle.truffle.api.source.SourceSection section = null;
-            if (location != null) {
-                section = location.getEncapsulatingSourceSection();
-            }
+            com.oracle.truffle.api.source.SourceSection section = truffleException.getSourceLocation();
             if (section != null) {
                 com.oracle.truffle.api.source.Source truffleSource = section.getSource();
                 String language = truffleSource.getLanguage();
