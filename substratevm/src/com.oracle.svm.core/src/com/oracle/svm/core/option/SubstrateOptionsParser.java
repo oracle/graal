@@ -91,8 +91,8 @@ public class SubstrateOptionsParser {
         }
 
         private boolean matchesFlags(OptionDescriptor d, boolean svmOption) {
-            boolean isMatch = printFlags.contains(d.getOptionType());
-            return svmOption ? isMatch : isMatch && printFlags.size() == 1;
+            boolean showAll = printFlags.equals(EnumSet.allOf(OptionType.class));
+            return showAll || svmOption && printFlags.contains(d.getOptionType());
         }
 
         boolean matchesFlagsRuntime(OptionDescriptor d) {
