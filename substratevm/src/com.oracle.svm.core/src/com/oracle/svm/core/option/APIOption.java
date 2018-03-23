@@ -60,10 +60,9 @@ public @interface APIOption {
          */
         Negated,
         /**
-         * If a {@code String} {@link org.graalvm.compiler.options.Option} uses {@code Paths} any
-         * paths occurring in the {@code String} will be replaced by their fully qualified variants
-         * (relative to current working directory). (Needed for {@code NativeImageBuildServer}
-         * compatibility)
+         * Denotes that the annotated {@code String} option represents a file system path. If the
+         * option value is not an absolute path, it will be resolved against the current working
+         * directory in which the native image tool is executed.
          */
         Paths
     }
