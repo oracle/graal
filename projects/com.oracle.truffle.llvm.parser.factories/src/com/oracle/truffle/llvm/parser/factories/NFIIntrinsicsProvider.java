@@ -94,9 +94,11 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotBoxedPredica
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen.FitsInI32NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen.FitsInI64NodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen.FitsInI8NodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEval;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotExportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromString;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotIsValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMSulongFunctionToNativePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleAddressToFunctionNodeGen;
@@ -109,8 +111,6 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleExecuteNodeGe
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleFreeCStringNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetSizeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleHandleToManagedNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportCachedNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleInvokeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleIsHandleToManagedNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleIsTruffleObjectNodeGen;
@@ -369,6 +369,32 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
     }
 
     protected void registerTruffleIntrinsics(NodeFactory nodeFactory) {
+        LLVMNativeIntrinsicFactory polyglotImport = new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@polyglot_import", LLVMPolyglotImportNodeGen.create(LLVMArgNodeGen.create(1)));
+            }
+        };
+        factories.put("@polyglot_import", polyglotImport);
+        factories.put("@truffle_import", polyglotImport);
+        factories.put("@truffle_import_cached", polyglotImport);
+
+        factories.put("@polyglot_export", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@polyglot_export", LLVMPolyglotExportNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+
+        factories.put("@polyglot_eval", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected RootCallTarget generate(FunctionType type) {
+                return wrap("@polyglot_eval", LLVMPolyglotEval.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+            }
+        });
+
+        //
+
         factories.put("@polyglot_is_value", new LLVMNativeIntrinsicFactory(true, true) {
             @Override
             protected RootCallTarget generate(FunctionType type) {
@@ -867,23 +893,6 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
         });
 
         //
-        LLVMNativeIntrinsicFactory polyglotImport = new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@polyglot_import", LLVMTruffleImportNodeGen.create(LLVMArgNodeGen.create(1)));
-            }
-        };
-        factories.put("@polyglot_import", polyglotImport);
-        factories.put("@truffle_import", polyglotImport);
-
-        factories.put("@truffle_import_cached", new LLVMNativeIntrinsicFactory(true, true) {
-
-            @Override
-            protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_import_cached", LLVMTruffleImportCachedNodeGen.create(LLVMArgNodeGen.create(1)));
-            }
-        });
 
         factories.put("@truffle_address_to_function", new LLVMNativeIntrinsicFactory(true, true) {
 
@@ -1067,7 +1076,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_polyglot_eval", LLVMPolyglotEvalNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
+                return wrap("@truffle_polyglot_eval", LLVMPolyglotEval.createLegacy(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
         });
     }

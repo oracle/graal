@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,42 +29,40 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleImportCached extends LLVMIntrinsic {
+@NodeChild(value = "name", type = LLVMExpressionNode.class)
+public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
 
-    @Child protected ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
+    @Child LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
+    @Child ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
+    @Child Node read = Message.READ.createNode();
 
-    protected Object resolve(VirtualFrame frame, String name) {
-        return toLLVM.executeWithTarget(frame, importSymbol(name));
-    }
+    @Specialization
+    protected Object doImport(VirtualFrame frame, Object name,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
+        String symbolName = readString.executeWithTarget(frame, name);
 
-    @TruffleBoundary
-    public Object importSymbol(String id) {
-        return getContextReference().get().getEnv().importSymbol(id);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "10", guards = {"src.equals(readStr.executeWithTarget(frame, value))"})
-    protected Object cached(VirtualFrame frame, Object value,
-                    @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(frame, value)") String src,
-                    @Cached("resolve(frame, src)") Object symbol) {
-        return symbol;
-    }
-
-    @Specialization(replaces = "cached")
-    protected Object uncached(VirtualFrame frame, Object value,
-                    @Cached("createReadString()") LLVMReadStringNode readStr) {
-        return resolve(frame, readStr.executeWithTarget(frame, value));
+        LLVMContext ctx = ctxRef.get();
+        try {
+            Object ret = ForeignAccess.sendRead(read, (TruffleObject) ctx.getEnv().getPolyglotBindings(), symbolName);
+            return toLLVM.executeWithTarget(frame, ret);
+        } catch (InteropException ex) {
+            throw ex.raise();
+        }
     }
 }
