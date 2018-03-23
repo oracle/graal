@@ -247,7 +247,7 @@ public final class CPUSampler implements Closeable {
             public void onContextClosed(TruffleContext context) {
 
             }
-        }, false);
+        }, true);
     }
 
     /**
