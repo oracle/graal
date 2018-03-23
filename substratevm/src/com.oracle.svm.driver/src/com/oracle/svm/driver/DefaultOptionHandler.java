@@ -30,12 +30,14 @@ import java.util.Queue;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
+import org.graalvm.compiler.options.OptionType;
+
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
-    static final String helpTextAdvanced = NativeImage.getResource("/HelpAdvanced.txt");
+    static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -48,8 +50,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--help":
                 args.poll();
                 nativeImage.showMessage(helpText);
+                nativeImage.showNewline();
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage);
+                nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
-                nativeImage.showMessage("");
+                nativeImage.showNewline();
                 System.exit(0);
                 return true;
             case "--version":
@@ -59,9 +64,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.showMessage("GraalVM Version " + NativeImage.graalvmVersion);
                 System.exit(0);
                 return true;
-            case "--help-advanced":
+            case "--help-extra":
                 args.poll();
-                nativeImage.showMessage(helpTextAdvanced);
+                nativeImage.showMessage(helpExtraText);
                 System.exit(0);
                 return true;
             case "-cp":
@@ -103,6 +108,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.setDryRun(true);
                 return true;
             case "-shared":
+            case "--shared":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oHKind + NativeImageKind.SHARED_LIBRARY.name());
                 return true;
@@ -115,6 +121,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
                 return true;
             case "--expert-options":
+                args.poll();
+                String expertUserOption = OptionType.User.name();
+                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags + expertUserOption);
+                nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags + expertUserOption);
+                return true;
+            case "--expert-options-all":
                 args.poll();
                 nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enablePrintFlags);
                 nativeImage.addImageBuilderArg(NativeImage.oR + NativeImage.enablePrintFlags);

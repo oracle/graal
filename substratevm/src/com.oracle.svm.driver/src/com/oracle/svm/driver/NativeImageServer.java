@@ -52,12 +52,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.word.Word;
+
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
-import org.graalvm.compiler.word.Word;
 
 final class NativeImageServer extends NativeImage {
 
@@ -363,8 +365,8 @@ final class NativeImageServer extends NativeImage {
                 String xmxValueStr = getXmxValue(maxPorts);
                 replaceArg(javaArgs, oXmx, xmxValueStr);
                 String xmsValueStr = getXmsValue();
-                long xmxValue = parseSize(xmxValueStr);
-                long xmsValue = parseSize(xmsValueStr);
+                long xmxValue = SubstrateOptionsParser.parseLong(xmxValueStr);
+                long xmsValue = SubstrateOptionsParser.parseLong(xmsValueStr);
                 if (Word.unsigned(xmsValue).aboveThan(Word.unsigned(xmxValue))) {
                     xmsValueStr = Long.toUnsignedString(xmxValue);
                 }
@@ -403,7 +405,7 @@ final class NativeImageServer extends NativeImage {
                                 showWarning("Cannot acquire new server port despite removing " + victim);
                             }
                         } else {
-                            showWarning("Native image server limit exceeded. Use options -server{-list,-shutdown[-all]} to fix the problem.");
+                            showWarning("Native image server limit exceeded. Use options --server{-list,-shutdown[-all]} to fix the problem.");
                         }
                     }
                     if (serverPort >= 0) {

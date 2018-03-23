@@ -31,6 +31,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -41,10 +42,10 @@ public class SubstrateOptions {
 
     private static ValueUpdateHandler optimizeValueUpdateHandler;
 
-    @Option(help = "Show available options.")//
-    public static final OptionKey<Boolean> PrintFlags = new OptionKey<>(false);
+    @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
+    public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
 
-    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.")//
+    @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(1) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
@@ -73,10 +74,10 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<String> LinkerRPath = new HostedOptionKey<>("");
 
-    @Option(help = "Enable or disable Java assert statements at run time")//
+    @Option(help = "Enable or disable Java assert statements at run time", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> RuntimeAssertions = new HostedOptionKey<>(false);
 
-    @Option(help = "Directory of the image file to be generated")//
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(Paths.get(".").toAbsolutePath().normalize().resolve("svmbuild").toString());
 
     @Fold

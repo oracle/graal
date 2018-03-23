@@ -132,7 +132,7 @@ public class OptionsParser {
             throw new IllegalArgumentException(msg.toString());
         }
 
-        Class<?> optionType = desc.getType();
+        Class<?> optionType = desc.getOptionValueType();
         Object value;
         if (!(uncheckedValue instanceof String)) {
             if (optionType != uncheckedValue.getClass()) {

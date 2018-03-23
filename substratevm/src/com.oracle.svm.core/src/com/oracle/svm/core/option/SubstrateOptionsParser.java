@@ -24,15 +24,21 @@ package com.oracle.svm.core.option;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionsParser;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -52,36 +58,50 @@ public class SubstrateOptionsParser {
      * The result of {@link SubstrateOptionsParser#parseOption}.
      */
     static final class OptionParseResult {
-        private final boolean printFlags;
+        private final EnumSet<OptionType> printFlags;
         private final String error;
 
-        private OptionParseResult(boolean printFlags, String error) {
+        private OptionParseResult(EnumSet<OptionType> printFlags, String error) {
             this.printFlags = printFlags;
             this.error = error;
         }
 
         static OptionParseResult error(String message) {
-            return new OptionParseResult(false, message);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message);
         }
 
         static OptionParseResult correct() {
-            return new OptionParseResult(false, null);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null);
         }
 
-        static OptionParseResult printFlags() {
-            return new OptionParseResult(true, null);
+        static OptionParseResult printFlags(EnumSet<OptionType> selectedOptionTypes) {
+            return new OptionParseResult(selectedOptionTypes, null);
         }
 
-        boolean shouldPrintFlags() {
-            return printFlags;
+        boolean printFlags() {
+            return !printFlags.isEmpty();
         }
 
         public boolean isValid() {
-            return !shouldPrintFlags() && error == null;
+            return printFlags.isEmpty() && error == null;
         }
 
         public String getError() {
             return error;
+        }
+
+        private boolean matchesFlags(OptionDescriptor d, boolean svmOption) {
+            boolean showAll = printFlags.equals(EnumSet.allOf(OptionType.class));
+            return showAll || svmOption && printFlags.contains(d.getOptionType());
+        }
+
+        boolean matchesFlagsRuntime(OptionDescriptor d) {
+            return matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey);
+        }
+
+        boolean matchesFlagsHosted(OptionDescriptor d) {
+            OptionKey<?> key = d.getOptionKey();
+            return matchesFlags(d, key instanceof RuntimeOptionKey || key instanceof HostedOptionKey);
         }
     }
 
@@ -152,11 +172,11 @@ public class SubstrateOptionsParser {
                     msg.append(' ').append(match.getName());
                 }
             }
-            msg.append(". Use " + optionPrefix + '+' + SubstrateOptions.PrintFlags.getName() + " to list available options.");
+            msg.append(". Use " + optionPrefix + SubstrateOptions.PrintFlags.getName() + "= to list all available options.");
             return OptionParseResult.error(msg.toString());
         }
 
-        Class<?> optionType = desc.getType();
+        Class<?> optionType = desc.getOptionValueType();
 
         if (value == null) {
             if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
@@ -203,8 +223,26 @@ public class SubstrateOptionsParser {
 
         desc.getOptionKey().update(valuesMap, value);
 
-        if (SubstrateOptions.PrintFlags.getName().equals(optionName) && (Boolean) value) {
-            return OptionParseResult.printFlags();
+        if (SubstrateOptions.PrintFlags.getName().equals(optionName)) {
+            String optionValue = (String) value;
+            EnumSet<OptionType> selectedOptionTypes;
+            if (optionValue.isEmpty()) {
+                selectedOptionTypes = EnumSet.allOf(OptionType.class);
+            } else {
+                selectedOptionTypes = EnumSet.noneOf(OptionType.class);
+                String enumString = null;
+                try {
+                    String[] enumStrings = optionValue.split(",");
+                    for (int i = 0; i < enumStrings.length; i++) {
+                        enumString = enumStrings[i];
+                        selectedOptionTypes.add(OptionType.valueOf(enumString));
+                    }
+                } catch (IllegalArgumentException e) {
+                    String possibleValues = Arrays.stream(OptionType.values()).map(OptionType::name).collect(Collectors.joining(", ", "", ""));
+                    return OptionParseResult.error("Invalid value for option '" + optionName + ". " + enumString + "' is not one of: " + possibleValues);
+                }
+            }
+            return OptionParseResult.printFlags(selectedOptionTypes);
         }
 
         return OptionParseResult.correct();
@@ -229,8 +267,8 @@ public class SubstrateOptionsParser {
         }
 
         OptionParseResult optionParseResult = SubstrateOptionsParser.parseOption(options, arg.substring(optionPrefix.length()), valuesMap, optionPrefix, booleanOptionFormat);
-        if (optionParseResult.shouldPrintFlags()) {
-            SubstrateOptionsParser.printFlags(options, optionPrefix, out);
+        if (optionParseResult.printFlags()) {
+            SubstrateOptionsParser.printFlags(optionParseResult::matchesFlagsHosted, options, optionPrefix, out);
             throw new InterruptImageBuilding();
         }
         if (!optionParseResult.isValid()) {
@@ -243,8 +281,7 @@ public class SubstrateOptionsParser {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s) {
-        final int width = 120;
+    private static String wrap(String s, int width) {
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
         while (cursor + width < sb.length()) {
@@ -262,32 +299,37 @@ public class SubstrateOptionsParser {
         return sb.toString();
     }
 
-    private static void printOption(PrintStream out, String option, String description, int indentation) {
+    private static void printOption(PrintStream out, String option, String description) {
+        printOption(out::println, option, description, 2, 45, 120);
+    }
+
+    public static void printOption(Consumer<String> println, String option, String description, int indentation, int optionWidth, int wrapWidth) {
         String indent = spaces(indentation);
-        String desc = wrap(description != null ? description : "");
+        String desc = wrap(description != null ? description : "", wrapWidth);
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
-        int optionWidth = 45;
         if (option.length() >= optionWidth && description != null) {
-            out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
+            println.accept(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {
-            out.println(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
+            println.accept(indent + option + spaces(optionWidth - option.length()) + descLines[0]);
         }
         for (int i = 1; i < descLines.length; i++) {
-            out.println(indent + spaces(optionWidth) + descLines[i]);
+            println.accept(indent + spaces(optionWidth) + descLines[i]);
         }
     }
 
-    static void printFlags(SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
+    static void printFlags(Predicate<OptionDescriptor> filter, SortedMap<String, OptionDescriptor> sortedOptions, String prefix, PrintStream out) {
         for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
-            entry.getKey();
             OptionDescriptor descriptor = entry.getValue();
+            if (!filter.test(descriptor)) {
+                continue;
+            }
             String helpMsg = descriptor.getHelp();
             int helpLen = helpMsg.length();
             if (helpLen > 0 && helpMsg.charAt(helpLen - 1) != '.') {
                 helpMsg += '.';
             }
-            if (descriptor.getType() == Boolean.class) {
+            if (descriptor.getOptionValueType() == Boolean.class) {
                 Boolean val = (Boolean) descriptor.getOptionKey().getDefaultValue();
                 if (helpLen != 0) {
                     helpMsg += ' ';
@@ -297,18 +339,18 @@ public class SubstrateOptionsParser {
                 } else {
                     helpMsg += "Default: + (enabled).";
                 }
-                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg, 2);
+                printOption(out, prefix + "\u00b1" + entry.getKey(), helpMsg);
             } else {
                 Object def = descriptor.getOptionKey().getDefaultValue();
                 if (def instanceof String) {
                     def = '"' + String.valueOf(def) + '"';
                 }
-                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg, 2);
+                printOption(out, prefix + entry.getKey() + "=" + def, helpMsg);
             }
         }
     }
 
-    static long parseLong(String v) {
+    public static long parseLong(String v) {
         String valueString = v.toLowerCase();
         long scale = 1;
         if (valueString.endsWith("k")) {
@@ -337,7 +379,7 @@ public class SubstrateOptionsParser {
      *         it returns "-H:Name=file")
      */
     public static String commandArgument(OptionKey<?> option, String value) {
-        if (option.getDescriptor().getType() == Boolean.class) {
+        if (option.getDescriptor().getOptionValueType() == Boolean.class) {
             assert value.equals("+") || value.equals("-") || value.equals("[+|-]") : "Boolean option can be only + or - or [+|-].";
             return HOSTED_OPTION_PREFIX + value + option;
         } else {

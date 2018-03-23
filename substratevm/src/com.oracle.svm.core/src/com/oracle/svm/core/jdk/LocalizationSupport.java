@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.ResourceBundle;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -41,7 +42,7 @@ public final class LocalizationSupport {
     protected final Map<String, ResourceBundle> cache;
 
     public static class Options {
-        @Option(help = "Comma separated list of bundles to be included into the image.")//
+        @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
         public static final HostedOptionKey<String> IncludeResourceBundles = new HostedOptionKey<>("");
     }
 
