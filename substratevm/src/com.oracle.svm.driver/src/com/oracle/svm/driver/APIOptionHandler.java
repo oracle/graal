@@ -118,8 +118,8 @@ final class APIOptionCollector implements Feature {
     private void extractOption(String optionPrefix, OptionDescriptor optionDescriptor) {
         try {
             Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
-            APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
-            for (APIOption apiAnnotation : apiAnnotations) {
+            APIOption apiAnnotation = optionField.getAnnotation(APIOption.class);
+            if (apiAnnotation != null) {
                 String builderOption = optionPrefix;
                 if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
                     VMError.guarantee(!apiAnnotation.kind().equals(APIOptionKind.Paths));
