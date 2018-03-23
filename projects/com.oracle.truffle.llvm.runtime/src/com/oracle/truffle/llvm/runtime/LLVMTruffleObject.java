@@ -51,10 +51,10 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
     private final long offset;
     private final LLVMSourceType baseType;
 
-    private static LLVMSourceType overrideBaseType(LLVMTruffleObject obj, Type newType) {
+    private static LLVMSourceType overrideBaseType(LLVMTruffleObject obj, LLVMSourceType newType) {
         if (obj.getOffset() == 0) {
-            if (newType.getSourceType() != null) {
-                return newType.getSourceType();
+            if (newType != null) {
+                return newType;
             } else {
                 return obj.getBaseType();
             }
@@ -72,6 +72,10 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
     }
 
     public LLVMTruffleObject(LLVMTruffleObject orig, Type type) {
+        this(orig, type.getSourceType());
+    }
+
+    public LLVMTruffleObject(LLVMTruffleObject orig, LLVMSourceType type) {
         this(orig.getObject(), orig.getOffset(), overrideBaseType(orig, type));
     }
 
