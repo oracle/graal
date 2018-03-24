@@ -110,7 +110,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
-    void writeHeaderFile(Path outFile, String imageName) {
+    void writeHeaderFile(Path outFile, String imageName, boolean dynamic) {
         List<HostedMethod> methodsWithHeader = uniqueEntryPoints.stream().filter(this::shouldWriteHeader).collect(Collectors.toList());
         methodsWithHeader.sort(NativeBootImage::sortMethodsByFileNameAndPosition);
 
@@ -131,7 +131,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln("extern \"C\" {");
             writer.appendln("#endif");
 
-            methodsWithHeader.forEach(m -> writeMethodHeader(m, writer));
+            methodsWithHeader.forEach(m -> writeMethodHeader(m, writer, dynamic));
 
             writer.appendln("#if defined(__cplusplus)");
             writer.appendln("}");
@@ -154,7 +154,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
-    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer) {
+    private void writeMethodHeader(HostedMethod m, CSourceCodeWriter writer, boolean dynamic) {
         assert Modifier.isStatic(m.getModifiers()) : "Published methods that go into the header must be static.";
         CEntryPointData cEntryPointData = (CEntryPointData) m.getWrapped().getEntryPointData();
         String docComment = cEntryPointData.getDocumentation();
@@ -163,11 +163,20 @@ public abstract class NativeBootImage extends AbstractBootImage {
             Arrays.stream(docComment.split("\n")).forEach(l -> writer.appendln(" * " + l));
             writer.appendln(" */");
         }
+
+        if (dynamic) {
+            writer.append("typedef ");
+        }
+
         writer.append(CSourceCodeWriter.findCTypeName(metaAccess, nativeLibs, (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass())));
         writer.append(" ");
 
         assert !cEntryPointData.getSymbolName().isEmpty();
-        writer.append(cEntryPointData.getSymbolName());
+        if (dynamic) {
+            writer.append("(*").append(cEntryPointData.getSymbolName()).append("_fn_t)");
+        } else {
+            writer.append(cEntryPointData.getSymbolName());
+        }
         writer.append("(");
 
         String sep = "";

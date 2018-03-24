@@ -51,7 +51,8 @@ public class SharedLibraryViaCCBootImage extends NativeBootImageViaCC {
     @Override
     public Path write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         Path imagePath = super.write(debug, outputDirectory, tempDirectory, imageName, config);
-        writeHeaderFile(outputDirectory.resolve(imageName + ".h"), imageName);
+        writeHeaderFile(outputDirectory.resolve(imageName + ".h"), imageName, false);
+        writeHeaderFile(outputDirectory.resolve(imageName + "_dynamic.h"), imageName, true);
         return imagePath;
     }
 }
