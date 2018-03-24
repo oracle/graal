@@ -51,7 +51,7 @@ public class PosixIsolates {
     private static final CGlobalData<Word> IMAGE_HEAP_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BEGIN_SYMBOL_NAME);
     private static final CGlobalData<Word> IMAGE_HEAP_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_END_SYMBOL_NAME);
 
-    @Uninterruptible(reason = "Thread state not yet set up.", callerMustBe = true, mayBeInlined = true)
+    @Uninterruptible(reason = "Thread state not yet set up.")
     public static int checkSanity(Isolate isolate) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             return isolate.isNull() ? Errors.NO_ERROR : Errors.UNINITIALIZED_ISOLATE;
@@ -110,7 +110,7 @@ public class PosixIsolates {
         return Errors.NO_ERROR;
     }
 
-    @Uninterruptible(reason = "Thread state not yet set up.", callerMustBe = true, mayBeInlined = true)
+    @Uninterruptible(reason = "Thread state not yet set up.")
     public static PointerBase getHeapBase(Isolate isolate) {
         if (!SubstrateOptions.SpawnIsolates.getValue() || isolate.isNull()) {
             return IMAGE_HEAP_BEGIN.get();
