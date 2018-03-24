@@ -31,6 +31,8 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -55,4 +57,8 @@ public interface SubstrateLoweringProvider extends LoweringProvider {
         return GraalConfiguration.instance().createLoweringProvider(metaAccess, foreignCalls);
 
     }
+
+    AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck);
+
+    ValueNode implicitStoreConvert(StructuredGraph graph, JavaKind kind, ValueNode value);
 }
