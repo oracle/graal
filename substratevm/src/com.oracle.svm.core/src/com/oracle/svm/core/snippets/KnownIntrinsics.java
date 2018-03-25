@@ -22,7 +22,6 @@
  */
 package com.oracle.svm.core.snippets;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
@@ -33,14 +32,6 @@ import com.oracle.svm.core.hub.DynamicHub;
  * SubstrateGraphBuilderPlugins.registerKnownIntrinsicsPlugins().
  */
 public class KnownIntrinsics {
-
-    /**
-     * Returns the current VMThread, i.e., the current VM-level thread information block.
-     *
-     * When (@link SubstrateOptions#MultiThreaded} is false, there is no VMThread available. This
-     * method can still be called, but it always returns {@code null}.
-     */
-    public static native IsolateThread currentVMThread();
 
     /**
      * Returns the value of the heap base.

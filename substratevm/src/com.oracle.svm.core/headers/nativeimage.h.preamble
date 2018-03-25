@@ -7,7 +7,7 @@
  * passed to an entry point as the execution context.
  */
 struct __graal_isolate_t;
-typedef struct _graal_isolate_t graal_isolate_t;
+typedef struct __graal_isolate_t graal_isolate_t;
 
 /*
  * Structure representing a thread that is attached to an isolate. A pointer to
