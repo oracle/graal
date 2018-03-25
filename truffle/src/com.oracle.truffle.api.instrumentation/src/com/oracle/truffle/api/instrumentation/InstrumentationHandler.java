@@ -72,7 +72,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Central coordinator class for the Truffle instrumentation framework. Allocated once per
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine engine}.
+ * {@linkplain org.graalvm.polyglot.Engine engine}.
  */
 final class InstrumentationHandler {
 

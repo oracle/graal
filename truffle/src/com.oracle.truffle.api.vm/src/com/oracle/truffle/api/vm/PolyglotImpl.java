@@ -75,8 +75,10 @@ import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
  * Internal service implementation of the polyglot API.
  *
  * @since 0.27
+ * @deprecated do not use directly
  */
 @SuppressWarnings("deprecation")
+@Deprecated
 public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];

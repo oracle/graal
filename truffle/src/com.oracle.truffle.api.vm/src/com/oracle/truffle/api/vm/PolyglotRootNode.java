@@ -42,13 +42,12 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine.Language;
 
 @SuppressWarnings("deprecation")
 abstract class PolyglotRootNode extends RootNode {
@@ -125,7 +124,7 @@ abstract class PolyglotRootNode extends RootNode {
         return Truffle.getRuntime().createCallTarget(new ForeignSendRootNode(engine, message));
     }
 
-    static CallTarget createEval(PolyglotEngine engine, Language language, Source source) {
+    static CallTarget createEval(PolyglotEngine engine, PolyglotEngine.Language language, Source source) {
         return Truffle.getRuntime().createCallTarget(new EvalRootNode(engine, language, source));
     }
 
@@ -217,12 +216,12 @@ abstract class PolyglotRootNode extends RootNode {
         private static final Object[] EMPTY_ARRAY = new Object[0];
 
         @Child private DirectCallNode call;
-        private final Language language;
+        private final PolyglotEngine.Language language;
         private final Source source;
 
         private static final Object NULL_VALUE = JavaInterop.asTruffleValue(null);
 
-        private EvalRootNode(PolyglotEngine engine, Language language, Source source) {
+        private EvalRootNode(PolyglotEngine engine, PolyglotEngine.Language language, Source source) {
             super(engine);
             this.source = source;
             this.language = language;

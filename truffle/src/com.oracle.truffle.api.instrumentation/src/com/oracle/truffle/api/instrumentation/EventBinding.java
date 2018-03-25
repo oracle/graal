@@ -42,11 +42,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * <ul>
  * <li>explicit {@linkplain #dispose() disposal} of the subscription; or</li>
  *
- * <li>the instrument that created the subscription is
- * {@linkplain com.oracle.truffle.api.vm.PolyglotEngine.Instrument#setEnabled(boolean) disabled}; or
- *
- * <li>the instrumented engine is {@linkplain com.oracle.truffle.api.vm.PolyglotEngine#dispose()
- * disposed}.</li>
+ * <li>the instrumented engine is {@linkplain org.graalvm.polyglot.Engine#close() closed}.</li>
  * </ul>
  * </p>
  *

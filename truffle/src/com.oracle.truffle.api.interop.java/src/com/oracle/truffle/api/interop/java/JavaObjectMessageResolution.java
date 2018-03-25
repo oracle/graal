@@ -258,7 +258,7 @@ class JavaObjectMessageResolution {
         @Child private ToPrimitiveNode primitive = ToPrimitiveNode.create();
 
         public Object access(JavaObject object) {
-            return JavaInteropAccessor.isGuestPrimitive(object);
+            return JavaInteropAccessor.isGuestPrimitive(object.obj);
         }
 
     }

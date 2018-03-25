@@ -51,11 +51,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * Represents debugging related state of a {@link PolyglotEngine}.
+ * Class that simplifies implementing a debugger on top of Truffle. Primarily used to implement
+ * debugging protocol support.
  * <p>
  * Access to the (singleton) instance in an engine, is available via:
  * <ul>
- * <li>{@link Debugger#find(PolyglotEngine)}</li>
+ * <li>{@link Debugger#find(Engine)}</li>
  * <li>{@link Debugger#find(TruffleLanguage.Env)}</li>
  * <li>{@link DebuggerSession#getDebugger()}</li>
  * </ul>
@@ -296,11 +297,6 @@ public final class Debugger {
     }
 
     /**
-     * Finds debugger associated with given engine. There is at most one debugger associated with
-     * any {@link PolyglotEngine}.
-     *
-     * @param engine the engine to find debugger for
-     * @return an instance of associated debugger, never <code>null</code>
      * @since 0.9
      * @deprecated use {@link #find(TruffleInstrument.Env)}, {@link #find(TruffleLanguage.Env)} or
      *             {@link #find(Engine)} instead.
@@ -323,9 +319,9 @@ public final class Debugger {
     }
 
     /**
-     * Finds the debugger associated with a given polyglot engine.
+     * Finds the debugger associated with a given an engine.
      *
-     * @param env the instrument environment to find debugger for
+     * @param engine the engine to find debugger for
      * @return an instance of associated debugger, never <code>null</code>
      * @since 0.33
      */
@@ -335,9 +331,9 @@ public final class Debugger {
 
     /**
      * Finds the debugger associated with a given language environment. There is at most one
-     * debugger associated with any {@link PolyglotEngine}. Please note that a debugger instance
-     * looked up with a language also has access to all other languages and sources that were loaded
-     * by them.
+     * debugger associated with any {@link org.graalvm.polyglot.Engine}. Please note that a debugger
+     * instance looked up with a language also has access to all other languages and sources that
+     * were loaded by them.
      *
      * @param env the language environment to find debugger for
      * @return an instance of associated debugger, never <code>null</code>

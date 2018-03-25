@@ -37,9 +37,9 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 /**
  * This test is to be removed with the PolyglotEngine. Truffle NFI is currently no longer accessible

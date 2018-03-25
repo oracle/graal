@@ -29,16 +29,15 @@ import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.vm.PolyglotRuntime.LanguageShared;
 
 @SuppressWarnings("deprecation")
 final class FindContextNodeImpl<C> extends com.oracle.truffle.api.impl.FindContextNode<C> {
-    private final LanguageShared languageShared;
+    private final PolyglotRuntime.LanguageShared languageShared;
     private final Env env;
 
     FindContextNodeImpl(Env env) {
         this.env = env;
-        this.languageShared = (LanguageShared) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
+        this.languageShared = (PolyglotRuntime.LanguageShared) NODES.getEngineObject(LANGUAGE.getLanguageInfo(env));
     }
 
     @SuppressWarnings("unchecked")

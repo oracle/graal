@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 /**
  * Example of an execution shielded by a timeout. Used in {@link SuspendedEvent#prepareKill()}

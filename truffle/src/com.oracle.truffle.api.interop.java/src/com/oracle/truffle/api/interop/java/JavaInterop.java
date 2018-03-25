@@ -185,9 +185,9 @@ public final class JavaInterop {
 
     /**
      * @since 0.18
-     * @deprecated use
-     *             <code>value.{@link Value#isString() isString()} || value.{@link Value#isNumber() isNumber()} || value.{@link Value#isBoolean() isBoolean()}</code>
-     *             instead.
+     * @deprecated use <code>value.{@link Value#isString() isString()} || value.
+     *             {@link Value#isNumber() isNumber()} || value.{@link Value#isBoolean()
+     *              isBoolean()}</code> instead.
      */
     @Deprecated
     public static boolean isPrimitive(Object obj) {
@@ -224,8 +224,8 @@ public final class JavaInterop {
 
     /**
      * @since 0.9
-     * @deprecated use {@link Context#asValue(Object) asValue(value)}.{@link Value#as(Class)
-     *             as}(functionalType) instead.
+     * @deprecated use {@link Context#asValue(Object) asValue(value)}.{@link Value#as(Class) as}
+     *             (functionalType) instead.
      */
     @Deprecated
     public static <T> TruffleObject asTruffleFunction(Class<T> functionalType, T implementation) {

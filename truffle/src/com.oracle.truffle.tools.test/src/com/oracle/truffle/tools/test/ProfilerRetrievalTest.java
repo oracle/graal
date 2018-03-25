@@ -47,7 +47,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tools.Profiler;
+import com.oracle.truffle.tools.*;
 
 /**
  * Test that languages and other instruments are able to retrieve the Profiler instance.

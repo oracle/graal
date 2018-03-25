@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.interop.java;
+package com.oracle.truffle.api.dsl;
 
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-import org.graalvm.polyglot.proxy.Proxy;
-
-import com.oracle.truffle.api.interop.Message;
 
 /**
- * @since 0.9
- * @deprecated use {@link Proxy proxies} instead.
+ * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
  */
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-@Deprecated
-public @interface MethodMessage {
+@Retention(RetentionPolicy.CLASS)
+@interface SuppressFBWarnings {
     /**
-     * @see Message#valueOf(java.lang.String)
-     * @since 0.9
-     * @deprecated use {@link Proxy proxies} instead.
+     * The set of FindBugs
+     * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
+     * suppressed in annotated element. The value can be a bug category, kind or pattern.
      */
-    @Deprecated
-    String message();
+    java.lang.String[] value();
 }

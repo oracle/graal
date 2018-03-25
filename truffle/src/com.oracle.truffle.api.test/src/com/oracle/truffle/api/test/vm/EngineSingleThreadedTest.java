@@ -30,7 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 import java.util.concurrent.CountDownLatch;
 import org.junit.After;

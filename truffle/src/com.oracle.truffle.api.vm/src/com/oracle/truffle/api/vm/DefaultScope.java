@@ -242,7 +242,7 @@ final class DefaultScope {
     }
 
     @MessageResolution(receiverType = NullValue.class)
-    final static class NullValue implements TruffleObject {
+    static final class NullValue implements TruffleObject {
 
         private static final NullValue INSTANCE = new NullValue();
 

@@ -72,14 +72,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * Client access to {@link PolyglotEngine} {@linkplain Debugger debugging services}.
+ * Represents a single debugging session of a Debugger.
  *
  * <h4>Session lifetime</h4>
  * <p>
  * <ul>
- * <li>A {@link PolyglotEngine} debugging client
- * {@linkplain Debugger#startSession(SuspendedCallback) requests} a new {@linkplain DebuggerSession
- * session} from the {@linkplain Debugger#find(PolyglotEngine) engine's Debugger}.</li>
+ * <li>A debugging client {@linkplain Debugger#startSession(SuspendedCallback) requests} a new
+ * {@linkplain DebuggerSession session} from the {@linkplain Debugger Debugger}.</li>
  *
  * <li>A client uses a session to request suspension of guest language execution threads, for
  * example by setting breakpoints or stepping.</li>
@@ -1225,11 +1224,10 @@ public final class DebuggerSession implements Closeable {
 
 class DebuggerSessionSnippets {
 
+    @SuppressFBWarnings("")
     public void example() {
-
-        TruffleInstrument.Env instrumentEnv = null;
-
         // @formatter:off
+        TruffleInstrument.Env instrumentEnv = null;
         // BEGIN: DebuggerSessionSnippets#example
         try (DebuggerSession session = Debugger.find(instrumentEnv).
                         startSession(new SuspendedCallback() {

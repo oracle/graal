@@ -58,20 +58,12 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.ForeignAccess.StandardFactory;
 import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.api.vm.PolyglotEngine.Language;
-import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
+import com.oracle.truffle.api.vm.*;
 import com.oracle.truffle.tck.Schema.Type;
 import com.oracle.truffle.tck.impl.LongBinaryOperation;
 import com.oracle.truffle.tck.impl.ObjectBinaryOperation;
@@ -79,68 +71,12 @@ import com.oracle.truffle.tck.impl.TckInstrument;
 import com.oracle.truffle.tck.impl.TestObject;
 
 /**
- * Test compatibility kit (the <em>TCK</em>) is a collection of tests to certify your
- * {@link TruffleLanguage language implementation} compliance. If you want your language to be
- * compliant with most recent requirements of the Truffle infrastructure and tooling, subclass,
- * implement <b>protected</b> methods and include in your test suite:
- *
- * <pre>
- * <b>public class</b> MyLanguageTCKTest <b>extends</b> {@link TruffleTCK} {
- *   {@link Override @Override}
- *   <b>protected</b> {@link PolyglotEngine} {@link #prepareVM() prepareVM}() {
- *     <em>// create the engine</em>
- *     <em>// execute necessary scripts</em>
- *   }
- *
- *   {@link Override @Override}
- *   <b>protected</b> {@link String} fourtyTwo() {
- *     <b>return</b> <em>// name of function that returns 42</em>
- *   }
- *
- *   <em>// and so on...</em>
- * }
- * </pre>
- *
- * The <em>TCK</em> is carefully designed to accommodate differences between languages. The
- * <em>TCK</em> doesn't dictate what object your language is using to represent {@link Number
- * numbers} or {@link String strings} internally. The <em>TCK</em> doesn't prescribe the precise
- * type of values returned from your
- * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) language evaluations}. The tests
- * just assume that if the result is supposed to be a number, the returned value will be an instance
- * of {@link Number} or be {@link Message#UNBOX convertible} to a {@link Number} and keeps
- * sufficient level of precision. Similarly for {@link String strings}. As such the tests in the
- * <em>TCK</em> should be applicable to wide range of languages. Should there be a test that cannot
- * be implemented in your language, it can be suppressed by overriding its test method and doing
- * nothing:
- *
- * <pre>
- *   {@link Override @Override}
- *   <b>public void</b> {@link #testFortyTwo() testFortyTwo}() {
- *     <em>// do nothing</em>
- *   }
- * </pre>
- * <p>
- * The primary goal of the <em>TCK</em> is to ensure your {@link TruffleLanguage language
- * implementation} plays well with other languages in the {@link PolyglotEngine} - e.g. that data
- * can be exchanged between your and other languages. The {@link com.oracle.truffle.api.interop
- * interop package} defines what types of data can be interchanged between the languages and the
- * <em>TCK</em> does its best to make sure all these data are really accepted as an input on a
- * boundary of your {@link TruffleLanguage language implementation}. That doesn't mean such data
- * need to be used internally, many languages do conversions in their {@link StandardFactory foreign
- * access} {@link RootNode nodes} to more suitable internal representation. Such conversion is fully
- * acceptable as nobody prescribes what is the actual type of output after executing a function/code
- * snippet in your language.
- * <p>
- * Should the <em>TCK</em> be found unsuitable for your {@link TruffleLanguage language
- * implementation} please speak-up (at <em>Truffle/Graal</em> mailing list for example) and we do
- * our best to analyze your case and adjust the <em>TCK</em> to suite everyone's needs.
- *
  * @since 0.8 or earlier
- * @deprecated Use the {@link https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md new
- *             TCK}. instead.
+ * @deprecated Use the <a href="https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md">new
+ *             TCK</a> instead.
  */
-@Deprecated
 @SuppressWarnings("deprecation")
+@java.lang.Deprecated
 public abstract class TruffleTCK {
 
     private static volatile PolyglotEngine previousVMReference;
@@ -154,8 +90,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Disposes {@link PolyglotEngine} used during the test execution.
-     *
      * @since 0.12
      */
     @AfterClass
@@ -184,15 +118,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * This methods is called before each test is executed. It's purpose is to set a
-     * {@link PolyglotEngine} with your language up, so it is ready for testing.
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) Execute} any scripts you
-     * need, and prepare global symbols with proper names. The symbols will then be looked up by the
-     * infrastructure (using the names provided by you from methods like {@link #plusInt()}) and
-     * used for internal testing.
-     *
-     * @return initialized Truffle virtual machine
-     * @throws java.lang.Exception thrown when the VM preparation fails
      * @since 0.8 or earlier
      */
     protected PolyglotEngine prepareVM() throws Exception {
@@ -200,60 +125,28 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Configure your language inside of provided builder. The method should do the same operations
-     * like {@link #prepareVM()}, but rather than doing them from scratch, it is supposed to do the
-     * changes in provided builder. The builder may be pre-configured by the TCK - for example
-     * {@link Builder#executor(java.util.concurrent.Executor)} may be provided or
-     * {@link Builder#globalSymbol(java.lang.String, java.lang.Object) global symbols} specified,
-     * etc.
-     *
-     * @param preparedBuilder the builder to use to construct the engine
-     * @return initialized Truffle virtual machine
-     * @throws java.lang.Exception thrown when the VM preparation fails
      * @since 0.12
      */
-    protected PolyglotEngine prepareVM(PolyglotEngine.Builder preparedBuilder) throws Exception {
+    protected PolyglotEngine prepareVM(@SuppressWarnings("unused") PolyglotEngine.Builder preparedBuilder) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     /**
-     * MIME type associated with your language. The MIME type will be passed to
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source)} method of the
-     * {@link #prepareVM() created engine}.
-     *
-     * @return mime type of the tested language
      * @since 0.8 or earlier
      */
     protected abstract String mimeType();
 
     /**
-     * Name of function which will return value 42 as a number. The return value of the method
-     * should be instance of {@link Number} and its {@link Number#intValue()} should return
-     * <code>42</code>.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected abstract String fourtyTwo();
 
     /**
-     * Name of a function that returns <code>null</code>. Truffle languages are encouraged to have
-     * their own type representing <code>null</code>, but when such value is returned from
-     * {@link PolyglotEngine#eval}, it needs to be converted to real Java <code>null</code> by
-     * sending a foreign access <em>isNull</em> message. There is a test to verify it is really
-     * true.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected abstract String returnsNull();
 
     /**
-     * Name of function to add two integer values together. The symbol will be invoked with two
-     * parameters of type {@link Integer} and expects result of type {@link Number} which's
-     * {@link Number#intValue()} is equivalent of <code>param1 + param2</code>.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected String plusInt() {
@@ -261,39 +154,19 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of function to add two numbers together. The symbol will be invoked with two parameters
-     * of <code>type1</code> and <code>type2</code> and expects result of type {@link Number}
-     * which's {@link Number#intValue()} is equivalent of <code>param1 + param2</code>. As some
-     * languages may have different operations for different types of numbers, the actual types are
-     * passed to the method and the implementation can decide to return different symbol based on
-     * the parameters.
-     *
-     * @param type1 one of byte, short, int, long, float, double class
-     * @param type2 one of byte, short, int, long, float, double class
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("unused")
     protected String plus(Class<?> type1, Class<?> type2) {
         return plusInt();
     }
 
     /**
-     * Name of a function in your language to perform a callback to foreign function. Your function
-     * should prepare two numbers (18 and 32) and apply them to the function passed in as an
-     * argument of your function. It should then add 10 to the returned value and return the result
-     * back to its caller.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected abstract String applyNumbers();
 
     /**
-     * Name of identity function. The identity function accepts one argument and returns it. The
-     * argument should go through without any modification, e.g. the input should result in
-     * identical output.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected String identity() {
@@ -301,11 +174,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that adds up two complex numbers. The function accepts two arguments and
-     * provides no return value. The arguments are complex numbers with members called real and
-     * imaginary. The first argument contains the result of the addition.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected String complexAdd() {
@@ -313,12 +181,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that adds up two complex numbers using an add method of the first complex
-     * number. The function accepts two arguments and provides no return value. The arguments are
-     * complex numbers with members called real and imaginary. The first argument contains the
-     * result of the addition.
-     *
-     * @return name of globally exported symbol
      * @since 0.8 or earlier
      */
     protected String complexAddWithMethod() {
@@ -326,11 +188,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that adds up the real part of complex numbers. The function accepts one
-     * argument and provides the sum of all real parts. The argument is an array/buffer of complex
-     * numbers.
-     *
-     * @return name of globally exported symbol, <code>null</code> if the test should be skipped
      * @since 0.8 or earlier
      */
     protected String complexSumReal() {
@@ -338,12 +195,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that copies a list of complex numbers. The function accepts two arguments
-     * and provides no return value. The arguments are two lists of complex numbers with members
-     * called real and imaginary. The first argument is the destination, the second argument is the
-     * source.
-     *
-     * @return name of globally exported symbol, <code>null</code> if the test should be skipped
      * @since 0.8 or earlier
      */
     protected String complexCopy() {
@@ -351,12 +202,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function to return global object. The function can be executed without providing
-     * any arguments and should return global object of the language, if the language supports it.
-     * The global scopes are accessible via {@link TruffleLanguage#findTopScopes(java.lang.Object)}.
-     *
-     * @return name of globally exported symbol, return <code>null</code> if the language doesn't
-     *         support the concept of global object
      * @since 0.8 or earlier
      */
     protected String globalObject() {
@@ -364,12 +209,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function to parse source written in some other language. When the function is
-     * executed, it expects two arguments. First one is MIME type identifying
-     * {@link TruffleLanguage} and the second one is the source code to parse in that language and
-     * execute it. The result of the execution is then returned back to the caller.
-     *
-     * @return name of globally exported symbol to invoke when one wants to execute some code
      * @since 0.8 or earlier
      */
     protected String evaluateSource() {
@@ -377,24 +216,14 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Code snippet to multiply two variables. The test uses the snippet as a parameter to your
-     * language' s
-     * {@link TruffleLanguage#parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest)} method.
-     *
-     * @param firstName name of the first variable to multiplyCode
-     * @param secondName name of the second variable to multiplyCode
-     * @return code snippet that multiplies the two variables in your language
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("unused")
     protected String multiplyCode(String firstName, String secondName) {
         throw new UnsupportedOperationException("multiply(String,String) method not implemeted!");
     }
 
     /**
-     * Name of a function to manipulate with an array. The function should take three parameters:
-     * the array, index into the array (expected to be an instance of {@link Number}) and another
-     * number to add to value already present at the index-location in the array. The first element
-     * in the array has index zero.
      *
      * @since 0.14
      */
@@ -403,9 +232,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns an object with a numeric property called "value". The
-     * property must contain 42.0;
-     *
      * @since 0.16
      */
     protected String objectWithValueProperty() {
@@ -413,8 +239,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns an object with a member method "add" and a numeric property
-     * called "value". The function "add" adds the parameter to "value" and returns "value".
      *
      * @since 0.16
      */
@@ -423,8 +247,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns an array-like object with a numeric property as its 3rd
-     * element. The element must be 42.0. The array-like object must have a length 4;
      *
      * @since 0.16
      */
@@ -433,17 +255,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns an object supporting {@link Message#KEY_INFO} and having six
-     * properties named "ro", "wo", "rw", "rm", "invocable" and "intern". The "ro" property should
-     * be read-only (readable and not writable), the "wo" property should be write-only (writable
-     * and not readable), "rw" property readable and writable, "rm" property should be removable,
-     * "invocable" property should return an "invoked" String on {@link Message#createInvoke(int)
-     * invoke message} and the "intern" property should be internal. The object should support
-     * {@link Message#KEYS KEYS message} as well and it should provide the "intern" property iff it
-     * gets a boolean true as an argument. When the language does not support some attribute, it can
-     * skip the appropriate property (that should result in returning <code>0</code> as the key info
-     * of such skipped property).
-     *
      * @since 0.26
      */
     protected String objectWithKeyInfoAttributes() {
@@ -451,7 +262,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns a function that can add up two numbers.
      *
      * @since 0.16
      */
@@ -460,8 +270,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to read
-     * the "value" property of this object and needs to return it.
      *
      * @since 0.16
      */
@@ -470,8 +278,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to read
-     * the 3rd element of this array-object and needs to return it.
      *
      * @since 0.16
      */
@@ -480,8 +286,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to
-     * write 42.0 to the "value" property of this object.
      *
      * @since 0.16
      */
@@ -490,8 +294,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to
-     * write 42.0 to the 3rd element of this array-object.
      *
      * @since 0.16
      */
@@ -500,8 +302,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to
-     * return the size of this array-like object.
      *
      * @since 0.16
      */
@@ -510,8 +310,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to
-     * check if the foreign object has a size.
      *
      * @since 0.16
      */
@@ -520,8 +318,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to
-     * check if the foreign object is a null value.
      *
      * @since 0.16
      */
@@ -530,8 +326,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. This function needs to
-     * check if the foreign object is an executable function.
      *
      * @since 0.16
      */
@@ -540,8 +334,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign function as an argument. You need to call this
-     * function and pass arguments [41.0, 42.0]
      *
      * @since 0.16
      */
@@ -550,8 +342,6 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that receives a foreign object as an argument. You need to call method
-     * "foo" on this object and pass arguments [41.0, 42.0]
      *
      * @since 0.16
      */
@@ -560,49 +350,19 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that counts number of its invocations in current {@link PolyglotEngine}
-     * context. Your function should somehow keep a counter to remember number of its invocations
-     * and always increment it. The first invocation should return <code>1</code>, the second
-     * <code>2</code> and so on. The returned values are expected to be instances of {@link Number}.
-     * <p>
-     * The function will be used to test that two instances of your language can co-exist next to
-     * each other. Without being mutually influenced.
      *
-     * @return name of globally expected symbol
      * @since 0.8 or earlier
      */
     protected abstract String countInvocations();
 
     /**
-     * Return a code snippet that is invalid in your language. Its
-     * {@link PolyglotEngine#eval(com.oracle.truffle.api.source.Source) evaluation} should fail and
-     * yield an exception.
      *
-     * @return code snippet invalid in the tested language
      * @since 0.8 or earlier
      */
     protected abstract String invalidCode();
 
     /**
-     * Name of a function that returns a compound object with members representing certain
-     * operations. In the JavaScript the object should look like:
      *
-     * <pre>
-     * <b>var</b> obj = {
-     *   'fourtyTwo': function {@link #fourtyTwo()},
-     *   'plus': function {@link #plusInt()},
-     *   'returnsNull': function {@link #returnsNull()},
-     *   'returnsThis': function() { return obj; }
-     * };
-     * <b>return</b> obj;
-     * </pre>
-     *
-     * The returned object shall have three functions that will be obtained and used exactly as
-     * described in their Javadoc - e.g. {@link #fourtyTwo()}, {@link #plusInt()} and
-     * {@link #returnsNull()}. In addition to that there should be one more function
-     * <b>returnsThis</b> that will return the object itself again.
-     *
-     * @return name of a function that returns such compound object
      * @since 0.8 or earlier
      */
     protected String compoundObject() {
@@ -610,29 +370,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns a compound object with members representing certain primitive
-     * types. In the JavaScript the object should look like:
      *
-     * <pre>
-     * <b>var</b> obj = {
-     *   'byteValue': 0,
-     *   'shortValue': 0,
-     *   'intValue': 0,
-     *   'longValue': 0,
-     *   'floatValue': 0.0,
-     *   'doubleValue': 0.0,
-     *   'charValue': '0',
-     *   'stringValue': '',
-     *   'booleanVlaue': false
-     * };
-     * <b>return</b> obj;
-     * </pre>
-     *
-     * The returned object shall have slots for these values that can be read and written to.
-     * Various test methods try to read and modify the values. Each invocation of the function
-     * should yield new object.
-     *
-     * @return name of a function that returns such values object
      * @since 0.8 or earlier
      */
     protected String valuesObject() {
@@ -640,26 +378,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Create a <code>while-loop</code> execution in your language. Create a function that takes one
-     * parameter - another function and then repeatly counts from zero to infinity calling the
-     * provided function with a single argument - the value of the counter: 0, 1, 2, 3, etc. The
-     * execution is stopped while the value returned from the provided function isn't
-     * <code>true</code>. The code in JavaScript would look like:
      *
-     * <pre>
-     * function countUpWhile(fn) {
-     *   var counter = 0;
-     *   for (;;) {
-     *     if (!fn(counter)) {
-     *       break;
-     *     }
-     *     counter++;
-     *   }
-     * }
-     * </pre>
-     *
-     *
-     * @return the name of the function that implements the <code>while-loop</code> execution
      * @since 0.15
      */
     protected String countUpWhile() {
@@ -667,19 +386,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Assert two double values are the same. Various languages may have different semantics with
-     * respect to double numbers. Some of the language may not support <b>double</b> or <b>float</b>
-     * values at all. Those languages may override this method and compare the values with as much
-     * precision as they like.
-     * <p>
-     * Default implementation of this method calls
-     * {@link Assert#assertEquals(java.lang.String, double, double, double)} with delta
-     * <code>0.1</code>.
      *
-     * @param msg assertion message to display in case of error
-     * @param expectedValue the value expected by the test
-     * @param actualValue the real value produced by the language
-     * @throws AssertionError if the values are different according to the language semantics
      * @since 0.8 or earlier
      */
     protected void assertDouble(String msg, double expectedValue, double actualValue) {
@@ -687,33 +394,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Provide at least one pair of functions that return a value and its meta-object converted to a
-     * String representation. The value's meta-object is found using
-     * {@link TruffleLanguage#findMetaObject(java.lang.Object, java.lang.Object)}, converted to a
-     * String by {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object)} and compared
-     * to the provided String representation. Provide names of an even number of functions, which
-     * return a value and value's meta-object converted to a String, respectively. The code in
-     * JavaScript could look like:
      *
-     * <pre>
-     * function numberValue() {
-     *     return 42;
-     * }
-     *
-     * function numberType() {
-     *     return "Number";
-     * }
-     *
-     * function functionValue() {
-     *     return functionValue;
-     * }
-     *
-     * function functionType() {
-     *     return "Function";
-     * }
-     * </pre>
-     *
-     * @return names of functions that return a value and value's meta-object, respectively.
      * @since 0.22
      */
     protected String[] metaObjects() {
@@ -721,22 +402,7 @@ public abstract class TruffleTCK {
     }
 
     /**
-     * Name of a function that returns a value for which a source location can be found using
-     * {@link TruffleLanguage#findSourceLocation(java.lang.Object, java.lang.Object)}. It needs to
-     * be possible to find the source location among currently loaded sources for verification. The
-     * code in JavaScript could look like (returns a function object, which should have a source
-     * associated):
      *
-     * <pre>
-     * function foo() {
-     * }
-     *
-     * function getValueWithASource() {
-     *     return foo;
-     * }
-     * </pre>
-     *
-     * @return name of a function that returns a value with source location associated
      * @since 0.22
      */
     protected String valueWithSource() {
@@ -1448,7 +1114,7 @@ public abstract class TruffleTCK {
             return;
         }
 
-        Language language = vm().getLanguages().get(mimeType());
+        PolyglotEngine.Language language = vm().getLanguages().get(mimeType());
         assertNotNull("Language for " + mimeType() + " found", language);
 
         PolyglotEngine.Value function = vm().findGlobalSymbol(globalObjectFunction);
@@ -1460,7 +1126,7 @@ public abstract class TruffleTCK {
     /** @since 0.8 or earlier */
     @Test
     public void testEvaluateSource() throws Exception {
-        Language language = vm().getLanguages().get(mimeType());
+        PolyglotEngine.Language language = vm().getLanguages().get(mimeType());
         assertNotNull("Language for " + mimeType() + " found", language);
 
         PolyglotEngine.Value function = vm().findGlobalSymbol(evaluateSource());
@@ -1532,7 +1198,7 @@ public abstract class TruffleTCK {
     @Test
     public void testPropertiesInteropMessage() throws Exception {
         PolyglotEngine.Value values = findGlobalSymbol(valuesObject());
-        Value valueObj = values.execute();
+        PolyglotEngine.Value valueObj = values.execute();
         assertIsObjectOfLanguage(valueObj.get());
         Map<?, ?> res = valueObj.as(Map.class);
 
@@ -2281,7 +1947,7 @@ public abstract class TruffleTCK {
             PolyglotRuntime.Instrument instr = vm().getRuntime().getInstruments().get(TckInstrument.ID);
             instr.setEnabled(true);
             try {
-                Value value = valueFunction.execute();
+                PolyglotEngine.Value value = valueFunction.execute();
                 metaObjectStr = value.getMetaObject().as(String.class);
             } finally {
                 instr.setEnabled(false);
@@ -2305,7 +1971,7 @@ public abstract class TruffleTCK {
         PolyglotRuntime.Instrument instr = vm().getRuntime().getInstruments().get(TckInstrument.ID);
         instr.setEnabled(true);
         try {
-            Value value = valueFunction.execute();
+            PolyglotEngine.Value value = valueFunction.execute();
             TckInstrument tckInstrument = instr.lookup(TckInstrument.class);
             assertNotNull(tckInstrument);
             TruffleInstrument.Env env = tckInstrument.getEnvironment();

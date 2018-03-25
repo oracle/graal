@@ -37,7 +37,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -1366,8 +1365,9 @@ public abstract class TruffleLanguage<C> {
         /**
          * Looks up a Java class in the top-most scope the host environment. Returns
          * <code>null</code> if no symbol was found or the symbol was not accessible. Symbols might
-         * not be accessible if a {@link Context.Builder#hostClassFilter(Predicate) class filter}
-         * prevents access.
+         * not be accessible if a
+         * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
+         * class filter} prevents access.
          * <p>
          * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
          * the other language) to support interoperability between languages, {@link String} or one
@@ -1396,9 +1396,9 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns the java host representation of a {@link TruffleObject} if it is a Java host
-         * language object. Throws {@link ClassCastException} if the provided argument is not a
-         * {@link #isHostObject(TruffleObject) java object}.
+         * Returns the java host representation of a Truffle guest object if it represents a Java
+         * host language object. Throws {@link ClassCastException} if the provided argument is not a
+         * {@link #isHostObject(Object) host object}.
          *
          * @since 0.33
          */
@@ -1420,7 +1420,8 @@ public abstract class TruffleLanguage<C> {
          * guest language representation. To allocate new host objects users should use
          * {@link #lookupHostSymbol(String)} to lookup the class and then send a NEW interop message
          * to that object to instantiate it. This method does not respect configured
-         * {@link Context.Builder#hostClassFilter(java.util.function.Predicate) class filters}.
+         * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
+         * class filters}.
          *
          * @param hostObject the host object to convert
          * @since 0.33
@@ -1450,10 +1451,10 @@ public abstract class TruffleLanguage<C> {
          * Tests whether an exception is a host exception thrown by a Java Interop method
          * invocation.
          *
-         * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that
-         * involve the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE},
-         * {@code NEW}). The host exception may be unwrapped using
-         * {@link #asHostException(Throwable)}.
+         * Host exceptions may be thrown by {@linkplain com.oracle.truffle.api.interop.Message
+         * messages} sent to Java objects that involve the invocation of a Java method or
+         * constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}). The host exception may be
+         * unwrapped using {@link #asHostException(Throwable)}.
          *
          * @param exception the {@link Throwable} to test
          * @return {@code true} if the {@code exception} is a host exception, {@code false}
@@ -1462,17 +1463,17 @@ public abstract class TruffleLanguage<C> {
          * @since 0.33
          */
         @SuppressWarnings("static-method")
-        public boolean isHostException(Throwable t) {
-            return AccessAPI.engineAccess().isHostException(t);
+        public boolean isHostException(Throwable exception) {
+            return AccessAPI.engineAccess().isHostException(exception);
         }
 
         /**
          * Unwraps a host exception thrown by a Java method invocation.
          *
-         * Host exceptions may be thrown by {@linkplain Message messages} sent to Java objects that
-         * involve the invocation of a Java method or constructor ({@code EXECUTE}, {@code INVOKE},
-         * {@code NEW}). Host exceptions can be identified using
-         * {@link #isHostException(Throwable)}.
+         * Host exceptions may be thrown by {@linkplain com.oracle.truffle.api.interop.Message
+         * messages} sent to Java objects that involve the invocation of a Java method or
+         * constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}). Host exceptions can be
+         * identified using {@link #isHostException(Throwable)} .
          *
          * @param exception the host exception to unwrap
          * @return the original Java exception
@@ -1481,8 +1482,8 @@ public abstract class TruffleLanguage<C> {
          * @since 0.33
          */
         @SuppressWarnings("static-method")
-        public Throwable asHostException(Throwable t) {
-            return AccessAPI.engineAccess().asHostException(t);
+        public Throwable asHostException(Throwable exception) {
+            return AccessAPI.engineAccess().asHostException(exception);
         }
 
         /**

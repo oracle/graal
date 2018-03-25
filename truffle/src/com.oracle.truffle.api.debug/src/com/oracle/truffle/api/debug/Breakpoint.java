@@ -1166,6 +1166,7 @@ public class Breakpoint {
 
 class BreakpointSnippets {
 
+    @SuppressFBWarnings("")
     public void example() {
         SuspendedCallback suspendedCallback = new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
@@ -1173,7 +1174,6 @@ class BreakpointSnippets {
         };
         Source someCode = Source.newBuilder("").mimeType("").name("").build();
         TruffleInstrument.Env instrumentEnvironment = null;
-
         // @formatter:off
         // BEGIN: BreakpointSnippets.example
         try (DebuggerSession session = Debugger.find(instrumentEnvironment).

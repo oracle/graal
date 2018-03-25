@@ -191,7 +191,7 @@ public class SLObjectMessageResolution {
     }
 
     @MessageResolution(receiverType = KeysArray.class)
-    final static class KeysArray implements TruffleObject {
+    static final class KeysArray implements TruffleObject {
 
         private final Object[] keys;
 
