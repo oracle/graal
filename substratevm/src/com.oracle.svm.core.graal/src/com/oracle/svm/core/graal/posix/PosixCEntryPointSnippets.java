@@ -331,17 +331,14 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             writeCurrentVMThread(thread);
             isolate = PosixVMThreads.IsolateTL.get(thread);
         } else { // single-threaded
-            IsolateThread singleThread = thread;
             if (SpawnIsolates.getValue()) {
-                if (singleThread.isNull()) {
+                if (thread.isNull()) {
                     return Errors.NULL_ARGUMENT;
                 }
-            } else if (singleThread.isNull()) { // temporary band-aid for broken client code
-                singleThread = (IsolateThread) CEntryPointSetup.SINGLE_THREAD_SENTINEL;
-            } else if (!singleThread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
+            } else if (!thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
                 return Errors.UNATTACHED_THREAD;
             }
-            isolate = (Isolate) ((Word) singleThread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
+            isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
         if (UseHeapBaseRegister.getValue()) {
             setHeapBase(PosixIsolates.getHeapBase(isolate));
