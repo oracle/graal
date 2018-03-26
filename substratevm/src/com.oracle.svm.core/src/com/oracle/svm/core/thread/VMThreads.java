@@ -111,33 +111,20 @@ public abstract class VMThreads {
      * must be the first method called in every thread.
      */
     @Uninterruptible(reason = "Reason: Thread register not yet set up.")
-    public static void attachThread(IsolateThread vmThread) {
-        assert StatusSupport.isStatusCreated(vmThread) : "Status should be initialized on creation.";
-        // Manipulating the VMThread list requires the lock for
-        // changing the status and for notification.
-        // But the VMThread for the current thread is not set up yet,
-        // so the locking must be without transitions.
-        attachThreadUnderLock(vmThread);
-    }
-
-    /**
-     * The body of {@link #attachThread} that is executed under the VMThreads mutex. With that mutex
-     * held, callees do not need to be annotated with {@link Uninterruptible}.
-     * <p>
-     * Using try-finally rather than a try-with-resources to avoid implicitly calling
-     * {@link Throwable#addSuppressed(Throwable)}, which I can not annotate as uninterruptible.
-     */
-    @Uninterruptible(reason = "Reason: Thread register not yet set up.")
-    public static void attachThreadUnderLock(IsolateThread vmThread) {
-        VMMutex lock = VMThreads.THREAD_MUTEX;
+    public static void attachThread(IsolateThread thread) {
+        assert StatusSupport.isStatusCreated(thread) : "Status should be initialized on creation.";
+        // Manipulating the VMThread list requires the lock, but the IsolateThread is not set up
+        // yet, so the locking must be without transitions. Not using try-with-resources to avoid
+        // implicitly calling addSuppressed(), which is not uninterruptible.
+        VMThreads.THREAD_MUTEX.lockNoTransition();
         try {
-            lock.lockNoTransition();
             VMThreads.THREAD_MUTEX.guaranteeIsLocked("Must hold the VMThreads lock.");
-            nextTL.set(vmThread, head);
-            head = vmThread;
+            nextTL.set(thread, head);
+            head = thread;
+            StatusSupport.setStatusNative(thread);
             VMThreads.THREAD_LIST_CONDITION.broadcast();
         } finally {
-            lock.unlock();
+            VMThreads.THREAD_MUTEX.unlock();
         }
     }
 
@@ -240,6 +227,7 @@ public abstract class VMThreads {
             statusTL.set(STATUS_IN_NATIVE);
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static void setStatusNative(IsolateThread vmThread) {
             statusTL.setVolatile(vmThread, STATUS_IN_NATIVE);
         }
