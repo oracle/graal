@@ -130,10 +130,8 @@ public abstract class Accessor {
 
         public abstract Object toGuestObject(Object hostObject, Object languageContext);
 
-        public abstract String javaFunctionToString(Object object);
-
         public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
-        
+
         public abstract boolean isHostObject(Object guestObject);
 
         public abstract boolean isHostFunction(Object guestObject);

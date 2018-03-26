@@ -88,7 +88,7 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void testSystemMethod() throws InteropException {
-        TruffleObject system = (TruffleObject) env.asGuestValue(System.class);
+        TruffleObject system = (TruffleObject) env.lookupHostSymbol(System.class.getName());
         Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));

@@ -311,15 +311,6 @@ public class ValueHostInteropTest {
     }
 
     @Test
-    public void noNonStaticPropertiesForAClass() {
-        Value pojo = context.asValue(PublicPOJO.class);
-        Object[] propertyNames = pojo.getMemberKeys().toArray();
-        assertEquals("One static field and one method", 2, propertyNames.length);
-        assertEquals("One field y", "y", propertyNames[0]);
-        assertEquals("One method to read y", "readY", propertyNames[1]);
-    }
-
-    @Test
     public void arrayHasSize() {
         Value arrObj = context.asValue(new String[]{"Hello", "World", "!"});
         assertTrue(arrObj.hasArrayElements());
