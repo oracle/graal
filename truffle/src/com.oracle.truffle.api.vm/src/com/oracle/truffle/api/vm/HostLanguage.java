@@ -71,6 +71,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             this.env = env;
         }
 
+        @TruffleBoundary
         Class<?> findClass(String className) {
             lookupInternalContext();
 
@@ -178,6 +179,11 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     @Override
     protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return new HostContext(env);
+    }
+
+    @Override
+    protected void initializeContext(HostContext context) throws Exception {
+        context.lookupInternalContext();
     }
 
     @Override
