@@ -302,7 +302,7 @@ public final class Debugger {
      *             {@link #find(Engine)} instead.
      */
     @Deprecated
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings("all")
     public static Debugger find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
         return DebuggerInstrument.getDebugger(engine);
     }

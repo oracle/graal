@@ -75,7 +75,7 @@ import com.oracle.truffle.tck.impl.TestObject;
  * @deprecated Use the <a href="https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md">new
  *             TCK</a> instead.
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "unchecked", "rawtypes"})
 @java.lang.Deprecated
 public abstract class TruffleTCK {
 
@@ -1559,7 +1559,6 @@ public abstract class TruffleTCK {
 
         TruffleObject truffleObject = (TruffleObject) apply.execute().get();
         assertIsObjectOfLanguage(truffleObject);
-        @SuppressWarnings("unchecked")
         List<Object> object = JavaInterop.asJavaObject(List.class, truffleObject);
 
         Assert.assertEquals(42.0, ((Number) object.get(2)).doubleValue(), 0.1);
@@ -1688,7 +1687,6 @@ public abstract class TruffleTCK {
 
     /** @since 0.26 */
     @Test
-    @SuppressWarnings({"rawtypes", "unchecked"})
     public void testObjectWithKeyInfoAttributes() throws Exception {
         String id = objectWithKeyInfoAttributes();
         if (id == null) {

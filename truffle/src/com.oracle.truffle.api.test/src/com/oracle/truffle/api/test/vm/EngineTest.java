@@ -62,7 +62,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
 import com.oracle.truffle.api.vm.*;
 
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "unchecked", "rawtypes"})
 public class EngineTest {
     private final PolyglotRuntime testRuntime = PolyglotRuntime.newBuilder().build();
     private final Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -700,7 +700,6 @@ public class EngineTest {
 
         Class<?> oClass = Object.class;
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         Class<? extends TruffleLanguage> lang = (Class<? extends TruffleLanguage>) oClass;
 
         try {
@@ -711,7 +710,6 @@ public class EngineTest {
         }
 
         oClass = SecretInterfaceType.class;
-        @SuppressWarnings({"rawtypes", "unchecked"})
         Class<? extends TruffleLanguage> secretInterface = (Class<? extends TruffleLanguage>) oClass;
         try {
             // no access using secret interface
@@ -778,7 +776,6 @@ public class EngineTest {
             return fork;
         }
 
-        @SuppressWarnings("unchecked")
         private static <E extends Exception> E raise(@SuppressWarnings("unused") Class<E> aClass, Exception ex) throws E {
             throw (E) ex;
         }
