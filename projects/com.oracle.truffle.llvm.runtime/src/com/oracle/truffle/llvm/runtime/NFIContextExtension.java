@@ -164,9 +164,19 @@ public final class NFIContextExtension implements ContextExtension {
              */
             TruffleObject cxxlib;
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-                cxxlib = loadLibrary("libc++.dylib", true);
+                cxxlib = loadLibrary("libc++.dylib", true, null);
             } else {
-                cxxlib = loadLibrary("libc++.so.1", true);
+                cxxlib = loadLibrary("libc++.so.1", true, null);
+                if (cxxlib == null) {
+                    /*
+                     * On Ubuntu, libc++ can not be dynamically loaded because of a missing
+                     * dependeny on libgcc_s. Work around this by loading it manually first.
+                     */
+                    TruffleObject libgcc = loadLibrary("libgcc_s.so.1", true, "RTLD_GLOBAL");
+                    if (libgcc != null) {
+                        cxxlib = loadLibrary("libc++.so.1", true, null);
+                    }
+                }
             }
             if (cxxlib != null) {
                 libraryHandles.put(lib, cxxlib);
@@ -181,11 +191,16 @@ public final class NFIContextExtension implements ContextExtension {
         CompilerAsserts.neverPartOfCompilation();
         assert lib.getLibrariesToReplace() == null;
         String libName = lib.getPath().toString();
-        return loadLibrary(libName, false);
+        return loadLibrary(libName, false, null);
     }
 
-    private TruffleObject loadLibrary(String libName, boolean optional) {
-        String loadExpression = String.format("load \"%s\"", libName);
+    private TruffleObject loadLibrary(String libName, boolean optional, String flags) {
+        String loadExpression;
+        if (flags == null) {
+            loadExpression = String.format("load \"%s\"", libName);
+        } else {
+            loadExpression = String.format("load(%s) \"%s\"", flags, libName);
+        }
         final Source source = Source.newBuilder(loadExpression).name("(load " + libName + ")").mimeType("application/x-native").build();
         try {
             return (TruffleObject) env.parse(source).call();
