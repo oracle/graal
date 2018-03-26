@@ -194,9 +194,7 @@ public class NativeImageHeap {
         return NumUtil.safeToInt(result);
     }
 
-    /** The base symbol for relocations referencing the read-only native image heap. */
     public void setReadOnlySection(final String sectionName, final long sectionOffset) {
-        // The read-only primitives come before the read-only references.
         final HeapPartition primitives = getReadOnlyPrimitivePartition();
         final HeapPartition references = getReadOnlyReferencePartition();
         primitives.setSection(sectionName, sectionOffset);
@@ -210,14 +208,11 @@ public class NativeImageHeap {
         return NumUtil.safeToInt(result);
     }
 
-    /** The base symbol for relocations referencing the writable native image heap. */
     public void setWritableSection(final String sectionName, final long sectionOffset) {
-        // The writable primitives come before the writable references.
         final HeapPartition primitives = getWritablePrimitivePartition();
         final HeapPartition references = getWritableReferencePartition();
         primitives.setSection(sectionName, sectionOffset);
         references.setSection(sectionName, primitives.offsetInSection(primitives.getSize()));
-        setHeapOffsetInSection(sectionOffset);
     }
 
     /**
@@ -637,7 +632,7 @@ public class NativeImageHeap {
         }
     }
 
-    private void writeStaticFields(RelocatableBuffer rwBuffer) {
+    private void writeStaticFields(RelocatableBuffer buffer) {
         /*
          * Write the values of static fields. The arrays for primitive and object fields are empty
          * and just placeholders. This ensures we get the latest version, since there can be
@@ -648,13 +643,9 @@ public class NativeImageHeap {
         ObjectInfo objectFields = objects.get(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : getUniverse().getFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.wrapped.isWritten() && field.wrapped.isAccessed()) {
-                final int offset;
-                if (field.getStorageKind() == JavaKind.Object) {
-                    offset = objectFields.getIntIndexInSection(field.getLocation());
-                } else {
-                    offset = primitiveFields.getIntIndexInSection(field.getLocation());
-                }
-                writeField(rwBuffer, offset, field, null, null);
+                ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
+                int offset = fields.getIntIndexInSection(field.getLocation());
+                writeField(buffer, offset, field, null, null);
             }
         }
     }
@@ -713,7 +704,7 @@ public class NativeImageHeap {
             if (useHeapBase()) {
                 CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
                 int shift = compressEncoding.getShift();
-                writePointer(buffer, index, targetHeapOffset(targetInfo) >>> shift);
+                writePointer(buffer, index, targetInfo.getOffsetInSection() >>> shift);
             } else {
                 buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
             }
@@ -747,7 +738,7 @@ public class NativeImageHeap {
 
         // Note that this object is allocated on the native image heap.
         if (useHeapBase()) {
-            writePointer(buffer, index, targetHeapOffset(targetInfo) | objectHeaderBits);
+            writePointer(buffer, index, targetInfo.getOffsetInSection() | objectHeaderBits);
         } else {
             // The address of the DynamicHub target will have to be added by the link editor.
             // DynamicHubs are the size of Object references.
@@ -807,16 +798,6 @@ public class NativeImageHeap {
         buffer.getBuffer().putLong(index, value);
     }
 
-    private void setHeapOffsetInSection(long offset) {
-        if (useHeapBase()) {
-            heapOffsetInSection = offset;
-        }
-    }
-
-    private long targetHeapOffset(ObjectInfo target) {
-        return target.getOffsetInSection() - heapOffsetInSection;
-    }
-
     /** Choose a partition of the native image heap for the given object. */
     private HeapPartition choosePartition(final Object candidate, final boolean immutableArg) {
         final HostedType type = getMetaAccess().lookupJavaType(candidate.getClass());
@@ -863,13 +844,11 @@ public class NativeImageHeap {
             return getWritableReferencePartition();
         }
 
-        if (!useHeapBase()) {
-            if (!written || immutable) {
-                return references ? getReadOnlyReferencePartition() : getReadOnlyPrimitivePartition();
-            }
+        if (!written || immutable) {
+            return references ? getReadOnlyReferencePartition() : getReadOnlyPrimitivePartition();
+        } else {
+            return references ? getWritableReferencePartition() : getWritablePrimitivePartition();
         }
-
-        return references ? getWritableReferencePartition() : getWritablePrimitivePartition();
     }
 
     private void patchPartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
@@ -1182,7 +1161,7 @@ public class NativeImageHeap {
          * strictly positive
          */
         if (useHeapBase()) {
-            writablePrimitive.incrementSize(layout.getAlignment());
+            readOnlyPrimitive.incrementSize(layout.getAlignment());
         }
 
         // Initialize the canonicalizable and immutable class lists.
@@ -1197,7 +1176,6 @@ public class NativeImageHeap {
     private final AnalysisUniverse aUniverse;
     private final HostedMetaAccess metaAccess;
     private final ObjectLayout layout;
-    private long heapOffsetInSection;
 
     /**
      * A Map from objects at construction-time to native image objects.

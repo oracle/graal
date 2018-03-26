@@ -54,6 +54,7 @@ import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
@@ -199,75 +200,75 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return data instanceof CEntryPointData && ((CEntryPointData) data).getPublishAs() == Publish.SymbolAndHeader;
     }
 
+    /**
+     * Create the image sections for code, constants, and the heap.
+     */
     @Override
     @SuppressWarnings("try")
     public void build(DebugContext debug) {
 
-        // The code cache (code and constants) and the heap (read-only and writable) know
-        // what their contents are, but not where they go in the object file sections.
-
         try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
-            /*
-             * HMM. What we really want to do is override only two methods: getDependencies, so we
-             * can add our dependency on vaddrs (and remove the size->content one), and
-             * getOrDecideContent, so we can do our patching-up. But since we're hiding the specific
-             * class that is being instantiated (either MachORegularSection or ELFProgbitsSection),
-             * we can't use an anonymous inner class to define this. If only we had prototypes....
-             */
 
-            // Make up the sections themselves.
-            // The text section contains the code.
-            // The roData section contains the constants and the read-only partitions of the heap.
-            // The rwData section contains C global variables and writable partitions of the heap.
-            CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
+            final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
             final int textSectionSize = codeCache.getCodeCacheSize();
-            final int roSectionConstantsSize = codeCache.getAlignedConstantsSize();
-            final int roSectionHeapSize = heap.getReadOnlySectionSize();
-            final int roSectionSize = roSectionConstantsSize + roSectionHeapSize;
-            final int rwSectionSize = cGlobals.getSize() + heap.getWritableSectionSize();
+            final int roConstantsSize = codeCache.getAlignedConstantsSize();
+            final int cglobalsSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
 
-            // The text segment contains the code.
+            int roSectionSize = roConstantsSize;
+            int rwSectionSize = cglobalsSize;
+            if (!SubstrateOptions.UseHeapBaseRegister.getValue()) {
+                roSectionSize += heap.getReadOnlySectionSize();
+                rwSectionSize += heap.getWritableSectionSize();
+            }
+
+            // Text section (code)
             final RelocatableBuffer textBuffer = RelocatableBuffer.factory("text", textSectionSize, objectFile.getByteOrder());
             final TextImpl textImpl = TextImpl.factory(textBuffer, objectFile, codeCache);
             final String textSectionName = SectionName.TEXT.getFormatDependentName(objectFile.getFormat());
             textSection = objectFile.newProgbitsSection(textSectionName, objectFile.getPageSize(), false, true, textImpl);
 
-            // The roData section contains the constants and the read-only partitions of the heap.
+            // Read-only data section
             final RelocatableBuffer roDataBuffer = RelocatableBuffer.factory("roData", roSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBytes());
             final String roDataSectionName = SectionName.RODATA.getFormatDependentName(objectFile.getFormat());
             roDataSection = objectFile.newProgbitsSection(roDataSectionName, objectFile.getPageSize(), false, false, roDataImpl);
 
-            // The rwData section contains the writable partitions of the heap.
+            // Read-write data section
             final RelocatableBuffer rwDataBuffer = RelocatableBuffer.factory("rwData", rwSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl rwDataImpl = new BasicProgbitsSectionImpl(rwDataBuffer.getBytes());
             final String rwDataSectionName = SectionName.DATA.getFormatDependentName(objectFile.getFormat());
             rwDataSection = objectFile.newProgbitsSection(rwDataSectionName, objectFile.getPageSize(), true, false, rwDataImpl);
 
             // Define symbols for the sections.
-            // - A beginning-of-text symbol.
             objectFile.createDefinedSymbol(textSection.getName(), textSection.getElement(), 0, 0, false, false);
-            // - An end-of-text symbol.
             objectFile.createDefinedSymbol("__svm_text_end", textSection.getElement(), codeCache.getCodeCacheSize(), 0, false, true);
-            // - A beginning-of-read-only-data symbol.
             objectFile.createDefinedSymbol(roDataSection.getName(), roDataSection.getElement(), 0, 0, false, false);
-            // - A beginning-of-writable-data symbol.
             objectFile.createDefinedSymbol(rwDataSection.getName(), rwDataSection.getElement(), 0, 0, false, false);
 
-            // Establish an order of the partitions within each section,
-            // The constants partition comes first in the roData section,
-            // but does not (currently) think of itself as a partition.
             final long constantsPartitionOffset = 0L;
-            // The read-only heap partition comes after the constants partition
-            // in the roData section.
-            final long roHeapPartitionOffset = constantsPartitionOffset + roSectionConstantsSize;
-            heap.setReadOnlySection(roDataSection.getName(), roHeapPartitionOffset);
+            final long roConstantsEndOffset = constantsPartitionOffset + roConstantsSize;
+            final long rwGlobalsEndOffset = RWDATA_CGLOBALS_PARTITION_OFFSET + ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
 
-            // The C global data partition comes first in the rwData section, followed by the
-            // read-write heap partition.
-            final long rwHeapPartitionOffset = RWDATA_CGLOBALS_PARTITION_OFFSET + ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            heap.setWritableSection(rwDataSection.getName(), rwHeapPartitionOffset);
+            RelocatableBuffer heapSectionBuffer = null;
+            ProgbitsSectionImpl heapSectionImpl = null;
+            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
+                boolean writable = !SubstrateOptions.SpawnIsolates.getValue();
+                int heapSize = heap.getReadOnlySectionSize() + heap.getWritableSectionSize();
+
+                heapSectionBuffer = RelocatableBuffer.factory("heap", heapSize, objectFile.getByteOrder());
+                heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
+                final String heapSectionName = SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat());
+                heapSection = objectFile.newProgbitsSection(heapSectionName, objectFile.getPageSize(), writable, false, heapSectionImpl);
+
+                heap.setReadOnlySection(heapSection.getName(), 0);
+                heap.setWritableSection(heapSection.getName(), heap.getReadOnlySectionSize());
+                objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection.getElement(), 0);
+                objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection.getElement(), heapSize);
+            } else {
+                heap.setReadOnlySection(roDataSection.getName(), roConstantsEndOffset);
+                heap.setWritableSection(rwDataSection.getName(), rwGlobalsEndOffset);
+            }
 
             // Write the section contents and record relocations.
             // - The code goes in the text section, by itself.
@@ -277,18 +278,21 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // - Non-heap global data goes at the beginning of the read-write data section.
             cGlobals.writeData(rwDataBuffer, (offset, symbolName) -> objectFile.createDefinedDataSymbol(symbolName, rwDataSection, Math.toIntExact(offset + RWDATA_CGLOBALS_PARTITION_OFFSET)));
             objectFile.createDefinedDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(RWDATA_CGLOBALS_PARTITION_OFFSET));
-            // The read-only and writable partitions of the native image heap follow in the
-            // read-only and read-write sections, respectively.
-            heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
-
-            objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset));
-            objectFile.createDefinedDataSymbol(PosixIsolates.IMAGE_HEAP_END_SYMBOL_NAME, rwDataSection.getElement(), Math.toIntExact(rwHeapPartitionOffset + heap.getWritableSectionSize()));
+            // - Write the heap, either to its own section, or to the ro and rw data sections.
+            if (heapSectionBuffer != null) {
+                heap.writeHeap(debug, heapSectionBuffer, heapSectionBuffer);
+            } else {
+                heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
+            }
 
             // Mark the sections with the relocations from the maps.
             // - "null" as the objectMap is because relocations from text are always to constants.
             markRelocationSitesFromMaps(textBuffer, textImpl, null);
             markRelocationSitesFromMaps(roDataBuffer, roDataImpl, heap.objects);
             markRelocationSitesFromMaps(rwDataBuffer, rwDataImpl, heap.objects);
+            if (heapSectionBuffer != null) {
+                markRelocationSitesFromMaps(heapSectionBuffer, heapSectionImpl, heap.objects);
+            }
         }
 
         // [Footnote 1]
@@ -318,7 +322,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         // -Christian
     }
 
-    void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl, Map<Object, NativeImageHeap.ObjectInfo> objectMap) {
+    private void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl, Map<Object, NativeImageHeap.ObjectInfo> objectMap) {
         // Create relocation records from a map.
         // TODO: Should this be a visitor to the map entries,
         // TODO: so I don't have to expose the entrySet() method?
@@ -358,7 +362,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return true;
     }
 
-    void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
+    private static void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
         final int functionPointerRelocationSize = 8;
         assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
@@ -373,7 +377,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     // TODO: read-only data section.
 
     // A reference to data. Mark the relocation using the section and addend in the relocation info.
-    void markDataRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info, final NativeImageHeap.ObjectInfo targetObjectInfo) {
+    private static void markDataRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info, final NativeImageHeap.ObjectInfo targetObjectInfo) {
         // References to objects are via relocations to offsets from the symbol
         // for the section the symbol is in.
         // Use the target object to find the partition and offset, and from the
@@ -390,7 +394,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         sectionImpl.markRelocationSite(offset, info.getRelocationSize(), info.getRelocationKind(), targetSectionName, false, relocationAddend);
     }
 
-    void markDataRelocationSiteFromText(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
+    private void markDataRelocationSiteFromText(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert ((info.getRelocationSize() == 4) || (info.getRelocationSize() == 8)) : "Data relocation size should be 4 or 8 bytes.";
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
@@ -625,6 +629,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
     private Section textSection;
     private Section roDataSection;
     private Section rwDataSection;
+    private Section heapSection;
 
     protected static final class TextImpl extends BasicProgbitsSectionImpl {
 
