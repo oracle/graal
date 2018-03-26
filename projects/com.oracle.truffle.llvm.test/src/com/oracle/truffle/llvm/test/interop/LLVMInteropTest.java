@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -945,7 +945,7 @@ public class LLVMInteropTest {
         @Resolve(message = "READ")
         abstract static class ReadNode extends Node {
             int access(ForeignObject object, Object key) {
-                Assert.assertEquals(0, key);
+                Assert.assertEquals("foo", key);
                 return object.foo;
             }
         }
