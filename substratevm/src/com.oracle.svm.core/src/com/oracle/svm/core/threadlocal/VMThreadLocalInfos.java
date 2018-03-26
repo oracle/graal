@@ -56,7 +56,6 @@ public class VMThreadLocalInfos {
         }
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code")
     public static void dumpToLog(Log log, IsolateThread thread) {
         for (VMThreadLocalInfo info : ImageSingletons.lookup(VMThreadLocalInfos.class).infos) {
             log.signed(info.offset).string(" (").signed(info.sizeInBytes).string(" bytes): ").string(info.name).string(" = ");

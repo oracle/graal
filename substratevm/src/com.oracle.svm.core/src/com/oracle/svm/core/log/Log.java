@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 
 /**
  * Utility class that provides low-level output methods for basic Java data types (strings and
@@ -114,31 +114,30 @@ public abstract class Log implements AutoCloseable {
     }
 
     /** Is this log enabled? */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract boolean isEnabled();
 
     /**
      * Prints all characters in the string, without any platform- or charset-depending conversions.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
     public abstract Log string(String value);
 
     /**
      * Prints all characters in the string, filling with spaces before or after.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log string(String str, int fill, int align);
 
     /**
      * Prints all characters in the array, without any platform- or charset-depending conversions.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log string(char[] value);
 
     /**
      * Prints all bytes in the array, without any conversion.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public final Log string(byte[] value) {
         return string(value, 0, value.length);
     }
@@ -146,25 +145,25 @@ public abstract class Log implements AutoCloseable {
     /**
      * Prints the provided range of bytes in the array, without any conversion.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log string(byte[] value, int offset, int length);
 
     /**
      * Prints the C string.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log string(CCharPointer value);
 
     /**
      * Prints the provided character.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log character(char value);
 
     /**
      * Prints the newline character.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log newline();
 
     /**
@@ -172,7 +171,7 @@ public abstract class Log implements AutoCloseable {
      *
      * @param onOrOff true if auto-flush must be turned on, false otherwise.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log autoflush(boolean onOrOff);
 
     /**
@@ -184,104 +183,104 @@ public abstract class Log implements AutoCloseable {
      * @param signed true if the value should be treated as a signed value (and the digits are
      *            preceded by '-' for negative values).
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log number(long value, int radix, boolean signed);
 
     /**
      * Prints the value, treated as a signed value, in decimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log signed(WordBase value);
 
     /**
      * Prints the value, treated as a signed value, in decimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log signed(int value);
 
     /**
      * Prints the value, treated as a signed value, in decimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log signed(long value);
 
     /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log unsigned(WordBase value);
 
     /**
      * Prints the value, treated as an unsigned value, filing spaces before or after.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log unsigned(WordBase value, int fill, int align);
 
     /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log unsigned(int value);
 
     /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log unsigned(long value);
 
     /**
      * Prints the value, treated as an unsigned value, filing spaces before or after.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log unsigned(long value, int fill, int align);
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log rational(long numerator, long denominator, long decimals);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log hex(WordBase value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log hex(int value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log hex(long value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 16-digits.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log zhex(long value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 8-digits.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log zhex(int value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 4-digits.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log zhex(short value);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format zero filled to
      * 2-digits.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log zhex(byte value);
 
     /**
@@ -291,38 +290,38 @@ public abstract class Log implements AutoCloseable {
      * @param wordSize size in bytes that a single word should have
      * @param numWords number of words to dump
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log hexdump(PointerBase from, int wordSize, int numWords);
 
     /**
      * Change current amount of indentation. Indentation determines the amount of spaces emitted
      * after each newline.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log indent(boolean addOrRemove);
 
     /**
      * Prints the strings "true" or "false" depending on the value.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log bool(boolean value);
 
     /**
      * Simulates java.lang.String.valueOf(Object obj), but without the call to hashCode().
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log object(Object value);
 
     /**
      * Prints the requested number of spaces, e.g., for indentation.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log spaces(int value);
 
     /**
      * Forces the log to flush to its destination.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public abstract Log flush();
 
     /** An implementation of AutoCloseable.close(). */
@@ -356,199 +355,166 @@ public abstract class Log implements AutoCloseable {
      */
     private static final class NoopLog extends Log {
 
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         protected NoopLog() {
             super();
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public boolean isEnabled() {
             return false;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log string(String value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log string(String str, int fill, int align) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log string(char[] value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log string(byte[] value, int offset, int length) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log string(CCharPointer value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log character(char value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log newline() {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log number(long value, int radix, boolean signed) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log signed(WordBase value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log signed(int value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log signed(long value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log unsigned(WordBase value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log unsigned(WordBase value, int fill, int align) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log unsigned(int value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log unsigned(long value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log unsigned(long value, int fill, int align) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log rational(long numerator, long denominator, long decimals) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log hex(WordBase value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log hex(int value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log hex(long value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log bool(boolean value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log object(Object value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log spaces(int value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log flush() {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log autoflush(boolean onOrOff) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log zhex(long value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log zhex(int value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log zhex(short value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log zhex(byte value) {
             return this;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log hexdump(PointerBase from, int wordSize, int numWords) {
             return null;
         }
 
         @Override
-        @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
         public Log indent(boolean addOrRemove) {
             return this;
         }

@@ -85,11 +85,8 @@ public class PinnedObjectImpl extends PinnedObject {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void close() {
-        final Log trace = Log.noopLog().string("[PinnedObject.close:").string(" this: ").object(this);
-        trace.string("  referent: ").object(referent);
         assert open : "Should not call close() on a closed PinnedObject.";
         open = false;
-        trace.string("]").newline();
     }
 
     /*

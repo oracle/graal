@@ -28,7 +28,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Methods annotated with this annotation have restricted access to the heap.
+ * Methods annotated with this annotation have restricted access to the heap. This annotation is
+ * checked transitively, i.e., callees of the annotated method do not need to be annotated.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})

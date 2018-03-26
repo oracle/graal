@@ -22,12 +22,13 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.nativeimage.LogHandler;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -45,12 +46,8 @@ final class Target_com_oracle_svm_core_util_VMError {
     @Substitute
     private static RuntimeException shouldNotReachHere() {
         ThreadStackPrinter.printBacktrace();
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("VMError.shouldNotReachHere").newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        VMErrorSubstitutions.shutdown();
         return null;
     }
 
@@ -58,12 +55,8 @@ final class Target_com_oracle_svm_core_util_VMError {
     @Substitute
     private static RuntimeException shouldNotReachHere(String msg) {
         ThreadStackPrinter.printBacktrace();
-        Log log = Log.log();
-        log.autoflush(true);
-        log.string("VMError.shouldNotReachHere: ").string(msg).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        VMErrorSubstitutions.shutdown(msg);
         return null;
     }
 
@@ -76,13 +69,9 @@ final class Target_com_oracle_svm_core_util_VMError {
          * Throwable. So we access the raw detailMessage directly from the field in Throwable. That
          * is better than printing nothing.
          */
-        Log log = Log.log();
-        log.autoflush(true);
         String detailMessage = JDKUtils.getRawMessage(ex);
-        log.string("VMError.shouldNotReachHere: ").string(ex.getClass().getName()).string(": ").string(detailMessage).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        VMErrorSubstitutions.shutdown(detailMessage, ex.getClass().getName());
         return null;
     }
 
@@ -116,4 +105,34 @@ final class Target_com_oracle_svm_core_util_VMError {
 
 /** Dummy class to have a class with the file's name. */
 public class VMErrorSubstitutions {
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    static void shutdown() {
+        Log log = Log.log();
+        log.autoflush(true);
+        log.string("VMError.shouldNotReachHere").newline();
+        doShutdown(log);
+    }
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    static void shutdown(String msg) {
+        Log log = Log.log();
+        log.autoflush(true);
+        log.string("VMError.shouldNotReachHere: ").string(msg).newline();
+        doShutdown(log);
+    }
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    static void shutdown(String detailMessage, String exceptionClassName) {
+        Log log = Log.log();
+        log.autoflush(true);
+        log.string("VMError.shouldNotReachHere: ").string(exceptionClassName).string(": ").string(detailMessage).newline();
+        doShutdown(log);
+    }
+
+    @Uninterruptible(reason = "Allow use in uninterruptible code.", calleeMustBe = false)
+    private static void doShutdown(Log log) {
+        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        LogHandler.get().fatalError();
+    }
 }
