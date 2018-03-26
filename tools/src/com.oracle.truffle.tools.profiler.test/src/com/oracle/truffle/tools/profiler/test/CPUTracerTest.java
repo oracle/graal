@@ -24,8 +24,10 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.CPUTracer;
+import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +42,9 @@ public class CPUTracerTest extends AbstractProfilerTest {
 
     @Before
     public void setupTracer() {
-        tracer = CPUTracer.find(engine);
+        Instrument instrument = context.getEngine().getInstruments().get(CPUTracerInstrument.ID);
+        Assert.assertNotNull(instrument);
+        tracer = instrument.lookup(CPUTracer.class);
         Assert.assertNotNull(tracer);
     }
 

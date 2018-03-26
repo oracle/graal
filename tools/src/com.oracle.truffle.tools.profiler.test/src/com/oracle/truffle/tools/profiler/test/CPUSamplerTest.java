@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
+import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -43,7 +45,9 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     @Before
     public void setupSampler() {
-        sampler = CPUSampler.find(engine);
+        Instrument instrument = context.getEngine().getInstruments().get(CPUSamplerInstrument.ID);
+        Assert.assertNotNull(instrument);
+        sampler = instrument.lookup(CPUSampler.class);
         Assert.assertNotNull(sampler);
         synchronized (sampler) {
             sampler.setGatherSelfHitTimes(true);
