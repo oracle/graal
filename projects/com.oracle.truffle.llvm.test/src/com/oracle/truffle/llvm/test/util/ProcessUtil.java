@@ -141,15 +141,12 @@ public class ProcessUtil {
 
     private static int executeMain(File file, String[] args) throws Exception {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, file).build();
-        Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).build();
-        try {
+        try (Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).allowAllAccess(true).build()) {
             Value result = context.eval(source);
             if (!result.canExecute()) {
                 throw new LinkageError("No main function found.");
             }
             return result.execute().asInt();
-        } finally {
-            context.close();
         }
     }
 
