@@ -45,11 +45,9 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 @SuppressWarnings("deprecation")
-final class PolyglotExceptionImpl extends AbstractExceptionImpl implements VMObject {
+final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
 
     private static final String CAUSE_CAPTION = "Caused by host exception: ";
 
