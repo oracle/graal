@@ -57,8 +57,7 @@ public class PosixIsolates {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             return isolate.isNull() ? Errors.NULL_ARGUMENT : Errors.NO_ERROR;
         } else {
-            // allow NULL: temporary band-aid for broken client code
-            return (isolate.equal(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL) || isolate.isNull()) ? Errors.NO_ERROR : Errors.UNINITIALIZED_ISOLATE;
+            return isolate.equal(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL) ? Errors.NO_ERROR : Errors.UNINITIALIZED_ISOLATE;
         }
     }
 
