@@ -80,7 +80,7 @@ float truffle_execute_f(void *object, ...);
 double truffle_execute_d(void *object, ...);
 bool truffle_execute_b(void *object, ...);
 
-// Invoke: deprecated, use ployglot_get_member + function pointer call instead
+// Invoke: deprecated, use polyglot_get_member + function pointer call instead
 void *truffle_invoke(void *object, const char *name, ...);
 int truffle_invoke_i(void *object, const char *name, ...);
 long truffle_invoke_l(void *object, const char *name, ...);
