@@ -49,6 +49,7 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -388,11 +389,13 @@ final class Target_javax_crypto_JceSecurity {
 final class Target_javax_crypto_JarVerifier {
 
     @Substitute
+    @TargetElement(optional = true)
     private String verifySingleJar(URL var1) {
         throw VMError.unimplemented();
     }
 
     @Substitute
+    @TargetElement(optional = true)
     private void verifyJars(URL var1, List<String> var2) {
         throw VMError.unimplemented();
     }
