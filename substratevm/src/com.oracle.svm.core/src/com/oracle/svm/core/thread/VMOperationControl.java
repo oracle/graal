@@ -29,13 +29,13 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
@@ -132,7 +132,7 @@ public final class VMOperationControl {
                  * that we can restore it below after releasing the lock again.
                  */
                 callbackTime = System.nanoTime();
-                callbackValue = Safepoint.getSafepointRequested(KnownIntrinsics.currentVMThread());
+                callbackValue = Safepoint.getSafepointRequested(CEntryPointContext.getCurrentIsolateThread());
             }
 
             getVMOperationControl().acquireLock();

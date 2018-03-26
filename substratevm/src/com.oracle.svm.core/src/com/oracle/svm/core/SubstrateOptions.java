@@ -50,6 +50,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newValue < 1);
+            SubstrateOptions.AOTInline.update(values, newValue > 0);
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
             }
@@ -185,6 +186,18 @@ public class SubstrateOptions {
 
     @Option(help = "Only use Java assert statements for classes that are matching the comma-separated list of package prefixes.")//
     public static final HostedOptionKey<String> RuntimeAssertionsFilter = new HostedOptionKey<>(null);
+
+    @Option(help = "Perform method inlining in the AOT compiled native image")//
+    public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
+
+    @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(15);
+
+    @Option(help = "Maximum number of invokes in a method so that it is considered trivial (for testing only).")//
+    public static final HostedOptionKey<Integer> MaxInvokesInTrivialMethod = new HostedOptionKey<>(1);
+
+    @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(30);
 
     public static FoldedPredicate makeFilter(String definedFilter) {
         if (definedFilter != null) {
