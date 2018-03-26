@@ -77,7 +77,12 @@ import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest;
 
+/**
+ * Important: This test was migrated to {@link ValueHostInteropTest} and
+ * {@link LanguageSPIHostInteropTest}. Please maintain new tests there.
+ */
 @SuppressWarnings("deprecation")
 public class JavaInteropTest {
 

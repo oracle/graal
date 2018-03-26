@@ -37,7 +37,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("deprecation")
-@Deprecated
 abstract class ArrayReadNode extends Node {
 
     protected abstract Object executeWithTarget(JavaObject receiver, Object index);
