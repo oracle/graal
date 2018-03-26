@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -54,13 +53,13 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
     @Child private ForeignToLLVM toBool = ForeignToLLVM.create(ForeignToLLVMType.I1);
 
     @Specialization
-    protected boolean doTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
+    protected boolean doTruffleObject(LLVMTruffleObject from) {
         TruffleObject base = from.getObject();
         if (ForeignAccess.sendIsNull(isNull, base)) {
             return (from.getOffset() & 1) != 0;
         } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
             try {
-                boolean ptr = (boolean) toBool.executeWithTarget(frame, ForeignAccess.sendUnbox(unbox, base));
+                boolean ptr = (boolean) toBool.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
                 return ptr ^ ((from.getOffset() & 1) != 0);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -72,8 +71,8 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected boolean doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
-        return (boolean) toBool.executeWithTarget(frame, from.getValue());
+    protected boolean doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return (boolean) toBool.executeWithTarget(from.getValue());
     }
 
     public abstract static class LLVMToI1NoZeroExtNode extends LLVMToI1Node {

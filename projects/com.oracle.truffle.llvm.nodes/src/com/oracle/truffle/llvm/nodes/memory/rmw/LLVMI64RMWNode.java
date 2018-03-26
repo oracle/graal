@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
@@ -58,10 +57,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWXchgNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndSetI64(adr, value);
         }
 
@@ -72,12 +71,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, value);
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, value);
                 return result;
             }
         }
@@ -85,10 +84,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWAddNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndAddI64(adr, value);
         }
 
@@ -99,12 +98,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, result + value);
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, result + value);
                 return result;
             }
         }
@@ -112,10 +111,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWSubNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndSubI64(adr, value);
         }
 
@@ -126,12 +125,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, result - value);
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, result - value);
                 return result;
             }
         }
@@ -139,10 +138,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWAndNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI64(adr, value, (a, b) -> a & b);
         }
 
@@ -153,12 +152,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, result & value);
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, result & value);
                 return result;
             }
         }
@@ -166,10 +165,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWNandNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI64(adr, value, (a, b) -> ~(a & b));
         }
 
@@ -180,12 +179,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ~(result & value));
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, ~(result & value));
                 return result;
             }
         }
@@ -193,10 +192,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWOrNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI64(adr, value, (a, b) -> a | b);
         }
 
@@ -207,12 +206,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, result | value);
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, result | value);
                 return result;
             }
         }
@@ -220,10 +219,10 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI64RMWXorNode extends LLVMI64RMWNode {
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMGlobal address, long value,
+        protected long doOp(LLVMGlobal address, long value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI64(adr, value, (a, b) -> a ^ b);
         }
 
@@ -234,12 +233,12 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doOp(VirtualFrame frame, LLVMTruffleObject address, long value,
+        protected long doOp(LLVMTruffleObject address, long value,
                         @Cached("createRead()") LLVMI64LoadNode read,
                         @Cached("createWrite()") LLVMI64StoreNode write) {
             synchronized (address.getObject()) {
-                long result = (long) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, result ^ value);
+                long result = (long) read.executeWithTarget(address);
+                write.executeWithTarget(address, result ^ value);
                 return result;
             }
         }

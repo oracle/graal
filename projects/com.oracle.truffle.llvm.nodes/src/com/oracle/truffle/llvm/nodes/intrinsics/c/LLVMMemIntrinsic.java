@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -48,26 +47,26 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, Object dst, int val, int len) {
-            memset.executeWithTarget(frame, dst, (byte) val, len);
+        protected Object execute(Object dst, int val, int len) {
+            memset.executeWithTarget(dst, (byte) val, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, Object dst, int val, long len) {
-            memset.executeWithTarget(frame, dst, (byte) val, len);
+        protected Object execute(Object dst, int val, long len) {
+            memset.executeWithTarget(dst, (byte) val, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, Object dst, byte val, int len) {
-            memset.executeWithTarget(frame, dst, val, len);
+        protected Object execute(Object dst, byte val, int len) {
+            memset.executeWithTarget(dst, val, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, Object dst, byte val, long len) {
-            memset.executeWithTarget(frame, dst, val, len);
+        protected Object execute(Object dst, byte val, long len) {
+            memset.executeWithTarget(dst, val, len);
             return dst;
         }
     }
@@ -81,14 +80,14 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, Object dst, Object src, int len) {
-            memcpy.executeWithTarget(frame, dst, src, len);
+        protected Object execute(Object dst, Object src, int len) {
+            memcpy.executeWithTarget(dst, src, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(VirtualFrame frame, Object dst, Object src, long len) {
-            memcpy.executeWithTarget(frame, dst, src, len);
+        protected Object execute(Object dst, Object src, long len) {
+            memcpy.executeWithTarget(dst, src, len);
             return dst;
         }
     }

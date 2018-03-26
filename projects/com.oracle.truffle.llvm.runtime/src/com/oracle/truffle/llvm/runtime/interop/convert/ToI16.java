@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -90,13 +89,13 @@ abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected short fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(frame, boxed.getValue());
+    protected short fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    protected short fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
-        return recursiveConvert(frame, fromForeign(obj));
+    protected short fromTruffleObject(TruffleObject obj) {
+        return recursiveConvert(fromForeign(obj));
     }
 
     @Specialization
@@ -105,9 +104,9 @@ abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected short fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+    protected short fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (short) toNative.executeWithTarget(frame, fd).getVal();
+        return (short) toNative.executeWithTarget(fd).getVal();
     }
 
     @Specialization
@@ -116,17 +115,17 @@ abstract class ToI16 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected short fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
+    protected short fromSharedDescriptor(LLVMSharedGlobalVariable shared,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (short) access.executeWithTarget(frame, shared.getDescriptor()).getVal();
+        return (short) access.executeWithTarget(shared.getDescriptor()).getVal();
     }
 
-    private short recursiveConvert(VirtualFrame frame, Object o) {
+    private short recursiveConvert(Object o) {
         if (toI16 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toI16 = ToI16NodeGen.create();
         }
-        return (short) toI16.executeWithTarget(frame, o);
+        return (short) toI16.executeWithTarget(o);
     }
 
     @TruffleBoundary

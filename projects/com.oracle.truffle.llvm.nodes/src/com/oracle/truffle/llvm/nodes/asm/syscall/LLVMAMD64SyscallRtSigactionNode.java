@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
@@ -43,12 +42,12 @@ public abstract class LLVMAMD64SyscallRtSigactionNode extends LLVMSyscallOperati
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long doI64(VirtualFrame frame, long signum, LLVMAddress act, LLVMAddress oldact) {
+    protected long doI64(long signum, LLVMAddress act, LLVMAddress oldact) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Specialization
-    protected long doI64(VirtualFrame frame, long signum, long act, long oldact) {
-        return doI64(frame, signum, LLVMAddress.fromLong(act), LLVMAddress.fromLong(oldact));
+    protected long doI64(long signum, long act, long oldact) {
+        return doI64(signum, LLVMAddress.fromLong(act), LLVMAddress.fromLong(oldact));
     }
 }

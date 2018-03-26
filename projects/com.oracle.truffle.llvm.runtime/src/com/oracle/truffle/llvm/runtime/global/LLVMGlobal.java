@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -275,14 +274,14 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
 
         @Override
-        public Object toNative(VirtualFrame frame, Object obj) throws InteropException {
+        public Object toNative(Object obj) throws InteropException {
             LLVMGlobal global = (LLVMGlobal) obj;
             global.getAsNative(getMemory(), getContext());
             return global;
         }
 
         @Override
-        public boolean isPointer(VirtualFrame frame, Object obj) {
+        public boolean isPointer(Object obj) {
             LLVMGlobal global = (LLVMGlobal) obj;
             Object value = getContext().getGlobalFrame().getValue(global.slot);
             return value instanceof Native;
@@ -294,7 +293,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
 
         @Override
-        public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+        public long asPointer(Object obj) throws InteropException {
             LLVMGlobal global = (LLVMGlobal) obj;
             Native value = (Native) getContext().getGlobalFrame().getValue(global.slot);
             return value.getPointer();

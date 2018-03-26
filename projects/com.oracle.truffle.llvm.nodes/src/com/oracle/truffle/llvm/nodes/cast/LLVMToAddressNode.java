@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.nodes.Node;
@@ -79,9 +78,9 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress doFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor from,
+    protected LLVMAddress doFunctionDescriptor(LLVMFunctionDescriptor from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(frame, from);
+        return toNative.executeWithTarget(from);
     }
 
     @Specialization
@@ -92,8 +91,8 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     @Child private ForeignToLLVM toLong = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
-    protected LLVMAddress doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
-        return LLVMAddress.fromLong((long) toLong.executeWithTarget(frame, from.getValue()));
+    protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return LLVMAddress.fromLong((long) toLong.executeWithTarget(from.getValue()));
     }
 
     protected static boolean checkIsPointer(Node isPointer, LLVMTruffleObject object) {

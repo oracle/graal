@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -63,7 +62,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         this.nativeCallNode = Message.createExecute(type.getArgumentTypes().length).createNode();
     }
 
-    public abstract Object executeDispatch(VirtualFrame frame, Object function, Object[] arguments);
+    public abstract Object executeDispatch(Object function, Object[] arguments);
 
     @TruffleBoundary
     protected TruffleObject identityFunction() {
@@ -103,17 +102,17 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     }
 
     @ExplodeLoop
-    private static Object[] prepareNativeArguments(VirtualFrame frame, Object[] arguments, LLVMNativeConvertNode[] toNative) {
+    private static Object[] prepareNativeArguments(Object[] arguments, LLVMNativeConvertNode[] toNative) {
         Object[] nativeArgs = new Object[arguments.length - LLVMCallNode.USER_ARGUMENT_OFFSET];
         for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < arguments.length; i++) {
-            nativeArgs[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = toNative[i - LLVMCallNode.USER_ARGUMENT_OFFSET].executeConvert(frame, arguments[i]);
+            nativeArgs[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = toNative[i - LLVMCallNode.USER_ARGUMENT_OFFSET].executeConvert(arguments[i]);
         }
         return nativeArgs;
     }
 
     @Specialization(guards = "function.getVal() == cachedFunction.getVal()")
     @SuppressWarnings("unused")
-    protected Object doCached(VirtualFrame frame, LLVMAddress function, Object[] arguments,
+    protected Object doCached(LLVMAddress function, Object[] arguments,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("function") LLVMAddress cachedFunction,
                     @Cached("identityFunction()") TruffleObject identity,
@@ -121,26 +120,26 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
-        Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
+        Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
         try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
             returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, nativeFunctionHandle, nativeArgs, null);
         }
-        return fromNative.executeConvert(frame, returnValue);
+        return fromNative.executeConvert(returnValue);
     }
 
     @Specialization
-    protected Object doGeneric(VirtualFrame frame, LLVMAddress function, Object[] arguments,
+    protected Object doGeneric(LLVMAddress function, Object[] arguments,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("identityFunction()") TruffleObject identity,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
-        Object[] nativeArgs = prepareNativeArguments(frame, arguments, toNative);
+        Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
         try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
             returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.getVal()), nativeArgs, null);
         }
-        return fromNative.executeConvert(frame, returnValue);
+        return fromNative.executeConvert(returnValue);
     }
 }

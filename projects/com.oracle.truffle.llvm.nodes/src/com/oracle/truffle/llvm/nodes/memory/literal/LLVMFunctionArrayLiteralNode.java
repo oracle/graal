@@ -63,7 +63,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return handleAddress(frame, globalAccess.executeWithTarget(frame, array), toNative, memory);
+        return handleAddress(frame, globalAccess.executeWithTarget(array), toNative, memory);
     }
 
     @Specialization
@@ -75,7 +75,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
-                memory.putFunctionPointer(currentPtr, toNative.executeWithTarget(frame, currentValue).getVal());
+                memory.putFunctionPointer(currentPtr, toNative.executeWithTarget(currentValue).getVal());
                 currentPtr += stride;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -93,7 +93,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);
-                foreignWrites[i].execute(frame, currentPtr, currentValue);
+                foreignWrites[i].execute(currentPtr, currentValue);
                 currentPtr = currentPtr.increment(stride);
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

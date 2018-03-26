@@ -60,7 +60,7 @@ public abstract class LLVMDoubleArrayLiteralNode extends LLVMExpressionNode {
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return writeDouble(frame, globalAccess.executeWithTarget(frame, global), memory);
+        return writeDouble(frame, globalAccess.executeWithTarget(global), memory);
     }
 
     @Specialization
@@ -87,7 +87,7 @@ public abstract class LLVMDoubleArrayLiteralNode extends LLVMExpressionNode {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             double currentValue = LLVMTypesGen.asDouble(values[i].executeGeneric(frame));
-            foreignWrite.execute(frame, currentPtr, currentValue);
+            foreignWrite.execute(currentPtr, currentValue);
             currentPtr = currentPtr.increment(stride);
         }
         return addr;

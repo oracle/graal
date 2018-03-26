@@ -43,7 +43,7 @@ public abstract class LLVMToNativeNode extends LLVMNode {
 
     public abstract LLVMAddress execute(VirtualFrame frame);
 
-    public abstract LLVMAddress executeWithTarget(VirtualFrame frame, Object object);
+    public abstract LLVMAddress executeWithTarget(Object object);
 
     public static LLVMToNativeNode createToNativeWithTarget() {
         return LLVMToNativeNodeGen.create(null);
@@ -70,17 +70,17 @@ public abstract class LLVMToNativeNode extends LLVMNode {
         }
     }
 
-    @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(frame, pointer)"})
-    protected LLVMAddress handlePointerCached(VirtualFrame frame, Object pointer,
+    @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
+    protected LLVMAddress handlePointerCached(Object pointer,
                     @Cached("createCached(pointer)") LLVMObjectNativeLibrary lib) {
-        return handlePointer(frame, pointer, lib);
+        return handlePointer(pointer, lib);
     }
 
-    @Specialization(replaces = "handlePointerCached", guards = {"lib.guard(pointer)", "lib.isPointer(frame, pointer)"})
-    protected LLVMAddress handlePointer(VirtualFrame frame, Object pointer,
+    @Specialization(replaces = "handlePointerCached", guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
+    protected LLVMAddress handlePointer(Object pointer,
                     @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
         try {
-            return LLVMAddress.fromLong(lib.asPointer(frame, pointer));
+            return LLVMAddress.fromLong(lib.asPointer(pointer));
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress", e);
@@ -88,11 +88,11 @@ public abstract class LLVMToNativeNode extends LLVMNode {
     }
 
     @Specialization(replaces = {"handlePointer", "handlePointerCached"}, guards = {"lib.guard(pointer)"})
-    protected LLVMAddress transitionToNative(VirtualFrame frame, Object pointer,
+    protected LLVMAddress transitionToNative(Object pointer,
                     @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
         try {
-            Object n = lib.toNative(frame, pointer);
-            return LLVMAddress.fromLong(lib.asPointer(frame, n));
+            Object n = lib.toNative(pointer);
+            return LLVMAddress.fromLong(lib.asPointer(n));
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Cannot convert " + pointer + " to LLVMAddress", e);

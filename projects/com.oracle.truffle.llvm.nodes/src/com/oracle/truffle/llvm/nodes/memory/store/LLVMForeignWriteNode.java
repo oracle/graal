@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen;
@@ -51,13 +50,13 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
         this.write = LLVMObjectAccessFactory.createWrite(valueType);
     }
 
-    public abstract void execute(VirtualFrame frame, LLVMTruffleObject addr, Object value);
+    public abstract void execute(LLVMTruffleObject addr, Object value);
 
     @Specialization
-    protected void doForeignAccess(VirtualFrame frame, LLVMTruffleObject addr, Object value) {
+    protected void doForeignAccess(LLVMTruffleObject addr, Object value) {
         Object key = offsetToName.execute(addr.getBaseType(), addr.getOffset());
         try {
-            write.executeWrite(frame, addr.getObject(), key, addr.getOffset(), value);
+            write.executeWrite(addr.getObject(), key, addr.getOffset(), value);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -71,9 +70,9 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, float value,
+    protected Object doOp(LLVMTruffleObject address, float value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        foreignWrite.execute(address, value);
         return null;
     }
 

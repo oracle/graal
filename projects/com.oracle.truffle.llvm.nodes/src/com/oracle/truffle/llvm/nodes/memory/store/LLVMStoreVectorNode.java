@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -66,10 +65,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMDoubleVector value,
+    protected Object writeVector(LLVMGlobal address, LLVMDoubleVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -81,10 +80,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMFloatVector value,
+    protected Object writeVector(LLVMGlobal address, LLVMFloatVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -96,10 +95,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI16Vector value,
+    protected Object writeVector(LLVMGlobal address, LLVMI16Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -111,10 +110,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI1Vector value,
+    protected Object writeVector(LLVMGlobal address, LLVMI1Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -126,10 +125,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI32Vector value,
+    protected Object writeVector(LLVMGlobal address, LLVMI32Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -141,10 +140,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI64Vector value,
+    protected Object writeVector(LLVMGlobal address, LLVMI64Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -156,10 +155,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMI8Vector value,
+    protected Object writeVector(LLVMGlobal address, LLVMI8Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
@@ -171,36 +170,36 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMAddressVector value,
+    protected Object writeVector(LLVMGlobal address, LLVMAddressVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMAddress address, LLVMFunctionVector value, @Cached("getLLVMMemory()") LLVMMemory memory,
+    protected Object writeVector(LLVMAddress address, LLVMFunctionVector value, @Cached("getLLVMMemory()") LLVMMemory memory,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        memory.putVector(address, value, vectorLength, globalAccess, frame);
+        memory.putVector(address, value, vectorLength, globalAccess);
         return null;
     }
 
     @Specialization
-    protected Object writeVector(VirtualFrame frame, LLVMGlobal address, LLVMFunctionVector value,
+    protected Object writeVector(LLVMGlobal address, LLVMFunctionVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putVector(globalAccess.executeWithTarget(frame, address), value, vectorLength, globalAccess, frame);
+        memory.putVector(globalAccess.executeWithTarget(address), value, vectorLength, globalAccess);
         return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI1Vector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMI1Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES);
         }
         return null;
@@ -208,12 +207,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI8Vector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMI8Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
         return null;
@@ -221,12 +220,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI16Vector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMI16Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES);
         }
         return null;
@@ -234,12 +233,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI32Vector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMI32Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES);
         }
         return null;
@@ -247,12 +246,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFloatVector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMFloatVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES);
         }
         return null;
@@ -260,12 +259,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMDoubleVector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMDoubleVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES);
         }
         return null;
@@ -273,12 +272,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMI64Vector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMI64Vector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
         return null;
@@ -286,12 +285,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMAddressVector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMAddressVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
         }
         return null;
@@ -299,12 +298,12 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(VirtualFrame frame, LLVMTruffleObject address, LLVMFunctionVector value,
+    protected Object writeVector(LLVMTruffleObject address, LLVMFunctionVector value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
-            foreignWrite.execute(frame, currentPtr, value.getValue(i));
+            foreignWrite.execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
         return null;

@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -53,30 +52,30 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVMGlobal value,
+    protected Object doOp(LLVMGlobal address, LLVMGlobal value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
-        memMove.executeWithTarget(frame, globalAccess1.executeWithTarget(frame, address), globalAccess2.executeWithTarget(frame, value), getStructSize());
+        memMove.executeWithTarget(globalAccess1.executeWithTarget(address), globalAccess2.executeWithTarget(value), getStructSize());
         return null;
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMGlobal value,
+    protected Object doOp(LLVMAddress address, LLVMGlobal value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        memMove.executeWithTarget(frame, address, globalAccess.executeWithTarget(frame, value), getStructSize());
+        memMove.executeWithTarget(address, globalAccess.executeWithTarget(value), getStructSize());
         return null;
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMGlobal address, LLVMAddress value,
+    protected Object doOp(LLVMGlobal address, LLVMAddress value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        memMove.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), value, getStructSize());
+        memMove.executeWithTarget(globalAccess.executeWithTarget(address), value, getStructSize());
         return null;
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMAddress value) {
-        memMove.executeWithTarget(frame, address, value, getStructSize());
+    protected Object doOp(LLVMAddress address, LLVMAddress value) {
+        memMove.executeWithTarget(address, value, getStructSize());
         return null;
     }
 
@@ -87,8 +86,8 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doTruffleObject(VirtualFrame frame, LLVMTruffleObject address, LLVMTruffleObject value) {
-        memMove.executeWithTarget(frame, address, value, getStructSize());
+    protected Object doTruffleObject(LLVMTruffleObject address, LLVMTruffleObject value) {
+        memMove.executeWithTarget(address, value, getStructSize());
         return null;
     }
 }

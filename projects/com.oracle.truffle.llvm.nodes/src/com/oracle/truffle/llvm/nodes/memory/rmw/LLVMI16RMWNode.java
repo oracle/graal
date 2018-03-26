@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNode;
@@ -58,10 +57,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWXchgNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> b);
         }
 
@@ -72,12 +71,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, value);
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, value);
                 return result;
             }
         }
@@ -85,10 +84,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWAddNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a + b)));
         }
 
@@ -99,12 +98,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ((short) (result + value)));
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, ((short) (result + value)));
                 return result;
             }
         }
@@ -112,10 +111,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWSubNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a - b)));
         }
 
@@ -126,12 +125,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ((short) (result - value)));
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, ((short) (result - value)));
                 return result;
             }
         }
@@ -139,10 +138,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWAndNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a & b)));
         }
 
@@ -153,12 +152,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ((short) (result & value)));
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, ((short) (result & value)));
                 return result;
             }
         }
@@ -166,10 +165,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWNandNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) ~(a & b)));
         }
 
@@ -180,12 +179,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ((short) ~(result & value)));
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, ((short) ~(result & value)));
                 return result;
             }
         }
@@ -193,10 +192,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWOrNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a | b)));
         }
 
@@ -207,12 +206,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ((short) (result | value)));
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, ((short) (result | value)));
                 return result;
             }
         }
@@ -220,10 +219,10 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
 
     public abstract static class LLVMI16RMWXorNode extends LLVMI16RMWNode {
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMGlobal address, short value,
+        protected short doOp(LLVMGlobal address, short value,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(frame, address);
+            LLVMAddress adr = globalAccess.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a ^ b)));
         }
 
@@ -234,12 +233,12 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, LLVMTruffleObject address, short value,
+        protected short doOp(LLVMTruffleObject address, short value,
                         @Cached("createRead()") LLVMI16LoadNode read,
                         @Cached("createWrite()") LLVMI16StoreNode write) {
             synchronized (address.getObject()) {
-                short result = (short) read.executeWithTarget(frame, address);
-                write.executeWithTarget(frame, address, ((short) (result ^ value)));
+                short result = (short) read.executeWithTarget(address);
+                write.executeWithTarget(address, ((short) (result ^ value)));
                 return result;
             }
         }

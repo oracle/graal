@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
@@ -43,12 +42,12 @@ public abstract class LLVMAMD64SyscallFutexNode extends LLVMSyscallOperationNode
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long doI64(VirtualFrame frame, LLVMAddress uaddr, long futexOp, long val, LLVMAddress timeout, LLVMAddress uaddr2, long val3) {
+    protected long doI64(LLVMAddress uaddr, long futexOp, long val, LLVMAddress timeout, LLVMAddress uaddr2, long val3) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Specialization
-    protected long doI64(VirtualFrame frame, long uaddr, long futexOp, long val, long timeout, long uaddr2, long val3) {
-        return doI64(frame, LLVMAddress.fromLong(uaddr), futexOp, val, LLVMAddress.fromLong(timeout), LLVMAddress.fromLong(uaddr2), val3);
+    protected long doI64(long uaddr, long futexOp, long val, long timeout, long uaddr2, long val3) {
+        return doI64(LLVMAddress.fromLong(uaddr), futexOp, val, LLVMAddress.fromLong(timeout), LLVMAddress.fromLong(uaddr2), val3);
     }
 }

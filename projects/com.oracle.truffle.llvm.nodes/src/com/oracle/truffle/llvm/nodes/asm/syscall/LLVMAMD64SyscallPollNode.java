@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -49,12 +48,12 @@ public abstract class LLVMAMD64SyscallPollNode extends LLVMSyscallOperationNode 
     }
 
     @Specialization
-    protected long execute(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress fds, long nfds, long timeout) {
+    protected long execute(LLVMAddress fds, long nfds, long timeout) {
         return (int) poll.execute(fds.getVal(), nfds, (int) timeout);
     }
 
     @Specialization
-    protected long execute(VirtualFrame frame, long fds, long nfds, long timeout) {
-        return execute(frame, LLVMAddress.fromLong(fds), nfds, timeout);
+    protected long execute(long fds, long nfds, long timeout) {
+        return execute(LLVMAddress.fromLong(fds), nfds, timeout);
     }
 }

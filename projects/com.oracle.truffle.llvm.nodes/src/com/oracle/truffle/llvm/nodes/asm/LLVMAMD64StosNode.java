@@ -59,14 +59,14 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, byte al, long rdi, boolean df) {
-            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            store.executeWithTarget(LLVMAddress.fromLong(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -1 : 1));
             return null;
         }
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, byte al, LLVMAddress rdi, boolean df) {
-            store.executeWithTarget(frame, rdi, al);
+            store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -1 : 1));
             return null;
         }
@@ -80,14 +80,14 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, short al, long rdi, boolean df) {
-            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            store.executeWithTarget(LLVMAddress.fromLong(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -2 : 2));
             return null;
         }
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, short al, LLVMAddress rdi, boolean df) {
-            store.executeWithTarget(frame, rdi, al);
+            store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -2 : 2));
             return null;
         }
@@ -101,14 +101,14 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, int al, long rdi, boolean df) {
-            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            store.executeWithTarget(LLVMAddress.fromLong(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -4 : 4));
             return null;
         }
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, int al, LLVMAddress rdi, boolean df) {
-            store.executeWithTarget(frame, rdi, al);
+            store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -4 : 4));
             return null;
         }
@@ -122,14 +122,14 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, long al, long rdi, boolean df) {
-            store.executeWithTarget(frame, LLVMAddress.fromLong(rdi), al);
+            store.executeWithTarget(LLVMAddress.fromLong(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -8 : 8));
             return null;
         }
 
         @Specialization
         protected Object executeI8(VirtualFrame frame, long al, LLVMAddress rdi, boolean df) {
-            store.executeWithTarget(frame, rdi, al);
+            store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -8 : 8));
             return null;
         }

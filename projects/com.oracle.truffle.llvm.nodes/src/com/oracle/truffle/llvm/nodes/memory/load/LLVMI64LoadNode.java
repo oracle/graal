@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.LongValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -63,10 +62,10 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    protected long doI64(VirtualFrame frame, LLVMGlobal addr,
+    protected long doI64(LLVMGlobal addr,
                     @Cached("create()") ReadI64Node globalAccess,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(frame, globalAccess.execute(addr)).getVal();
+        return toNative.executeWithTarget(globalAccess.execute(addr)).getVal();
     }
 
     static LLVMForeignReadNode createForeignRead() {
@@ -74,9 +73,9 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    protected Object doI64(VirtualFrame frame, LLVMTruffleObject addr,
+    protected Object doI64(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return foreignRead.execute(frame, addr);
+        return foreignRead.execute(addr);
     }
 
     @Specialization

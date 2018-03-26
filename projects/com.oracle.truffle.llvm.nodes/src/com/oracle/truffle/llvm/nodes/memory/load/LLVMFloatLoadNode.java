@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.FloatValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -72,9 +71,9 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    protected float doFloat(VirtualFrame frame, LLVMTruffleObject addr,
+    protected float doFloat(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (float) foreignRead.execute(frame, addr);
+        return (float) foreignRead.execute(addr);
     }
 
     @Specialization

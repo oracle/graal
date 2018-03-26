@@ -320,12 +320,12 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode implements Instrum
         @Specialization
         protected Object doOp(VirtualFrame frame, LLVMGlobal retResult,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-            return returnStruct(frame, globalAccess.executeWithTarget(frame, retResult));
+            return returnStruct(frame, globalAccess.executeWithTarget(retResult));
         }
 
         private Object returnStruct(VirtualFrame frame, Object retResult) {
             Object retStructAddress = argIdx1.executeGeneric(frame);
-            memMove.executeWithTarget(frame, retStructAddress, retResult, getStructSize());
+            memMove.executeWithTarget(retStructAddress, retResult, getStructSize());
             return retStructAddress;
         }
     }

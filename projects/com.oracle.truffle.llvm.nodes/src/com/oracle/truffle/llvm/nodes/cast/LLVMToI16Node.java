@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -104,9 +103,9 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        public short doGlobal(VirtualFrame frame, LLVMGlobal from,
+        public short doGlobal(LLVMGlobal from,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-            return (short) access.executeWithTarget(frame, from).getVal();
+            return (short) access.executeWithTarget(from).getVal();
         }
 
         @Child private Node isNull = Message.IS_NULL.createNode();
@@ -115,13 +114,13 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         @Child private ForeignToLLVM toShort = ForeignToLLVM.create(ForeignToLLVMType.I16);
 
         @Specialization
-        protected short doLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject from) {
+        protected short doLLVMTruffleObject(LLVMTruffleObject from) {
             TruffleObject base = from.getObject();
             if (ForeignAccess.sendIsNull(isNull, base)) {
                 return (short) from.getOffset();
             } else if (ForeignAccess.sendIsBoxed(isBoxed, base)) {
                 try {
-                    short ptr = (short) toShort.executeWithTarget(frame, ForeignAccess.sendUnbox(unbox, base));
+                    short ptr = (short) toShort.executeWithTarget(ForeignAccess.sendUnbox(unbox, base));
                     return (short) (ptr + from.getOffset());
                 } catch (UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
@@ -133,8 +132,8 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected short doLLVMBoxedPrimitive(VirtualFrame frame, LLVMBoxedPrimitive from) {
-            return (short) toShort.executeWithTarget(frame, from.getValue());
+        protected short doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+            return (short) toShort.executeWithTarget(from.getValue());
         }
     }
 

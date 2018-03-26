@@ -288,7 +288,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
         public void execute(VirtualFrame frame) {
             Object function = functionNode.executeGeneric(frame);
             Object[] argValues = prepareArguments(frame);
-            writeResult(frame, dispatchNode.executeDispatch(frame, function, argValues));
+            writeResult(frame, dispatchNode.executeDispatch(function, argValues));
         }
 
         @ExplodeLoop

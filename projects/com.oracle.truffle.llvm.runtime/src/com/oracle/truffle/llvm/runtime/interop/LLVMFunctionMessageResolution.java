@@ -54,8 +54,7 @@ public class LLVMFunctionMessageResolution {
     @Resolve(message = "IS_EXECUTABLE")
     public abstract static class ForeignIsExecutableNode extends Node {
 
-        @SuppressWarnings("unused")
-        protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object) {
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
             return !object.isNullFunction();
         }
     }
@@ -65,8 +64,8 @@ public class LLVMFunctionMessageResolution {
 
         @Child private LLVMForeignCallNode executeNode;
 
-        protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
-            return getHelperNode(object).executeCall(frame, object, arguments);
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
+            return getHelperNode(object).executeCall(object, arguments);
         }
 
         private LLVMForeignCallNode getHelperNode(LLVMFunctionDescriptor function) {
@@ -97,8 +96,8 @@ public class LLVMFunctionMessageResolution {
 
         @Child LLVMObjectNativeLibrary objectNative = LLVMObjectNativeLibrary.createGeneric();
 
-        protected boolean access(VirtualFrame frame, LLVMFunctionDescriptor object) {
-            return objectNative.isPointer(frame, object);
+        protected boolean access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
+            return objectNative.isPointer(object);
         }
     }
 
@@ -107,9 +106,9 @@ public class LLVMFunctionMessageResolution {
 
         @Child LLVMObjectNativeLibrary objectNative = LLVMObjectNativeLibrary.createGeneric();
 
-        protected long access(VirtualFrame frame, LLVMFunctionDescriptor object) {
+        protected long access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
             try {
-                return objectNative.asPointer(frame, object);
+                return objectNative.asPointer(object);
             } catch (InteropException e) {
                 throw e.raise();
             }
@@ -121,9 +120,9 @@ public class LLVMFunctionMessageResolution {
 
         @Child LLVMObjectNativeLibrary objectNative = LLVMObjectNativeLibrary.createGeneric();
 
-        protected Object access(VirtualFrame frame, LLVMFunctionDescriptor object) {
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object) {
             try {
-                return objectNative.toNative(frame, object);
+                return objectNative.toNative(object);
             } catch (InteropException e) {
                 throw e.raise();
             }

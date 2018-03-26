@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -87,9 +86,9 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(guards = {"!isManagedMallocObject(object)"})
-    protected Object memset(VirtualFrame frame, LLVMTruffleObject object, byte value, long length, @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+    protected Object memset(LLVMTruffleObject object, byte value, long length, @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memset(globalAccess.executeWithTarget(frame, object), value, length, memory);
+        return memset(globalAccess.executeWithTarget(object), value, length, memory);
     }
 
     @SuppressWarnings("unused")
@@ -110,10 +109,10 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization
-    protected Object memset(VirtualFrame frame, LLVMGlobal global, byte value, long length,
+    protected Object memset(LLVMGlobal global, byte value, long length,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memset(globalAccess.executeWithTarget(frame, global), value, length, memory);
+        return memset(globalAccess.executeWithTarget(global), value, length, memory);
     }
 
 }

@@ -59,7 +59,7 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < offsets.length; i++) {
             LLVMAddress currentAddr = address.increment(offsets[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
-            elementWriteNodes[i].executeWithTarget(frame, currentAddr, value);
+            elementWriteNodes[i].executeWithTarget(currentAddr, value);
         }
         return address;
     }
@@ -70,7 +70,7 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < offsets.length; i++) {
             LLVMTruffleObject currentAddr = address.increment(offsets[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
-            elementWriteNodes[i].executeWithTarget(frame, currentAddr, value);
+            elementWriteNodes[i].executeWithTarget(currentAddr, value);
         }
         return address;
     }

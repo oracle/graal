@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -55,16 +54,16 @@ public abstract class LLVMInsertValueNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress doLLVMAddress(VirtualFrame frame, LLVMAddress sourceAggr, LLVMAddress targetAggr, Object element) {
-        memMove.executeWithTarget(frame, targetAggr, sourceAggr, sourceAggregateSize);
-        store.executeWithTarget(frame, targetAggr.increment(offset), element);
+    protected LLVMAddress doLLVMAddress(LLVMAddress sourceAggr, LLVMAddress targetAggr, Object element) {
+        memMove.executeWithTarget(targetAggr, sourceAggr, sourceAggregateSize);
+        store.executeWithTarget(targetAggr.increment(offset), element);
         return targetAggr;
     }
 
     @Specialization
-    protected Object doVoid(VirtualFrame frame, LLVMTruffleObject sourceAggr, LLVMTruffleObject targetAggr, Object element) {
-        memMove.executeWithTarget(frame, targetAggr, sourceAggr, sourceAggregateSize);
-        store.executeWithTarget(frame, targetAggr.increment(offset), element);
+    protected Object doVoid(LLVMTruffleObject sourceAggr, LLVMTruffleObject targetAggr, Object element) {
+        memMove.executeWithTarget(targetAggr, sourceAggr, sourceAggregateSize);
+        store.executeWithTarget(targetAggr.increment(offset), element);
         return targetAggr;
     }
 }

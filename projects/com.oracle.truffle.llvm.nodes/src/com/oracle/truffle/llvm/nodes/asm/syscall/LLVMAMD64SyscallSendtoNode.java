@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -49,12 +48,12 @@ public abstract class LLVMAMD64SyscallSendtoNode extends LLVMSyscallOperationNod
     }
 
     @Specialization
-    protected long doOp(@SuppressWarnings("unused") VirtualFrame frame, long socket, LLVMAddress message, long length, long flags, LLVMAddress destAddr, long destLen) {
+    protected long doOp(long socket, LLVMAddress message, long length, long flags, LLVMAddress destAddr, long destLen) {
         return (long) sendto.execute((int) socket, message.getVal(), length, (int) flags, destAddr.getVal(), (int) destLen);
     }
 
     @Specialization
-    protected long doOp(VirtualFrame frame, long socket, long message, long length, long flags, long destAddr, long destLen) {
-        return execute(frame, socket, LLVMAddress.fromLong(message), length, flags, LLVMAddress.fromLong(destAddr), destLen);
+    protected long doOp(long socket, long message, long length, long flags, long destAddr, long destLen) {
+        return execute(socket, LLVMAddress.fromLong(message), length, flags, LLVMAddress.fromLong(destAddr), destLen);
     }
 }

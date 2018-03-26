@@ -35,7 +35,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -71,22 +70,22 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = {"id.equals(readId.executeWithTarget(frame, idPointer))", "src.equals(readSrc.executeWithTarget(frame, srcPointer))"})
-    protected Object doCached(VirtualFrame frame, Object idPointer, Object srcPointer,
+    @Specialization(limit = "2", guards = {"id.equals(readId.executeWithTarget(idPointer))", "src.equals(readSrc.executeWithTarget(srcPointer))"})
+    protected Object doCached(Object idPointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
-                    @Cached("readId.executeWithTarget(frame, idPointer)") String id,
-                    @Cached("readSrc.executeWithTarget(frame, srcPointer)") String src,
+                    @Cached("readId.executeWithTarget(idPointer)") String id,
+                    @Cached("readSrc.executeWithTarget(srcPointer)") String src,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("getCallTarget(id, src, context)") CallTarget callTarget) {
         return callTarget.call();
     }
 
     @Specialization(replaces = "doCached")
-    protected Object uncached(VirtualFrame frame, Object idPointer, Object srcPointer,
+    protected Object uncached(Object idPointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return getCallTarget(readId.executeWithTarget(frame, idPointer), readSrc.executeWithTarget(frame, srcPointer), context).call();
+        return getCallTarget(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer), context).call();
     }
 }
