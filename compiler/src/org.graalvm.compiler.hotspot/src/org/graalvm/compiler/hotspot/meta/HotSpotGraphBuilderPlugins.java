@@ -26,7 +26,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Options.TieredAOT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_THREAD_OBJECT_LOCATION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
@@ -100,7 +100,6 @@ import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JDK9Method;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
@@ -440,7 +439,7 @@ public class HotSpotGraphBuilderPlugins {
     public static final String constantPoolClass;
 
     static {
-        if (JDK9Method.Java8OrEarlier) {
+        if (Java8OrEarlier) {
             cbcEncryptName = "encrypt";
             cbcDecryptName = "decrypt";
             aesEncryptName = "encryptBlock";

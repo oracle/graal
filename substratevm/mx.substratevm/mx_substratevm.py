@@ -207,10 +207,10 @@ class ToolDescriptor:
         self.native_deps = native_deps if native_deps else []
 
 tools_map = {
-    'truffle' : ToolDescriptor(), # only used to encapsulate builtin:Truffle (see tools-truffle.properties)
+    'truffle' : ToolDescriptor(builder_deps=['truffle:TRUFFLE_NFI'], native_deps=['truffle:TRUFFLE_NFI_NATIVE']),
     'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
-    'nfi' : ToolDescriptor(builder_deps=['truffle:TRUFFLE_NFI'], native_deps=['truffle:TRUFFLE_NFI_NATIVE']),
+    'nfi' : ToolDescriptor(), # just an alias for truffle (to be removed soon)
     'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
     'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
@@ -455,7 +455,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     ]
 
     failure_warning = None
-    if not version:
+    if not version and not mx.suite(language_suite_name, fatalIfMissing=False):
         # If no specific version requested use binary import of last recently deployed master version
         repo_suite_name = language_repo_name if language_repo_name else language_suite_name
         repo_url = mx_urlrewrites.rewriteurl('https://github.com/graalvm/{0}.git'.format(repo_suite_name))
@@ -630,10 +630,10 @@ def build_js(native_image):
     truffle_language_ensure('js')
     native_image(['--Language:js', '--Tool:chromeinspector'])
 
-def test_js(benchmarks):
+def test_js(benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
     for benchmark_name, warmup_iterations, iterations, timeout in benchmarks:
-        js_image_test(join(svmbuild_dir(), 'js'), bench_location, benchmark_name, warmup_iterations, iterations, timeout)
+        js_image_test(join(svmbuild_dir(), 'js'), bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args)
 
 def test_run(cmds, expected_stdout, timeout=10):
     stdoutdata = []

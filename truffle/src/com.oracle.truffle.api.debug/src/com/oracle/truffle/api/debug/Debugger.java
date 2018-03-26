@@ -99,15 +99,38 @@ public final class Debugger {
 
     /**
      * Starts a new {@link DebuggerSession session} provided with a callback that gets notified
-     * whenever the execution is suspended.
+     * whenever the execution is suspended. Uses {@link SourceElement#STATEMENT} as the source
+     * element available for stepping. Use
+     * {@link #startSession(SuspendedCallback, SourceElement...)} to specify a different set of
+     * source elements.
      *
      * @param callback the callback to notify
      * @see DebuggerSession
      * @see SuspendedEvent
+     * @see #startSession(SuspendedCallback, SourceElement...)
      * @since 0.17
      */
     public DebuggerSession startSession(SuspendedCallback callback) {
-        DebuggerSession session = new DebuggerSession(this, callback);
+        return startSession(callback, SourceElement.STATEMENT);
+    }
+
+    /**
+     * Starts a new {@link DebuggerSession session} provided with a callback that gets notified
+     * whenever the execution is suspended and with a list of source syntax elements on which it is
+     * possible to step. Only steps created with one of these element kinds are accepted in this
+     * session. All specified elements are used by steps by default, if not specified otherwise by
+     * {@link StepConfig.Builder#sourceElements(SourceElement...)}. When no elements are provided,
+     * stepping is not possible and the session itself has no instrumentation overhead.
+     *
+     * @param callback the callback to notify
+     * @param defaultSourceElements a list of source elements, an explicit empty list disables
+     *            stepping
+     * @see DebuggerSession
+     * @see SuspendedEvent
+     * @since 0.33
+     */
+    public DebuggerSession startSession(SuspendedCallback callback, SourceElement... defaultSourceElements) {
+        DebuggerSession session = new DebuggerSession(this, callback, defaultSourceElements);
         Breakpoint[] bpts;
         synchronized (this) {
             sessions.add(session);

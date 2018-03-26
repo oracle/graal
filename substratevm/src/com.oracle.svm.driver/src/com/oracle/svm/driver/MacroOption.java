@@ -355,6 +355,15 @@ final class MacroOption {
                     enableOption(specString, addedCheck, option);
                 }
             }
+
+            MacroOption truffleOption = supported.get(MacroOptionKind.Tool).get("truffle");
+            if (option.kind.equals(MacroOptionKind.Language) && !addedCheck.contains(truffleOption)) {
+                /*
+                 * Every language requires Truffle. If it is not specified explicitly as a
+                 * requirement, add it automatically.
+                 */
+                enableResolved(truffleOption, null, addedCheck, context);
+            }
             enabled.add(enabledOption);
         }
 

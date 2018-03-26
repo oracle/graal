@@ -30,7 +30,6 @@ import java.util.function.Predicate;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -53,6 +52,7 @@ final class BreakpointLocation {
     public static final BreakpointLocation ANY = new BreakpointLocation();
 
     private final Object key;
+    private final SourceElement[] sourceElements;
     private final SourceSection sourceSection;
     private int line;
     private int column;
@@ -61,9 +61,10 @@ final class BreakpointLocation {
      * @param key non-null source identifier
      * @param line 1-based line number, -1 for unspecified
      */
-    BreakpointLocation(Object key, SourceSection sourceSection) {
+    BreakpointLocation(Object key, SourceElement[] sourceElements, SourceSection sourceSection) {
         assert key instanceof Source || key instanceof URI;
         this.key = key;
+        this.sourceElements = sourceElements;
         this.sourceSection = sourceSection;
         this.line = -1;
         this.column = -1;
@@ -74,11 +75,12 @@ final class BreakpointLocation {
      * @param line 1-based line number
      * @param column 1-based column number, -1 for unspecified
      */
-    BreakpointLocation(Object key, int line, int column) {
+    BreakpointLocation(Object key, SourceElement[] sourceElements, int line, int column) {
         assert key instanceof Source || key instanceof URI;
         assert line > 0;
         assert column > 0 || column == -1;
         this.key = key;
+        this.sourceElements = sourceElements;
         this.line = line;
         this.column = column;
         this.sourceSection = null;
@@ -86,6 +88,7 @@ final class BreakpointLocation {
 
     private BreakpointLocation() {
         this.key = null;
+        this.sourceElements = null;
         this.line = -1;
         this.column = -1;
         this.sourceSection = null;
@@ -126,7 +129,7 @@ final class BreakpointLocation {
             return null;
         }
         boolean hasColumn = column > 0;
-        SourceSection location = SuspendableLocationFinder.findNearest(source, line, column, suspendAnchor, env);
+        SourceSection location = SuspendableLocationFinder.findNearest(source, sourceElements, line, column, suspendAnchor, env);
         if (location != null) {
             switch (suspendAnchor) {
                 case BEFORE:
@@ -179,7 +182,11 @@ final class BreakpointLocation {
         if (sourceSection != null) {
             f.sourceSectionEquals(sourceSection);
         }
-        f.tagIs(StandardTags.StatementTag.class);
+        Class<?>[] elementTags = new Class<?>[sourceElements.length];
+        for (int i = 0; i < elementTags.length; i++) {
+            elementTags[i] = sourceElements[i].getTag();
+        }
+        f.tagIs(elementTags);
         return f.build();
     }
 

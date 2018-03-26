@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.JDK9Method;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
@@ -542,11 +542,11 @@ public class CheckGraalIntrinsics extends GraalTest {
     }
 
     private static boolean isJDK9OrHigher() {
-        return JDK9Method.JAVA_SPECIFICATION_VERSION >= 9;
+        return GraalServices.JAVA_SPECIFICATION_VERSION >= 9;
     }
 
     private static boolean isJDK10OrHigher() {
-        return JDK9Method.JAVA_SPECIFICATION_VERSION >= 10;
+        return GraalServices.JAVA_SPECIFICATION_VERSION >= 10;
     }
 
     private static String getHostArchitectureName() {

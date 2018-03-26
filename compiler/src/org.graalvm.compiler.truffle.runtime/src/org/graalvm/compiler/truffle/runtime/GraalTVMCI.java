@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -153,5 +154,17 @@ final class GraalTVMCI extends TVMCI {
                 return new EngineData();
             }
         });
+    }
+
+    @Override
+    protected void reportPolymorphicSpecialize(Node source) {
+        if (TruffleCompilerOptions.getValue(TruffleCompilerOptions.TruffleExperimentalSplitting)) {
+            TruffleSplittingStrategy.newPolymorphicSpecialize(source);
+            final RootNode rootNode = source.getRootNode();
+            final OptimizedCallTarget callTarget = rootNode == null ? null : (OptimizedCallTarget) rootNode.getCallTarget();
+            if (callTarget != null) {
+                callTarget.polymorphicSpecialize(source);
+            }
+        }
     }
 }

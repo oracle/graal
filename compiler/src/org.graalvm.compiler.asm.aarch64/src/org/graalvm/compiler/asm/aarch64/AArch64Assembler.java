@@ -118,6 +118,8 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.debug.GraalError;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64.CPUFeature;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
@@ -738,6 +740,10 @@ public abstract class AArch64Assembler extends Assembler {
 
     public AArch64Assembler(TargetDescription target) {
         super(target);
+    }
+
+    public boolean supports(CPUFeature feature) {
+        return ((AArch64) target.arch).getFeatures().contains(feature);
     }
 
     /* Conditional Branch (5.2.1) */

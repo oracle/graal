@@ -2164,6 +2164,11 @@ final class InstrumentationHandler {
                 instrumentationHandler.patch(out, err, in);
             }
 
+            @Override
+            public boolean isInputValueSlotIdentifier(Object identifier) {
+                return identifier instanceof ProbeNode.EventProviderWithInputChainNode.SavedInputValueID;
+            }
+
             private static InstrumentationHandler getHandler(RootNode rootNode) {
                 LanguageInfo info = rootNode.getLanguageInfo();
                 if (info == null) {

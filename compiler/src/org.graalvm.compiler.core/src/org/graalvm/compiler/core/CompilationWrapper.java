@@ -122,8 +122,10 @@ public abstract class CompilationWrapper<T> {
      *
      * Subclasses can override this to choose a different action based on factors such as whether
      * {@code actionKey} has been explicitly set in {@code options} for example.
+     *
+     * @param cause the cause of the bailout or failure
      */
-    protected ExceptionAction lookupAction(OptionValues options, EnumOptionKey<ExceptionAction> actionKey) {
+    protected ExceptionAction lookupAction(OptionValues options, EnumOptionKey<ExceptionAction> actionKey, Throwable cause) {
         if (actionKey == CompilationFailureAction) {
             if (ExitVMOnException.getValue(options)) {
                 assert CompilationFailureAction.getDefaultValue() != ExceptionAction.ExitVM;
@@ -175,7 +177,7 @@ public abstract class CompilationWrapper<T> {
                 actionKey = CompilationFailureAction;
                 causeType = "failure";
             }
-            ExceptionAction action = lookupAction(initialOptions, actionKey);
+            ExceptionAction action = lookupAction(initialOptions, actionKey, cause);
 
             action = adjustAction(initialOptions, actionKey, action);
 

@@ -46,6 +46,7 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -78,10 +79,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProcessor {
 
     public static class Options {
-        @Option(help = "Comma-separated list of file names with declarative substitutions")//
+        @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<String> SubstitutionFiles = new HostedOptionKey<>("");
 
-        @Option(help = "Comma-separated list of resource file names with declarative substitutions")//
+        @Option(help = "Comma-separated list of resource file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<String> SubstitutionResources = new HostedOptionKey<>("");
 
         @Option(help = "Print all substitutions in the format expected by SubstitutionFiles")//

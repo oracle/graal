@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Feature;
 
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -43,10 +44,10 @@ public class JNIFeature implements Feature {
         @Option(help = "Enable Java Native Interface (JNI) support.")//
         public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(false);
 
-        @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)")//
+        @Option(help = "Files describing program elements to be made accessible via JNI (for syntax, see ReflectionConfigurationFiles)", type = OptionType.User)//
         public static final HostedOptionKey<String> JNIConfigurationFiles = new HostedOptionKey<>("");
 
-        @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).")//
+        @Option(help = "Resources describing program elements to be made accessible via JNI (see JNIConfigurationFiles).", type = OptionType.User)//
         public static final HostedOptionKey<String> JNIConfigurationResources = new HostedOptionKey<>("");
     }
 

@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.option.HostedOptionParser;
 
 /**
  * Support for registering classes, methods and fields before and during the analysis so they are
@@ -58,7 +58,7 @@ public final class JNIRuntimeAccess {
 
     private static JNIRuntimeAccessibilitySupport getSupport() {
         if (!ImageSingletons.contains(JNIRuntimeAccessibilitySupport.class)) {
-            throw UserError.abort("Support for JNI is not enabled. The option " + HostedOptionParser.HOSTED_OPTION_PREFIX + JNIFeature.Options.JNI + " must be set.");
+            throw UserError.abort("Support for JNI is not enabled. The option " + SubstrateOptionsParser.HOSTED_OPTION_PREFIX + JNIFeature.Options.JNI + " must be set.");
         }
         return ImageSingletons.lookup(JNIRuntimeAccessibilitySupport.class);
     }

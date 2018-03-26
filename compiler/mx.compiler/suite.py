@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.141.0",
+  "mxversion" : "5.145.3",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -132,6 +132,16 @@ suite = {
       "dependencies" : ["JVMCI_SERVICES"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.compiler.serviceprovider.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9",
+      "multiReleaseJarVersion" : "9",
       "workingSets" : "API,Graal",
     },
 
@@ -338,6 +348,18 @@ suite = {
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
       "javaCompliance" : "1.8",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk9" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot",
+      ],
+      "multiReleaseJarVersion" : "9",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "9",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1620,6 +1642,7 @@ suite = {
         "GRAAL_TRUFFLE_COMPILER_HOTSPOT",
       ],
       "dependencies" : [
+        "org.graalvm.compiler.serviceprovider.jdk9",
         "org.graalvm.compiler.options",
         "org.graalvm.compiler.nodeinfo",
         "org.graalvm.compiler.api.replacements",
@@ -1640,6 +1663,7 @@ suite = {
         "org.graalvm.compiler.hotspot.amd64",
         "org.graalvm.compiler.hotspot.sparc",
         "org.graalvm.compiler.hotspot",
+        "org.graalvm.compiler.hotspot.jdk9",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",

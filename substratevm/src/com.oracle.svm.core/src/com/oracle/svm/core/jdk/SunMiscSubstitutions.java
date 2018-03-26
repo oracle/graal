@@ -24,10 +24,9 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
-
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.ref.ReferenceQueue;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
@@ -199,8 +198,22 @@ final class Util_sun_misc_MessageUtils {
 
 @TargetClass(sun.misc.Cleaner.class)
 final class Target_sun_misc_Cleaner {
-    @Alias @RecomputeFieldValue(kind = Reset)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     private static Cleaner first;
+
+    /**
+     * Contrary to the comment on {@link sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
+     * have {@link Cleaner} instances on it, because SubstrateVM does not have a ReferenceHandler
+     * thread to clean instances, so SubstrateVM puts them on the queue and drains the queue after
+     * collections in {@link SunMiscSupport#drainCleanerQueue()}.
+     * <p>
+     * {@link Cleaner} instances that do bad things are even worse in SubstrateVM than they are in
+     * the HotSpot VM, because they are run on the thread that started a collection.
+     * <p>
+     * Changing the access from `private` to `protected`, and reinitializing to an empty queue.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    protected static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 }
 
 @TargetClass(sun.misc.SharedSecrets.class)

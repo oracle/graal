@@ -17,6 +17,13 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Added assertions to verify that instrumentable nodes that are annotated with a standard tag return a source section if their root node returns a source section. 
 	* Added assertions to verify that execution events always return interop values.
 	* Added the ability for instrumentable nodes to a expose a [node object](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api//instrumentation/InstrumentableNode.html#getNodeObject--). This object is intended to contain language specific properties of the node.
+* Added expression-stepping into debugger APIs. To support debugging of both statements and expressions, following changes were made:
+	* Added [SourceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SourceElement.html) enum to provide a list of source syntax elements known to the debugger.
+	* Added [StepConfig](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/StepConfig.html) class to represent a debugger step configuration.
+	* Added [Debugger.startSession()](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Debugger.html#startSession-com.oracle.truffle.api.debug.SuspendedCallback-com.oracle.truffle.api.debug.SourceElement...-) accepting a list of source elments to enable stepping on them.
+	* Added [Breakpoint.Builder.sourceElements](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html#sourceElements-com.oracle.truffle.api.debug.SourceElement...-) to specify which source elements will the breakpoint adhere to.
+	* Added [SuspendedEvent.getInputValues](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getInputValues--) to get possible input values of the current source element.
+	* Removed deprecated methods on [SuspendedEvent](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html).
 * Added column filters on [SourceSectionFilter.Builder](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/SourceSectionFilter.Builder.html) and [Breakpoint.Builder](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html).
 * Added [Instrumenter.attachExecuteSourceListener](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#attachExecuteSourceListener-com.oracle.truffle.api.instrumentation.SourceFilter-T-boolean-) to be able to [listen](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/ExecuteSourceListener.html) on [source execution events](http://www.graalvm.org/truffle/javadoc/javadoc/com/oracle/truffle/api/instrumentation/ExecuteSourceEvent.html).
 * Added [InstrumentableNode.findNearestNodeAt](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/InstrumentableNode.html#findNearestNodeAt-int-java.util.Set-) to be able to find the nearest tagged node to the given source character index. This is used to auto-correct breakpoint locations.
@@ -34,6 +41,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed internal truffle.object package from javadoc.
 * Added the compiler directive [castExact](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/CompilerDirectives.html#castExact-java.lang.Object-java.lang.Class-).
 * Added skipped exception types: `IndexOutOfBoundsException`, `BufferOverflowException`, and `BufferUnderflowException`.
+* Introduced support for the experimental automated monomorphization feature:
+    * The [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize) method which notifies the runtime that a node has specialized to a more polymorphic state.
+    * The [ReportPolymorphism](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.html) and [ReportPolymorphism.Exclude](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/ReportPolymorphism.Exclude.html) annotations which the DSL uses to generate (or not generate) calls to [Node.reportPolymorphicSpecialize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#reportPolymorphicSpecialize--).
+* Added `TruffleException.getSourceLocation()` for syntax errors which don't have a `Node`.
 
 ## Version 0.32
 

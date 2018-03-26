@@ -51,9 +51,6 @@ import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-
-// Checkstyle: allow reflection
-
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -92,6 +89,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.FilesFeature;
 import com.oracle.svm.core.jdk.FilesSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -102,7 +100,6 @@ import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
 import com.oracle.svm.truffle.api.SubstratePartialEvaluator;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
@@ -641,7 +638,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 if (implementations.size() > 1) {
                     throw UserError.abort("More than one implementation of " + Frame.class.getTypeName() +
                                     " found. For performance reasons, Truffle languages must not provide new implementations, and instead only use the single implementation provided by the Truffle runtime. " +
-                                    "To disable this check, add " + HostedOptionParser.commandArgument(Options.TruffleCheckFrameImplementation, "-") + " to the native-image command line. " +
+                                    "To disable this check, add " + SubstrateOptionsParser.commandArgument(Options.TruffleCheckFrameImplementation, "-") + " to the native-image command line. " +
                                     "Found classes: " + implementations.stream().map(m -> m.toJavaName(true)).collect(Collectors.joining(", ")));
                 } else {
                     assert implementations.size() == 0 || implementations.iterator().next() == frameType.getSingleImplementor();

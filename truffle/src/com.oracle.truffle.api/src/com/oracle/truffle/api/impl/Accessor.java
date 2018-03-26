@@ -96,6 +96,10 @@ public abstract class Accessor {
         public abstract void setRootNodeBits(RootNode root, int bits);
 
         public abstract Lock getLock(Node node);
+
+        public void reportPolymorphicSpecialize(Node node) {
+            SUPPORT.reportPolymorphicSpecialize(node);
+        }
     }
 
     public abstract static class DumpSupport {
@@ -415,6 +419,8 @@ public abstract class Accessor {
         public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object instrumentEnv, org.graalvm.polyglot.Source source, com.oracle.truffle.api.source.SourceSection ss);
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
+
+        public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
     }
 

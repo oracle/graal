@@ -108,17 +108,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private int monitorOffset;
 
     /**
-     * The offset of the synthetic field which stores whatever is used for {@link Object#wait()} or
-     * {@link Object#notify()} by an instance of this class. If 0, then instances of this class can
-     * not call {@link Object#wait()} or {@link Object#notify()}.
-     * <p>
-     * The current implementation stores a reference to a
-     * {@link java.util.concurrent.locks.Condition}, which will be allocated the first time an
-     * instance needs it.
-     */
-    private int waitNotifyOffset;
-
-    /**
      * The offset of the synthetic hash-code field which stores the identity hash-code for an
      * instance of the class.
      * <p>
@@ -253,12 +242,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset, int waitNotifyOffset, int hashCodeOffset, int[] assignableFromMatches, BitSet instanceOfBits,
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, int hashCodeOffset, int[] assignableFromMatches, BitSet instanceOfBits,
                     CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = monitorOffset;
-        this.waitNotifyOffset = waitNotifyOffset;
         this.hashCodeOffset = hashCodeOffset;
         this.assignableFromMatches = assignableFromMatches;
         this.instanceOfBits = instanceOfBits;
@@ -350,10 +338,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public int getMonitorOffset() {
         return monitorOffset;
-    }
-
-    public int getWaitNotifyOffset() {
-        return waitNotifyOffset;
     }
 
     public int getHashCodeOffset() {

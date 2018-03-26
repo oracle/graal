@@ -1,20 +1,20 @@
 
 builds += [
   # Darwin AMD64
-  ${gateBootstrapLite}       ${labsjdk8}   ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-8-darwin-amd64"}
-  ${gateBootstrapLite}       ${labsjdk9}   ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-9-darwin-amd64", targets : [weekly]}
-  ${gateBootstrapLite}       ${labsjdk10}  ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-10-darwin-amd64", targets : [weekly]}
+  ${gateBootstrapLite}       ${labsjdk8}    ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-8-darwin-amd64"}
+  ${gateBootstrapLite}       ${oraclejdk9}  ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-9-darwin-amd64", targets : [weekly]}
+  ${gateBootstrapLite}       ${oraclejdk10} ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-10-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
-  ${gateBootstrap}           ${labsjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
-  ${gateBootstrapFullVerify} ${labsjdk8}   ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
-  ${gateBootstrap}           ${labsjdk9}   ${gateLinuxAMD64Bootstrap}   {name: "weekly-test-compiler-bootstrap-9-linux-amd64", targets : [weekly]}
-  ${gateBootstrap}           ${labsjdk10}  ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-10-linux-amd64"}
+  ${gateBootstrap}           ${labsjdk8}    ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
+  ${gateBootstrapFullVerify} ${labsjdk8}    ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
+  ${gateBootstrap}           ${oraclejdk9}  ${gateLinuxAMD64Bootstrap}   {name: "weekly-test-compiler-bootstrap-9-linux-amd64", targets : [weekly]}
+  ${gateBootstrap}           ${oraclejdk10} ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-10-linux-amd64"}
 
   # Solaris SPARC
-  ${gateBootstrap}           ${labsjdk8}   ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
-  ${gateBootstrap}           ${labsjdk9}   ${gateSolarisSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-9-solaris-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
-  ${gateBootstrap}           ${labsjdk10}  ${gateSolarisSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-10-solaris-sparcv9",  timelimit: "1:00:00", targets : [weekly]}
+  ${gateBootstrap}           ${labsjdk8}    ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}
+  ${gateBootstrap}           ${oraclejdk9}  ${gateSolarisSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-9-solaris-sparcv9",   timelimit: "1:00:00", targets : [weekly]}
+  ${gateBootstrap}           ${oraclejdk10} ${gateSolarisSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-10-solaris-sparcv9",  timelimit: "1:00:00", targets : [weekly]}
 
   # Linux SPARC
   ${gateBootstrap}           ${labsjdk8}   ${gateLinuxSPARCBootstrap} {name: "weekly-test-compiler-bootstrap-labsjdk8-linux-sparcv9", timelimit: "1:00:00", targets : [weekly]}

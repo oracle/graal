@@ -55,6 +55,16 @@ final class ToPrimitiveNode extends Node {
         return new ToPrimitiveNode();
     }
 
+    Integer toInteger(Object value) {
+        Object attr;
+        if (value instanceof TruffleObject) {
+            attr = unbox((TruffleObject) value);
+        } else {
+            attr = value;
+        }
+        return toInt(attr);
+    }
+
     Object toPrimitive(Object value, Class<?> requestedType) {
         Object attr;
         if (value instanceof JavaObject) {
@@ -146,7 +156,7 @@ final class ToPrimitiveNode extends Node {
         return null;
     }
 
-    private static Object toShort(Object value) {
+    private static Short toShort(Object value) {
         if (value instanceof Short) {
             Short s = (Short) value;
             return s;
@@ -181,7 +191,7 @@ final class ToPrimitiveNode extends Node {
         return null;
     }
 
-    private static Object toInt(Object value) {
+    private static Integer toInt(Object value) {
         if (value instanceof Integer) {
             Integer i = (Integer) value;
             return i;

@@ -180,6 +180,21 @@ public class TruffleCompilerOptions {
     @Option(help = "Disable call target splitting if number of nodes created by splitting exceeds this limit", type = OptionType.Debug)
     public static final OptionKey<Integer> TruffleSplittingMaxNumberOfSplitNodes = new OptionKey<>(500_000);
 
+    @Option(help = "Propagate info about a polymorphic specialize through maximum this many call targets", type = OptionType.Debug)
+    public static final OptionKey<Integer> TruffleExperimentalSplittingMaxPropagationDepth = new OptionKey<>(5);
+
+    @Option(help = "Use the splitting strategy that relies on language implementations reporting polymorpic specializations. Disables forced splits.", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleExperimentalSplitting = new OptionKey<>(false);
+
+    @Option(help = "Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleTraceSplittingSummary = new OptionKey<>(false);
+
+    @Option(help = "Dumps to IGV information on polymorphic events", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleExperimentalSplittingDumpDecisions = new OptionKey<>(false);
+
+    @Option(help = "Should forced splits be allowed (when using experimental splitting)", type = OptionType.Expert)
+    public static final OptionKey<Boolean> TruffleExperimentalSplittingAllowForcedSplits = new OptionKey<>(false);
+
     @Option(help = "Enable asynchronous truffle compilation in background thread", type = OptionType.Expert)
     public static final OptionKey<Boolean> TruffleBackgroundCompilation = new OptionKey<>(true);
 

@@ -114,14 +114,6 @@ final class Target_com_oracle_svm_core_util_VMError {
     }
 }
 
-class UnsupportedFeatureError extends Error {
-    private static final long serialVersionUID = -2281164998442235179L;
-
-    UnsupportedFeatureError(String message) {
-        super(message);
-    }
-}
-
 /** Dummy class to have a class with the file's name. */
 public class VMErrorSubstitutions {
 }

@@ -44,6 +44,7 @@ import java.net.SocketOptions;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform.DARWIN;
@@ -225,6 +226,31 @@ final class Target_java_net_InetAddress {
 
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
     static HashMap<String, Void> lookupTable = new HashMap<>();
+
+    /**
+     * Force the JDK to re-initialize address caches at run time.
+     *
+     * We do not recompute the fields addressCache and negativeCache to new instances. Instead, we
+     * reset the internals of the Cache instances referenced by the fields in
+     * {@link Target_java_net_InetAddress_Cache#cache} - that is easier since it does not require us
+     * to instantiate a non-public JDK class during image generation.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    static boolean addressCacheInit = false;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    static InetAddress[] unknown_array;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    static InetAddress cachedLocalHost;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    static long cacheTime;
+}
+
+@TargetClass(className = "java.net.InetAddress", innerClass = "Cache")
+final class Target_java_net_InetAddress_Cache {
+
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = LinkedHashMap.class)//
+    LinkedHashMap<String, Object> cache;
 }
 
 /** Methods to operate on java.net.InetAddress instances. */

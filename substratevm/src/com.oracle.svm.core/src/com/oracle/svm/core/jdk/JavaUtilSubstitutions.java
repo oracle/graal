@@ -23,19 +23,79 @@
 package com.oracle.svm.core.jdk;
 
 import java.util.Currency;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.nativeimage.Feature;
+
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
+@AutomaticFeature
+class CollectionInitializationFeature implements Feature {
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer(CollectionInitializationFeature::initializeCollections);
+    }
+
+    /**
+     * Collection classes use Lazily initialized fields to cache views on the collection. They would
+     * not be needed in the image heap because they can always be recomputed. But more importantly,
+     * the fields can be initialized any time during image generation, in which case the static
+     * analysis and image heap writing can report errors about new objects spuriously appearing.
+     *
+     * Resetting the fields to null would be tricky: there are lots of implementation classes that
+     * all have their own fields. So we go the other way: we force-initialize the fields by calling
+     * the most common initialization methods.
+     *
+     * A side benefit of this approach is that collections in the image heap that are not mutated at
+     * run time can be placed in the read-only part of the image heap.
+     */
+    private static Object initializeCollections(Object obj) {
+        if (obj instanceof Map<?, ?>) {
+            Map<?, ?> map = (Map<?, ?>) obj;
+            map.keySet();
+            map.entrySet();
+            map.values();
+
+            if (obj instanceof NavigableMap<?, ?>) {
+                NavigableMap<?, ?> nmap = (NavigableMap<?, ?>) obj;
+                nmap.descendingMap();
+                nmap.navigableKeySet();
+                nmap.descendingKeySet();
+            }
+        }
+        return obj;
+    }
+}
+
 @TargetClass(java.util.HashMap.class)
 final class Target_java_util_HashMap {
+
+    @Substitute
+    private static Class<?> comparableClassFor(Object x) {
+        if (x instanceof Comparable) {
+            /*
+             * We cannot do all the generic interface checks that the original implementation is
+             * doing, because we do not have the necessary metadata at run time.
+             */
+            return x.getClass();
+        }
+        return null;
+    }
+}
+
+@TargetClass(java.util.concurrent.ConcurrentHashMap.class)
+final class Target_java_util_concurrent_ConcurrentHashMap {
 
     @Substitute
     private static Class<?> comparableClassFor(Object x) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -23,21 +23,22 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
+import java.util.ListIterator;
+
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.AddressLoweringByUsePhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
-import org.graalvm.compiler.phases.common.PropagateDeoptimizeProbabilityPhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
 import org.graalvm.compiler.replacements.aarch64.AArch64ReadReplacementPhase;
-
-import java.util.ListIterator;
 
 /**
  * Subclass to factor out management of address lowering.
@@ -62,9 +63,13 @@ public class AArch64HotSpotSuitesProvider extends HotSpotSuitesProvider {
         }
         findPhase.add(new AddressLoweringByUsePhase(addressLoweringByUse));
 
-        findPhase = suites.getLowTier().findPhase(PropagateDeoptimizeProbabilityPhase.class);
+        // Put AArch64ReadReplacementPhase right before the SchedulePhase
+        findPhase = suites.getLowTier().findPhase(SchedulePhase.class);
+        while (PhaseSuite.findNextPhase(findPhase, SchedulePhase.class)) {
+            // Search for last occurrence of SchedulePhase
+        }
+        findPhase.previous();
         findPhase.add(new AArch64ReadReplacementPhase());
-
         return suites;
     }
 }

@@ -185,6 +185,16 @@ mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
 })
 
+def _is_graalvm(jdk):
+    releaseFile = os.path.join(jdk.home, "release")
+    if exists(releaseFile):
+        with open(releaseFile) as f:
+            pattern = re.compile('^GRAALVM_VERSION=*')
+            for line in f.readlines():
+                if pattern.match(line):
+                    return True
+    return False
+
 def _unittest_config_participant_tck(config):
 
     def find_path_arg(vmArgs, prefix):
@@ -192,16 +202,6 @@ def _unittest_config_participant_tck(config):
             if prefix in vmArgs[index]:
                 return index, vmArgs[index][len(prefix):]
         return None, None
-
-    def is_graalvm(jdk):
-        releaseFile = os.path.join(jdk.home, "release")
-        if exists(releaseFile):
-            with open(releaseFile) as f:
-                pattern = re.compile('^GRAALVM_VERSION=*')
-                for line in f.readlines():
-                    if pattern.match(line):
-                        return True
-        return False
 
     def create_filter(requiredResource):
         def has_resource(dist):
@@ -253,7 +253,7 @@ def _unittest_config_participant_tck(config):
     for providerCpElement in providers:
         cpBuilder[providerCpElement] = None
 
-    if is_graalvm(mx.get_jdk()):
+    if _is_graalvm(mx.get_jdk()):
         common = OrderedDict()
         suite_collector(mx.primary_suite(), lambda dist: dist.isJARDistribution() and "TRUFFLE_TCK_COMMON" == dist.name and exists(dist.path), common, javaPropertiesToAdd, set())
         tpIndex, tpValue = find_path_arg(vmArgs, '-Dtruffle.class.path.append=')
@@ -383,8 +383,9 @@ _debuggertestHelpSuffix = """
     TCK options:
 
       --tck-configuration                  configuration {default|debugger}
-          default                          executes TCK tests
+          compile                          executes TCK tests with immediate comilation
           debugger                         executes TCK tests with enabled debugalot instrument
+          default                          executes TCK tests
 """
 
 def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOptions=None, jvmOptions=None):
@@ -415,7 +416,7 @@ def _tck(args):
     """runs TCK tests"""
 
     parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_debuggertestHelpSuffix)
-    parser.add_argument("--tck-configuration", help="TCK configuration", choices=["default", "debugger"], default="default")
+    parser.add_argument("--tck-configuration", help="TCK configuration", choices=["compile", "debugger", "default"], default="default")
     parsed_args, args = parser.parse_known_args(args)
     tckConfiguration = parsed_args.tck_configuration
     index = len(args)
@@ -439,6 +440,10 @@ def _tck(args):
     elif tckConfiguration == "debugger":
         with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
             _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
+    elif tckConfiguration == "compile":
+        if not _is_graalvm(mx.get_jdk()):
+            mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
+        unittest(unitTestOptions + ["--"] + jvmOptions + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleCompilationExceptionsAreThrown=true"] + tests)
 
 mx.update_commands(_suite, {
     'tck' : [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]

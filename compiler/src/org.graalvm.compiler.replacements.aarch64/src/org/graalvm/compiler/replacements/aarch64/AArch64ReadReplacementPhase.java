@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -46,7 +46,7 @@ public class AArch64ReadReplacementPhase extends Phase {
             }
             if (node instanceof ReadNode) {
                 ReadNode readNode = (ReadNode) node;
-                if (readNode.getUsageCount() == 1) {
+                if (readNode.hasExactlyOneUsage()) {
                     Node usage = readNode.getUsageAt(0);
                     if (usage instanceof ZeroExtendNode || usage instanceof SignExtendNode) {
                         AArch64ReadNode.replace(readNode);

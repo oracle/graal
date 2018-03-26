@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -73,9 +74,9 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -482,8 +483,19 @@ public class NativeImageHeap {
      */
     private void addObjectToBootImageHeap(final Object original, final Object canonicalObj, final boolean canonicalizable, boolean immutableFromParent, final int identityHashCode,
                     final Object reason) {
-        final HostedType type = getMetaAccess().lookupJavaType(canonicalObj.getClass());
-        assert type.getWrapped().isInstantiated() : type;
+        final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(canonicalObj.getClass());
+
+        if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
+            throw UserError.abort("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
+                            "Did a static field or an object referenced from a static field changed during native image generation? " +
+                            "For example, a lazily initialized cache could have been initialized during image generation, " +
+                            "in which case you need to force eager initialization of the cache before static analysis or reset the cache using a field value recomputation.\n" +
+                            "  object: " + original + "  of class: " + original.getClass().getTypeName() + "\n" +
+                            "  reachable through:\n" +
+                            fillReasonStack(new StringBuilder(), reason));
+        }
+        final HostedType type = optionalType.get();
+
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
             final JavaConstant con = SubstrateObjectConstant.forObject(canonicalObj);
@@ -658,7 +670,7 @@ public class NativeImageHeap {
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
             throw UserError.abort("Static field or an object referenced from a static field changed during native image generation?\n" +
-                            "  object:" + target + "\n" +
+                            "  object:" + target + "  of class: " + target.getClass().getTypeName() + "\n" +
                             "  reachable through:\n" +
                             fillReasonStack(new StringBuilder(), reason));
         }
@@ -667,7 +679,7 @@ public class NativeImageHeap {
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
         if (reason instanceof ObjectInfo) {
             ObjectInfo info = (ObjectInfo) reason;
-            msg.append("    object: ").append(info.getObject()).append("\n");
+            msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append("\n");
             return fillReasonStack(msg, info.reason);
         }
         return msg.append("    root: ").append(reason).append("\n");

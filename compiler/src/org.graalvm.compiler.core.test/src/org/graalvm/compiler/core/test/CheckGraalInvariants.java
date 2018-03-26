@@ -148,7 +148,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         protected boolean shouldLoadClass(String className) {
-            return !className.equals("module-info");
+            return !className.equals("module-info") && !className.startsWith("META-INF.versions.");
         }
 
         protected void handleClassLoadingException(Throwable t) {
@@ -191,7 +191,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                     for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
                         final ZipEntry zipEntry = entry.nextElement();
                         String name = zipEntry.getName();
-                        if (name.endsWith(".class")) {
+                        if (name.endsWith(".class") && !name.startsWith("META-INF/versions/")) {
                             String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
                             if (isInNativeImage(className)) {
                                 /*

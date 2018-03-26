@@ -29,6 +29,8 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.core.GraalCompilerOptions;
+import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
@@ -128,8 +130,14 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     }
 
     private void compileOSR(OptionValues options, ResolvedJavaMethod method) {
+        OptionValues goptions = options;
+        // Silence diagnostics for permanent bailout errors as they
+        // are expected for some OSR tests.
+        if (!GraalCompilerOptions.CompilationBailoutAction.hasBeenSet(options)) {
+            goptions = new OptionValues(options, GraalCompilerOptions.CompilationBailoutAction, ExceptionAction.Silent);
+        }
         // ensure eager resolving
-        StructuredGraph graph = parseEager(method, AllowAssumptions.YES, options);
+        StructuredGraph graph = parseEager(method, AllowAssumptions.YES, goptions);
         DebugContext debug = graph.getDebug();
         int bci = getBackedgeBCI(debug, method);
         assert bci != -1;

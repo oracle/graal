@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.hub.ClassSynchronizationSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
@@ -170,8 +169,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             if (method.isStatic()) {
                 Constant hubConstant = providers.getConstantReflection().asObjectHub(method.getDeclaringClass());
                 DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(hubConstant);
-                Object synchronizationTarget = ClassSynchronizationSupport.synchronizationTarget(hub);
-                monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(synchronizationTarget), providers.getMetaAccess(), graph);
+                monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
             } else {
                 monitorObject = javaArguments.get(0);
             }
