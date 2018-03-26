@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotImpl.wrapGuestException;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
@@ -62,10 +61,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 @SuppressWarnings("deprecation")
-final class PolyglotContextImpl extends AbstractContextImpl implements VMObject {
+final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
 
     /**
      * This class isolates static state to optimize when only a single context is used. This
@@ -696,7 +694,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
         try {
             return languageContext.ensureInitialized(null);
         } catch (Throwable t) {
-            throw wrapGuestException(languageContext, t);
+            throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
             languageContext.leave(prev);
         }
@@ -893,7 +891,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                             try {
                                 finalizationPerformed |= context.finalizeContext();
                             } catch (Exception | Error ex) {
-                                throw wrapGuestException(context, ex);
+                                throw PolyglotImpl.wrapGuestException(context, ex);
                             }
                         }
                     } while (finalizationPerformed);
@@ -912,7 +910,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements VMObject 
                                         disposedContexts.add(context);
                                     }
                                 } catch (Exception | Error ex) {
-                                    throw wrapGuestException(context, ex);
+                                    throw PolyglotImpl.wrapGuestException(context, ex);
                                 }
                             }
                         }
