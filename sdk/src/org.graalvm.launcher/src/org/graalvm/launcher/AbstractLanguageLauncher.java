@@ -61,20 +61,22 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         }
     }
 
+    protected static final boolean IN_GRAALVM = !Boolean.getBoolean("org.graalvm.launcher.standalone");
+
     final void launch(List<String> args, Map<String, String> defaultOptions, boolean doNativeSetup) {
         Map<String, String> polyglotOptions = defaultOptions;
         if (polyglotOptions == null) {
             polyglotOptions = new HashMap<>();
         }
 
-        if (isAOT() && doNativeSetup) {
+        if (isAOT() && doNativeSetup && IN_GRAALVM) {
             assert nativeAccess != null;
             nativeAccess.setGraalVMProperties();
         }
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
-        if (isAOT() && doNativeSetup) {
+        if (isAOT() && doNativeSetup && IN_GRAALVM) {
             assert nativeAccess != null;
             nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
         }
