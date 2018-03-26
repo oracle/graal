@@ -26,7 +26,6 @@ package com.oracle.truffle.api.interop.java;
 
 import java.util.StringJoiner;
 
-@SuppressWarnings("deprecation")
 class OverloadedMethodDesc implements JavaMethodDesc {
     private final SingleMethodDesc[] overloads;
 

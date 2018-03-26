@@ -68,7 +68,7 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + args)
+    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm'] + args)
     checkLinks(os.sep.join([_suite.dir, 'javadoc']))
 
 def checkLinks(javadocDir):

@@ -34,7 +34,6 @@ import org.graalvm.polyglot.Value;
  * A special implementation for polyglot bindings, exposed to the embedder. The difference to a
  * normal polyglot value is that it preserves the language information for each member.
  */
-@SuppressWarnings("deprecation")
 final class PolyglotBindingsValue extends PolyglotValue {
 
     final Value delegateBindings;

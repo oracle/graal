@@ -29,7 +29,6 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 @MessageResolution(receiverType = JavaFunctionObject.class)
 class JavaFunctionMessageResolution {
 

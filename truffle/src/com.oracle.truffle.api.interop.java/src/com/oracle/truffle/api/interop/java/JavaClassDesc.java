@@ -42,7 +42,6 @@ import java.util.function.BiFunction;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-@SuppressWarnings("deprecation")
 final class JavaClassDesc {
     private static final ClassValue<JavaClassDesc> CACHED_DESCS = new ClassValue<JavaClassDesc>() {
         @Override

@@ -26,7 +26,6 @@ package com.oracle.truffle.api.vm;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-@SuppressWarnings("deprecation")
 final class PolyglotThread extends Thread {
 
     final PolyglotLanguageContext languageContext;

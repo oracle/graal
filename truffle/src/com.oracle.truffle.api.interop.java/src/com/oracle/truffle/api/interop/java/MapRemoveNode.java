@@ -32,7 +32,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import java.util.Map;
 
-@SuppressWarnings("deprecation")
 abstract class MapRemoveNode extends Node {
 
     protected abstract Object executeWithTarget(JavaObject receiver, String name);

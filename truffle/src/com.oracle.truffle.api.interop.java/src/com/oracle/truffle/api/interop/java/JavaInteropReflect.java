@@ -341,7 +341,6 @@ final class JavaInteropReflect {
     }
 }
 
-@SuppressWarnings("deprecation")
 class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
     final Class<?> receiverClass;
@@ -473,7 +472,6 @@ final class FunctionProxyHandler implements InvocationHandler {
     }
 }
 
-@SuppressWarnings("deprecation")
 class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Supplier<String> {
 
     final Class<?> receiverClass;

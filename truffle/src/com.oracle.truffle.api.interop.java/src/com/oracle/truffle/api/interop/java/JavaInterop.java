@@ -45,10 +45,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * @since 0.9
  * @deprecated embedders should use the polyglot API instead, languages will find replacements in
- *             {@link TruffleLanguage.Env}. See the individual methods for migration details.
+ *             {@link Env}. See the individual methods for migration details.
  */
 @Deprecated
-@SuppressWarnings("deprecation")
 public final class JavaInterop {
 
     private JavaInterop() {

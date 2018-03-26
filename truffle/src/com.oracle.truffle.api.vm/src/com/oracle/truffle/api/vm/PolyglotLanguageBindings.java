@@ -48,7 +48,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.DefaultScope.VariableNamesObject;
 
-@SuppressWarnings("deprecation")
 final class PolyglotLanguageBindings implements TruffleObject {
 
     final TruffleObject[] scopes;

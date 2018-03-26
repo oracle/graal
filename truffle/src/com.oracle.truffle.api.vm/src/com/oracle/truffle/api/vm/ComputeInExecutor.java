@@ -26,7 +26,6 @@ package com.oracle.truffle.api.vm;
 
 import java.util.concurrent.Executor;
 
-@SuppressWarnings("deprecation")
 abstract class ComputeInExecutor<R> implements Runnable {
     private final Info executor;
     private R result;

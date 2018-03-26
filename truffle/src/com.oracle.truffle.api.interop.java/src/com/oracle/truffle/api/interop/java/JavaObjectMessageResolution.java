@@ -42,7 +42,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 @MessageResolution(receiverType = JavaObject.class)
 class JavaObjectMessageResolution {
 

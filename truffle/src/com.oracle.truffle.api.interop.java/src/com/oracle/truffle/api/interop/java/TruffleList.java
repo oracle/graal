@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 class TruffleList<T> extends AbstractList<T> {
 
     final TruffleObject guestObject;

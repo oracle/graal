@@ -41,7 +41,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-@SuppressWarnings("deprecation")
 final class TruffleExecuteNode extends Node {
 
     private static final Object[] EMPTY = new Object[0];

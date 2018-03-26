@@ -59,7 +59,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
-@SuppressWarnings("deprecation")
 class TruffleMap<K, V> extends AbstractMap<K, V> {
 
     final Object languageContext;

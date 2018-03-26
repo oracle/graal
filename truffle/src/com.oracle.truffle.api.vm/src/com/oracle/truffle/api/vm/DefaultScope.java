@@ -50,7 +50,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * A default frame slot based implementation of variables contained in the (default) frame scope.
  */
-@SuppressWarnings("deprecation")
 final class DefaultScope {
 
     static Iterable<Scope> topScope(Object global) {

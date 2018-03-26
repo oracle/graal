@@ -36,7 +36,6 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
-@SuppressWarnings("deprecation")
 class OptionValuesImpl implements OptionValues {
 
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
