@@ -24,12 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
-import org.graalvm.polyglot.Instrument;
-
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -169,7 +163,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals("foo", foo.getRootName());
         checkTimeline(foo.getPayload());
 
-        // RECURSIVE_CALL does recutions to depth 10
+        // RECURSIVE_CALL does recursions to depth 10
         for (int i = 0; i < 10; i++) {
             children = foo.getChildren();
             Assert.assertEquals(1, children.size());

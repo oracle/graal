@@ -24,9 +24,10 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.tools.profiler.CPUTracer;
-import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
-import org.graalvm.polyglot.Instrument;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;

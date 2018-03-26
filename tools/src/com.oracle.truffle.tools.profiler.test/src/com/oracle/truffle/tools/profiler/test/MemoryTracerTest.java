@@ -24,10 +24,8 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.tools.profiler.MemoryTracer;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument;
-import org.graalvm.polyglot.Instrument;
+import java.util.Collection;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
