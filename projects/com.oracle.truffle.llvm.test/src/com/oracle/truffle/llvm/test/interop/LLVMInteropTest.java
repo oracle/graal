@@ -125,9 +125,24 @@ public class LLVMInteropTest {
     }
 
     @Test
-    public void test007() {
+    public void testInvoke() {
         Assume.assumeFalse("JavaInterop not supported", TruffleOptions.AOT);
-        Runner runner = new Runner("interop007");
+        Runner runner = new Runner("invoke");
+        ClassC a = new ClassC();
+        runner.export(a, "foreign");
+        Assert.assertEquals(36, runner.run());
+
+        Assert.assertEquals(a.valueI, 4);
+        Assert.assertEquals(a.valueB, 3);
+        Assert.assertEquals(a.valueL, 7);
+        Assert.assertEquals(a.valueF, 10, 0.1);
+        Assert.assertEquals(a.valueD, 12, 0.1);
+    }
+
+    @Test
+    public void testReadExecute() {
+        Assume.assumeFalse("JavaInterop not supported", TruffleOptions.AOT);
+        Runner runner = new Runner("readExecute");
         ClassC a = new ClassC();
         runner.export(a, "foreign");
         Assert.assertEquals(36, runner.run());
