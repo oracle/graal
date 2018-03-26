@@ -301,7 +301,7 @@ class NativeImage {
     }
 
     private void prepareImageBuildArgs() {
-        Path svmDir = getRootDir().resolve("lib/svm");
+        Path svmDir = getRootDir().resolve(Paths.get("lib", "svm"));
         getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
         getJars(svmDir).forEach(this::addImageClasspath);
         Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
@@ -310,7 +310,7 @@ class NativeImage {
             addImageBuilderArg(oHInspectServerContentPath + svmDir.resolve("inspect"));
         }
 
-        Path jvmciDir = getRootDir().resolve("lib/jvmci");
+        Path jvmciDir = getRootDir().resolve(Paths.get("lib", "jvmci"));
         getJars(jvmciDir).forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
         try {
             addImageBuilderJavaArgs(Files.list(jvmciDir)
@@ -322,7 +322,7 @@ class NativeImage {
             showError("Unable to use jar-files from directory " + jvmciDir, e);
         }
 
-        Path bootDir = getRootDir().resolve("lib/boot");
+        Path bootDir = getRootDir().resolve(Paths.get("lib", "boot"));
         getJars(bootDir).forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
     }
 
@@ -365,12 +365,13 @@ class NativeImage {
     }
 
     private void enableTruffle() {
-        Path truffleDir = getRootDir().resolve("lib/truffle");
+        Path truffleDir = getRootDir().resolve(Paths.get("lib", "truffle"));
         addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
+        addImageBuilderArg(oHFeatures + "com.oracle.svm.truffle.TruffleFeature");
         addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
         addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
 
-        Path graalvmDir = getRootDir().resolve("lib/graalvm");
+        Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
         getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
@@ -590,7 +591,8 @@ class NativeImage {
 
     Path getJavaHome() {
         Path javaHomePath = getRootDir().getParent();
-        if (Files.isExecutable(javaHomePath.resolve(Paths.get("bin/java")))) {
+        Path binJava = Paths.get("bin", "java");
+        if (Files.isExecutable(javaHomePath.resolve(binJava))) {
             return javaHomePath;
         }
 
@@ -599,8 +601,8 @@ class NativeImage {
             throw showError("Environment variable JAVA_HOME is not set");
         }
         javaHomePath = Paths.get(javaHome);
-        if (!Files.isExecutable(javaHomePath.resolve(Paths.get("bin/java")))) {
-            throw showError("Environment variable JAVA_HOME does not refer to a directory with a bin/java executable");
+        if (!Files.isExecutable(javaHomePath.resolve(binJava))) {
+            throw showError("Environment variable JAVA_HOME does not refer to a directory with a " + binJava + " executable");
         }
         return javaHomePath;
     }

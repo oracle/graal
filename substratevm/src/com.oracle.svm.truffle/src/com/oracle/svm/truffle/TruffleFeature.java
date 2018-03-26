@@ -84,7 +84,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -106,7 +105,6 @@ import com.oracle.svm.graal.hosted.GraalFeature.RuntimeBytecodeParser;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
@@ -131,9 +129,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-// Checkstyle: allow reflection
-
-@AutomaticFeature
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     public static class Options {
@@ -157,32 +152,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         public boolean getAsBoolean() {
             return ImageSingletons.contains(TruffleFeature.class);
         }
-    }
-
-    public static final class HasTruffleOnClassPath implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return hasTruffleOnBootClassPath();
-        }
-    }
-
-    private static final String TRUFFLE_LOOKUP_CLASSNAME = "com.oracle.truffle.api.Truffle";
-
-    public static boolean hasTruffleOnBootClassPath() {
-        Class<?> truffleOnBootClassPath = null;
-        try {
-            truffleOnBootClassPath = new ClassLoader(null) {
-                /* Classloader for bootclasspath-only lookup */
-            }.loadClass(TRUFFLE_LOOKUP_CLASSNAME);
-        } catch (ClassNotFoundException e) {
-            /* To be expected when probing */
-        }
-        return truffleOnBootClassPath != null;
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return NativeImageOptions.TruffleFeature.getValue() && hasTruffleOnBootClassPath();
     }
 
     public static class Support {
