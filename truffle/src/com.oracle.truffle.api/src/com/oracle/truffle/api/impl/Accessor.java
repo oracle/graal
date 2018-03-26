@@ -131,6 +131,8 @@ public abstract class Accessor {
         public abstract boolean isJavaFunction(Object object);
 
         public abstract String javaFunctionToString(Object object);
+
+        public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
     }
 
     public abstract static class EngineSupport {

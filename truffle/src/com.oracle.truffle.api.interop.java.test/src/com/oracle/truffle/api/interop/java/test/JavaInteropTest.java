@@ -126,7 +126,8 @@ public class JavaInteropTest {
     public void testRecursiveListMarshalling() throws UnknownIdentifierException, UnsupportedMessageException {
         List<GregorianCalendar> testList = Arrays.asList(new GregorianCalendar());
         TruffleObject list = JavaInterop.asTruffleObject(testList);
-        assertTrue(JavaInterop.isJavaObject(ForeignAccess.sendRead(Message.READ.createNode(), list, 0)));
+        Object firstElement = ForeignAccess.sendRead(Message.READ.createNode(), list, 0);
+        assertTrue(JavaInterop.isJavaObject(firstElement));
     }
 
     @Test
@@ -360,14 +361,14 @@ public class JavaInteropTest {
         assertEquals(10, value);
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void noNonStaticPropertiesForAClass() {
         TruffleObject pojo = JavaInterop.asTruffleObject(PublicPOJO.class);
         TruffleObject result = sendKeys(pojo);
-        List<?> propertyNames = JavaInterop.asJavaObject(List.class, result);
-        assertEquals("One static field and one method", 2, propertyNames.size());
-        assertEquals("One field y", "y", propertyNames.get(0));
-        assertEquals("One method to read y", "readY", propertyNames.get(1));
+        List<Object> propertyNames = JavaInterop.asJavaObject(List.class, result);
+        assertEquals("3 members: static field 'y', static method 'readY', plus 'class'", 3, propertyNames.size());
+        assertThat(propertyNames, CoreMatchers.hasItems("y", "readY", "class"));
     }
 
     @Test

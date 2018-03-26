@@ -150,21 +150,17 @@ public class ValueAssert {
                     if (!value.isProxyObject()) {
                         if (hostObject != null && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
                             if (hostObject instanceof Class) {
-                                for (java.lang.reflect.Method m : ((Class<?>) hostObject).getMethods()) {
-                                    if (Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers())) {
-                                        assertTrue(m.getName(), value.hasMember(m.getName()));
-                                    }
+                                boolean isInstanceClass = value.hasMember("isInterface");
+                                if (isInstanceClass) {
+                                    assertClassMembers(value, Class.class, false);
+                                } else {
+                                    assertClassMembers(value, (Class<?>) hostObject, true);
                                 }
                             } else {
-                                for (java.lang.reflect.Method m : hostObject.getClass().getMethods()) {
-                                    if (Modifier.isPublic(m.getModifiers()) && !Modifier.isStatic(m.getModifiers())) {
-                                        assertTrue(m.getName(), value.hasMember(m.getName()));
-                                    }
-                                }
+                                assertClassMembers(value, hostObject.getClass(), false);
                             }
                         }
                     }
-
                     break;
                 case PROXY_OBJECT:
                     assertTrue(msg, value.isProxyObject());
@@ -535,6 +531,14 @@ public class ValueAssert {
             value.asDouble();
         } else {
             assertFails(() -> value.asDouble(), ClassCastException.class);
+        }
+    }
+
+    private static void assertClassMembers(Value value, Class<?> expectedClass, boolean staticMembers) {
+        for (java.lang.reflect.Method m : expectedClass.getMethods()) {
+            if (Modifier.isPublic(m.getModifiers()) && Modifier.isStatic(m.getModifiers()) == staticMembers) {
+                assertTrue(m.getName(), value.hasMember(m.getName()));
+            }
         }
     }
 
