@@ -68,16 +68,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
-@SuppressWarnings("deprecation")
 public class ValueHostInteropTest {
 
     public static class Data {
@@ -520,21 +516,6 @@ public class ValueHostInteropTest {
     }
 
     @Test
-    public void testSystemMethod() throws InteropException {
-        TruffleObject system = JavaInterop.asTruffleObject(System.class);
-        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
-        assertThat(value, CoreMatchers.instanceOf(String.class));
-        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
-
-        Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
-        assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
-        assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
-        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
-        assertThat(value, CoreMatchers.instanceOf(String.class));
-        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
-    }
-
-    @Test
     public void testNewClass() {
         Value hashMapClass = context.asValue(HashMap.class);
         Value hashMap = hashMapClass.newInstance();
@@ -842,7 +823,7 @@ public class ValueHostInteropTest {
                             return removed;
                         }
                     };
-                    return JavaInterop.asTruffleObject(list);
+                    return new LanguageSPIHostInteropTest.StringArray(list.toArray(new String[0]));
                 }
             }
 

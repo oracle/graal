@@ -37,7 +37,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 @SuppressWarnings("deprecation")
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
@@ -48,7 +47,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final boolean host;
     private StackTraceElement stackTrace;
 
-    private PolyglotExceptionFrame(VMObject source, PolyglotLanguage language,
+    private PolyglotExceptionFrame(com.oracle.truffle.api.vm.PolyglotImpl.VMObject source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
         super(source.getImpl());
         this.language = language;

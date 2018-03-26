@@ -86,6 +86,21 @@ public class LanguageSPIHostInteropTest {
         context.close();
     }
 
+    @Test
+    public void testSystemMethod() throws InteropException {
+        TruffleObject system = (TruffleObject) env.asGuestValue(System.class);
+        Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
+        assertThat(value, CoreMatchers.instanceOf(String.class));
+        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
+
+        Object getProperty = ForeignAccess.sendRead(Message.READ.createNode(), system, "getProperty");
+        assertThat(getProperty, CoreMatchers.instanceOf(TruffleObject.class));
+        assertTrue("IS_EXECUTABLE", ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(), (TruffleObject) getProperty));
+        value = ForeignAccess.sendExecute(Message.createExecute(1).createNode(), (TruffleObject) getProperty, "file.separator");
+        assertThat(value, CoreMatchers.instanceOf(String.class));
+        assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
+    }
+
     static class TestClass {
     }
 
@@ -492,7 +507,7 @@ public class LanguageSPIHostInteropTest {
         }
     }
 
-    private static class StringArray extends ProxyInteropObject {
+    static class StringArray extends ProxyInteropObject {
 
         private final String[] array;
 

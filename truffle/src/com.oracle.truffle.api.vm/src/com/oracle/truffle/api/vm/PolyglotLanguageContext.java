@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.vm;
 
-import static com.oracle.truffle.api.vm.PolyglotImpl.engineError;
-import static com.oracle.truffle.api.vm.PolyglotImpl.isGuestInteropValue;
 import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
@@ -54,10 +52,9 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
 @SuppressWarnings("deprecation")
-final class PolyglotLanguageContext implements VMObject {
+final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
@@ -562,7 +559,7 @@ final class PolyglotLanguageContext implements VMObject {
             PolyglotValue valueImpl = (PolyglotValue) languageContext.getAPIAccess().getImpl(receiverValue);
             if (valueImpl.languageContext.context != languageContext.context) {
                 CompilerDirectives.transferToInterpreter();
-                throw engineError(new IllegalArgumentException(String.format("Values cannot be passed from one context to another. " +
+                throw PolyglotImpl.engineError(new IllegalArgumentException(String.format("Values cannot be passed from one context to another. " +
                                 "The current value originates from context 0x%s and the argument originates from context 0x%s.",
                                 Integer.toHexString(languageContext.context.api.hashCode()), Integer.toHexString(valueImpl.languageContext.context.api.hashCode()))));
             }
@@ -709,7 +706,7 @@ final class PolyglotLanguageContext implements VMObject {
         Object symbol = lookupGuest(symbolName);
         Value resolvedSymbol = null;
         if (symbol != null) {
-            assert isGuestInteropValue(symbol);
+            assert PolyglotImpl.isGuestInteropValue(symbol);
             resolvedSymbol = toHostValue(symbol);
         }
         return resolvedSymbol;
