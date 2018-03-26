@@ -24,11 +24,14 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.java.*;
+
+@SuppressWarnings("deprecation")
 public final class CallbackWithOverloadConvertTest {
     private char ch;
     private int i;
