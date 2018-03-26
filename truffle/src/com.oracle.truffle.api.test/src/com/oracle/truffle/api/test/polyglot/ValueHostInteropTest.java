@@ -23,9 +23,6 @@
 package com.oracle.truffle.api.test.polyglot;
 
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.assertValue;
-import static org.hamcrest.CoreMatchers.anyOf;
-import static org.hamcrest.CoreMatchers.hasItem;
-import static org.hamcrest.CoreMatchers.not;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -182,9 +179,10 @@ public class ValueHostInteropTest {
         map.put("null", null);
         map.put("three", 3);
 
-        assertThat(context.asValue(map).getMemberKeys(),
-                        not(anyOf(hasItem("one"), hasItem("null"), hasItem("three"))));
-
+        Set<String> memberKeys = context.asValue(map).getMemberKeys();
+        assertFalse(memberKeys.contains("one"));
+        assertFalse(memberKeys.contains("null"));
+        assertFalse(memberKeys.contains("three"));
         assertValue(context, context.asValue(map));
     }
 
