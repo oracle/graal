@@ -68,10 +68,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class ValueHostInteropTest {
@@ -127,8 +129,8 @@ public class ValueHostInteropTest {
 
     @Test
     public void nullAsJavaObject() {
-        assertSame(null, context.asValue(null).asHostObject());
-        assertTrue(null, context.asValue(null).isHostObject());
+        assertNull(context.asValue(null).asHostObject());
+        assertTrue(context.asValue(null).isHostObject());
     }
 
     @Test
@@ -771,6 +773,45 @@ public class ValueHostInteropTest {
         List<Data> data();
     }
 
+    static class ListArray extends ProxyInteropObject {
+
+        private final List<String> array;
+
+        ListArray(List<String> array) {
+            this.array = array;
+        }
+
+        @Override
+        public int keyInfo(Number key) {
+            if (key.intValue() < array.size() && key.intValue() >= 0) {
+                return KeyInfo.READABLE;
+            }
+            return super.keyInfo(key);
+        }
+
+        @Override
+        public Object read(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
+            return array.get(key.intValue());
+        }
+
+        @Override
+        public boolean remove(Number key) throws UnsupportedMessageException, UnknownIdentifierException {
+            array.remove(key.intValue());
+            return true;
+        }
+
+        @Override
+        public boolean hasSize() {
+            return true;
+        }
+
+        @Override
+        public int getSize() {
+            return array.size();
+        }
+
+    }
+
     static final class RemoveKeysObject implements TruffleObject {
 
         private final Map<String, ?> keys;
@@ -823,7 +864,7 @@ public class ValueHostInteropTest {
                             return removed;
                         }
                     };
-                    return new LanguageSPIHostInteropTest.StringArray(list.toArray(new String[0]));
+                    return new ListArray(list);
                 }
             }
 

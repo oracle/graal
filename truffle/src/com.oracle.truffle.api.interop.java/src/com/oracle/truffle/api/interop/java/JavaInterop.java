@@ -45,7 +45,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /**
  * @since 0.9
  * @deprecated embedders should use the polyglot API instead, languages will find replacements in
- *             {@link TruffleLanguage.Env}. See the individual methods static for migration details.
+ *             {@link TruffleLanguage.Env}. See the individual methods for migration details.
  */
 @Deprecated
 @SuppressWarnings("deprecation")
@@ -176,7 +176,9 @@ public final class JavaInterop {
      * @since 0.18
      * @deprecated embedders should use {@link Context#asValue(Object)} instead. Truffle guest
      *             languages may use {@link TruffleLanguage.Env#lookupHostSymbol(String)} to get to
-     *             the host meta class and then send a NEW message to instantiate it.
+     *             the host meta class and then send a NEW message to instantiate it. For existing
+     *             java values the should use {@link TruffleLanguage.Env#asGuestValue(Object)}
+     *             instead.
      */
     @Deprecated
     public static Object asTruffleValue(Object obj) {
@@ -237,7 +239,8 @@ public final class JavaInterop {
 
     /**
      * @since 0.26
-     * @deprecated use value.{@link Value#as(Class) as(Map.class)} instead. For languages
+     * @deprecated use value.{@link Value#as(Class) as(Map.class)} instead. No replacement for
+     *             languages.
      */
     @Deprecated
     public static <K, V> Map<K, V> getMapView(Map<K, V> map, boolean includeInternal) throws IllegalArgumentException {

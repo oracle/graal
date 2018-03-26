@@ -53,7 +53,7 @@ final class KeysArray implements TruffleObject {
     abstract static class GetSize extends Node {
 
         public Object access(KeysArray receiver) {
-            return receiver.keys;
+            return receiver.keys.length;
         }
     }
 

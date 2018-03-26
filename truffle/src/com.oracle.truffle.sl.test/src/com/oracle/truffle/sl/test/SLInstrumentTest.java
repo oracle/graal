@@ -922,7 +922,7 @@ public class SLInstrumentTest {
         abstract static class GetSize extends Node {
 
             public Object access(KeysArray receiver) {
-                return receiver.keys;
+                return receiver.keys.length;
             }
         }
 
