@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -37,7 +36,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -110,24 +108,8 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
         return Message.AS_POINTER.createNode();
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"checkIsPointer(isPointer, obj)"})
-    protected LLVMAddress fromNativePointer(LLVMTruffleObject obj,
-                    @Cached("createIsPointer()") Node isPointer,
-                    @Cached("createAsPointer()") Node asPointer) {
-        try {
-            long raw = ForeignAccess.sendAsPointer(asPointer, obj.getObject());
-            return LLVMAddress.fromLong(raw + obj.getOffset());
-        } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Foreign value is not a pointer!", ex);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!checkIsPointer(isPointer, from)"})
-    protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject from,
-                    @Cached("createIsPointer()") Node isPointer) {
+    @Specialization
+    protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject from) {
         return new LLVMTruffleObject(from, getType());
     }
 }
