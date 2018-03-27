@@ -3,7 +3,9 @@ struct myStruct {
   int b;
 };
 
-void foo(struct myStruct *s) { s->b = 123; }
+void foo(struct myStruct *s) {
+  s->b = 123;
+}
 
 int main() {
   struct myStruct s;

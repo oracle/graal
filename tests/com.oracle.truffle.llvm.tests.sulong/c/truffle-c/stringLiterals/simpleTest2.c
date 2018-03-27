@@ -1,4 +1,6 @@
-char function(char test[]) { return test[3]; }
+char function(char test[]) {
+  return test[3];
+}
 
 int main() {
   char t[] = "asdf";

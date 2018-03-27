@@ -5,4 +5,6 @@ int func() {
   return &x == x;
 }
 
-int main() { return func(); }
+int main() {
+  return func();
+}

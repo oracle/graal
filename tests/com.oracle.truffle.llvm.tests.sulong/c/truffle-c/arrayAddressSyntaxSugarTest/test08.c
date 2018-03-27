@@ -2,7 +2,9 @@
 char *g = "abc";
 char k[] = "abc";
 
-char *foo() { return "abc"; }
+char *foo() {
+  return "abc";
+}
 
 int main() {
   char *p = "abc";

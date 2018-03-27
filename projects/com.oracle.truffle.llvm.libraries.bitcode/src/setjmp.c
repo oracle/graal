@@ -42,6 +42,10 @@ int sigsetjmp(sigjmp_buf env, int savesigs) {
   return 0;
 }
 
-void longjmp(jmp_buf env, int val) { ERR_UNSUPPORTED(longjmp); }
+void longjmp(jmp_buf env, int val) {
+  ERR_UNSUPPORTED(longjmp);
+}
 
-void siglongjmp(sigjmp_buf env, int val) { ERR_UNSUPPORTED(siglongjmp); }
+void siglongjmp(sigjmp_buf env, int val) {
+  ERR_UNSUPPORTED(siglongjmp);
+}

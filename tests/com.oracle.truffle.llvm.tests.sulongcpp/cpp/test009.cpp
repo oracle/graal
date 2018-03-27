@@ -1,6 +1,7 @@
 
 class someClass {
-  virtual void x() {}
+  virtual void x() {
+  }
 };
 
 class someOtherClass : public someClass {};

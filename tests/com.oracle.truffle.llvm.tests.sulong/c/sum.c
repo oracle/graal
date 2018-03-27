@@ -6,4 +6,6 @@ int sum(int n) {
   return sum;
 }
 
-int main() { return sum(10); }
+int main() {
+  return sum(10);
+}

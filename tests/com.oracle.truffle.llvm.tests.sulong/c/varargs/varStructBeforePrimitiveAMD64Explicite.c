@@ -21,4 +21,6 @@ int foo(int x, ...) {
   return (int)(res1.x + res1.y) + l1 + l2;
 }
 
-int main() { return foo(1, 3L, 5L, 0L, 0L, 0L, 7L, 11L, 19L); }
+int main() {
+  return foo(1, 3L, 5L, 0L, 0L, 0L, 7L, 11L, 19L);
+}

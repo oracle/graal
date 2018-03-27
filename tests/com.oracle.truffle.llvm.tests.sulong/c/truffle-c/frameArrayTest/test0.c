@@ -4,7 +4,9 @@ int foo() {
   return a[2];
 }
 
-int compiler() { return foo(); }
+int compiler() {
+  return foo();
+}
 
 int main() {
   compiler();

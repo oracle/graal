@@ -30,4 +30,6 @@
 
 #include <stdlib.h>
 
-void __sulong_dispose_context() { exit(0); }
+void __sulong_dispose_context() {
+  exit(0);
+}

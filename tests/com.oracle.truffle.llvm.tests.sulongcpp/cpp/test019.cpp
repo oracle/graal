@@ -3,19 +3,29 @@
 
 class Base {
 public:
-  virtual int foo() { return 13; }
+  virtual int foo() {
+    return 13;
+  }
 };
 
 class A : public Base {
 public:
-  int foo() { return 11; }
-  int tar() { return 77; }
+  int foo() {
+    return 11;
+  }
+  int tar() {
+    return 77;
+  }
 };
 
 class B : public Base {
 public:
-  int foo() { return 15; }
-  int bar() { return 99; }
+  int foo() {
+    return 15;
+  }
+  int bar() {
+    return 99;
+  }
 };
 
 B b;

@@ -1,4 +1,6 @@
-double test() { return 3.0; }
+double test() {
+  return 3.0;
+}
 
 int main() {
   int result = (int)test();

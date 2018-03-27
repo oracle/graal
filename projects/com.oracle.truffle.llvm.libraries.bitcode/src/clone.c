@@ -32,6 +32,10 @@
 
 #include "unsupported.h"
 
-int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...) { ERR_UNSUPPORTED(clone); }
+int clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...) {
+  ERR_UNSUPPORTED(clone);
+}
 
-int __clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...) { ERR_UNSUPPORTED(__clone); }
+int __clone(int (*fn)(void *), void *child_stack, int flags, void *arg, ...) {
+  ERR_UNSUPPORTED(__clone);
+}

@@ -1,8 +1,14 @@
-int doo(int x) { return x + 1; }
+int doo(int x) {
+  return x + 1;
+}
 
-int boo(int a, int b) { return doo(a + b); }
+int boo(int a, int b) {
+  return doo(a + b);
+}
 
-int foo(int m, int n) { return boo(m, n); }
+int foo(int m, int n) {
+  return boo(m, n);
+}
 
 int main() {
   int x = 2;

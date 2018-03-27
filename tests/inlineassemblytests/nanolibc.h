@@ -99,19 +99,33 @@
   }
 
 // posix/libc functions
-static inline ssize_t read(int fd, void *buf, size_t count) { __SYSCALL_3P(SYS_read, fd, buf, count); }
+static inline ssize_t read(int fd, void *buf, size_t count) {
+  __SYSCALL_3P(SYS_read, fd, buf, count);
+}
 
-static inline ssize_t write(int fd, const void *buf, size_t count) { __SYSCALL_3P(SYS_write, fd, buf, count); }
+static inline ssize_t write(int fd, const void *buf, size_t count) {
+  __SYSCALL_3P(SYS_write, fd, buf, count);
+}
 
-static inline int open(const char *filename, int flags, mode_t mode) { __SYSCALL_3P(SYS_open, filename, flags, mode); }
+static inline int open(const char *filename, int flags, mode_t mode) {
+  __SYSCALL_3P(SYS_open, filename, flags, mode);
+}
 
-static inline int close(int fd) { __SYSCALL_1P(SYS_close, fd); }
+static inline int close(int fd) {
+  __SYSCALL_1P(SYS_close, fd);
+}
 
-static inline long lseek(int fd, off_t offset, int whence) { __SYSCALL_3P(SYS_lseek, fd, offset, whence); }
+static inline long lseek(int fd, off_t offset, int whence) {
+  __SYSCALL_3P(SYS_lseek, fd, offset, whence);
+}
 
-static inline ssize_t readv(int fd, const struct iovec *iov, int iovcnt) { __SYSCALL_3P(SYS_readv, fd, iov, iovcnt); }
+static inline ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
+  __SYSCALL_3P(SYS_readv, fd, iov, iovcnt);
+}
 
-static inline ssize_t writev(int fd, const struct iovec *iov, int iovcnt) { __SYSCALL_3P(SYS_writev, fd, iov, iovcnt); }
+static inline ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
+  __SYSCALL_3P(SYS_writev, fd, iov, iovcnt);
+}
 
 static inline char *getcwd(char *buf, size_t size) {
   int64_t result;
@@ -133,15 +147,25 @@ static inline void exit(int ec) {
   __SYSCALL_1(result, SYS_exit, ec);
 }
 
-static inline int mkdir(const char *path, mode_t mode) { __SYSCALL_2P(SYS_mkdir, path, mode); }
+static inline int mkdir(const char *path, mode_t mode) {
+  __SYSCALL_2P(SYS_mkdir, path, mode);
+}
 
-static inline int rmdir(const char *path, mode_t mode) { __SYSCALL_2P(SYS_rmdir, path, mode); }
+static inline int rmdir(const char *path, mode_t mode) {
+  __SYSCALL_2P(SYS_rmdir, path, mode);
+}
 
-static inline int uname(struct utsname *buf) { __SYSCALL_1P(SYS_uname, buf); }
+static inline int uname(struct utsname *buf) {
+  __SYSCALL_1P(SYS_uname, buf);
+}
 
-static inline int getuid(void) { __SYSCALL_0P(SYS_getuid); }
+static inline int getuid(void) {
+  __SYSCALL_0P(SYS_getuid);
+}
 
-static inline int getgid(void) { __SYSCALL_0P(SYS_getgid); }
+static inline int getgid(void) {
+  __SYSCALL_0P(SYS_getgid);
+}
 
 // syscall functions
 static inline int64_t syscall(int64_t n, ...) {

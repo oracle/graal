@@ -1,4 +1,6 @@
-void func(int *ptr) { *ptr = 7; }
+void func(int *ptr) {
+  *ptr = 7;
+}
 
 int main() {
   static int var;

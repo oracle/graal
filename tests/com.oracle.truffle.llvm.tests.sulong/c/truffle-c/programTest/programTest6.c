@@ -22,4 +22,6 @@ int gcd(int u, int v) {
   return gcd((v - u) >> 1, u);
 }
 
-int main() { return gcd(6515, 3158); }
+int main() {
+  return gcd(6515, 3158);
+}

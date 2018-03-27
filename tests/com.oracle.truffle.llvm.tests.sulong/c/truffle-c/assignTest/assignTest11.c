@@ -1,1 +1,3 @@
-int main() { return 21; }
+int main() {
+  return 21;
+}

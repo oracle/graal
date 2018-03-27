@@ -1,4 +1,6 @@
-long function(char test[]) { return (long)&test[0]; }
+long function(char test[]) {
+  return (long)&test[0];
+}
 
 int main() {
   long a = function("asdf");

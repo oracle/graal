@@ -1,3 +1,7 @@
-int foo() { return 1 + 2; }
+int foo() {
+  return 1 + 2;
+}
 
-int main() { return foo(); }
+int main() {
+  return foo();
+}

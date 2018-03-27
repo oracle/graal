@@ -32,6 +32,10 @@
 
 #include "unsupported.h"
 
-pid_t fork(void) { ERR_UNSUPPORTED(fork); }
+pid_t fork(void) {
+  ERR_UNSUPPORTED(fork);
+}
 
-pid_t vfork(void) { ERR_UNSUPPORTED(vfork); }
+pid_t vfork(void) {
+  ERR_UNSUPPORTED(vfork);
+}

@@ -1,1 +1,3 @@
-int main() { return (int)3.0; }
+int main() {
+  return (int)3.0;
+}

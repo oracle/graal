@@ -3,4 +3,6 @@ struct {
   char b[];
 } a3 = { 'o', { "wx" } };
 
-int main() { return a3.b[0] + a3.b[1]; }
+int main() {
+  return a3.b[0] + a3.b[1];
+}

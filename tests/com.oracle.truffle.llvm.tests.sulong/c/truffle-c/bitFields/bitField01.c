@@ -4,4 +4,6 @@ struct test {
   int b : 3;
 };
 
-int main() { return 0; }
+int main() {
+  return 0;
+}

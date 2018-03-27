@@ -3,4 +3,6 @@ int test() {
   return a++;
 }
 
-int main() { return test() + test() + test(); }
+int main() {
+  return test() + test() + test();
+}

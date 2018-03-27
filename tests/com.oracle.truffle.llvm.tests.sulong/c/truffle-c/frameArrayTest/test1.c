@@ -8,7 +8,9 @@ int foo() {
   return sum;
 }
 
-int compiler() { return foo(); }
+int compiler() {
+  return foo();
+}
 
 int main() {
   compiler();

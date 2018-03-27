@@ -1,3 +1,5 @@
 
 
-int main() { return "asdf" == "asdf"; }
+int main() {
+  return "asdf" == "asdf";
+}

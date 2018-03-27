@@ -1,1 +1,3 @@
-int main() { return 100l; }
+int main() {
+  return 100l;
+}

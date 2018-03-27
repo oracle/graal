@@ -33,5 +33,7 @@
 #include "syscall.h"
 
 #ifdef __linux__
-int clock_gettime(clockid_t clk_id, struct timespec *tp) { __SYSCALL_2P(SYS_clock_gettime, clk_id, tp); }
+int clock_gettime(clockid_t clk_id, struct timespec *tp) {
+  __SYSCALL_2P(SYS_clock_gettime, clk_id, tp);
+}
 #endif

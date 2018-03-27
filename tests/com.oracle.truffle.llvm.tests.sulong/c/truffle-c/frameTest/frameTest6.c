@@ -9,4 +9,6 @@ int foo1() {
   return foo2() + b1;
 }
 
-int main() { return foo1() + 1; }
+int main() {
+  return foo1() + 1;
+}

@@ -15,4 +15,6 @@
 char piece_def[10][4] = { { E, E, E, SE }, { SE, E, NE, E },  { E, E, SE, SW }, { E, E, SW, SE }, { SE, E, NE, S },
                           { E, E, SW, E }, { E, SE, SE, NE }, { E, SE, SE, W }, { E, SE, E, E },  { E, E, E, SW } };
 
-int main() { return piece_def[2][3]; }
+int main() {
+  return piece_def[2][3];
+}

@@ -7,7 +7,9 @@ struct container {
 
 int call_callback2(struct container *p);
 
-int add(int a, int b) { return a + b; }
+int add(int a, int b) {
+  return a + b;
+}
 
 int main(int argc, char **argv) {
   struct container c;

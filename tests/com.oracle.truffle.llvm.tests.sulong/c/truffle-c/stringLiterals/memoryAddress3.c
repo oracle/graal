@@ -1,4 +1,6 @@
-long function(char test[]) { return (long)test; }
+long function(char test[]) {
+  return (long)test;
+}
 
 long func() {
   long a = function("asdf");

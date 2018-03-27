@@ -1,3 +1,5 @@
 static enum { READ_DEVICES, SKIP_DEVICES } devices = SKIP_DEVICES;
 
-int main() { return devices; }
+int main() {
+  return devices;
+}

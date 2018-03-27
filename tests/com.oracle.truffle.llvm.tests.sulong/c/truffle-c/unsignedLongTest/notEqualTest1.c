@@ -1,1 +1,3 @@
-int main() { return 1 != 1UL; }
+int main() {
+  return 1 != 1UL;
+}

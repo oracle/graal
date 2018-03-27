@@ -24,4 +24,6 @@ int foo(long y0, long y1, long y2, ...) {
   return res;
 }
 
-int main() { return foo(0L, 0L, 6L, 1L, 0L, 2L, 0L, 0L, 3L, 0L, 5L, 0L, 7L, 0L, 11L, 0L); }
+int main() {
+  return foo(0L, 0L, 6L, 1L, 0L, 2L, 0L, 0L, 3L, 0L, 5L, 0L, 7L, 0L, 11L, 0L);
+}

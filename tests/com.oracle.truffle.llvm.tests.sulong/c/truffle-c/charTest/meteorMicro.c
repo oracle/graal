@@ -6,4 +6,6 @@ char foo() {
   return arr[1][1][i[1][1]];
 }
 
-int main() { return foo(); }
+int main() {
+  return foo();
+}

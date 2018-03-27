@@ -6,4 +6,6 @@ int main() {
   return val;
 }
 
-int foo(int *a) { *a = *a * 2 + 1; }
+int foo(int *a) {
+  *a = *a * 2 + 1;
+}

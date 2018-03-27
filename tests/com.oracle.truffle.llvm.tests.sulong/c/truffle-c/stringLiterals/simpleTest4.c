@@ -8,4 +8,6 @@ int sum(char t[4]) {
   return sum;
 }
 
-int main() { return sum("asdf") % 256; }
+int main() {
+  return sum("asdf") % 256;
+}

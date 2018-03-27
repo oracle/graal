@@ -5,7 +5,9 @@ void swap(int *a, int *b) {
   *a = *b;
   *b = t;
 }
-void sort(int arr[]) { swap(&arr[0], &arr[1]); }
+void sort(int arr[]) {
+  swap(&arr[0], &arr[1]);
+}
 
 int main() {
 

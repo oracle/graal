@@ -13,4 +13,6 @@ void bar() throw() {
   }
 }
 
-int main() { bar(); }
+int main() {
+  bar();
+}

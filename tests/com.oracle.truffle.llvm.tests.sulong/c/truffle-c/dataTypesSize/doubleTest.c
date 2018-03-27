@@ -1,1 +1,3 @@
-int main() { return sizeof(double); }
+int main() {
+  return sizeof(double);
+}
