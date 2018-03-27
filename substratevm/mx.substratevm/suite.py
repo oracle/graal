@@ -187,7 +187,6 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.graal",
-                "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.jni",
             ],
