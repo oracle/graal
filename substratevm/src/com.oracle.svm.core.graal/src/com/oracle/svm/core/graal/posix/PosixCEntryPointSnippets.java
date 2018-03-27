@@ -53,6 +53,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -364,7 +365,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             }
         }
         Log.log().newline();
-        LibC.abort();
+        LogHandler.get().fatalError();
         return Errors.UNSPECIFIED; // unreachable
     }
 

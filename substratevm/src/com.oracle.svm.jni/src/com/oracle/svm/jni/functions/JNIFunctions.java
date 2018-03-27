@@ -37,6 +37,7 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -58,7 +59,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMThreads;
@@ -796,7 +796,7 @@ final class JNIFunctions {
         log.string("Fatal error reported via JNI: ").string(message).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        ConfigurationValues.getOSInterface().abort();
+        LogHandler.get().fatalError();
     }
 
     /*

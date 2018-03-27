@@ -150,9 +150,7 @@ public class UnalignedHeapChunk extends HeapChunk {
      */
     @Uninterruptible(reason = "Returns uninitialized memory.", callerMustBe = true)
     public static Pointer allocateMemory(UnalignedHeader that, UnsignedWord size) {
-        final Log trace = Log.noopLog().string("[UnalignedHeapChunk.allocateMemory:");
         final UnsignedWord available = availableObjectMemory(that);
-        trace.string("  size").unsigned(size).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd()).string("  available: ").unsigned(available).newline();
         // Is memory available for the requested size?
         Pointer result = WordFactory.nullPointer();
         if (size.belowOrEqual(available)) {
@@ -161,7 +159,6 @@ public class UnalignedHeapChunk extends HeapChunk {
             final Pointer newTop = result.add(size);
             setTopCarefully(that, newTop);
         }
-        trace.string("  returns: ").hex(result).string("]").newline();
         return result;
     }
 

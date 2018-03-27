@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -45,7 +46,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.DeoptimizationSourcePositionDecoder;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -425,7 +425,7 @@ public class SnippetRuntime {
              */
             Log.log().string("Fatal error: recursion in exception handling: ").string(exception.getClass().getName());
             Log.log().string(" thrown while unwinding ").string(currentException.get().getClass().getName()).newline();
-            ConfigurationValues.getOSInterface().abort();
+            LogHandler.get().fatalError();
             return;
         }
         currentException.set(exception);
@@ -452,7 +452,7 @@ public class SnippetRuntime {
             Log.log().string(": ").string(detail);
         }
         Log.log().newline();
-        ConfigurationValues.getOSInterface().abort();
+        LogHandler.get().fatalError();
     }
 
     public static void reportUnhandledExceptionJava(Throwable exception) {

@@ -228,7 +228,6 @@ public class SubstrateUtil {
      * Prints extensive diagnostic information to the given Log.
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-    @Uninterruptible(reason = "Allow printDiagnostics to be used in uninterruptible code.", calleeMustBe = false)
     public static void printDiagnostics(Log log, Pointer sp, CodePointer ip) {
         if (diagnosticsInProgress) {
             log.string("Error: printDiagnostics already in progress.").newline();
