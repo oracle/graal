@@ -12,6 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* Added Debugger#find(TruffleInstrument.Env) and Debugger#find(Engine)
 * Added [FileSystem](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html) SPI to allow embedder to virtualize TruffleLanguage Input/Output operations.
 * Added [EventContext.lookupExecutionEventNodes](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/EventContext.html#lookupExecutionEventNodes-java.util.Collection-) to lookup all execution event nodes created by the bindings at the source location.
+* Added `TruffleLanguage#getLanguageHome` to return the language directory in the GraalVM distribution or the location of the language Jar file.
 
 ## Version 0.33
 

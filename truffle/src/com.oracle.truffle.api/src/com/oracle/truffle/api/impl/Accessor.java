@@ -291,6 +291,8 @@ public abstract class Accessor {
         public abstract Object findMetaObjectForLanguage(Object vmObject, Object value);
 
         public abstract boolean isDefaultFileSystem(FileSystem fs);
+
+        public abstract String getLanguageHome(Object engineObject);
     }
 
     public abstract static class LanguageSupport {

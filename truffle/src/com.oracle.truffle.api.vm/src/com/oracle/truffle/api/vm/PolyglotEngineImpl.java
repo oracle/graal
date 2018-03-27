@@ -703,8 +703,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     static PolyglotEngineImpl preInitialize(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, ClassLoader contextClassLoader) {
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), 0, null, false, true, contextClassLoader, true, true);
         synchronized (engine) {
-            engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
-            engine.addContext(engine.preInitializedContext);
+            try {
+                engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
+                engine.addContext(engine.preInitializedContext);
+            } finally {
+                // Reset language homes from native-image compilatio time, will be recomputed in
+                // image execution time
+                LanguageCache.resetNativeImageCacheLanguageHomes();
+            }
         }
         return engine;
     }

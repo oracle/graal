@@ -1116,6 +1116,18 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
+     * Returns the home location for this language. This corresponds to the directory in which the
+     * Jar file is located, if run from a Jar file. For an AOT compiled binary, this corresponds to
+     * the location of the language files in the default GraalVM distribution layout. executable or
+     * shared library.
+     *
+     * @since 1.0
+     */
+    protected final String getLanguageHome() {
+        return AccessAPI.engineAccess().getLanguageHome(AccessAPI.nodesAccess().getEngineObject(languageInfo));
+    }
+
+    /**
      * Represents execution environment of the {@link TruffleLanguage}. Each active
      * {@link TruffleLanguage} receives instance of the environment before any code is executed upon
      * it. The environment has knowledge of all active languages and can exchange symbols between
