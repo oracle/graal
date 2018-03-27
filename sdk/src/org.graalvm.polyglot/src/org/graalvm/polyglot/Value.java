@@ -877,4 +877,13 @@ public final class Value {
         return impl.toString(receiver);
     }
 
+    /**
+     * Returns the declared source location of the value.
+     *
+     * @return the {@link SourceSection} or null if unknown
+     * @since 1.0
+     */
+    public SourceSection getSourceLocation() {
+        return impl.getSourceLocation(receiver);
+    }
 }

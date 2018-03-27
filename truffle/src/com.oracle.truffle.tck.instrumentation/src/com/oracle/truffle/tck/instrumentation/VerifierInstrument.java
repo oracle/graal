@@ -60,8 +60,6 @@ import org.graalvm.polyglot.PolyglotException;
 @TruffleInstrument.Registration(name = VerifierInstrument.ID, id = VerifierInstrument.ID, services = InlineVerifier.class)
 public class VerifierInstrument extends TruffleInstrument implements InlineVerifier {
 
-    static final String ID = "TckVerifierInstrument";
-
     private Env env;
     private InlineScriptsRunner inlineScriptsRunner;
     private EventBinding<InlineScriptsRunner> inlineBinding;

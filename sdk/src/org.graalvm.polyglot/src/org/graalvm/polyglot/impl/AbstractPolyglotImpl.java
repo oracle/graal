@@ -632,6 +632,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
 
+        public abstract SourceSection getSourceLocation(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

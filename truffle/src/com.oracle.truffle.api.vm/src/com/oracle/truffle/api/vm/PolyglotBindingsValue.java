@@ -91,4 +91,13 @@ final class PolyglotBindingsValue extends PolyglotValue {
         return delegateBindings.as(targetType);
     }
 
+    @Override
+    public String toString(Object receiver) {
+        return delegateBindings.toString();
+    }
+
+    @Override
+    public Value getMetaObject(Object receiver) {
+        return delegateBindings.getMetaObject();
+    }
 }
