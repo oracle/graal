@@ -117,27 +117,27 @@ public final class GlobalsInstrument extends TruffleInstrument {
         env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().sourceIs(new MySourceFilter()).build(), new ExecutionEventListener() {
             @Override
             public void onEnter(EventContext context, VirtualFrame frame) {
-                Iterable<Scope> topScopes = env.findTopScopes("ruby");
-                for (Scope scope : topScopes) {
-                    Object variables = scope.getVariables();
-                    if (variables instanceof TruffleObject) {
-                        TruffleObject truffleObj = (TruffleObject) variables;
-                        try {
-                            TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
-                            boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
-                            if (!hasSize) {
-                                System.out.println("No size!!!");
-                            }
-                            Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(),
-                                            truffleObj);
-                            if (!map.isEmpty()) {
-                                System.out.println(map);
-                            }
-                        } catch (UnsupportedMessageException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
+// Iterable<Scope> topScopes = env.findTopScopes("ruby");
+// for (Scope scope : topScopes) {
+// Object variables = scope.getVariables();
+// if (variables instanceof TruffleObject) {
+// TruffleObject truffleObj = (TruffleObject) variables;
+// try {
+// TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
+// boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+// if (!hasSize) {
+// System.out.println("No size!!!");
+// }
+// Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(),
+// truffleObj);
+// if (!map.isEmpty()) {
+// System.out.println(map);
+// }
+// } catch (UnsupportedMessageException e) {
+// e.printStackTrace();
+// }
+// }
+// }
 
 // try {
 // CallTarget callTarget =

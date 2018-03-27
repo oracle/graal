@@ -61,21 +61,19 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     }
 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-        List<String> triggerCharacters = Arrays.asList("#", // Smalltalk symbols
-                        ":", // Arguments
-                        "="); // Right-hand side of assignments
+        List<String> triggerCharacters = Arrays.asList("=");
         final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(triggerCharacters);
 
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
-        capabilities.setDocumentSymbolProvider(false);
-        capabilities.setWorkspaceSymbolProvider(false);
+        capabilities.setDocumentSymbolProvider(true);
+        capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(false);
         // capabilities.setCodeLensProvider(new CodeLensOptions(true));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
-        // completionOptions.setTriggerCharacters(triggerCharacters);
-        // capabilities.setCompletionProvider(completionOptions);
+        completionOptions.setTriggerCharacters(triggerCharacters);
+        capabilities.setCompletionProvider(completionOptions);
         // capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(false);
 
@@ -136,7 +134,8 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         // som.getCompletions(position.getTextDocument().getUri(),
         // position.getPosition().getLine(), position.getPosition().getCharacter());
         // return CompletableFuture.completedFuture(Either.forRight(result));
-        return CompletableFuture.supplyAsync(() -> Either.forRight(new CompletionList()));
+        CompletionList result = this.truffle.getCompletions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.supplyAsync(() -> Either.forRight(result));
     }
 
     @Override
@@ -180,10 +179,9 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
-        // List<? extends SymbolInformation> result =
-        // som.getSymbolInfo(params.getTextDocument().getUri());
-        // return CompletableFuture.completedFuture(result);
-        return CompletableFuture.supplyAsync(() -> new ArrayList<>());
+        List<? extends SymbolInformation> result = truffle.getSymbolInfo(params.getTextDocument().getUri());
+        return CompletableFuture.completedFuture(result);
+// return CompletableFuture.supplyAsync(() -> new ArrayList<>());
     }
 
     @Override

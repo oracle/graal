@@ -5,15 +5,27 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.eclipse.lsp4j.CompletionItem;
+import org.eclipse.lsp4j.CompletionItemKind;
+import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.InsertTextFormat;
+import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SymbolInformation;
+import org.eclipse.lsp4j.SymbolKind;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
@@ -25,9 +37,14 @@ import org.truffleruby.language.LazyRubyRootNode;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -41,6 +58,7 @@ public class TruffleAdapter {
 
     private LanguageClient client;
     private Workspace workspace;
+    private Map<String, RootNode> uri2nodes = new HashMap<>();
 
     public void connect(final LanguageClient client, Workspace workspace) {
         this.client = client;
@@ -103,6 +121,7 @@ public class TruffleAdapter {
 
     public synchronized List<Diagnostic> parse(String text, String langId, String documentUri) {
         List<Diagnostic> diagnostics = new ArrayList<>();
+        this.uri2nodes.remove(documentUri);
         try {
             if (langId.equals("truffle-python")) {
                 String lang = "python";
@@ -127,7 +146,7 @@ public class TruffleAdapter {
 // callTarget.call();
 
                     if (callTarget instanceof RootCallTarget) {
-                        // TODO(ds)
+                        this.uri2nodes.put(documentUri, ((RootCallTarget) callTarget).getRootNode());
                     }
 
                     System.out.println("Result: " + context.eval(Source.newBuilder(lang, text, SOURCE_SECTION_ID).build()));
@@ -147,6 +166,13 @@ public class TruffleAdapter {
 
                 context.enter();
                 try {
+                    CallTarget callTarget = globalsInstrument.getEnv().parse(
+                                    com.oracle.truffle.api.source.Source.newBuilder(text).name(SOURCE_SECTION_ID_RUBY).language(lang).build());
+
+                    if (callTarget instanceof RootCallTarget) {
+                        this.uri2nodes.put(documentUri, ((RootCallTarget) callTarget).getRootNode());
+                    }
+
                     parseExample(globalsInstrument.getEnv());
 //
 // CallTarget callTarget = globalsInstrument.getEnv().parse(
@@ -154,7 +180,6 @@ public class TruffleAdapter {
 //// com.oracle.truffle.api.source.Source.newBuilder(new File(URI.create(documentUri))).build());
 // System.out.println(globalsInstrument.uris);
 // if (callTarget instanceof RootCallTarget) {
-// // TODO(ds)
 // System.out.println(callTarget);
 // RootCallTarget rct = (RootCallTarget) callTarget;
 // System.out.println(rct.getRootNode());
@@ -177,7 +202,13 @@ public class TruffleAdapter {
                 Env env = envProvider.getEnv();
 
                 context.enter();
-                env.parse(com.oracle.truffle.api.source.Source.newBuilder(text).name(documentUri).mimeType(mimeType).build());
+                CallTarget callTarget = env.parse(com.oracle.truffle.api.source.Source.newBuilder(text).name(documentUri).mimeType(mimeType).build());
+                if (callTarget instanceof RootCallTarget) {
+                    this.uri2nodes.put(documentUri, ((RootCallTarget) callTarget).getRootNode());
+                }
+
+                Iterable<Scope> findTopScopes = env.findTopScopes("sl");
+                scopesToObjectMap(findTopScopes);
 
 // System.out.println("Result: " + context.eval(Source.newBuilder(lang, text,
 // documentUri).build()));
@@ -215,7 +246,7 @@ public class TruffleAdapter {
                                     new Position(ss.getEndLine() - 1, ss.getEndColumn() /* -1 */));
                 }
 
-                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
+                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle " + te.isIncompleteSource()));
             } else {
                 throw new RuntimeException(e);
             }
@@ -245,6 +276,126 @@ public class TruffleAdapter {
     public static String docUriToNormalizedPath(final String documentUri) throws URISyntaxException {
         URI uri = new URI(documentUri).normalize();
         return uri.getPath();
+    }
+
+    public synchronized List<? extends SymbolInformation> getSymbolInfo(String uri) {
+        List<SymbolInformation> symbolInformation = new ArrayList<>();
+
+        String lang = "sl";
+        Context context = Context.create(lang);
+        Instrument instrument = context.getEngine().getInstruments().get(EnvironmentProvider.ID);
+        EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
+        Env env = envProvider.getEnv();
+
+        context.enter();
+
+        if (this.uri2nodes.containsKey(uri)) {
+            RootNode rootNode = this.uri2nodes.get(uri);
+            rootNode.accept(new NodeVisitor() {
+
+                public boolean visit(Node node) {
+                    // How to find out which kind of node we have in a language agnostic way?
+                    // isTaggedWith() is "protected" ...
+                    System.out.println(node.getEncapsulatingSourceSection());
+                    return true;
+                }
+            });
+
+            Iterable<Scope> localScopes = env.findLocalScopes(rootNode, null);
+            Map<Object, Object> map = scopesToObjectMap(localScopes);
+            for (Entry<Object, Object> entry : map.entrySet()) {
+                if (entry.getValue() instanceof TruffleObject) {
+                    TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
+                    boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
+                                    truffleObjVal);
+                    SymbolInformation si = new SymbolInformation(entry.getKey().toString(), isExecutable ? SymbolKind.Function : SymbolKind.Variable,
+                                    new Location(uri, new Range(new Position(), new Position())));
+                    symbolInformation.add(si);
+                }
+            }
+        }
+
+        Iterable<Scope> topScopes = env.findTopScopes(lang);
+        Map<Object, Object> map = scopesToObjectMap(topScopes);
+        for (Entry<Object, Object> entry : map.entrySet()) {
+            if (entry.getValue() instanceof TruffleObject) {
+                TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
+                boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
+                                truffleObjVal);
+                SymbolInformation si = new SymbolInformation(entry.getKey().toString(), isExecutable ? SymbolKind.Function : SymbolKind.Variable,
+                                new Location(uri, new Range(new Position(), new Position())));
+                symbolInformation.add(si);
+            }
+        }
+
+        context.leave();
+
+        return symbolInformation;
+    }
+
+    private static Map<Object, Object> scopesToObjectMap(Iterable<Scope> scopes) {
+        Map<Object, Object> map = new HashMap<>();
+        for (Scope scope : scopes) {
+            Object variables = scope.getVariables();
+            if (variables instanceof TruffleObject) {
+                TruffleObject truffleObj = (TruffleObject) variables;
+                try {
+                    TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
+                    boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                    if (!hasSize) {
+                        System.out.println("No size!!!");
+                        continue;
+                    }
+
+                    map.putAll(ObjectStructures.asMap(new ObjectStructures.MessageNodes(), truffleObj));
+                } catch (UnsupportedMessageException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        return map;
+    }
+
+    public CompletionList getCompletions(String uri, int line, int character) {
+        CompletionList completions = new CompletionList();
+        completions.setIsIncomplete(false);
+
+        if (this.uri2nodes.containsKey(uri)) {
+            RootNode rootNode = this.uri2nodes.get(uri);
+            String lang = rootNode.getLanguageInfo().getId();
+
+            Context context = Context.create(lang);
+            Instrument instrument = context.getEngine().getInstruments().get(EnvironmentProvider.ID);
+            EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
+            Env env = envProvider.getEnv();
+
+            context.enter();
+            try {
+                Iterable<Scope> topScopes = env.findTopScopes(lang);
+                Map<Object, Object> map = scopesToObjectMap(topScopes);
+                for (Entry<Object, Object> entry : map.entrySet()) {
+                    if (entry.getValue() instanceof TruffleObject) {
+                        TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
+                        boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
+                                        truffleObjVal);
+                        CompletionItem completion = new CompletionItem(entry.getKey().toString());
+                        if (isExecutable) {
+                            completion.setKind(CompletionItemKind.Function);
+                            // completion.setInsertTextFormat(InsertTextFormat.Snippet);
+                            // completion.setInsertText(completion.getLabel() + "($1)");
+                        }
+                        completions.getItems().add(completion);
+                    }
+                }
+
+                // TODO(ds) local scopes
+            } finally {
+                context.leave();
+            }
+            return completions;
+        } else {
+            throw new RuntimeException("No parsed Node found for URI: " + uri);
+        }
     }
 
 }
