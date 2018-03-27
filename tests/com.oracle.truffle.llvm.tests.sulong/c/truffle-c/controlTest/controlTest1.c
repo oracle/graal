@@ -17,4 +17,6 @@ int foo(int i) {
   return -1;
 }
 
-int main() { return foo(0) + foo(1) + foo(2) + foo(3) + foo(4); }
+int main() {
+  return foo(0) + foo(1) + foo(2) + foo(3) + foo(4);
+}

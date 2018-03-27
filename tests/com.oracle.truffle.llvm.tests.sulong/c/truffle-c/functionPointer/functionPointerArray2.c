@@ -1,5 +1,9 @@
-int func() { return 13; }
+int func() {
+  return 13;
+}
 
 int (*functionPointers[])() = { func, func };
 
-int main() { return functionPointers[1](); }
+int main() {
+  return functionPointers[1]();
+}

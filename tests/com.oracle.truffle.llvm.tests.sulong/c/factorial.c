@@ -7,4 +7,6 @@ long factorial(int n) {
   return result;
 }
 
-int main() { return factorial(5); }
+int main() {
+  return factorial(5);
+}

@@ -7,4 +7,6 @@ int fibonacci(int n) {
     return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
-int main() { return fibonacci(11); }
+int main() {
+  return fibonacci(11);
+}

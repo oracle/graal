@@ -9,4 +9,6 @@ long double getResult(int num, ...) {
   return result;
 }
 
-int main() { return getResult(1, 3.0L, 5.0L); }
+int main() {
+  return getResult(1, 3.0L, 5.0L);
+}

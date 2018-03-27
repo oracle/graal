@@ -5,4 +5,6 @@ int foo(int n) {
   return i;
 }
 
-int main() { return foo(5); }
+int main() {
+  return foo(5);
+}

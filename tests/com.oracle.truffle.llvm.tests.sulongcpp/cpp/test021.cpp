@@ -4,7 +4,9 @@
 using namespace std;
 
 class fooexception : public exception {
-  virtual const char *what() const throw() { return "WUHU"; }
+  virtual const char *what() const throw() {
+    return "WUHU";
+  }
 } exc;
 
 int main() {

@@ -3,4 +3,6 @@ int *func() {
   return &a;
 }
 
-int main() { return *func(); }
+int main() {
+  return *func();
+}

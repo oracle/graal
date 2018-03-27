@@ -4,4 +4,6 @@ struct test {
   char c;
 };
 
-int main() { return sizeof(struct test) >= sizeof(int) + sizeof(double) + sizeof(char); }
+int main() {
+  return sizeof(struct test) >= sizeof(int) + sizeof(double) + sizeof(char);
+}

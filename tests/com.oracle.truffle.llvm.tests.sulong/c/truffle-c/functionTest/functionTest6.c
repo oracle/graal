@@ -1,4 +1,6 @@
-int foo(int a) { return a; }
+int foo(int a) {
+  return a;
+}
 
 int main() {
   int a = 5;

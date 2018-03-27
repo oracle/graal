@@ -1,8 +1,12 @@
 #include <stdlib.h>
 
-int foo(int *a) { return *a + *a; }
+int foo(int *a) {
+  return *a + *a;
+}
 
-int boo(int *a) { return foo(a); }
+int boo(int *a) {
+  return foo(a);
+}
 
 int main() {
   int *a = (int *)malloc(8);

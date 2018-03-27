@@ -3,7 +3,9 @@ struct myStruct {
   int a;
 };
 
-int foo(struct myStruct *s) { return *(s->p) + s->a; }
+int foo(struct myStruct *s) {
+  return *(s->p) + s->a;
+}
 
 int main() {
   struct myStruct s;

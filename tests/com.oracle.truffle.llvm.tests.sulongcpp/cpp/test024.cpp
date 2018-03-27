@@ -1,7 +1,9 @@
 #include <stdio.h>
 
 struct A {
-  ~A() { printf("DESTRUCT"); }
+  ~A() {
+    printf("DESTRUCT");
+  }
 };
 
 void foo() {

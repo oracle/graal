@@ -21,7 +21,9 @@ void tar() {
   }
 }
 
-void car() { foo(); }
+void car() {
+  foo();
+}
 
 int main() {
   bar();

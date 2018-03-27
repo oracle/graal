@@ -3,4 +3,6 @@ int foo() {
   return a;
 }
 
-int main() { return foo(); }
+int main() {
+  return foo();
+}

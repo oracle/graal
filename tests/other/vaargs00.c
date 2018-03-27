@@ -18,4 +18,6 @@ double foo(int count, ...) {
   return (v + tot) / count;
 }
 
-int main() { return (int)foo(3, 1.0, 2.0, 3.0); }
+int main() {
+  return (int)foo(3, 1.0, 2.0, 3.0);
+}

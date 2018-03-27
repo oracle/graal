@@ -1,1 +1,3 @@
-int main() { return sizeof(_Bool); }
+int main() {
+  return sizeof(_Bool);
+}

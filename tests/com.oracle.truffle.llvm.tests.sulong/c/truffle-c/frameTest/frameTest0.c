@@ -7,4 +7,6 @@ int foo() {
   return a[31];
 }
 
-int main() { return foo(); }
+int main() {
+  return foo();
+}

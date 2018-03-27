@@ -7,4 +7,6 @@ int t() {
   return a.a++;
 }
 
-int main() { return t() + t() + t(); }
+int main() {
+  return t() + t() + t();
+}

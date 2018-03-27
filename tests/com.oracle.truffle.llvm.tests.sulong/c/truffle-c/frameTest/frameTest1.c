@@ -7,4 +7,6 @@ int foo(int i) {
   }
 }
 
-int main() { return foo(50); }
+int main() {
+  return foo(50);
+}

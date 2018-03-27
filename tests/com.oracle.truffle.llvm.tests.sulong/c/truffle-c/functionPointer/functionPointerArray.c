@@ -1,6 +1,10 @@
-int func() { return 1; }
+int func() {
+  return 1;
+}
 
-int other() { return 2; }
+int other() {
+  return 2;
+}
 
 int main() {
   int (*test[4])() = { func, other, func, func };

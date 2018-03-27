@@ -17,4 +17,6 @@ int foo() {
   return a[0] + a[1] + a[2];
 }
 
-int main() { return foo(); }
+int main() {
+  return foo();
+}

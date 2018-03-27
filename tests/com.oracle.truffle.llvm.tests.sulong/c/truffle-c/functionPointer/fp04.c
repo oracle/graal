@@ -10,4 +10,6 @@ int main() {
   return (**fpp)(2);
 }
 
-int func(int arg) { return arg + 1; }
+int func(int arg) {
+  return arg + 1;
+}

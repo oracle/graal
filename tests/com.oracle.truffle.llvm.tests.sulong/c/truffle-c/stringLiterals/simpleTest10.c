@@ -1,4 +1,6 @@
-long function(char t[4]) { return t; }
+long function(char t[4]) {
+  return t;
+}
 
 int main() {
   long t1 = function("asdf");

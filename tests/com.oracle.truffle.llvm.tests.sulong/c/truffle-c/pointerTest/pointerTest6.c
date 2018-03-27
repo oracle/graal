@@ -1,6 +1,8 @@
 int s = 5;
 
-int foo1(int *a, int *b, int *c, int *d, int *e) { return s + *a + *b + *c + *d + *e; }
+int foo1(int *a, int *b, int *c, int *d, int *e) {
+  return s + *a + *b + *c + *d + *e;
+}
 
 int foo2(int *a, int *b, int *c, int *d) {
   int e = 5;
@@ -27,4 +29,6 @@ int foo6() {
   return foo5(&a);
 }
 
-int main() { return foo6(); }
+int main() {
+  return foo6();
+}

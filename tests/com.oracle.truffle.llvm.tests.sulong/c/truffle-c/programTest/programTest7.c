@@ -42,4 +42,6 @@ int gcd(int u, int v) {
   return u << shift;
 }
 
-int main() { return gcd(16574, 21654); }
+int main() {
+  return gcd(16574, 21654);
+}

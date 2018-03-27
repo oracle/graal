@@ -1,11 +1,21 @@
 void abort();
 
-int add(int a, int b) { return a + b; }
-int sub(int a, int b) { return a - b; }
-int mul(int a, int b) { return a * b; }
-int div(int a, int b) { return a / b; }
+int add(int a, int b) {
+  return a + b;
+}
+int sub(int a, int b) {
+  return a - b;
+}
+int mul(int a, int b) {
+  return a * b;
+}
+int div(int a, int b) {
+  return a / b;
+}
 
-int rem(int a, int b) { return a % b; }
+int rem(int a, int b) {
+  return a % b;
+}
 
 long arr[5] = { (long)&add, (long)&sub, (long)&mul, (long)&div, (long)&rem };
 

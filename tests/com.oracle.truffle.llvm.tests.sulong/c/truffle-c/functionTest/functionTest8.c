@@ -19,4 +19,6 @@ int foo1(int a, int b, int c, int d) {
   return aa + bb + cc + dd + e + f + g + h + i + j + k;
 }
 
-int main() { return foo1(2, 3, 4, 5); }
+int main() {
+  return foo1(2, 3, 4, 5);
+}
