@@ -193,7 +193,11 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         if (MultiThreaded.getValue()) {
             writeCurrentVMThread(VMThreads.nullThread());
         }
-        return runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
+        int result = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
+        if (MultiThreaded.getValue() && result == Errors.NO_ERROR) {
+            Safepoint.transitionNativeToJava();
+        }
+        return result;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
@@ -219,7 +223,6 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
                 PosixVMThreads.IsolateTL.set(thread, isolate);
             }
             writeCurrentVMThread(thread);
-            VMThreads.StatusSupport.setStatusJavaUnguarded(thread);
         }
         return Errors.NO_ERROR;
     }
