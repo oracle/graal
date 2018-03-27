@@ -105,7 +105,6 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     public void testVMCompilation3() throws IOException, InterruptedException {
         final int maxProblems = 4;
         Probe[] probes = {
-                        new Probe("To capture more information for diagnosing or reporting a compilation", maxProblems),
                         new Probe("Retrying compilation of", maxProblems) {
                             @Override
                             String test() {
