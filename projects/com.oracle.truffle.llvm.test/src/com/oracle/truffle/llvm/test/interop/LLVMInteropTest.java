@@ -1296,7 +1296,7 @@ public class LLVMInteropTest {
 
         Runner(String testName) {
             this.testName = testName;
-            this.context = Context.create();
+            this.context = Context.newBuilder().allowAllAccess(true).build();
             this.library = null;
         }
 
