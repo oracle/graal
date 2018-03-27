@@ -223,11 +223,14 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    @SuppressWarnings("try")
     private static void moveAsDeoptAfter(FixedWithNextNode node, StaticDeoptimizingNode deopt) {
-        FixedNode next = node.next();
-        if (next != deopt.asNode()) {
-            node.setNext(node.graph().add(new DeoptimizeNode(deopt.getAction(), deopt.getReason(), deopt.getSpeculation())));
-            GraphUtil.killCFG(next);
+        try (DebugCloseable position = deopt.asNode().withNodeSourcePosition()) {
+            FixedNode next = node.next();
+            if (next != deopt.asNode()) {
+                node.setNext(node.graph().add(new DeoptimizeNode(deopt.getAction(), deopt.getReason(), deopt.getSpeculation())));
+                GraphUtil.killCFG(next);
+            }
         }
     }
 }

@@ -37,10 +37,12 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.Simplifiable;
@@ -249,6 +251,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                     nextIf.setFalseSuccessor(intermediateBegin);
                     intermediateBegin.setNext(this);
                     this.setFalseSuccessor(bothFalseBegin);
+
+                    NodeSourcePosition intermediateBeginPosition = intermediateBegin.getNodeSourcePosition();
+                    intermediateBegin.setNodeSourcePosition(bothFalseBegin.getNodeSourcePosition());
+                    bothFalseBegin.setNodeSourcePosition(intermediateBeginPosition);
+
                     nextIf.setTrueSuccessorProbability(probabilityB);
                     if (probabilityB == 1.0) {
                         this.setTrueSuccessorProbability(0.0);
@@ -477,6 +484,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      * @param tool
      * @return true if a replacement was done.
      */
+    @SuppressWarnings("try")
     private boolean checkForUnsignedCompare(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         if (condition() instanceof IntegerLessThanNode) {
@@ -516,18 +524,20 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         }
                     }
                     if (below != null) {
-                        ifNode2.setTrueSuccessor(null);
-                        ifNode2.setFalseSuccessor(null);
+                        try (DebugCloseable position = ifNode2.withNodeSourcePosition()) {
+                            ifNode2.setTrueSuccessor(null);
+                            ifNode2.setFalseSuccessor(null);
 
-                        IfNode newIfNode = graph().add(new IfNode(below, falseSucc, trueSucc, 1 - trueSuccessorProbability));
-                        // Remove the < 0 test.
-                        tool.deleteBranch(trueSuccessor);
-                        graph().removeSplit(this, falseSuccessor);
+                            IfNode newIfNode = graph().add(new IfNode(below, falseSucc, trueSucc, 1 - trueSuccessorProbability));
+                            // Remove the < 0 test.
+                            tool.deleteBranch(trueSuccessor);
+                            graph().removeSplit(this, falseSuccessor);
 
-                        // Replace the second test with the new one.
-                        ifNode2.predecessor().replaceFirstSuccessor(ifNode2, newIfNode);
-                        ifNode2.safeDelete();
-                        return true;
+                            // Replace the second test with the new one.
+                            ifNode2.predecessor().replaceFirstSuccessor(ifNode2, newIfNode);
+                            ifNode2.safeDelete();
+                            return true;
+                        }
                     }
                 }
             }
@@ -850,6 +860,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      *
      * @param tool
      */
+    @SuppressWarnings("try")
     private boolean splitIfAtPhi(SimplifierTool tool) {
         if (graph().getGuardsStage().areFrameStatesAtSideEffects()) {
             // Disabled until we make sure we have no FrameState-less merges at this stage
@@ -918,12 +929,15 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             } else if (result != condition) {
                 // Build a new IfNode using the new condition
                 BeginNode trueBegin = graph().add(new BeginNode());
+                trueBegin.setNodeSourcePosition(trueSuccessor().getNodeSourcePosition());
                 BeginNode falseBegin = graph().add(new BeginNode());
+                falseBegin.setNodeSourcePosition(falseSuccessor().getNodeSourcePosition());
 
                 if (result.graph() == null) {
                     result = graph().addOrUniqueWithInputs(result);
                 }
                 IfNode newIfNode = graph().add(new IfNode(result, trueBegin, falseBegin, trueSuccessorProbability));
+                newIfNode.setNodeSourcePosition(getNodeSourcePosition());
                 merge.removeEnd(end);
                 ((FixedWithNextNode) end.predecessor()).setNext(newIfNode);
 
@@ -1053,6 +1067,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         }
     }
 
+    @SuppressWarnings("try")
     private MergeNode insertMerge(AbstractBeginNode begin) {
         MergeNode merge = graph().add(new MergeNode());
         if (!begin.anchored().isEmpty()) {
@@ -1066,9 +1081,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         AbstractBeginNode theBegin = begin;
         if (begin instanceof LoopExitNode) {
             // Insert an extra begin to make it easier.
-            theBegin = graph().add(new BeginNode());
-            begin.replaceAtPredecessor(theBegin);
-            theBegin.setNext(begin);
+            try (DebugCloseable position = begin.withNodeSourcePosition()) {
+                theBegin = graph().add(new BeginNode());
+                begin.replaceAtPredecessor(theBegin);
+                theBegin.setNext(begin);
+            }
         }
         FixedNode next = theBegin.next();
         next.replaceAtPredecessor(merge);
