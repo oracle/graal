@@ -17,6 +17,8 @@ import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
+import org.eclipse.lsp4j.DocumentHighlight;
+import org.eclipse.lsp4j.DocumentHighlightKind;
 import org.eclipse.lsp4j.InsertTextFormat;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
@@ -46,8 +48,10 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeAccessHelper;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.sl.LSPTags;
 import com.oracle.truffle.sl.SLLanguage;
 
 public class TruffleAdapter {
@@ -121,7 +125,7 @@ public class TruffleAdapter {
 
     public synchronized List<Diagnostic> parse(String text, String langId, String documentUri) {
         List<Diagnostic> diagnostics = new ArrayList<>();
-        this.uri2nodes.remove(documentUri);
+// this.uri2nodes.remove(documentUri);
         try {
             if (langId.equals("truffle-python")) {
                 String lang = "python";
@@ -229,9 +233,7 @@ public class TruffleAdapter {
 
             if (e.getSourceLocation() != null && e.getSourceLocation().isAvailable()) {
                 SourceSection ss = e.getSourceLocation();
-                range = new Range(
-                                new Position(ss.getStartLine() - 1, ss.getStartColumn() - 1),
-                                new Position(ss.getEndLine() - 1, ss.getEndColumn() /* -1 */));
+                range = sourceSectionToRange(ss);
             }
             diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Polyglot"));
         } catch (RuntimeException e) {
@@ -241,9 +243,7 @@ public class TruffleAdapter {
 
                 if (te.getLocation() != null && te.getLocation().getEncapsulatingSourceSection().isAvailable()) {
                     com.oracle.truffle.api.source.SourceSection ss = te.getLocation().getEncapsulatingSourceSection();
-                    range = new Range(
-                                    new Position(ss.getStartLine() - 1, ss.getStartColumn() - 1),
-                                    new Position(ss.getEndLine() - 1, ss.getEndColumn() /* -1 */));
+                    range = sourceSectionToRange(ss);
                 }
 
                 diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle " + te.isIncompleteSource()));
@@ -296,7 +296,8 @@ public class TruffleAdapter {
                 public boolean visit(Node node) {
                     // How to find out which kind of node we have in a language agnostic way?
                     // isTaggedWith() is "protected" ...
-                    System.out.println(node.getEncapsulatingSourceSection());
+                    System.out.println("Tagged with Literal: " + NodeAccessHelper.isTaggedWith(node, LSPTags.Literal.class) + " " + node.getClass().getSimpleName() + " " +
+                                    node.getEncapsulatingSourceSection());
                     return true;
                 }
             });
@@ -398,4 +399,76 @@ public class TruffleAdapter {
         }
     }
 
+    public List<? extends DocumentHighlight> getHighlights(String uri, int line, int character) {
+        List<DocumentHighlight> highlights = new ArrayList<>();
+
+        if (this.uri2nodes.containsKey(uri)) {
+            RootNode rootNode = this.uri2nodes.get(uri);
+
+            CharSequence token = findTokenAt(rootNode, line + 1, character + 1);
+            System.out.println("token: " + token);
+            if (token == null) {
+                return highlights;
+            }
+
+            Map<CharSequence, List<DocumentHighlight>> varName2highlight = new HashMap<>();
+            rootNode.accept(new NodeVisitor() {
+
+                public boolean visit(Node node) {
+                    if (NodeAccessHelper.isTaggedWith(node, LSPTags.VariableAssignment.class)) {
+                        String varName = node.getEncapsulatingSourceSection().getCharacters().toString().split(" ")[0];
+                        if (!varName2highlight.containsKey(varName)) {
+                            varName2highlight.put(varName, new ArrayList<>());
+                        }
+                        varName2highlight.get(varName).add(new DocumentHighlight(sourceSectionToRange(node.getEncapsulatingSourceSection()), DocumentHighlightKind.Write));
+                    } else if (NodeAccessHelper.isTaggedWith(node, LSPTags.VariableRead.class)) {
+                        String varName = node.getEncapsulatingSourceSection().getCharacters().toString();
+                        if (!varName2highlight.containsKey(varName)) {
+                            varName2highlight.put(varName, new ArrayList<>());
+                        }
+                        varName2highlight.get(varName).add(new DocumentHighlight(sourceSectionToRange(node.getEncapsulatingSourceSection()), DocumentHighlightKind.Read));
+                    }
+                    return true;
+                }
+            });
+
+// varName2highlight.entrySet().forEach((e) -> highlights.add(e.getValue()));
+            if (varName2highlight.containsKey(token)) {
+                highlights.addAll(varName2highlight.get(token));
+            }
+        } else {
+            throw new RuntimeException("No parsed Node found for URI: " + uri);
+        }
+        return highlights;
+    }
+
+    private static Range sourceSectionToRange(SourceSection section) {
+        return new Range(
+                        new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
+                        new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
+    }
+
+    private static Range sourceSectionToRange(com.oracle.truffle.api.source.SourceSection section) {
+        return new Range(
+                        new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
+                        new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
+    }
+
+    private static CharSequence findTokenAt(RootNode rootNode, int line, int character) {
+        com.oracle.truffle.api.source.SourceSection[] bestMatchedSection = {null};
+        rootNode.accept(new NodeVisitor() {
+
+            public boolean visit(Node node) {
+                com.oracle.truffle.api.source.SourceSection sourceSection = node.getEncapsulatingSourceSection();
+                if (sourceSection.getStartLine() == line && line == sourceSection.getEndLine() && sourceSection.getStartColumn() <= character && character <= sourceSection.getEndColumn()) {
+                    if (bestMatchedSection[0] == null || sourceSection.getCharLength() < bestMatchedSection[0].getCharLength()) {
+                        bestMatchedSection[0] = sourceSection;
+                    }
+                }
+                return true;
+            }
+        });
+
+        return bestMatchedSection[0] == null ? null : bestMatchedSection[0].getCharacters();
+    }
 }

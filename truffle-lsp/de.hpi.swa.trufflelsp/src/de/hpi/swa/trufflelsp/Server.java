@@ -69,6 +69,7 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(false);
+        capabilities.setDocumentHighlightProvider(true);
         // capabilities.setCodeLensProvider(new CodeLensOptions(true));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
@@ -173,8 +174,8 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 
     @Override
     public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(TextDocumentPositionParams position) {
-        // TODO Auto-generated method stub
-        return CompletableFuture.supplyAsync(() -> new ArrayList<>());
+        List<? extends DocumentHighlight> highlights = this.truffle.getHighlights(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.supplyAsync(() -> highlights);
     }
 
     @Override
