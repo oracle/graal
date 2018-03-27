@@ -50,31 +50,31 @@ public abstract class LLVMReadCharsetNode extends Node {
 
     @Specialization(guards = "cachedAddress.equals(address)")
     @SuppressWarnings("unused")
-    protected LLVMCharset doCachedAddress(VirtualFrame frame, LLVMAddress address,
+    protected LLVMCharset doCachedAddress(LLVMAddress address,
                     @Cached("address") LLVMAddress cachedAddress,
-                    @Cached("doGeneric(frame, cachedAddress)") LLVMCharset cachedCharset) {
+                    @Cached("doGeneric(cachedAddress)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
     @Specialization(guards = {"foreign.getObject() == cachedForeign.getObject()", "foreign.getOffset() == cachedForeign.getOffset()"})
     @SuppressWarnings("unused")
-    protected LLVMCharset doCachedForeign(VirtualFrame frame, LLVMTruffleObject foreign,
+    protected LLVMCharset doCachedForeign(LLVMTruffleObject foreign,
                     @Cached("foreign") LLVMTruffleObject cachedForeign,
-                    @Cached("doGeneric(frame, cachedForeign)") LLVMCharset cachedCharset) {
+                    @Cached("doGeneric(cachedForeign)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
     @Specialization(guards = "address == cachedAddress")
     @SuppressWarnings("unused")
-    protected LLVMCharset doCachedOther(VirtualFrame frame, Object address,
+    protected LLVMCharset doCachedOther(Object address,
                     @Cached("address") Object cachedAddress,
-                    @Cached("doGeneric(frame, cachedAddress)") LLVMCharset cachedCharset) {
+                    @Cached("doGeneric(cachedAddress)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
     @Specialization(replaces = {"doCachedAddress", "doCachedForeign", "doCachedOther"})
-    protected LLVMCharset doGeneric(VirtualFrame frame, Object strPtr) {
-        String string = readString.executeWithTarget(frame, strPtr);
+    protected LLVMCharset doGeneric(Object strPtr) {
+        String string = readString.executeWithTarget(strPtr);
         return lookup(string);
     }
 

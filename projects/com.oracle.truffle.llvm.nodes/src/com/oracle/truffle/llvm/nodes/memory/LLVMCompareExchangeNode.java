@@ -85,7 +85,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     @Specialization
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, Object comparisonValue, Object newValue,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        return cmpxch.executeWithTarget(frame, globalAccess.executeWithTarget(frame, address), comparisonValue, newValue);
+        return cmpxch.executeWithTarget(frame, globalAccess.executeWithTarget(address), comparisonValue, newValue);
     }
 
     @Specialization
@@ -172,10 +172,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
                 LLVMAddress allocation = allocateResult(frame, memory);
-                byte currentValue = (byte) read.executeWithTarget(frame, address);
+                byte currentValue = (byte) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
-                    write.executeWithTarget(frame, address, newValue);
+                    write.executeWithTarget(address, newValue);
                 }
                 memory.putI8(allocation, currentValue);
                 memory.putI1(allocation.getVal() + secondValueOffset, success);
@@ -190,10 +190,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
                 LLVMAddress allocation = allocateResult(frame, memory);
-                short currentValue = (short) read.executeWithTarget(frame, address);
+                short currentValue = (short) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
-                    write.executeWithTarget(frame, address, newValue);
+                    write.executeWithTarget(address, newValue);
                 }
                 memory.putI16(allocation, currentValue);
                 memory.putI1(allocation.getVal() + secondValueOffset, success);
@@ -208,10 +208,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
                 LLVMAddress allocation = allocateResult(frame, memory);
-                int currentValue = (int) read.executeWithTarget(frame, address);
+                int currentValue = (int) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
-                    write.executeWithTarget(frame, address, newValue);
+                    write.executeWithTarget(address, newValue);
                 }
                 memory.putI32(allocation, currentValue);
                 memory.putI1(allocation.getVal() + secondValueOffset, success);
@@ -226,10 +226,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
                 LLVMAddress allocation = allocateResult(frame, memory);
-                long currentValue = (long) read.executeWithTarget(frame, address);
+                long currentValue = (long) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
-                    write.executeWithTarget(frame, address, newValue);
+                    write.executeWithTarget(address, newValue);
                 }
                 memory.putI64(allocation, currentValue);
                 memory.putI1(allocation.getVal() + secondValueOffset, success);

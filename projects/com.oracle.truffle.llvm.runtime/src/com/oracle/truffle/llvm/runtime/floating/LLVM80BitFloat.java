@@ -40,7 +40,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -686,7 +685,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         }
 
         @Override
-        public LLVM80BitFloat execute(VirtualFrame frame, Object x, Object y) {
+        public LLVM80BitFloat execute(Object x, Object y) {
             LLVM80BitFloat a = (LLVM80BitFloat) x;
             LLVM80BitFloat b = (LLVM80BitFloat) y;
             return node.execute(a, b);
@@ -722,7 +721,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     public LLVMArithmeticCompareNode createCmpNode() {
         return new LLVMArithmeticCompareNode() {
             @Override
-            public int execute(VirtualFrame frame, Object x, Object y) throws InteropException {
+            public int execute(Object x, Object y) throws InteropException {
                 LLVM80BitFloat a = (LLVM80BitFloat) x;
                 LLVM80BitFloat b = (LLVM80BitFloat) y;
                 return compare(a, b);

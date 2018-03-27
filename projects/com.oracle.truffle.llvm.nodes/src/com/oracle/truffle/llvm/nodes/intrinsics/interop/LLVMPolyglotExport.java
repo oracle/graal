@@ -33,7 +33,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -67,9 +66,9 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected Object doExport(VirtualFrame frame, Object name, Object value,
+    protected Object doExport(Object name, Object value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
-        String symbolName = readString.executeWithTarget(frame, name);
+        String symbolName = readString.executeWithTarget(name);
 
         LLVMContext ctx = ctxRef.get();
         Object escaped = escape.executeWithTarget(value, ctx);

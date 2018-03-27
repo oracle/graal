@@ -29,10 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMLoadNode extends LLVMNode {
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object address);
+    public abstract Object executeWithTarget(Object address);
 }

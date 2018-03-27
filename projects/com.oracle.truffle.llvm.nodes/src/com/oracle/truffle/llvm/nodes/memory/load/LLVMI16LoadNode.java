@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -68,9 +67,9 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    protected short doShort(VirtualFrame frame, LLVMTruffleObject addr,
+    protected short doShort(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (short) foreignRead.execute(frame, addr);
+        return (short) foreignRead.execute(addr);
     }
 
     @Specialization

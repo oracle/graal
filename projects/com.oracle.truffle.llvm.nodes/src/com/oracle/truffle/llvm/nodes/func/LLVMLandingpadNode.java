@@ -88,7 +88,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
             } else {
                 LLVMAddress executeLLVMAddress = allocateLandingPadValue.execute(frame);
                 LLVMAddress pair0 = executeLLVMAddress;
-                getMemory().putAddress(pair0, unwindHeaderToNative.executeWithTarget(frame, unwindHeader));
+                getMemory().putAddress(pair0, unwindHeaderToNative.executeWithTarget(unwindHeader));
                 getMemory().putI32(executeLLVMAddress.getVal() + LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, clauseId);
                 return executeLLVMAddress;
             }

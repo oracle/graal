@@ -59,7 +59,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
     @Specialization
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        return writeDouble(frame, globalAccess.executeWithTarget(frame, global));
+        return writeDouble(frame, globalAccess.executeWithTarget(global));
     }
 
     @Specialization
@@ -69,7 +69,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
-                memMove.executeWithTarget(frame, LLVMAddress.fromLong(currentPtr), currentValue, stride);
+                memMove.executeWithTarget(LLVMAddress.fromLong(currentPtr), currentValue, stride);
                 currentPtr += stride;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();
@@ -89,7 +89,7 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         LLVMTruffleObject currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             LLVMTruffleObject currentValue = (LLVMTruffleObject) values[i].executeGeneric(frame);
-            memMove.executeWithTarget(frame, currentPtr, currentValue, stride);
+            memMove.executeWithTarget(currentPtr, currentValue, stride);
             currentPtr = currentPtr.increment(stride);
         }
         return addr;

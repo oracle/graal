@@ -31,16 +31,10 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
 public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOperationNode {
-
-    @Specialization
-    protected long doOp(@SuppressWarnings("unused") VirtualFrame frame, LLVMAddress tidptr) {
-        return exec(tidptr);
-    }
 
     @Override
     public final String getName() {
@@ -48,8 +42,13 @@ public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOpera
     }
 
     @Specialization
-    protected long doOp(VirtualFrame frame, long tidptr) {
-        return doOp(frame, LLVMAddress.fromLong(tidptr));
+    protected long doOp(LLVMAddress tidptr) {
+        return exec(tidptr);
+    }
+
+    @Specialization
+    protected long doOp(long tidptr) {
+        return doOp(LLVMAddress.fromLong(tidptr));
     }
 
     @TruffleBoundary

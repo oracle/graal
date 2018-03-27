@@ -33,7 +33,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -53,14 +52,14 @@ public abstract class LLVMPolyglotImport extends LLVMIntrinsic {
     @Child Node read = Message.READ.createNode();
 
     @Specialization
-    protected Object doImport(VirtualFrame frame, Object name,
+    protected Object doImport(Object name,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
-        String symbolName = readString.executeWithTarget(frame, name);
+        String symbolName = readString.executeWithTarget(name);
 
         LLVMContext ctx = ctxRef.get();
         try {
             Object ret = ForeignAccess.sendRead(read, (TruffleObject) ctx.getEnv().getPolyglotBindings(), symbolName);
-            return toLLVM.executeWithTarget(frame, ret);
+            return toLLVM.executeWithTarget(ret);
         } catch (InteropException ex) {
             throw ex.raise();
         }

@@ -70,7 +70,7 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
 
     private Object byValueImp(VirtualFrame frame, Object source) {
         Object dest = stackAllocationNode.executeGeneric(frame);
-        memMove.executeWithTarget(frame, dest, source, getLength());
+        memMove.executeWithTarget(dest, source, getLength());
         return dest;
     }
 

@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetFrame;
@@ -148,7 +147,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
     }
 
     public abstract static class WriteObjectNode extends LLVMGlobalWriteNode {
-        public abstract Object execute(VirtualFrame frame, LLVMGlobal global, Object value);
+        public abstract Object execute(LLVMGlobal global, Object value);
 
         public static WriteObjectNode create() {
             return WriteObjectNodeGen.create();
@@ -163,10 +162,10 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
         }
 
         @Specialization(guards = "isNative(global)")
-        protected Object doNative(VirtualFrame frame, LLVMGlobal global, Object value,
+        protected Object doNative(LLVMGlobal global, Object value,
                         @Cached("create()") GetNativePointer getPointer,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            getMemory().putAddress(getPointer.execute(getContext(), global), toNative.executeWithTarget(frame, value));
+            getMemory().putAddress(getPointer.execute(getContext(), global), toNative.executeWithTarget(value));
             return value;
         }
     }

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMDispatchNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNode;
@@ -51,36 +50,36 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public abstract class LLVMLangStart extends LLVMIntrinsic {
     @Specialization(guards = "main.getVal() == cachedMain.getVal()")
     @SuppressWarnings("unused")
-    protected long doIntrinsic(VirtualFrame frame, StackPointer stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
+    protected long doIntrinsic(StackPointer stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
                     @Cached("main") LLVMAddress cachedMain,
                     @Cached("getMainDescriptor(cachedMain)") LLVMFunctionDescriptor mainDescriptor,
                     @Cached("getDispatchNode(mainDescriptor)") LLVMDispatchNode dispatchNode) {
-        dispatchNode.executeDispatch(frame, mainDescriptor, new Object[]{stackPointer});
+        dispatchNode.executeDispatch(mainDescriptor, new Object[]{stackPointer});
         return 0;
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected long doGeneric(VirtualFrame frame, StackPointer stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
+    protected long doGeneric(StackPointer stackPointer, LLVMAddress main, long argc, LLVMAddress argv,
                     @Cached("getLookupDispatchNode(main)") LLVMLookupDispatchNode dispatchNode) {
-        dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
+        dispatchNode.executeDispatch(main, new Object[]{stackPointer});
         return 0;
     }
 
     @Specialization(guards = "main == cachedMain")
     @SuppressWarnings("unused")
-    protected long doIntrinsic(VirtualFrame frame, StackPointer stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
+    protected long doIntrinsic(StackPointer stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
                     @Cached("main") LLVMFunctionDescriptor cachedMain,
                     @Cached("getDispatchNode(main)") LLVMDispatchNode dispatchNode) {
-        dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
+        dispatchNode.executeDispatch(main, new Object[]{stackPointer});
         return 0;
     }
 
     @Specialization
     @SuppressWarnings("unused")
-    protected long doGeneric(VirtualFrame frame, StackPointer stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
+    protected long doGeneric(StackPointer stackPointer, LLVMFunctionDescriptor main, long argc, LLVMAddress argv,
                     @Cached("getDispatchNode(main)") LLVMDispatchNode dispatchNode) {
-        dispatchNode.executeDispatch(frame, main, new Object[]{stackPointer});
+        dispatchNode.executeDispatch(main, new Object[]{stackPointer});
         return 0;
     }
 

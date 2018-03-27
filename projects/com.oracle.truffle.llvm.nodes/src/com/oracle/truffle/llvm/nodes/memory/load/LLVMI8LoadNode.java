@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -72,9 +71,9 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
     }
 
     @Specialization
-    protected byte doI8(VirtualFrame frame, LLVMTruffleObject addr,
+    protected byte doI8(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (byte) foreignRead.execute(frame, addr);
+        return (byte) foreignRead.execute(addr);
     }
 
     @Specialization

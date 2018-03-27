@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNode;
@@ -50,10 +49,10 @@ public class LLVMForeignReadNode extends Node {
         this.read = LLVMObjectAccessFactory.createRead(type);
     }
 
-    public Object execute(VirtualFrame frame, LLVMTruffleObject addr) {
+    public Object execute(LLVMTruffleObject addr) {
         Object key = offsetToName.execute(addr.getBaseType(), addr.getOffset());
         try {
-            return read.executeRead(frame, addr.getObject(), key, addr.getOffset());
+            return read.executeRead(addr.getObject(), key, addr.getOffset());
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);

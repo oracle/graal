@@ -37,7 +37,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -91,10 +90,10 @@ public final class LLVMTruffleWrite {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
-        protected Object cached(VirtualFrame frame, LLVMTruffleObject value, Object id, Object v,
+        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
+        protected Object cached(LLVMTruffleObject value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(frame, id)") String cachedId,
+                        @Cached("readStr.executeWithTarget(id)") String cachedId,
                         @Cached("getContextReference()") ContextReference<LLVMContext> context) {
             checkLLVMTruffleObject(value);
             doWrite(foreignWrite, value.getObject(), cachedId, prepareValueForEscape.executeWithTarget(v, context.get()));
@@ -102,11 +101,11 @@ public final class LLVMTruffleWrite {
         }
 
         @Specialization
-        protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value, Object id, Object v,
+        protected Object doIntrinsic(LLVMTruffleObject value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("getContextReference()") ContextReference<LLVMContext> context) {
             checkLLVMTruffleObject(value);
-            doWrite(foreignWrite, value.getObject(), readStr.executeWithTarget(frame, id), prepareValueForEscape.executeWithTarget(v, context.get()));
+            doWrite(foreignWrite, value.getObject(), readStr.executeWithTarget(id), prepareValueForEscape.executeWithTarget(v, context.get()));
             return null;
         }
 

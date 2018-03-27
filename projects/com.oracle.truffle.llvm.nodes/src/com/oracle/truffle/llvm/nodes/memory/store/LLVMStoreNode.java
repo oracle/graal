@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -47,5 +46,5 @@ public abstract class LLVMStoreNode extends LLVMNode {
         return LLVMForeignWriteNodeGen.create(valueType, elementAccessSize);
     }
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object address, Object value);
+    public abstract Object executeWithTarget(Object address, Object value);
 }

@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -91,8 +90,8 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected boolean fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(frame, boxed.getValue());
+    protected boolean fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(boxed.getValue());
     }
 
     @Specialization
@@ -106,28 +105,28 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected boolean fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+    protected boolean fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(frame, fd).getVal() != 0;
+        return toNative.executeWithTarget(fd).getVal() != 0;
     }
 
     @Specialization
-    protected boolean fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
+    protected boolean fromSharedDescriptor(LLVMSharedGlobalVariable shared,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return access.executeWithTarget(frame, shared.getDescriptor()).getVal() != 0;
+        return access.executeWithTarget(shared.getDescriptor()).getVal() != 0;
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    protected boolean fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
-        return recursiveConvert(frame, fromForeign(obj));
+    protected boolean fromTruffleObject(TruffleObject obj) {
+        return recursiveConvert(fromForeign(obj));
     }
 
-    private boolean recursiveConvert(VirtualFrame frame, Object o) {
+    private boolean recursiveConvert(Object o) {
         if (toI1 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toI1 = ToI1NodeGen.create();
         }
-        return (boolean) toI1.executeWithTarget(frame, o);
+        return (boolean) toI1.executeWithTarget(o);
     }
 
     protected static boolean notLLVM(TruffleObject value) {

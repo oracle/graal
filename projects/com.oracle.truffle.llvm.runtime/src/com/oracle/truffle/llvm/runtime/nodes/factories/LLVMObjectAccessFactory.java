@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
@@ -83,10 +82,10 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
-        protected Object doRead(VirtualFrame frame, Object obj, Object identifier, long offset,
+        protected Object doRead(Object obj, Object identifier, long offset,
                         @Cached("createReadNode(obj)") LLVMObjectReadNode impl) {
             try {
-                return impl.executeRead(frame, obj, identifier, offset);
+                return impl.executeRead(obj, identifier, offset);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -120,17 +119,17 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(guards = "object.getShape() == cachedShape")
-        protected Object doCachedShape(VirtualFrame frame, DynamicObject object, Object identifier, long offset,
+        protected Object doCachedShape(DynamicObject object, Object identifier, long offset,
                         @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached("createReadNode(cachedShape)") LLVMObjectReadNode impl) {
-            return doRead(frame, object, identifier, offset, impl);
+            return doRead(object, identifier, offset, impl);
         }
 
         @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        protected Object doRead(VirtualFrame frame, DynamicObject object, Object identifier, long offset,
+        protected Object doRead(DynamicObject object, Object identifier, long offset,
                         @Cached("createReadNode(object.getShape())") LLVMObjectReadNode impl) {
             try {
-                return impl.executeRead(frame, object, identifier, offset);
+                return impl.executeRead(object, identifier, offset);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -169,9 +168,9 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Override
-        public Object executeRead(VirtualFrame frame, Object obj, Object identifier, long offset) throws InteropException {
+        public Object executeRead(Object obj, Object identifier, long offset) throws InteropException {
             Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, identifier);
-            return toLLVM.executeWithTarget(frame, foreign);
+            return toLLVM.executeWithTarget(foreign);
         }
     }
 
@@ -191,10 +190,10 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
-        protected void doWrite(VirtualFrame frame, Object obj, Object identifier, long offset, Object value,
+        protected void doWrite(Object obj, Object identifier, long offset, Object value,
                         @Cached("createWriteNode(obj)") LLVMObjectWriteNode impl) {
             try {
-                impl.executeWrite(frame, obj, identifier, offset, value);
+                impl.executeWrite(obj, identifier, offset, value);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -228,17 +227,17 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(guards = "object.getShape() == cachedShape")
-        protected void doCachedShape(VirtualFrame frame, DynamicObject object, Object identifier, long offset, Object value,
+        protected void doCachedShape(DynamicObject object, Object identifier, long offset, Object value,
                         @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached("createWriteNode(cachedShape)") LLVMObjectWriteNode impl) {
-            doWrite(frame, object, identifier, offset, value, impl);
+            doWrite(object, identifier, offset, value, impl);
         }
 
         @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        protected void doWrite(VirtualFrame frame, DynamicObject object, Object identifier, long offset, Object value,
+        protected void doWrite(DynamicObject object, Object identifier, long offset, Object value,
                         @Cached("createWriteNode(object.getShape())") LLVMObjectWriteNode impl) {
             try {
-                impl.executeWrite(frame, object, identifier, offset, value);
+                impl.executeWrite(object, identifier, offset, value);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -279,7 +278,7 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Override
-        public void executeWrite(VirtualFrame frame, Object obj, Object identifier, long offset, Object value) throws InteropException {
+        public void executeWrite(Object obj, Object identifier, long offset, Object value) throws InteropException {
             Object escaped = dataEscape.executeWithTarget(value, ctxRef.get());
             ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
         }

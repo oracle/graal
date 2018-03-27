@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
@@ -40,16 +39,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMTruffleReadString extends LLVMIntrinsic {
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
-    protected Object cached(VirtualFrame frame, Object id,
+    @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
+    protected Object cached(Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
+                    @Cached("readStr.executeWithTarget(id)") String cachedId) {
         return cachedId;
     }
 
     @Specialization(replaces = "cached")
-    protected Object uncached(VirtualFrame frame, Object id,
+    protected Object uncached(Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr) {
-        return readStr.executeWithTarget(frame, id);
+        return readStr.executeWithTarget(id);
     }
 }

@@ -61,7 +61,7 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return write80BitFloat(frame, globalAccess.executeWithTarget(frame, global), memory);
+        return write80BitFloat(frame, globalAccess.executeWithTarget(global), memory);
     }
 
     @Specialization
@@ -90,7 +90,7 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);
-                write.executeWithTarget(frame, addr, currentValue);
+                write.executeWithTarget(addr, currentValue);
                 currentPtr = currentPtr.increment(stride);
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

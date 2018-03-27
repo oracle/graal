@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -48,7 +47,7 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long doOp(VirtualFrame frame, LLVMAddress addr, long len, long prot, long flags, long fildes, long off,
+    protected long doOp(LLVMAddress addr, long len, long prot, long flags, long fildes, long off,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (mapAnonymousProfile.profile((flags & LLVMAMD64Memory.MAP_ANONYMOUS) != 0)) {
             LLVMAddress ptr = memory.allocateMemory(len);
@@ -58,7 +57,7 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
     }
 
     @Specialization
-    protected long doOp(VirtualFrame frame, long addr, long len, long prot, long flags, long fildes, long off) {
-        return execute(frame, LLVMAddress.fromLong(addr), len, prot, flags, fildes, off);
+    protected long doOp(long addr, long len, long prot, long flags, long fildes, long off) {
+        return execute(LLVMAddress.fromLong(addr), len, prot, flags, fildes, off);
     }
 }

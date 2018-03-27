@@ -29,12 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMSyscallOperationNode extends LLVMNode {
 
-    public abstract long execute(VirtualFrame frame, Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5);
+    public abstract long execute(Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5);
 
     public abstract String getName();
 }

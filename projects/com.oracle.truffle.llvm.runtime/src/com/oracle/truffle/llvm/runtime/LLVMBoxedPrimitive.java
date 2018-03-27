@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -69,22 +68,22 @@ public final class LLVMBoxedPrimitive implements LLVMObjectNativeLibrary.Provide
         }
 
         @Override
-        public boolean isPointer(VirtualFrame frame, Object obj) {
+        public boolean isPointer(Object obj) {
             return true;
         }
 
         @Override
-        public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+        public long asPointer(Object obj) throws InteropException {
             if (toLLVM == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 toLLVM = ForeignToLLVM.create(ForeignToLLVMType.I64);
             }
             LLVMBoxedPrimitive boxed = (LLVMBoxedPrimitive) obj;
-            return (long) toLLVM.executeWithTarget(frame, boxed.getValue());
+            return (long) toLLVM.executeWithTarget(boxed.getValue());
         }
 
         @Override
-        public LLVMBoxedPrimitive toNative(VirtualFrame frame, Object obj) throws InteropException {
+        public LLVMBoxedPrimitive toNative(Object obj) throws InteropException {
             return (LLVMBoxedPrimitive) obj;
         }
     }

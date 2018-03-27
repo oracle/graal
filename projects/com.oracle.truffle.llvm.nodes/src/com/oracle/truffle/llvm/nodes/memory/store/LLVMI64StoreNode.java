@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -65,10 +64,10 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMTruffleObject value,
+    protected Object doOp(LLVMAddress address, LLVMTruffleObject value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, toAddress.executeWithTarget(frame, value).getVal());
+        memory.putI64(address, toAddress.executeWithTarget(value).getVal());
         return null;
     }
 
@@ -80,10 +79,10 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMGlobal value,
+    protected Object doOp(LLVMAddress address, LLVMGlobal value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, globalAccess.executeWithTarget(frame, value).getVal());
+        memory.putI64(address, globalAccess.executeWithTarget(value).getVal());
         return null;
     }
 
@@ -95,9 +94,9 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, Object value,
+    protected Object doOp(LLVMTruffleObject address, Object value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(frame, address, value);
+        foreignWrite.execute(address, value);
         return null;
     }
 

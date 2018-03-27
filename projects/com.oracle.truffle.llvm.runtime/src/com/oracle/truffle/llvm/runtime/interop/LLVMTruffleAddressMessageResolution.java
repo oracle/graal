@@ -89,7 +89,7 @@ public class LLVMTruffleAddressMessageResolution {
             return access(frame, receiver, (int) index);
         }
 
-        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMTruffleAddress receiver, int index) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
@@ -98,11 +98,10 @@ public class LLVMTruffleAddressMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressReadMessageResolutionNodeGen.create());
             }
-            return node.executeWithTarget(frame, receiver, index);
+            return node.executeWithTarget(receiver, index);
         }
 
-        @SuppressWarnings("unused")
-        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, String name) {
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, @SuppressWarnings("unused") LLVMTruffleAddress receiver, String name) {
             CompilerDirectives.transferToInterpreter();
             String message = String.format("Identifier %s is currently unsupported. Please use a numeric index to access a C pointer.", name);
             throw UnknownIdentifierException.raise(message);
@@ -118,7 +117,7 @@ public class LLVMTruffleAddressMessageResolution {
             return access(frame, receiver, (int) index, value);
         }
 
-        protected Object access(VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
+        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMTruffleAddress receiver, int index, Object value) {
             if (isNull(receiver)) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(String.format("Cannot read (identifier = %s) from null (0x0) pointer.", String.valueOf(index)));
@@ -127,7 +126,7 @@ public class LLVMTruffleAddressMessageResolution {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 node = insert(LLVMAddressWriteMessageResolutionNodeGen.create());
             }
-            return node.executeWithTarget(frame, receiver, index, value);
+            return node.executeWithTarget(receiver, index, value);
         }
 
         @SuppressWarnings("unused")

@@ -108,7 +108,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
             try (StackPointer save = stack.newFrame()) {
                 rawValue = ForeignAccess.sendInvoke(foreignInvoke, value, id, evaluatedArgs);
             }
-            return toLLVM.executeWithTarget(frame, rawValue);
+            return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
@@ -116,10 +116,10 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = "idStr.equals(readStr.executeWithTarget(frame, id))")
+    @Specialization(limit = "2", guards = "idStr.equals(readStr.executeWithTarget(id))")
     protected Object cachedId(VirtualFrame frame, LLVMTruffleObject value, Object id,
                     @Cached("createReadString()") LLVMReadStringNode readStr,
-                    @Cached("readStr.executeWithTarget(frame, id)") String idStr,
+                    @Cached("readStr.executeWithTarget(id)") String idStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(value);
@@ -132,12 +132,12 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         checkLLVMTruffleObject(value);
-        return doInvoke(frame, value.getObject(), readStr.executeWithTarget(frame, id), context, getStack);
+        return doInvoke(frame, value.getObject(), readStr.executeWithTarget(id), context, getStack);
     }
 
     @Fallback
     @SuppressWarnings("unused")
-    public Object fallback(VirtualFrame frame, Object value, Object id) {
+    public Object fallback(Object value, Object id) {
         CompilerDirectives.transferToInterpreter();
         System.err.println("Invalid arguments to invoke-builtin.");
         throw new IllegalArgumentException();

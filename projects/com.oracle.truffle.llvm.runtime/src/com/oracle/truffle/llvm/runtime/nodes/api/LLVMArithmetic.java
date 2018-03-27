@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -51,10 +50,10 @@ public interface LLVMArithmetic {
     }
 
     abstract class LLVMArithmeticOpNode extends LLVMArithmeticNode {
-        public abstract LLVMArithmetic execute(VirtualFrame frame, Object x, Object y) throws InteropException;
+        public abstract LLVMArithmetic execute(Object x, Object y) throws InteropException;
     }
 
     abstract class LLVMArithmeticCompareNode extends LLVMArithmeticNode {
-        public abstract int execute(VirtualFrame frame, Object x, Object y) throws InteropException;
+        public abstract int execute(Object x, Object y) throws InteropException;
     }
 }

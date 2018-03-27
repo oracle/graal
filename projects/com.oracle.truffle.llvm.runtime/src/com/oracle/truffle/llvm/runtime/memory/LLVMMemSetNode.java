@@ -29,11 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMMemSetNode extends LLVMNode {
 
-    public abstract Object executeWithTarget(VirtualFrame frame, Object address, byte value, long length);
+    public abstract Object executeWithTarget(Object address, byte value, long length);
 
 }

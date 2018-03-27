@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -57,20 +56,20 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
     }
 
-    private static Object doRead(VirtualFrame frame, TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
+    private static Object doRead(TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, name);
-            return toLLVM.executeWithTarget(frame, rawValue);
+            return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
         }
     }
 
-    private static Object doReadIdx(VirtualFrame frame, TruffleObject value, int id, Node foreignRead, ForeignToLLVM toLLVM) {
+    private static Object doReadIdx(TruffleObject value, int id, Node foreignRead, ForeignToLLVM toLLVM) {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, id);
-            return toLLVM.executeWithTarget(frame, rawValue);
+            return toLLVM.executeWithTarget(rawValue);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException(e);
@@ -88,19 +87,19 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(frame, id))")
-        protected Object cached(VirtualFrame frame, LLVMTruffleObject value, Object id,
+        @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
+        protected Object cached(LLVMTruffleObject value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(frame, id)") String cachedId) {
+                        @Cached("readStr.executeWithTarget(id)") String cachedId) {
             checkLLVMTruffleObject(value);
-            return doRead(frame, value.getObject(), cachedId, foreignRead, toLLVM);
+            return doRead(value.getObject(), cachedId, foreignRead, toLLVM);
         }
 
         @Specialization(replaces = "cached")
-        protected Object uncached(VirtualFrame frame, LLVMTruffleObject value, Object id,
+        protected Object uncached(LLVMTruffleObject value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
             checkLLVMTruffleObject(value);
-            return doRead(frame, value.getObject(), readStr.executeWithTarget(frame, id), foreignRead, toLLVM);
+            return doRead(value.getObject(), readStr.executeWithTarget(id), foreignRead, toLLVM);
         }
 
         @Fallback
@@ -123,9 +122,9 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
 
         @Specialization
-        protected Object doIntrinsic(VirtualFrame frame, LLVMTruffleObject value, int id) {
+        protected Object doIntrinsic(LLVMTruffleObject value, int id) {
             checkLLVMTruffleObject(value);
-            return doReadIdx(frame, value.getObject(), id, foreignRead, toLLVM);
+            return doReadIdx(value.getObject(), id, foreignRead, toLLVM);
         }
 
         @Fallback

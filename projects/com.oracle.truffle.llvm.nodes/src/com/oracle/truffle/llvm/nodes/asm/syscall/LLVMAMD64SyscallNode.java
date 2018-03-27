@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -53,13 +52,13 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "rax == cachedRax", limit = "NUM_SYSCALLS")
-    protected long cachedSyscall(VirtualFrame frame, @SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
+    protected long cachedSyscall(@SuppressWarnings("unused") long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9,
                     @Cached("rax") @SuppressWarnings("unused") long cachedRax,
                     @Cached("createNode(rax)") LLVMSyscallOperationNode node) {
         if (traceEnabled()) {
             trace("[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", node.getName(), rdi, rsi, rdx, r10, r8, r9);
         }
-        long result = node.execute(frame, rdi, rsi, rdx, r10, r8, r9);
+        long result = node.execute(rdi, rsi, rdx, r10, r8, r9);
         if (traceEnabled()) {
             trace("         result: %d\n", result);
         }
@@ -67,10 +66,10 @@ public abstract class LLVMAMD64SyscallNode extends LLVMExpressionNode {
     }
 
     @Specialization(replaces = "cachedSyscall")
-    protected long doI64(VirtualFrame frame, long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    protected long doI64(long rax, Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         // TODO: implement big switch with type casts + logic + ...?
         CompilerDirectives.transferToInterpreter();
-        return createNode(rax).execute(frame, rdi, rsi, rdx, r10, r8, r9);
+        return createNode(rax).execute(rdi, rsi, rdx, r10, r8, r9);
     }
 
     @CompilationFinal private boolean traceEnabledFlag;

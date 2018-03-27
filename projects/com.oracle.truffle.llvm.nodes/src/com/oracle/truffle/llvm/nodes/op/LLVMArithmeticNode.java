@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -98,9 +97,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat add(VirtualFrame frame, LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80AddNode()") LLVMArithmeticOpNode node) {
+        protected LLVM80BitFloat add(LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80AddNode()") LLVMArithmeticOpNode node) {
             try {
-                return (LLVM80BitFloat) node.execute(frame, left, right);
+                return (LLVM80BitFloat) node.execute(left, right);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
@@ -190,9 +189,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat mul(VirtualFrame frame, LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80MulNode()") LLVMArithmeticOpNode node) {
+        protected LLVM80BitFloat mul(LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80MulNode()") LLVMArithmeticOpNode node) {
             try {
-                return (LLVM80BitFloat) node.execute(frame, left, right);
+                return (LLVM80BitFloat) node.execute(left, right);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
@@ -282,9 +281,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat sub(VirtualFrame frame, LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80SubNode()") LLVMArithmeticOpNode node) {
+        protected LLVM80BitFloat sub(LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80SubNode()") LLVMArithmeticOpNode node) {
             try {
-                return (LLVM80BitFloat) node.execute(frame, left, right);
+                return (LLVM80BitFloat) node.execute(left, right);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
@@ -378,9 +377,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat div(VirtualFrame frame, LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80DivNode()") LLVMArithmeticOpNode node) {
+        protected LLVM80BitFloat div(LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80DivNode()") LLVMArithmeticOpNode node) {
             try {
-                return (LLVM80BitFloat) node.execute(frame, left, right);
+                return (LLVM80BitFloat) node.execute(left, right);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();
@@ -538,9 +537,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVM80BitFloat rem(VirtualFrame frame, LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80RemNode()") LLVMArithmeticOpNode node) {
+        protected LLVM80BitFloat rem(LLVM80BitFloat left, LLVM80BitFloat right, @Cached("createFP80RemNode()") LLVMArithmeticOpNode node) {
             try {
-                return (LLVM80BitFloat) node.execute(frame, left, right);
+                return (LLVM80BitFloat) node.execute(left, right);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e.raise();

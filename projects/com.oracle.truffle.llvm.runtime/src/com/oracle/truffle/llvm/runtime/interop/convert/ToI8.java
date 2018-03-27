@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
@@ -91,13 +90,13 @@ abstract class ToI8 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected byte fromForeignPrimitive(VirtualFrame frame, LLVMBoxedPrimitive boxed) {
-        return recursiveConvert(frame, boxed.getValue());
+    protected byte fromForeignPrimitive(LLVMBoxedPrimitive boxed) {
+        return recursiveConvert(boxed.getValue());
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    protected byte fromTruffleObject(VirtualFrame frame, TruffleObject obj) {
-        return recursiveConvert(frame, fromForeign(obj));
+    protected byte fromTruffleObject(TruffleObject obj) {
+        return recursiveConvert(fromForeign(obj));
     }
 
     @Specialization
@@ -111,23 +110,23 @@ abstract class ToI8 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected byte fromLLVMFunctionDescriptor(VirtualFrame frame, LLVMFunctionDescriptor fd,
+    protected byte fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (byte) toNative.executeWithTarget(frame, fd).getVal();
+        return (byte) toNative.executeWithTarget(fd).getVal();
     }
 
     @Specialization
-    protected byte fromSharedDescriptor(VirtualFrame frame, LLVMSharedGlobalVariable shared,
+    protected byte fromSharedDescriptor(LLVMSharedGlobalVariable shared,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (byte) access.executeWithTarget(frame, shared.getDescriptor()).getVal();
+        return (byte) access.executeWithTarget(shared.getDescriptor()).getVal();
     }
 
-    private byte recursiveConvert(VirtualFrame frame, Object o) {
+    private byte recursiveConvert(Object o) {
         if (toI8 == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toI8 = ToI8NodeGen.create();
         }
-        return (byte) toI8.executeWithTarget(frame, o);
+        return (byte) toI8.executeWithTarget(o);
     }
 
     protected static boolean notLLVM(TruffleObject value) {

@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -44,7 +43,7 @@ public abstract class LLVMLoadExpressionNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object store(VirtualFrame frame, Object address) {
-        return load.executeWithTarget(frame, address);
+    protected Object store(Object address) {
+        return load.executeWithTarget(address);
     }
 }

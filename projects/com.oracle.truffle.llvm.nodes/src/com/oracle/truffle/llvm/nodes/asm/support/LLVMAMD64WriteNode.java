@@ -71,28 +71,28 @@ public abstract class LLVMAMD64WriteNode extends Node {
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI8(VirtualFrame frame, Object addr, byte value) {
-        storeI8.executeWithTarget(frame, addr, value);
+    protected void doI8(Object addr, byte value) {
+        storeI8.executeWithTarget(addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI16(VirtualFrame frame, Object addr, short value) {
-        storeI16.executeWithTarget(frame, addr, value);
+    protected void doI16(Object addr, short value) {
+        storeI16.executeWithTarget(addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI32(VirtualFrame frame, Object addr, int value) {
-        storeI32.executeWithTarget(frame, addr, value);
+    protected void doI32(Object addr, int value) {
+        storeI32.executeWithTarget(addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI64(VirtualFrame frame, Object addr, long value) {
-        storeI64.executeWithTarget(frame, addr, value);
+    protected void doI64(Object addr, long value) {
+        storeI64.executeWithTarget(addr, value);
     }
 
     @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doObject(VirtualFrame frame, Object addr, Object value) {
-        storeAddress.executeWithTarget(frame, addr, value);
+    protected void doObject(Object addr, Object value) {
+        storeAddress.executeWithTarget(addr, value);
     }
 
     @Specialization

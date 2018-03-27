@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -49,13 +48,13 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
-    protected Object case1(VirtualFrame frame, Object target, Object source, int length) {
-        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
+    protected Object doInt(Object target, Object source, int length) {
+        return memmove(convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
     }
 
     @Specialization
-    protected Object case2(VirtualFrame frame, Object target, Object source, long length) {
-        return memmove(convertTarget.executeWithTarget(frame, target), convertSource.executeWithTarget(frame, source), length);
+    protected Object doLong(Object target, Object source, long length) {
+        return memmove(convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
     }
 
     private Object memmove(LLVMAddress target, LLVMAddress source, long length) {

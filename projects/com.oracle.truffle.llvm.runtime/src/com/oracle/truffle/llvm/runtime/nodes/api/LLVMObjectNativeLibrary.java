@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -47,20 +46,20 @@ public abstract class LLVMObjectNativeLibrary extends Node {
     /**
      * Check whether the object has a representation as native pointer.
      */
-    public abstract boolean isPointer(VirtualFrame frame, Object obj);
+    public abstract boolean isPointer(Object obj);
 
     /**
      * Get the native pointer representation of an object. This can only be called when
      * {@link #isPointer} is true.
      */
-    public abstract long asPointer(VirtualFrame frame, Object obj) throws InteropException;
+    public abstract long asPointer(Object obj) throws InteropException;
 
     /**
      * Transform this object to a native representation. The return value of this method should
      * return true for {@link #isPointer}. If {@link #isPointer} is already true, this method can
      * return obj without doing anything else.
      */
-    public abstract Object toNative(VirtualFrame frame, Object obj) throws InteropException;
+    public abstract Object toNative(Object obj) throws InteropException;
 
     public static LLVMObjectNativeLibrary createCached(Object obj) {
         return LLVMObjectNativeFactory.createCached(obj);

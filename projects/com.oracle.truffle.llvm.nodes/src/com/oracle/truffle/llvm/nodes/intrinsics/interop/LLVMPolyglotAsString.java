@@ -121,23 +121,23 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
         @Specialization(guards = "srcBuffer.getClass() == srcBufferClass")
-        long doWrite(VirtualFrame frame, ByteBuffer srcBuffer, Object target, long targetLen, int zeroTerminatorLen,
+        long doWrite(ByteBuffer srcBuffer, Object target, long targetLen, int zeroTerminatorLen,
                         @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass) {
             ByteBuffer source = CompilerDirectives.castExact(srcBuffer, srcBufferClass);
 
             long bytesWritten = 0;
             Object ptr = target;
             while (source.hasRemaining() && bytesWritten < targetLen) {
-                write.executeWithTarget(frame, ptr, source.get());
-                ptr = inc.executeWithTarget(frame, ptr, Byte.BYTES);
+                write.executeWithTarget(ptr, source.get());
+                ptr = inc.executeWithTarget(ptr, Byte.BYTES);
                 bytesWritten++;
             }
 
             long ret = bytesWritten;
 
             for (int i = 0; i < zeroTerminatorLen && bytesWritten < targetLen; i++) {
-                write.executeWithTarget(frame, ptr, (byte) 0);
-                ptr = inc.executeWithTarget(frame, ptr, Byte.BYTES);
+                write.executeWithTarget(ptr, (byte) 0);
+                ptr = inc.executeWithTarget(ptr, Byte.BYTES);
                 bytesWritten++;
             }
 

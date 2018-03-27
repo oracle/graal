@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -64,10 +63,10 @@ import sun.misc.SignalHandler;
 public abstract class LLVMSignal extends LLVMExpressionNode {
 
     @Specialization
-    protected LLVMAddress doSignal(VirtualFrame frame, int signal, Object handler,
+    protected LLVMAddress doSignal(int signal, Object handler,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return setSignalHandler(context.get(), signal, toNative.executeWithTarget(frame, handler));
+        return setSignalHandler(context.get(), signal, toNative.executeWithTarget(handler));
     }
 
     private static LLVMAddress setSignalHandler(LLVMContext context, int signalId, LLVMAddress function) {
