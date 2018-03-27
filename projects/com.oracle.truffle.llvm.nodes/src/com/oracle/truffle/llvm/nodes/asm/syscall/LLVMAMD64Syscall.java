@@ -78,6 +78,8 @@ public class LLVMAMD64Syscall {
     public static final int SYS_getcwd = 79;
     public static final int SYS_rename = 82;
     public static final int SYS_unlink = 87;
+    public static final int SYS_chmod = 90;
+    public static final int SYS_chown = 92;
     public static final int SYS_getuid = 102;
     public static final int SYS_syslog = 103;
     public static final int SYS_getgid = 104;
@@ -99,5 +101,6 @@ public class LLVMAMD64Syscall {
     public static final int SYS_exit_group = 231;
     public static final int SYS_renameat = 264;
     public static final int SYS_faccessat = 269;
+    public static final int SYS_utimensat = 280;
     public static final int SYS_pipe2 = 293;
 }

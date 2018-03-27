@@ -35,6 +35,8 @@ import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallAccessNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallBindNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallChmodNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallChownNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallClockGetTimeNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallCloseNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallConnectNodeGen;
@@ -90,6 +92,7 @@ import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallStatfsNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallSyslogNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallUnlinkNodeGen;
+import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallUtimensatNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64SyscallWritevNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64UnknownSyscallNode;
@@ -184,6 +187,10 @@ public class BasicSystemContextExtension extends SystemContextExtension {
                 return LLVMAMD64SyscallRenameNodeGen.create();
             case LLVMAMD64Syscall.SYS_unlink:
                 return LLVMAMD64SyscallUnlinkNodeGen.create();
+            case LLVMAMD64Syscall.SYS_chmod:
+                return LLVMAMD64SyscallChmodNodeGen.create();
+            case LLVMAMD64Syscall.SYS_chown:
+                return LLVMAMD64SyscallChownNodeGen.create();
             case LLVMAMD64Syscall.SYS_getuid:
                 return new LLVMAMD64SyscallGetuidNode();
             case LLVMAMD64Syscall.SYS_syslog:
@@ -224,6 +231,8 @@ public class BasicSystemContextExtension extends SystemContextExtension {
                 return LLVMAMD64SyscallRenameatNodeGen.create();
             case LLVMAMD64Syscall.SYS_faccessat:
                 return LLVMAMD64SyscallFaccessatNodeGen.create();
+            case LLVMAMD64Syscall.SYS_utimensat:
+                return LLVMAMD64SyscallUtimensatNodeGen.create();
             case LLVMAMD64Syscall.SYS_pipe2:
                 return LLVMAMD64SyscallPipe2NodeGen.create();
             default:

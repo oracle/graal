@@ -45,22 +45,25 @@
 #include <sys/vfs.h>
 #include <sys/klog.h>
 #include <sys/syscall.h>
+#include <sys/sendfile.h>
 #endif
 
-
 #ifdef __linux__
-
-#include <sys/sendfile.h>
-
-#define CALL(type, name, ...) { \
-	int native_errno = errno; \
-	type result = name(__VA_ARGS__); \
-	if(result == (type) -1) { \
-		result = (type) (long) -errno; \
-	} \
-	errno = native_errno; \
-	return result; \
-}
+	#define CALL(type, name, ...) { \
+		int native_errno = errno; \
+		type result = name(__VA_ARGS__); \
+		if(result == (type) -1) { \
+			result = (type) (long) -errno; \
+		} \
+		errno = native_errno; \
+		return result; \
+	}
+#else
+	#define CALL(type, name, ...) { \
+		fprintf(stderr, "Syscalls not supported on this OS.\n"); \
+		return -ENOSYS; \
+	}
+#endif
 
 int __sulong_posix_open(const char* pathname, int flags, mode_t mode)
 {
@@ -104,11 +107,7 @@ int __sulong_posix_dup2(int oldfd, int newfd)
 
 int __sulong_posix_dup3(int oldfd, int newfd, int flags)
 {
-#ifdef __linux__
 	CALL(int, dup3, oldfd, newfd, flags)
-#else
-	CALL(int, dup2, oldfd, newfd)
-#endif
 }
 
 int __sulong_posix_fcntl(int fd, int cmd, void* arg)
@@ -138,11 +137,7 @@ int __sulong_posix_lstat(const char* path, struct stat* statbuf)
 
 ssize_t __sulong_posix_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
 {
-#ifdef __linux__
 	CALL(ssize_t, sendfile, out_fd, in_fd, offset, count);
-#else
-	return -ENOSYS;
-#endif
 }
 
 void* __sulong_posix_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
@@ -160,6 +155,16 @@ int __sulong_posix_unlink(const char *path)
 	CALL(int, unlink, path);
 }
 
+int __sulong_posix_chmod(const char *filename, mode_t mode)
+{
+	CALL(int, chmod, filename, mode);
+}
+
+int __sulong_posix_chown(const char *filename, uid_t user, gid_t group)
+{
+	CALL(int, chown, filename, user, group);
+}
+
 int __sulong_posix_socket(int domain, int type, int protocol)
 {
 	CALL(int, socket, domain, type, protocol);
@@ -172,11 +177,12 @@ int __sulong_posix_pipe(int pipefd[2])
 
 int __sulong_posix_pipe2(int pipefd[2], int flags)
 {
-#ifdef __linux__
 	CALL(int, pipe2, pipefd, flags);
-#else
-	CALL(int, pipe, pipefd);
-#endif
+}
+
+int __sulong_posix_utimensat(int dfd, const char *filename, struct timespec *utimes, int flags)
+{
+	CALL(int, utimensat, dfd, filename, utimes, flags);
 }
 
 int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
@@ -296,12 +302,7 @@ int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* n
 
 int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
 {
-#ifdef __linux__
 	CALL(int, syscall, __NR_getdents64, fd, dirp, count);
-#else
-	fprintf(stderr, "getdents64 is not supported on this OS.\n");
-	return -ENOSYS;
-#endif
 }
 
 int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
@@ -311,32 +312,17 @@ int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
 
 int __sulong_posix_syslog(int type, char* bufp, int len)
 {
-#ifdef __linux__
 	CALL(int, klogctl, type, bufp, len);
-#else
-	fprintf(stderr, "klogctl is not supported on this OS.\n");
-	return -ENOSYS;
-#endif
 }
 
 int __sulong_posix_statfs(const char* path, struct statfs* buf)
 {
-#ifdef __linux__
 	CALL(int, statfs, path, buf);
-#else
-	fprintf(stderr, "statfs is not supported on this OS.\n");
-	return -ENOSYS;
-#endif
 }
 
 int __sulong_posix_fstatfs(int fd, struct statfs* buf)
 {
-#ifdef __linux__
 	CALL(int, fstatfs, fd, buf);
-#else
-	fprintf(stderr, "fstatfs is not supported on this OS.\n");
-	return -ENOSYS;
-#endif
 }
 
 int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
@@ -348,254 +334,3 @@ pid_t __sulong_posix_getpgid(pid_t pid)
 {
 	CALL(pid_t, getpgid, pid);
 }
-
-#else
-
-#include <stdio.h>
-
-#define ERROR() { \
-	fprintf(stderr, "Syscalls not supported on this OS.\n"); \
-	return -ENOSYS; \
-}
-
-int __sulong_posix_open(const char* pathname, int flags, mode_t mode)
-{
-	ERROR();
-}
-
-int __sulong_posix_close(int fd)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_read(int fd, void* buf, size_t count)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_write(int fd, const void* buf, size_t count)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_readv(int fd, const struct iovec* iov, int iovcnt)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_writev(int fd, const struct iovec* iov, int iovcnt)
-{
-	ERROR();
-}
-
-int __sulong_posix_dup(int oldfd)
-{
-	ERROR();
-}
-
-int __sulong_posix_dup2(int oldfd, int newfd)
-{
-	ERROR();
-}
-
-int __sulong_posix_dup3(int oldfd, int newfd, int flags)
-{
-	ERROR();
-}
-
-int __sulong_posix_fcntl(int fd, int cmd, void* arg)
-{
-	ERROR();
-}
-
-int __sulong_posix_ioctl(int fd, unsigned long request, void* argp)
-{
-	ERROR();
-}
-
-int __sulong_posix_stat(const char* path, struct stat* statbuf)
-{
-	ERROR();
-}
-
-int __sulong_posix_fstat(int fd, struct stat* statbuf)
-{
-	ERROR();
-}
-
-int __sulong_posix_lstat(const char* path, struct stat* statbuf)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_sendfile(int out_fd, int in_fd, off_t* offset, size_t count)
-{
-	ERROR();
-}
-
-void* __sulong_posix_mmap(void* addr, size_t length, int prot, int flags, int fd, off_t offset)
-{
-	ERROR();
-}
-
-int __sulong_posix_munmap(void* addr, size_t length)
-{
-	ERROR();
-}
-
-int __sulong_posix_unlink(const char *path)
-{
-	ERROR();
-}
-
-int __sulong_posix_socket(int domain, int type, int protocol)
-{
-	ERROR();
-}
-
-int __sulong_posix_pipe(int pipefd[2])
-{
-	ERROR();
-}
-
-int __sulong_posix_bind(int sockfd, const struct sockaddr* addr, socklen_t addrlen)
-{
-	ERROR();
-}
-
-int __sulong_posix_getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
-{
-	ERROR();
-}
-
-int __sulong_posix_getsockopt(int sockfd, int level, int optname, void* optval, socklen_t* optlen)
-{
-	ERROR();
-}
-
-int __sulong_posix_setsockopt(int sockfd, int level, int optname, const void* optval, socklen_t optlen)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_sendto(int socket, const void* message, size_t length, int flags, const struct sockaddr* dest_addr, socklen_t dest_len)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_sendmsg(int socket, const struct msghdr* message, int flags)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_recvfrom(int socket, void* restrict buffer, size_t length, int flags, struct sockaddr* restrict address, socklen_t* restrict address_len)
-{
-	ERROR();
-}
-
-ssize_t __sulong_posix_recvmsg(int socket, struct msghdr* message, int flags)
-{
-	ERROR();
-}
-
-int __sulong_posix_listen(int socket, int backlog)
-{
-	ERROR();
-}
-
-int __sulong_posix_connect(int socket, const struct sockaddr* address, socklen_t address_len)
-{
-	ERROR();
-}
-
-int __sulong_posix_getuid(void)
-{
-	ERROR();
-}
-
-int __sulong_posix_getgid(void)
-{
-	ERROR();
-}
-
-off_t __sulong_posix_lseek(int fildes, off_t offset, int whence)
-{
-	ERROR();
-}
-
-int __sulong_posix_setuid(uid_t uid)
-{
-	ERROR();
-}
-
-int __sulong_posix_setgid(gid_t gid)
-{
-	ERROR();
-}
-
-uid_t __sulong_posix_geteuid(void)
-{
-	ERROR();
-}
-
-gid_t __sulong_posix_getegid(void)
-{
-	ERROR();
-}
-
-int __sulong_posix_access(const char* path, int amode)
-{
-	ERROR();
-}
-
-int __sulong_posix_faccessat(int fd, const char* path, int amode, int flag)
-{
-	ERROR();
-}
-
-int __sulong_posix_rename(const char* old, const char* new)
-{
-	ERROR();
-}
-
-int __sulong_posix_renameat(int oldfd, const char* old, int newfd, const char* new)
-{
-	ERROR();
-}
-
-int __sulong_posix_getdents64(unsigned int fd, void* dirp, unsigned int count)
-{
-	ERROR();
-}
-
-int __sulong_posix_getgroups(int gidsetsize, gid_t grouplist[])
-{
-	ERROR();
-}
-
-int __sulong_posix_syslog(int type, char* bufp, int len)
-{
-	ERROR();
-}
-
-int __sulong_posix_statfs(const char* path, struct statfs* buf)
-{
-	ERROR();
-}
-
-int __sulong_posix_fstatfs(int fd, struct statfs* buf)
-{
-	ERROR();
-}
-
-int __sulong_posix_poll(struct pollfd* fds, nfds_t nfds, int timeout)
-{
-	ERROR();
-}
-
-pid_t __sulong_posix_getpgid(pid_t pid)
-{
-	ERROR();
-}
-
-#endif
