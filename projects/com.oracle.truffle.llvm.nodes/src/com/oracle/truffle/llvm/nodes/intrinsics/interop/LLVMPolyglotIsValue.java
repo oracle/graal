@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -43,22 +45,23 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
 
     @Specialization
-    protected boolean isLLVMTruffleObject(LLVMTruffleObject object) {
-        return object.getOffset() == 0;
+    boolean isLLVMTruffleObject(LLVMTruffleObject object,
+                    @Cached("createOptional()") LLVMAsForeignNode asForeign) {
+        return asForeign.execute(object) != null;
     }
 
     @Specialization
-    protected boolean isBoxedPrimitive(LLVMBoxedPrimitive prim) {
+    boolean isBoxedPrimitive(LLVMBoxedPrimitive prim) {
         return true;
     }
 
     @Specialization
-    protected boolean isString(String str) {
+    boolean isString(String str) {
         return true;
     }
 
     @Fallback
-    public boolean fallback(Object object) {
+    boolean fallback(Object object) {
         return false;
     }
 }

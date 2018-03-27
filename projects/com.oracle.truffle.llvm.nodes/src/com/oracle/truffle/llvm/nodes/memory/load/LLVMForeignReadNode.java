@@ -41,7 +41,7 @@ public class LLVMForeignReadNode extends Node {
 
     @Child private LLVMObjectReadNode read;
 
-    protected LLVMForeignReadNode(ForeignToLLVMType type, int elementAccessSize) {
+    protected LLVMForeignReadNode(ForeignToLLVMType type) {
         this.read = LLVMObjectAccessFactory.createRead(type);
     }
 

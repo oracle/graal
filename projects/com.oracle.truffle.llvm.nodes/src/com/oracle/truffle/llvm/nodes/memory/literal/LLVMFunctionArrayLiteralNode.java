@@ -106,7 +106,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     protected LLVMForeignWriteNode[] createForeignWrites() {
         LLVMForeignWriteNode[] writes = new LLVMForeignWriteNode[values.length];
         for (int i = 0; i < writes.length; i++) {
-            writes[i] = LLVMForeignWriteNodeGen.create(PointerType.VOID, 8);
+            writes[i] = LLVMForeignWriteNodeGen.create(PointerType.VOID);
         }
         return writes;
     }

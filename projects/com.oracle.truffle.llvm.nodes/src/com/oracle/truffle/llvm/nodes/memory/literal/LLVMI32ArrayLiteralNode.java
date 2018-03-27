@@ -77,7 +77,7 @@ public abstract class LLVMI32ArrayLiteralNode extends LLVMExpressionNode {
     }
 
     protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(PrimitiveType.I32, 4);
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.I32);
     }
 
     @Specialization

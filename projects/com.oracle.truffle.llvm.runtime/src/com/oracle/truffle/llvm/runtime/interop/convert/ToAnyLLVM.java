@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,7 +43,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 
 abstract class ToAnyLLVM extends ForeignToLLVM {
 
@@ -125,7 +125,7 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
 
     @Specialization(guards = {"!checkIsPointer(obj)", "notLLVM(obj)"})
     protected LLVMTruffleObject fromTruffleObject(TruffleObject obj) {
-        return new LLVMTruffleObject(obj, PointerType.VOID);
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(obj));
     }
 
     @TruffleBoundary
@@ -155,7 +155,8 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
                 throw new IllegalStateException("Foreign value is not a pointer!", ex);
             }
         } else if (value instanceof TruffleObject && !thiz.checkIsPointer((TruffleObject) value) && notLLVM((TruffleObject) value)) {
-            return new LLVMTruffleObject((TruffleObject) value, PointerType.VOID);
+            LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown((TruffleObject) value);
+            return new LLVMTruffleObject(typed);
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

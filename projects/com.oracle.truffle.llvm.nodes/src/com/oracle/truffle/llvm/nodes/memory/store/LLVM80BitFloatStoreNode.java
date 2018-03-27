@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     public LLVM80BitFloatStoreNode() {
-        super(PrimitiveType.X86_FP80, 10);
+        super(PrimitiveType.X86_FP80);
     }
 
     @Specialization
@@ -75,6 +75,6 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     @Override
     protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS), I8_SIZE_IN_BYTES);
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS));
     }
 }

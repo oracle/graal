@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,10 +37,10 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
@@ -69,6 +69,6 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
             bytes[count++] = c;
             ptr += Byte.BYTES;
         }
-        return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), PointerType.I8);
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(bytes)));
     }
 }

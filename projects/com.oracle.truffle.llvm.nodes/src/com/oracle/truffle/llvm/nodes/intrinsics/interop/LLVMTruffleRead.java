@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -48,13 +49,6 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class LLVMTruffleRead extends LLVMIntrinsic {
-
-    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError("Pointee must be unmodified");
-        }
-    }
 
     private static Object doRead(TruffleObject value, String name, Node foreignRead, ForeignToLLVM toLLVM) {
         try {
@@ -81,6 +75,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
         @Child protected Node foreignRead = Message.READ.createNode();
         @Child protected ForeignToLLVM toLLVM;
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
         public LLVMTruffleReadFromName(ForeignToLLVM toLLVM) {
             this.toLLVM = toLLVM;
@@ -91,15 +86,15 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         protected Object cached(LLVMTruffleObject value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("readStr.executeWithTarget(id)") String cachedId) {
-            checkLLVMTruffleObject(value);
-            return doRead(value.getObject(), cachedId, foreignRead, toLLVM);
+            TruffleObject foreign = asForeign.execute(value);
+            return doRead(foreign, cachedId, foreignRead, toLLVM);
         }
 
         @Specialization(replaces = "cached")
         protected Object uncached(LLVMTruffleObject value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
-            checkLLVMTruffleObject(value);
-            return doRead(value.getObject(), readStr.executeWithTarget(id), foreignRead, toLLVM);
+            TruffleObject foreign = asForeign.execute(value);
+            return doRead(foreign, readStr.executeWithTarget(id), foreignRead, toLLVM);
         }
 
         @Fallback
@@ -116,6 +111,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
         @Child protected Node foreignRead = Message.READ.createNode();
         @Child protected ForeignToLLVM toLLVM;
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
         public LLVMTruffleReadFromIndex(ForeignToLLVM toLLVM) {
             this.toLLVM = toLLVM;
@@ -123,8 +119,8 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
         @Specialization
         protected Object doIntrinsic(LLVMTruffleObject value, int id) {
-            checkLLVMTruffleObject(value);
-            return doReadIdx(value.getObject(), id, foreignRead, toLLVM);
+            TruffleObject foreign = asForeign.execute(value);
+            return doReadIdx(foreign, id, foreignRead, toLLVM);
         }
 
         @Fallback

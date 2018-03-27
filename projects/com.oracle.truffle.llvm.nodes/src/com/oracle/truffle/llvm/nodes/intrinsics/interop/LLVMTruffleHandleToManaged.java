@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
@@ -52,6 +51,6 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode forceAddressNode) {
         LLVMAddress handle = forceAddressNode.executeWithTarget(rawHandle);
         TruffleObject object = context.get().getManagedObjectForHandle(handle);
-        return new LLVMTruffleObject(object, PointerType.VOID);
+        return new LLVMTruffleObject(object);
     }
 }

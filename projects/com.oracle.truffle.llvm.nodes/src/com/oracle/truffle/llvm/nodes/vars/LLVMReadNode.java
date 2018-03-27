@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,14 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.vars;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.ForeignAttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -119,26 +125,47 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         @Specialization
         protected Object readObject(VirtualFrame frame) {
-            return attach.execute(FrameUtil.getObjectSafe(frame, getSlot()), getSlot());
+            return attachType(FrameUtil.getObjectSafe(frame, getSlot()));
+        }
+
+        private Object attachType(Object obj) {
+            Type type = (Type) getSlot().getInfo();
+            return attach.execute(obj, type != null ? type.getSourceType() : null);
         }
     }
 
     public abstract static class AttachInteropTypeNode extends LLVMNode {
 
-        public abstract Object execute(Object object, FrameSlot slot);
+        public abstract Object execute(Object object, LLVMSourceType type);
 
-        @Specialization
-        protected Object doForeign(LLVMTruffleObject object, FrameSlot slot) {
-            return new LLVMTruffleObject(object, (Type) slot.getInfo());
+        @Specialization(guards = {"type != null", "object.getOffset() == 0"})
+        protected Object doForeign(LLVMTruffleObject object, LLVMSourceType type,
+                        @Cached("create()") ForeignAttachInteropTypeNode attach) {
+            return new LLVMTruffleObject(attach.execute(object.getObject(), type));
         }
 
-        @Specialization(guards = "!isForeign(object)")
-        protected Object doOther(Object object, @SuppressWarnings("unused") FrameSlot slot) {
+        @Fallback
+        protected Object doOther(Object object, @SuppressWarnings("unused") LLVMSourceType type) {
             return object;
         }
+    }
 
-        static boolean isForeign(Object object) {
-            return object instanceof LLVMTruffleObject;
+    public abstract static class ForeignAttachInteropTypeNode extends LLVMNode {
+
+        public abstract TruffleObject execute(TruffleObject object, LLVMSourceType type);
+
+        public static ForeignAttachInteropTypeNode create() {
+            return ForeignAttachInteropTypeNodeGen.create();
+        }
+
+        @Specialization(guards = "object.getType() == null")
+        protected TruffleObject doForeign(LLVMTypedForeignObject object, LLVMSourceType type) {
+            return LLVMTypedForeignObject.create(object.getForeign(), type);
+        }
+
+        @Fallback
+        protected TruffleObject doOther(TruffleObject object, @SuppressWarnings("unused") LLVMSourceType type) {
+            return object;
         }
     }
 

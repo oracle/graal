@@ -57,13 +57,13 @@ import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter.DataSpecConverterImpl;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -239,7 +239,7 @@ public final class LLVMContext {
         for (int i = 0; i < values.length; i++) {
             result[i] = JavaInterop.asTruffleObject(values[i].getBytes());
         }
-        return new LLVMTruffleObject(JavaInterop.asTruffleObject(result), PointerType.I8);
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(result)));
     }
 
     public void dispose(LLVMMemory memory) {
@@ -460,6 +460,14 @@ public final class LLVMContext {
         }
     }
 
+    private static TruffleObject getIdentityKey(TruffleObject obj) {
+        if (obj instanceof LLVMTypedForeignObject) {
+            return ((LLVMTypedForeignObject) obj).getForeign();
+        } else {
+            return obj;
+        }
+    }
+
     @TruffleBoundary
     public void releaseHandle(LLVMMemory memory, LLVMAddress address) {
         synchronized (handlesLock) {
@@ -470,7 +478,7 @@ public final class LLVMContext {
             }
 
             toManaged.remove(address);
-            toNative.remove(object);
+            toNative.remove(getIdentityKey(object));
             memory.free(address);
         }
     }
@@ -478,7 +486,7 @@ public final class LLVMContext {
     @TruffleBoundary
     public LLVMAddress getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
         synchronized (handlesLock) {
-            return toNative.computeIfAbsent(object, (k) -> {
+            return toNative.computeIfAbsent(getIdentityKey(object), (k) -> {
                 LLVMAddress allocatedMemory = memory.allocateMemory(Long.BYTES);
                 memory.putI64(allocatedMemory, 0xdeadbeef);
                 toManaged.put(allocatedMemory, object);

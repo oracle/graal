@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ForeignToComparableValueNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEqualsNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
@@ -55,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -166,6 +168,25 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         this.op = op;
     }
 
+    protected abstract static class ForeignToComparableValue extends Node {
+
+        abstract LLVMAddress execute(TruffleObject obj);
+
+        public static ForeignToComparableValue create() {
+            return ForeignToComparableValueNodeGen.create();
+        }
+
+        @Specialization
+        protected LLVMAddress doLLVMTruffleObject(LLVMTypedForeignObject obj) {
+            return LLVMAddress.fromLong(getHashCode(obj.getForeign()));
+        }
+
+        @Fallback
+        protected LLVMAddress doOther(TruffleObject obj) {
+            return LLVMAddress.fromLong(getHashCode(obj));
+        }
+    }
+
     @ImportStatic(ForeignToLLVMType.class)
     protected abstract static class ManagedToComparableValue extends Node {
 
@@ -186,19 +207,19 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doLLVMTruffleObject(LLVMTruffleObject address) {
-            return LLVMAddress.fromLong(getHashCode(address.getObject()) + address.getOffset());
-        }
-
-        @TruffleBoundary
-        private static int getHashCode(Object address) {
-            return address.hashCode();
+        protected LLVMAddress doLLVMTruffleObject(LLVMTruffleObject address,
+                        @Cached("create()") ForeignToComparableValue toComparable) {
+            return toComparable.execute(address.getObject()).increment(address.getOffset());
         }
 
         @Specialization
         protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive address,
                         @Cached("create(I64)") ForeignToLLVM toLLVM) {
             return LLVMAddress.fromLong((long) toLLVM.executeWithTarget(address.getValue()));
+        }
+
+        public static ManagedToComparableValue create() {
+            return ManagedToComparableValueNodeGen.create();
         }
     }
 
@@ -218,12 +239,8 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         @Specialization(guards = "!lib.isPointer(obj)")
         @SuppressWarnings("unused")
         protected LLVMAddress doManaged(Object obj, LLVMObjectNativeLibrary lib,
-                        @Cached("createToComparable()") ManagedToComparableValue toComparable) {
+                        @Cached("create()") ManagedToComparableValue toComparable) {
             return toComparable.execute(obj);
-        }
-
-        static ManagedToComparableValue createToComparable() {
-            return ManagedToComparableValueNodeGen.create();
         }
     }
 
@@ -250,6 +267,11 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
+    @TruffleBoundary
+    private static int getHashCode(Object address) {
+        return address.hashCode();
+    }
+
     @Child private ToComparableValue convertVal1 = ToComparableValueNodeGen.create();
     @Child private ToComparableValue convertVal2 = ToComparableValueNodeGen.create();
 
@@ -268,9 +290,19 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             return JavaInterop.asJavaObject(obj1) == JavaInterop.asJavaObject(obj2);
         }
 
+        @Specialization
+        protected boolean doForeign(LLVMTypedForeignObject obj1, LLVMTypedForeignObject obj2,
+                        @Cached("create()") LLVMForeignEqualsNode equals) {
+            return equals.execute(obj1.getForeign(), obj2.getForeign());
+        }
+
         @Fallback
         protected boolean doOther(TruffleObject obj1, TruffleObject obj2) {
             return obj1 == obj2;
+        }
+
+        public static LLVMForeignEqualsNode create() {
+            return LLVMForeignEqualsNodeGen.create();
         }
     }
 
@@ -280,7 +312,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
         @Specialization
         protected boolean doForeign(LLVMTruffleObject obj1, LLVMTruffleObject obj2,
-                        @Cached("createForeignEquals()") LLVMForeignEqualsNode equals) {
+                        @Cached("create()") LLVMForeignEqualsNode equals) {
             return equals.execute(obj1.getObject(), obj2.getObject()) && obj1.getOffset() == obj2.getOffset();
         }
 
@@ -305,10 +337,6 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             // different type, and at least one of them is managed, and not a pointer
             // these objects can not have the same address
             return false;
-        }
-
-        static LLVMForeignEqualsNode createForeignEquals() {
-            return LLVMForeignEqualsNodeGen.create();
         }
     }
 

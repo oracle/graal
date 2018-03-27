@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVMI32StoreNode extends LLVMStoreNode {
 
     public LLVMI32StoreNode() {
-        super(PrimitiveType.I32, I32_SIZE_IN_BYTES);
+        super(PrimitiveType.I32);
     }
 
     @Specialization

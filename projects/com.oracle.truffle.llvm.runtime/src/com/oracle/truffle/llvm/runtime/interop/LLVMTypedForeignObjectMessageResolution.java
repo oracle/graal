@@ -27,61 +27,51 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen.BoxedGetStringSizeNodeGen;
-import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
+@MessageResolution(receiverType = LLVMTypedForeignObject.class)
+public class LLVMTypedForeignObjectMessageResolution {
 
-    @Specialization
-    long getForeignStringSize(LLVMTruffleObject object,
-                    @Cached("create()") LLVMAsForeignNode asForeign,
-                    @Cached("create()") BoxedGetStringSize getSize) {
-        return getSize.execute(asForeign.execute(object));
-    }
+    @Resolve(message = "IS_POINTER")
+    public abstract static class ForeignIsPointer extends Node {
 
-    @Specialization
-    long getStringSize(String str) {
-        return str.length();
-    }
+        @Child Node isPointer = Message.IS_POINTER.createNode();
 
-    abstract static class BoxedGetStringSize extends Node {
-
-        @Child Node isBoxed = Message.IS_BOXED.createNode();
-        @Child Node unbox = Message.UNBOX.createNode();
-
-        abstract long execute(TruffleObject object);
-
-        boolean checkBoxed(TruffleObject object) {
-            return ForeignAccess.sendIsBoxed(isBoxed, object);
+        protected boolean access(LLVMTypedForeignObject receiver) {
+            return ForeignAccess.sendIsPointer(isPointer, receiver.getForeign());
         }
+    }
 
-        @Specialization(guards = "checkBoxed(object)")
-        long doBoxed(TruffleObject object) {
+    @Resolve(message = "AS_POINTER")
+    public abstract static class ForeignAsPointer extends Node {
+
+        @Child Node asPointer = Message.AS_POINTER.createNode();
+
+        protected long access(LLVMTypedForeignObject receiver) {
             try {
-                String unboxed = (String) ForeignAccess.sendUnbox(unbox, object);
-                return unboxed.length();
+                return ForeignAccess.sendAsPointer(asPointer, receiver.getForeign());
             } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
             }
         }
+    }
 
-        public static BoxedGetStringSize create() {
-            return BoxedGetStringSizeNodeGen.create();
+    @Resolve(message = "IS_NULL")
+    public abstract static class ForeignIsNull extends Node {
+
+        @Child Node isNull = Message.IS_NULL.createNode();
+
+        protected boolean access(LLVMTypedForeignObject receiver) {
+            return ForeignAccess.sendIsNull(isNull, receiver.getForeign());
         }
     }
 }

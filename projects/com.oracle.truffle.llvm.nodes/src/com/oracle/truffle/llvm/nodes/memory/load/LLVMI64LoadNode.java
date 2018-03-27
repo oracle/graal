@@ -69,7 +69,7 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I64, I64_SIZE_IN_BYTES);
+        return new LLVMForeignReadNode(ForeignToLLVMType.I64);
     }
 
     @Specialization

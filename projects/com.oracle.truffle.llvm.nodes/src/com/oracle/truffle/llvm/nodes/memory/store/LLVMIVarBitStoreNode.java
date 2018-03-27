@@ -43,15 +43,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
     public LLVMIVarBitStoreNode(VariableBitWidthType type) {
-        super(type, getSize(type));
-    }
-
-    private static int getSize(VariableBitWidthType type) {
-        int nrFullBytes = type.getBitSize() / Byte.SIZE;
-        if (type.getBitSize() % Byte.SIZE != 0) {
-            nrFullBytes += 1;
-        }
-        return nrFullBytes;
+        super(type);
     }
 
     @Specialization
@@ -83,6 +75,6 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
 
     @Override
     protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS), I8_SIZE_IN_BYTES);
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS));
     }
 }

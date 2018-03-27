@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVMFloatStoreNode extends LLVMStoreNode {
 
     public LLVMFloatStoreNode() {
-        super(PrimitiveType.FLOAT, FLOAT_SIZE_IN_BYTES);
+        super(PrimitiveType.FLOAT);
     }
 
     @Specialization

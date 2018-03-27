@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -66,6 +67,7 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
     @Child private Node foreignInvoke;
     @Child private ForeignToLLVM toLLVM;
+    @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
     public LLVMTruffleInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
@@ -75,13 +77,6 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
             prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create(argTypes[i]);
         }
         this.foreignInvoke = Message.createInvoke(args.length).createNode();
-    }
-
-    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError("Pointee must be unmodified");
-        }
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;
@@ -122,8 +117,8 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
                     @Cached("readStr.executeWithTarget(id)") String idStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
-        checkLLVMTruffleObject(value);
-        return doInvoke(frame, value.getObject(), idStr, context, getStack);
+        TruffleObject foreign = asForeign.execute(value);
+        return doInvoke(frame, foreign, idStr, context, getStack);
     }
 
     @Specialization(replaces = "cachedId")
@@ -131,8 +126,8 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
                     @Cached("createReadString()") LLVMReadStringNode readStr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
-        checkLLVMTruffleObject(value);
-        return doInvoke(frame, value.getObject(), readStr.executeWithTarget(id), context, getStack);
+        TruffleObject foreign = asForeign.execute(value);
+        return doInvoke(frame, foreign, readStr.executeWithTarget(id), context, getStack);
     }
 
     @Fallback

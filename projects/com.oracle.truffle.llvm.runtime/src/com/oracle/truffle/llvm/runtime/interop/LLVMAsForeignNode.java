@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,34 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.store;
+package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
-import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class LLVMForeignWriteNode extends LLVMNode {
+public abstract class LLVMAsForeignNode extends LLVMNode {
 
-    @Child private LLVMObjectWriteNode write;
+    final boolean allowNonForeign;
 
-    protected LLVMForeignWriteNode(Type valueType) {
-        this.write = LLVMObjectAccessFactory.createWrite(valueType);
+    protected LLVMAsForeignNode(boolean allowNonForeign) {
+        this.allowNonForeign = allowNonForeign;
     }
 
-    public abstract void execute(LLVMTruffleObject addr, Object value);
+    public abstract TruffleObject execute(LLVMTruffleObject object);
 
-    @Specialization
-    protected void doForeignAccess(LLVMTruffleObject addr, Object value) {
-        try {
-            write.executeWrite(addr.getObject(), addr.getOffset(), value);
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw e.raise();
-        }
+    public static LLVMAsForeignNode create() {
+        return LLVMAsForeignNodeGen.create(false);
+    }
+
+    public static LLVMAsForeignNode createOptional() {
+        return LLVMAsForeignNodeGen.create(true);
+    }
+
+    @Specialization(guards = "isForeign(object)")
+    TruffleObject doForeign(LLVMTruffleObject object) {
+        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) object.getObject();
+        return foreign.getForeign();
+    }
+
+    @Specialization(guards = {"allowNonForeign", "!isForeign(object)"})
+    TruffleObject doOther(@SuppressWarnings("unused") LLVMTruffleObject object) {
+        return null;
+    }
+
+    protected static boolean isForeign(LLVMTruffleObject object) {
+        return object.getOffset() == 0 && object.getObject() instanceof LLVMTypedForeignObject;
     }
 }

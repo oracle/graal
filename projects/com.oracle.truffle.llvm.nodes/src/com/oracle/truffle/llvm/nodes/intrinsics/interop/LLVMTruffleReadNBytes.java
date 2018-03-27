@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,10 +45,10 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
@@ -63,7 +63,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             bytes[i] = memory.getI8(ptr);
             ptr += Byte.BYTES;
         }
-        return new LLVMTruffleObject(JavaInterop.asTruffleObject(bytes), PointerType.I8);
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(bytes)));
     }
 
     @Specialization
@@ -83,7 +83,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             }
             chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
         }
-        return new LLVMTruffleObject(JavaInterop.asTruffleObject(chars), PointerType.I8);
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(chars)));
     }
 
     @Fallback

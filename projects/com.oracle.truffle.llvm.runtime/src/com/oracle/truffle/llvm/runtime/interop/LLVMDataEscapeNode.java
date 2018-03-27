@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -45,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen.ManagedEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -188,12 +191,32 @@ public abstract class LLVMDataEscapeNode extends Node {
     }
 
     @Specialization
-    protected TruffleObject escapingTruffleObject(LLVMTruffleObject address, LLVMContext context) {
+    TruffleObject escapingTruffleObject(LLVMTruffleObject address, LLVMContext context,
+                    @Cached("create()") ManagedEscapeNode managedEscape) {
         if (address.getOffset() == 0) {
-            return address.getObject();
+            return managedEscape.execute(address.getObject());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("TruffleObject after pointer arithmetic must not leave Sulong.");
+        }
+    }
+
+    abstract static class ManagedEscapeNode extends Node {
+
+        abstract TruffleObject execute(TruffleObject object);
+
+        @Specialization
+        TruffleObject doForeign(LLVMTypedForeignObject object) {
+            return object.getForeign();
+        }
+
+        @Fallback
+        TruffleObject doOther(TruffleObject object) {
+            return object;
+        }
+
+        public static ManagedEscapeNode create() {
+            return ManagedEscapeNodeGen.create();
         }
     }
 

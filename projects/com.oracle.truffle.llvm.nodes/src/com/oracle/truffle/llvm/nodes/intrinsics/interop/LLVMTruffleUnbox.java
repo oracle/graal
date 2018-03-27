@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -51,6 +52,7 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
 
     @Child private Node foreignUnbox = Message.UNBOX.createNode();
     @Child private ForeignToLLVM toLLVM;
+    @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
     public LLVMTruffleUnbox(ForeignToLLVM toLLVMNode) {
         this.toLLVM = toLLVMNode;
@@ -58,8 +60,8 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
 
     @Specialization
     protected Object doIntrinsic(LLVMTruffleObject value) {
-        checkLLVMTruffleObject(value);
-        return doUnbox(value.getObject());
+        TruffleObject foreign = asForeign.execute(value);
+        return doUnbox(foreign);
     }
 
     @Specialization
@@ -73,13 +75,6 @@ public abstract class LLVMTruffleUnbox extends LLVMIntrinsic {
     public Object fallback(Object value) {
         System.err.println("Invalid arguments to unbox-builtin.");
         throw new IllegalArgumentException();
-    }
-
-    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError("Pointee must be unmodified");
-        }
     }
 
     private Object doUnbox(TruffleObject value) {

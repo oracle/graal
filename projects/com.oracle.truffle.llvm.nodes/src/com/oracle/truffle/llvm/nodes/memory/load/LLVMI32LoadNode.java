@@ -67,7 +67,7 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I32, I32_SIZE_IN_BYTES);
+        return new LLVMForeignReadNode(ForeignToLLVMType.I32);
     }
 
     @Specialization

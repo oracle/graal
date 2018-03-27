@@ -67,7 +67,7 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.FLOAT, FLOAT_SIZE_IN_BYTES);
+        return new LLVMForeignReadNode(ForeignToLLVMType.FLOAT);
     }
 
     @Specialization
