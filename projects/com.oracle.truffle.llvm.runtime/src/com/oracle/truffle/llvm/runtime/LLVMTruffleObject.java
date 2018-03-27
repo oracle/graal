@@ -32,15 +32,12 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObjectFactory.BaseToPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -113,94 +110,94 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
 
     @Override
     public LLVMObjectNativeLibrary createLLVMObjectNativeLibrary() {
-        return wrapLibrary(LLVMObjectNativeLibrary.createCached(object));
+        if (object != null) {
+            return new LLVMTruffleObjectNativeLibrary(LLVMObjectNativeLibrary.createCached(object));
+        } else {
+            return new LLVMTruffleObjectNullPointerNativeLibrary();
+        }
     }
 
-    private static LLVMObjectNativeLibrary wrapLibrary(final LLVMObjectNativeLibrary lib) {
-        return new LLVMObjectNativeLibrary() {
+    private static final class LLVMTruffleObjectNativeLibrary extends LLVMObjectNativeLibrary {
+        @Child private Node isNull;
 
-            @Child private Node isNull;
-            @Child private BaseToPointerNode baseToPointer;
+        private final LLVMObjectNativeLibrary lib;
 
-            @Override
-            public boolean guard(Object obj) {
-                if (obj instanceof LLVMTruffleObject) {
-                    return lib.guard(((LLVMTruffleObject) obj).getObject());
-                } else {
-                    return false;
-                }
-            }
+        private LLVMTruffleObjectNativeLibrary(LLVMObjectNativeLibrary lib) {
+            this.lib = lib;
+        }
 
-            @Override
-            public boolean isPointer(VirtualFrame frame, Object obj) {
+        @Override
+        public boolean guard(Object obj) {
+            if (obj instanceof LLVMTruffleObject) {
                 LLVMTruffleObject object = (LLVMTruffleObject) obj;
-                if (lib.isPointer(frame, object.getObject())) {
-                    return true;
-                } else {
-                    if (isNull == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        isNull = insert(Message.IS_NULL.createNode());
-                    }
-                    return object.getObject() == null || ForeignAccess.sendIsNull(isNull, object.getObject());
-                }
+                return lib.guard(object.getObject());
             }
+            return false;
+        }
 
-            @Override
-            public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
-                if (baseToPointer == null) {
+        @Override
+        public boolean isPointer(VirtualFrame frame, Object obj) {
+            LLVMTruffleObject object = (LLVMTruffleObject) obj;
+            if (lib.isPointer(frame, object.getObject())) {
+                return true;
+            } else {
+                if (isNull == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    baseToPointer = insert(BaseToPointerNodeGen.create());
+                    isNull = insert(Message.IS_NULL.createNode());
                 }
-                LLVMTruffleObject object = (LLVMTruffleObject) obj;
-                long base = baseToPointer.executeToPointer(frame, object.getObject(), lib);
+                return ForeignAccess.sendIsNull(isNull, object.getObject());
+            }
+        }
+
+        @Override
+        public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+            LLVMTruffleObject object = (LLVMTruffleObject) obj;
+            if (isNull == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isNull = insert(Message.IS_NULL.createNode());
+            }
+            if (ForeignAccess.sendIsNull(isNull, object.getObject())) {
+                return object.getOffset();
+            } else {
+                long base = lib.asPointer(frame, object.getObject());
                 return base + object.getOffset();
             }
+        }
 
-            @Override
-            public Object toNative(VirtualFrame frame, Object obj) throws InteropException {
-                LLVMTruffleObject object = (LLVMTruffleObject) obj;
-                if (object.getObject() == null) {
-                    return object;
-                } else {
-                    Object nativeBase = lib.toNative(frame, object.getObject());
-                    return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset, object.baseType);
-                }
-            }
-        };
+        @Override
+        public Object toNative(VirtualFrame frame, Object obj) throws InteropException {
+            LLVMTruffleObject object = (LLVMTruffleObject) obj;
+            Object nativeBase = lib.toNative(frame, object.getObject());
+            return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset, object.baseType);
+        }
     }
 
-    abstract static class BaseToPointerNode extends Node {
-
-        protected abstract long executeToPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib);
-
-        @Specialization(guards = "object == null")
-        @SuppressWarnings("unused")
-        protected long doNull(Object object, LLVMObjectNativeLibrary lib) {
-            return 0;
+    private static final class LLVMTruffleObjectNullPointerNativeLibrary extends LLVMObjectNativeLibrary {
+        private LLVMTruffleObjectNullPointerNativeLibrary() {
         }
 
-        @Specialization(guards = {"object != null", "checkNull(isNull, object)"})
-        @SuppressWarnings("unused")
-        protected long doNull(TruffleObject object, LLVMObjectNativeLibrary lib,
-                        @Cached("createIsNull()") Node isNull) {
-            return 0;
-        }
-
-        @Specialization(guards = {"object != null", "lib.isPointer(frame, object)"})
-        protected long doPointer(VirtualFrame frame, Object object, LLVMObjectNativeLibrary lib) {
-            try {
-                return lib.asPointer(frame, object);
-            } catch (InteropException ex) {
-                throw ex.raise();
+        @Override
+        public boolean guard(Object obj) {
+            if (obj instanceof LLVMTruffleObject) {
+                LLVMTruffleObject object = (LLVMTruffleObject) obj;
+                return object.getObject() == null;
             }
+            return false;
         }
 
-        static Node createIsNull() {
-            return Message.IS_NULL.createNode();
+        @Override
+        public boolean isPointer(VirtualFrame frame, Object obj) {
+            return true;
         }
 
-        static boolean checkNull(Node isNull, TruffleObject object) {
-            return ForeignAccess.sendIsNull(isNull, object);
+        @Override
+        public long asPointer(VirtualFrame frame, Object obj) throws InteropException {
+            return ((LLVMTruffleObject) obj).getOffset();
+        }
+
+        @Override
+        public Object toNative(VirtualFrame frame, Object obj) throws InteropException {
+            return obj;
         }
     }
 }
