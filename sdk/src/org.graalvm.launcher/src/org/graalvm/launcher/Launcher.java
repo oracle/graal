@@ -907,7 +907,7 @@ public abstract class Launcher {
     }
 
     class Native {
-        void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
+        void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType, boolean allowExec) {
             assert isAOT();
             VMType vmType = null;
             boolean polyglot = false;
@@ -983,9 +983,15 @@ public abstract class Launcher {
                 if (!isPolyglot && polyglot) {
                     remainingArgs.add(0, "--polyglot");
                 }
+                if (!allowExec) {
+                    abort("--jvm.* options not supported");
+                }
                 execJVM(jvmArgs, remainingArgs, polyglotOptions);
             } else if (!isPolyglot && polyglot) {
                 assert jvmArgs.isEmpty();
+                if (!allowExec) {
+                    abort("--polyglot option not supported");
+                }
                 execNativePolyglot(remainingArgs, polyglotOptions);
             }
         }
