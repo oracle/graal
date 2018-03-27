@@ -40,20 +40,21 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI64Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
-public abstract class LLVMI64LoadNode extends LLVMLoadNode {
+public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
 
     private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
-    @Specialization
-    protected long doI64(LLVMAddress addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        long val = memory.getI64(addr);
-        return profile.profile(val);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected long doI64(LLVMAddress addr) {
+        return profile.profile(getLLVMMemoryCached().getI64(addr));
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected long doI64DerefHandle(LLVMAddress addr) {
+        return doI64Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
     @Specialization
@@ -69,27 +70,25 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
         return toNative.executeWithTarget(globalAccess.execute(addr)).getVal();
     }
 
-    static LLVMForeignReadNode createForeignRead() {
+    @Override
+    LLVMForeignReadNode createForeignRead() {
         return new LLVMForeignReadNode(ForeignToLLVMType.I64);
     }
 
     @Specialization(guards = "addr.isNative()")
-    protected Object doI64(LLVMTruffleObject addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doI64(addr.asNative(), memory);
+    protected Object doI64Native(LLVMTruffleObject addr) {
+        return doI64(addr.asNative());
     }
 
     @Specialization(guards = "addr.isManaged()")
-    protected Object doI64(LLVMTruffleObject addr,
-                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return foreignRead.execute(addr);
+    protected long doI64Managed(LLVMTruffleObject addr) {
+        return (long) getForeignReadNode().execute(addr);
     }
 
     @Specialization
-    protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return memory.getI64((long) addr.getValue());
+            return getLLVMMemoryCached().getI64((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

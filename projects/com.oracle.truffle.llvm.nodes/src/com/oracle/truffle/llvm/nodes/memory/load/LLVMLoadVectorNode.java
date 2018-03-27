@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -50,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @NodeField(name = "size", type = int.class)
-public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
+public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
 
     public abstract int getSize();
 
@@ -63,23 +62,26 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
     }
 
     public abstract static class LLVMLoadI1VectorNode extends LLVMLoadVectorNode {
-        @Specialization
-        protected LLVMI1Vector doI1Vector(LLVMAddress addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getI1Vector(addr, getSize());
+        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        protected LLVMI1Vector doI1Vector(LLVMAddress addr) {
+            return getLLVMMemoryCached().getI1Vector(addr, getSize());
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(addr)")
+        protected LLVMI1Vector doI32DerefHandle(LLVMAddress addr,
+                        @Cached("createForeignReads()") LLVMForeignReadNode[] foreignReads) {
+            return doForeign(getDerefHandleGetReceiverNode().execute(addr), foreignReads);
         }
 
         @Specialization
         protected LLVMI1Vector doI1Vector(LLVMGlobal addr,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return memory.getI1Vector(globalAccess.executeWithTarget(addr), getSize());
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+            return getLLVMMemoryCached().getI1Vector(globalAccess.executeWithTarget(addr), getSize());
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMI1Vector doI1Vector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doI1Vector(addr.asNative(), memory);
+        protected LLVMI1Vector doI1Vector(LLVMTruffleObject addr) {
+            return doI1Vector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")

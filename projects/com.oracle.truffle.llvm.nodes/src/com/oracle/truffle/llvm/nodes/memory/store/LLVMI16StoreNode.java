@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI16Node;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 public abstract class LLVMI16StoreNode extends LLVMStoreNodeCommon {
@@ -66,31 +65,32 @@ public abstract class LLVMI16StoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, short value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI16(address, value);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected Object doOp(LLVMAddress addr, short value) {
+        getLLVMMemoryCached().putI16(addr, value);
         return null;
     }
 
     @Specialization(guards = "address.isNative()")
-    protected Object doOp(LLVMTruffleObject address, short value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doOp(address.asNative(), value, memory);
+    protected Object doOpNative(LLVMTruffleObject address, short value) {
+        return doOp(address.asNative(), value);
     }
 
     @Specialization(guards = "address.isManaged()")
-    protected Object doOp(LLVMTruffleObject address, short value,
-                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(address, value);
+    protected Object doOpManaged(LLVMTruffleObject address, short value) {
+        getForeignReadNode().execute(address, value);
         return null;
     }
 
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected Object doOpDerefHandle(LLVMAddress addr, short value) {
+        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    }
+
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, short value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected Object doOp(LLVMBoxedPrimitive address, short value) {
         if (address.getValue() instanceof Long) {
-            memory.putI16((long) address.getValue(), value);
+            getLLVMMemoryCached().putI16((long) address.getValue(), value);
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();

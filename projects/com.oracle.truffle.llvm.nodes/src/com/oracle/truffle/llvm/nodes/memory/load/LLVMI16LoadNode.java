@@ -39,11 +39,9 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI16Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 
-public abstract class LLVMI16LoadNode extends LLVMLoadNode {
+public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
 
     @Specialization
     protected short doShort(LLVMGlobal addr,
@@ -51,13 +49,18 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
         return globalAccess.execute(addr);
     }
 
-    @Specialization
-    protected short doShort(LLVMAddress addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memory.getI16(addr);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected short doShort(LLVMAddress addr) {
+        return getLLVMMemoryCached().getI16(addr);
     }
 
-    static LLVMForeignReadNode createForeignRead() {
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected short doShortDerefHandle(LLVMAddress addr) {
+        return doShortManaged(getDerefHandleGetReceiverNode().execute(addr));
+    }
+
+    @Override
+    LLVMForeignReadNode createForeignRead() {
         return new LLVMForeignReadNode(ForeignToLLVMType.I16);
     }
 
@@ -68,22 +71,19 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
     }
 
     @Specialization(guards = "addr.isNative()")
-    protected short doShort(LLVMTruffleObject addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doShort(addr.asNative(), memory);
+    protected short doShortNative(LLVMTruffleObject addr) {
+        return doShort(addr.asNative());
     }
 
     @Specialization(guards = "addr.isManaged()")
-    protected short doShort(LLVMTruffleObject addr,
-                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (short) foreignRead.execute(addr);
+    protected short doShortManaged(LLVMTruffleObject addr) {
+        return (short) getForeignReadNode().execute(addr);
     }
 
     @Specialization
-    protected short doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected short doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return memory.getI16((long) addr.getValue());
+            return getLLVMMemoryCached().getI16((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

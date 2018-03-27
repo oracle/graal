@@ -36,7 +36,6 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
@@ -51,32 +50,33 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected Object doOp(LLVMGlobal address, LLVMIVarBit value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putIVarBit(globalAccess.executeWithTarget(address), value);
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+        getLLVMMemoryCached().putIVarBit(globalAccess.executeWithTarget(address), value);
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, LLVMIVarBit value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putIVarBit(address, value);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected Object doOp(LLVMAddress addr, LLVMIVarBit value) {
+        getLLVMMemoryCached().putIVarBit(addr, value);
         return null;
     }
 
     @Specialization(guards = "address.isNative()")
-    protected Object doOp(LLVMTruffleObject address, LLVMIVarBit value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doOp(address.asNative(), value, memory);
+    protected Object doOpNative(LLVMTruffleObject address, LLVMIVarBit value) {
+        return doOp(address.asNative(), value);
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected Object doOpDerefHandle(LLVMAddress addr, LLVMIVarBit value) {
+        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization(guards = "address.isManaged()")
-    protected Object doForeign(LLVMTruffleObject address, LLVMIVarBit value,
-                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
+    protected Object doOpManaged(LLVMTruffleObject address, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
         LLVMTruffleObject currentPtr = address;
         for (int i = bytes.length - 1; i >= 0; i--) {
-            foreignWrite.execute(currentPtr, bytes[i]);
+            getForeignReadNode().execute(currentPtr, bytes[i]);
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
         return null;

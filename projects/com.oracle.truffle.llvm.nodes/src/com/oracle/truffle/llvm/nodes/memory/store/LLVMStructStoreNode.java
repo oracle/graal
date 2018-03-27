@@ -64,9 +64,9 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected Object doOp(LLVMAddress address, LLVMGlobal value,
+    protected Object doOp(LLVMAddress addr, LLVMGlobal value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        memMove.executeWithTarget(address, globalAccess.executeWithTarget(value), getStructSize());
+        memMove.executeWithTarget(addr, globalAccess.executeWithTarget(value), getStructSize());
         return null;
     }
 
@@ -77,10 +77,15 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
+    @Specialization(guards = {"!isAutoDerefHandle(address)", "!isAutoDerefHandle(value)"})
     protected Object doOp(LLVMAddress address, LLVMAddress value) {
         memMove.executeWithTarget(address, value, getStructSize());
         return null;
+    }
+
+    @Specialization(guards = {"isAutoDerefHandle(addr)", "isAutoDerefHandle(value)"})
+    protected Object doOpDerefHandle(LLVMAddress addr, LLVMAddress value) {
+        return doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), getDerefHandleGetReceiverNode().execute(value));
     }
 
     @SuppressWarnings("unused")

@@ -27,55 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.store;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
-
-    public LLVMFunctionStoreNode() {
-        this(null);
-    }
-
-    public LLVMFunctionStoreNode(LLVMSourceLocation sourceLocation) {
-        super(sourceLocation);
-    }
-
-    @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMAddress addr, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        getLLVMMemoryCached().putFunctionPointer(addr, toNative.executeWithTarget(value).getVal());
-        return null;
-    }
-
-    @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMAddress addr, Object value) {
-        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
-    }
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doOp(LLVMGlobal address, Object value,
-                    @Cached("create()") WriteObjectNode globalAccess) {
-        globalAccess.execute(address, value);
-        return null;
-    }
-
-    @Specialization(guards = "address.isNative()")
-    protected Object doOpNative(LLVMTruffleObject address, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return doOp(address.asNative(), value, toNative);
-    }
-
-    @Specialization(guards = "address.isManaged()")
-    protected Object doOpManaged(LLVMTruffleObject address, Object value) {
-        getForeignReadNode().execute(address, value);
-        return null;
+    protected LLVMAddress doIntrinsic(LLVMTruffleObject value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        if (value.getOffset() == 0) {
+            LLVMAddress handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());
+            return handle;
+        } else {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("cannot get a handle to pointer into the middle of foreign object");
+        }
     }
 }

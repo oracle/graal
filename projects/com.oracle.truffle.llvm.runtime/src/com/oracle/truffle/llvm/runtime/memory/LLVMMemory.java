@@ -43,9 +43,11 @@ import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -66,8 +68,29 @@ import sun.misc.Unsafe;
 
 @SuppressWarnings("static-method")
 public final class LLVMMemory {
+    /* must be a power of 2 */
+    private static final long OBJECT_SIZE = 1L << 20;
+    private static final long OBJECT_MASK = (1L << 20) - 1L;
+
+    private static final long KERNEL_SPACE_START = 0x0FFFFFFFFFFFFFFFL & ~OBJECT_MASK;
+    private static final long KERNEL_SPACE_END = 0x0FFF800000000000L & ~OBJECT_MASK;
 
     private static final Unsafe unsafe = getUnsafe();
+
+    private FreeListNode freeList;
+    private long memTop = KERNEL_SPACE_START;
+
+    private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
+
+    private static final class FreeListNode {
+        protected FreeListNode(long address, FreeListNode next) {
+            this.address = address;
+            this.next = next;
+        }
+
+        private final long address;
+        private final FreeListNode next;
+    }
 
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
@@ -117,12 +140,17 @@ public final class LLVMMemory {
     }
 
     public void free(long address) {
-        try {
-            unsafe.freeMemory(address);
-        } catch (Throwable e) {
-            // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
-            throw e;
+        if (address <= KERNEL_SPACE_START && address > KERNEL_SPACE_END) {
+            // TODO check for double-free ?
+            freeList = new FreeListNode(address, freeList);
+        } else {
+            try {
+                unsafe.freeMemory(address);
+            } catch (Throwable e) {
+                // this avoids unnecessary exception edges in the compiled code
+                CompilerDirectives.transferToInterpreter();
+                throw e;
+            }
         }
     }
 
@@ -145,6 +173,32 @@ public final class LLVMMemory {
             CompilerDirectives.transferToInterpreter();
             throw e;
         }
+    }
+
+    public static boolean isLessThanUnsigned(long n1, long n2) {
+        return (n1 < n2) ^ ((n1 < 0) != (n2 < 0));
+    }
+
+    /**
+     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
+     */
+    public LLVMAddress allocateDerefMemory() {
+        noDerefHandleAssumption.invalidate();
+
+        // preferably consume from free list
+        if (freeList != null) {
+            FreeListNode n = freeList;
+            freeList = n.next;
+            return LLVMAddress.fromLong(n.address);
+        }
+        LLVMAddress addr = LLVMAddress.fromLong(memTop);
+        assert memTop > 0L;
+        memTop -= OBJECT_SIZE;
+        if (memTop < KERNEL_SPACE_END) {
+            CompilerDirectives.transferToInterpreter();
+            throw new OutOfMemoryError();
+        }
+        return addr;
     }
 
     public boolean getI1(LLVMAddress addr) {
@@ -828,5 +882,17 @@ public final class LLVMMemory {
 
     public void fullFence() {
         unsafe.fullFence();
+    }
+
+    public final Assumption getNoDerefHandleAssumption() {
+        return noDerefHandleAssumption;
+    }
+
+    public static boolean isDerefMemory(LLVMAddress addr) {
+        return addr.getVal() > KERNEL_SPACE_END;
+    }
+
+    public static long getObjectMask() {
+        return OBJECT_SIZE - 1;
     }
 }
