@@ -226,7 +226,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
          * @since 0.27
          */
         public RunWithPolyglotRule() {
-            this(Context.newBuilder());
+            this(Context.newBuilder().allowAllAccess(true));
         }
 
         /**
