@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -141,7 +141,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         }
 
         @Override
-        public Object executeRead(Object obj, Object identifier, long offset) throws InteropException {
+        public Object executeRead(Object obj, long offset) throws InteropException {
             assert offset % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES == 0 : "invalid offset";
             long idx = offset / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
             return ((ManagedMallocObject) obj).get((int) idx);
@@ -156,7 +156,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
         }
 
         @Override
-        public void executeWrite(Object obj, Object identifier, long offset, Object value) throws InteropException {
+        public void executeWrite(Object obj, long offset, Object value) throws InteropException {
             assert offset % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES == 0 : "invalid offset";
             long idx = offset / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
             ((ManagedMallocObject) obj).set((int) idx, value);

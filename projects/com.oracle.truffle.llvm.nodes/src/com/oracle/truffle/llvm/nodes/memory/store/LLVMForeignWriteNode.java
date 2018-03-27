@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
@@ -42,11 +40,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMForeignWriteNode extends LLVMNode {
 
-    @Child private LLVMOffsetToNameNode offsetToName;
     @Child private LLVMObjectWriteNode write;
 
     protected LLVMForeignWriteNode(Type valueType, int elementAccessSize) {
-        this.offsetToName = LLVMOffsetToNameNodeGen.create(elementAccessSize);
         this.write = LLVMObjectAccessFactory.createWrite(valueType);
     }
 
@@ -54,12 +50,11 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     @Specialization
     protected void doForeignAccess(LLVMTruffleObject addr, Object value) {
-        Object key = offsetToName.execute(addr.getBaseType(), addr.getOffset());
         try {
-            write.executeWrite(addr.getObject(), key, addr.getOffset(), value);
+            write.executeWrite(addr.getObject(), addr.getOffset(), value);
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw e.raise();
         }
     }
 }

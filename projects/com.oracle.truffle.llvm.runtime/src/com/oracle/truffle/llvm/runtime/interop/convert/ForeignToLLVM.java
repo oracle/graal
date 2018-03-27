@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -120,6 +120,25 @@ public abstract class ForeignToLLVM extends LLVMNode {
                     return ForeignToLLVMType.I64;
                 default:
                     throw new IllegalStateException("There is no integer type with " + bitWidth + " bits defined");
+            }
+        }
+
+        public int getSizeInBytes() {
+            switch (this) {
+                case I1:
+                case I8:
+                    return 1;
+                case I16:
+                    return 2;
+                case I32:
+                case FLOAT:
+                    return 4;
+                case I64:
+                case DOUBLE:
+                case POINTER:
+                    return 8;
+                default:
+                    throw new IllegalStateException("getSizeInBytes undefined on non-primitive type " + this);
             }
         }
     }
