@@ -64,7 +64,7 @@ public final class GlobalsInstrument extends TruffleInstrument {
         this.setEnv(env);
         env.registerService(this);
 
-        env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().sourceIs(new MyRubyFilter()).build(), new ExecutionEventListener() {
+        env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().sourceIs(new MyRubyFilter()).build(), new ExecutionEventListener() {
 
             public void onEnter(EventContext context, VirtualFrame frame) {
                 System.out.println("onEnter ruby");
@@ -80,7 +80,7 @@ public final class GlobalsInstrument extends TruffleInstrument {
 
         });
 
-        env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().sourceIs(new MyPythonFilter()).build(), new ExecutionEventListener() {
+        env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().sourceIs(new MyPythonFilter()).build(), new ExecutionEventListener() {
 
             public void onEnter(EventContext context, VirtualFrame frame) {
                 System.out.println("onEnter python");
@@ -114,7 +114,7 @@ public final class GlobalsInstrument extends TruffleInstrument {
 // }
 // });
 
-        env.getInstrumenter().attachListener(SourceSectionFilter.newBuilder().sourceIs(new MySourceFilter()).build(), new ExecutionEventListener() {
+        env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().sourceIs(new MySourceFilter()).build(), new ExecutionEventListener() {
             @Override
             public void onEnter(EventContext context, VirtualFrame frame) {
 // Iterable<Scope> topScopes = env.findTopScopes("ruby");

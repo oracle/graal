@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -51,8 +52,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeAccessHelper;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.sl.LSPTags;
 import com.oracle.truffle.sl.SLLanguage;
+
+import de.hpi.swa.trufflelsp.helper.Pair;
 
 public class TruffleAdapter {
     public static final String SOURCE_SECTION_ID = "TruffleLSPTestSection";
@@ -63,6 +65,7 @@ public class TruffleAdapter {
     private LanguageClient client;
     private Workspace workspace;
     private Map<String, RootNode> uri2nodes = new HashMap<>();
+    private Map<String, List<Node>> uri2loadedNodes = new HashMap<>();
 
     public void connect(final LanguageClient client, Workspace workspace) {
         this.client = client;
@@ -201,9 +204,12 @@ public class TruffleAdapter {
                 String lang = SLLanguage.ID;
                 String mimeType = SLLanguage.MIME_TYPE;
                 Context context = Context.create(lang);
-                Instrument instrument = context.getEngine().getInstruments().get(EnvironmentProvider.ID);
-                EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
+                Instrument envInstrument = context.getEngine().getInstruments().get(EnvironmentProvider.ID);
+                EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
                 Env env = envProvider.getEnv();
+
+                Instrument ssInstrument = context.getEngine().getInstruments().get(SourceSectionProvider.ID);
+                SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
 
                 context.enter();
                 CallTarget callTarget = env.parse(com.oracle.truffle.api.source.Source.newBuilder(text).name(documentUri).mimeType(mimeType).build());
@@ -211,8 +217,52 @@ public class TruffleAdapter {
                     this.uri2nodes.put(documentUri, ((RootCallTarget) callTarget).getRootNode());
                 }
 
+                this.uri2loadedNodes.put(documentUri, ssProvider.getLoadedNodes());
+
                 Iterable<Scope> findTopScopes = env.findTopScopes("sl");
                 scopesToObjectMap(findTopScopes);
+
+                for (Node node : ssProvider.getLoadedNodes()) {
+                    if (node instanceof InstrumentableNode) {
+                        InstrumentableNode instrumentedNode = (InstrumentableNode) node;
+                        if (instrumentedNode.isInstrumentable()) {
+                            Iterable<Scope> localScopes = env.findLocalScopes(node, null);
+                            Map<Object, Object> map = new HashMap<>();
+                            for (Scope scope : localScopes) {
+                                Object variables = scope.getVariables();
+                                if (variables instanceof TruffleObject) {
+                                    TruffleObject truffleObj = (TruffleObject) variables;
+                                    try {
+                                        TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
+                                        boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                                        if (!hasSize) {
+                                            System.out.println("No size!!!");
+                                            continue;
+                                        }
+
+// System.out.println(node.getClass().getSimpleName() + "\t" + ObjectStructures.asList(new
+// ObjectStructures.MessageNodes(), keys) + " " +
+// node.getSourceSection().getCharacters());
+                                    } catch (UnsupportedMessageException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                }
+                            }
+                            for (Entry<Object, Object> entry : map.entrySet()) {
+                                if (entry.getValue() instanceof TruffleObject) {
+                                    TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
+                                    boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
+                                                    truffleObjVal);
+                                    System.out.println(entry.getKey() + " " + entry.getValue() + " isExecutable: " + isExecutable);
+// SymbolInformation si = new SymbolInformation(entry.getKey().toString(), isExecutable ?
+// SymbolKind.Function : SymbolKind.Variable,
+// new Location(uri, new Range(new Position(), new Position())));
+// symbolInformation.add(si);
+                                }
+                            }
+                        }
+                    }
+                }
 
 // System.out.println("Result: " + context.eval(Source.newBuilder(lang, text,
 // documentUri).build()));
@@ -240,10 +290,10 @@ public class TruffleAdapter {
             if (e instanceof TruffleException) {
                 TruffleException te = (TruffleException) e;
                 Range range = new Range(new Position(), new Position());
-
-                if (te.getLocation() != null && te.getLocation().getEncapsulatingSourceSection().isAvailable()) {
-                    com.oracle.truffle.api.source.SourceSection ss = te.getLocation().getEncapsulatingSourceSection();
-                    range = sourceSectionToRange(ss);
+                com.oracle.truffle.api.source.SourceSection sourceLocation = te.getSourceLocation() != null ? te.getSourceLocation()
+                                : (te.getLocation() != null ? te.getLocation().getEncapsulatingSourceSection() : null);
+                if (sourceLocation != null && sourceLocation.isAvailable()) {
+                    range = sourceSectionToRange(te.getSourceLocation());
                 }
 
                 diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle " + te.isIncompleteSource()));
@@ -296,8 +346,9 @@ public class TruffleAdapter {
                 public boolean visit(Node node) {
                     // How to find out which kind of node we have in a language agnostic way?
                     // isTaggedWith() is "protected" ...
-                    System.out.println("Tagged with Literal: " + NodeAccessHelper.isTaggedWith(node, LSPTags.Literal.class) + " " + node.getClass().getSimpleName() + " " +
-                                    node.getEncapsulatingSourceSection());
+// System.out.println("Tagged with Literal: " + NodeAccessHelper.isTaggedWith(node,
+// LSPTags.Literal.class) + " " + node.getClass().getSimpleName() + " " +
+// node.getEncapsulatingSourceSection());
                     return true;
                 }
             });
@@ -334,7 +385,7 @@ public class TruffleAdapter {
         return symbolInformation;
     }
 
-    private static Map<Object, Object> scopesToObjectMap(Iterable<Scope> scopes) {
+    public static Map<Object, Object> scopesToObjectMap(Iterable<Scope> scopes) {
         Map<Object, Object> map = new HashMap<>();
         for (Scope scope : scopes) {
             Object variables = scope.getVariables();
@@ -357,13 +408,14 @@ public class TruffleAdapter {
         return map;
     }
 
-    public CompletionList getCompletions(String uri, int line, int character) {
+    public synchronized CompletionList getCompletions(String uri, int line, int character) {
         CompletionList completions = new CompletionList();
         completions.setIsIncomplete(false);
 
-        if (this.uri2nodes.containsKey(uri)) {
-            RootNode rootNode = this.uri2nodes.get(uri);
-            String lang = rootNode.getLanguageInfo().getId();
+        if (this.uri2loadedNodes.containsKey(uri)) {
+// RootNode rootNode = this.uri2nodes.get(uri);
+// String lang = rootNode.getLanguageInfo().getId();
+            String lang = "sl";
 
             Context context = Context.create(lang);
             Instrument instrument = context.getEngine().getInstruments().get(EnvironmentProvider.ID);
@@ -372,6 +424,40 @@ public class TruffleAdapter {
 
             context.enter();
             try {
+                Pair<Node, Node> nodeAtCaretAndBefore = findNodeAt(this.uri2loadedNodes.get(uri), line + 1, character);
+                Node node = nodeAtCaretAndBefore.getFirst() == null ? nodeAtCaretAndBefore.getSecond() : nodeAtCaretAndBefore.getFirst();
+                if (node instanceof InstrumentableNode) {
+                    InstrumentableNode instrumentedNode = (InstrumentableNode) node;
+                    if (instrumentedNode.isInstrumentable()) {
+                        Iterable<Scope> localScopes = env.findLocalScopes(node, null);
+                        for (Scope scope : localScopes) {
+                            Object variables = scope.getVariables();
+                            if (variables instanceof TruffleObject) {
+                                TruffleObject truffleObj = (TruffleObject) variables;
+                                try {
+                                    TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
+                                    boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                                    if (!hasSize) {
+                                        System.out.println("No size!!!");
+                                        continue;
+                                    }
+
+                                    System.out.println(node.getClass().getSimpleName() + "\t" + ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys) + " " +
+                                                    node.getSourceSection().getCharacters());
+                                    for (Object obj : ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys)) {
+                                        // TODO(ds) check obj type
+                                        CompletionItem completion = new CompletionItem(obj.toString());
+                                        completion.setKind(CompletionItemKind.Variable);
+                                        completions.getItems().add(completion);
+                                    }
+                                } catch (UnsupportedMessageException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Iterable<Scope> topScopes = env.findTopScopes(lang);
                 Map<Object, Object> map = scopesToObjectMap(topScopes);
                 for (Entry<Object, Object> entry : map.entrySet()) {
@@ -389,7 +475,6 @@ public class TruffleAdapter {
                     }
                 }
 
-                // TODO(ds) local scopes
             } finally {
                 context.leave();
             }
@@ -399,7 +484,7 @@ public class TruffleAdapter {
         }
     }
 
-    public List<? extends DocumentHighlight> getHighlights(String uri, int line, int character) {
+    public synchronized List<? extends DocumentHighlight> getHighlights(String uri, int line, int character) {
         List<DocumentHighlight> highlights = new ArrayList<>();
 
         if (this.uri2nodes.containsKey(uri)) {
@@ -415,19 +500,23 @@ public class TruffleAdapter {
             rootNode.accept(new NodeVisitor() {
 
                 public boolean visit(Node node) {
-                    if (NodeAccessHelper.isTaggedWith(node, LSPTags.VariableAssignment.class)) {
-                        String varName = node.getEncapsulatingSourceSection().getCharacters().toString().split(" ")[0];
-                        if (!varName2highlight.containsKey(varName)) {
-                            varName2highlight.put(varName, new ArrayList<>());
-                        }
-                        varName2highlight.get(varName).add(new DocumentHighlight(sourceSectionToRange(node.getEncapsulatingSourceSection()), DocumentHighlightKind.Write));
-                    } else if (NodeAccessHelper.isTaggedWith(node, LSPTags.VariableRead.class)) {
-                        String varName = node.getEncapsulatingSourceSection().getCharacters().toString();
-                        if (!varName2highlight.containsKey(varName)) {
-                            varName2highlight.put(varName, new ArrayList<>());
-                        }
-                        varName2highlight.get(varName).add(new DocumentHighlight(sourceSectionToRange(node.getEncapsulatingSourceSection()), DocumentHighlightKind.Read));
-                    }
+// if (NodeAccessHelper.isTaggedWith(node, LSPTags.VariableAssignment.class)) {
+// String varName = node.getEncapsulatingSourceSection().getCharacters().toString().split(" ")[0];
+// if (!varName2highlight.containsKey(varName)) {
+// varName2highlight.put(varName, new ArrayList<>());
+// }
+// varName2highlight.get(varName).add(new
+// DocumentHighlight(sourceSectionToRange(node.getEncapsulatingSourceSection()),
+// DocumentHighlightKind.Write));
+// } else if (NodeAccessHelper.isTaggedWith(node, LSPTags.VariableRead.class)) {
+// String varName = node.getEncapsulatingSourceSection().getCharacters().toString();
+// if (!varName2highlight.containsKey(varName)) {
+// varName2highlight.put(varName, new ArrayList<>());
+// }
+// varName2highlight.get(varName).add(new
+// DocumentHighlight(sourceSectionToRange(node.getEncapsulatingSourceSection()),
+// DocumentHighlightKind.Read));
+// }
                     return true;
                 }
             });
@@ -452,6 +541,30 @@ public class TruffleAdapter {
         return new Range(
                         new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
                         new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
+    }
+
+    private static Pair<Node, Node> findNodeAt(List<Node> loadedNodes, int line, int character) {
+        Node bestMatchedNode = null;
+        Node nodeBeforeCaret = null;
+        for (Node node : loadedNodes) {
+            com.oracle.truffle.api.source.SourceSection sourceSection = node.getSourceSection();
+            if (sourceSection == null || !sourceSection.isAvailable()) {
+                continue;
+            }
+            if (sourceSection.getStartLine() == line && line == sourceSection.getEndLine() && sourceSection.getStartColumn() <= character && character <= sourceSection.getEndColumn()) {
+                if (bestMatchedNode == null || sourceSection.getCharLength() < bestMatchedNode.getSourceSection().getCharLength()) {
+                    bestMatchedNode = node;
+                }
+            }
+            if (sourceSection.getEndLine() <= line) {
+                if (nodeBeforeCaret == null ||
+                                nodeBeforeCaret.getSourceSection().getEndLine() < sourceSection.getEndLine() ||
+                                (nodeBeforeCaret.getSourceSection().getEndLine() == sourceSection.getEndLine() && nodeBeforeCaret.getSourceSection().getEndColumn() < sourceSection.getEndColumn())) {
+                    nodeBeforeCaret = node;
+                }
+            }
+        }
+        return new Pair<>(bestMatchedNode, nodeBeforeCaret);
     }
 
     private static CharSequence findTokenAt(RootNode rootNode, int line, int character) {

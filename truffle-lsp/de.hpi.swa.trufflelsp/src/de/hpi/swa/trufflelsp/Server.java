@@ -69,7 +69,7 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(false);
-        capabilities.setDocumentHighlightProvider(true);
+        capabilities.setDocumentHighlightProvider(false);
         // capabilities.setCodeLensProvider(new CodeLensOptions(true));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
