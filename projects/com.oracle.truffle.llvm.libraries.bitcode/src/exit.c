@@ -82,7 +82,9 @@ static void caller(void *arg) {
   func();
 }
 
-int atexit(void (*func)(void)) { return __cxa_atexit(caller, func, NULL); }
+int atexit(void (*func)(void)) {
+  return __cxa_atexit(caller, func, NULL);
+}
 
 void __sulong_destructor_functions();
 
@@ -104,4 +106,6 @@ void _exit(int status) {
   }
 }
 
-void _Exit(int status) { _exit(status); }
+void _Exit(int status) {
+  _exit(status);
+}
