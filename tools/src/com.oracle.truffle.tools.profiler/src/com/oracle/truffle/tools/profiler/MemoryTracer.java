@@ -136,7 +136,7 @@ public final class MemoryTracer implements Closeable {
      *
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link MemoryTracer}
-     * @since 0.33
+     * @since 1.0
      */
     public static MemoryTracer find(Engine engine) {
         return MemoryTracerInstrument.getTracer(engine);

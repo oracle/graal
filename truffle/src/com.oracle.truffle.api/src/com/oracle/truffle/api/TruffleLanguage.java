@@ -1388,7 +1388,7 @@ public abstract class TruffleLanguage<C> {
          * Truffle interop.
          *
          * @see #asHostObject(Object)
-         * @since 0.33
+         * @since 1.0
          */
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
@@ -1400,7 +1400,7 @@ public abstract class TruffleLanguage<C> {
          * host language object. Throws {@link ClassCastException} if the provided argument is not a
          * {@link #isHostObject(Object) host object}.
          *
-         * @since 0.33
+         * @since 1.0
          */
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
@@ -1424,7 +1424,7 @@ public abstract class TruffleLanguage<C> {
          * class filters}.
          *
          * @param hostObject the host object to convert
-         * @since 0.33
+         * @since 1.0
          */
         public Object asGuestValue(Object hostObject) {
             return AccessAPI.engineAccess().toGuestValue(hostObject, vmObject);
@@ -1441,7 +1441,7 @@ public abstract class TruffleLanguage<C> {
          * {@link String}.
          *
          * @param value the value to find the meta object for.
-         * @since 0.33
+         * @since 1.0
          */
         public Object findMetaObject(Object value) {
             return AccessAPI.engineAccess().findMetaObjectForLanguage(vmObject, value);
@@ -1460,7 +1460,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@code true} if the {@code exception} is a host exception, {@code false}
          *         otherwise
          * @see #asHostException(Throwable)
-         * @since 0.33
+         * @since 1.0
          */
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
@@ -1479,7 +1479,7 @@ public abstract class TruffleLanguage<C> {
          * @return the original Java exception
          * @throws IllegalArgumentException if the {@code exception} is not a host exception
          * @see #isHostException(Throwable)
-         * @since 0.33
+         * @since 1.0
          */
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {

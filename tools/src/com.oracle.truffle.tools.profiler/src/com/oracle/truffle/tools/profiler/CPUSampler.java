@@ -268,7 +268,7 @@ public final class CPUSampler implements Closeable {
     /**
      * Finds {@link CPUSampler} associated with given engine.
      *
-     * @since 0.33
+     * @since 1.0
      */
     public static CPUSampler find(Engine engine) {
         return CPUSamplerInstrument.getSampler(engine);
