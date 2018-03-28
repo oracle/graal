@@ -516,7 +516,7 @@ GraalTags = Tags([
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True):
     common_args = [] if common_args is None else common_args
-    base_args = ['-H:Path=' + svmbuild_dir()]
+    base_args = []
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
@@ -532,8 +532,10 @@ def native_image_context(common_args=None, hosted_assertions=True):
             if sep:
                 return after.split(' ')[0].rstrip()
         return None
-    def native_image_func(args):
+    def native_image_func(args, setPath=True):
         all_args = base_args + common_args + args
+        if setPath:
+            all_args = ['-H:Path=' + svmbuild_dir()] + all_args
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
@@ -690,7 +692,7 @@ def test_python_smoke(args):
 def build_ruby(native_image):
     truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
-    return native_image(['--Language:ruby'])
+    return native_image(['--Language:ruby'], setPath=False)
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
