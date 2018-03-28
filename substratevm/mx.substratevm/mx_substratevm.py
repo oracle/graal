@@ -524,8 +524,21 @@ def native_image_context(common_args=None, hosted_assertions=True):
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
     native_image_cmd = native_image_path(suite_native_image_root())
+    def query_native_image(all_args, option):
+        out = mx.LinesOutputCapture()
+        mx.run([native_image_cmd, '--dry-run'] + all_args, out=out)
+        for line in out.lines:
+            _, sep, after = line.partition(option)
+            if sep:
+                return after.split(' ')[0].rstrip()
+        return None
     def native_image_func(args):
-        mx.run([native_image_cmd] + base_args + common_args + args)
+        all_args = base_args + common_args + args
+        path = query_native_image(all_args, '-H:Path=')
+        name = query_native_image(all_args, '-H:Name=')
+        image = join(path, name)
+        mx.run([native_image_cmd] + all_args)
+        return image
     try:
         mx.run([native_image_cmd, '--server-wipe'])
         yield native_image_func
