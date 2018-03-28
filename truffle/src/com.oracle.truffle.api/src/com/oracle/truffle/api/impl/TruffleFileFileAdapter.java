@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,44 +24,46 @@
  */
 package com.oracle.truffle.api.impl;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.source.impl.SourceAccessor;
 import java.io.File;
 import java.io.IOException;
-import java.util.Collection;
+import java.net.URI;
 
-public final class SourceAccessorImpl extends SourceAccessor {
+@SuppressWarnings("serial")
+final class TruffleFileFileAdapter extends File {
+    private final TruffleFile truffleFile;
 
-    @Override
-    protected Collection<ClassLoader> loaders() {
-        return TruffleLocator.loaders();
+    TruffleFileFileAdapter(TruffleFile truffleFile) {
+        super(truffleFile.getPath());
+        this.truffleFile = truffleFile;
+    }
+
+    TruffleFile getTruffleFile() {
+        return truffleFile;
     }
 
     @Override
-    protected boolean checkAOT() {
-        return TruffleOptions.AOT;
+    public String getName() {
+        return truffleFile.getName();
     }
 
     @Override
-    protected void assertNeverPartOfCompilation(String msg) {
-        CompilerAsserts.neverPartOfCompilation(msg);
+    public String getPath() {
+        return truffleFile.getPath();
     }
 
     @Override
-    protected boolean checkTruffleFile(File file) {
-        return file instanceof TruffleFileFileAdapter;
+    public File getAbsoluteFile() {
+        return new TruffleFileFileAdapter(truffleFile.getAbsoluteFile());
     }
 
     @Override
-    protected byte[] truffleFileContent(File file) throws IOException {
-        assert file instanceof TruffleFileFileAdapter : "File must be " + TruffleFileFileAdapter.class.getSimpleName();
-        final TruffleFile tf = ((TruffleFileFileAdapter) file).getTruffleFile();
-        return tf.readAllBytes();
+    public File getCanonicalFile() throws IOException {
+        return new TruffleFileFileAdapter(truffleFile.getCanonicalFile());
     }
 
-    public static File asFile(TruffleFile truffleFile) {
-        return new TruffleFileFileAdapter(truffleFile);
+    @Override
+    public URI toURI() {
+        return truffleFile.toUri();
     }
 }

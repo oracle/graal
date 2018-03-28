@@ -230,7 +230,8 @@ public abstract class Source {
     }
 
     static String read(File file) throws IOException {
-        return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        byte[] content = SourceAccessor.isTruffleFile(file) ? SourceAccessor.readTruffleFile(file) : Files.readAllBytes(file.toPath());
+        return new String(content, StandardCharsets.UTF_8);
     }
 
     static String read(Reader reader) throws IOException {
@@ -942,7 +943,7 @@ public abstract class Source {
                             read ? Source.read(file) : null,
                             absoluteFile,
                             name == null ? file.getName() : name,
-                            path == null ? absoluteFile.getPath() : path);
+                            path);
             return fileSource;
         }
 

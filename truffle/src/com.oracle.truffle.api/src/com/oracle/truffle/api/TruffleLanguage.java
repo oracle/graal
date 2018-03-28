@@ -55,12 +55,16 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.impl.SourceAccessorImpl;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import java.net.URI;
+import java.nio.file.FileSystemNotFoundException;
+import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1131,6 +1135,7 @@ public abstract class TruffleLanguage<C> {
         private final Map<String, Object> config;
         private final OptionValues options;
         private final String[] applicationArguments;
+        private final FileSystem fileSystem;
         private List<Object> services;
         @CompilationFinal private volatile Object context = UNSET_CONTEXT;
         @CompilationFinal private volatile Assumption contextUnchangedAssumption = Truffle.getRuntime().createAssumption("Language context unchanged");
@@ -1139,7 +1144,8 @@ public abstract class TruffleLanguage<C> {
         @CompilationFinal private volatile boolean valid;
 
         @SuppressWarnings("unchecked")
-        private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments) {
+        private Env(Object vmObject, LanguageInfo language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options, String[] applicationArguments,
+                        FileSystem fileSystem) {
             this.vmObject = vmObject;
             this.language = language;
             this.spi = (TruffleLanguage<Object>) API.nodes().getLanguageSpi(language);
@@ -1150,6 +1156,7 @@ public abstract class TruffleLanguage<C> {
             this.options = options;
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
             this.valid = true;
+            this.fileSystem = fileSystem;
         }
 
         Object getVMObject() {
@@ -1677,6 +1684,50 @@ public abstract class TruffleLanguage<C> {
             return AccessAPI.engineAccess().getPolyglotContext(vmObject);
         }
 
+        /**
+         * Returns a {@link TruffleFile} for given path.
+         *
+         * @param path the absolute or relative path to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 1.0
+         */
+        public TruffleFile getTruffleFile(String path) {
+            return new TruffleFile(fileSystem, fileSystem.parsePath(path).normalize());
+        }
+
+        /**
+         * Returns a {@link TruffleFile} for given {@link URI}.
+         *
+         * @param uri the {@link URI} to create {@link TruffleFile} for
+         * @return {@link TruffleFile}
+         * @since 1.0
+         */
+        public TruffleFile getTruffleFile(URI uri) {
+            checkDisposed();
+            try {
+                return new TruffleFile(fileSystem, fileSystem.parsePath(uri).normalize());
+            } catch (UnsupportedOperationException e) {
+                throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
+            }
+        }
+
+        /**
+         * Builds new {@link Source source} from a {@link TruffleFile}. Once the source is built the
+         * {@link Source#getName() name} will become {@link TruffleFile#getName()} and the
+         * {@link Source#getCharacters()} will be loaded from the {@link TruffleFile file}, unless
+         * {@link com.oracle.truffle.api.source.Source.Builder#content(java.lang.String) redefined}
+         * on the builder.
+         *
+         * @param file the {@link TruffleFile} to create {@link Source} for
+         * @return new builder to configure additional properties
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public Source.Builder<IOException, RuntimeException, RuntimeException> newSourceBuilder(final TruffleFile file) {
+            Objects.requireNonNull(file, "File must be non null");
+            return Source.newBuilder(SourceAccessorImpl.asFile(file));
+        }
+
         @SuppressWarnings("rawtypes")
         @TruffleBoundary
         <E extends TruffleLanguage> E getLanguage(Class<E> languageClass) {
@@ -1913,8 +1964,8 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Env createEnv(Object vmObject, LanguageInfo language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments) {
-            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments);
+                        String[] applicationArguments, FileSystem fileSystem) {
+            Env env = new Env(vmObject, language, stdOut, stdErr, stdIn, config, options, applicationArguments, fileSystem);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             AccessAPI.instrumentAccess().collectEnvServices(collectedServices, API.nodes().getEngineObject(language), language);
             env.services = new ArrayList<>(collectedServices);
@@ -2122,7 +2173,8 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments) {
+        public Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
+                        FileSystem fileSystem) {
             final Env newEnv = createEnv(
                             env.vmObject,
                             env.language,
@@ -2131,7 +2183,8 @@ public abstract class TruffleLanguage<C> {
                             stdIn,
                             config,
                             options,
-                            applicationArguments);
+                            applicationArguments,
+                            fileSystem);
             newEnv.context = env.context;
             env.valid = false;
             return env.spi.patchContext(env.context, newEnv) ? newEnv : null;

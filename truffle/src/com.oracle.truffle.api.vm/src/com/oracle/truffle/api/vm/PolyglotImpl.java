@@ -67,6 +67,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
+import org.graalvm.polyglot.io.FileSystem;
 
 /*
  * This class is exported to the Graal SDK. Keep that in mind when changing its class or package name.
@@ -843,6 +844,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return (T) engine.runtimeData;
         }
 
+        @Override
+        public boolean isDefaultFileSystem(FileSystem fs) {
+            return FileSystems.getDefaultFileSystem() == fs;
+        }
     }
 
 }

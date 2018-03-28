@@ -103,6 +103,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             builder.allowHostAccess(true);
         }
         builder.allowCreateThread(true);
+        builder.allowIO(true);
 
         launch(builder);
     }
