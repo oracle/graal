@@ -22,12 +22,12 @@
  */
 package org.graalvm.compiler.printer;
 
-import java.io.File;
 import static org.graalvm.compiler.graph.Edges.Type.Inputs;
 import static org.graalvm.compiler.graph.Edges.Type.Successors;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -530,7 +530,12 @@ public class BinaryGraphPrinter implements
 
             @Override
             public URI getURI() {
-                return new File(e.getFileName()).toURI();
+                String path = e.getFileName();
+                try {
+                    return path == null ? null : new URI(null, null, path, null);
+                } catch (URISyntaxException ex) {
+                    throw new IllegalArgumentException(ex);
+                }
             }
 
             @Override
