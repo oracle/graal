@@ -1689,17 +1689,9 @@ public abstract class ObjectFile {
         boolean isFunction();
     }
 
-    public abstract Symbol createDefinedSymbol(String name, Element baseSection, int position, int size, boolean isCode, boolean isGlobal);
-
-    public Symbol createDefinedDataSymbol(String name, Element baseSection, int position) {
-        return createDefinedSymbol(name, baseSection, position, getWordSizeInBytes(), false, true);
-    }
+    public abstract Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal);
 
     public abstract Symbol createUndefinedSymbol(String name, int size, boolean isCode);
-
-    public Symbol createUndefinedSymbol(String name, boolean isCode) {
-        return createUndefinedSymbol(name, 0, isCode);
-    }
 
     protected abstract SymbolTable createSymbolTable();
 

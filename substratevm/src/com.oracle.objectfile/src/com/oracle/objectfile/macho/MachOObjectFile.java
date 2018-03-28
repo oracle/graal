@@ -156,7 +156,7 @@ public final class MachOObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, int position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
         MachOSymtab symtab = (MachOSymtab) getOrCreateSymbolTable();
         /*
          * FIXME: Mach-O symbol visibility has an unfortunate interaction with relocation addends.
