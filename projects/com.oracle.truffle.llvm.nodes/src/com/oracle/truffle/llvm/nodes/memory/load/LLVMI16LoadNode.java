@@ -57,7 +57,7 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I16, I16_SIZE_IN_BYTES);
+        return new LLVMForeignReadNode(ForeignToLLVMType.I16);
     }
 
     @Specialization

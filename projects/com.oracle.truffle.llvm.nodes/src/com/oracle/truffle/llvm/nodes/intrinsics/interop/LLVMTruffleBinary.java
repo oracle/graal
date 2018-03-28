@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,14 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -44,11 +46,13 @@ public final class LLVMTruffleBinary {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleIsBoxed extends LLVMIntrinsic {
 
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
         @Child private Node foreignIsBoxed = Message.IS_BOXED.createNode();
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            return value.getOffset() == 0 && ForeignAccess.sendIsBoxed(foreignIsBoxed, value.getObject());
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendIsBoxed(foreignIsBoxed, foreign);
         }
 
         @Fallback
@@ -60,11 +64,13 @@ public final class LLVMTruffleBinary {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleIsExecutable extends LLVMIntrinsic {
 
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
         @Child private Node foreignIsExecutable = Message.IS_EXECUTABLE.createNode();
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            return value.getOffset() == 0 && ForeignAccess.sendIsExecutable(foreignIsExecutable, value.getObject());
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendIsExecutable(foreignIsExecutable, foreign);
         }
 
         @Fallback
@@ -76,11 +82,13 @@ public final class LLVMTruffleBinary {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleIsNull extends LLVMIntrinsic {
 
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
         @Child private Node foreignIsNull = Message.IS_NULL.createNode();
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            return value.getOffset() == 0 && ForeignAccess.sendIsNull(foreignIsNull, value.getObject());
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendIsNull(foreignIsNull, foreign);
         }
 
         @Fallback
@@ -92,11 +100,13 @@ public final class LLVMTruffleBinary {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleHasSize extends LLVMIntrinsic {
 
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            return value.getOffset() == 0 && ForeignAccess.sendHasSize(foreignHasSize, value.getObject());
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendHasSize(foreignHasSize, foreign);
         }
 
         @Fallback
@@ -108,11 +118,13 @@ public final class LLVMTruffleBinary {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
     public abstract static class LLVMTruffleHasKeys extends LLVMIntrinsic {
 
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
         @Child private Node foreignHasKeys = Message.HAS_KEYS.createNode();
 
         @Specialization
         protected boolean doIntrinsic(LLVMTruffleObject value) {
-            return value.getOffset() == 0 && ForeignAccess.sendHasKeys(foreignHasKeys, value.getObject());
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendHasKeys(foreignHasKeys, foreign);
         }
 
         @Fallback

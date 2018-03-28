@@ -27,19 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory;
+package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.memory.LLVMOffsetToNameNodeGen.FindMemberNodeGen;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceDecoratorType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.interop.LLVMOffsetToNameNodeGen.FindMemberNodeGen;
 
 public abstract class LLVMOffsetToNameNode extends Node {
 
@@ -47,6 +47,10 @@ public abstract class LLVMOffsetToNameNode extends Node {
 
     protected LLVMOffsetToNameNode(int elementAccessSize) {
         this.elementAccessSize = elementAccessSize;
+    }
+
+    public static LLVMOffsetToNameNode create(int elementAccessSize) {
+        return LLVMOffsetToNameNodeGen.create(elementAccessSize);
     }
 
     public abstract Object execute(LLVMSourceType type, long offset);

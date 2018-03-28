@@ -47,7 +47,7 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNode {
     @Child private LLVMMemMoveNode memMove;
 
     protected LLVMStructStoreNode(LLVMMemMoveNode memMove, Type type) {
-        super(type, 0);
+        super(type);
         this.memMove = memMove;
     }
 

@@ -67,7 +67,7 @@ public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.DOUBLE, DOUBLE_SIZE_IN_BYTES);
+        return new LLVMForeignReadNode(ForeignToLLVMType.DOUBLE);
     }
 
     @Specialization

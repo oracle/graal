@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,11 +60,10 @@ public interface LLVMObjectAccess {
          * Do a native memory read on an object.
          *
          * @param obj the object that is the base of the read pointer
-         * @param identifier the struct element name or array index
          * @param offset the byte offset into the object
          * @return the read value
          */
-        public abstract Object executeRead(Object obj, Object identifier, long offset) throws InteropException;
+        public abstract Object executeRead(Object obj, long offset) throws InteropException;
     }
 
     abstract class LLVMObjectWriteNode extends LLVMObjectAccessNode {
@@ -73,10 +72,9 @@ public interface LLVMObjectAccess {
          * Do a native memory write on an object.
          *
          * @param obj the object that is the base of the written pointer
-         * @param identifier the struct element name or array index
          * @param offset the byte offset into the object
          * @param value the written value
          */
-        public abstract void executeWrite(Object obj, Object identifier, long offset, Object value) throws InteropException;
+        public abstract void executeWrite(Object obj, long offset, Object value) throws InteropException;
     }
 }

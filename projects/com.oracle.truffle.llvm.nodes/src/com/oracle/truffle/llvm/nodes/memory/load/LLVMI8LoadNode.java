@@ -67,7 +67,7 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I8, 1);
+        return new LLVMForeignReadNode(ForeignToLLVMType.I8);
     }
 
     @Specialization

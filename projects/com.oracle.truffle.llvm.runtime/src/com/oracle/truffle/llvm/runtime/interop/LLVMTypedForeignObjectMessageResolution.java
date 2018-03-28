@@ -29,36 +29,49 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 
-@MessageResolution(receiverType = LLVMAddress.class)
-public class LLVMAddressMessageResolution {
+@MessageResolution(receiverType = LLVMTypedForeignObject.class)
+public class LLVMTypedForeignObjectMessageResolution {
 
     @Resolve(message = "IS_POINTER")
     public abstract static class ForeignIsPointer extends Node {
-        @SuppressWarnings("unused")
-        protected boolean access(VirtualFrame frame, LLVMAddress receiver) {
-            return true;
+
+        @Child Node isPointer = Message.IS_POINTER.createNode();
+
+        protected boolean access(LLVMTypedForeignObject receiver) {
+            return ForeignAccess.sendIsPointer(isPointer, receiver.getForeign());
         }
     }
 
     @Resolve(message = "AS_POINTER")
     public abstract static class ForeignAsPointer extends Node {
-        @SuppressWarnings("unused")
-        protected long access(VirtualFrame frame, LLVMAddress receiver) {
-            return receiver.getVal();
+
+        @Child Node asPointer = Message.AS_POINTER.createNode();
+
+        protected long access(LLVMTypedForeignObject receiver) {
+            try {
+                return ForeignAccess.sendAsPointer(asPointer, receiver.getForeign());
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw ex.raise();
+            }
         }
     }
 
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNull extends Node {
-        @SuppressWarnings("unused")
-        protected boolean access(VirtualFrame frame, LLVMAddress receiver) {
-            return receiver.getVal() == 0;
+
+        @Child Node isNull = Message.IS_NULL.createNode();
+
+        protected boolean access(LLVMTypedForeignObject receiver) {
+            return ForeignAccess.sendIsNull(isNull, receiver.getForeign());
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -67,6 +68,7 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     @Children private final LLVMDataEscapeNode[] prepareValuesForEscape;
     @Child private Node foreignExecute;
     @Child private ForeignToLLVM toLLVM;
+    @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
     public LLVMTruffleExecute(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
         this.toLLVM = toLLVM;
@@ -76,13 +78,6 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
             prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create(argTypes[i]);
         }
         this.foreignExecute = Message.createExecute(args.length).createNode();
-    }
-
-    private static void checkLLVMTruffleObject(LLVMTruffleObject value) {
-        if (value.getOffset() != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalAccessError("Pointee must be unmodified");
-        }
     }
 
     @CompilationFinal private LLVMThreadingStack threadingStack = null;
@@ -120,16 +115,16 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
                     @Cached("value") LLVMTruffleObject cachedValue,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
-        checkLLVMTruffleObject(cachedValue);
-        return doExecute(frame, cachedValue.getObject(), context.get(), getStack);
+        TruffleObject foreign = asForeign.execute(cachedValue);
+        return doExecute(frame, foreign, context.get(), getStack);
     }
 
     @Specialization(replaces = "doIntrinsicCachedLLVMTruffleObject")
     protected Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
-        checkLLVMTruffleObject(value);
-        return doExecute(frame, value.getObject(), context.get(), getStack);
+        TruffleObject foreign = asForeign.execute(value);
+        return doExecute(frame, foreign, context.get(), getStack);
     }
 
     @Fallback

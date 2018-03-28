@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.LLVMGlobalVariableMessageResolutionForeign;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public final class LLVMSharedGlobalVariable implements LLVMInternalTruffleObject {
+public abstract class LLVMAsForeignNode extends LLVMNode {
 
-    private final LLVMGlobal descriptor;
-    private final LLVMContext context;
+    final boolean allowNonForeign;
 
-    public LLVMSharedGlobalVariable(LLVMGlobal descriptor, LLVMContext context) {
-        this.descriptor = descriptor;
-        this.context = context;
+    protected LLVMAsForeignNode(boolean allowNonForeign) {
+        this.allowNonForeign = allowNonForeign;
     }
 
-    public LLVMContext getContext() {
-        return context;
+    public abstract TruffleObject execute(LLVMTruffleObject object);
+
+    public static LLVMAsForeignNode create() {
+        return LLVMAsForeignNodeGen.create(false);
     }
 
-    public LLVMGlobal getDescriptor() {
-        return descriptor;
+    public static LLVMAsForeignNode createOptional() {
+        return LLVMAsForeignNodeGen.create(true);
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMSharedGlobalVariable;
+    @Specialization(guards = "isForeign(object)")
+    TruffleObject doForeign(LLVMTruffleObject object) {
+        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) object.getObject();
+        return foreign.getForeign();
     }
 
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMGlobalVariableMessageResolutionForeign.ACCESS;
+    @Specialization(guards = {"allowNonForeign", "!isForeign(object)"})
+    TruffleObject doOther(@SuppressWarnings("unused") LLVMTruffleObject object) {
+        return null;
+    }
+
+    protected static boolean isForeign(LLVMTruffleObject object) {
+        return object.getOffset() == 0 && object.getObject() instanceof LLVMTypedForeignObject;
     }
 }

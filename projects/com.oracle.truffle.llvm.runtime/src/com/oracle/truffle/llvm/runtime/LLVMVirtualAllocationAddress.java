@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 @ValueType
@@ -127,7 +127,7 @@ public final class LLVMVirtualAllocationAddress {
         return new LLVMVirtualAllocationAddress(this.object, this.offset);
     }
 
-    public static final class LLVMVirtualAllocationAddressTruffleObject implements TruffleObject {
+    public static final class LLVMVirtualAllocationAddressTruffleObject implements LLVMInternalTruffleObject {
         private final LLVMVirtualAllocationAddress object;
 
         public LLVMVirtualAllocationAddressTruffleObject(LLVMVirtualAllocationAddress object) {

@@ -29,12 +29,15 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
@@ -69,31 +72,38 @@ public abstract class LLVMReadStringNode extends Node {
         return readOther.readPointer(address);
     }
 
+    abstract static class Dummy extends Node {
+
+        protected abstract LLVMTruffleObject execute();
+    }
+
+    @NodeChild(value = "object", type = Dummy.class)
+    @NodeChild(value = "foreign", type = LLVMAsForeignNode.class, executeWith = "object")
     abstract static class ForeignReadStringNode extends Node {
 
-        @Child private Node isBoxed = Message.IS_BOXED.createNode();
+        @Child Node isBoxed = Message.IS_BOXED.createNode();
 
         protected abstract String execute(LLVMTruffleObject foreign);
 
-        @Specialization(guards = "isBoxed(object)")
-        String readUnbox(LLVMTruffleObject object,
+        @Specialization(guards = "isBoxed(foreign)")
+        String readUnbox(@SuppressWarnings("unused") LLVMTruffleObject object, TruffleObject foreign,
                         @Cached("createUnbox()") Node unbox) {
             try {
-                Object unboxed = ForeignAccess.sendUnbox(unbox, object.getObject());
+                Object unboxed = ForeignAccess.sendUnbox(unbox, foreign);
                 return (String) unboxed;
             } catch (UnsupportedMessageException ex) {
                 throw ex.raise();
             }
         }
 
-        @Specialization(guards = "!isBoxed(object)")
-        String readOther(LLVMTruffleObject object,
+        @Specialization(guards = "!isBoxed(foreign)")
+        String readOther(LLVMTruffleObject object, @SuppressWarnings("unused") TruffleObject foreign,
                         @Cached("create()") PointerReadStringNode read) {
             return read.readPointer(object);
         }
 
-        protected boolean isBoxed(LLVMTruffleObject object) {
-            return object.getOffset() == 0 && ForeignAccess.sendIsBoxed(isBoxed, object.getObject());
+        protected boolean isBoxed(TruffleObject foreign) {
+            return foreign != null && ForeignAccess.sendIsBoxed(isBoxed, foreign);
         }
 
         protected static Node createUnbox() {
@@ -101,7 +111,7 @@ public abstract class LLVMReadStringNode extends Node {
         }
 
         public static ForeignReadStringNode create() {
-            return ForeignReadStringNodeGen.create();
+            return ForeignReadStringNodeGen.create(null, LLVMAsForeignNode.createOptional());
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.factories;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
@@ -54,6 +55,7 @@ import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFa
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.CachedWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.DynamicObjectReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.DynamicObjectWriteNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.GetWriteIdentifierNodeGen;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMObjectAccessFactory {
@@ -82,10 +84,10 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
-        protected Object doRead(Object obj, Object identifier, long offset,
+        protected Object doRead(Object obj, long offset,
                         @Cached("createReadNode(obj)") LLVMObjectReadNode impl) {
             try {
-                return impl.executeRead(obj, identifier, offset);
+                return impl.executeRead(obj, offset);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -119,17 +121,17 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(guards = "object.getShape() == cachedShape")
-        protected Object doCachedShape(DynamicObject object, Object identifier, long offset,
+        protected Object doCachedShape(DynamicObject object, long offset,
                         @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached("createReadNode(cachedShape)") LLVMObjectReadNode impl) {
-            return doRead(object, identifier, offset, impl);
+            return doRead(object, offset, impl);
         }
 
         @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        protected Object doRead(DynamicObject object, Object identifier, long offset,
+        protected Object doRead(DynamicObject object, long offset,
                         @Cached("createReadNode(object.getShape())") LLVMObjectReadNode impl) {
             try {
-                return impl.executeRead(object, identifier, offset);
+                return impl.executeRead(object, offset);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -151,9 +153,11 @@ public abstract class LLVMObjectAccessFactory {
         @Child private Node read = Message.READ.createNode();
         @Child private ForeignToLLVM toLLVM;
 
+        private final int elementAccessSize;
         private final boolean acceptDynamicObject;
 
         FallbackReadNode(ForeignToLLVMType type, boolean acceptDynamicObject) {
+            this.elementAccessSize = type.getSizeInBytes();
             this.toLLVM = ForeignToLLVM.create(type);
             this.acceptDynamicObject = acceptDynamicObject;
         }
@@ -168,8 +172,8 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Override
-        public Object executeRead(Object obj, Object identifier, long offset) throws InteropException {
-            Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, identifier);
+        public Object executeRead(Object obj, long offset) throws InteropException {
+            Object foreign = ForeignAccess.sendRead(read, (TruffleObject) obj, offset / elementAccessSize);
             return toLLVM.executeWithTarget(foreign);
         }
     }
@@ -190,10 +194,10 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(limit = "TYPE_LIMIT", guards = "impl.canAccess(obj)")
-        protected void doWrite(Object obj, Object identifier, long offset, Object value,
+        protected void doWrite(Object obj, long offset, Object value,
                         @Cached("createWriteNode(obj)") LLVMObjectWriteNode impl) {
             try {
-                impl.executeWrite(obj, identifier, offset, value);
+                impl.executeWrite(obj, offset, value);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -227,17 +231,17 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Specialization(guards = "object.getShape() == cachedShape")
-        protected void doCachedShape(DynamicObject object, Object identifier, long offset, Object value,
+        protected void doCachedShape(DynamicObject object, long offset, Object value,
                         @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                         @Cached("createWriteNode(cachedShape)") LLVMObjectWriteNode impl) {
-            doWrite(object, identifier, offset, value, impl);
+            doWrite(object, offset, value, impl);
         }
 
         @Specialization(limit = "TYPE_LIMIT", replaces = "doCachedShape", guards = "impl.canAccess(object)")
-        protected void doWrite(DynamicObject object, Object identifier, long offset, Object value,
+        protected void doWrite(DynamicObject object, long offset, Object value,
                         @Cached("createWriteNode(object.getShape())") LLVMObjectWriteNode impl) {
             try {
-                impl.executeWrite(object, identifier, offset, value);
+                impl.executeWrite(object, offset, value);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
@@ -257,6 +261,7 @@ public abstract class LLVMObjectAccessFactory {
     static class FallbackWriteNode extends LLVMObjectWriteNode {
 
         @Child private Node write = Message.WRITE.createNode();
+        @Child private GetWriteIdentifierNode getWriteIdentifier = GetWriteIdentifierNodeGen.create();
         @Child private LLVMDataEscapeNode dataEscape;
 
         private final ContextReference<LLVMContext> ctxRef;
@@ -278,9 +283,45 @@ public abstract class LLVMObjectAccessFactory {
         }
 
         @Override
-        public void executeWrite(Object obj, Object identifier, long offset, Object value) throws InteropException {
+        public void executeWrite(Object obj, long offset, Object value) throws InteropException {
+            long identifier = getWriteIdentifier.execute(offset, value);
             Object escaped = dataEscape.executeWithTarget(value, ctxRef.get());
             ForeignAccess.sendWrite(write, (TruffleObject) obj, identifier, escaped);
+        }
+    }
+
+    abstract static class GetWriteIdentifierNode extends Node {
+
+        abstract long execute(long offset, Object value);
+
+        @Specialization
+        long doByte(long offset, @SuppressWarnings("unused") byte value) {
+            return offset;
+        }
+
+        @Specialization
+        long doShort(long offset, @SuppressWarnings("unused") short value) {
+            return offset / 2;
+        }
+
+        @Specialization
+        long doChar(long offset, @SuppressWarnings("unused") char value) {
+            return offset / 2;
+        }
+
+        @Specialization
+        long doInt(long offset, @SuppressWarnings("unused") int value) {
+            return offset / 4;
+        }
+
+        @Specialization
+        long doFloat(long offset, @SuppressWarnings("unused") float value) {
+            return offset / 4;
+        }
+
+        @Fallback // long, double or non-primitive
+        long doDouble(long offset, @SuppressWarnings("unused") Object value) {
+            return offset / 8;
         }
     }
 }

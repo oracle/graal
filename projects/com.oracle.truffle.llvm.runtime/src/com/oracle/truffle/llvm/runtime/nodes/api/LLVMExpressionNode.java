@@ -39,10 +39,10 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -170,7 +170,6 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
     }
 
     public static boolean notLLVM(TruffleObject object) {
-        return !(object instanceof LLVMFunctionDescriptor || object instanceof LLVMAddress ||
-                        object instanceof LLVMTruffleAddress || object instanceof LLVMSharedGlobalVariable);
+        return !(object instanceof LLVMInternalTruffleObject);
     }
 }

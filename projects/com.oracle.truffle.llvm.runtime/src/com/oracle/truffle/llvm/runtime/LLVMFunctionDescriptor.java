@@ -47,11 +47,12 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public final class LLVMFunctionDescriptor implements TruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
+public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
 
     private final String functionName;
     private final FunctionType type;

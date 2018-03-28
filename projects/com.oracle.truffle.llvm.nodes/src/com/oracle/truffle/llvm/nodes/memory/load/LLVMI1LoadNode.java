@@ -63,7 +63,7 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
     }
 
     static LLVMForeignReadNode createForeignRead() {
-        return new LLVMForeignReadNode(ForeignToLLVMType.I1, 1);
+        return new LLVMForeignReadNode(ForeignToLLVMType.I1);
     }
 
     @Specialization

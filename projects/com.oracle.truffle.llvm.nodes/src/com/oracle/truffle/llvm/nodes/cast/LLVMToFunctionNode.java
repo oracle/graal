@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,12 +35,14 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -76,13 +78,13 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Child private Node isNull = Message.IS_NULL.createNode();
 
     @Specialization
-    protected Object doTruffleObject(LLVMTruffleObject from) {
-        if (from.getOffset() == 0) {
-            if (ForeignAccess.sendIsNull(isNull, from.getObject())) {
-                return LLVMAddress.fromLong(0);
-            } else if (ForeignAccess.sendIsExecutable(isExecutable, from.getObject())) {
-                return from;
-            }
+    protected Object doTruffleObject(LLVMTruffleObject from,
+                    @Cached("create()") LLVMAsForeignNode asForeign) {
+        TruffleObject foreign = asForeign.execute(from);
+        if (ForeignAccess.sendIsNull(isNull, foreign)) {
+            return LLVMAddress.fromLong(0);
+        } else if (ForeignAccess.sendIsExecutable(isExecutable, foreign)) {
+            return from;
         }
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Not a function");

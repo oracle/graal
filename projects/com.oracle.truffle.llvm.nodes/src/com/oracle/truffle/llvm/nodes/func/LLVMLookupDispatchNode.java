@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,8 +42,10 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -119,6 +121,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
 
     @Specialization(guards = "isForeignFunction(function)")
     protected Object doForeign(LLVMTruffleObject function, Object[] arguments,
+                    @Cached("create()") LLVMAsForeignNode asForeign,
                     @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
                     @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,
                     @Cached("createToLLVMNode()") ForeignToLLVM toLLVMNode,
@@ -126,7 +129,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         try {
             Object ret;
             try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-                ret = ForeignAccess.sendExecute(crossLanguageCallNode, function.getObject(), getForeignArguments(dataEscapeNodes, arguments, context.get()));
+                ret = ForeignAccess.sendExecute(crossLanguageCallNode, asForeign.execute(function), getForeignArguments(dataEscapeNodes, arguments, context.get()));
             }
             return toLLVMNode.executeWithTarget(ret);
         } catch (InteropException e) {
@@ -154,7 +157,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     }
 
     protected static boolean isForeignFunction(LLVMTruffleObject function) {
-        return function.getOffset() == 0;
+        return function.getOffset() == 0 && function.getObject() instanceof LLVMTypedForeignObject;
     }
 
     protected static Node createCrossLanguageCallNode(Object[] arguments) {

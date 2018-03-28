@@ -31,10 +31,11 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTruffleAddressMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMTruffleAddress implements TruffleObject {
+public final class LLVMTruffleAddress implements LLVMInternalTruffleObject {
     private final long address;
     private final Type type;
     private final LLVMContext context;

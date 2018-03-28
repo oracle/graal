@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
 
     public LLVMAddressStoreNode(Type type) {
-        super(type, ADDRESS_SIZE_IN_BYTES);
+        super(type);
     }
 
     @Specialization

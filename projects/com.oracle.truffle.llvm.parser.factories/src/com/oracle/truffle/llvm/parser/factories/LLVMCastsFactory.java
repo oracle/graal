@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -325,7 +325,7 @@ final class LLVMCastsFactory {
         if (Type.isFunctionOrFunctionPointer(targetType)) {
             return fromNode;
         } else if (targetType instanceof PointerType) {
-            return LLVMToAddressNodeGen.create(fromNode, targetType);
+            return LLVMToAddressNodeGen.create(fromNode);
         } else if (targetType == PrimitiveType.I32) {
             return LLVMToI32NoZeroExtNodeGen.create(fromNode);
         } else if (targetType == PrimitiveType.I64) {
@@ -503,7 +503,7 @@ final class LLVMCastsFactory {
                         throw new AssertionError(targetType + " " + conv);
                 }
             } else if (targetType instanceof PointerType) {
-                return LLVMToAddressNodeGen.create(fromNode, targetType);
+                return LLVMToAddressNodeGen.create(fromNode);
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarNoZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else {
@@ -526,7 +526,7 @@ final class LLVMCastsFactory {
             } else if (Type.isFunctionOrFunctionPointer(targetType)) {
                 return LLVMToFunctionNodeGen.create(fromNode);
             } else if (targetType instanceof PointerType) {
-                return LLVMToAddressNodeGen.create(fromNode, targetType);
+                return LLVMToAddressNodeGen.create(fromNode);
             } else {
                 throw new AssertionError(targetType + " " + conv);
             }
@@ -741,7 +741,7 @@ final class LLVMCastsFactory {
             } else if (targetType instanceof VariableBitWidthType) {
                 return LLVMToIVarZeroExtNodeGen.create(fromNode, bits == 0 ? targetType.getBitSize() : bits);
             } else if (targetType instanceof PointerType) {
-                return LLVMToAddressNodeGen.create(fromNode, targetType);
+                return LLVMToAddressNodeGen.create(fromNode);
             } else {
                 throw new AssertionError(targetType + " " + conv);
             }

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -46,10 +47,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
 
-    @Specialization(guards = "object.getOffset() == 0")
+    @Specialization
     long getForeignStringSize(LLVMTruffleObject object,
+                    @Cached("create()") LLVMAsForeignNode asForeign,
                     @Cached("create()") BoxedGetStringSize getSize) {
-        return getSize.execute(object.getObject());
+        return getSize.execute(asForeign.execute(object));
     }
 
     @Specialization

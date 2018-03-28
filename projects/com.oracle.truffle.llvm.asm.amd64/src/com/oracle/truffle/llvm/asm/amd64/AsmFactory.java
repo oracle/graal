@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -1762,7 +1762,7 @@ class AsmFactory {
                     if (retType instanceof StructureType) {
                         assert retTypes[arg.getOutIndex()] == arg.getType();
                         if (arg.getType() instanceof PointerType) {
-                            valueNodes[arg.getOutIndex()] = LLVMToAddressNodeGen.create(register, arg.getType());
+                            valueNodes[arg.getOutIndex()] = LLVMToAddressNodeGen.create(register);
                             writeNodes[arg.getOutIndex()] = LLVMAddressStoreNodeGen.create(arg.getType());
                         } else {
                             PrimitiveKind primitiveKind = getPrimitiveKind(arg);
@@ -1868,7 +1868,7 @@ class AsmFactory {
 
     private LLVMExpressionNode castResult(LLVMExpressionNode register) {
         if (retType instanceof PointerType) {
-            return LLVMToAddressNodeGen.create(register, PrimitiveType.I64);
+            return LLVMToAddressNodeGen.create(register);
         }
         switch (((PrimitiveType) retType).getPrimitiveKind()) {
             case I1:
@@ -2100,7 +2100,7 @@ class AsmFactory {
             }
         } else if (operand instanceof AsmMemoryOperand) {
             LLVMExpressionNode address = getOperandAddress(operand);
-            LLVMExpressionNode addr = LLVMToAddressNodeGen.create(address, PrimitiveType.I8);
+            LLVMExpressionNode addr = LLVMToAddressNodeGen.create(address);
             LLVMLoadNode load;
             if (type instanceof PrimitiveType) {
                 switch (((PrimitiveType) type).getPrimitiveKind()) {

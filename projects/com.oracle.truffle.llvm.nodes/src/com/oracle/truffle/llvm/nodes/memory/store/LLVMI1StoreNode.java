@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 public abstract class LLVMI1StoreNode extends LLVMStoreNode {
 
     public LLVMI1StoreNode() {
-        super(PrimitiveType.I8, 1);
+        super(PrimitiveType.I8);
     }
 
     @Specialization

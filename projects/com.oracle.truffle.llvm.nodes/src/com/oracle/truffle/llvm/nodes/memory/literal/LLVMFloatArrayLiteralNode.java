@@ -77,7 +77,7 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
     }
 
     protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(PrimitiveType.FLOAT, 4);
+        return LLVMForeignWriteNodeGen.create(PrimitiveType.FLOAT);
     }
 
     @Specialization

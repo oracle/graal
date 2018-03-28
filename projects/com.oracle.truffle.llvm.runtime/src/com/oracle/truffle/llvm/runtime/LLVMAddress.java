@@ -34,10 +34,11 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAddressMessageResolutionForeign;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
-public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider, TruffleObject {
+public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider, LLVMInternalTruffleObject {
 
     public static final int WORD_LENGTH_BIT = 64;
 
