@@ -24,17 +24,16 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.tools.profiler.CPUTracer;
-import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
-import org.graalvm.polyglot.Instrument;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.tools.profiler.CPUTracer;
 
 public class CPUTracerTest extends AbstractProfilerTest {
 
@@ -42,9 +41,7 @@ public class CPUTracerTest extends AbstractProfilerTest {
 
     @Before
     public void setupTracer() {
-        Instrument instrument = context.getEngine().getInstruments().get(CPUTracerInstrument.ID);
-        Assert.assertNotNull(instrument);
-        tracer = instrument.lookup(CPUTracer.class);
+        tracer = CPUTracer.find(context.getEngine());
         Assert.assertNotNull(tracer);
     }
 

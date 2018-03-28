@@ -53,8 +53,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings("deprecation")
 public class ImplicitExplicitExportTest {
     private static Thread mainThread;
     private PolyglotEngine vm;
@@ -196,7 +197,6 @@ public class ImplicitExplicitExportTest {
             return Truffle.getRuntime().createCallTarget(new ValueRootNode(code, this));
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object findExportedSymbol(Ctx context, String globalName, boolean onlyExplicit) {
             assertNotEquals("Should run asynchronously", Thread.currentThread(), mainThread);
@@ -209,7 +209,6 @@ public class ImplicitExplicitExportTest {
             return null;
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(Ctx context) {
             return context;

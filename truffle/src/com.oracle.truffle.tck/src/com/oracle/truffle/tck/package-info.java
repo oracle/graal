@@ -30,9 +30,9 @@
  */
 
 /**
- * Include implementation of {@link com.oracle.truffle.tck.TruffleTCK} in your test suite to verify
- * your {@link com.oracle.truffle.api.TruffleLanguage language} implementation is compliant.
- * 
+ * Contains testing utilities like {@link com.oracle.truffle.tck.DebuggerTester} and
+ * {@link com.oracle.truffle.tck.TruffleRunner}.
+ *
  * @since 0.8 or older
  */
 package com.oracle.truffle.tck;

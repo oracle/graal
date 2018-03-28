@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 /**
  * Bug report validating test.
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.vm.PolyglotEngine;
  * problems with debugging later on. That is what the other part of this test - once it obtains
  * Debugger instance simulates.
  */
+@SuppressWarnings("deprecation")
 public class InitializationTest {
 
     private PolyglotEngine vm;

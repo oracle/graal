@@ -43,6 +43,9 @@ package com.oracle.truffle.sl.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,25 +57,28 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 public class SLParseInContextTest {
-    private PolyglotEngine vm;
+    private Context context;
 
     @Before
-    public void prepareMethods() throws Exception {
-        vm = PolyglotEngine.newBuilder().build();
+    public void setup() throws Exception {
+        context = Context.create();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        context.close();
     }
 
     @Test
     public void parseAPlusB() throws Exception {
-        PolyglotEngine.Value value = vm.eval(Source.newBuilder("").name("eval.eval").mimeType("application/x-test-eval").build());
-        Object fourtyTwo = value.get();
-        assertTrue("Result is a number: " + fourtyTwo, fourtyTwo instanceof Number);
-        assertEquals(42, ((Number) fourtyTwo).intValue());
+        Value value = context.eval("x-test-eval", "");
+        assertTrue("Result is a number: " + value, value.isNumber());
+        assertEquals(42, value.asInt());
     }
 
-    @TruffleLanguage.Registration(mimeType = "application/x-test-eval", name = "EvalLang", version = "1.0")
+    @TruffleLanguage.Registration(id = "x-test-eval", mimeType = "application/x-test-eval", name = "EvalLang", version = "1.0")
     public static final class EvalLang extends TruffleLanguage<Env> {
 
         @Override

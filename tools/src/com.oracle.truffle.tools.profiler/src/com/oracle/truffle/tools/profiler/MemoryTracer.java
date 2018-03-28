@@ -34,7 +34,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 import com.oracle.truffle.tools.profiler.impl.MemoryTracerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
@@ -43,6 +42,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -60,7 +62,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <p>
  * Usage example: {@link MemoryTracerSnippets#example}
  * </p>
- * 
+ *
  * @since 0.30
  */
 public final class MemoryTracer implements Closeable {
@@ -121,8 +123,22 @@ public final class MemoryTracer implements Closeable {
      * @param engine the engine to find debugger for
      * @return an instance of associated {@link MemoryTracer}
      * @since 0.30
+     * @deprecated use {@link #find(Engine)} instead.
      */
-    public static MemoryTracer find(PolyglotEngine engine) {
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static MemoryTracer find(com.oracle.truffle.api.vm.PolyglotEngine engine) {
+        return MemoryTracerInstrument.getTracer(engine);
+    }
+
+    /**
+     * Finds {@link MemoryTracer} associated with given engine.
+     *
+     * @param engine the engine to find debugger for
+     * @return an instance of associated {@link MemoryTracer}
+     * @since 1.0
+     */
+    public static MemoryTracer find(Engine engine) {
         return MemoryTracerInstrument.getTracer(engine);
     }
 
@@ -415,17 +431,11 @@ class MemoryTracerSnippets {
     public void example() {
         // @formatter:off
         // BEGIN: MemoryTracerSnippets#example
-        PolyglotEngine engine = PolyglotEngine.
-                newBuilder().
-                build();
+        Context context = Context.create();
 
-        MemoryTracer tracer = MemoryTracer.find(engine);
+        MemoryTracer tracer = MemoryTracer.find(context.getEngine());
         tracer.setCollecting(true);
-        Source someCode = Source.
-                newBuilder("...").
-                mimeType("...").
-                name("example").build();
-        engine.eval(someCode);
+        context.eval("...", "...");
         tracer.setCollecting(false);
         // rootNodes is the recorded profile of the execution in tree form.
 

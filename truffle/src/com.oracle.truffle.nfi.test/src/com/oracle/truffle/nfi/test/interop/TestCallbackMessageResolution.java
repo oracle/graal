@@ -28,7 +28,6 @@ import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = TestCallback.class)
@@ -39,7 +38,7 @@ class TestCallbackMessageResolution {
 
         Object access(TestCallback callback, Object[] arguments) {
             Object res = callback.call(arguments);
-            return res == null ? JavaInterop.asTruffleObject(null) : res;
+            return res == null ? "" : res;
         }
     }
 

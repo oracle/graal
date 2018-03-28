@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 final class EngineTruffleObject implements TruffleObject, ForeignAccess.Factory {
     private final PolyglotEngine engine;
     private final TruffleObject delegate;

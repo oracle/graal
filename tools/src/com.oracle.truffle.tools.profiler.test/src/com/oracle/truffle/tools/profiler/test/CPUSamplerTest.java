@@ -24,18 +24,17 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
-import org.graalvm.polyglot.Instrument;
+import java.util.Collection;
+import java.util.Iterator;
+
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.Collection;
-import java.util.Iterator;
+import com.oracle.truffle.tools.profiler.CPUSampler;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
 
 public class CPUSamplerTest extends AbstractProfilerTest {
 
@@ -45,9 +44,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
 
     @Before
     public void setupSampler() {
-        Instrument instrument = context.getEngine().getInstruments().get(CPUSamplerInstrument.ID);
-        Assert.assertNotNull(instrument);
-        sampler = instrument.lookup(CPUSampler.class);
+        sampler = CPUSampler.find(context.getEngine());
         Assert.assertNotNull(sampler);
         synchronized (sampler) {
             sampler.setGatherSelfHitTimes(true);
@@ -166,7 +163,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals("foo", foo.getRootName());
         checkTimeline(foo.getPayload());
 
-        // RECURSIVE_CALL does recutions to depth 10
+        // RECURSIVE_CALL does recursions to depth 10
         for (int i = 0; i < 10; i++) {
             children = foo.getChildren();
             Assert.assertEquals(1, children.size());

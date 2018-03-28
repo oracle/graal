@@ -41,11 +41,12 @@
 package com.oracle.truffle.sl.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.sl.nodes.access.SLReadPropertyCacheNode;
@@ -185,8 +186,59 @@ public class SLObjectMessageResolution {
         @CompilerDirectives.TruffleBoundary
         private static Object obtainKeys(DynamicObject receiver) {
             Object[] keys = receiver.getShape().getKeyList().toArray();
-            return JavaInterop.asTruffleObject(keys);
+            return new KeysArray(keys);
         }
+    }
+
+    @MessageResolution(receiverType = KeysArray.class)
+    static final class KeysArray implements TruffleObject {
+
+        private final Object[] keys;
+
+        KeysArray(Object[] keys) {
+            this.keys = keys;
+        }
+
+        @Resolve(message = "HAS_SIZE")
+        abstract static class HasSize extends Node {
+
+            public Object access(@SuppressWarnings("unused") KeysArray receiver) {
+                return true;
+            }
+        }
+
+        @Resolve(message = "GET_SIZE")
+        abstract static class GetSize extends Node {
+
+            public Object access(KeysArray receiver) {
+                return receiver.keys.length;
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class Read extends Node {
+
+            public Object access(KeysArray receiver, int index) {
+                try {
+                    Object key = receiver.keys[index];
+                    assert key instanceof String;
+                    return key;
+                } catch (IndexOutOfBoundsException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(String.valueOf(index));
+                }
+            }
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return KeysArrayForeign.ACCESS;
+        }
+
+        static boolean isInstance(TruffleObject array) {
+            return array instanceof KeysArray;
+        }
+
     }
 
 }

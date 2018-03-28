@@ -54,7 +54,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 public class PassItselfBackViaContextTest {
@@ -120,7 +119,7 @@ public class PassItselfBackViaContextTest {
         abstract static class ExecNode extends Node {
             protected Object access(MyObj obj, Object... value) {
                 obj.value = value[0];
-                return JavaInterop.asTruffleValue(null);
+                return "";
             }
         }
     }

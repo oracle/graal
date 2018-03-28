@@ -75,7 +75,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -789,7 +788,7 @@ public class LanguageSPITest {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-                env.exportSymbol("symbol", JavaInterop.asTruffleObject(env));
+                env.exportSymbol("symbol", env.asGuestValue(env));
                 return super.createContext(env);
             }
 

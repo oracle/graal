@@ -63,23 +63,22 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 /**
- * Client access to {@link PolyglotEngine} {@linkplain Debugger debugging services}.
+ * Represents a single debugging session of a Debugger.
  *
  * <h4>Session lifetime</h4>
  * <p>
  * <ul>
- * <li>A {@link PolyglotEngine} debugging client
- * {@linkplain Debugger#startSession(SuspendedCallback) requests} a new {@linkplain DebuggerSession
- * session} from the {@linkplain Debugger#find(PolyglotEngine) engine's Debugger}.</li>
+ * <li>A debugging client {@linkplain Debugger#startSession(SuspendedCallback) requests} a new
+ * {@linkplain DebuggerSession session} from the {@linkplain Debugger Debugger}.</li>
  *
  * <li>A client uses a session to request suspension of guest language execution threads, for
  * example by setting breakpoints or stepping.</li>
@@ -1225,12 +1224,12 @@ public final class DebuggerSession implements Closeable {
 
 class DebuggerSessionSnippets {
 
+    @SuppressFBWarnings("")
     public void example() {
         // @formatter:off
+        TruffleInstrument.Env instrumentEnv = null;
         // BEGIN: DebuggerSessionSnippets#example
-        PolyglotEngine engine = PolyglotEngine.newBuilder().build();
-
-        try (DebuggerSession session = Debugger.find(engine).
+        try (DebuggerSession session = Debugger.find(instrumentEnv).
                         startSession(new SuspendedCallback() {
             public void onSuspend(SuspendedEvent event) {
                 // step into the next event
@@ -1243,11 +1242,7 @@ class DebuggerSessionSnippets {
 
             // install line breakpoint
             session.install(Breakpoint.newBuilder(someCode).lineIs(3).build());
-
-            // should print suspended at for each debugger step.
-            engine.eval(someCode);
         }
-
         // END: DebuggerSessionSnippets#example
         // @formatter:on
     }

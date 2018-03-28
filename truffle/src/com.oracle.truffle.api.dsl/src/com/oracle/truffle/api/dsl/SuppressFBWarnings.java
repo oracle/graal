@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools;
+package com.oracle.truffle.api.dsl;
 
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-@Registration(id = ProfilerInstrument.ID, services = Profiler.class)
-@SuppressWarnings("deprecation")
-public class ProfilerInstrument extends TruffleInstrument {
-    static final String ID = "profiler";
-
-    private Profiler profiler;
-
-    @Override
-    protected void onCreate(Env env) {
-        this.profiler = new Profiler(env.getInstrumenter());
-        env.registerService(this.profiler);
-    }
-
-    @Override
-    protected void onDispose(Env env) {
-        if (profiler != null) {
-            profiler.dispose();
-        }
-    }
-
+/**
+ * Used to suppress <a href="http://findbugs.sourceforge.net">FindBugs</a> warnings.
+ */
+@Retention(RetentionPolicy.CLASS)
+@interface SuppressFBWarnings {
+    /**
+     * The set of FindBugs
+     * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be
+     * suppressed in annotated element. The value can be a bug category, kind or pattern.
+     */
+    java.lang.String[] value();
 }

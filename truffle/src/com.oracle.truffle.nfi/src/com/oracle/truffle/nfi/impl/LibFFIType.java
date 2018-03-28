@@ -24,25 +24,26 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.ObjectClosureArgumentNode;
 import com.oracle.truffle.nfi.impl.ClosureArgumentNode.StringClosureArgumentNode;
+import com.oracle.truffle.nfi.impl.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.NativeArgumentBuffer.TypeTag;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNode.SerializeEnvArgumentNode;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNode.SerializeObjectArgumentNode;
-import com.oracle.truffle.nfi.impl.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNodeFactory.SerializeArrayArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNodeFactory.SerializeClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNodeFactory.SerializePointerArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNodeFactory.SerializeSimpleArgumentNodeGen;
 import com.oracle.truffle.nfi.impl.SerializeArgumentNodeFactory.SerializeStringArgumentNodeGen;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
-import java.nio.ByteOrder;
 
 abstract class LibFFIType {
 
@@ -502,43 +503,43 @@ abstract class LibFFIType {
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
 
-        protected Class<?> getArrayType(TruffleObject object) {
+        protected Class<?> getArrayType(Object hostObject) {
             switch (elementType) {
                 case UINT8:
                 case SINT8:
-                    if (JavaInterop.isJavaObject(byte[].class, object)) {
+                    if (hostObject instanceof byte[]) {
                         return byte[].class;
-                    } else if (JavaInterop.isJavaObject(boolean[].class, object)) {
+                    } else if (hostObject instanceof boolean[]) {
                         return boolean[].class;
                     }
                     break;
                 case UINT16:
                 case SINT16:
-                    if (JavaInterop.isJavaObject(short[].class, object)) {
+                    if (hostObject instanceof short[]) {
                         return short[].class;
-                    } else if (JavaInterop.isJavaObject(char[].class, object)) {
+                    } else if (hostObject instanceof char[]) {
                         return char[].class;
                     }
                     break;
                 case UINT32:
                 case SINT32:
-                    if (JavaInterop.isJavaObject(int[].class, object)) {
+                    if (hostObject instanceof int[]) {
                         return int[].class;
                     }
                     break;
                 case UINT64:
                 case SINT64:
-                    if (JavaInterop.isJavaObject(long[].class, object)) {
+                    if (hostObject instanceof long[]) {
                         return long[].class;
                     }
                     break;
                 case FLOAT:
-                    if (JavaInterop.isJavaObject(float[].class, object)) {
+                    if (hostObject instanceof float[]) {
                         return float[].class;
                     }
                     break;
                 case DOUBLE:
-                    if (JavaInterop.isJavaObject(double[].class, object)) {
+                    if (hostObject instanceof double[]) {
                         return double[].class;
                     }
                     break;
@@ -548,11 +549,16 @@ abstract class LibFFIType {
 
         @Override
         public Object slowpathPrepareArgument(TruffleObject value) {
-            Class<?> arrayType = getArrayType(value);
+            Env env = NFILanguageImpl.getCurrentContextReference().get().env;
+            Object hostObject = null;
+            if (env.isHostObject(value)) {
+                hostObject = env.asHostObject(value);
+            }
+            Class<?> arrayType = getArrayType(hostObject);
             if (arrayType == null) {
                 return PrepareArgument.POINTER;
             } else {
-                return JavaInterop.asJavaObject(arrayType, value);
+                return hostObject;
             }
         }
     }

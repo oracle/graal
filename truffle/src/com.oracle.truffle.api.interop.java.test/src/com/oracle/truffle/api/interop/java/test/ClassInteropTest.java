@@ -42,8 +42,9 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 
+@SuppressWarnings("deprecation")
 public class ClassInteropTest {
     private TruffleObject obj;
     private XYPlus xyp;

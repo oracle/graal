@@ -25,12 +25,13 @@
 package com.oracle.truffle.api.interop.java.test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Before;
 import org.junit.Test;
 
+@SuppressWarnings("deprecation")
 public class PrimitiveTypeTest {
     private TruffleObject boxedNumber;
     private TruffleObject boxedChar;

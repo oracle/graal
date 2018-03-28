@@ -75,7 +75,10 @@ import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
  * Internal service implementation of the polyglot API.
  *
  * @since 0.27
+ * @deprecated do not use directly
  */
+@SuppressWarnings("deprecation")
+@Deprecated
 public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     static final Object[] EMPTY_ARGS = new Object[0];
@@ -552,7 +555,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return currentContext.polyglotHostBindings.as(Map.class);
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         public <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
@@ -770,6 +772,36 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Object getPolyglotBindingsForLanguage(Object languageVMObject) {
             return ((PolyglotLanguageContext) languageVMObject).getPolyglotGuestBindings();
+        }
+
+        @Override
+        public Object findMetaObjectForLanguage(Object languageVMObject, Object value) {
+            PolyglotLanguageContext languageContext = ((PolyglotLanguageContext) languageVMObject);
+            Env currentLanguage = languageContext.env;
+            assert currentLanguage != null : "current language is initialized";
+
+            Env foundLanguage = null;
+            Env hostLanguage = languageContext.context.getHostContext().env;
+            if (VMAccessor.LANGUAGE.isObjectOfLanguage(hostLanguage, value)) {
+                foundLanguage = hostLanguage;
+            } else if (VMAccessor.LANGUAGE.isObjectOfLanguage(currentLanguage, value)) {
+                foundLanguage = currentLanguage;
+            } else {
+                for (PolyglotLanguageContext searchContext : languageContext.context.contexts) {
+                    if (searchContext != languageContext) {
+                        Env searchEnv = searchContext.env;
+                        if (searchEnv != null && VMAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
+                            foundLanguage = searchEnv;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (foundLanguage != null) {
+                return VMAccessor.LANGUAGE.findMetaObject(foundLanguage, value);
+            } else {
+                return null;
+            }
         }
 
         @Override

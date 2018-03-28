@@ -27,11 +27,12 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 import org.junit.After;
 import org.junit.Before;
 
+@SuppressWarnings("deprecation")
 public class IsMimeTypeSupportedTest {
 
     private static final String MIME_TYPE = "application/x-test-mime-type-supported";

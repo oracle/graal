@@ -25,11 +25,12 @@
 package com.oracle.truffle.api.dsl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Introspection.SpecializationInfo;
 import com.oracle.truffle.api.nodes.Node;
-import java.util.Arrays;
 
 /**
  * Contains introspection utilities for Truffle DSL. The contained utilities are only usable if the
@@ -40,7 +41,7 @@ import java.util.Arrays;
  * <p>
  * Example for using introspection in unit testing:
  *
- * {@codesnippet com.oracle.truffle.api.dsl.test.IntrospectionTest}
+ * {@codesnippet com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode}
  *
  * @since 0.22
  * @see Introspectable
@@ -282,4 +283,48 @@ public final class Introspection {
         return new SpecializationInfo(id, state, cachedData);
     }
 
+}
+
+@SuppressWarnings({"null", "unused"})
+@SuppressFBWarnings("")
+class IntrospectionSnippets {
+
+    // BEGIN: com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode
+    @Introspectable
+    abstract static class NegateNode extends Node {
+
+        abstract Object execute(Object o);
+
+        @Specialization(guards = "cachedvalue == value", limit = "1")
+        protected static int doInt(int value,
+                        @Cached("value") int cachedvalue) {
+            return -cachedvalue;
+        }
+
+        @Specialization(replaces = "doInt")
+        protected static int doGeneric(int value) {
+            return -value;
+        }
+    }
+
+    public void testUsingIntrospection() {
+        NegateNode node = null; // NegateNodeGen.create();
+        SpecializationInfo info;
+
+        node.execute(1);
+        info = Introspection.getSpecialization(node, "doInt");
+        assert info.getInstances() == 1;
+
+        node.execute(1);
+        info = Introspection.getSpecialization(node, "doInt");
+        assert info.getInstances() == 1;
+
+        node.execute(2);
+        info = Introspection.getSpecialization(node, "doInt");
+        assert info.getInstances() == 0;
+
+        info = Introspection.getSpecialization(node, "doGeneric");
+        assert info.getInstances() == 1;
+    }
+    // END: com.oracle.truffle.api.dsl.IntrospectionSnippets.NegateNode
 }

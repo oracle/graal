@@ -40,9 +40,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
 
-final class PolyglotLanguage extends AbstractLanguageImpl implements VMObject {
+@SuppressWarnings("deprecation")
+final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
 
     final PolyglotEngineImpl engine;
     final LanguageCache cache;

@@ -55,17 +55,14 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Builder;
-import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings({"deprecation", "unchecked", "rawtypes"})
 public class EngineTest {
     private final PolyglotRuntime testRuntime = PolyglotRuntime.newBuilder().build();
     private final Set<PolyglotEngine> toDispose = new HashSet<>();
@@ -198,7 +195,7 @@ public class EngineTest {
 
     @Test
     public void engineConfigBasicAccess() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
@@ -227,7 +224,7 @@ public class EngineTest {
 
     @Test
     public void engineConfigShouldBeReadOnly() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         builder.config("application/x-test-import-export-1", "cmd-line-args", new String[]{"1", "2"});
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
@@ -247,7 +244,7 @@ public class EngineTest {
 
     @Test
     public void secondValueWins() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         builder.config("application/x-test-import-export-2", "hello", "truffle");
         builder.config("application/x-test-import-export-2", "hello", "world");
         PolyglotEngine vm = builder.build();
@@ -260,7 +257,7 @@ public class EngineTest {
 
     @Test
     public void secondValueWins2() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         builder.config("application/x-test-import-export-2", "hello", "world");
         builder.config("application/x-test-import-export-2", "hello", "truffle");
         PolyglotEngine vm = builder.build();
@@ -273,7 +270,7 @@ public class EngineTest {
 
     @Test
     public void altValueWins() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         builder.config(L1, "hello", "truffle");
         builder.config(L1_ALT, "hello", "world");
         PolyglotEngine vm = builder.build();
@@ -286,7 +283,7 @@ public class EngineTest {
 
     @Test
     public void altValueWins2() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         builder.config(L1_ALT, "hello", "truffle");
         builder.config(L1, "hello", "world");
         PolyglotEngine vm = builder.build();
@@ -299,7 +296,7 @@ public class EngineTest {
 
     @Test
     public void configIsNeverNull() {
-        Builder builder = createBuilderInternal();
+        PolyglotEngine.Builder builder = createBuilderInternal();
         PolyglotEngine vm = builder.build();
         register(vm);
 
@@ -316,7 +313,7 @@ public class EngineTest {
     public void exampleOfConfiguration() {
         // @formatter:off
         String[] args = {"--kernel", "Kernel.som", "--instrument", "dyn-metrics"};
-        Builder builder = PolyglotEngine.newBuilder();
+        PolyglotEngine.Builder builder = PolyglotEngine.newBuilder();
         builder.config(YourLang.MIME_TYPE, "CMD_ARGS", args);
         PolyglotEngine vm = builder.build();
         // @formatter:on
@@ -345,8 +342,8 @@ public class EngineTest {
 
         // from now on we should not create any new targets
         for (int i = 0; i < 10; i++) {
-            Value value1 = vm.eval(source1);
-            Value value2 = vm.eval(source2);
+            PolyglotEngine.Value value1 = vm.eval(source1);
+            PolyglotEngine.Value value2 = vm.eval(source2);
 
             value1 = value1.execute().execute().execute().execute();
             value2 = value2.execute().execute().execute().execute();
@@ -402,8 +399,8 @@ public class EngineTest {
         int interopTargetsSize = -1;
 
         for (int i = 0; i < 10; i++) {
-            Value value1 = vm.eval(source1);
-            Value value2 = vm.eval(source2);
+            PolyglotEngine.Value value1 = vm.eval(source1);
+            PolyglotEngine.Value value2 = vm.eval(source2);
 
             TestInterface testInterface1 = value1.as(TestInterface.class);
             testInterface1.foobar();
@@ -557,7 +554,7 @@ public class EngineTest {
     @Test
     public void languageInstancesAreNotShared() {
         ForkingLanguage.constructorInvocationCount = 0;
-        final Builder builder = createBuilderInternal();
+        final PolyglotEngine.Builder builder = createBuilderInternal();
         ForkingLanguageChannel channel1 = new ForkingLanguageChannel(builder::build);
         PolyglotEngine vm1 = register(builder.config(ForkingLanguage.MIME_TYPE, "channel", channel1).build());
         register(vm1);
@@ -576,7 +573,7 @@ public class EngineTest {
 
     @Test
     public void basicForkTest() throws Exception {
-        final Builder builder = createBuilderInternal();
+        final PolyglotEngine.Builder builder = createBuilderInternal();
         ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
         builder.config(ForkingLanguage.MIME_TYPE, "channel", channel);
         PolyglotEngine vm = register(builder.build());
@@ -632,7 +629,7 @@ public class EngineTest {
 
     @Test(expected = UnsupportedOperationException.class)
     public void forkUnsupportedFailsGracefully() throws Exception {
-        final Builder builder = createBuilderInternal();
+        final PolyglotEngine.Builder builder = createBuilderInternal();
         ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
         builder.config(ForkingLanguage.MIME_TYPE, "channel", channel);
         PolyglotEngine vm = register(builder.build());
@@ -652,7 +649,7 @@ public class EngineTest {
 
     @Test
     public void forkInLanguageTest() {
-        final Builder builder = createBuilderInternal();
+        final PolyglotEngine.Builder builder = createBuilderInternal();
         ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
         PolyglotEngine vm = builder.config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
 
@@ -669,7 +666,7 @@ public class EngineTest {
 
     @Test
     public void testLanguageInfo() {
-        final Builder builder = createBuilderInternal();
+        final PolyglotEngine.Builder builder = createBuilderInternal();
         ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
         PolyglotEngine vm = builder.config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
         vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
@@ -683,7 +680,7 @@ public class EngineTest {
 
     @Test
     public void testLanguageAccess() {
-        final Builder builder = createBuilderInternal();
+        final PolyglotEngine.Builder builder = createBuilderInternal();
         ForkingLanguageChannel channel = new ForkingLanguageChannel(builder::build);
         PolyglotEngine vm = builder.config(ForkingLanguage.MIME_TYPE, "channel", channel).build();
         vm.eval(Source.newBuilder("").name("").mimeType(ForkingLanguage.MIME_TYPE).build()).get();
@@ -703,7 +700,6 @@ public class EngineTest {
 
         Class<?> oClass = Object.class;
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         Class<? extends TruffleLanguage> lang = (Class<? extends TruffleLanguage>) oClass;
 
         try {
@@ -714,7 +710,6 @@ public class EngineTest {
         }
 
         oClass = SecretInterfaceType.class;
-        @SuppressWarnings({"rawtypes", "unchecked"})
         Class<? extends TruffleLanguage> secretInterface = (Class<? extends TruffleLanguage>) oClass;
         try {
             // no access using secret interface
@@ -781,7 +776,6 @@ public class EngineTest {
             return fork;
         }
 
-        @SuppressWarnings("unchecked")
         private static <E extends Exception> E raise(@SuppressWarnings("unused") Class<E> aClass, Exception ex) throws E {
             throw (E) ex;
         }
@@ -887,13 +881,11 @@ public class EngineTest {
             });
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object findExportedSymbol(ForkingLanguageChannel context, String globalName, boolean onlyExplicit) {
             return context.symbols.get(globalName);
         }
 
-        @SuppressWarnings("deprecation")
         @Override
         protected Object getLanguageGlobal(ForkingLanguageChannel context) {
             return context.globalObject;

@@ -587,8 +587,6 @@ public final class SuspendedEvent {
      * Prepare to terminate the suspended execution represented by this event. One use-case for this
      * method is to shield an execution of an unknown code with a timeout:
      *
-     * {@link com.oracle.truffle.tck.ExecWithTimeOut#tckSnippets}
-     *
      * <p>
      * This method is thread-safe and the prepared termination is appended to any other previously
      * prepared modes. No further modes can be prepared after kill.

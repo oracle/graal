@@ -677,6 +677,19 @@ public class ElementUtils {
         return null;
     }
 
+    public static boolean isDeprecated(TypeElement baseType) {
+        DeclaredType deprecated = ProcessorContext.getInstance().getDeclaredType(Deprecated.class);
+        List<TypeElement> superTypes = getSuperTypes(baseType);
+        superTypes.add(baseType);
+        for (TypeElement type : superTypes) {
+            PackageElement pack = ElementUtils.findPackageElement(type);
+            if ((pack != null && ElementUtils.findAnnotationMirror(pack.getAnnotationMirrors(), deprecated) != null)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<TypeElement> getSuperTypes(TypeElement element) {
         List<TypeElement> types = new ArrayList<>();
         List<TypeElement> superTypes = null;

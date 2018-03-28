@@ -35,8 +35,9 @@ import org.junit.Test;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.vm.ImplicitExplicitExportTest.Ctx;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings("deprecation")
 public class ExceptionDuringParsingTest {
     public static Accessor API;
 

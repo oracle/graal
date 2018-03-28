@@ -24,7 +24,6 @@ package com.oracle.truffle.api.test.polyglot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -50,7 +49,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 
 /**
@@ -409,15 +407,7 @@ public class ProxySPITest {
             assertEquals(true, Message.IS_INSTANTIABLE, proxyInner);
             assertEquals(false, Message.IS_EXECUTABLE, proxyInner);
 
-            try {
-                TruffleObject dateTruffleObject = (TruffleObject) ForeignAccess.send(Message.createNew(0).createNode(), proxyInner, JavaInterop.asTruffleObject(Date.class));
-                Date date = (Date) JavaInterop.asJavaObject(dateTruffleObject);
-                Assert.assertNotNull(date);
-            } catch (InteropException ex) {
-                Assert.fail(ex.getLocalizedMessage());
-            }
             assertUnsupported(Message.createExecute(0), proxyInner, 42);
-
             assertUnsupported(Message.AS_POINTER, proxyInner);
             assertUnsupported(Message.GET_SIZE, proxyInner);
             assertEmpty(Message.KEYS, proxyInner);

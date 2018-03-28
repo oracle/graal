@@ -260,9 +260,9 @@ public abstract class Instrumenter {
      * Attach an output stream as a consumer of the {@link TruffleInstrument.Env#out() standard
      * output}. The consumer output stream receives all output that goes to
      * {@link TruffleInstrument.Env#out()} since this call, including output emitted by the
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine} this instrumenter is being executed in,
-     * output from instruments (including this one), etc. Be sure to {@link EventBinding#dispose()
-     * dispose} the binding when it's not used any more.
+     * {@link org.graalvm.polyglot.Engine} this instrumenter is being executed in, output from
+     * instruments (including this one), etc. Be sure to {@link EventBinding#dispose() dispose} the
+     * binding when it's not used any more.
      *
      * @since 0.25
      */
@@ -272,9 +272,9 @@ public abstract class Instrumenter {
      * Attach an output stream as a consumer of the {@link TruffleInstrument.Env#err() error output}
      * . The consumer output stream receives all error output that goes to
      * {@link TruffleInstrument.Env#err()} since this call, including error output emitted by the
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine} this instrumenter is being executed in,
-     * error output from instruments (including this one), etc. Be sure to
-     * {@link EventBinding#dispose() dispose} the binding when it's not used any more.
+     * {@link org.graalvm.polyglot.Engine} this instrumenter is being executed in, error output from
+     * instruments (including this one), etc. Be sure to {@link EventBinding#dispose() dispose} the
+     * binding when it's not used any more.
      *
      * @since 0.25
      */

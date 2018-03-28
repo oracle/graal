@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
+@SuppressWarnings("deprecation")
 final class JavaInteropReflect {
     static final Object[] EMPTY = {};
 
@@ -393,7 +394,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
         if (engine == null) {
             return createTarget(new FunctionProxyNode(receiverClass, method));
         }
@@ -525,7 +526,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
         if (engine == null) {
             return createTarget(new ObjectProxyNode(receiverClass, interfaceClass));
         }
@@ -538,6 +539,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 }
 
+@SuppressWarnings("deprecation")
 @ImportStatic({Message.class, JavaInteropReflect.class})
 abstract class ProxyInvokeNode extends Node {
 

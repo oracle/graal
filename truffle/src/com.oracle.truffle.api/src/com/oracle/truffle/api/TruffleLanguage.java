@@ -42,8 +42,8 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -1352,8 +1352,22 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Returns <code>true</code> if host access is generally allowed. If this method returns
+         * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail.
+         *
+         * @since 0.27
+         */
+        @TruffleBoundary
+        public boolean isHostLookupAllowed() {
+            return AccessAPI.engineAccess().isHostAccessAllowed(vmObject, this);
+        }
+
+        /**
          * Looks up a Java class in the top-most scope the host environment. Returns
-         * <code>null</code> if no symbol was found.
+         * <code>null</code> if no symbol was found or the symbol was not accessible. Symbols might
+         * not be accessible if a
+         * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
+         * class filter} prevents access.
          * <p>
          * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
          * the other language) to support interoperability between languages, {@link String} or one
@@ -1370,14 +1384,106 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Returns <code>true</code> if host access is generally allowed. If this method returns
-         * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail.
+         * Returns <code>true</code> if the argument is Java host language object wrapped using
+         * Truffle interop.
          *
-         * @since 0.27
+         * @see #asHostObject(Object)
+         * @since 1.0
          */
-        @TruffleBoundary
-        public boolean isHostLookupAllowed() {
-            return AccessAPI.engineAccess().isHostAccessAllowed(vmObject, this);
+        @SuppressWarnings("static-method")
+        public boolean isHostObject(Object value) {
+            return AccessAPI.javaAccess().isHostObject(value);
+        }
+
+        /**
+         * Returns the java host representation of a Truffle guest object if it represents a Java
+         * host language object. Throws {@link ClassCastException} if the provided argument is not a
+         * {@link #isHostObject(Object) host object}.
+         *
+         * @since 1.0
+         */
+        public Object asHostObject(Object value) {
+            if (!isHostObject(value)) {
+                CompilerDirectives.transferToInterpreter();
+                throw new ClassCastException();
+            }
+            return AccessAPI.javaAccess().asHostObject(value);
+        }
+
+        /**
+         * Converts a existing java host object to a guest language representation. The returned
+         * objects supports the interop contract to access the java members. The interpretation of
+         * converted objects is described in {@link Context#asValue(Object)}. If the value is
+         * already an interop value, then no conversion will be performed.
+         * <p>
+         * This method should be used exclusively to convert already allocated Java objects to a
+         * guest language representation. To allocate new host objects users should use
+         * {@link #lookupHostSymbol(String)} to lookup the class and then send a NEW interop message
+         * to that object to instantiate it. This method does not respect configured
+         * {@link org.graalvm.polyglot.Context.Builder#hostClassFilter(java.util.function.Predicate)
+         * class filters}.
+         *
+         * @param hostObject the host object to convert
+         * @since 1.0
+         */
+        public Object asGuestValue(Object hostObject) {
+            return AccessAPI.engineAccess().toGuestValue(hostObject, vmObject);
+        }
+
+        /**
+         * Find a meta-object of a value, if any. The meta-object represents a description of the
+         * object, reveals it's kind and it's features. Some information that a meta-object might
+         * define includes the base object's type, interface, class, methods, attributes, etc.
+         * <p>
+         * When no meta-object is known, returns <code>null</code>. The meta-object is an interop
+         * value. An interop value can be either a <code>TruffleObject</code> (e.g. a native object
+         * from the other language) to support interoperability between languages or a
+         * {@link String}.
+         *
+         * @param value the value to find the meta object for.
+         * @since 1.0
+         */
+        public Object findMetaObject(Object value) {
+            return AccessAPI.engineAccess().findMetaObjectForLanguage(vmObject, value);
+        }
+
+        /**
+         * Tests whether an exception is a host exception thrown by a Java Interop method
+         * invocation.
+         *
+         * Host exceptions may be thrown by {@linkplain com.oracle.truffle.api.interop.Message
+         * messages} sent to Java objects that involve the invocation of a Java method or
+         * constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}). The host exception may be
+         * unwrapped using {@link #asHostException(Throwable)}.
+         *
+         * @param exception the {@link Throwable} to test
+         * @return {@code true} if the {@code exception} is a host exception, {@code false}
+         *         otherwise
+         * @see #asHostException(Throwable)
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public boolean isHostException(Throwable exception) {
+            return AccessAPI.engineAccess().isHostException(exception);
+        }
+
+        /**
+         * Unwraps a host exception thrown by a Java method invocation.
+         *
+         * Host exceptions may be thrown by {@linkplain com.oracle.truffle.api.interop.Message
+         * messages} sent to Java objects that involve the invocation of a Java method or
+         * constructor ({@code EXECUTE}, {@code INVOKE}, {@code NEW}). Host exceptions can be
+         * identified using {@link #isHostException(Throwable)} .
+         *
+         * @param exception the host exception to unwrap
+         * @return the original Java exception
+         * @throws IllegalArgumentException if the {@code exception} is not a host exception
+         * @see #isHostException(Throwable)
+         * @since 1.0
+         */
+        @SuppressWarnings("static-method")
+        public Throwable asHostException(Throwable exception) {
+            return AccessAPI.engineAccess().asHostException(exception);
         }
 
         /**
@@ -1599,7 +1705,7 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
-        Object findMetaObject(Object obj) {
+        Object findMetaObjectImpl(Object obj) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
                 final Object rawValue = AccessAPI.engineAccess().findOriginalObject(obj);
@@ -1755,6 +1861,10 @@ public abstract class TruffleLanguage<C> {
 
         static InteropSupport interopAccess() {
             return API.interopSupport();
+        }
+
+        static JavaInteropSupport javaAccess() {
+            return API.javaInteropSupport();
         }
 
         @Override
@@ -1961,7 +2071,7 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Object findMetaObject(Env env, Object obj) {
-            return env.findMetaObject(obj);
+            return env.findMetaObjectImpl(obj);
         }
 
         @Override

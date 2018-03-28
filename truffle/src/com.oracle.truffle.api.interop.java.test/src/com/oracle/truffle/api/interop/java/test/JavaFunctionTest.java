@@ -24,19 +24,23 @@
  */
 package com.oracle.truffle.api.interop.java.test;
 
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+
 import org.junit.After;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.java.*;
+import com.oracle.truffle.api.vm.*;
+
+@SuppressWarnings("deprecation")
 public class JavaFunctionTest {
     private PolyglotEngine engine;
 

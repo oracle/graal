@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.impl.BindSignatureNodeFactory.ReBindSignatureNodeGen;
@@ -212,9 +211,11 @@ class LibFFIFunctionMessageResolution {
     @Resolve(message = "KEYS")
     abstract static class LibFFIFunctionKeysNode extends Node {
 
+        private static final KeysArray KEYS = new KeysArray(new String[]{"bind"});
+
         @SuppressWarnings("unused")
         public TruffleObject access(LibFFIFunction receiver) {
-            return JavaInterop.asTruffleObject(new String[]{"bind"});
+            return KEYS;
         }
     }
 

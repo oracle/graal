@@ -26,8 +26,9 @@ import java.util.concurrent.Executors;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
+@SuppressWarnings("deprecation")
 public class GlobalSymbolAsynchTest extends GlobalSymbolTest {
     @Test
     public void marker() {

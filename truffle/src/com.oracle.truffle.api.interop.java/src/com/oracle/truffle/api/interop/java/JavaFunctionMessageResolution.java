@@ -44,7 +44,6 @@ class JavaFunctionMessageResolution {
             }
             return doExecute.execute(function.method, function.obj, args, function.languageContext);
         }
-
     }
 
     @Resolve(message = "IS_EXECUTABLE")

@@ -51,7 +51,6 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -212,11 +211,6 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     /**
-     * Starts a new {@link PolyglotEngine#eval(Source) evaluation} on the background thread. Only
-     * one evaluation can be active at a time. Please ensure that {@link #expectDone()} completed
-     * successfully before starting a new evaluation. Throws an {@link IllegalStateException} if
-     * another evaluation is still executing or the tester is already closed.
-     *
      * @since 0.16
      * @deprecated Use {@link #startEval(org.graalvm.polyglot.Source)} instead.
      */
@@ -525,9 +519,9 @@ public final class DebuggerTester implements AutoCloseable {
      * and breakpoint resolution marks in the form of "R&lt;number&gt;_" where &lt;number&gt; is an
      * identification of the breakpoint. These marks need to be placed at the proper breakpoint
      * submission/resolution line/column position. When several submitted breakpoints resolve to the
-     * same position, an interval can be specified in the form of
-     * "R&lt;start number&gt;-&lt;end number&gt;_", where both start and end line numbers are
-     * inclusive. The marks are stripped off before execution.
+     * same position, an interval can be specified in the form of "R&lt;start number&gt;-&lt;end
+     * number&gt;_", where both start and end line numbers are inclusive. The marks are stripped off
+     * before execution.
      * <p>
      * The guest language code with marks may look like:
      *

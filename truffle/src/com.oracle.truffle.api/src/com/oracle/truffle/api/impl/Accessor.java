@@ -124,15 +124,19 @@ public abstract class Accessor {
 
         public abstract Node createToJavaNode();
 
-        public abstract Object toJava(Node toJavaNode, Class<?> rawType, Type genericType, Object value, Object polyglotContext);
+        public abstract Object toJava(Node toJavaNode, Class<?> rawType, Type genericType, Object guestObject, Object polyglotContext);
 
-        public abstract Object toJavaGuestObject(Object obj, Object languageContext);
+        public abstract Object asHostObject(Object guestObject);
 
-        public abstract boolean isJavaFunction(Object object);
-
-        public abstract String javaFunctionToString(Object object);
+        public abstract Object toGuestObject(Object hostObject, Object languageContext);
 
         public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
+
+        public abstract boolean isHostObject(Object guestObject);
+
+        public abstract boolean isHostFunction(Object guestObject);
+
+        public abstract String javaGuestFunctionToString(Object object);
     }
 
     public abstract static class EngineSupport {
@@ -282,6 +286,8 @@ public abstract class Accessor {
         public abstract Class<? extends TruffleLanguage<?>> getLanguageClass(LanguageInfo language);
 
         public abstract Object getPolyglotBindingsForLanguage(Object vmObject);
+
+        public abstract Object findMetaObjectForLanguage(Object vmObject, Object value);
 
     }
 
@@ -515,7 +521,7 @@ public abstract class Accessor {
     @SuppressWarnings("all")
     private static void conditionallyInitJavaInterop() throws IllegalStateException {
         try {
-            Class.forName("com.oracle.truffle.api.interop.java.JavaInterop", true, Accessor.class.getClassLoader());
+            Class.forName("com.oracle.truffle.api.interop.java.JavaInteropAccessor", true, Accessor.class.getClassLoader());
         } catch (ClassNotFoundException ex) {
             boolean assertOn = false;
             assert assertOn = true;

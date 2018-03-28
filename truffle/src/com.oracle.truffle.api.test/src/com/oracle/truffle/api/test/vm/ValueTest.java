@@ -36,10 +36,11 @@ import java.util.concurrent.Executor;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 import org.junit.After;
 
+@SuppressWarnings("deprecation")
 public class ValueTest implements Executor {
     private List<Runnable> pending = new LinkedList<>();
     private PolyglotEngine engine;

@@ -39,10 +39,10 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = BoxedStringTest.class)
+@SuppressWarnings("deprecation")
 public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFactory {
     public interface ExactMatchInterop {
         String stringValue();
@@ -71,7 +71,7 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
 
     @Before
     public void initObjects() {
-        interop = JavaInterop.asJavaObject(ExactMatchInterop.class, this);
+        interop = com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(ExactMatchInterop.class, this);
     }
 
     @Test
@@ -114,7 +114,7 @@ public class BoxedStringTest implements TruffleObject, ForeignAccess.StandardFac
     public abstract static class KeysNode extends Node {
         @SuppressWarnings("unused")
         public Object access(BoxedStringTest obj) {
-            return JavaInterop.asTruffleObject(KEYS);
+            return com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(KEYS);
         }
     }
 
