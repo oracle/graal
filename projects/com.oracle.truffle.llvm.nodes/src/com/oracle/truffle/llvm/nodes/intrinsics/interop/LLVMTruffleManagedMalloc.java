@@ -41,6 +41,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
@@ -96,7 +97,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
     }
 
-    public static class ManagedMallocObject implements LLVMObjectAccess, TruffleObject {
+    public static class ManagedMallocObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
         private final Object[] contents;
 

@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 
 abstract class ToPointer extends ForeignToLLVM {
@@ -119,6 +120,11 @@ abstract class ToPointer extends ForeignToLLVM {
         return boxed;
     }
 
+    @Specialization
+    protected LLVMTruffleObject fromInternal(LLVMInternalTruffleObject object) {
+        return new LLVMTruffleObject(object);
+    }
+
     @Specialization(guards = {"checkIsPointer(obj)", "notLLVM(obj)"})
     protected LLVMAddress fromNativePointer(TruffleObject obj) {
         try {
@@ -153,6 +159,8 @@ abstract class ToPointer extends ForeignToLLVM {
             return ((LLVMTruffleAddress) value).getAddress();
         } else if (value instanceof LLVMSharedGlobalVariable) {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
+        } else if (value instanceof LLVMInternalTruffleObject) {
+            return new LLVMTruffleObject((LLVMInternalTruffleObject) value);
         } else if (value instanceof TruffleObject && thiz.checkIsPointer((TruffleObject) value) && notLLVM((TruffleObject) value)) {
             try {
                 long raw = ForeignAccess.sendAsPointer(thiz.asPointer, (TruffleObject) value);

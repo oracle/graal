@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @ValueType
-public final class LLVMTypedForeignObject implements LLVMObjectAccess, TruffleObject {
+public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
 
     private final TruffleObject foreign;
     private final LLVMSourceType type;
