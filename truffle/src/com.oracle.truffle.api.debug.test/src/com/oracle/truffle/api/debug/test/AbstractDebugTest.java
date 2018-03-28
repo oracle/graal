@@ -89,6 +89,10 @@ public abstract class AbstractDebugTest {
         return tester.startSession(sourceElements);
     }
 
+    protected final String getOutput() {
+        return tester.getOut();
+    }
+
     protected final Thread getEvalThread() {
         return tester.getEvalThread();
     }

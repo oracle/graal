@@ -175,6 +175,7 @@ public final class DebuggerSession implements Closeable {
     private EventBinding<? extends ExecutionEventNodeFactory> callBinding;
     private EventBinding<? extends ExecutionEventNodeFactory> syntaxElementsBinding;
     private EventBinding<? extends ExecutionEventNodeFactory> rootBinding;
+    final Set<EventBinding<? extends ExecutionEventNodeFactory>> allBindings = Collections.synchronizedSet(new HashSet<>());
 
     private final ConcurrentHashMap<Thread, SuspendedEvent> currentSuspendedEventMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Thread, SteppingStrategy> strategyMap = new ConcurrentHashMap<>();
@@ -490,6 +491,8 @@ public final class DebuggerSession implements Closeable {
                     return new CallSteppingNode(context);
                 }
             }, false, CallTag.class);
+            allBindings.add(syntaxElementsBinding);
+            allBindings.add(callBinding);
         }
     }
 
@@ -516,6 +519,8 @@ public final class DebuggerSession implements Closeable {
     private void removeBindings() {
         assert Thread.holdsLock(this);
         if (syntaxElementsBinding != null) {
+            allBindings.remove(callBinding);
+            allBindings.remove(syntaxElementsBinding);
             callBinding.dispose();
             syntaxElementsBinding.dispose();
             callBinding = null;
@@ -551,6 +556,7 @@ public final class DebuggerSession implements Closeable {
             breakpoint.sessionClosed(this);
         }
         currentSuspendedEventMap.clear();
+        allBindings.clear();
         debugger.disposedSession(this);
         closed = true;
     }
@@ -697,7 +703,7 @@ public final class DebuggerSession implements Closeable {
             return;
         }
 
-        if (source.consumeIsDuplicate()) {
+        if (source.consumeIsDuplicate(this)) {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: duplicate from source:%s context:%s location:%s", source, source.getContext(), source.getSuspendAnchors());
             }
@@ -707,13 +713,13 @@ public final class DebuggerSession implements Closeable {
         // only the first DebuggerNode for a source location and thread will reach here.
 
         // mark all other nodes at this source location as duplicates
-        List<DebuggerNode> nodes = collectDebuggerNodes(source.getContext(), suspendAnchor);
+        List<DebuggerNode> nodes = collectDebuggerNodes(source, suspendAnchor);
         for (DebuggerNode node : nodes) {
             if (node == source) {
                 // for the current one we won't call isDuplicate
                 continue;
             }
-            node.markAsDuplicate();
+            node.markAsDuplicate(this);
         }
 
         SteppingStrategy s = getSteppingStrategy(currentThread);
@@ -736,7 +742,11 @@ public final class DebuggerSession implements Closeable {
         Map<Breakpoint, Throwable> breakpointFailures = null;
         if (conditionFailure != null) {
             breakpointFailures = new HashMap<>();
-            breakpointFailures.put(conditionFailure.getBreakpoint(), conditionFailure.getConditionFailure());
+            Breakpoint fb = conditionFailure.getBreakpoint();
+            if (fb.isGlobal()) {
+                fb = fb.getROWrapper();
+            }
+            breakpointFailures.put(fb, conditionFailure.getConditionFailure());
         }
 
         List<Breakpoint> breaks = null;
@@ -881,50 +891,34 @@ public final class DebuggerSession implements Closeable {
         }
     }
 
-    private List<DebuggerNode> collectDebuggerNodes(EventContext context, SuspendAnchor suspendAnchor) {
+    private List<DebuggerNode> collectDebuggerNodes(DebuggerNode source, SuspendAnchor suspendAnchor) {
+        EventContext context = source.getContext();
         List<DebuggerNode> nodes = new ArrayList<>();
-        synchronized (breakpoints) {
-            for (Breakpoint b : breakpoints) {
-                if (suspendAnchor == b.getSuspendAnchor()) {
-                    DebuggerNode node = b.lookupNode(context);
-                    if (node != null) {
+        nodes.add(source);
+        Iterator<ExecutionEventNode> nodesIterator = context.lookupExecutionEventNodes(allBindings);
+        if (SuspendAnchor.BEFORE.equals(suspendAnchor)) {
+            // We collect nodes following the source (these nodes remain to be executed)
+            boolean after = false;
+            while (nodesIterator.hasNext()) {
+                DebuggerNode node = (DebuggerNode) nodesIterator.next();
+                if (after) {
+                    if (node.isActiveAt(suspendAnchor)) {
                         nodes.add(node);
                     }
+                } else {
+                    after = node == source;
                 }
             }
-        }
-        synchronized (debugger) {
-            for (Breakpoint b : debugger.getRawBreakpoints()) {
-                if (suspendAnchor == b.getSuspendAnchor()) {
-                    DebuggerNode node = b.lookupNode(context);
-                    if (node != null) {
-                        nodes.add(node);
-                    }
+        } else {
+            // We collect nodes preceding the source (these nodes remain to be executed)
+            while (nodesIterator.hasNext()) {
+                DebuggerNode node = (DebuggerNode) nodesIterator.next();
+                if (node == source) {
+                    break;
                 }
-            }
-        }
-        if (stepping.get()) {
-            EventBinding<? extends ExecutionEventNodeFactory> localSyntaxElementBinding = syntaxElementsBinding;
-            if (localSyntaxElementBinding != null) {
-                DebuggerNode node = (DebuggerNode) context.lookupExecutionEventNode(localSyntaxElementBinding);
-                if (node != null && node.isActiveAt(suspendAnchor)) {
+                if (node.isActiveAt(suspendAnchor)) {
                     nodes.add(node);
                 }
-            }
-            if (suspendAnchor == SuspendAnchor.AFTER) {
-                EventBinding<? extends ExecutionEventNodeFactory> localCallBinding = callBinding;
-                if (localCallBinding != null) {
-                    DebuggerNode node = (DebuggerNode) context.lookupExecutionEventNode(localCallBinding);
-                    if (node != null) {
-                        nodes.add(node);
-                    }
-                }
-            }
-        }
-        if (suspendAnchor == SuspendAnchor.BEFORE) {
-            DebuggerNode node = debugger.alwaysHaltBreakpoint.lookupNode(context);
-            if (node != null) {
-                nodes.add(node);
             }
         }
         return nodes;
