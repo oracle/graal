@@ -247,39 +247,41 @@ public abstract class CompilationWrapper<T> {
                 message = baos.toString();
             }
 
-            synchronized (CompilationFailureAction) {
-                // Synchronize here to serialize retry compilations. This
-                // mitigates retry compilation storms.
-                TTY.println(message);
-                File retryLogFile = new File(dumpPath, "retry.log");
-                try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile))) {
-                    ps.print(message);
-                } catch (IOException ioe) {
-                    TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
+            try {
+                synchronized (CompilationFailureAction) {
+                    // Synchronize here to serialize retry compilations. This
+                    // mitigates retry compilation storms.
+                    TTY.println(message);
+                    File retryLogFile = new File(dumpPath, "retry.log");
+                    try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile))) {
+                        ps.print(message);
+                    } catch (IOException ioe) {
+                        TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
+                    }
+
+                    OptionValues retryOptions = new OptionValues(initialOptions,
+                                    Dump, ":" + VERBOSE_LEVEL,
+                                    MethodFilter, null,
+                                    DumpPath, dumpPath.getPath());
+
+                    try (DebugContext retryDebug = createRetryDebugContext(retryOptions)) {
+                        return performCompilation(retryDebug);
+                    } catch (Throwable ignore) {
+                        // Failures during retry are silent
+                        return handleException(cause);
+                    }
                 }
-
-                OptionValues retryOptions = new OptionValues(initialOptions,
-                                Dump, ":" + VERBOSE_LEVEL,
-                                MethodFilter, null,
-                                DumpPath, dumpPath.getPath());
-
-                try (DebugContext retryDebug = createRetryDebugContext(retryOptions)) {
-                    return performCompilation(retryDebug);
-                } catch (Throwable ignore) {
-                    // Failures during retry are silent
-                    return handleException(cause);
-                } finally {
-                    if (action == ExitVM) {
-                        synchronized (ExceptionAction.class) {
-                            try {
-                                // Give other compiler threads a chance to flush
-                                // error handling output.
-                                Thread.sleep(2000);
-                            } catch (InterruptedException e) {
-                            }
-                            TTY.println("Exiting VM after retry compilation of " + this);
-                            System.exit(-1);
-                        }
+            } finally {
+                if (action == ExitVM) {
+                    try {
+                        // Give other compiler threads a chance to flush
+                        // error handling output.
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                    }
+                    synchronized (ExceptionAction.class) {
+                        TTY.println("Exiting VM after retry compilation of " + this);
+                        System.exit(-1);
                     }
                 }
             }

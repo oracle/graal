@@ -44,6 +44,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitutionRegistry;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -862,6 +863,7 @@ public class InvocationPlugins {
         lateRegistrations = lateClassPlugins;
     }
 
+    @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "string literal object identity used as sentinel")
     private synchronized boolean closeLateRegistrations() {
         if (lateRegistrations == null || lateRegistrations.className != CLOSED_LATE_CLASS_PLUGIN) {
             lateRegistrations = new LateClassPlugins(lateRegistrations, CLOSED_LATE_CLASS_PLUGIN);
