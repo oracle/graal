@@ -25,7 +25,7 @@
 
 /*
  @ApiInfo(
- group="Stable"
+ group="Truffle"
  )
  */
 /**

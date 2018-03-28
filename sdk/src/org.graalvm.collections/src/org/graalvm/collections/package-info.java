@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * The Graal-SDK collections package contains memory efficient data structures.
  *

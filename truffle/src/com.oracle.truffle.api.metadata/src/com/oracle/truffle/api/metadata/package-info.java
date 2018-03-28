@@ -23,6 +23,12 @@
  * questions.
  */
 
+/*
+ @ApiInfo(
+ group="Truffle"
+ )
+ */
+
 /**
  * The metadata package provides scope APIs related to declared guest language variables. Tools are
  * the main client of these APIs.

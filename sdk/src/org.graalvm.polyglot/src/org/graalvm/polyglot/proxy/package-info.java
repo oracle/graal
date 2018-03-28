@@ -22,6 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * The Graal SDK proxy interfaces allow to mimic guest language objects, arrays, executables,
  * primitives and native objects in Graal languages. Every Graal language will treat instances of
