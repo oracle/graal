@@ -736,16 +736,18 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
 
         //
 
-        factories.put("@truffle_invoke", new LLVMNativeIntrinsicFactory(true, true) {
+        LLVMNativeIntrinsicFactory polyglotInvoke = new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
             protected RootCallTarget generate(FunctionType type) {
-                return wrap("@truffle_invoke",
+                return wrap("@polyglot_invoke",
                                 LLVMTruffleInvokeNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.POINTER), argumentsArray(3, type.getArgumentTypes().length - 3),
                                                 argumentsTypes(3, type.getArgumentTypes()),
                                                 LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2)));
             }
-        });
+        };
+        factories.put("@polyglot_invoke", polyglotInvoke);
+        factories.put("@truffle_invoke", polyglotInvoke);
 
         factories.put("@truffle_invoke_i", new LLVMNativeIntrinsicFactory(true, true) {
 

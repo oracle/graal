@@ -278,6 +278,16 @@ bool polyglot_as_boolean(const void *value);
  */
 bool polyglot_can_execute(const void *value);
 
+/**
+ * Invoke an object oriented method on a polyglot value.
+ *
+ * @param object the object containing the method
+ * @param name the name of the method to be invoked
+ * @param ... the arguments of the method
+ * @return the return value of the method
+ */
+void *polyglot_invoke(void *object, const char *name, ...);
+
 /** @} */
 
 /**
