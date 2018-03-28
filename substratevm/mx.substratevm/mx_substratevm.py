@@ -556,19 +556,19 @@ def svm_gate_body(args, tasks):
 
         with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
             if t:
-                build_js(native_image)
-                test_run([join(svmbuild_dir(), 'js'), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js([('octane-richards', 1000, 100, 300)])
+                js = build_js(native_image)
+                test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
+                test_js(js, [('octane-richards', 1000, 100, 300)])
 
         with Task('Ruby', tasks, tags=[GraalTags.ruby]) as t:
             if t:
-                build_ruby(native_image)
-                test_ruby([join(svmbuild_dir(), 'ruby'), 'release'])
+                ruby = build_ruby(native_image)
+                test_ruby([ruby, 'release'])
 
         with Task('Python', tasks, tags=[GraalTags.python]) as t:
             if t:
-                build_python(native_image)
-                test_python_smoke([join(svmbuild_dir(), 'python')])
+                python = build_python(native_image)
+                test_python_smoke([python])
 
         gate_sulong(native_image, tasks)
 
@@ -596,8 +596,8 @@ def gate_sulong(native_image, tasks):
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            native_image(['--Language:llvm'])
-            sulong.extensions.testLLVMImage(join(svmbuild_dir(), 'lli'), unittestArgs=['--enable-timing'])
+            lli = native_image(['--Language:llvm'])
+            sulong.extensions.testLLVMImage(lli, unittestArgs=['--enable-timing'])
 
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
@@ -640,12 +640,12 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    native_image(['--Language:js', '--Tool:chromeinspector'])
+    return native_image(['--Language:js', '--Tool:chromeinspector'])
 
-def test_js(benchmarks, bin_args=None):
+def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
     for benchmark_name, warmup_iterations, iterations, timeout in benchmarks:
-        js_image_test(join(svmbuild_dir(), 'js'), bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args)
+        js_image_test(js, bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args)
 
 def test_run(cmds, expected_stdout, timeout=10):
     stdoutdata = []
@@ -664,7 +664,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    native_image(['--Language:python', '--Tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
+    return native_image(['--Language:python', '--Tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
 
 def test_python_smoke(args):
     """
@@ -690,7 +690,7 @@ def test_python_smoke(args):
 def build_ruby(native_image):
     truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
-    native_image(['--Language:ruby'])
+    return native_image(['--Language:ruby'])
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
