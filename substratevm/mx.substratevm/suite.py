@@ -390,6 +390,23 @@ suite = {
             "findbugs": "false",
         },
 
+        "org.graalvm.polyglot.nativeapi" : {
+            "subDir": "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "sdk:GRAAL_SDK",
+            ],
+            "checkstyle": "org.graalvm.polyglot.nativeapi",
+            "javaCompliance" : "1.8",
+            "annotationProcessors" : [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets" : "SVM",
+            "findbugs": "false",
+        },
+
         "bootstrap.native-image" : {
             "class" : "BootstrapNativeImage",
             "buildDependencies": [
@@ -525,6 +542,15 @@ suite = {
         "bootstrap.native-image",
       ],
       "output": "svmbuild/native-image-root",
-    }
+    },
+
+    "POLYGLOT_NATIVE_API" : {
+      "dependencies": [
+        "org.graalvm.polyglot.nativeapi",
+      ],
+      "distDependencies": [
+        "sdk:GRAAL_SDK",
+      ],
+    },
   },
 }
