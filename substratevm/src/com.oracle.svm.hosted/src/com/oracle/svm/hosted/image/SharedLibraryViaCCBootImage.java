@@ -29,9 +29,11 @@ import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
 
+import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -51,8 +53,16 @@ public class SharedLibraryViaCCBootImage extends NativeBootImageViaCC {
     @Override
     public Path write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         Path imagePath = super.write(debug, outputDirectory, tempDirectory, imageName, config);
+        writeGraalIsolateHeader(outputDirectory);
         writeHeaderFile(outputDirectory.resolve(imageName + ".h"), imageName, false);
         writeHeaderFile(outputDirectory.resolve(imageName + "_dynamic.h"), imageName, true);
         return imagePath;
+    }
+
+    private static void writeGraalIsolateHeader(Path outputDirectory) {
+        CSourceCodeWriter writer = new CSourceCodeWriter(outputDirectory);
+        NativeImageHeaderPreamble.read("/" + DEFAULT_HEADER_FILE_NAME)
+                        .forEach(writer::appendln);
+        writer.writeFile(DEFAULT_HEADER_FILE_NAME, false);
     }
 }

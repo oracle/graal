@@ -42,8 +42,8 @@ import com.oracle.svm.core.util.VMError;
  */
 public class NativeImageHeaderPreamble {
 
-    public static List<String> read() {
-        return getResource("/nativeimage.h.preamble");
+    public static List<String> read(String preambleResource) {
+        return getResource(preambleResource);
     }
 
     private static List<String> getResource(String resourceName) {
