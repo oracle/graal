@@ -65,6 +65,21 @@ public class LLVMTypedForeignObjectMessageResolution {
         }
     }
 
+    @Resolve(message = "TO_NATIVE")
+    public abstract static class ForeignToNative extends Node {
+
+        @Child Node toNative = Message.TO_NATIVE.createNode();
+
+        protected Object access(LLVMTypedForeignObject receiver) {
+            try {
+                return ForeignAccess.sendToNative(toNative, receiver.getForeign());
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw ex.raise();
+            }
+        }
+    }
+
     @Resolve(message = "IS_NULL")
     public abstract static class ForeignIsNull extends Node {
 
