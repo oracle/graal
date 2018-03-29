@@ -774,6 +774,10 @@ final class InstrumentationHandler {
     }
 
     static void notifySourceSectionLoaded(EventBinding.Source<?> binding, Node node, SourceSection section) {
+        if (section == null) {
+            // Do not report null source sections to keep compatibility with the past behavior.
+            return;
+        }
         LoadSourceSectionListener listener = (LoadSourceSectionListener) binding.getElement();
         try {
             listener.onLoad(new LoadSourceSectionEvent(section, node));
