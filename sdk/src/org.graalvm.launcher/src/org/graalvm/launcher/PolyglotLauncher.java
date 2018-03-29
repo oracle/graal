@@ -168,8 +168,7 @@ public final class PolyglotLauncher extends Launcher {
         if (runPolyglotAction()) {
             return;
         }
-        Engine engine = Engine.create();
-        Context.Builder contextBuilder = Context.newBuilder().engine(engine).options(options).in(System.in).out(System.out).err(System.err);
+        Context.Builder contextBuilder = Context.newBuilder().options(options).in(System.in).out(System.out).err(System.err);
         if (!isAOT()) {
             contextBuilder.allowHostAccess(true);
         }
@@ -177,7 +176,7 @@ public final class PolyglotLauncher extends Launcher {
         contextBuilder.allowIO(true);
 
         if (version) {
-            printVersion(engine);
+            printVersion(Engine.newBuilder().options(options).build());
             throw exit();
         }
 
