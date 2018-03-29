@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.debug;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -466,7 +467,7 @@ public class Breakpoint {
                         resolveBreakpoint(location);
                     }
                     SourceSectionFilter locationFilter = locationKey.createLocationFilter(source, suspendAnchor);
-                    breakpointBinding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
+                    breakpointBinding = createBinding(locationFilter);
                 }
             }, true);
             if (sourceResolved[0]) {
@@ -475,8 +476,18 @@ public class Breakpoint {
         } else if (breakpointBinding == null && sourceBinding.isDisposed()) {
             // re-installing breakpoint
             SourceSectionFilter locationFilter = locationKey.createLocationFilter(null, suspendAnchor);
-            breakpointBinding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
+            breakpointBinding = createBinding(locationFilter);
         }
+    }
+
+    private EventBinding<? extends ExecutionEventNodeFactory> createBinding(SourceSectionFilter locationFilter) {
+        EventBinding<BreakpointNodeFactory> binding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
+        synchronized (this) {
+            for (DebuggerSession s : sessions) {
+                s.allBindings.add(binding);
+            }
+        }
+        return binding;
     }
 
     boolean isGlobal() {
@@ -521,6 +532,9 @@ public class Breakpoint {
         assert Thread.holdsLock(this);
         EventBinding<?> binding = breakpointBinding;
         breakpointBinding = null;
+        for (DebuggerSession s : sessions) {
+            s.allBindings.remove(binding);
+        }
         if (binding != null) {
             binding.dispose();
         }
@@ -539,18 +553,14 @@ public class Breakpoint {
         assert node.getBreakpoint() == this;
 
         if (source != node) {
-            // TODO: We're testing the breakpoint condition for a second time (GR-7398).
+            // We're testing a different breakpoint at the same location
             if (!((AbstractBreakpointNode) node).shouldBreak(frame)) {
                 return false;
             }
-        } else {
-            // don't do the assert here, the breakpoint condition might have side effects.
-            // assert ((BreakpointNode) node).shouldBreak(frame);
-        }
-
-        if (this.hitCount.incrementAndGet() <= ignoreCount) {
-            // breakpoint hit was ignored
-            return false;
+            if (this.hitCount.incrementAndGet() <= ignoreCount) {
+                // breakpoint hit was ignored
+                return false;
+            }
         }
 
         if (isOneShot()) {
@@ -566,6 +576,10 @@ public class Breakpoint {
             // make sure we do not cause break events if we got disabled already
             // the instrumentation framework will make sure that this is not happening if the
             // binding was disposed.
+            return;
+        }
+        if (this.hitCount.incrementAndGet() <= ignoreCount) {
+            // breakpoint hit was ignored
             return;
         }
         SuspendAnchor anchor = onEnter ? SuspendAnchor.BEFORE : SuspendAnchor.AFTER;
@@ -938,15 +952,30 @@ public class Breakpoint {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 initializeSessions();
             }
+            DebuggerSession[] debuggerSessions = sessions;
             boolean active = false;
-            for (DebuggerSession session : sessions) {
-                if (session.isBreakpointsActive()) {
+            List<DebuggerSession> nonDuplicateSessions = null;
+            for (DebuggerSession session : debuggerSessions) {
+                if (consumeIsDuplicate(session)) {
+                    if (nonDuplicateSessions == null) {
+                        if (debuggerSessions.length == 1) {
+                            // This node is marked as duplicate in the only session that's there.
+                            return;
+                        }
+                    }
+                    nonDuplicateSessions = collectNonDuplicateSessions(debuggerSessions, session, nonDuplicateSessions);
+                } else if (session.isBreakpointsActive()) {
                     active = true;
-                    break;
                 }
             }
             if (!active) {
                 return;
+            }
+            if (nonDuplicateSessions != null) {
+                if (nonDuplicateSessions.isEmpty()) {
+                    return;
+                }
+                debuggerSessions = nonDuplicateSessions.toArray(new DebuggerSession[nonDuplicateSessions.size()]);
             }
             if (!conditionExistsUnchanged.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -967,7 +996,23 @@ public class Breakpoint {
                 conditionError = e;
             }
             breakBranch.enter();
-            breakpoint.doBreak(this, sessions, frame.materialize(), onEnter, result, conditionError);
+            breakpoint.doBreak(this, debuggerSessions, frame.materialize(), onEnter, result, conditionError);
+        }
+
+        @TruffleBoundary
+        private static List<DebuggerSession> collectNonDuplicateSessions(DebuggerSession[] sessions, DebuggerSession session, List<DebuggerSession> nonDuplicateSessionsList) {
+            List<DebuggerSession> nonDuplicateSessions = nonDuplicateSessionsList;
+            if (nonDuplicateSessions == null) {
+                nonDuplicateSessions = new ArrayList<>(sessions.length);
+                for (DebuggerSession s : sessions) {
+                    if (s != session) {
+                        nonDuplicateSessions.add(s);
+                    }
+                }
+            } else {
+                nonDuplicateSessions.remove(session);
+            }
+            return nonDuplicateSessions;
         }
 
         boolean shouldBreak(VirtualFrame frame) throws BreakpointConditionFailure {
