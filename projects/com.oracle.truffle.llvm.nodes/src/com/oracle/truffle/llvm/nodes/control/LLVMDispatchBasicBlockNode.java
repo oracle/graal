@@ -274,6 +274,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     private static void nullDeadSlots(VirtualFrame frame, int bci, FrameSlot[][] blockNullers) {
         FrameSlot[] frameSlotsToNull = blockNullers[bci];
         if (frameSlotsToNull != null) {
+            assert frameSlotsToNull.length > 0;
             for (int i = 0; i < frameSlotsToNull.length; i++) {
                 LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlotsToNull[i]);
             }
