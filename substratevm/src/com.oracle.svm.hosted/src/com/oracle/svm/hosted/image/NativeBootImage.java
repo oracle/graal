@@ -86,6 +86,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
     private static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
 
+    public static final String DEFAULT_HEADER_FILE_NAME = "graal_isolate.h";
+
     @Override
     public Section getTextSection() {
         assert textSection != null;
@@ -122,7 +124,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.appendln("#ifndef " + imageHeaderGuard);
             writer.appendln("#define " + imageHeaderGuard);
 
-            NativeImageHeaderPreamble.read().forEach(writer::appendln);
+            String preamblePath = NativeImageOptions.PreamblePath.getValue();
+            if (preamblePath != null) {
+                NativeImageHeaderPreamble.read(preamblePath).forEach(writer::appendln);
+            } else {
+                writer.appendln("#include <" + DEFAULT_HEADER_FILE_NAME + ">");
+            }
 
             if (NativeImageOptions.getCStandard() != CStandards.C89) {
                 writer.appendln("#include <stdbool.h>");
