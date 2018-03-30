@@ -33,6 +33,7 @@ import org.graalvm.word.UnsignedWord;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class NativeImageInfo {
 
@@ -211,6 +212,39 @@ public class NativeImageInfo {
             continueVisiting = visitor.visitNativeImageHeapRegion(NativeImageHeapRegion.WRITABLE_REFERENCE, access);
         }
         return continueVisiting;
+    }
+
+    public static boolean walkNativeImageHeap(ObjectVisitor visitor) {
+        if (!walkNativeImagePartition(NativeImageInfo.firstReadOnlyPrimitiveObject, NativeImageInfo.lastReadOnlyPrimitiveObject, visitor)) {
+            return false;
+        }
+        if (!walkNativeImagePartition(NativeImageInfo.firstReadOnlyReferenceObject, NativeImageInfo.lastReadOnlyReferenceObject, visitor)) {
+            return false;
+        }
+        if (!walkNativeImagePartition(NativeImageInfo.firstWritablePrimitiveObject, NativeImageInfo.lastWritablePrimitiveObject, visitor)) {
+            return false;
+        }
+        if (!walkNativeImagePartition(NativeImageInfo.firstWritableReferenceObject, NativeImageInfo.lastWritableReferenceObject, visitor)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean walkNativeImagePartition(Object firstObject, Object lastObject, ObjectVisitor visitor) {
+        if ((firstObject == null) || (lastObject == null)) {
+            return true;
+        }
+        final Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
+        final Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+        Pointer current = firstPointer;
+        while (current.belowOrEqual(lastPointer)) {
+            final Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
+            if (!visitor.visitObject(currentObject)) {
+                return false;
+            }
+            current = LayoutEncoding.getObjectEnd(currentObject);
+        }
+        return true;
     }
 
     /** A base class with shared logic for all the MemoryWalkerAccessImpl implementations. */

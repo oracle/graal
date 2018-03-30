@@ -23,6 +23,7 @@
 package com.oracle.svm.core.heap;
 
 import java.lang.management.MemoryMXBean;
+import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -69,6 +70,9 @@ public abstract class Heap {
 
     /** Walk all the Objects in the Heap, passing each to the visitor. */
     public abstract void walkObjects(ObjectVisitor visitor);
+
+    /** Return a list of all the classes in the heap. */
+    public abstract List<Class<?>> getClassList();
 
     /**
      * Get the ObjectHeader implementation that this Heap uses.
