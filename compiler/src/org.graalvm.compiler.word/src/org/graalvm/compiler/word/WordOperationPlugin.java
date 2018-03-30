@@ -71,7 +71,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.word.Word.Opcode;
 import org.graalvm.compiler.word.Word.Operation;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import org.graalvm.word.impl.WordFactoryOperation;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.JavaKind;
@@ -85,7 +85,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * A plugin for calls to {@linkplain Operation word operations}, as well as all other nodes that
  * need special handling for {@link Word} types.
  */
-public class WordOperationPlugin extends WordFactory implements NodePlugin, TypePlugin, InlineInvokePlugin {
+public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvokePlugin {
     protected final WordTypes wordTypes;
     protected final JavaKind wordKind;
     protected final SnippetReflectionProvider snippetReflection;
@@ -249,7 +249,7 @@ public class WordOperationPlugin extends WordFactory implements NodePlugin, Type
 
     protected void processWordOperation(GraphBuilderContext b, ValueNode[] args, ResolvedJavaMethod wordMethod) throws GraalError {
         JavaKind returnKind = wordMethod.getSignature().getReturnKind();
-        WordFactory.FactoryOperation factoryOperation = BridgeMethodUtils.getAnnotation(WordFactory.FactoryOperation.class, wordMethod);
+        WordFactoryOperation factoryOperation = BridgeMethodUtils.getAnnotation(WordFactoryOperation.class, wordMethod);
         if (factoryOperation != null) {
             switch (factoryOperation.opcode()) {
                 case ZERO:

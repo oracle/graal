@@ -31,24 +31,25 @@ import javax.management.ObjectName;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Feature.FeatureAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Feature.FeatureAccess;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.HeapChunkAccess;
 import com.oracle.svm.core.MemoryWalker.ImageCodeAccess;
+import com.oracle.svm.core.MemoryWalker.NativeImageHeapRegionAccess;
 import com.oracle.svm.core.MemoryWalker.RuntimeCompiledMethodAccess;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.NativeImageInfo;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -690,10 +691,10 @@ final class MemoryMXBeanMemoryVisitor implements MemoryWalker.Visitor {
     }
 
     public void reset() {
-        heapUsed = Word.zero();
-        heapCommitted = Word.zero();
-        nonHeapUsed = Word.zero();
-        nonHeapCommitted = Word.zero();
+        heapUsed = WordFactory.zero();
+        heapCommitted = WordFactory.zero();
+        nonHeapUsed = WordFactory.zero();
+        nonHeapCommitted = WordFactory.zero();
     }
 
     /*

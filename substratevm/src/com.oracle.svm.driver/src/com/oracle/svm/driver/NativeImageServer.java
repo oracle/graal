@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.word.Word;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -367,7 +367,7 @@ final class NativeImageServer extends NativeImage {
                 String xmsValueStr = getXmsValue();
                 long xmxValue = SubstrateOptionsParser.parseLong(xmxValueStr);
                 long xmsValue = SubstrateOptionsParser.parseLong(xmsValueStr);
-                if (Word.unsigned(xmsValue).aboveThan(Word.unsigned(xmxValue))) {
+                if (WordFactory.unsigned(xmsValue).aboveThan(WordFactory.unsigned(xmxValue))) {
                     xmsValueStr = Long.toUnsignedString(xmxValue);
                 }
                 replaceArg(javaArgs, oXms, xmsValueStr);

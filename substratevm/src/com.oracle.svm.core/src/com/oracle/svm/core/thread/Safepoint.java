@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -40,6 +39,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -421,7 +421,7 @@ public final class Safepoint {
         public void thaw(String reason) {
             assert SubstrateOptions.MultiThreaded.getValue() : "Should only thaw from a safepoint when multi-threaded.";
             isFrozen = false;
-            requestingThread = Word.nullPointer();
+            requestingThread = WordFactory.nullPointer();
             releaseSafepoints(reason);
             Statistics.setThawedNanos();
             getMutex().assertIsLocked("Should hold mutex when thawing from a safepoint.");

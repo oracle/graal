@@ -119,7 +119,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 
 import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -3271,12 +3270,12 @@ public final class PosixJavaNIOSubstitutions {
                             .string("[PosixJavaNIOSubstitutions.Target_sun_nio_fs_GnomeFileTypeDetector.probeUsingGio:")
                             .newline();
             // 133     char* path = (char*)jlong_to_ptr(pathAddress);
-            CCharPointer path = Word.pointer(pathAddress);
+            CCharPointer path = WordFactory.pointer(pathAddress);
             trace.string("  pathAddress: ").string(path);
             // 134     GFile* gfile;
-            Util_sun_nio_fs_GnomeFileTypeDetector.GFile gfile = Word.nullPointer();
+            Util_sun_nio_fs_GnomeFileTypeDetector.GFile gfile = WordFactory.nullPointer();
             // 135     GFileInfo* gfileinfo;
-            Util_sun_nio_fs_GnomeFileTypeDetector.GFileInfo gfileinfo = Word.nullPointer();
+            Util_sun_nio_fs_GnomeFileTypeDetector.GFileInfo gfileinfo = WordFactory.nullPointer();
             // 136     jbyteArray result = NULL;
             byte[] result = null;
             // 138     gfile = (*g_file_new_for_path)(path);
@@ -3381,7 +3380,7 @@ public final class PosixJavaNIOSubstitutions {
                             .string("[PosixJavaNIOSubstitutions.Target_sun_nio_fs_GnomeFileTypeDetector.probeUsingGnomeVfs:")
                             .newline();
             // 190     char* path = (char*)jlong_to_ptr(pathAddress);
-            CCharPointer path = Word.pointer(pathAddress);
+            CCharPointer path = WordFactory.pointer(pathAddress);
             trace.string("  path: ").string(path).newline();
             // 191     const char* mime = (*gnome_vfs_mime_type_from_name)(path);
             CCharPointer mime = Util_sun_nio_fs_GnomeFileTypeDetector.gnome_vfs_mime_type_from_name.invoke(path);
@@ -3689,7 +3688,7 @@ public final class PosixJavaNIOSubstitutions {
                             .string("[PosixJavaNIOSubstitutions.Target_sun_nio_fs_MagicFileTypeDetector.probe0:")
                             .newline();
             // 087     char* path = (char*)jlong_to_ptr(pathAddress);
-            CCharPointer path = Word.pointer(pathAddress);
+            CCharPointer path = WordFactory.pointer(pathAddress);
             trace.string("  path: ").string(path).newline();
             // 088     magic_t* cookie;
             Util_sun_nio_fs_MagicFileTypeDetector.magic_t cookie = WordFactory.nullPointer();

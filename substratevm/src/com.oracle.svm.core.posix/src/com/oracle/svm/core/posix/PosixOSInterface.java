@@ -338,7 +338,7 @@ public abstract class PosixOSInterface extends OSInterface {
     //    protected void writeBytes0(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
     //        try (PinnedObject bytesPin = PinnedObject.open(bytes)) {
     //            CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
-    //            Unsigned curLen = Word.unsigned(len);
+    //            Unsigned curLen = WordFactory.unsigned(len);
     //            while (curLen.notEqual(0)) {
     //                int fd = FileDescriptorAlias.getFD(descriptor);
     //                if (fd == -1) {

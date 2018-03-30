@@ -23,7 +23,6 @@
 package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
@@ -136,7 +135,7 @@ class SubstrateSegfaultHandler {
             /* Register sa_sigaction signal handler */
             structSigAction.sa_flags(Signal.SA_SIGINFO());
             structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
-            Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, Word.nullPointer());
+            Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
         }
     }
 }

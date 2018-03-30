@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -96,7 +97,7 @@ public class PosixIsolates {
          * another isolate unmaps a chunk at that location.
          */
         long pageSize = Unistd.NoTransitions.sysconf(Unistd._SC_PAGE_SIZE());
-        Pointer heap = Mman.NoTransitions.mmap(Word.pointer(pageSize), size, PROT_READ() | PROT_WRITE(), MAP_ANON() | MAP_PRIVATE(), -1, 0);
+        Pointer heap = Mman.NoTransitions.mmap(WordFactory.pointer(pageSize), size, PROT_READ() | PROT_WRITE(), MAP_ANON() | MAP_PRIVATE(), -1, 0);
         if (heap.equal(MAP_FAILED())) {
             return Errors.HEAP_CLONE_FAILED;
         }
