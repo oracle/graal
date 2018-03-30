@@ -27,17 +27,26 @@ package com.oracle.svm.jni.access;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
+
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Information on a class that can be looked up and accessed via JNI.
  */
 public final class JNIAccessibleField {
-    private final JNIAccessibleClass declaringClass;
-    private final String name;
-    private final int modifiers;
+    private static final UnsignedWord ID_STATIC_FLAG = Word.unsigned(-1L).unsignedShiftRight(1).add(1);
+    private static final UnsignedWord ID_OBJECT_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
+    private static final UnsignedWord ID_OFFSET_MASK = ID_OBJECT_FLAG.subtract(1);
 
     /**
      * For instance fields, the offset of the field in an object of {@link #declaringClass}. For
@@ -45,30 +54,37 @@ public final class JNIAccessibleField {
      * {@link StaticFieldsSupport#getStaticPrimitiveFields()} or
      * {@link StaticFieldsSupport#getStaticObjectFields()}.
      */
-    private int offset = -1;
+    public static WordBase getOffsetFromId(JNIFieldId id) {
+        return ((UnsignedWord) id).and(ID_OFFSET_MASK);
+    }
 
-    JNIAccessibleField(JNIAccessibleClass declaringClass, String name, int modifiers) {
+    private final JNIAccessibleClass declaringClass;
+    private final String name;
+    @Platforms(HOSTED_ONLY.class) private final UnsignedWord flags;
+    private UnsignedWord id = Word.zero();
+
+    JNIAccessibleField(JNIAccessibleClass declaringClass, String name, JavaKind kind, int modifiers) {
         this.declaringClass = declaringClass;
         this.name = name;
-        this.modifiers = modifiers;
+
+        UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : Word.zero();
+        bits = bits.or(kind.isObject() ? ID_OBJECT_FLAG : Word.zero());
+        this.flags = bits;
     }
 
-    public int getOffset() {
-        assert offset != -1;
-        return offset;
-    }
-
-    public boolean isStatic() {
-        return Modifier.isStatic(modifiers);
+    public JNIFieldId getId() {
+        return (JNIFieldId) id;
     }
 
     void fillOffset(CompilationAccessImpl access) {
-        assert offset == -1;
+        assert id.equal(0);
         try {
             Field reflField = declaringClass.getClassObject().getDeclaredField(name);
             HostedField field = access.getMetaAccess().lookupJavaField(reflField);
             assert field.hasLocation();
-            offset = field.getLocation();
+            int offset = field.getLocation();
+            assert ID_OFFSET_MASK.and(offset).equal(offset);
+            this.id = flags.or(offset);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }

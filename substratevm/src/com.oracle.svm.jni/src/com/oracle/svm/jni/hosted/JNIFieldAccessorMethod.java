@@ -145,7 +145,8 @@ public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
             ValueNode handle = arguments.get(1);
             object = kit.unboxHandle(handle);
         }
-        ValueNode offset = arguments.get(2);
+        ValueNode fieldId = arguments.get(2);
+        ValueNode offset = kit.getFieldOffsetFromId(fieldId);
         ValueNode returnValue;
         if (isSetter) {
             returnValue = null; // void

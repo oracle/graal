@@ -267,7 +267,7 @@ public class JNIAccessFeature implements Feature {
                 FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(bigBang, field, true);
                 declaredTypeFlow.addUse(bigBang, instanceFieldFlow);
             }
-            return new JNIAccessibleField(jniClass, reflField.getName(), field.getModifiers());
+            return new JNIAccessibleField(jniClass, reflField.getName(), field.getJavaKind(), field.getModifiers());
         });
     }
 

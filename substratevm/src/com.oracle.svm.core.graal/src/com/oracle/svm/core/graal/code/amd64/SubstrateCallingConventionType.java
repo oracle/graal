@@ -23,7 +23,6 @@
 package com.oracle.svm.core.graal.code.amd64;
 
 import jdk.vm.ci.code.CallingConvention;
-import jdk.vm.ci.code.CallingConvention.Type;
 
 public enum SubstrateCallingConventionType implements CallingConvention.Type {
     /**
@@ -51,8 +50,6 @@ public enum SubstrateCallingConventionType implements CallingConvention.Type {
     public final boolean outgoing;
 
     public final boolean nativeABI;
-
-    public static final Type[] VALUES = values();
 
     SubstrateCallingConventionType(boolean outgoing, boolean nativeABI) {
         this.outgoing = outgoing;

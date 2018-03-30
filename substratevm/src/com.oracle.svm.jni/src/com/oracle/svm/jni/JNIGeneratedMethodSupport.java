@@ -29,12 +29,15 @@ import java.lang.reflect.Array;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -70,6 +73,10 @@ public final class JNIGeneratedMethodSupport {
 
     static Object unboxHandle(JNIObjectHandle handle) {
         return JNIObjectHandles.getObject(handle);
+    }
+
+    static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
+        return JNIAccessibleField.getOffsetFromId(fieldId);
     }
 
     static byte[] getStaticPrimitiveFieldsArray() {

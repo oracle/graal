@@ -248,9 +248,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) returnType, metaAccess, target);
         AllocatableValue returnLocation = returnKind == JavaKind.Void ? Value.ILLEGAL : getReturnRegister(returnKind).asValue(valueKindFactory.getValueKind(returnKind.getStackKind()));
-        SubstrateCallingConvention callingConvention = new SubstrateCallingConvention(currentStackOffset, returnLocation, locations);
-        callingConvention.setArgumentStorageKinds(kinds);
-        return callingConvention;
+        return new SubstrateCallingConvention(type, kinds, currentStackOffset, returnLocation, locations);
     }
 
     @Override
