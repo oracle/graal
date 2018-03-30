@@ -18,18 +18,6 @@ suite = {
         ]
     },
 
-    "libraries": {
-        "GSON_SHADOWED": {
-            "path": "lib/gson-shadowed-2.2.4.jar",
-            "sha1": "616a4fca49c5d610a3354e78cd97e7627024bb66",
-            "sourcePath": "lib/gson-shadowed-2.2.4-sources.jar",
-            "sourceSha1": "b13337a4ffd095c2e27ea401dc6edfca0d23a6e4",
-            "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps",
-            "urls": ["{urlbase}/gson-shadowed-2.2.4.jar"],
-            "sourceUrls": ["{urlbase}/gson-shadowed-2.2.4-sources.jar"],
-        },
-    },
-
     "projects": {
         "com.oracle.svm.core": {
             "subDir": "src",
@@ -123,7 +111,6 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core.graal",
                 "com.oracle.graal.pointsto",
-                "GSON_SHADOWED",
             ],
             "javaCompliance": "1.8",
             "annotationProcessors": [

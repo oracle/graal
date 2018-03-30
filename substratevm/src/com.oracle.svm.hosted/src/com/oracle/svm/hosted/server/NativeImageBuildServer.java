@@ -24,12 +24,11 @@ package com.oracle.svm.hosted.server;
 
 import static com.oracle.svm.hosted.NativeImageGeneratorRunner.verifyValidJavaVersionAndPlatform;
 
-import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -67,7 +66,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
 
-import com.oracle.shadowed.com.google.gson.Gson;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageBuildTask;
@@ -85,7 +83,6 @@ public final class NativeImageBuildServer {
     static final String PORT_PREFIX = "-port=";
     private static final String LOG_PREFIX = "-logFile=";
     private static final int TIMEOUT_MINUTES = 240;
-    private static final String SOCKET_CHARSET = "UTF-8";
     private static final String SUBSTRATEVM_VERSION_PROPERTY = "substratevm.version";
     private static final int SERVER_THREAD_POOL_SIZE = 4;
     private static final int FAILED_EXIT_STATUS = -1;
@@ -98,12 +95,11 @@ public final class NativeImageBuildServer {
     /*
      * This is done as System.err and System.logOutput are replaced by reference during analysis.
      */
-    private final StreamingJSONOutputStream outJSONStream = new StreamingJSONOutputStream(ServerCommand.WRITE_OUT, null);
-    private final StreamingJSONOutputStream errorJSONStream = new StreamingJSONOutputStream(ServerCommand.WRITE_ERR, null);
+    private final StreamingServerMessageOutputStream outJSONStream = new StreamingServerMessageOutputStream(ServerCommand.WRITE_OUT, null);
+    private final StreamingServerMessageOutputStream errorJSONStream = new StreamingServerMessageOutputStream(ServerCommand.WRITE_ERR, null);
     private final PrintStream serverStdout = new PrintStream(outJSONStream, true);
     private final PrintStream serverStderr = new PrintStream(errorJSONStream, true);
 
-    private final Gson gson = new Gson();
     private final AtomicLong activeBuildTasks = new AtomicLong();
     private Instant lastKeepAliveAction = Instant.now();
     private ThreadPoolExecutor threadPoolExecutor;
@@ -254,10 +250,10 @@ public final class NativeImageBuildServer {
 
     private boolean processRequest(Socket socket) {
         try {
-            OutputStreamWriter output = new OutputStreamWriter(socket.getOutputStream(), SOCKET_CHARSET);
-            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
+            DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+            DataInputStream input = new DataInputStream(socket.getInputStream());
             try {
-                return processCommand(socket, input.readLine());
+                return processCommand(socket, SubstrateServerMessage.receive(input));
             } catch (Throwable t) {
                 log("Execution failed: " + t + "\n");
                 t.printStackTrace(logOutput);
@@ -285,9 +281,8 @@ public final class NativeImageBuildServer {
         }
     }
 
-    private boolean processCommand(Socket socket, String commandLine) throws IOException {
-        SubstrateServerMessage serverCommand = gson.fromJson(commandLine, SubstrateServerMessage.class);
-        OutputStreamWriter output = new OutputStreamWriter(socket.getOutputStream(), SOCKET_CHARSET);
+    private boolean processCommand(Socket socket, SubstrateServerMessage serverCommand) throws IOException {
+        DataOutputStream output = new DataOutputStream(socket.getOutputStream());
         switch (serverCommand.command) {
             case STOP_SERVER:
                 log("Received 'stop' request. Shutting down server.\n");
@@ -355,7 +350,7 @@ public final class NativeImageBuildServer {
         }
     }
 
-    private static void sendExitStatus(OutputStreamWriter output, int exitStatus) {
+    private static void sendExitStatus(DataOutputStream output, int exitStatus) {
         try {
             SubstrateServerMessage.send(new SubstrateServerMessage(ServerCommand.SEND_STATUS, ByteBuffer.allocate(4).putInt(exitStatus).array()), output);
         } catch (IOException e) {
@@ -363,7 +358,7 @@ public final class NativeImageBuildServer {
         }
     }
 
-    private static void sendError(OutputStreamWriter output, String message) {
+    private static void sendError(DataOutputStream output, String message) {
         try {
             SubstrateServerMessage.send(new SubstrateServerMessage(ServerCommand.WRITE_ERR, message.getBytes()), output);
         } catch (IOException e) {

@@ -22,52 +22,48 @@
  */
 package com.oracle.svm.hosted.server;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.channels.ClosedByInterruptException;
 
-import com.oracle.shadowed.com.google.gson.Gson;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 
 /**
- * Converts the data stream to streaming JSON packages containing the content as well as the command
- * that accompanies the content. Note: Should be used with BufferedOutputStream for better
- * performance and with standard OutputStreams for responsiveness.
- *
- * Format: { "command": $command, "payload": $string }
+ * Converts the data stream to streaming {@link SubstrateServerMessage messages} containing the
+ * content as well as the command that accompanies the content. Note: Should be used with
+ * BufferedOutputStream for better performance and with standard OutputStreams for responsiveness.
  */
-public class StreamingJSONOutputStream extends OutputStream {
+public class StreamingServerMessageOutputStream extends OutputStream {
 
     private final ServerCommand command;
-    private OutputStream original;
-    private final Gson gson = new Gson();
+    private DataOutputStream original;
     private volatile boolean interrupted;
     private volatile boolean writing;
 
     public void setOriginal(OutputStream original) {
-        this.original = original;
+        this.original = new DataOutputStream(original);
     }
 
-    StreamingJSONOutputStream(ServerCommand command, OutputStream original) {
+    StreamingServerMessageOutputStream(ServerCommand command, OutputStream original) {
         this.command = command;
-        this.original = original;
+        this.original = new DataOutputStream(original);
     }
 
     @Override
     public void write(int b) throws IOException {
+        write(new byte[]{(byte) b}, 0, 1);
+    }
+
+    @Override
+    public void write(byte[] b, int off, int len) throws IOException {
         if (interrupted) {
             throw new ClosedByInterruptException();
         }
         writing = true;
         try {
-            String jsonString = gson.toJson(new SubstrateServerMessage(command, new byte[]{(byte) b}));
-            for (byte ch : jsonString.getBytes()) {
-                original.write(ch);
-            }
-
-            for (byte ch : System.lineSeparator().getBytes()) {
-                original.write(ch);
-            }
+            SubstrateServerMessage message = new SubstrateServerMessage(command, b, off, len);
+            SubstrateServerMessage.send(message, original);
         } finally {
             writing = false;
         }
