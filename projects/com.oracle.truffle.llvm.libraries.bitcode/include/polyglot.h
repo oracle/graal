@@ -449,6 +449,23 @@ void *polyglot_from_string_n(const char *string, uint64_t size, const char *char
 
 /** @} */
 
+// typed interop
+void *__polyglot_as_typed(void *ptr, void *typeid);
+void *__polyglot_as_typed_array(void *ptr, void *typeid);
+
+#define POLYGLOT_DECLARE_STRUCT(type)                                                                                                                \
+  static struct type __polyglot_typeid_##type[0];                                                                                                    \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static inline struct type *polyglot_as_##type(void *p) {                                                            \
+    void *ret = __polyglot_as_typed(p, __polyglot_typeid_##type);                                                                                    \
+    return (struct type *)ret;                                                                                                                       \
+  }                                                                                                                                                  \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static inline struct type *polyglot_as_##type##_array(void *p) {                                                    \
+    void *ret = __polyglot_as_typed_array(p, __polyglot_typeid_##type);                                                                              \
+    return (struct type *)ret;                                                                                                                       \
+  }
+
 #if defined(__cplusplus)
 }
 #endif

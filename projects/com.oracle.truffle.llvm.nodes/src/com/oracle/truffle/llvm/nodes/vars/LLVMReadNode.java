@@ -41,8 +41,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.AttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.ForeignAttachInteropTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -130,41 +130,41 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
 
         private Object attachType(Object obj) {
             Type type = (Type) getSlot().getInfo();
-            return attach.execute(obj, type != null ? type.getSourceType() : null);
+            return attach.execute(obj, type != null ? type.getInteropType() : null);
         }
     }
 
     public abstract static class AttachInteropTypeNode extends LLVMNode {
 
-        public abstract Object execute(Object object, LLVMSourceType type);
+        public abstract Object execute(Object object, LLVMInteropType type);
 
         @Specialization(guards = {"type != null", "object.getOffset() == 0"})
-        protected Object doForeign(LLVMTruffleObject object, LLVMSourceType type,
+        protected Object doForeign(LLVMTruffleObject object, LLVMInteropType.Structured type,
                         @Cached("create()") ForeignAttachInteropTypeNode attach) {
             return new LLVMTruffleObject(attach.execute(object.getObject(), type));
         }
 
         @Fallback
-        protected Object doOther(Object object, @SuppressWarnings("unused") LLVMSourceType type) {
+        protected Object doOther(Object object, @SuppressWarnings("unused") LLVMInteropType type) {
             return object;
         }
     }
 
     public abstract static class ForeignAttachInteropTypeNode extends LLVMNode {
 
-        public abstract TruffleObject execute(TruffleObject object, LLVMSourceType type);
+        public abstract TruffleObject execute(TruffleObject object, LLVMInteropType.Structured type);
 
         public static ForeignAttachInteropTypeNode create() {
             return ForeignAttachInteropTypeNodeGen.create();
         }
 
         @Specialization(guards = "object.getType() == null")
-        protected TruffleObject doForeign(LLVMTypedForeignObject object, LLVMSourceType type) {
+        protected TruffleObject doForeign(LLVMTypedForeignObject object, LLVMInteropType.Structured type) {
             return LLVMTypedForeignObject.create(object.getForeign(), type);
         }
 
         @Fallback
-        protected TruffleObject doOther(TruffleObject object, @SuppressWarnings("unused") LLVMSourceType type) {
+        protected TruffleObject doOther(TruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return object;
         }
     }

@@ -95,7 +95,7 @@ public final class ArrayType extends AggregateType {
     @Override
     public Type shallowCopy() {
         final ArrayType copy = new ArrayType(getElementType(), length);
-        copy.setSourceType(getSourceType());
+        copy.setInteropType(getInteropType());
         return copy;
     }
 

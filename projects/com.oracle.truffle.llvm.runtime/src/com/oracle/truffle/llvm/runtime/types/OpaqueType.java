@@ -73,7 +73,7 @@ public final class OpaqueType extends Type {
     @Override
     public Type shallowCopy() {
         final OpaqueType shallowCopy = new OpaqueType(name);
-        shallowCopy.setSourceType(getSourceType());
+        shallowCopy.setInteropType(getInteropType());
         return shallowCopy;
     }
 

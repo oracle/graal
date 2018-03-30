@@ -124,7 +124,7 @@ public final class VariableBitWidthType extends Type {
     @Override
     public Type shallowCopy() {
         final VariableBitWidthType copy = new VariableBitWidthType(bitWidth, constant);
-        copy.setSourceType(getSourceType());
+        copy.setInteropType(getInteropType());
         return copy;
     }
 }

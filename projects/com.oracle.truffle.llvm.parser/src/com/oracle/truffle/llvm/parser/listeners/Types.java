@@ -38,7 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.records.TypesRecord;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -309,13 +309,13 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
-        public LLVMSourceType getSourceType() {
+        public LLVMInteropType getInteropType() {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Unresolved Forward-Referenced Type!");
         }
 
         @Override
-        public void setSourceType(LLVMSourceType sourceType) {
+        public void setInteropType(LLVMInteropType sourceType) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Unresolved Forward-Referenced Type!");
         }

@@ -55,7 +55,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
     @Specialization
     protected LLVMTruffleObject doIntrinsic(LLVMGlobal address, LLVMTruffleObject value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        LLVMTruffleObject typedValue = (LLVMTruffleObject) attachType.execute(value, address.getSourceType());
+        LLVMTruffleObject typedValue = (LLVMTruffleObject) attachType.execute(value, address.getInteropType());
         context.get().getGlobalFrame().setObject(address.getSlot(), typedValue);
         return typedValue;
     }

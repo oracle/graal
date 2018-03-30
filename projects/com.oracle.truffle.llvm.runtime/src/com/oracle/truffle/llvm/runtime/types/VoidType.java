@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VoidType extends Type {
@@ -73,7 +73,7 @@ public final class VoidType extends Type {
     }
 
     @Override
-    public void setSourceType(LLVMSourceType sourceType) {
+    public void setInteropType(LLVMInteropType sourceType) {
     }
 
     @Override
