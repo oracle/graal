@@ -24,39 +24,39 @@
 #define POLYGLOT_TYPES_H
 
 typedef enum {
-  polyglot_ok,
-  polyglot_invalid_arg,
-  polyglot_object_expected,
-  polyglot_string_expected,
-  polyglot_name_expected,
-  polyglot_function_expected,
-  polyglot_number_expected,
-  polyglot_boolean_expected,
-  polyglot_array_expected,
-  polyglot_generic_failure,
-  polyglot_pending_exception,
-  polyglot_cancelled,
-  polyglot_status_last
-} polyglot_status;
+  poly_ok,
+  poly_invalid_arg,
+  poly_object_expected,
+  poly_string_expected,
+  poly_name_expected,
+  poly_function_expected,
+  poly_number_expected,
+  poly_boolean_expected,
+  poly_array_expected,
+  poly_generic_failure,
+  poly_pending_exception,
+  poly_cancelled,
+  poly_status_last
+} poly_status;
 
 typedef struct {
   char* error_message;
   void* engine_reserved;
   unsigned int engine_error_code;
-  polyglot_status error_code;
-} polyglot_extended_error_info;
+  poly_status error_code;
+} poly_extended_error_info;
 
-// GR-7868 polyglot_handle becomes void* and all CPointers become CTypeDef
-typedef void polyglot_handle;
+// GR-7868 poly_handle becomes void* and all CPointers become CTypeDef
+typedef void poly_handle;
 
-typedef polyglot_handle polyglot_value;
+typedef poly_handle poly_value;
 
-typedef polyglot_handle polyglot_engine;
+typedef poly_handle poly_engine;
 
-typedef polyglot_handle polyglot_context;
+typedef poly_handle poly_context;
 
-typedef polyglot_handle polyglot_callback_info;
+typedef poly_handle poly_callback_info;
 
-typedef polyglot_value* (*polyglot_callback)(void* ithread, polyglot_callback_info* info);
+typedef poly_value* (*poly_callback)(void* ithread, poly_callback_info* info);
 
 #endif
