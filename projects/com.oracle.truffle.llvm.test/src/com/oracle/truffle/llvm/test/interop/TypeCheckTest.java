@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
+import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;

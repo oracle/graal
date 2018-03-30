@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.test.interop;
 
+import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
