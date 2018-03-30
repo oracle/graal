@@ -57,4 +57,9 @@ public final class PthreadThreadLocal<T extends WordBase> {
     public void set(T value) {
         PthreadVMLockSupport.checkResult(Pthread.pthread_setspecific(key, value), "pthread_setspecific");
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void destroy() {
+        PthreadVMLockSupport.checkResult(Pthread.pthread_key_delete(key), "pthread_key_delete");
+    }
 }
