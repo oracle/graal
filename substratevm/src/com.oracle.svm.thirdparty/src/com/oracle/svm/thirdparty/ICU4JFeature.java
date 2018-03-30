@@ -29,8 +29,8 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.RuntimeReflection;
 
-import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.InjectAccessors;

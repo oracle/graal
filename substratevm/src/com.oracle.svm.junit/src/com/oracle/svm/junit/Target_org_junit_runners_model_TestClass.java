@@ -26,9 +26,9 @@ package com.oracle.svm.junit;
 
 import java.lang.reflect.Constructor;
 
+import org.graalvm.nativeimage.RuntimeReflection;
 import org.junit.runners.model.TestClass;
 
-import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;

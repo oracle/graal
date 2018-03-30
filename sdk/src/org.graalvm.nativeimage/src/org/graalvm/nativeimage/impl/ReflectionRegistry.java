@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.launcher;
+package org.graalvm.nativeimage.impl;
 
-import org.graalvm.nativeimage.Feature;
-import org.graalvm.nativeimage.RuntimeReflection;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
 
-class PolyglotLauncherFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        PolyglotLauncher.AOT_LAUNCHER_CLASSES.values().forEach(RuntimeReflection::registerForReflectiveInstantiation);
-    }
+public interface ReflectionRegistry {
+    void register(Class<?>... classes);
+
+    void register(Executable... methods);
+
+    void register(Field... fields);
 }

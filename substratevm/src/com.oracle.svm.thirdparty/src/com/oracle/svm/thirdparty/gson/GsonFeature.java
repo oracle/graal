@@ -23,8 +23,8 @@
 package com.oracle.svm.thirdparty.gson;
 
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.RuntimeReflection;
 
-import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 

@@ -79,6 +79,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -348,7 +349,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
-        getLanguageClasses().forEach(config::registerForReflectiveInstantiation);
+        getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
 
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
         config.registerHierarchyForReflectiveInstantiation(com.oracle.truffle.api.instrumentation.InstrumentableFactory.class);

@@ -23,7 +23,6 @@
 package com.oracle.svm.hosted;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -40,6 +39,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -50,14 +50,12 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.RuntimeReflection;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -289,28 +287,8 @@ public class FeatureImpl {
             return hostVM;
         }
 
-        @Override
-        public void registerForReflectiveInstantiation(Class<?> type) {
-            if (type.isArray() || type.isInterface() || Modifier.isAbstract(type.getModifiers())) {
-                throw UserError.abort("Class " + type.getName() + " cannot be instantiated reflectively. It must be a non-abstract instance type.");
-            }
-
-            Constructor<?> nullaryConstructor;
-            try {
-                nullaryConstructor = type.getDeclaredConstructor();
-            } catch (NoSuchMethodException ex) {
-                throw UserError.abort("Class " + type.getName() + " cannot be instantiated reflectively . It doesn't have a nullary constructor.");
-            }
-
-            /*
-             * Register the nullary constructor. Its declaring class will be processed for
-             * reflective access too.
-             */
-            RuntimeReflection.register(nullaryConstructor);
-        }
-
         public void registerHierarchyForReflectiveInstantiation(Class<?> c) {
-            findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(clazz -> registerForReflectiveInstantiation(clazz));
+            findSubclasses(c).stream().filter(clazz -> !Modifier.isAbstract(clazz.getModifiers())).forEach(clazz -> RuntimeReflection.registerForReflectiveInstantiation(clazz));
         }
     }
 

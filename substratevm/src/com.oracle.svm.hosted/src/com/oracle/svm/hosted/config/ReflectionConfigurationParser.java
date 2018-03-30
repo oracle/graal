@@ -37,7 +37,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.RuntimeReflection.ReflectionRegistry;
+import org.graalvm.nativeimage.impl.ReflectionRegistry;
+
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;

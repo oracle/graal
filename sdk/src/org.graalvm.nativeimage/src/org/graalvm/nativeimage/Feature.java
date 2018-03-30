@@ -138,13 +138,6 @@ public interface Feature {
          * This implies that the field is also marked as {@link #registerAsAccessed accessed}.
          */
         void registerAsUnsafeWritten(Field field);
-
-        /**
-         * Registers the type for usage with the {@code Class.newInstance} method.
-         *
-         * @param type Type to register for `Class.newInstance`.
-         */
-        void registerForReflectiveInstantiation(Class<?> type);
     }
 
     /**
