@@ -283,7 +283,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
     @SubstrateForeignCallTarget
     private static int tearDownIsolate() {
-        return JavaThreads.singleton().tearDownVM() ? Errors.NO_ERROR : Errors.UNSPECIFIED;
+        boolean success = JavaThreads.singleton().tearDownVM();
+        if (!success) {
+            return Errors.UNSPECIFIED;
+        }
+        PosixVMThreads.finishTearDown();
+        return Errors.NO_ERROR;
     }
 
     @Snippet

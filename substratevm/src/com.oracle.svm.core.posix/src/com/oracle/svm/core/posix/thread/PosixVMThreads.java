@@ -85,6 +85,11 @@ public final class PosixVMThreads extends VMThreads {
             }
         }
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code. Too late for safepoints.")
+    public static void finishTearDown() {
+        VMThreadTL.destroy();
+    }
 }
 
 @AutomaticFeature
