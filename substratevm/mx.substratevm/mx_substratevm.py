@@ -776,7 +776,7 @@ def helloworld(native_image, args=None):
     # and we need to set the bootclasspath manually because our build directory does not contain any .jar files.
     mx.run([join(helloPath, 'javac'), "-proc:none", "-bootclasspath", join(mx_compiler.jdk.home, "jre", "lib", "rt.jar"), helloFile])
 
-    native_image(["-H:Path=" + helloPath, '-cp', helloPath, 'HelloWorld'] + args)
+    native_image(["-H:Path=" + helloPath, '-cp', helloPath, 'HelloWorld'])
 
     expectedOutput = [output + '\n']
     actualOutput = []
