@@ -92,12 +92,12 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     @ExplodeLoop
     private Object doInvoke(VirtualFrame frame, TruffleObject value, String id, ContextReference<LLVMContext> contextReference,
                     LLVMGetStackNode getStack) {
-        LLVMContext context = contextReference.get();
         Object[] evaluatedArgs = new Object[args.length];
         for (int i = 0; i < args.length; i++) {
-            evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame), context);
+            evaluatedArgs[i] = prepareValuesForEscape[i].executeWithTarget(args[i].executeGeneric(frame));
         }
         try {
+            LLVMContext context = contextReference.get();
             LLVMStack stack = getStack.executeWithTarget(getThreadingStack(context), Thread.currentThread());
             Object rawValue;
             try (StackPointer save = stack.newFrame()) {

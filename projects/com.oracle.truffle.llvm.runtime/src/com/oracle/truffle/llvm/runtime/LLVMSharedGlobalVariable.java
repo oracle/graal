@@ -38,15 +38,9 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 public final class LLVMSharedGlobalVariable implements LLVMInternalTruffleObject {
 
     private final LLVMGlobal descriptor;
-    private final LLVMContext context;
 
-    public LLVMSharedGlobalVariable(LLVMGlobal descriptor, LLVMContext context) {
+    public LLVMSharedGlobalVariable(LLVMGlobal descriptor) {
         this.descriptor = descriptor;
-        this.context = context;
-    }
-
-    public LLVMContext getContext() {
-        return context;
     }
 
     public LLVMGlobal getDescriptor() {

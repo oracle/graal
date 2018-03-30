@@ -38,16 +38,10 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public final class LLVMTruffleAddress implements LLVMInternalTruffleObject {
     private final long address;
     private final Type type;
-    private final LLVMContext context;
 
-    public LLVMTruffleAddress(LLVMAddress address, Type type, LLVMContext context) {
+    public LLVMTruffleAddress(LLVMAddress address, Type type) {
         this.address = address.getVal();
         this.type = type;
-        this.context = context;
-    }
-
-    public LLVMContext getContext() {
-        return context;
     }
 
     public LLVMAddress getAddress() {

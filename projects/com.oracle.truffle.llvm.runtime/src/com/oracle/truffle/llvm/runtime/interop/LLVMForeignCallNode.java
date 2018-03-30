@@ -101,15 +101,15 @@ abstract class LLVMForeignCallNode extends Node {
     protected static class SlowPackForeignArgumentsNode extends Node {
         @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
-        Object[] pack(LLVMFunctionDescriptor function, LLVMMemory memory, LLVMContext context, Object[] arguments, StackPointer stackPointer) {
+        Object[] pack(LLVMFunctionDescriptor function, LLVMMemory memory, Object[] arguments, StackPointer stackPointer) {
             int actualArgumentsLength = Math.max(arguments.length, function.getType().getArgumentTypes().length);
             final Object[] packedArguments = new Object[1 + actualArgumentsLength];
             packedArguments[0] = stackPointer;
             for (int i = 0; i < function.getType().getArgumentTypes().length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(function.getType().getArgumentTypes()[i], memory, context, arguments[i]);
+                packedArguments[i + 1] = slowConvert.convert(function.getType().getArgumentTypes()[i], memory, arguments[i]);
             }
             for (int i = function.getType().getArgumentTypes().length; i < arguments.length; i++) {
-                packedArguments[i + 1] = slowConvert.convert(memory, ForeignToLLVMType.ANY, context, arguments[i]);
+                packedArguments[i + 1] = slowConvert.convert(memory, ForeignToLLVMType.ANY, arguments[i]);
             }
             return packedArguments;
         }
@@ -150,7 +150,7 @@ abstract class LLVMForeignCallNode extends Node {
         try (StackPointer stackPointer = stack.newFrame()) {
             result = callNode.call(packNode.pack(arguments, stackPointer));
         }
-        return prepareValueForEscape.executeWithTarget(result, context);
+        return prepareValueForEscape.executeWithTarget(result);
     }
 
     @Specialization(replaces = "callDirectCached")
@@ -163,9 +163,9 @@ abstract class LLVMForeignCallNode extends Node {
         LLVMStack stack = getStack.executeWithTarget(function.getContext().getThreadingStack(), Thread.currentThread());
         Object result;
         try (StackPointer stackPointer = stack.newFrame()) {
-            result = callNode.call(getCallTarget(function), slowPack.pack(function, memory, function.getContext(), arguments, stackPointer));
+            result = callNode.call(getCallTarget(function), slowPack.pack(function, memory, arguments, stackPointer));
         }
-        return prepareValueForEscape.executeWithTarget(result, function.getContext());
+        return prepareValueForEscape.executeWithTarget(result);
     }
 
     protected CallTarget getCallTarget(LLVMFunctionDescriptor function) {

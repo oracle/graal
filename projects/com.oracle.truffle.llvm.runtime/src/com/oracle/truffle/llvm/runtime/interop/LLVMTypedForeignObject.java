@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -39,8 +38,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObjectFactory.ForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
@@ -115,8 +112,6 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNodeGen.create(PointerType.VOID);
         @Child Node write = Message.WRITE.createNode();
 
-        private final ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
-
         @Specialization(guards = "valueClass.isInstance(value)")
         void doCachedType(Object obj, long offset, Object value,
                         @Cached("value.getClass()") @SuppressWarnings("unused") Class<?> valueClass,
@@ -134,7 +129,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
         private void doWrite(Object obj, long offset, Object value, LLVMOffsetToNameNode offsetToName) {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
             Object identifier = offsetToName.execute(object.getType(), offset);
-            Object escapedValue = dataEscape.executeWithTarget(value, ctxRef.get());
+            Object escapedValue = dataEscape.executeWithTarget(value);
             try {
                 ForeignAccess.sendWrite(write, object.getForeign(), identifier, escapedValue);
             } catch (InteropException ex) {

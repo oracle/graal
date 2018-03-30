@@ -71,7 +71,7 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
         String symbolName = readString.executeWithTarget(name);
 
         LLVMContext ctx = ctxRef.get();
-        Object escaped = escape.executeWithTarget(value, ctx);
+        Object escaped = escape.executeWithTarget(value);
 
         try {
             ForeignAccess.sendWrite(write, (TruffleObject) ctx.getEnv().getPolyglotBindings(), symbolName, escaped);
