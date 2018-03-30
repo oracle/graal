@@ -378,6 +378,6 @@ public class Mman {
         public static native Pointer mmap(PointerBase addr, UnsignedWord len, int prot, int flags, int fd, long offset);
 
         @CFunction(transition = Transition.NO_TRANSITION)
-        public static native int mprotect(PointerBase addr, UnsignedWord len, int prot);
+        public static native int munmap(PointerBase addr, UnsignedWord len);
     }
 }
