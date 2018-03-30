@@ -147,4 +147,9 @@ public final class CEntryPointActions {
      *            {@link WordFactory#nullPointer() null}).
      */
     public static native void failFatally(int code, CCharPointer message);
+
+    /**
+     * @return whether the current thread is attached to the specified isolate.
+     */
+    public static native boolean isCurrentThreadAttachedTo(Isolate isolate);
 }

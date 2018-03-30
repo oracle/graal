@@ -150,7 +150,7 @@ public final class PthreadVMLockSupport {
              */
             VMThreads.StatusSupport.setStatusIgnoreSafepoints();
             Log.log().string(functionName).string(" returned ").signed(result).newline();
-            LogHandler.get().fatalError();
+            ImageSingletons.lookup(LogHandler.class).fatalError();
         }
     }
 }

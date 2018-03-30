@@ -38,6 +38,8 @@ import org.graalvm.word.PointerBase;
  * <p>
  * Field accesses are done via interface methods that are annotated with {@link RawField}. All calls
  * of the interface methods are replaced with the appropriate memory operations.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

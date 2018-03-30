@@ -24,6 +24,11 @@
  */
 package org.graalvm.word;
 
+/**
+ * Represents an unsigned word-sized value.
+ *
+ * @since 1.0
+ */
 public interface UnsignedWord extends ComparableWord {
 
     /**
@@ -31,6 +36,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be added to this Unsigned.
      * @return {@code this + val}
+     *
+     * @since 1.0
      */
     UnsignedWord add(UnsignedWord val);
 
@@ -39,6 +46,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be subtracted from this Unsigned.
      * @return {@code this - val}
+     *
+     * @since 1.0
      */
     UnsignedWord subtract(UnsignedWord val);
 
@@ -47,6 +56,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be multiplied by this Unsigned.
      * @return {@code this * val}
+     *
+     * @since 1.0
      */
     UnsignedWord multiply(UnsignedWord val);
 
@@ -55,6 +66,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value by which this Unsigned is to be divided.
      * @return {@code this / val}
+     *
+     * @since 1.0
      */
     UnsignedWord unsignedDivide(UnsignedWord val);
 
@@ -63,6 +76,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value by which this Unsigned is to be divided, and the remainder computed.
      * @return {@code this % val}
+     *
+     * @since 1.0
      */
     UnsignedWord unsignedRemainder(UnsignedWord val);
 
@@ -71,6 +86,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param n shift distance, in bits.
      * @return {@code this << n}
+     *
+     * @since 1.0
      */
     UnsignedWord shiftLeft(UnsignedWord n);
 
@@ -79,6 +96,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param n shift distance, in bits.
      * @return {@code this >> n}
+     *
+     * @since 1.0
      */
     UnsignedWord unsignedShiftRight(UnsignedWord n);
 
@@ -87,6 +106,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be AND'ed with this Unsigned.
      * @return {@code this & val}
+     *
+     * @since 1.0
      */
     UnsignedWord and(UnsignedWord val);
 
@@ -95,6 +116,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be OR'ed with this Unsigned.
      * @return {@code this | val}
+     *
+     * @since 1.0
      */
     UnsignedWord or(UnsignedWord val);
 
@@ -103,6 +126,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be XOR'ed with this Unsigned.
      * @return {@code this ^ val}
+     *
+     * @since 1.0
      */
     UnsignedWord xor(UnsignedWord val);
 
@@ -110,6 +135,8 @@ public interface UnsignedWord extends ComparableWord {
      * Returns a Unsigned whose value is {@code (~this)}.
      *
      * @return {@code ~this}
+     *
+     * @since 1.0
      */
     UnsignedWord not();
 
@@ -118,6 +145,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this == val}
+     *
+     * @since 1.0
      */
     boolean equal(UnsignedWord val);
 
@@ -126,6 +155,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this != val}
+     *
+     * @since 1.0
      */
     boolean notEqual(UnsignedWord val);
 
@@ -134,6 +165,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
+     *
+     * @since 1.0
      */
     boolean belowThan(UnsignedWord val);
 
@@ -142,6 +175,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this <= val}
+     *
+     * @since 1.0
      */
     boolean belowOrEqual(UnsignedWord val);
 
@@ -150,6 +185,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this > val}
+     *
+     * @since 1.0
      */
     boolean aboveThan(UnsignedWord val);
 
@@ -158,6 +195,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this >= val}
+     *
+     * @since 1.0
      */
     boolean aboveOrEqual(UnsignedWord val);
 
@@ -169,6 +208,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be added to this Unsigned.
      * @return {@code this + val}
+     *
+     * @since 1.0
      */
     UnsignedWord add(int val);
 
@@ -180,6 +221,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be subtracted from this Unsigned.
      * @return {@code this - val}
+     *
+     * @since 1.0
      */
     UnsignedWord subtract(int val);
 
@@ -191,6 +234,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be multiplied by this Unsigned.
      * @return {@code this * val}
+     *
+     * @since 1.0
      */
     UnsignedWord multiply(int val);
 
@@ -202,6 +247,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value by which this Unsigned is to be divided.
      * @return {@code this / val}
+     *
+     * @since 1.0
      */
     UnsignedWord unsignedDivide(int val);
 
@@ -213,6 +260,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value by which this Unsigned is to be divided, and the remainder computed.
      * @return {@code this % val}
+     *
+     * @since 1.0
      */
     UnsignedWord unsignedRemainder(int val);
 
@@ -224,6 +273,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param n shift distance, in bits.
      * @return {@code this << n}
+     *
+     * @since 1.0
      */
     UnsignedWord shiftLeft(int n);
 
@@ -235,6 +286,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param n shift distance, in bits.
      * @return {@code this >> n}
+     *
+     * @since 1.0
      */
     UnsignedWord unsignedShiftRight(int n);
 
@@ -246,6 +299,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be AND'ed with this Unsigned.
      * @return {@code this & val}
+     *
+     * @since 1.0
      */
     UnsignedWord and(int val);
 
@@ -257,6 +312,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be OR'ed with this Unsigned.
      * @return {@code this | val}
+     *
+     * @since 1.0
      */
     UnsignedWord or(int val);
 
@@ -268,6 +325,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to be XOR'ed with this Unsigned.
      * @return {@code this ^ val}
+     *
+     * @since 1.0
      */
     UnsignedWord xor(int val);
 
@@ -279,6 +338,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this == val}
+     *
+     * @since 1.0
      */
     boolean equal(int val);
 
@@ -290,6 +351,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this != val}
+     *
+     * @since 1.0
      */
     boolean notEqual(int val);
 
@@ -301,6 +364,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this < val}
+     *
+     * @since 1.0
      */
     boolean belowThan(int val);
 
@@ -312,6 +377,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this <= val}
+     *
+     * @since 1.0
      */
     boolean belowOrEqual(int val);
 
@@ -323,6 +390,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this > val}
+     *
+     * @since 1.0
      */
     boolean aboveThan(int val);
 
@@ -334,6 +403,8 @@ public interface UnsignedWord extends ComparableWord {
      *
      * @param val value to which this Unsigned is to be compared.
      * @return {@code this >= val}
+     *
+     * @since 1.0
      */
     boolean aboveOrEqual(int val);
 }

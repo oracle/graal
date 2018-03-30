@@ -39,6 +39,8 @@ import org.graalvm.word.WordBase;
  * non-static method, the receiver is ignored. Java does not allow an interface method to be
  * declared {@code static native}. So the annotated method must either be non-static (with the
  * receiver being ignored), or static but non-native (with the method body being ignored).
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
@@ -48,6 +50,8 @@ public @interface CFieldOffset {
      * Specifies the field name inside the {@link CStruct C struct}. If no name is provided, the
      * method name is used as the field name. A possible "offsetOf" prefix of the method name is
      * removed.
+     *
+     * @since 1.0
      */
     String value() default "";
 }

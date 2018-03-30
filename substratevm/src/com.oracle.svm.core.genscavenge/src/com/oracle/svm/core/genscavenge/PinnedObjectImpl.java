@@ -57,7 +57,7 @@ import com.oracle.svm.core.log.Log;
  *
  * TODO: Is pinning a service of all collectors, or just the one I have now?
  */
-public class PinnedObjectImpl extends PinnedObject {
+public class PinnedObjectImpl implements PinnedObject {
 
     static class PinnedObjectSupportImpl implements PinnedObjectSupport {
         @Override

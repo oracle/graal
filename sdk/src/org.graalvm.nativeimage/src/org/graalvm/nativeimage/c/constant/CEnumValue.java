@@ -33,6 +33,8 @@ import java.lang.annotation.Target;
  * Annotation for a method that returns the C integer value for a Java enumeration object. The
  * method must be within a class annotated with {@link CEnum}. The method must be declared
  * non-static, native, and must not have any parameters. The method can have any name.
+ *
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

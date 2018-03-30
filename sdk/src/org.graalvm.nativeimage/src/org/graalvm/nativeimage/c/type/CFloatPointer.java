@@ -30,23 +30,71 @@ import org.graalvm.word.SignedWord;
 
 /**
  * A pointer to a C primitive 'float' value.
+ *
+ * @since 1.0
  */
 @CPointerTo(nameOfCType = "float")
 public interface CFloatPointer extends PointerBase {
 
+    /**
+     * Reads the value at the pointer address.
+     *
+     * @since 1.0
+     */
     float read();
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     float read(int index);
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     float read(SignedWord index);
 
+    /**
+     * Writes the value at the pointer address.
+     *
+     * @since 1.0
+     */
     void write(float value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(int index, float value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(SignedWord index, float value);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CFloatPointer addressOf(int index);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CFloatPointer addressOf(SignedWord index);
 }

@@ -30,23 +30,71 @@ import org.graalvm.word.SignedWord;
 
 /**
  * A pointer to a 32-bit C primitive value.
+ *
+ * @since 1.0
  */
 @CPointerTo(nameOfCType = "int")
 public interface CIntPointer extends PointerBase {
 
+    /**
+     * Reads the value at the pointer address.
+     *
+     * @since 1.0
+     */
     int read();
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     int read(int index);
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     int read(SignedWord index);
 
+    /**
+     * Writes the value at the pointer address.
+     *
+     * @since 1.0
+     */
     void write(int value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(int index, int value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(SignedWord index, int value);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CIntPointer addressOf(int index);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CIntPointer addressOf(SignedWord index);
 }

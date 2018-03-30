@@ -42,6 +42,8 @@ import org.graalvm.nativeimage.impl.CConstantValueSupport;
  * from the C header file during native image generation.
  * <p>
  * The class containing the annotated method must be annotated with {@link CContext}.
+ *
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
@@ -50,9 +52,16 @@ public @interface CConstant {
     /**
      * Specifies the name of the C constant. If no name is provided, the method name is used as the
      * field name. A possible "get" prefix of the method name is removed.
+     *
+     * @since 1.0
      */
     String value() default "";
 
+    /**
+     * Allows access to the value of a {@link CConstant} during image generation.
+     *
+     * @since 1.0
+     */
     final class ValueAccess {
         private ValueAccess() {
         }
@@ -72,6 +81,8 @@ public @interface CConstant {
          *            floating point constants, the only supported type is {@link Double}. For
          *            string constants, the only supported type is {@link String}.
          * @return The value of the C constant.
+         *
+         * @since 1.0
          */
         @Platforms(Platform.HOSTED_ONLY.class)
         public static <T> T get(Class<?> declaringClass, String methodName, Class<T> returnType) {
