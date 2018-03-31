@@ -158,7 +158,7 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, int position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
         ELFSymtab symtab = createSymbolTable();
         return symtab.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
     }
