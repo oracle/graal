@@ -39,39 +39,39 @@ import org.graalvm.word.UnsignedWord;
 @CContext(PolyglotNativeAPICContext.class)
 class PolyglotNativeAPITypes {
 
-    @CEnum("polyglot_status")
+    @CEnum("poly_status")
     enum PolyglotStatus {
-        polyglot_ok,
+        poly_ok,
 
-        polyglot_invalid_arg,
+        poly_invalid_arg,
 
-        polyglot_object_expected,
+        poly_object_expected,
 
-        polyglot_string_expected,
+        poly_string_expected,
 
-        polyglot_name_expected,
+        poly_name_expected,
 
-        polyglot_function_expected,
+        poly_function_expected,
 
-        polyglot_number_expected,
+        poly_number_expected,
 
-        polyglot_boolean_expected,
+        poly_boolean_expected,
 
-        polyglot_array_expected,
+        poly_array_expected,
 
-        polyglot_generic_failure,
+        poly_generic_failure,
 
-        polyglot_pending_exception,
+        poly_pending_exception,
 
-        polyglot_cancelled,
+        poly_cancelled,
 
-        polyglot_status_last;
+        poly_status_last;
 
         @CEnumValue
         public native int getCValue();
     }
 
-    @CStruct("polyglot_extended_error_info")
+    @CStruct("poly_extended_error_info")
     interface PolyglotExtendedErrorInfo extends PointerBase {
 
         @CField("error_code")
@@ -98,38 +98,38 @@ class PolyglotNativeAPITypes {
 
     }
 
-    @CPointerTo(nameOfCType = "polyglot_engine")
+    @CPointerTo(nameOfCType = "poly_engine")
     interface PolyglotEnginePointer extends PointerBase, ObjectHandle {
     }
 
-    @CPointerTo(nameOfCType = "polyglot_engine*")
+    @CPointerTo(nameOfCType = "poly_engine*")
     interface PolyglotEnginePointerPointer extends PointerBase, ObjectHandle {
 
         void write(ObjectHandle value);
 
     }
 
-    @CPointerTo(nameOfCType = "polyglot_handle")
+    @CPointerTo(nameOfCType = "poly_handle")
     interface PolyglotHandlePointer extends PointerBase, ObjectHandle {
 
     }
 
-    @CPointerTo(nameOfCType = "polyglot_context")
+    @CPointerTo(nameOfCType = "poly_context")
     interface PolyglotContextPointer extends PointerBase, ObjectHandle {
     }
 
-    @CPointerTo(nameOfCType = "polyglot_context*")
+    @CPointerTo(nameOfCType = "poly_context*")
     interface PolyglotContextPointerPointer extends PointerBase, ObjectHandle {
 
         void write(ObjectHandle value);
 
     }
 
-    @CPointerTo(nameOfCType = "polyglot_value")
+    @CPointerTo(nameOfCType = "poly_value")
     interface PolyglotValuePointer extends PointerBase, ObjectHandle {
     }
 
-    @CPointerTo(nameOfCType = "polyglot_value*")
+    @CPointerTo(nameOfCType = "poly_value*")
     interface PolyglotValuePointerPointer extends PointerBase, ObjectHandle {
 
         PolyglotValuePointer read(int index);
@@ -139,7 +139,7 @@ class PolyglotNativeAPITypes {
         void write(int index, ObjectHandle value);
     }
 
-    @CPointerTo(nameOfCType = "polyglot_callback_info")
+    @CPointerTo(nameOfCType = "poly_callback_info")
     interface PolyglotCallbackInfo extends ObjectHandle, PointerBase {
     }
 
