@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -83,11 +84,13 @@ import jdk.vm.ci.meta.JavaKind;
 
 public final class NativeImageHeap {
 
-    private static boolean useHeapBase() {
+    @Fold
+    static boolean useHeapBase() {
         return SubstrateOptions.UseHeapBaseRegister.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
-    private static boolean spawnIsolates() {
+    @Fold
+    static boolean spawnIsolates() {
         return SubstrateOptions.SpawnIsolates.getValue() && useHeapBase();
     }
 
@@ -142,6 +145,10 @@ public final class NativeImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
+    private static Object readObjectField(HostedField field, JavaConstant receiver) {
+        return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
+    }
+
     private void addStaticFields(DebugContext debug) {
         addObject(debug, StaticFieldsSupport.getStaticObjectFields(), false, false, "staticObjectFields");
         addObject(debug, StaticFieldsSupport.getStaticPrimitiveFields(), false, false, "staticPrimitiveFields");
@@ -151,8 +158,8 @@ public final class NativeImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.wrapped.isWritten() && field.wrapped.isAccessed() && field.getType().getStorageKind() == JavaKind.Object) {
-                addObject(debug, SubstrateObjectConstant.asObject(field.readStorageValue(null)), false, false, field);
+            if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed() && field.getType().getStorageKind() == JavaKind.Object) {
+                addObject(debug, readObjectField(field, null), false, false, field);
             }
         }
     }
@@ -164,12 +171,21 @@ public final class NativeImageHeap {
      */
 
     long getReadOnlySectionSize() {
-        return readOnlyPrimitive.getSize() + readOnlyReference.getSize();
+        return readOnlyPrimitive.getSize() + readOnlyReference.getSize() + readOnlyRelocatable.getSize();
+    }
+
+    long getReadOnlyRelocatablePartitionOffset() {
+        return readOnlyRelocatable.offsetInSection();
+    }
+
+    long getReadOnlyRelocatablePartitionSize() {
+        return readOnlyRelocatable.getSize();
     }
 
     void setReadOnlySection(final String sectionName, final long sectionOffset) {
         readOnlyPrimitive.setSection(sectionName, sectionOffset);
         readOnlyReference.setSection(sectionName, readOnlyPrimitive.offsetInSection(readOnlyPrimitive.getSize()));
+        readOnlyRelocatable.setSection(sectionName, readOnlyReference.offsetInSection(readOnlyReference.getSize()));
     }
 
     long getWritableSectionSize() {
@@ -216,7 +232,7 @@ public final class NativeImageHeap {
         // TODO: What I would like here is a method that takes an instance and whether its
         // ... container is canonicalizable and returns a boolean about whether the instance is
         // ... canonicalizable and the canonicalized instance. But I can not do that in Java.
-        final boolean canonicalizable = determineCanonicalizability(original, parentCanonicalizable);
+        final boolean canonicalizable = isCanonicalizable(original, parentCanonicalizable);
         debug.log("canonicalizable: %b", canonicalizable);
         final Object canonical = canonicalizable ? canonicalize(original) : original;
 
@@ -240,7 +256,7 @@ public final class NativeImageHeap {
     public void writeHeap(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
         try (Indent perHeapIndent = debug.logAndIndent("BootImageHeap.writeHeap:")) {
             for (ObjectInfo info : objects.values()) {
-                assert !blacklist.containsKey(info.getObject());
+                assert !blacklist.contains(info.getObject());
                 writeObject(info, roBuffer, rwBuffer);
             }
             // Only static fields that are writable get written to the native image heap,
@@ -255,12 +271,14 @@ public final class NativeImageHeap {
             // Histograms for each partition.
             readOnlyPrimitive.printHistogram();
             readOnlyReference.printHistogram();
+            readOnlyRelocatable.printHistogram();
             writablePrimitive.printHistogram();
             writableReference.printHistogram();
         }
         if (NativeImageOptions.PrintImageHeapPartitionSizes.getValue()) {
             readOnlyPrimitive.printSize();
             readOnlyReference.printSize();
+            readOnlyRelocatable.printSize();
             writablePrimitive.printSize();
             writableReference.printSize();
         }
@@ -294,13 +312,27 @@ public final class NativeImageHeap {
      * "parent") that is canonicalizable.
      */
     private boolean isCanonicalizable(Object object, boolean parentCanonicalizable) {
-        boolean result = parentCanonicalizable;
-        if (isInstance(knownNonCanonicalizableClasses, object)) {
-            result = false;
-        } else if (isInstance(knownCanonicalizableClasses, object)) {
-            result = true;
+        if (object instanceof String) {
+            final String str = (String) object;
+            // Because I want Strings to be immutable in the native image heap,
+            // I have to fill in hash field, even if I don't use it.
+            str.hashCode();
+            if (hostInternedString(str)) {
+                /*
+                 * The string is interned by the host VM, so it must also be interned in our image.
+                 */
+                assert (internedStrings.containsKey(str) || internStringsPhase.isAllowed()) : String.format("Should not intern string during phase: %s  str: %s.", internStringsPhase.toString(), str);
+                internedStrings.put(str, str);
+                return true;
+            }
         }
-        return result;
+
+        if (isInstance(knownNonCanonicalizableClasses, object)) {
+            return false;
+        } else if (isInstance(knownCanonicalizableClasses, object)) {
+            return true;
+        }
+        return parentCanonicalizable;
     }
 
     private static boolean isInstance(List<Class<?>> classList, Object object) {
@@ -310,40 +342,6 @@ public final class NativeImageHeap {
                 result = true;
                 break;
             }
-        }
-        return result;
-    }
-
-    /**
-     * Decide if an object can be "canonicalized".
-     *
-     * That is, is this an immutable "value" object, and so instances of it can be shared in the
-     * native image heap.
-     *
-     * This is not simply "isCanonicalizable" because it also does some extra work for Strings.
-     */
-    private boolean determineCanonicalizability(final Object obj, final boolean parentCanonicalizable) {
-        if (obj instanceof String) {
-            return determineStringCanonicalizability((String) obj, parentCanonicalizable);
-        } else {
-            return isCanonicalizable(obj, parentCanonicalizable);
-        }
-    }
-
-    private boolean determineStringCanonicalizability(final String str, final boolean parentCanonicalizable) {
-        final boolean result;
-        // Because I want Strings to be immutable in the native image heap,
-        // I have to fill in hash field, even if I don't use it.
-        @SuppressWarnings("unused")
-        final int hash = str.hashCode();
-        if (hostInternedString(str)) {
-            /* The string is interned by the host VM, so it must also be interned in our image. */
-            assert (internedStrings.containsKey(str) || internStringsPhase.isAllowed()) : String.format("Should not intern string during phase: %s  str: %s.", internStringsPhase.toString(), str);
-
-            internedStrings.put(str, str);
-            result = true;
-        } else {
-            result = isCanonicalizable(str, parentCanonicalizable);
         }
         return result;
     }
@@ -377,11 +375,27 @@ public final class NativeImageHeap {
                             fillReasonStack(new StringBuilder(), reason));
         }
         final HostedType type = optionalType.get();
+        final DynamicHub hub = type.getHub();
+        final ObjectInfo info;
+
+        boolean immutable = immutableFromParent || isImmutable(canonicalObj, canonicalizable);
+        boolean written = false;
+        boolean references = false;
+        boolean relocatable = false; /* always false when !spawnIsolates() */
 
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
+            // If the type has a monitor field, it has a reference field that is written.
+            if (clazz.getMonitorFieldOffset() != 0) {
+                immutable = false;
+                written = true;
+                references = true;
+            }
+
             final JavaConstant con = SubstrateObjectConstant.forObject(canonicalObj);
-            final Object hybridArray;
+            HostedField hybridBitsetField = null;
+            HostedField hybridArrayField = null;
+            Object hybridArray = null;
             final long size;
 
             if (HybridLayout.isHybrid(clazz)) {
@@ -395,115 +409,131 @@ public final class NativeImageHeap {
                  * The hybrid array and bit set are written within the hybrid object. So they may
                  * not be written as separate objects. We use the blacklist to check that.
                  */
-                HostedField bitsetField = hybridLayout.getBitsetField();
-                if (bitsetField != null) {
-                    BitSet bitSet = (BitSet) SubstrateObjectConstant.asObject(bitsetField.readStorageValue(con));
+                hybridBitsetField = hybridLayout.getBitsetField();
+                if (hybridBitsetField != null) {
+                    Object bitSet = readObjectField(hybridBitsetField, con);
                     if (bitSet != null) {
-                        blacklist.put(bitSet, Boolean.TRUE);
+                        blacklist.add(bitSet);
                     }
                 }
 
-                hybridArray = SubstrateObjectConstant.asObject(hybridLayout.getArrayField().readStorageValue(con));
-                blacklist.put(hybridArray, Boolean.TRUE);
+                hybridArrayField = hybridLayout.getArrayField();
+                hybridArray = readObjectField(hybridArrayField, con);
+                if (hybridArray != null) {
+                    blacklist.add(hybridArray);
+                    written = true;
+                }
 
                 size = hybridLayout.getTotalSize(Array.getLength(hybridArray));
             } else {
-                hybridArray = null;
-                size = LayoutEncoding.getInstanceSize(clazz.getHub().getLayoutEncoding()).rawValue();
+                size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();
             }
 
-            // All canonicalizable objects are immutable,
-            // as are instances of known immutable classes.
-            final ObjectInfo info = addToHeapPartition(original, canonicalObj, clazz, size, identityHashCode, canonicalizable, immutableFromParent, reason);
-            recursiveAddObject(clazz.getHub(), canonicalizable, false, info);
+            info = addToImageHeap(original, canonicalObj, clazz, size, identityHashCode, reason);
+            recursiveAddObject(hub, canonicalizable, false, info);
             // Recursively add all the fields of the object.
-            // Even if the parent is not canonicalizable, the fields may be canonicalizable.
             final boolean fieldsAreImmutable = canonicalObj instanceof String;
             for (HostedField field : clazz.getInstanceFields(true)) {
-                if (field.getType().getStorageKind() == JavaKind.Object && !HybridLayout.isHybridField(field) && field.isAccessed()) {
-                    assert field.getLocation() >= 0;
-                    recursiveAddObject(SubstrateObjectConstant.asObject(field.readStorageValue(con)), canonicalizable, fieldsAreImmutable, info);
+                if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
+                    written = written || (field.isWritten() && !field.isFinal());
+                    if (field.getType().getStorageKind() == JavaKind.Object) {
+                        assert field.hasLocation();
+                        Object fieldValue = readObjectField(field, con);
+                        if (spawnIsolates()) {
+                            relocatable = relocatable || fieldValue instanceof RelocatedPointer;
+                        }
+                        recursiveAddObject(fieldValue, canonicalizable, fieldsAreImmutable, info);
+                        references = true;
+                    }
                 }
+
             }
             if (hybridArray instanceof Object[]) {
-                addArrayElements((Object[]) hybridArray, canonicalizable, info);
+                relocatable = addArrayElements((Object[]) hybridArray, relocatable, canonicalizable, info);
+                references = true;
             }
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
-            int length = Array.getLength(canonicalObj);
-            JavaKind kind = type.getComponentType().getJavaKind();
-
-            final long size = layout.getArraySize(kind, length);
-            final ObjectInfo info = addToHeapPartition(original, canonicalObj, clazz, size, identityHashCode, canonicalizable, immutableFromParent, reason);
-
-            recursiveAddObject(clazz.getHub(), canonicalizable, false, info);
-            if (kind == JavaKind.Object) {
-                addArrayElements((Object[]) canonicalObj, canonicalizable, info);
+            final long size = layout.getArraySize(type.getComponentType().getJavaKind(), Array.getLength(canonicalObj));
+            info = addToImageHeap(original, canonicalObj, clazz, size, identityHashCode, reason);
+            recursiveAddObject(hub, canonicalizable, false, info);
+            if (canonicalObj instanceof Object[]) {
+                relocatable = addArrayElements((Object[]) canonicalObj, false, canonicalizable, info);
+                references = true;
             }
+            written = true; /* How to know if any of the array elements are written? */
         } else {
             throw shouldNotReachHere();
         }
+
+        final HeapPartition partition = choosePartition(!written || immutable, references, relocatable);
+        info.assignToHeapPartition(partition, layout);
     }
 
     /** Determine if an object in the host heap will be immutable in the native image heap. */
-    private boolean isImmutable(final Object obj, final boolean canonicalizable, boolean immutableFromParent) {
-        final boolean result;
-        if (immutableFromParent) {
-            return true;
-        } else if (obj instanceof String) {
+    private boolean isImmutable(final Object obj, final boolean canonicalizable) {
+        if (obj instanceof String) {
             // Strings need to have their hash code set or they are not immutable.
-            final int hash = obj.hashCode();
-            // If the hash is 0, then it will be recomputed again (and again) so the String is not
-            // immutable. Otherwise all Strings in the host heap are immutable in the image heap.
-            result = (hash != 0);
+            // If the hash is 0, then it will be recomputed again (and again)
+            // so the String is not immutable.
+            return obj.hashCode() != 0;
         } else if (knownImmutableObjects.contains(obj)) {
             return true;
         } else {
-            result = canonicalizable;
+            return canonicalizable;
         }
-        return result;
     }
 
-    /**
-     * Add an object to the model of the native image heap by choosing a native image heap partition
-     * for it and adding the object to the model.
-     */
-    // @formatter:off
-    private ObjectInfo addToHeapPartition(final Object       original,
-                                          final Object       canonicalObj,
-                                          final HostedClass  clazz,
-                                          final long         size,
-                                          final int          identityHashCode,
-                                          final boolean      canonicalizable,
-                                          final boolean      immutableFromParent,
-                                          final Object       reason) {
-    // @formatter:on
-        final boolean immutable = isImmutable(canonicalObj, canonicalizable, immutableFromParent);
-        final HeapPartition partition = choosePartition(canonicalObj, immutable);
-        final ObjectInfo info = new ObjectInfo(canonicalObj, clazz, partition, size, identityHashCode, layout, reason);
-        partition.incrementSize(size);
-
-        assert !objects.containsKey(canonicalObj);
-        objects.put(canonicalObj, info);
-        if (canonicalObj != original && !objects.containsKey(original)) {
-            objects.put(original, objects.get(canonicalObj));
+    /** Add an object to the model of the native image heap. */
+    private ObjectInfo addToImageHeap(Object original, Object canonical, HostedClass clazz, long size, int identityHashCode, Object reason) {
+        ObjectInfo info = new ObjectInfo(canonical, size, clazz, identityHashCode, reason);
+        assert !objects.containsKey(canonical);
+        objects.put(canonical, info);
+        if (canonical != original && !objects.containsKey(original)) {
+            objects.put(original, objects.get(canonical));
         }
         return info;
     }
 
-    /** Deep-copy an array from the host heap to the model of the native image heap. */
-    private void addArrayElements(Object[] array, boolean canonicalizable, Object reason) {
-        for (int i = 0; i < array.length; i++) {
-            recursiveAddObject(aUniverse.replaceObject(array[i]), canonicalizable, false, reason);
+    private HeapPartition choosePartition(boolean immutable, boolean references, boolean relocatable) {
+        if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
+            assert !spawnIsolates();
+            // Emergency use only! Alarms will sound!
+            return writableReference;
+        }
+
+        if (immutable) {
+            if (relocatable) {
+                return readOnlyRelocatable;
+            }
+            return references ? readOnlyReference : readOnlyPrimitive;
+        } else {
+            assert !relocatable;
+            return references ? writableReference : writablePrimitive;
         }
     }
 
-    /**
+    // Deep-copy an array from the host heap to the model of the native image heap.
+    private boolean addArrayElements(Object[] array, boolean otherFieldsRelocatable, boolean canonicalizable, Object reason) {
+        boolean relocatable = otherFieldsRelocatable;
+        for (Object element : array) {
+            Object value = aUniverse.replaceObject(element);
+            if (spawnIsolates()) {
+                relocatable = relocatable || value instanceof RelocatedPointer;
+            }
+            recursiveAddObject(value, canonicalizable, false, reason);
+        }
+        return relocatable;
+    }
+
+    /*
      * Break recursion using a worklist, to support large object graphs that would lead to a stack
      * overflow.
      */
     private void recursiveAddObject(Object original, boolean parentCanonicalizable, boolean immutableFromParent, Object reason) {
-        addObjectWorklist.push(new AddObjectData(original, parentCanonicalizable, immutableFromParent, reason));
+        if (original != null) {
+            addObjectWorklist.push(new AddObjectData(original, parentCanonicalizable, immutableFromParent, reason));
+        }
     }
 
     private void processAddObjectWorklist(DebugContext debug) {
@@ -677,61 +707,6 @@ public final class NativeImageHeap {
         buffer.getBuffer().putLong(index, value);
     }
 
-    /** Choose a partition of the native image heap for the given object. */
-    private HeapPartition choosePartition(final Object candidate, final boolean immutableArg) {
-        final HostedType type = getMetaAccess().lookupJavaType(candidate.getClass());
-        assert type.getWrapped().isInstantiated() : type;
-        boolean written = false;
-        boolean references = false;
-        boolean immutable = immutableArg;
-        if (type.isInstanceClass()) {
-            final HostedInstanceClass clazz = (HostedInstanceClass) type;
-            if (HybridLayout.isHybrid(clazz)) {
-                final HybridLayout<?> hybridLayout = new HybridLayout<>(clazz, layout);
-                final HostedField arrayField = hybridLayout.getArrayField();
-                written |= arrayField.isWritten();
-                final JavaKind arrayKind = hybridLayout.getArrayElementKind();
-                references |= arrayKind.isObject();
-            }
-            // Aggregate over all the fields of the instance.
-            for (HostedField field : clazz.getInstanceFields(true)) {
-                /*
-                 * Any field that is written says the instance is written. Except that if the field
-                 * is final, it will only be written during initialization during native image
-                 * construction, but will not be written in the running image.
-                 */
-                written |= field.isWritten() && !field.isFinal();
-                references |= field.getType().getStorageKind().isObject();
-            }
-            // If the type has a monitor field, it has a reference field that is written.
-            if (clazz.getMonitorFieldOffset() != 0) {
-                written = true;
-                references = true;
-                immutable = false;
-            }
-        } else if (type.isArray()) {
-            HostedArrayClass clazz = (HostedArrayClass) type;
-            // TODO: How to know if any of the array elements are written?
-            written = true;
-            JavaKind kind = clazz.getComponentType().getJavaKind();
-            references = kind.isObject();
-        } else {
-            throw shouldNotReachHere();
-        }
-
-        if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
-            assert !spawnIsolates();
-            // Emergency use only! Alarms will sound!
-            return writableReference;
-        }
-
-        if (!written || immutable) {
-            return references ? readOnlyReference : readOnlyPrimitive;
-        } else {
-            return references ? writableReference : writablePrimitive;
-        }
-    }
-
     private void patchPartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
         // Figure out where the boundaries of the heap partitions are and
         // patch the objects that reference them so they will be correct at runtime.
@@ -845,11 +820,11 @@ public final class NativeImageHeap {
     }
 
     private ObjectInfo findFirstReadOnlyReferenceObject() {
-        return selectFromObjects((i) -> (i.getPartition() == readOnlyReference), (b, c) -> (c.getOffsetInSection() < b.getOffsetInSection()));
+        return selectFromObjects((i) -> (i.getPartition() == readOnlyReference || i.getPartition() == readOnlyRelocatable), (b, c) -> (c.getOffsetInSection() < b.getOffsetInSection()));
     }
 
     private ObjectInfo findLastReadOnlyReferenceObject() {
-        return selectFromObjects((i) -> (i.getPartition() == readOnlyReference), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
+        return selectFromObjects((i) -> (i.getPartition() == readOnlyReference || i.getPartition() == readOnlyRelocatable), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
     }
 
     private ObjectInfo findFirstWritablePrimitiveObject() {
@@ -901,11 +876,11 @@ public final class NativeImageHeap {
             Object hybridArray = null;
             if (hybridLayout != null) {
                 hybridArrayField = hybridLayout.getArrayField();
-                hybridArray = SubstrateObjectConstant.asObject(hybridArrayField.readStorageValue(con));
+                hybridArray = readObjectField(hybridArrayField, con);
 
                 hybridBitsetField = hybridLayout.getBitsetField();
                 if (hybridBitsetField != null) {
-                    BitSet bitSet = (BitSet) SubstrateObjectConstant.asObject(hybridBitsetField.readStorageValue(con));
+                    BitSet bitSet = (BitSet) readObjectField(hybridBitsetField, con);
                     if (bitSet != null) {
                         /*
                          * Write the bits of the hybrid bit field. The bits are located between the
@@ -995,6 +970,7 @@ public final class NativeImageHeap {
 
         readOnlyPrimitive = HeapPartition.factory("readOnlyPrimitive", this, false);
         readOnlyReference = HeapPartition.factory("readOnlyReference", this, false);
+        readOnlyRelocatable = HeapPartition.factory("readOnlyRelocatable", this, false);
         writablePrimitive = HeapPartition.factory("writablePrimitive", this, true);
         writableReference = HeapPartition.factory("writableReference", this, true);
 
@@ -1027,7 +1003,7 @@ public final class NativeImageHeap {
     protected final Map<Object, ObjectInfo> objects = new IdentityHashMap<>();
 
     /** Objects that must not be written to the native image heap. */
-    private final Map<Object, Boolean> blacklist = new IdentityHashMap<>();
+    private final Set<Object> blacklist = Collections.newSetFromMap(new IdentityHashMap<>());
 
     /** A map from hosted classes to classes that have hybrid layouts in the native image heap. */
     private final Map<HostedClass, HybridLayout<?>> hybridLayouts = new HashMap<>();
@@ -1054,6 +1030,7 @@ public final class NativeImageHeap {
 
     private final HeapPartition readOnlyPrimitive;
     private final HeapPartition readOnlyReference;
+    private final HeapPartition readOnlyRelocatable;
     private final HeapPartition writablePrimitive;
     private final HeapPartition writableReference;
 
@@ -1175,25 +1152,31 @@ public final class NativeImageHeap {
             return result.toString();
         }
 
-        ObjectInfo(Object object, HostedClass clazz, HeapPartition partition, long size, int identityHashCode, ObjectLayout layout, Object reason) {
-            super();
+        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason) {
             this.object = object;
             this.clazz = clazz;
-            this.partition = partition;
-            this.offsetInPartition = partition.getSize();
+            this.partition = null;
+            this.offsetInPartition = -1L;
             this.size = size;
             this.setIdentityHashCode(identityHashCode);
             this.reason = reason;
-            assert layout.isReferenceAligned(partition.getSize()) : "start: " + partition.getSize() + " must be aligned.";
+        }
+
+        void assignToHeapPartition(HeapPartition objectPartition, ObjectLayout layout) {
+            assert partition == null;
+            partition = objectPartition;
+            offsetInPartition = partition.getSize();
+            partition.incrementSize(size);
+            assert layout.isReferenceAligned(offsetInPartition) : "start: " + offsetInPartition + " must be aligned.";
             assert layout.isReferenceAligned(size) : "size: " + size + " must be aligned.";
         }
 
         private final Object object;
         private final HostedClass clazz;
-        private final HeapPartition partition;
-        private final long offsetInPartition;
         private final long size;
         private int identityHashCode;
+        private HeapPartition partition;
+        private long offsetInPartition;
         /**
          * For debugging only: the reason why this object is in the native image heap.
          *
