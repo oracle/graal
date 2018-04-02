@@ -147,7 +147,7 @@ public class GCImpl implements GC {
         this.noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
         this.discoveredReferenceList = null;
         this.completeCollection = false;
-        this.sizeBefore = Word.zero();
+        this.sizeBefore = WordFactory.zero();
 
         /* Choose an incremental versus full collection policy. */
         this.policy = CollectionPolicy.getInitialPolicy(access);
@@ -1295,7 +1295,7 @@ public class GCImpl implements GC {
         }
 
         UnsignedWord[] historyFactory(UnsignedWord initial) {
-            assert initial.equal(WordFactory.zero()) : "Can not initialize history to any value except Word.zero().";
+            assert initial.equal(WordFactory.zero()) : "Can not initialize history to any value except WordFactory.zero().";
             final UnsignedWord[] result = new UnsignedWord[Options.GCHistory.getValue().intValue()];
             /* Initialization to null/WordFactory.zero() is implicit. */
             return result;

@@ -159,7 +159,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Called by an uninterruptible method.")
     private static void setHeapBase(PointerBase heapBase) {
         assert UseHeapBaseRegister.getValue();
-        writeCurrentVMHeapBase(hasHeapBase() ? heapBase : Word.nullPointer());
+        writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
     }
 
     @Snippet
@@ -174,7 +174,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @SubstrateForeignCallTarget
     private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
         WordPointer isolate = StackValue.get(SizeOf.get(WordPointer.class));
-        isolate.write(Word.nullPointer());
+        isolate.write(WordFactory.nullPointer());
         int error = PosixIsolates.create(isolate, parameters);
         if (error != Errors.NO_ERROR) {
             return error;

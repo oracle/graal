@@ -30,7 +30,6 @@ import java.net.SocketException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -132,7 +131,7 @@ public class LinuxJavaNetNetworkInterface {
             // 844 do{ \
             do {
                 // 845 _pointer = (_type)malloc( _size ); \
-                buf = LibC.malloc(Word.unsigned(ifc.ifc_len()));
+                buf = LibC.malloc(WordFactory.unsigned(ifc.ifc_len()));
                 // 846 if (_pointer == NULL) { \
                 if (buf.isNull()) {
                     // 847 JNU_ThrowOutOfMemoryError(env, "Native heap allocation failed"); \
@@ -256,9 +255,9 @@ public class LinuxJavaNetNetworkInterface {
                             }
                             // 1207
                             // 1208             memset(&addr, 0, sizeof(struct sockaddr_in6));
-                            LibC.memset(addr, Word.signed(0), Word.unsigned(SizeOf.get(NetinetIn.sockaddr_in6.class)));
+                            LibC.memset(addr, WordFactory.signed(0), WordFactory.unsigned(SizeOf.get(NetinetIn.sockaddr_in6.class)));
                             // 1209             memcpy((void*)addr.sin6_addr.s6_addr, (const void*)ipv6addr, 16);
-                            LibC.memcpy(addr.sin6_addr().s6_addr(), ipv6addr, Word.unsigned(16));
+                            LibC.memcpy(addr.sin6_addr().s6_addr(), ipv6addr, WordFactory.unsigned(16));
                             // 1210
                             // 1211             addr.sin6_scope_id = if_idx;
                             addr.set_sin6_scope_id(info.getIndex());

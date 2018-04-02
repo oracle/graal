@@ -137,7 +137,7 @@ public final class JNIReflectionDictionary {
 
     public JNIFieldId getFieldID(Class<?> clazz, String name) {
         JNIAccessibleField field = getField(clazz, name);
-        return field != null ? field.getId() : Word.zero();
+        return field != null ? field.getId() : WordFactory.zero();
     }
 
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {

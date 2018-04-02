@@ -55,9 +55,9 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.SubstrateOptions;
@@ -434,7 +434,7 @@ class NativeImage {
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
         Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
-        if (Word.unsigned(xmsValue).aboveThan(Word.unsigned(xmxValue))) {
+        if (WordFactory.unsigned(xmsValue).aboveThan(WordFactory.unsigned(xmxValue))) {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
 
@@ -748,7 +748,7 @@ class NativeImage {
     protected String getXmxValue(int maxInstances) {
         UnsignedWord memMax = PhysicalMemory.size().unsignedDivide(10).multiply(8).unsignedDivide(maxInstances);
         String maxXmx = "14g";
-        if (memMax.aboveOrEqual(Word.unsigned(SubstrateOptionsParser.parseLong(maxXmx)))) {
+        if (memMax.aboveOrEqual(WordFactory.unsigned(SubstrateOptionsParser.parseLong(maxXmx)))) {
             return maxXmx;
         }
         return Long.toUnsignedString(memMax.rawValue());

@@ -160,7 +160,7 @@ public class HeapPolicy {
     /** The maximum size of the young generation as an UnsignedWord. */
     public static UnsignedWord getMaximumYoungGenerationSize() {
         final Log trace = Log.noopLog().string("[HeapPolicy.getMaximumYoungGenerationSize:");
-        if (maximumYoungGenerationSize.aboveThan(Word.zero())) {
+        if (maximumYoungGenerationSize.aboveThan(WordFactory.zero())) {
             /* If someone has set the young generation size, use that value. */
             trace.string("  returns: ").unsigned(maximumYoungGenerationSize).string(" ]").newline();
             return maximumYoungGenerationSize;
@@ -193,7 +193,7 @@ public class HeapPolicy {
     /** The maximum size of the heap as an UnsignedWord. */
     public static UnsignedWord getMaximumHeapSize() {
         final Log trace = Log.noopLog().string("[HeapPolicy.getMaximumHeapSize:");
-        if (maximumHeapSize.aboveThan(Word.zero())) {
+        if (maximumHeapSize.aboveThan(WordFactory.zero())) {
             /* If someone has set the maximum heap size, use that value. */
             trace.string("  returns: ").unsigned(maximumHeapSize).string(" ]").newline();
             return maximumHeapSize;
@@ -243,7 +243,7 @@ public class HeapPolicy {
     /** The minimum size of the heap as an UnsignedWord. */
     public static UnsignedWord getMinimumHeapSize() {
         final Log trace = Log.noopLog().string("[HeapPolicy.getMinimumHeapSize:");
-        if (minimumHeapSize.aboveThan(Word.zero())) {
+        if (minimumHeapSize.aboveThan(WordFactory.zero())) {
             /* If someone has set the minimum heap size, use that value. */
             trace.string("  returns: ").unsigned(minimumHeapSize).string(" ]").newline();
             return minimumHeapSize;

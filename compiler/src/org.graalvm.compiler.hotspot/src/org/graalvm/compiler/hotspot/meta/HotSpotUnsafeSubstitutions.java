@@ -41,7 +41,7 @@ public class HotSpotUnsafeSubstitutions {
     static void copyMemory(Object receiver, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
         Word srcAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
         Word dstAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
-        Word size = Word.signed(bytes);
+        Word size = WordFactory.signed(bytes);
         HotSpotBackend.unsafeArraycopy(srcAddr, dstAddr, size);
     }
 }

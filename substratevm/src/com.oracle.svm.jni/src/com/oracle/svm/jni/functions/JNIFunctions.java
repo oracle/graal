@@ -35,7 +35,6 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -617,7 +616,7 @@ final class JNIFunctions {
         Object obj = JNIObjectHandles.getObject(handle);
         if (obj instanceof Target_java_nio_Buffer) {
             Target_java_nio_Buffer buf = (Target_java_nio_Buffer) obj;
-            address = Word.pointer(buf.address);
+            address = WordFactory.pointer(buf.address);
         }
         return address;
     }
@@ -815,7 +814,7 @@ final class JNIFunctions {
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIFieldId FromReflectedField(JNIEnvironment env, JNIObjectHandle fieldHandle) {
-        JNIFieldId fieldId = Word.zero();
+        JNIFieldId fieldId = WordFactory.zero();
         if (JNIAccessFeature.singleton().haveJavaRuntimeReflectionSupport()) {
             Field obj = JNIObjectHandles.getObject(fieldHandle);
             if (obj != null) {
@@ -855,7 +854,7 @@ final class JNIFunctions {
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerReturnNullWord.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static JNIMethodId FromReflectedMethod(JNIEnvironment env, JNIObjectHandle methodHandle) {
-        JNIMethodId methodId = Word.nullPointer();
+        JNIMethodId methodId = WordFactory.nullPointer();
         if (JNIAccessFeature.singleton().haveJavaRuntimeReflectionSupport()) {
             Executable method = JNIObjectHandles.getObject(methodHandle);
             if (method != null) {

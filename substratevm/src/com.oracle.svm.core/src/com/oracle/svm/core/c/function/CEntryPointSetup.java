@@ -37,7 +37,7 @@ public class CEntryPointSetup {
      * The sentinel value for {@link Isolate} when the native image is built so that there can be
      * only a single isolate.
      */
-    public static final Word SINGLE_ISOLATE_SENTINEL = Word.unsigned(0x150_150_150_150_150L);
+    public static final Word SINGLE_ISOLATE_SENTINEL = WordFactory.unsigned(0x150_150_150_150_150L);
 
     /** @see #SINGLE_THREAD_SENTINEL */
     public static final int SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND = 0x777 - 0x150;
