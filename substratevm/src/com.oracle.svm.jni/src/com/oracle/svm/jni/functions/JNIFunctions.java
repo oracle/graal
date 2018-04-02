@@ -35,6 +35,7 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -795,7 +796,7 @@ final class JNIFunctions {
         log.string("Fatal error reported via JNI: ").string(message).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
-        LogHandler.get().fatalError();
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     /*

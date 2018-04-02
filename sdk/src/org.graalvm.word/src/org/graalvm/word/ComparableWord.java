@@ -24,6 +24,11 @@
  */
 package org.graalvm.word;
 
+/**
+ * A machine-word-sized value that can be compared for equality.
+ *
+ * @since 1.0
+ */
 public interface ComparableWord extends WordBase {
 
     /**
@@ -31,6 +36,8 @@ public interface ComparableWord extends WordBase {
      *
      * @param val value to which this word is to be compared.
      * @return {@code this == val}
+     *
+     * @since 1.0
      */
     boolean equal(ComparableWord val);
 
@@ -39,6 +46,8 @@ public interface ComparableWord extends WordBase {
      *
      * @param val value to which this word is to be compared.
      * @return {@code this != val}
+     *
+     * @since 1.0
      */
     boolean notEqual(ComparableWord val);
 }

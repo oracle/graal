@@ -37,6 +37,8 @@ package org.graalvm.nativeimage;
  * <p>
  * This system makes the set of platform groups and leaf platforms extensible. Some standard
  * platforms are defined as inner classes.
+ *
+ * @since 1.0
  */
 public interface Platform {
 
@@ -44,6 +46,11 @@ public interface Platform {
      * The standard architectures that we support.
      */
 
+    /**
+     * Supported architecture: x86 64-bit.
+     *
+     * @since 1.0
+     */
     interface AMD64 extends Platform {
     }
 
@@ -51,9 +58,19 @@ public interface Platform {
      * The standard operating systems that we support.
      */
 
+    /**
+     * Supported operating system: Linux.
+     *
+     * @since 1.0
+     */
     interface LINUX extends Platform {
     }
 
+    /**
+     * Supported operating system: Darwin (MacOS).
+     *
+     * @since 1.0
+     */
     interface DARWIN extends Platform {
     }
 
@@ -61,15 +78,43 @@ public interface Platform {
      * Standard leaf platforms, i.e., OS-architecture combinations that we support.
      */
 
+    /**
+     * Supported leaf platform: Linux on x86 64-bit.
+     *
+     * @since 1.0
+     */
     final class LINUX_AMD64 implements LINUX, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public LINUX_AMD64() {
+        }
     }
 
+    /**
+     * Supported leaf platform: Darwin (MacOS) on x86 64-bit.
+     *
+     * @since 1.0
+     */
     final class DARWIN_AMD64 implements DARWIN, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public DARWIN_AMD64() {
+        }
     }
 
     /**
      * Marker for elements (types, methods, or fields) that are only visible during native image
      * generation and cannot be used at run time, regardless of the actual platform.
+     *
+     * @since 1.0
      */
     final class HOSTED_ONLY implements Platform {
         private HOSTED_ONLY() {
@@ -82,6 +127,8 @@ public interface Platform {
      * <p>
      * The platformGroup must be a compile time constant, so that the call to this method can be
      * replaced with the constant boolean result.
+     *
+     * @since 1.0
      */
     static boolean includedIn(Class<? extends Platform> platformGroup) {
         return platformGroup.isInstance(ImageSingletons.lookup(Platform.class));

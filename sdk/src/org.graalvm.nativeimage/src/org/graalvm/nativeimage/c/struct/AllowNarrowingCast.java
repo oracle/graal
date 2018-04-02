@@ -32,6 +32,8 @@ import java.lang.annotation.Target;
 /**
  * Allows a method annotated with {@link CField} to have a value type that is narrower (smaller
  * number of bits) than the C type.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})

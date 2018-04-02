@@ -35,6 +35,8 @@ import org.graalvm.word.WordFactory;
  * functions of the standard C library, however this class makes no assumptions or guarantees about
  * how the memory is managed. In particular, it is not allowed to free memory returned by these
  * allocation function directly using the standard C library (or vice versa).
+ *
+ * @since 1.0
  */
 public final class UnmanagedMemory {
 
@@ -43,8 +45,10 @@ public final class UnmanagedMemory {
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
-     *
+     * <p>
      * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     *
+     * @since 1.0
      */
     public static <T extends PointerBase> T malloc(UnsignedWord size) {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
@@ -52,8 +56,10 @@ public final class UnmanagedMemory {
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
-     *
+     * <p>
      * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     *
+     * @since 1.0
      */
     public static <T extends PointerBase> T malloc(int size) {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(size));
@@ -61,8 +67,10 @@ public final class UnmanagedMemory {
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is set to 0.
-     *
+     * <p>
      * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     *
+     * @since 1.0
      */
     public static <T extends PointerBase> T calloc(UnsignedWord size) {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
@@ -70,8 +78,10 @@ public final class UnmanagedMemory {
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is set to 0.
-     *
+     * <p>
      * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     *
+     * @since 1.0
      */
     public static <T extends PointerBase> T calloc(int size) {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(size));
@@ -81,8 +91,10 @@ public final class UnmanagedMemory {
      * Changes the size of the provided unmanaged memory to {@code size} bytes of unmanaged memory.
      * If the new size is larger than the old size, the content of the additional memory is
      * undefined.
-     *
+     * <p>
      * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     *
+     * @since 1.0
      */
     public static <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
         return ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(ptr, size);
@@ -90,6 +102,8 @@ public final class UnmanagedMemory {
 
     /**
      * Frees unmanaged memory that was previously allocated using methods of this class.
+     *
+     * @since 1.0
      */
     public static void free(PointerBase ptr) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(ptr);

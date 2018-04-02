@@ -38,6 +38,8 @@ import java.lang.annotation.Target;
  * The Java enumeration can have multiple values with the same C value. However, in that case one
  * Java value must be selected manually using the attribute {@link CEnumConstant#includeInLookup()}.
  * All but one Java values must have this attribute set to {@code false}.
+ *
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

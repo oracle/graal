@@ -35,6 +35,8 @@ import java.lang.annotation.Target;
  * <p>
  * The field is guaranteed to be aligned at its natural alignment, e.g., a field of a 8-byte type
  * has at least 8-byte alignment. The offset of the field is not specified.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})

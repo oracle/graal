@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativeimage;
-
-import org.graalvm.word.ComparableWord;
 
 /**
- * The opaque representation of a handle to a Java object given out to C code. Clients must not
- * interpret or dereference the value.
+ * This package and its sub-packages provide a fast and lightweight interface between Java code and
+ * C code.
  *
  * @since 1.0
  */
-public interface ObjectHandle extends ComparableWord {
-}
+package org.graalvm.nativeimage.c;

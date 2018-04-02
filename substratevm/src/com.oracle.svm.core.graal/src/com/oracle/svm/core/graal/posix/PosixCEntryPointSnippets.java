@@ -373,7 +373,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             }
         }
         Log.log().newline();
-        LogHandler.get().fatalError();
+        ImageSingletons.lookup(LogHandler.class).fatalError();
         return Errors.UNSPECIFIED; // unreachable
     }
 

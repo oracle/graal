@@ -140,6 +140,13 @@ public class CEntryPointSupport implements GraalFeature {
                 return true;
             }
         });
+        r.register1("isCurrentThreadAttachedTo", Isolate.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
+                b.addPush(JavaKind.Boolean, new CEntryPointUtilityNode(UtilityAction.IsAttached, isolate));
+                return true;
+            }
+        });
     }
 
     private static void registerEntryPointContextPlugins(InvocationPlugins plugins) {
@@ -167,13 +174,6 @@ public class CEntryPointSupport implements GraalFeature {
                 } else {
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
                 }
-                return true;
-            }
-        });
-        r.register1("isCurrentThreadAttachedTo", Isolate.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Boolean, new CEntryPointUtilityNode(UtilityAction.IsAttached, isolate));
                 return true;
             }
         });
