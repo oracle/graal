@@ -1539,7 +1539,6 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_18",
         "truffle:TRUFFLE_API",
-        "truffle:TRUFFLE_SL",
         "org.graalvm.compiler.microbenchmarks",
         "org.graalvm.compiler.truffle.compiler",
         "org.graalvm.compiler.truffle.runtime",
@@ -1552,8 +1551,6 @@ suite = {
       "workingSets" : "Graal,Truffle,Bench",
       "testProject" : True,
     },
-
-
 
     "org.graalvm.compiler.truffle.runtime" : {
       "subDir" : "src",
