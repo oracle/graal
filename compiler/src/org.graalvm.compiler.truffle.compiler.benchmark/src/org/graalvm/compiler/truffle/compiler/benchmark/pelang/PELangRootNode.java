@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.benchmark.pelang;
 
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -30,8 +30,8 @@ public final class PELangRootNode extends RootNode {
 
     @Child private PELangExpressionNode bodyNode;
 
-    protected PELangRootNode(TruffleLanguage<?> language, PELangExpressionNode bodyNode) {
-        super(language);
+    protected PELangRootNode(PELangExpressionNode bodyNode, FrameDescriptor frameDescriptor) {
+        super(null, frameDescriptor);
         this.bodyNode = bodyNode;
     }
 
