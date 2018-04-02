@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle.compiler.benchmark.pelang;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
 public final class PELangWhileNode extends PELangExpressionNode {
@@ -47,7 +48,7 @@ public final class PELangWhileNode extends PELangExpressionNode {
         return lastResult;
     }
 
-    private static final class PELangWhileRepeatingNode implements RepeatingNode {
+    private static final class PELangWhileRepeatingNode extends Node implements RepeatingNode {
 
         @Child private PELangExpressionNode conditionNode;
         @Child private PELangExpressionNode bodyNode;
