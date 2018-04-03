@@ -458,7 +458,7 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
 
 def _jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
-    return jdk.javaCompliance < '11' 
+    return jdk.javaCompliance < '11'
 
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
