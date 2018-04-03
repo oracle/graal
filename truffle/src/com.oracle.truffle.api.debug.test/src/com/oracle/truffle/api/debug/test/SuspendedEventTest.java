@@ -207,7 +207,7 @@ public class SuspendedEventTest extends AbstractDebugTest {
 
                 for (DebugStackFrame frame : event.getStackFrames()) {
 
-                    for (DebugValue value : frame) {
+                    for (DebugValue value : frame.getScope().getDeclaredValues()) {
                         runExpectIllegalState(() -> value.as(String.class));
                         runExpectIllegalState(() -> {
                             value.set(null);

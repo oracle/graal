@@ -250,6 +250,7 @@ final class ObjectStructures {
         final Node write;
         final Node isBoxed;
         final Node unbox;
+        final Node invoke1;
 
         MessageNodes() {
             keyInfo = Message.KEY_INFO.createNode();
@@ -260,6 +261,7 @@ final class ObjectStructures {
             write = Message.WRITE.createNode();
             isBoxed = Message.IS_BOXED.createNode();
             unbox = Message.UNBOX.createNode();
+            invoke1 = Message.createInvoke(1).createNode();
         }
     }
 }
