@@ -69,16 +69,16 @@ import sun.misc.Unsafe;
 @SuppressWarnings("static-method")
 public final class LLVMMemory {
     /* must be a power of 2 */
-    private static final long OBJECT_SIZE = 1L << 20;
-    private static final long OBJECT_MASK = (1L << 20) - 1L;
+    private static final long DEREF_HANDLE_OBJECT_SIZE = 1L << 20;
+    private static final long DEREF_HANDLE_OBJECT_MASK = (1L << 20) - 1L;
 
-    private static final long KERNEL_SPACE_START = 0x0FFFFFFFFFFFFFFFL & ~OBJECT_MASK;
-    private static final long KERNEL_SPACE_END = 0x0FFF800000000000L & ~OBJECT_MASK;
+    private static final long DEREF_HANDLE_SPACE_START = 0x0FFFFFFFFFFFFFFFL & ~DEREF_HANDLE_OBJECT_MASK;
+    private static final long DEREF_HANDLE_SPACE_END = 0x0FFF800000000000L & ~DEREF_HANDLE_OBJECT_MASK;
 
     private static final Unsafe unsafe = getUnsafe();
 
     private FreeListNode freeList;
-    private long memTop = KERNEL_SPACE_START;
+    private long derefSpaceTop = DEREF_HANDLE_SPACE_START;
 
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
 
@@ -140,8 +140,8 @@ public final class LLVMMemory {
     }
 
     public void free(long address) {
-        if (address <= KERNEL_SPACE_START && address > KERNEL_SPACE_END) {
-            // TODO check for double-free ?
+        if (address <= DEREF_HANDLE_SPACE_START && address > DEREF_HANDLE_SPACE_END) {
+            assert isAllocated(address) : "double-free of " + Long.toHexString(address);
             freeList = new FreeListNode(address, freeList);
         } else {
             try {
@@ -175,10 +175,6 @@ public final class LLVMMemory {
         }
     }
 
-    public static boolean isLessThanUnsigned(long n1, long n2) {
-        return (n1 < n2) ^ ((n1 < 0) != (n2 < 0));
-    }
-
     /**
      * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
      */
@@ -191,10 +187,10 @@ public final class LLVMMemory {
             freeList = n.next;
             return LLVMAddress.fromLong(n.address);
         }
-        LLVMAddress addr = LLVMAddress.fromLong(memTop);
-        assert memTop > 0L;
-        memTop -= OBJECT_SIZE;
-        if (memTop < KERNEL_SPACE_END) {
+        LLVMAddress addr = LLVMAddress.fromLong(derefSpaceTop);
+        assert derefSpaceTop > 0L;
+        derefSpaceTop -= DEREF_HANDLE_OBJECT_SIZE;
+        if (derefSpaceTop < DEREF_HANDLE_SPACE_END) {
             CompilerDirectives.transferToInterpreter();
             throw new OutOfMemoryError();
         }
@@ -884,15 +880,28 @@ public final class LLVMMemory {
         unsafe.fullFence();
     }
 
-    public final Assumption getNoDerefHandleAssumption() {
+    public Assumption getNoDerefHandleAssumption() {
         return noDerefHandleAssumption;
     }
 
     public static boolean isDerefMemory(LLVMAddress addr) {
-        return addr.getVal() > KERNEL_SPACE_END;
+        return addr.getVal() > DEREF_HANDLE_SPACE_END;
     }
 
     public static long getObjectMask() {
-        return OBJECT_SIZE - 1;
+        return DEREF_HANDLE_OBJECT_SIZE - 1;
     }
+
+    private boolean isAllocated(long address) {
+        if (address <= derefSpaceTop) {
+            return false;
+        }
+        for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
+            if (cur.address == address) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 }
