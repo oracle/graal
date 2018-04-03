@@ -39,6 +39,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -133,7 +134,9 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
      * Therefore, our implementation does not comply with the ANSI C standard and could lead to
      * timing issues when calling multiple signals in a defined sequence, or when a program has to
      * wait until the signal was handled (which is not guaranteed because of the asynchronous
-     * behavior in our implementation).
+     * behavior in our implementation). E.g., for a SIGINT handler that does some cleanup work and
+     * exits the application afterwards, we will get race conditions between the application and the
+     * asynchronously executed cleanup code.
      */
     private static final class LLVMSignalHandler implements SignalHandler, LLVMThread {
 
@@ -205,8 +208,14 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
             try {
                 if (isRunning.get()) {
                     try {
-                        LLVMFunctionDescriptor func = context.getFunctionDescriptor(handler);
-                        ForeignAccess.sendExecute(Message.createExecute(1).createNode(), func, signal.getNumber());
+                        TruffleContext truffleContext = context.getEnv().getContext();
+                        Object p = truffleContext.enter();
+                        try {
+                            LLVMFunctionDescriptor func = context.getFunctionDescriptor(handler);
+                            ForeignAccess.sendExecute(Message.createExecute(1).createNode(), func, signal.getNumber());
+                        } finally {
+                            truffleContext.leave(p);
+                        }
                     } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                         throw new AssertionError(e);
                     }
