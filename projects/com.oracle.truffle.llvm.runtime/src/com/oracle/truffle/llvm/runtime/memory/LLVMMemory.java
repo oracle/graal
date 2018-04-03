@@ -77,7 +77,10 @@ public final class LLVMMemory {
 
     private static final Unsafe unsafe = getUnsafe();
 
+    private final Object freeListLock = new Object();
     private FreeListNode freeList;
+
+    private final Object derefSpaceTopLock = new Object();
     private long derefSpaceTop = DEREF_HANDLE_SPACE_START;
 
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
@@ -142,7 +145,9 @@ public final class LLVMMemory {
     public void free(long address) {
         if (address <= DEREF_HANDLE_SPACE_START && address > DEREF_HANDLE_SPACE_END) {
             assert isAllocated(address) : "double-free of " + Long.toHexString(address);
-            freeList = new FreeListNode(address, freeList);
+            synchronized (freeListLock) {
+                freeList = new FreeListNode(address, freeList);
+            }
         } else {
             try {
                 unsafe.freeMemory(address);
@@ -182,19 +187,24 @@ public final class LLVMMemory {
         noDerefHandleAssumption.invalidate();
 
         // preferably consume from free list
-        if (freeList != null) {
-            FreeListNode n = freeList;
-            freeList = n.next;
-            return LLVMAddress.fromLong(n.address);
+        synchronized (freeListLock) {
+            if (freeList != null) {
+                FreeListNode n = freeList;
+                freeList = n.next;
+                return LLVMAddress.fromLong(n.address);
+            }
         }
-        LLVMAddress addr = LLVMAddress.fromLong(derefSpaceTop);
-        assert derefSpaceTop > 0L;
-        derefSpaceTop -= DEREF_HANDLE_OBJECT_SIZE;
-        if (derefSpaceTop < DEREF_HANDLE_SPACE_END) {
-            CompilerDirectives.transferToInterpreter();
-            throw new OutOfMemoryError();
+
+        synchronized (derefSpaceTopLock) {
+            LLVMAddress addr = LLVMAddress.fromLong(derefSpaceTop);
+            assert derefSpaceTop > 0L;
+            derefSpaceTop -= DEREF_HANDLE_OBJECT_SIZE;
+            if (derefSpaceTop < DEREF_HANDLE_SPACE_END) {
+                CompilerDirectives.transferToInterpreter();
+                throw new OutOfMemoryError();
+            }
+            return addr;
         }
-        return addr;
     }
 
     public boolean getI1(LLVMAddress addr) {
@@ -893,12 +903,17 @@ public final class LLVMMemory {
     }
 
     private boolean isAllocated(long address) {
-        if (address <= derefSpaceTop) {
-            return false;
-        }
-        for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
-            if (cur.address == address) {
+        synchronized (derefSpaceTopLock) {
+            if (address <= derefSpaceTop) {
                 return false;
+            }
+        }
+
+        synchronized (freeListLock) {
+            for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
+                if (cur.address == address) {
+                    return false;
+                }
             }
         }
         return true;
