@@ -117,7 +117,7 @@ public final class StructureType extends AggregateType {
     @Override
     public Type shallowCopy() {
         final StructureType copy = new StructureType(name, isPacked, types);
-        copy.setSourceType(getSourceType());
+        copy.setInteropType(getInteropType());
         return copy;
     }
 

@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetFrameNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetNativePointerNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetSlotNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -67,6 +68,9 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     private final FrameSlot slot;
     private final Type globalType;
     private final LLVMSourceSymbol sourceSymbol;
+
+    @CompilationFinal private boolean interopTypeCached = false;
+    @CompilationFinal private LLVMInteropType interopType;
 
     public static LLVMGlobal external(LLVMContext context, Object symbol, String name, Type type, LLVMAddress pointer, LLVMSourceSymbol sourceSymbol) {
         LLVMGlobal global = new LLVMGlobal(name, context.getGlobalFrameSlot(symbol, type), type, sourceSymbol);
@@ -99,6 +103,20 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
 
     public LLVMSourceType getSourceType() {
         return sourceSymbol != null ? sourceSymbol.getType() : null;
+    }
+
+    public LLVMInteropType getInteropType() {
+        if (!interopTypeCached) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            LLVMSourceType sourceType = getSourceType();
+            if (sourceType == null) {
+                interopType = LLVMInteropType.SIMPLE;
+            } else {
+                interopType = LLVMInteropType.fromSourceType(sourceType);
+            }
+            interopTypeCached = true;
+        }
+        return interopType;
     }
 
     public String getSourceName() {

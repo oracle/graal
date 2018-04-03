@@ -78,6 +78,14 @@ public final class LLVMSourceStructLikeType extends LLVMSourceType {
         return true;
     }
 
+    public int getDynamicElementCount() {
+        return dynamicMembers.size();
+    }
+
+    public LLVMSourceMemberType getDynamicElement(int i) {
+        return dynamicMembers.get(i);
+    }
+
     @Override
     @TruffleBoundary
     public int getElementCount() {

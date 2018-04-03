@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,29 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.vars;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMSetInteropTypeNode extends LLVMExpressionNode {
+@NodeChild(value = "ptr", type = LLVMExpressionNode.class)
+@NodeChild(value = "typeid", type = LLVMTypeIDNode.class)
+public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
 
-    private final FrameSlot frameSlot;
-
-    private final LLVMInteropType interopType;
-
-    public LLVMSetInteropTypeNode(FrameSlot frameSlot, LLVMInteropType interopType) {
-        this.frameSlot = frameSlot;
-        this.interopType = interopType;
+    public static LLVMPolyglotAsTyped createStruct(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
+        return LLVMPolyglotAsTypedNodeGen.create(ptr, LLVMTypeIDNode.createStruct(typeid));
     }
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        final Type type = (Type) frameSlot.getInfo();
-        type.setInteropType(interopType);
-        return null;
+    public static LLVMPolyglotAsTyped createArray(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
+        return LLVMPolyglotAsTypedNodeGen.create(ptr, LLVMTypeIDNode.createArray(typeid));
+    }
+
+    @Specialization
+    LLVMTruffleObject doAsTyped(LLVMTruffleObject object, LLVMInteropType.Structured type,
+                    @Cached("create()") LLVMAsForeignNode asForeign) {
+        TruffleObject foreign = asForeign.execute(object);
+        return new LLVMTruffleObject(LLVMTypedForeignObject.create(foreign, type));
     }
 }
