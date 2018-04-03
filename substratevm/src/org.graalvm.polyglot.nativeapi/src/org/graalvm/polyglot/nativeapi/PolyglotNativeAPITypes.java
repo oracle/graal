@@ -22,7 +22,6 @@
  */
 package org.graalvm.polyglot.nativeapi;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -33,6 +32,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.polyglot.nativeapi.PolyglotNativeAPI.PolyglotIsolateThread;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
@@ -145,7 +145,7 @@ class PolyglotNativeAPITypes {
 
     interface PolyglotCallbackPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        PolyglotValuePointer invoke(IsolateThread ithread, PolyglotCallbackInfo info);
+        PolyglotValuePointer invoke(PolyglotIsolateThread ithread, PolyglotCallbackInfo info);
     }
 
 }

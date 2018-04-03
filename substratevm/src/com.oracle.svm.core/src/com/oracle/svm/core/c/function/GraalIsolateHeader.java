@@ -20,49 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef POLYGLOT_TYPES_H
-#define POLYGLOT_TYPES_H
+package com.oracle.svm.core.c.function;
 
-typedef enum {
-  poly_ok,
-  poly_invalid_arg,
-  poly_object_expected,
-  poly_string_expected,
-  poly_name_expected,
-  poly_function_expected,
-  poly_number_expected,
-  poly_boolean_expected,
-  poly_array_expected,
-  poly_generic_failure,
-  poly_pending_exception,
-  poly_cancelled,
-  poly_status_last
-} poly_status;
+import java.io.PrintWriter;
 
-typedef struct {
-  char* error_message;
-  void* engine_reserved;
-  unsigned int engine_error_code;
-  poly_status error_code;
-} poly_extended_error_info;
+import com.oracle.svm.core.c.CHeader;
+import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 
-// GR-7868 poly_handle becomes void* and all CPointers become CTypeDef
-typedef void poly_handle;
+public class GraalIsolateHeader implements CHeader.Header {
+    @Override
+    public String name() {
+        return "graal_isolate";
+    }
 
-typedef poly_handle poly_value;
-
-typedef poly_handle poly_engine;
-
-typedef poly_handle poly_context;
-
-typedef poly_handle poly_callback_info;
-
-typedef graal_create_isolate_params_t poly_isolate_params;
-
-typedef graal_isolate_t poly_isolate;
-
-typedef graal_isolatethread_t poly_thread;
-
-typedef poly_value* (*poly_callback)(poly_thread* thread, poly_callback_info* info);
-
-#endif
+    @Override
+    public void writePreamble(PrintWriter writer) {
+        NativeImageHeaderPreamble.read(NativeImageHeaderPreamble.class.getClassLoader(), "graal_isolate.preamble")
+                        .forEach(writer::println);
+    }
+}

@@ -20,27 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef __GRAAL_ISOLATE
-#define __GRAAL_ISOLATE
-/*
- * Structure representing an isolate. A pointer to such a structure can be
- * passed to an entry point as the execution context.
- */
-struct __graal_isolate_t;
-typedef struct __graal_isolate_t graal_isolate_t;
+package org.graalvm.polyglot.nativeapi;
 
-/*
- * Structure representing a thread that is attached to an isolate. A pointer to
- * such a structure can be passed to an entry point as the execution context,
- * requiring that the calling thread has been attached to that isolate.
- */
-struct __graal_isolatethread_t;
-typedef struct __graal_isolatethread_t graal_isolatethread_t;
+import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.List;
 
-/* Parameters for the creation of a new isolate. */
-struct __graal_create_isolate_params_t {
-    /* for future use */
-};
-typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
+import com.oracle.svm.core.c.CHeader.Header;
+import com.oracle.svm.core.c.function.GraalIsolateHeader;
 
-#endif
+public class PolyglotAPIHeader implements Header {
+    @Override
+    public String name() {
+        return "polyglot_api";
+    }
+
+    @Override
+    public List<Class<? extends Header>> dependsOn() {
+        return Collections.singletonList(GraalIsolateHeader.class);
+    }
+
+    @Override
+    public void writePreamble(PrintWriter writer) {
+        writer.println("#include <polyglot_types.h>");
+        writer.println("#include <polyglot_isolate.h>");
+    }
+}

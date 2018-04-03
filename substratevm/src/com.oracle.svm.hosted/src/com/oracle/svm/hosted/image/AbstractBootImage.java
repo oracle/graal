@@ -40,6 +40,7 @@ public abstract class AbstractBootImage {
     protected final HostedUniverse universe;
     protected final NativeLibraries nativeLibs;
     protected final NativeImageHeap heap;
+    protected final ClassLoader imageClassLoader;
     protected final NativeImageCodeCache codeCache;
     protected final List<HostedMethod> entryPoints;
     protected int resultingImageSize; // for statistical output
@@ -87,7 +88,7 @@ public abstract class AbstractBootImage {
     protected final NativeImageKind kind;
 
     protected AbstractBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints) {
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
         this.kind = k;
         this.universe = universe;
         this.metaAccess = metaAccess;
@@ -95,6 +96,7 @@ public abstract class AbstractBootImage {
         this.heap = heap;
         this.codeCache = codeCache;
         this.entryPoints = entryPoints;
+        this.imageClassLoader = imageClassLoader;
     }
 
     public NativeImageKind getBootImageKind() {
@@ -130,12 +132,12 @@ public abstract class AbstractBootImage {
 
     // factory method
     public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint) {
+                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:
-                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints);
+                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
             case EXECUTABLE:
-                return new ExecutableViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint);
+                return new ExecutableViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
         }
         return null;
     }

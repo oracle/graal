@@ -34,9 +34,11 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 
+@CHeader(value = GraalIsolateHeader.class)
 public final class CEntryPointNativeFunctions {
 
     @CPointerTo(Isolate.class)

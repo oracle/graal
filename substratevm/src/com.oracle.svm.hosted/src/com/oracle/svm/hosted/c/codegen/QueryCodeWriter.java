@@ -24,7 +24,6 @@ package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.c.query.QueryResultFormat.DELIMINATOR;
-import static com.oracle.svm.hosted.image.NativeBootImage.DEFAULT_HEADER_FILE_NAME;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -84,7 +83,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
-        NativeImageHeaderPreamble.read("/" + DEFAULT_HEADER_FILE_NAME)
+        NativeImageHeaderPreamble.read(getClass().getClassLoader(), "graal_isolate.preamble")
                         .forEach(writer::appendln);
 
         for (String preDefine : nativeCodeInfo.getDirectives().getMacroDefinitions()) {

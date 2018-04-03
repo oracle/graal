@@ -182,7 +182,4 @@ public class NativeImageOptions {
         }
         return analysisThreads;
     }
-
-    @Option(help = "The resource to be used as a preamble of the header file.", type = OptionType.Expert) //
-    public static final HostedOptionKey<String> PreamblePath = new HostedOptionKey<>(null);
 }

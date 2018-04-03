@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -70,7 +71,10 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.CHeader;
+
 @SuppressWarnings("unused")
+@CHeader(value = PolyglotAPIHeader.class)
 public final class PolyglotNativeAPI {
 
     private static final Charset UTF8_CHARSET = Charset.forName("UTF-8");
@@ -92,7 +96,7 @@ public final class PolyglotNativeAPI {
                     "Engine is a unit that holds configuration, instruments, and compiled code for many contexts",
                     "inside the engine."
     })
-    public static PolyglotStatus poly_create_engine(IsolateThread isolate_thread, PolyglotEnginePointerPointer engine) {
+    public static PolyglotStatus poly_create_engine(PolyglotIsolateThread thread, PolyglotEnginePointerPointer engine) {
         return withHandledErrors(() -> {
             ObjectHandle handle = createHandle(Engine.create());
             engine.write(handle);
@@ -106,7 +110,7 @@ public final class PolyglotNativeAPI {
                     "Note: context allows access to all resources in embedded programs; ",
                     "in the future this will be restricted and replaced with finer grained APIs."
     })
-    public static PolyglotStatus poly_create_context(IsolateThread isolate_thread, PolyglotEnginePointer engine_handle, PolyglotContextPointerPointer context) {
+    public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, PolyglotEnginePointer engine_handle, PolyglotContextPointerPointer context) {
         return withHandledErrors(() -> {
             Engine engine = ObjectHandles.getGlobal().get(engine_handle);
             Context c = Context.newBuilder().allowAllAccess(true).engine(engine).build();
@@ -115,7 +119,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_eval")
-    public static PolyglotStatus poly_eval(IsolateThread isolate_thread, PolyglotContextPointer poly_context, CCharPointer language, CCharPointer name, CCharPointer code,
+    public static PolyglotStatus poly_eval(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, CCharPointer language, CCharPointer name, CCharPointer code,
                     PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context c = ObjectHandles.getGlobal().get(poly_context);
@@ -129,7 +133,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_execute")
-    public static PolyglotStatus poly_execute(IsolateThread isolate_thread, PolyglotValuePointer value_handle, PolyglotValuePointerPointer args, int args_size,
+    public static PolyglotStatus poly_execute(PolyglotIsolateThread thread, PolyglotValuePointer value_handle, PolyglotValuePointerPointer args, int args_size,
                     PolyglotValuePointerPointer return_value) {
         return withHandledErrors(() -> {
             Value function = fetchHandle(value_handle);
@@ -145,7 +149,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_lookup")
-    public static PolyglotStatus poly_lookup(IsolateThread isolate_thread, PolyglotContextPointer context, CCharPointer language, CCharPointer symbol_name,
+    public static PolyglotStatus poly_lookup(PolyglotIsolateThread thread, PolyglotContextPointer context, CCharPointer language, CCharPointer symbol_name,
                     PolyglotValuePointerPointer symbol) {
         return withHandledErrors(() -> {
             Context jContext = ObjectHandles.getGlobal().get(context);
@@ -161,7 +165,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_import_symbol")
-    public static PolyglotStatus poly_import_symbol(IsolateThread isolate_thread, PolyglotContextPointer context, CCharPointer symbol_name, PolyglotValuePointerPointer value) {
+    public static PolyglotStatus poly_import_symbol(PolyglotIsolateThread thread, PolyglotContextPointer context, CCharPointer symbol_name, PolyglotValuePointerPointer value) {
         return withHandledErrors(() -> {
             Context jContext = ObjectHandles.getGlobal().get(context);
             String symbolName = CTypeConversion.toJavaString(symbol_name);
@@ -170,7 +174,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_export_symbol")
-    public static PolyglotStatus poly_export_symbol(IsolateThread isolate_thread, PolyglotContextPointer context, CCharPointer symbol_name, PolyglotValuePointer value) {
+    public static PolyglotStatus poly_export_symbol(PolyglotIsolateThread thread, PolyglotContextPointer context, CCharPointer symbol_name, PolyglotValuePointer value) {
         return withHandledErrors(() -> {
             Context jContext = ObjectHandles.getGlobal().get(context);
             String symbolName = CTypeConversion.toJavaString(symbol_name);
@@ -179,12 +183,12 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_free_handle")
-    public static PolyglotStatus poly_free_handle(IsolateThread isolate_thread, PolyglotHandlePointer handle) {
+    public static PolyglotStatus poly_free_handle(PolyglotIsolateThread thread, PolyglotHandlePointer handle) {
         return withHandledErrors(() -> ObjectHandles.getGlobal().destroy(handle));
     }
 
     @CEntryPoint(name = "poly_value_is_boolean")
-    public static PolyglotStatus poly_value_is_boolean(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_is_boolean(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value jValue = fetchHandle(value);
             result.write(jValue.isBoolean() ? 1 : 0);
@@ -192,7 +196,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_boolean")
-    public static PolyglotStatus poly_value_as_boolean(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_as_boolean(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value jValue = fetchHandle(value);
             if (jValue.isBoolean()) {
@@ -204,7 +208,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_boolean")
-    public static PolyglotStatus poly_create_boolean(IsolateThread isolate_thread, PolyglotContextPointer poly_context, boolean value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_boolean(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, boolean value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(value)));
@@ -213,7 +217,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_int8")
-    public static PolyglotStatus poly_create_int8(IsolateThread isolate_thread, PolyglotContextPointer poly_context, byte value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_int8(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, byte value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Byte.valueOf(value))));
@@ -222,7 +226,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_int16")
-    public static PolyglotStatus poly_create_int16(IsolateThread isolate_thread, PolyglotContextPointer poly_context, short value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_int16(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, short value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Short.valueOf(value))));
@@ -231,7 +235,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_int32")
-    public static PolyglotStatus poly_create_int32(IsolateThread isolate_thread, PolyglotContextPointer poly_context, int value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_int32(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, int value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Integer.valueOf(value))));
@@ -240,7 +244,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_int64")
-    public static PolyglotStatus poly_create_int64(IsolateThread isolate_thread, PolyglotContextPointer poly_context, long value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_int64(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, long value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Long.valueOf(value))));
@@ -249,7 +253,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_uint8")
-    public static PolyglotStatus poly_create_uint8(IsolateThread isolate_thread, PolyglotContextPointer poly_context, int value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_uint8(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, int value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Integer.valueOf(value))));
@@ -258,7 +262,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_uint32")
-    public static PolyglotStatus poly_create_uint32(IsolateThread isolate_thread, PolyglotContextPointer poly_context, long value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_uint32(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, long value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Long.valueOf(value))));
@@ -267,7 +271,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_float")
-    public static PolyglotStatus poly_create_float(IsolateThread isolate_thread, PolyglotContextPointer poly_context, float value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_float(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, float value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Float.valueOf(value))));
@@ -276,7 +280,7 @@ public final class PolyglotNativeAPI {
 
     @SuppressWarnings("UnnecessaryBoxing")
     @CEntryPoint(name = "poly_create_double")
-    public static PolyglotStatus poly_create_double(IsolateThread isolate_thread, PolyglotContextPointer poly_context, double value, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_double(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, double value, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(Double.valueOf(value))));
@@ -284,7 +288,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_char")
-    public static PolyglotStatus poly_create_char(IsolateThread isolate_thread, PolyglotContextPointer poly_context, char c, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_char(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, char c, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(c)));
@@ -292,7 +296,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_string_utf8")
-    public static PolyglotStatus poly_create_string_utf8(IsolateThread isolate_thread, PolyglotContextPointer poly_context, CCharPointer value, UnsignedWord length,
+    public static PolyglotStatus poly_create_string_utf8(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, CCharPointer value, UnsignedWord length,
                     PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
@@ -301,7 +305,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_create_null")
-    public static PolyglotStatus poly_value_create_null(IsolateThread isolate_thread, PolyglotContextPointer poly_context, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_value_create_null(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context ctx = ObjectHandles.getGlobal().get(poly_context);
             result.write(createHandle(ctx.asValue(null)));
@@ -309,7 +313,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_is_null")
-    public static PolyglotStatus poly_value_is_null(IsolateThread isolate_thread, PolyglotValuePointer object, CIntPointer result) {
+    public static PolyglotStatus poly_value_is_null(PolyglotIsolateThread thread, PolyglotValuePointer object, CIntPointer result) {
         return withHandledErrors(() -> {
             Value value = fetchHandle(object);
             result.write(value.isNull() ? 1 : 0);
@@ -317,7 +321,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_is_string")
-    public static PolyglotStatus poly_value_is_string(IsolateThread isolate_thread, PolyglotValuePointer object, CIntPointer result) {
+    public static PolyglotStatus poly_value_is_string(PolyglotIsolateThread thread, PolyglotValuePointer object, CIntPointer result) {
         return withHandledErrors(() -> {
             Value value = fetchHandle(object);
             result.write(value.isString() ? 1 : 0);
@@ -325,7 +329,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_is_number")
-    public static PolyglotStatus poly_value_is_number(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_is_number(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value jValue = fetchHandle(value);
             result.write(jValue.isNumber() ? 1 : 0);
@@ -333,7 +337,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_float")
-    public static PolyglotStatus poly_value_fits_in_float(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_float(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             result.write(dataObject.fitsInFloat() ? 1 : 0);
@@ -341,7 +345,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_double")
-    public static PolyglotStatus poly_value_fits_in_double(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_double(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             result.write(dataObject.fitsInDouble() ? 1 : 0);
@@ -349,7 +353,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_int8")
-    public static PolyglotStatus poly_value_fits_in_int8(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_int8(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             result.write(dataObject.fitsInByte() ? 1 : 0);
@@ -357,7 +361,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_int32")
-    public static PolyglotStatus poly_value_fits_in_int32(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_int32(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             result.write(dataObject.fitsInInt() ? 1 : 0);
@@ -365,7 +369,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_int64")
-    public static PolyglotStatus poly_value_fits_in_int64(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_int64(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             result.write(dataObject.fitsInLong() ? 1 : 0);
@@ -373,7 +377,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_uint8")
-    public static PolyglotStatus poly_value_fits_in_uint8(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_uint8(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             int intValue = dataObject.asInt();
@@ -382,7 +386,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_fits_in_uint32")
-    public static PolyglotStatus poly_value_fits_in_uint32(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_fits_in_uint32(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             long longValue = dataObject.asLong();
@@ -391,7 +395,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_string_utf8")
-    public static PolyglotStatus poly_value_as_string_utf8(IsolateThread isolate_thread, PolyglotValuePointer value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
+    public static PolyglotStatus poly_value_as_string_utf8(PolyglotIsolateThread thread, PolyglotValuePointer value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
         return withHandledErrors(() -> {
             Value jValue = fetchHandle(value);
             if (jValue.isString()) {
@@ -403,7 +407,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_int8")
-    public static PolyglotStatus poly_value_as_int8(IsolateThread isolate_thread, PolyglotValuePointer value, CCharPointer result) {
+    public static PolyglotStatus poly_value_as_int8(PolyglotIsolateThread thread, PolyglotValuePointer value, CCharPointer result) {
         return withHandledErrors(() -> {
             Value valueObject = fetchHandle(value);
             result.write(valueObject.asByte());
@@ -411,7 +415,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_int32")
-    public static PolyglotStatus poly_value_as_int32(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_as_int32(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value valueObject = fetchHandle(value);
             result.write(valueObject.asInt());
@@ -419,7 +423,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_int64")
-    public static PolyglotStatus poly_value_as_int64(IsolateThread isolate_thread, PolyglotValuePointer value, CLongPointer result) {
+    public static PolyglotStatus poly_value_as_int64(PolyglotIsolateThread thread, PolyglotValuePointer value, CLongPointer result) {
         return withHandledErrors(() -> {
             Value valueObject = fetchHandle(value);
             result.write(valueObject.asLong());
@@ -427,7 +431,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_uint8")
-    public static PolyglotStatus poly_value_as_uint8(IsolateThread isolate_thread, PolyglotValuePointer value, CCharPointer result) {
+    public static PolyglotStatus poly_value_as_uint8(PolyglotIsolateThread thread, PolyglotValuePointer value, CCharPointer result) {
         return withHandledErrors(() -> {
             Value valueObject = fetchHandle(value);
             int intValue = valueObject.asInt();
@@ -439,7 +443,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_uint32")
-    public static PolyglotStatus poly_value_as_uint32(IsolateThread isolate_thread, PolyglotValuePointer value, CIntPointer result) {
+    public static PolyglotStatus poly_value_as_uint32(PolyglotIsolateThread thread, PolyglotValuePointer value, CIntPointer result) {
         return withHandledErrors(() -> {
             Value valueObject = fetchHandle(value);
             long longValue = valueObject.asLong();
@@ -451,7 +455,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_float")
-    public static PolyglotStatus poly_value_as_float(IsolateThread isolate_thread, PolyglotValuePointer value, CFloatPointer result) {
+    public static PolyglotStatus poly_value_as_float(PolyglotIsolateThread thread, PolyglotValuePointer value, CFloatPointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             result.write(dataObject.asFloat());
@@ -459,7 +463,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_double")
-    public static PolyglotStatus poly_value_as_double(IsolateThread isolate_thread, PolyglotValuePointer value, CDoublePointer result) {
+    public static PolyglotStatus poly_value_as_double(PolyglotIsolateThread thread, PolyglotValuePointer value, CDoublePointer result) {
         return withHandledErrors(() -> {
             Value dataObject = fetchHandle(value);
             if (dataObject.isNumber()) {
@@ -471,12 +475,12 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_number_of_languages")
-    public static PolyglotStatus poly_number_of_languages(IsolateThread isolate_thread, PolyglotEnginePointer engine_handle, CIntPointer result) {
+    public static PolyglotStatus poly_number_of_languages(PolyglotIsolateThread thread, PolyglotEnginePointer engine_handle, CIntPointer result) {
         return withHandledErrors(() -> result.write(((Engine) fetchHandle(engine_handle)).getLanguages().size()));
     }
 
     @CEntryPoint(name = "poly_name_length_of_languages")
-    public static PolyglotStatus poly_name_length_of_languages(IsolateThread isolate_thread, PolyglotEnginePointer engine_handle, CIntPointer length_of_language_names) {
+    public static PolyglotStatus poly_name_length_of_languages(PolyglotIsolateThread thread, PolyglotEnginePointer engine_handle, CIntPointer length_of_language_names) {
         return withHandledErrors(() -> {
             String[] sortedLangs = sortedLangs(ObjectHandles.getGlobal().get(engine_handle));
             for (int i = 0; i < sortedLangs.length; i++) {
@@ -486,7 +490,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_available_languages")
-    public static PolyglotStatus poly_available_languages(IsolateThread isolate_thread, PolyglotEnginePointer engine_handle, CCharPointerPointer lang_array) {
+    public static PolyglotStatus poly_available_languages(PolyglotIsolateThread thread, PolyglotEnginePointer engine_handle, CCharPointerPointer lang_array) {
         return withHandledErrors(() -> {
             String[] langs = sortedLangs(ObjectHandles.getGlobal().get(engine_handle));
             for (int i = 0; i < langs.length; i++) {
@@ -497,7 +501,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_get_last_error_info")
-    public static PolyglotStatus poly_get_last_error_info(IsolateThread isolate_thread, ExtendedErrorInfoPointer result) {
+    public static PolyglotStatus poly_get_last_error_info(PolyglotIsolateThread thread, ExtendedErrorInfoPointer result) {
         ErrorInfoHolder errorInfoHolder = errorInfo.get();
         if (errorInfoHolder != null) {
             result.write(errorInfoHolder.info);
@@ -508,7 +512,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_object")
-    public static PolyglotStatus poly_create_object(IsolateThread isolate_thread, PolyglotContextPointer poly_context, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_create_object(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Context c = ObjectHandles.getGlobal().get(poly_context);
             ProxyObject proxy = ProxyObject.fromMap(new HashMap<>());
@@ -517,7 +521,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_set_member")
-    public static PolyglotStatus poly_set_member(IsolateThread isolate_thread, PolyglotValuePointer object, CCharPointer utf8_name, PolyglotValuePointer value) {
+    public static PolyglotStatus poly_set_member(PolyglotIsolateThread thread, PolyglotValuePointer object, CCharPointer utf8_name, PolyglotValuePointer value) {
         return withHandledErrors(() -> {
             Value jObject = fetchHandle(object);
             Value jValue = fetchHandle(value);
@@ -536,7 +540,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_function")
-    public static PolyglotStatus poly_create_function(IsolateThread isolate_thread, PolyglotContextPointer poly_context, PolyglotCallbackPointer callback, VoidPointer data,
+    public static PolyglotStatus poly_create_function(PolyglotIsolateThread thread, PolyglotContextPointer poly_context, PolyglotCallbackPointer callback, VoidPointer data,
                     PolyglotValuePointerPointer value) {
         return withHandledErrors(() -> {
             Context c = ObjectHandles.getGlobal().get(poly_context);
@@ -547,7 +551,7 @@ public final class PolyglotNativeAPI {
                 }
                 PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
                 try {
-                    PolyglotValuePointer result = callback.invoke(CEntryPointContext.getCurrentIsolateThread(), cbInfo);
+                    PolyglotValuePointer result = callback.invoke((PolyglotIsolateThread) CEntryPointContext.getCurrentIsolateThread(), cbInfo);
                     CallbackException ce = exceptionsTL.get();
                     if (ce != null) {
                         exceptionsTL.remove();
@@ -568,7 +572,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_get_callback_info")
-    public static PolyglotStatus poly_get_callback_info(IsolateThread isolate_thread, PolyglotCallbackInfo callback_info, SizeTPointer argc, PolyglotValuePointerPointer argv, WordPointer data) {
+    public static PolyglotStatus poly_get_callback_info(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info, SizeTPointer argc, PolyglotValuePointerPointer argv, WordPointer data) {
         return withHandledErrors(() -> {
             PolyglotCallbackInfoInternal callbackInfo = fetchHandle(callback_info);
             UnsignedWord numberOfArguments = WordFactory.unsigned(callbackInfo.arguments.length);
@@ -585,17 +589,17 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_throw_error")
-    public static PolyglotStatus polylgot_throw_error(IsolateThread isolate_thread, CCharPointer utf8_code, CCharPointer utf8_message) {
+    public static PolyglotStatus polylgot_throw_error(PolyglotIsolateThread thread, CCharPointer utf8_code, CCharPointer utf8_message) {
         return withHandledErrors(() -> exceptionsTL.set(new CallbackException(CTypeConversion.toJavaString(utf8_message), CTypeConversion.toJavaString(utf8_code))));
     }
 
     @CEntryPoint(name = "poly_value_to_string_utf8")
-    public static PolyglotStatus poly_value_to_string_utf8(IsolateThread isolate_thread, PolyglotValuePointer value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer string_length) {
+    public static PolyglotStatus poly_value_to_string_utf8(PolyglotIsolateThread thread, PolyglotValuePointer value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer string_length) {
         return withHandledErrors(() -> writeString(fetchHandle(value).toString(), buffer, buffer_size, string_length));
     }
 
     @CEntryPoint(name = "poly_get_member")
-    public static PolyglotStatus poly_get_member(IsolateThread isolate_thread, PolyglotValuePointer object, CCharPointer utf8_name, PolyglotValuePointerPointer result) {
+    public static PolyglotStatus poly_get_member(PolyglotIsolateThread thread, PolyglotValuePointer object, CCharPointer utf8_name, PolyglotValuePointerPointer result) {
         return withHandledErrors(() -> {
             Value jObject = fetchHandle(object);
             result.write(createHandle(jObject.getMember(CTypeConversion.toJavaString(utf8_name))));
@@ -603,7 +607,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_has_member")
-    public static PolyglotStatus poly_has_member(IsolateThread isolate_thread, PolyglotValuePointer object, CCharPointer utf8_name, CIntPointer result) {
+    public static PolyglotStatus poly_has_member(PolyglotIsolateThread thread, PolyglotValuePointer object, CCharPointer utf8_name, CIntPointer result) {
         return withHandledErrors(() -> {
             Value jObject = fetchHandle(object);
             result.write(jObject.hasMember(CTypeConversion.toJavaString(utf8_name)) ? 1 : 0);
@@ -686,5 +690,9 @@ public final class PolyglotNativeAPI {
             super(message);
             this.errorCode = errorCode;
         }
+    }
+
+    @CStruct(value = "poly_thread", isIncomplete = true)
+    interface PolyglotIsolateThread extends IsolateThread {
     }
 }
