@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.util.Properties;
 import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.impl.TruffleLocator;
+import java.util.Collection;
 
 public final class GraalVMLocator extends TruffleLocator
                 implements Callable<ClassLoader> {
@@ -93,8 +94,16 @@ public final class GraalVMLocator extends TruffleLocator
             System.setProperty("org.graalvm.version", version);
 
             List<URL> classPath = new ArrayList<>();
-            collectLanguageJars(new File(home, "languages"), classPath);
-            collectLanguageJars(new File(home, "tools"), classPath);
+            Collection<File> homeFolders = new ArrayList<>();
+            collectLanguageJars(new File(home, "languages"), classPath, homeFolders);
+            collectLanguageJars(new File(home, "tools"), classPath, homeFolders);
+
+            for (File homeFolder : homeFolders) {
+                final String homeFolderKey = homeFolder.getName() + ".home";
+                if (System.getProperty(homeFolderKey) == null) {
+                    System.setProperty(homeFolderKey, homeFolder.getAbsolutePath());
+                }
+            }
 
             String append = System.getProperty("truffle.class.path.append");
             if (append != null) {
@@ -122,13 +131,14 @@ public final class GraalVMLocator extends TruffleLocator
 
     }
 
-    private static void collectLanguageJars(File languages, List<URL> classPath) {
+    private static void collectLanguageJars(File languages, List<URL> classPath, Collection<? super File> homeFolders) {
         if (languages.exists()) {
             for (File language : languages.listFiles()) {
                 if (language.getName().startsWith(".")) {
                     continue;
                 }
                 if (language.isDirectory()) {
+                    homeFolders.add(language);
                     for (File jar : language.listFiles()) {
                         addJar(classPath, jar);
                     }
