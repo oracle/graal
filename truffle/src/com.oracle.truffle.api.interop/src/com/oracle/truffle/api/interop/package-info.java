@@ -30,8 +30,8 @@
  */
 
 /**
- * This package provides contains classes that specify the contract for inter-operability between
- * Truffle languages.
+ * This package contains classes that specify the contract for inter-operability between Truffle
+ * languages.
  * <p>
  * Languages can exchange primitive Java type wrapper objects (e.g., {@link java.lang.Byte},
  * {@link java.lang.Short}, {@link java.lang.Integer}, {@link java.lang.Long},
