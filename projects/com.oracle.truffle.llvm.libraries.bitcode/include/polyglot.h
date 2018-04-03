@@ -449,10 +449,98 @@ void *polyglot_from_string_n(const char *string, uint64_t size, const char *char
 
 /** @} */
 
-// typed interop
+/**
+ * \defgroup custom user type access
+ * @{
+ *
+ * Convert polyglot values to user defined C types.
+ */
+
+/**
+ * Internal function. Do not use directly.
+ *
+ * @see POLYGLOT_DECLARE_STRUCT
+ */
 void *__polyglot_as_typed(void *ptr, void *typeid);
+
+/**
+ * Internal function. Do not use directly.
+ *
+ * @see POLYGLOT_DECLARE_STRUCT
+ */
 void *__polyglot_as_typed_array(void *ptr, void *typeid);
 
+/**
+ * Declare polyglot conversion functions for a user-defined struct type.
+ *
+ * Given this struct definition:
+ * \code
+ * struct MyStruct {
+ *   int someMember;
+ *   ...
+ * };
+ *
+ * POLYGLOT_DECLARE_STRUCT(MyStruct)
+ * \endcode
+ *
+ * This macro will generate two conversion functions:
+ *
+ * \code
+ * struct MyStruct *polyglot_as_MyStruct(void *value);
+ * \endcode
+ *
+ * Converts a polyglot value to a pointer to MyStruct. Accessing members of the
+ * returned value is equivalent to calling {@link polyglot_get_member} or
+ * {@link polyglot_put_member} on the original value.
+ *
+ * \code
+ * struct MyStruct *polyglot_as_MyStruct_array(void *value);
+ * \endcode
+ *
+ * Converts a polyglot value to an array of MyStruct. Accessing the returned
+ * array is equivalent to calling {@link polyglot_get_array_element} or
+ * {@link polyglot_set_array_element} on the original value.
+ *
+ * For example, this code snippet:
+ *
+ * \code
+ * struct MyStruct *myStruct = polyglot_as_MyStruct(value);
+ * int x = myStruct->someMember;
+ * myStruct->someMember = 42;
+ *
+ * struct MyStruct *arr = polyglot_as_MyStruct_array(arrayValue);
+ * for (int i = 0; i < polyglot_get_array_size(arr); i++) {
+ *   sum += arr[i].someMember;
+ * }
+ * \endcode
+ *
+ * is equivalent to
+ *
+ * \code
+ * int x = polyglot_as_i32(polyglot_get_member(value, "someMember"));
+ * polyglot_put_member(value, "someMember", (int) 42);
+ *
+ * for (int i = 0; i < polyglot_get_array_size(arrayValue); i++) {
+ *   void *elem = polyglot_get_array_element(arrayValue, i);
+ *   sum += polyglot_as_i32(polyglot_get_member(elem, "someMember"));
+ * }
+ * \endcode
+ *
+ * This will also work for structs or arrays nested inside the top level struct.
+ * In this case, accesses will produce multiple nested access calls.
+ *
+ * For example:
+ *
+ * \code
+ * myStruct->nestedStruct.x = 42;
+ * \endcode
+ *
+ * is equivalent to
+ *
+ * \code
+ * polyglot_put_member(polyglot_get_member(value, "nestedStruct"), (int) 42);
+ * \endcode
+ */
 #define POLYGLOT_DECLARE_STRUCT(type)                                                                                                                \
   static struct type __polyglot_typeid_##type[0];                                                                                                    \
                                                                                                                                                      \
@@ -465,6 +553,8 @@ void *__polyglot_as_typed_array(void *ptr, void *typeid);
     void *ret = __polyglot_as_typed_array(p, __polyglot_typeid_##type);                                                                              \
     return (struct type *)ret;                                                                                                                       \
   }
+
+/** @} */
 
 #if defined(__cplusplus)
 }
