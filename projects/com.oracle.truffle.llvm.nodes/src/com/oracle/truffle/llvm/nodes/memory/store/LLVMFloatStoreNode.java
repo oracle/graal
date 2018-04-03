@@ -83,7 +83,7 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization(guards = "address.isManaged()")
     protected Object doOpManaged(LLVMTruffleObject address, float value) {
-        getForeignReadNode().execute(address, value);
+        getForeignWriteNode().execute(address, value);
         return null;
     }
 

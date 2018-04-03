@@ -83,7 +83,7 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNodeCommon {
 
     @Specialization(guards = "address.isManaged()")
     protected Object doOpManaged(LLVMTruffleObject address, boolean value) {
-        getForeignReadNode().execute(address, value ? (byte) 1 : (byte) 0);
+        getForeignWriteNode().execute(address, value ? (byte) 1 : (byte) 0);
         return null;
     }
 

@@ -122,9 +122,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMI8Vector doI8Vector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doI8Vector(addr.asNative(), memory);
+        protected LLVMI8Vector doI8Vector(LLVMTruffleObject addr) {
+            return doI8Vector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")
@@ -165,9 +164,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMI16Vector doI16Vector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doI16Vector(addr.asNative(), memory);
+        protected LLVMI16Vector doI16Vector(LLVMTruffleObject addr) {
+            return doI16Vector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")
@@ -208,9 +206,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMI32Vector doI32Vector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doI32Vector(addr.asNative(), memory);
+        protected LLVMI32Vector doI32Vector(LLVMTruffleObject addr) {
+            return doI32Vector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")
@@ -251,9 +248,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMI64Vector doI64Vector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doI64Vector(addr.asNative(), memory);
+        protected LLVMI64Vector doI64Vector(LLVMTruffleObject addr) {
+            return doI64Vector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")
@@ -294,9 +290,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMFloatVector doFloatVector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doFloatVector(addr.asNative(), memory);
+        protected LLVMFloatVector doFloatVector(LLVMTruffleObject addr) {
+            return doFloatVector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")
@@ -337,9 +332,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMDoubleVector doDoubleVector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doDoubleVector(addr.asNative(), memory);
+        protected LLVMDoubleVector doDoubleVector(LLVMTruffleObject addr) {
+            return doDoubleVector(addr.asNative());
         }
 
         @Specialization(guards = "addr.isManaged()")
@@ -380,9 +374,8 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         }
 
         @Specialization(guards = "addr.isNative()")
-        protected LLVMAddressVector doAddressVector(LLVMTruffleObject addr,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doAddressVector(addr.asNative(), memory);
+        protected LLVMAddressVector doAddressVector(LLVMTruffleObject addr) {
+            return doAddressVector(addr.asNative());
         }
 
         @Specialization

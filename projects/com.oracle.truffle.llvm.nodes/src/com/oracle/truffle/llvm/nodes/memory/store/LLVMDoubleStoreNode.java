@@ -83,7 +83,7 @@ public abstract class LLVMDoubleStoreNode extends LLVMStoreNodeCommon {
 
     @Specialization(guards = "address.isManaged()")
     protected Object doOpManaged(LLVMTruffleObject address, double value) {
-        getForeignReadNode().execute(address, value);
+        getForeignWriteNode().execute(address, value);
         return null;
     }
 

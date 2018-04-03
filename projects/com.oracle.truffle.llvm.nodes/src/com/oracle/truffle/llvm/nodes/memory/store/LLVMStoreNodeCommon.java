@@ -71,7 +71,7 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         return derefHandleGetReceiverNode;
     }
 
-    protected LLVMForeignWriteNode getForeignReadNode() {
+    protected LLVMForeignWriteNode getForeignWriteNode() {
         if (foreignWriteNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             foreignWriteNode = insert(createForeignWrite());
