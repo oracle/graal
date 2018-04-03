@@ -112,8 +112,6 @@ public final class SulongEngineOption {
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_NFI, SulongEngineOption.ENABLE_NFI_NAME).help(SulongEngineOption.ENABLE_NFI_INFO).category(
                         OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.DEBUG, SulongEngineOption.DEBUG_NAME).help(SulongEngineOption.DEBUG_INFO).category(
-                        OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.DEBUG_SYSCALLS, SulongEngineOption.DEBUG_SYSCALLS_NAME).help(SulongEngineOption.DEBUG_SYSCALLS_INFO).category(
                         OptionCategory.USER).build());
         options.add(OptionDescriptor.newBuilder(SulongEngineOption.NATIVE_CALL_STATS, SulongEngineOption.NATIVE_CALL_STATS_NAME).help(SulongEngineOption.NATIVE_CALL_STATS_INFO).category(

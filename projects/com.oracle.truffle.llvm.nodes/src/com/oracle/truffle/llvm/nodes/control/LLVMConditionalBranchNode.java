@@ -30,14 +30,15 @@
 package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
 @GenerateWrapper
 public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode implements InstrumentableNode {
@@ -110,7 +111,12 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode impl
 
         @Override
         public boolean executeCondition(VirtualFrame frame) {
-            return LLVMTypesGen.asBoolean(condition.executeGeneric(frame));
+            try {
+                return condition.executeI1(frame);
+            } catch (UnexpectedResultException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException(e);
+            }
         }
 
         @Override

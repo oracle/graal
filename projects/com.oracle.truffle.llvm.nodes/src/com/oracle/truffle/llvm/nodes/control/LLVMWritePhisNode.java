@@ -40,6 +40,7 @@ public final class LLVMWritePhisNode extends LLVMExpressionNode {
     @Children private final LLVMWriteNode[] writes;
 
     public LLVMWritePhisNode(LLVMExpressionNode[] from, LLVMWriteNode[] writes) {
+        assert from.length > 0 && writes.length > 0;
         this.from = from;
         this.writes = writes;
         assert from.length == writes.length;
@@ -49,8 +50,12 @@ public final class LLVMWritePhisNode extends LLVMExpressionNode {
     public Object executeGeneric(VirtualFrame frame) {
         // because of dependencies between the values, we need to read all the values before writing
         // any new value
-        Object[] values = readValues(frame);
-        writeValues(frame, values);
+        if (from.length == 1) {
+            writes[0].executeWithTarget(frame, from[0].executeGeneric(frame));
+        } else {
+            Object[] values = readValues(frame);
+            writeValues(frame, values);
+        }
         return null;
     }
 

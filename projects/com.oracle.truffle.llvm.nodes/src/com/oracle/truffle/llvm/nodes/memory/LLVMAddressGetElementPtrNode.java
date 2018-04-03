@@ -58,14 +58,14 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object intIncrement(Object addr, int val,
+    protected Object longIncrement(Object addr, long val,
                     @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(addr, incr);
     }
 
     @Specialization
-    protected Object longIncrement(Object addr, long val,
+    protected Object intIncrement(Object addr, int val,
                     @Cached("getIncrementPointerNode()") LLVMIncrementPointerNode incrementNode) {
         long incr = getTypeWidth() * val;
         return incrementNode.executeWithTarget(addr, incr);

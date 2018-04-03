@@ -93,14 +93,6 @@ public abstract class LLVMNode extends Node {
         }
     }
 
-    protected static PrintStream debugStream(ContextReference<LLVMContext> context) {
-        return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
-    }
-
-    protected static boolean debugEnabled(ContextReference<LLVMContext> context) {
-        return SulongEngineOption.isTrue(context.get().getEnv().getOptions().get(SulongEngineOption.DEBUG));
-    }
-
     protected static PrintStream nativeCallStatisticsStream(ContextReference<LLVMContext> context) {
         return SulongEngineOption.getStream(context.get().getEnv().getOptions().get(SulongEngineOption.NATIVE_CALL_STATS));
     }

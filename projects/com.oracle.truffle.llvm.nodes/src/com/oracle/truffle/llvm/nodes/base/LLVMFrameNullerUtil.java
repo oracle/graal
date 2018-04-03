@@ -99,6 +99,33 @@ public final class LLVMFrameNullerUtil {
         frame.setObject(frameSlot, LLVMAddress.nullPointer());
     }
 
+    public static void nullObject(VirtualFrame frame, FrameSlot frameSlot) {
+        CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo());
+        CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo() == null);
+        if (frameSlot.getInfo() != null) {
+            Type type = (Type) frameSlot.getInfo();
+            CompilerAsserts.partialEvaluationConstant(Type.isFunctionOrFunctionPointer(type));
+            CompilerAsserts.partialEvaluationConstant(type instanceof VectorType);
+            CompilerAsserts.partialEvaluationConstant(type instanceof VariableBitWidthType);
+            CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
+            if (Type.isFunctionOrFunctionPointer(type)) {
+                nullFunction(frame, frameSlot);
+            } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
+                nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
+            } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
+                frame.setObject(frameSlot, LLVMAddressVector.createNullVector());
+            } else if (type instanceof VariableBitWidthType) {
+                nullIVarBit(frame, frameSlot);
+            } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {
+                null80BitFloat(frame, frameSlot);
+            }
+        }
+
+        // This is a best effort approach. It could still be that LLVMAddress clashes with some
+        // other class.
+        nullAddress(frame, frameSlot);
+    }
+
     public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot) {
         CompilerAsserts.partialEvaluationConstant(frameSlot.getKind());
         switch (frameSlot.getKind()) {
@@ -121,35 +148,7 @@ public final class LLVMFrameNullerUtil {
                 nullDouble(frame, frameSlot);
                 break;
             case Object:
-                CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo());
-                CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo() == null);
-                if (frameSlot.getInfo() == null) {
-                    nullAddress(frame, frameSlot);
-                    break;
-                } else {
-                    Type type = (Type) frameSlot.getInfo();
-                    CompilerAsserts.partialEvaluationConstant(Type.isFunctionOrFunctionPointer(type));
-                    CompilerAsserts.partialEvaluationConstant(type instanceof VectorType);
-                    CompilerAsserts.partialEvaluationConstant(type instanceof VariableBitWidthType);
-                    CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
-                    if (Type.isFunctionOrFunctionPointer(type)) {
-                        nullFunction(frame, frameSlot);
-                    } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
-                        nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
-                    } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
-                        frame.setObject(frameSlot, LLVMAddressVector.createNullVector());
-                    } else if (type instanceof VariableBitWidthType) {
-                        nullIVarBit(frame, frameSlot);
-                    } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {
-                        null80BitFloat(frame, frameSlot);
-                    } else {
-                        /*
-                         * This is a best effort approach. It could still be that LLVMAddress and
-                         * LLVMGlobal clash.
-                         */
-                        nullAddress(frame, frameSlot);
-                    }
-                }
+                nullObject(frame, frameSlot);
                 break;
             case Illegal:
             default:
