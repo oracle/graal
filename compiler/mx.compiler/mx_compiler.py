@@ -456,9 +456,13 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
         args += ['-t', str(threads)]
     _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
+def _jdk_includes_corba(jdk):
+    # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
+    return jdk.javaCompliance < '11'
+
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops', '-Dgraal.CompilationFailureAction=ExitVM'] + _remove_empty_entries(extraVMarguments)
-    if jdk.javaCompliance >= '9':
+    if name == 'actors' and jdk.javaCompliance >= '9' and _jdk_includes_corba(jdk):
         vmargs += ['--add-modules', 'java.corba']
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
     _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
@@ -551,6 +555,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalaxb':    1,
         'tmt':        1
     }
+    if not _jdk_includes_corba(jdk):
+        mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
+        del scala_dacapos['actors']
     for name, iterations in sorted(scala_dacapos.iteritems()):
         with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
@@ -560,8 +567,9 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xbatch'])
 
     # ensure benchmark counters still work
-    with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
-        if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
+    if mx.get_arch() != 'aarch64': # GR-8364 Exclude benchmark counters on AArch64
+        with Task('DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test) as t:
+            if t: _gate_dacapo('pmd', 1, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.LIRProfileMoves=true', '-Dgraal.GenericDynamicCounters=true', '-XX:JVMCICounterSize=10'])
 
     # ensure -Xcomp still works
     with Task('XCompMode:product', tasks, tags=GraalTags.test) as t:
@@ -584,7 +592,13 @@ graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.test),
 ]
 
-_registers = 'o0,o1,o2,o3,f8,f9,d32,d34' if mx.get_arch() == 'sparcv9' else 'rbx,r11,r10,r14,xmm3,xmm11,xmm14'
+_registers = {
+    'sparcv9': 'o0,o1,o2,o3,f8,f9,d32,d34',
+    'amd64': 'rbx,r11,r10,r14,xmm3,xmm11,xmm14',
+    'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
+}
+if mx.get_arch() not in _registers:
+    mx.warn('No registers for register pressure tests are defined for architecture ' + mx.get_arch())
 
 _defaultFlags = ['-Dgraal.CompilationWatchDogStartDelay=60.0D']
 _assertionFlags = ['-esa', '-Dgraal.DetailedAsserts=true']
@@ -595,7 +609,7 @@ _coopFlags = ['-XX:-UseCompressedOops']
 _gcVerificationFlags = ['-XX:+UnlockDiagnosticVMOptions', '-XX:+VerifyBeforeGC', '-XX:+VerifyAfterGC']
 _g1VerificationFlags = ['-XX:-UseSerialGC', '-XX:+UseG1GC']
 _exceptionFlags = ['-Dgraal.StressInvokeWithExceptionNode=true']
-_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers]
+_registerPressureFlags = ['-Dgraal.RegisterPressure=' + _registers[mx.get_arch()]]
 _immutableCodeFlags = ['-Dgraal.ImmutableCode=true']
 
 graal_bootstrap_tests = [

@@ -77,6 +77,10 @@ linux-sparcv9 : ${linux} {
   capabilities : [linux, sparcv9]
 }
 
+linux-aarch64 : ${linux} {
+  capabilities : [linux, aarch64]
+}
+
 eclipse : {
   downloads : {
     ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
