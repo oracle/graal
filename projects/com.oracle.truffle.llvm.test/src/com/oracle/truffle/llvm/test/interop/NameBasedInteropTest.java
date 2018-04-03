@@ -44,7 +44,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.test.interop.values.StructObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -115,7 +115,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     public void getArray(@Inject(GetArrayNode.class) CallTarget get) {
         Object[] arr = new Object[42];
         arr[3] = value;
-        Object actual = get.call(JavaInterop.asTruffleObject(arr), 3);
+        Object actual = get.call(new ArrayObject(arr), 3);
         Assert.assertEquals(value, actual);
     }
 
@@ -129,7 +129,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     @Test
     public void setArray(@Inject(SetArrayNode.class) CallTarget set) {
         Object[] arr = new Object[42];
-        set.call(JavaInterop.asTruffleObject(arr), 5, value);
+        set.call(new ArrayObject(arr), 5, value);
         Assert.assertEquals(value, arr[5]);
     }
 

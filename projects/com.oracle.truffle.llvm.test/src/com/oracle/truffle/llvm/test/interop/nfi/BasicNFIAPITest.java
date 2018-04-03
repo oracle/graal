@@ -34,8 +34,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.llvm.test.interop.nfi.util.TestCallback;
-import com.oracle.truffle.llvm.test.interop.nfi.util.TestCallback.Function;
+import com.oracle.truffle.llvm.test.interop.values.TestCallback;
+import com.oracle.truffle.llvm.test.interop.values.TestCallback.Function;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 

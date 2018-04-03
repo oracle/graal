@@ -27,41 +27,57 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.interop.nfi.util;
+package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = TestCallback.class)
-class TestCallbackMessageResolution {
+public class TestCallback implements TruffleObject {
+
+    public interface Function {
+
+        Object call(Object... args);
+    }
+
+    private final int arity;
+    private final Function function;
+
+    public TestCallback(int arity, Function function) {
+        this.arity = arity;
+        this.function = function;
+    }
+
+    @TruffleBoundary
+    Object call(Object... args) {
+        if (args.length == arity) {
+            Object ret = function.call(args);
+            return ret;
+        } else {
+            throw ArityException.raise(arity, args.length);
+        }
+    }
+
+    static boolean isInstance(TruffleObject object) {
+        return object instanceof ArrayObject;
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return TestCallbackForeign.ACCESS;
+    }
 
     @Resolve(message = "EXECUTE")
     abstract static class ExecuteNode extends Node {
 
         Object access(TestCallback callback, Object[] arguments) {
             Object res = callback.call(arguments);
-            return res == null ? JavaInterop.asTruffleObject(null) : res;
-        }
-    }
-
-    @Resolve(message = "IS_EXECUTABLE")
-    abstract static class IsExecutable extends Node {
-
-        @SuppressWarnings("unused")
-        boolean access(TestCallback receiver) {
-            return true;
-        }
-    }
-
-    @CanResolve
-    abstract static class CanResolveTestCallback extends Node {
-
-        boolean test(TruffleObject object) {
-            return object instanceof TestCallback;
+            return res == null ? new NullValue() : res;
         }
     }
 }
