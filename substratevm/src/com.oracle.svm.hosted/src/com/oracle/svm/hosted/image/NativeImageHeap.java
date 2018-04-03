@@ -44,6 +44,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -314,9 +315,7 @@ public final class NativeImageHeap {
     private boolean isCanonicalizable(Object object, boolean parentCanonicalizable) {
         if (object instanceof String) {
             final String str = (String) object;
-            // Because I want Strings to be immutable in the native image heap,
-            // I have to fill in hash field, even if I don't use it.
-            str.hashCode();
+            forceHashCodeComputation(str);
             if (hostInternedString(str)) {
                 /*
                  * The string is interned by the host VM, so it must also be interned in our image.
@@ -333,6 +332,14 @@ public final class NativeImageHeap {
             return true;
         }
         return parentCanonicalizable;
+    }
+
+    /**
+     * For immutable Strings in the native image heap, force eager computation of the hash field.
+     */
+    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
+    private static void forceHashCodeComputation(final String str) {
+        str.hashCode();
     }
 
     private static boolean isInstance(List<Class<?>> classList, Object object) {

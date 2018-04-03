@@ -250,7 +250,7 @@ public abstract class JavaThreads {
      * The manuallyStarted parameter is true if this thread was started directly by calling
      * assignJavaThread(Thread). It is false when the thread is started using
      * PosixJavaThreads.pthreadStartRoutine, e.g., called from PosixJavaThreads.start0.
-     * 
+     *
      * @return true if successful; false if a {@link Thread} object has already been assigned.
      */
     public boolean assignJavaThread(Thread thread, boolean manuallyStarted) {
@@ -455,17 +455,19 @@ public abstract class JavaThreads {
     }
 
     private static StackTraceElement[] getStackTrace(IsolateThread thread) {
-        StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
         if (thread == CEntryPointContext.getCurrentIsolateThread()) {
             /*
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
+            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
             JavaStackWalker.walkCurrentThread(readCallerStackPointer(), readReturnAddress(), stackTraceBuilder);
+            return stackTraceBuilder.getTrace();
         } else {
+            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
             JavaStackWalker.walkThread(thread, stackTraceBuilder);
+            return stackTraceBuilder.getTrace();
         }
-        return stackTraceBuilder.getTrace();
     }
 
     /** Initialize thread ID and autonumber sequences in the image heap. */
