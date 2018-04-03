@@ -477,13 +477,6 @@ class NativeImage {
                     extraImageArgs.add(leftoverArg);
                 }
             }
-            if (!leftoverArgs.isEmpty()) {
-                if (leftoverArgs.size() == 1) {
-                    showError("Unrecognized option: " + leftoverArgs.get(0));
-                } else {
-                    showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unrecognized options: ", "")));
-                }
-            }
 
             /* Main-class from customImageBuilderArgs counts as explicitMainClass */
             boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
@@ -515,6 +508,11 @@ class NativeImage {
                 /* extraImageArgs executable name overrules previous specification */
                 replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
             }
+        }
+
+        if (!leftoverArgs.isEmpty()) {
+            String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
+            showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
         }
 
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
