@@ -1481,5 +1481,10 @@ public class PolyglotEngine {
         public boolean isDefaultFileSystem(FileSystem fs) {
             return false;
         }
+
+        @Override
+        public String getLanguageHome(Object engineObject) {
+            return ((PolyglotRuntime.LanguageShared) engineObject).cache.getLanguageHome();
+        }
     }
 }

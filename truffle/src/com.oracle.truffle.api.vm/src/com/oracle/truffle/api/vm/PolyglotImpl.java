@@ -848,6 +848,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public boolean isDefaultFileSystem(FileSystem fs) {
             return FileSystems.getDefaultFileSystem() == fs;
         }
-    }
 
+        @Override
+        public String getLanguageHome(Object engineObject) {
+            return ((PolyglotLanguage) engineObject).cache.getLanguageHome();
+        }
+    }
 }
