@@ -233,13 +233,12 @@ public final class LLVMContext {
         return environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
     }
 
-    @SuppressWarnings("deprecation")
-    private static LLVMTruffleObject toTruffleObjects(String[] values) {
+    private LLVMTruffleObject toTruffleObjects(String[] values) {
         TruffleObject[] result = new TruffleObject[values.length];
         for (int i = 0; i < values.length; i++) {
-            result[i] = com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(values[i].getBytes());
+            result[i] = (TruffleObject) env.asGuestValue(values[i].getBytes());
         }
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(result)));
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown((TruffleObject) env.asGuestValue(result)));
     }
 
     public void dispose(LLVMMemory memory) {
