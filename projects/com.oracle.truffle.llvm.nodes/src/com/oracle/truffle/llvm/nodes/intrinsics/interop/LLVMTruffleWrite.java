@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -46,8 +44,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -88,19 +86,17 @@ public final class LLVMTruffleWrite {
         @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
         protected Object cached(LLVMTruffleObject value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("readStr.executeWithTarget(id)") String cachedId,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+                        @Cached("readStr.executeWithTarget(id)") String cachedId) {
             TruffleObject foreign = asForeign.execute(value);
-            doWrite(foreignWrite, foreign, cachedId, prepareValueForEscape.executeWithTarget(v, context.get()));
+            doWrite(foreignWrite, foreign, cachedId, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
         @Specialization
         protected Object doIntrinsic(LLVMTruffleObject value, Object id, Object v,
-                        @Cached("createReadString()") LLVMReadStringNode readStr,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+                        @Cached("createReadString()") LLVMReadStringNode readStr) {
             TruffleObject foreign = asForeign.execute(value);
-            doWrite(foreignWrite, foreign, readStr.executeWithTarget(id), prepareValueForEscape.executeWithTarget(v, context.get()));
+            doWrite(foreignWrite, foreign, readStr.executeWithTarget(id), prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
@@ -125,10 +121,9 @@ public final class LLVMTruffleWrite {
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMTruffleObject value, int id, Object v,
-                        @Cached("getContextReference()") ContextReference<LLVMContext> context) {
+        protected Object doIntrinsic(LLVMTruffleObject value, int id, Object v) {
             TruffleObject foreign = asForeign.execute(value);
-            doWriteIdx(foreignWrite, foreign, id, prepareValueForEscape.executeWithTarget(v, context.get()));
+            doWriteIdx(foreignWrite, foreign, id, prepareValueForEscape.executeWithTarget(v));
             return null;
         }
 
