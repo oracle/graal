@@ -276,6 +276,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 heap.setWritableSection(heapSection.getName(), heap.getReadOnlySectionSize());
                 defineDataSymbol(PosixIsolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
                 defineDataSymbol(PosixIsolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapSize);
+
+                final long relocatableOffset = heap.getReadOnlyRelocatablePartitionOffset();
+                final long relocatableSize = heap.getReadOnlyRelocatablePartitionSize();
+                defineDataSymbol(PosixIsolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, relocatableOffset);
+                defineDataSymbol(PosixIsolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, relocatableOffset + relocatableSize);
             } else {
                 heapSectionBuffer = null;
                 heapSectionImpl = null;
