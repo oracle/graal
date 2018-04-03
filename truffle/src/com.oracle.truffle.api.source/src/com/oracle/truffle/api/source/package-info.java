@@ -25,13 +25,13 @@
 
 /*
  @ApiInfo(
- group="Stable"
+ group="Truffle"
  )
  */
 
 /**
  * Represents a {@link com.oracle.truffle.api.source.Source source file}.
- * 
+ *
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.source;

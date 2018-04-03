@@ -25,16 +25,14 @@
 
 /*
  @ApiInfo(
- group="To Review"
+ group="Truffle"
  )
  */
 
 /**
- * {@link com.oracle.truffle.api.dsl.NodeChild Domain specific language} for creating
- * {@link com.oracle.truffle.api.nodes nodes AST nodes}. Rather than building
- * {@link com.oracle.truffle.api.nodes.Node nodes} from scratch, consider using the
- * {@link com.oracle.truffle.api.dsl.NodeChild DSL}.
- * 
+ * Domain specific language that allows to specify specializing AST nodes in a declarative way. Uses
+ * annotation processor to generate the necessary subclass.
+ *
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.dsl;
