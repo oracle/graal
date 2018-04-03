@@ -35,8 +35,8 @@ builds += [
   ${gateTest}          ${labsjdk8}       ${gateLinuxSPARC}   {name: "weekly-test-compiler-test-8-linux-sparcv9",                      timelimit: "1:00:00", targets : [weekly]}
 
   # Linux AArch64
-  ${gateTestLenient}   ${labsjdk10}      ${gateLinuxAArch64} {name: "weekly-compiler-test-10-linux-aarch64", timelimit: "1:00:00", targets : [weekly]}
-  ${gateTestCTW}       ${labsjdk10}      ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-10-linux-aarch64", targets : [weekly]}
+  ${gateTestLenient}                     ${gateLinuxAArch64} {name: "weekly-compiler-test-10-linux-aarch64", timelimit: "1:00:00", targets : [weekly]}
+  ${gateTestCTW}                         ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-10-linux-aarch64", targets : [weekly]}
 
   # TraceRA
   ${gateTest}          ${labsjdk8}       ${gateLinuxAMD64TraceRA} {name: "weekly-test-compiler-test-8-linux-amd64-tracera", targets : [weekly]}
