@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -49,12 +48,10 @@ public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
     protected LLVMAddress doIntrinsic(LLVMTruffleObject value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        if (value.getOffset() == 0) {
-            LLVMAddress handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());
-            return handle;
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("cannot get a handle to pointer into the middle of foreign object");
+        LLVMAddress handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());
+        if (value.getOffset() != 0) {
+            return handle.increment(value.getOffset());
         }
+        return handle;
     }
 }
