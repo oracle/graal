@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.intrinsics.c;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -52,6 +51,7 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
         return doIntrinsic(globalAccess.executeWithTarget(value), memory);
     }
 
+    @SuppressWarnings("deprecation")
     @Specialization
     protected Object doIntrinsic(LLVMAddress value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -69,6 +69,6 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
             bytes[count++] = c;
             ptr += Byte.BYTES;
         }
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(bytes)));
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(bytes)));
     }
 }

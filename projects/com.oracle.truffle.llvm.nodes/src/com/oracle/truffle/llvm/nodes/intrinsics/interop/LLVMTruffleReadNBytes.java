@@ -40,7 +40,6 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -53,6 +52,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
 
+    @SuppressWarnings("deprecation")
     @Specialization
     protected Object doIntrinsic(LLVMAddress value, int n,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -63,9 +63,10 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             bytes[i] = memory.getI8(ptr);
             ptr += Byte.BYTES;
         }
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(bytes)));
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(bytes)));
     }
 
+    @SuppressWarnings("deprecation")
     @Specialization
     protected Object interop(LLVMTruffleObject objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
@@ -83,7 +84,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             }
             chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
         }
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(chars)));
+        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(chars)));
     }
 
     @Fallback

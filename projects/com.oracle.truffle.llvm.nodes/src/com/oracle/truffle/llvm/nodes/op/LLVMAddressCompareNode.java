@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ForeignToComparableValueNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
@@ -280,14 +279,19 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         return op.compare(convertVal1.execute(val1), convertVal2.execute(val2));
     }
 
-    @ImportStatic(JavaInterop.class)
     abstract static class LLVMForeignEqualsNode extends Node {
 
         abstract boolean execute(TruffleObject obj1, TruffleObject obj2);
 
+        @SuppressWarnings("deprecation")
+        protected static boolean isJavaObject(TruffleObject obj) {
+            return com.oracle.truffle.api.interop.java.JavaInterop.isJavaObject(obj);
+        }
+
+        @SuppressWarnings("deprecation")
         @Specialization(guards = {"isJavaObject(obj1)", "isJavaObject(obj2)"})
         protected boolean doJava(TruffleObject obj1, TruffleObject obj2) {
-            return JavaInterop.asJavaObject(obj1) == JavaInterop.asJavaObject(obj2);
+            return com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(obj1) == com.oracle.truffle.api.interop.java.JavaInterop.asJavaObject(obj2);
         }
 
         @Specialization
