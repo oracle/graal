@@ -45,6 +45,8 @@ import org.graalvm.word.WordBase;
  * The optional parameter {@code index} denotes an index, i.e., the receiver is treated as an array
  * of the struct. The type must be a primitive integer type or a {@link WordBase word type}. Address
  * arithmetic is used to scale the index with the size of the struct.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
@@ -54,6 +56,8 @@ public @interface CFieldAddress {
      * Specifies the field name inside the {@link CStruct C struct}. If no name is provided, the
      * method name is used as the field name. A possible "addressOf" prefix of the method name is
      * removed.
+     *
+     * @since 1.0
      */
     String value() default "";
 }

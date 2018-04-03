@@ -24,29 +24,31 @@
  */
 package com.oracle.truffle.api.debug.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.junit.Test;
+
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
 
 public class DebugValueTest extends AbstractDebugTest {
 
@@ -93,7 +95,7 @@ public class DebugValueTest extends AbstractDebugTest {
                         "))\n");
         Context context = Context.create();
         context.eval(source);
-        Value functionValue = context.importSymbol("function");
+        Value functionValue = context.getBindings(InstrumentationTestLanguage.ID).getMember("function");
         assertNotNull(functionValue);
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
 
@@ -240,7 +242,7 @@ public class DebugValueTest extends AbstractDebugTest {
                     if (internal || ato.isInternal == internal) {
                         return new PropertyKeysTruffleObject();
                     } else {
-                        return JavaInterop.asTruffleObject(new Object[]{});
+                        return new EmptyKeysTruffleObject();
                     }
                 }
             }
@@ -259,7 +261,9 @@ public class DebugValueTest extends AbstractDebugTest {
 
                 @SuppressWarnings("unused")
                 public int access(ModifiableAttributesTruffleObject ato, String propName) {
-                    return KeyInfo.newBuilder().setReadable(ato.isReadable).setWritable(ato.isWritable).setInternal(ato.isInternal).build();
+                    return (ato.isReadable ? KeyInfo.READABLE : 0) |
+                                    (ato.isWritable ? KeyInfo.MODIFIABLE : 0) |
+                                    (ato.isInternal ? KeyInfo.INTERNAL : 0);
                 }
             }
         }
@@ -307,6 +311,37 @@ public class DebugValueTest extends AbstractDebugTest {
                 public Object access(PropertyKeysTruffleObject ato, int index) {
                     return "property";
                 }
+            }
+        }
+    }
+
+    @MessageResolution(receiverType = EmptyKeysTruffleObject.class)
+    static final class EmptyKeysTruffleObject implements TruffleObject {
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return EmptyKeysTruffleObjectForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof PropertyKeysTruffleObject;
+        }
+
+        @Resolve(message = "HAS_SIZE")
+        abstract static class PropertyKeysHasSizeNode extends Node {
+
+            @SuppressWarnings("unused")
+            public boolean access(PropertyKeysTruffleObject ato) {
+                return true;
+            }
+        }
+
+        @Resolve(message = "GET_SIZE")
+        abstract static class PropertyKeysGetSizeNode extends Node {
+
+            @SuppressWarnings("unused")
+            public int access(PropertyKeysTruffleObject ato) {
+                return 0;
             }
         }
     }

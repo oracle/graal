@@ -126,28 +126,6 @@ public class HostedInstanceClass extends HostedClass {
     }
 
     /*
-     * Wait/Notify condition field.
-     */
-
-    public boolean needWaitNotifyConditionField() {
-        return waitNotifyConditionFieldNeeded;
-    }
-
-    public void setNeedWaitNotifyConditionField() {
-        assert monitorFieldNeeded : "Object.wait(long) and Object.notify() need a lock field, too";
-        waitNotifyConditionFieldNeeded = true;
-    }
-
-    public int getWaitNotifyConditionFieldOffset() {
-        return waitNotifyConditionFieldOffset;
-    }
-
-    public void setWaitNotifyConditionFieldOffset(int waitNotifyConditionFieldOffset) {
-        assert this.waitNotifyConditionFieldOffset == 0 : "setting wait/notify condition field offset twice";
-        this.waitNotifyConditionFieldOffset = waitNotifyConditionFieldOffset;
-    }
-
-    /*
      * identityHashCode field.
      */
 

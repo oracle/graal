@@ -66,6 +66,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.Frame;
@@ -107,7 +108,8 @@ public class NodeParser extends AbstractParser<NodeData> {
                     Specialization.class,
                     NodeChild.class,
                     Executed.class,
-                    NodeChildren.class);
+                    NodeChildren.class,
+                    ReportPolymorphism.class);
 
     @Override
     protected NodeData parse(Element element, AnnotationMirror mirror) {
@@ -208,6 +210,11 @@ public class NodeParser extends AbstractParser<NodeData> {
             node.setReflectable(true);
         }
 
+        AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, ReportPolymorphism.class);
+        AnnotationMirror excludePolymorphism = findFirstAnnotation(lookupTypes, ReportPolymorphism.Exclude.class);
+        if (reportPolymorphism != null && excludePolymorphism == null) {
+            node.setReportPolymorphism(true);
+        }
         node.getFields().addAll(parseFields(lookupTypes, members));
         node.getChildren().addAll(parseChildren(node, lookupTypes, members));
         node.getChildExecutions().addAll(parseExecutions(node.getFields(), node.getChildren(), members));

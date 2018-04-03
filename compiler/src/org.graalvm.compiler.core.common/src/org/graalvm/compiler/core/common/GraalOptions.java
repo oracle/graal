@@ -262,6 +262,9 @@ public final class GraalOptions {
     @Option(help = "Track the NodeSourcePosition.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TrackNodeSourcePosition = new OptionKey<>(false);
 
+    @Option(help = "Track source stack trace where a node was inserted into the graph.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TrackNodeInsertion = new OptionKey<>(false);
+
     @Option(help = "Allow backend to match complex expressions.", type = OptionType.Debug)
     public static final OptionKey<Boolean> MatchExpressions = new OptionKey<>(true);
 

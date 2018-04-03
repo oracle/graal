@@ -22,9 +22,13 @@
  */
 package com.oracle.truffle.api.test.vm;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -35,12 +39,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
+import com.oracle.truffle.api.vm.*;
 
 /**
  * Bug report validating test.
@@ -52,6 +51,7 @@ import org.junit.Test;
  * problems with debugging later on. That is what the other part of this test - once it obtains
  * Debugger instance simulates.
  */
+@SuppressWarnings("deprecation")
 public class InitializationTest {
 
     private PolyglotEngine vm;
@@ -149,11 +149,6 @@ public class InitializationTest {
         @Override
         protected CallTarget parse(ParsingRequest env) {
             return Truffle.getRuntime().createCallTarget(new MMRootNode(this, env.getSource().createSection(1)));
-        }
-
-        @Override
-        protected Object getLanguageGlobal(MyEnv context) {
-            throw new UnsupportedOperationException();
         }
 
         @Override

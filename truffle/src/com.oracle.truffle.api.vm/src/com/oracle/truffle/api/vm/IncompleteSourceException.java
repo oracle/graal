@@ -26,13 +26,19 @@ package com.oracle.truffle.api.vm;
 
 import java.io.IOException;
 
+import com.oracle.truffle.api.TruffleException;
+
 /**
  * Indicates that the provided source was incomplete and requires further text to be executed.
- * 
+ *
  * @since 0.9
+ * @deprecated use implement {@link TruffleException} and implement
+ *             {@link TruffleException#isIncompleteSource()} instead.
  */
 @SuppressWarnings("serial")
+@Deprecated
 public class IncompleteSourceException extends IOException {
+
     /** @since 0.9 */
     public IncompleteSourceException() {
         super();

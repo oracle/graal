@@ -24,13 +24,14 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil.Thunk;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.Safepoint.SafepointException;
 import com.oracle.svm.core.util.VMError;
 
 /** The abstract base class of all VM operations. */
@@ -82,15 +83,25 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
 
     /** Public interface: Queue the operation for execution. */
     public final void enqueue() {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            // If I am single-threaded, I can just execute the operation.
-            execute();
-        } else {
-            // If I am multi-threaded, then I have to bring the system to a safepoint, etc.
-            setQueuingVMThread(KnownIntrinsics.currentVMThread());
-            VMOperationControl.enqueue(this);
-            setQueuingVMThread(WordFactory.nullPointer());
+        try {
+            if (!SubstrateOptions.MultiThreaded.getValue()) {
+                // If I am single-threaded, I can just execute the operation.
+                execute();
+            } else {
+                // If I am multi-threaded, then I have to bring the system to a safepoint, etc.
+                setQueuingVMThread(CEntryPointContext.getCurrentIsolateThread());
+                VMOperationControl.enqueue(this);
+                setQueuingVMThread(WordFactory.nullPointer());
+            }
+        } catch (SafepointException se) {
+            /* This exception is intended to be thrown from safepoint checks, at one's own risk */
+            throw rethrow(se.inner);
         }
+    }
+
+    @SuppressWarnings({"unchecked"})
+    static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 
     /** Convenience method for thunks that can be run by allocating a VMOperation. */
@@ -123,7 +134,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
         final VMOperationControl control = ImageSingletons.lookup(VMOperationControl.class);
         final VMOperation previousInProgress = control.getInProgress();
         try {
-            executingVMThread = KnownIntrinsics.currentVMThread();
+            executingVMThread = CEntryPointContext.getCurrentIsolateThread();
             control.setInProgress(this);
             operate();
         } finally {
@@ -134,7 +145,7 @@ public abstract class VMOperation extends VMOperationControl.AllocationFreeStack
 
     public static boolean isInProgress() {
         VMOperation cur = ImageSingletons.lookup(VMOperationControl.class).getInProgress();
-        return cur != null && cur.executingVMThread == KnownIntrinsics.currentVMThread();
+        return cur != null && cur.executingVMThread == CEntryPointContext.getCurrentIsolateThread();
     }
 
     /** Check that there is a VMOperation in progress. */

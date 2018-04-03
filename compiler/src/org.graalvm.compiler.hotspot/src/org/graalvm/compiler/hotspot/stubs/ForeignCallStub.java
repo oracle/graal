@@ -35,6 +35,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition;
@@ -224,35 +225,35 @@ public class ForeignCallStub extends Stub {
      * %r15 on AMD64) and is only prepended if {@link #prependThread} is true.
      */
     @Override
+    @SuppressWarnings("try")
     protected StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId) {
         WordTypes wordTypes = providers.getWordTypes();
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug).name(toString()).compilationId(compilationId).build();
-        graph.disableUnsafeAccessTracking();
-        graph.setTrackNodeSourcePosition();
 
-        GraphKit kit = new GraphKit(graph, providers, wordTypes, providers.getGraphBuilderPlugins());
-        ParameterNode[] params = createParameters(kit, args);
+        try {
+            ResolvedJavaMethod thisMethod = providers.getMetaAccess().lookupJavaMethod(ForeignCallStub.class.getDeclaredMethod("getGraph", DebugContext.class, CompilationIdentifier.class));
+            GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString());
+            StructuredGraph graph = kit.getGraph();
+            ParameterNode[] params = createParameters(kit, args);
+            ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
+            ValueNode result = createTargetCall(kit, params, thread);
+            kit.createInvoke(StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, graph));
+            if (isObjectResult) {
+                InvokeNode object = kit.createInvoke(HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
+                result = kit.createInvoke(StubUtil.class, "verifyObject", object);
+            }
+            kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");
 
-        ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
-        ValueNode result = createTargetCall(kit, params, thread);
-        kit.createInvoke(StubUtil.class, "handlePendingException", thread, ConstantNode.forBoolean(isObjectResult, graph));
-        if (isObjectResult) {
-            InvokeNode object = kit.createInvoke(HotSpotReplacementsUtil.class, "getAndClearObjectResult", thread);
-            result = kit.createInvoke(StubUtil.class, "verifyObject", object);
+            kit.inlineInvokes();
+            new RemoveValueProxyPhase().apply(graph);
+
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Stub graph before compilation");
+            return graph;
+        } catch (Exception e) {
+            throw GraalError.shouldNotReachHere(e);
         }
-        kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
-
-        debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");
-
-        kit.inlineInvokes();
-
-        new RemoveValueProxyPhase().apply(graph);
-
-        debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Stub graph before compilation");
-
-        return graph;
     }
 
     private ParameterNode[] createParameters(GraphKit kit, Class<?>[] args) {

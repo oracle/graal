@@ -32,9 +32,12 @@ import org.junit.Test;
 public class ExportValueTest {
     private Context ctx;
 
+    private Value bindings;
+
     @Before
     public void setUp() {
         this.ctx = Context.create();
+        this.bindings = ctx.getPolyglotBindings();
     }
 
     @After
@@ -44,22 +47,22 @@ public class ExportValueTest {
 
     @Test
     public void testToString() {
-        ctx.exportSymbol("tmp", 10);
-        Value value = ctx.importSymbol("tmp");
+        bindings.putMember("tmp", 10);
+        Value value = bindings.getMember("tmp");
         value.toString();
     }
 
     @Test
     public void testGetMetaObject() {
-        ctx.exportSymbol("tmp", 10);
-        Value value = ctx.importSymbol("tmp");
+        bindings.putMember("tmp", 10);
+        Value value = bindings.getMember("tmp");
         value.getMetaObject();
     }
 
     @Test
     public void testUnsupported() {
-        ctx.exportSymbol("tmp", 10);
-        Value value = ctx.importSymbol("tmp");
+        bindings.putMember("tmp", 10);
+        Value value = bindings.getMember("tmp");
         try {
             value.getArraySize();
             Assert.assertTrue("Should not reach here.", false);

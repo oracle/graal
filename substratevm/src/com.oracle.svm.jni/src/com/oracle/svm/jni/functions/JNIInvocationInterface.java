@@ -34,7 +34,6 @@ import java.io.CharConversionException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -43,6 +42,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -55,7 +55,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.option.RuntimeOptionParser;
-import com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -99,9 +98,9 @@ final class JNIInvocationInterface {
              * to get the global Java VM pointer. Revisit when isolates are fully supported.
              */
             boolean didAttach = false;
-            if (CEntryPointActions.enterIsolate(Word.nullPointer()) != 0) {
+            if (CEntryPointActions.enterIsolate(WordFactory.nullPointer()) != 0) {
                 // Either there is no isolate, or the current thread is not attached to it
-                if (CEntryPointActions.enterAttachThread(Word.nullPointer()) != 0) {
+                if (CEntryPointActions.enterAttachThread(WordFactory.nullPointer()) != 0) {
                     // Could not attach: there is no isolate (or there was some problem)
                     nVMs.write(0);
                     return JNIErrors.JNI_OK();
@@ -126,11 +125,11 @@ final class JNIInvocationInterface {
 
         static class JNICreateJavaVMPrologue {
             static void enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
-                if (CEntryPointActions.enterIsolate(Word.nullPointer()) == 0) {
+                if (CEntryPointActions.enterIsolate(WordFactory.nullPointer()) == 0) {
                     CEntryPointActions.leave();
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EEXIST()); // isolate exists
                 }
-                if (CEntryPointActions.enterCreateIsolate(Word.nullPointer()) != 0) {
+                if (CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer()) != 0) {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
                 }
             }
@@ -249,11 +248,11 @@ final class JNIInvocationInterface {
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_ERR());
                 }
                 if (version != JNI_VERSION_1_8() && version != JNI_VERSION_1_6() && version != JNI_VERSION_1_4() && version != JNI_VERSION_1_2() && version != JNI_VERSION_1_1()) {
-                    env.write(Word.nullPointer());
+                    env.write(WordFactory.nullPointer());
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EVERSION());
                 }
-                if (!CEntryPointContext.isCurrentThreadAttachedTo(vm.getFunctions().getIsolate())) {
-                    env.write(Word.nullPointer());
+                if (!CEntryPointActions.isCurrentThreadAttachedTo(vm.getFunctions().getIsolate())) {
+                    env.write(WordFactory.nullPointer());
                     CEntryPointActions.bailoutInPrologue(JNIErrors.JNI_EDETACHED());
                 }
                 if (CEntryPointActions.enterIsolate(vm.getFunctions().getIsolate()) != 0) {

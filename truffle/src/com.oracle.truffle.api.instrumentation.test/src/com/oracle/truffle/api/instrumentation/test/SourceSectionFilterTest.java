@@ -386,6 +386,171 @@ public class SourceSectionFilterTest {
     }
 
     @Test
+    public void testColumnIn() {
+        Source sampleSource = Source.newBuilder("123456789\n123456789").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Node root = createNode(sampleSource.createSection(0, 19));
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 1).build(),
+                        root, createNode(sampleSource.createSection(1, 5), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(1, 2).build(),
+                        root, createNode(sampleSource.createSection(0, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnIn(1, 1).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(4, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(1, 5), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(0, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(0, 2), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(1, 5), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(2, 2).build(),
+                        root, createNode(sampleSource.createSection(0, 5), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnIn(1, 1).build(),
+                        root, createNode(sampleSource.createUnavailableSection())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnIn(IndexRange.byLength(1, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnIn(IndexRange.byLength(1, 1), IndexRange.between(2, 3), IndexRange.byLength(3, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnIn(IndexRange.byLength(1, 1), IndexRange.byLength(3, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertNotNull(SourceSectionFilter.newBuilder().columnIn(2, 2).build().toString());
+    }
+
+    @Test
+    public void testColumnStartIn() {
+        Source sampleSource = Source.newBuilder("123456789\n123456789").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Node root = createNode(sampleSource.createSection(0, 19));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnStartsIn(IndexRange.byLength(2, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1))));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnStartsIn(IndexRange.byLength(2, 1)).build(),
+                        root, createNode(sampleSource.createSection(0, 2))));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnStartsIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 2))));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnStartsIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 2))));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnStartsIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(1, 2))));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnStartsIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(2, 1))));
+    }
+
+    @Test
+    public void testColumnEndsIn() {
+        Source sampleSource = Source.newBuilder("123456789\n123456789").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Node root = createNode(sampleSource.createSection(0, 19));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnEndsIn(IndexRange.byLength(2, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1))));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnEndsIn(IndexRange.byLength(2, 1)).build(),
+                        root, createNode(sampleSource.createSection(0, 1))));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnEndsIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 1))));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnEndsIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 1))));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnEndsIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(1, 1))));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnEndsIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(2, 1))));
+    }
+
+    @Test
+    public void testColumnNotIn() {
+        Source sampleSource = Source.newBuilder("123456789\n123456789").name("unknown").mimeType(InstrumentationTestLanguage.MIME_TYPE).build();
+        Node root = createNode(sampleSource.createSection(0, 19));
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 5), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(3, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(2, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(2, 5), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 2), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(0, 5), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(2, 2)).build(),
+                        root, createNode(sampleSource.createSection(1, 5), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, createNode(sampleSource.createUnavailableSection())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, createNode(sampleSource.createSection(0, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertFalse(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 1), IndexRange.between(2, 3), IndexRange.byLength(3, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertTrue(isInstrumented(SourceSectionFilter.newBuilder().columnNotIn(IndexRange.byLength(1, 1), IndexRange.byLength(3, 1)).build(),
+                        root, createNode(sampleSource.createSection(1, 1), tags())));
+
+        Assert.assertNotNull(SourceSectionFilter.newBuilder().columnIn(2, 2).build().toString());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testColumnInFail1() {
+        SourceSectionFilter.newBuilder().columnIn(0, 5);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testColumnInFail2() {
+        SourceSectionFilter.newBuilder().columnIn(3, -1);
+    }
+
+    @Test
     public void testMimeType() {
         String src = "line1\nline2\nline3\nline4";
         Source mime1 = Source.newBuilder(src).name("unknown").mimeType("mime1").build();

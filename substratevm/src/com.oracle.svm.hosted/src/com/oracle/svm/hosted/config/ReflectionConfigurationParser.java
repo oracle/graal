@@ -25,9 +25,6 @@ package com.oracle.svm.hosted.config;
 import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
 
 import java.io.File;
-
-// Checkstyle: allow reflection
-
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -36,19 +33,22 @@ import java.lang.reflect.Executable;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.shadowed.com.google.gson.JsonParseException;
-import com.oracle.shadowed.com.google.gson.stream.JsonReader;
-import com.oracle.shadowed.com.google.gson.stream.JsonToken;
-import com.oracle.svm.core.RuntimeReflection.ReflectionRegistry;
+import org.graalvm.nativeimage.impl.ReflectionRegistry;
+
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.hosted.json.JSONParser;
+import com.oracle.svm.hosted.json.JSONParserException;
 
 import jdk.vm.ci.meta.MetaUtil;
+
+// Checkstyle: allow reflection
 
 /**
  * Parses JSON describing classes, methods and fields and registers them with a
@@ -104,162 +104,124 @@ public final class ReflectionConfigurationParser {
     }
 
     private void parseAndRegister(Reader reader, String featureName, Object location, HostedOptionKey<String> option) {
-        /*
-         * Calling toString() on an anonymous subclass of JsonReader will return
-         * " at line <n> column <c>" which is useful for error messages.
-         */
-        JsonReader json = new JsonReader(reader) {
-        };
-        assert json.toString().equals(" at line 1 column 1");
         try {
-            parseClassArray(json);
-        } catch (Exception e) {
+            JSONParser parser = new JSONParser(reader);
+            Object json = parser.parse();
+            parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
+        } catch (IOException | JSONParserException e) {
             String errorMessage = e.getMessage();
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();
             }
-            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + json + ":\n" + errorMessage +
+            throw UserError.abort("Error parsing " + featureName + " configuration in " + location + ":\n" + errorMessage +
                             "\nVerify that the configuration matches the schema described in the " +
-                            HostedOptionParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
+                            SubstrateOptionsParser.commandArgument(PrintFlags, "+") + " output for option " + option.getName() + ".");
         }
     }
 
-    private void parseClassArray(JsonReader reader) throws IOException {
-        reader.beginArray();
-        while (reader.peek() == JsonToken.BEGIN_OBJECT) {
-            parseClass(reader);
+    private void parseClassArray(List<Object> classes) {
+        for (Object clazz : classes) {
+            parseClass(asMap(clazz, "second level of document must be class descriptor objects"));
         }
-        reader.endArray();
     }
 
-    private static boolean parseBoolean(JsonReader reader) throws IOException {
-        if (reader.peek() == JsonToken.STRING) {
-            String s = reader.nextString();
-            if (s.equals("true")) {
-                return true;
-            }
-            if (!s.equals("false")) {
-                throw new JsonParseException("Invalid boolean value \"" + s + "\"");
-            }
-            return false;
+    private void parseClass(Map<String, Object> data) {
+        Object classObject = data.get("name");
+        if (classObject == null) {
+            throw new JSONParserException("Missing atrribute 'name' in class descriptor object");
         }
-        return reader.nextBoolean();
-    }
+        String className = asString(classObject, "name");
 
-    private void parseClass(JsonReader reader) throws IOException {
-        reader.beginObject();
-        Class<?> clazz = null;
-        while (reader.hasNext()) {
-            String name = reader.nextName();
+        Class<?> clazz = classLoader.findClassByName(className, false);
+        if (clazz == null) {
+            throw new JSONParserException("Class " + className + " not found");
+        }
+
+        registry.register(clazz);
+
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String name = entry.getKey();
+            Object value = entry.getValue();
             if (name.equals("name")) {
-                if (clazz != null) {
-                    throw new JsonParseException("Class 'name' attribute cannot be repeated");
+                /* Already handled. */
+            } else if (name.equals("allDeclaredMethods")) {
+                if (asBoolean(value, "allDeclaredMethods")) {
+                    registry.register(clazz.getDeclaredMethods());
                 }
-                String className = reader.nextString();
-                clazz = classLoader.findClassByName(className, false);
-                if (clazz == null) {
-                    throw new JsonParseException("Class " + className + " not found");
+            } else if (name.equals("allPublicMethods")) {
+                if (asBoolean(value, "allPublicMethods")) {
+                    registry.register(clazz.getMethods());
                 }
-                registry.register(clazz);
+            } else if (name.equals("allDeclaredFields")) {
+                if (asBoolean(value, "allDeclaredFields")) {
+                    registry.register(clazz.getDeclaredFields());
+                }
+            } else if (name.equals("allPublicFields")) {
+                if (asBoolean(value, "allPublicFields")) {
+                    registry.register(clazz.getFields());
+                }
+            } else if (name.equals("methods")) {
+                parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+            } else if (name.equals("fields")) {
+                parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
             } else {
-                if (clazz == null) {
-                    throw new JsonParseException("Class 'name' attribute must precede '" + name + "' attribute");
-                }
-                if (name.equals("allDeclaredMethods")) {
-                    if (parseBoolean(reader)) {
-                        registry.register(clazz.getDeclaredMethods());
-                    }
-                } else if (name.equals("allPublicMethods")) {
-                    if (parseBoolean(reader)) {
-                        registry.register(clazz.getMethods());
-                    }
-                } else if (name.equals("allDeclaredFields")) {
-                    if (parseBoolean(reader)) {
-                        registry.register(clazz.getDeclaredFields());
-                    }
-                } else if (name.equals("allPublicFields")) {
-                    if (parseBoolean(reader)) {
-                        registry.register(clazz.getFields());
-                    }
-                } else if (name.equals("methods")) {
-                    parseMethods(reader, clazz);
-                } else if (name.equals("fields")) {
-                    parseFields(reader, clazz);
-                } else {
-                    throw new JsonParseException("Unknown class attribute '" + name +
-                                    "' (supported attributes: allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields)");
-                }
+                throw new JSONParserException("Unknown attribute '" + name +
+                                "' (supported attributes: allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " + clazz.getTypeName());
             }
         }
-        reader.endObject();
     }
 
-    private void parseFields(JsonReader reader, Class<?> clazz) throws IOException {
-        reader.beginArray();
-        while (reader.peek() == JsonToken.BEGIN_OBJECT) {
-            parseField(reader, clazz);
+    private void parseFields(List<Object> fields, Class<?> clazz) {
+        for (Object field : fields) {
+            parseField(asMap(field, "Elements of 'fields' array must be field descriptor objects"), clazz);
         }
-        reader.endArray();
     }
 
-    private void parseField(JsonReader reader, Class<?> clazz) throws IOException {
-        reader.beginObject();
+    private void parseField(Map<String, Object> data, Class<?> clazz) {
         String fieldName = null;
-        while (reader.hasNext()) {
-            String name = reader.nextName();
-            if (name.equals("name")) {
-                fieldName = reader.nextString();
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String propertyName = entry.getKey();
+            if (propertyName.equals("name")) {
+                fieldName = asString(entry.getValue(), "name");
             } else {
-                throw new JsonParseException("Unknown field attribute '" + name + "' (supported attributes: name)");
+                throw new JSONParserException("Unknown attribute '" + propertyName + "' (supported attributes: 'name') in definition of field for class '" + clazz.getTypeName() + "'");
             }
         }
-        reader.endObject();
+
         if (fieldName == null) {
-            throw new JsonParseException("Missing field 'name' attribute");
+            throw new JSONParserException("Missing atribute 'name' in definition of field for class " + clazz.getTypeName());
         }
+
         try {
             registry.register(clazz.getDeclaredField(fieldName));
         } catch (NoSuchFieldException e) {
-            throw new JsonParseException("Field " + clazz.getName() + "." + fieldName + " not found");
+            throw new JSONParserException("Field " + clazz.getTypeName() + "." + fieldName + " not found");
         }
     }
 
-    private void parseMethods(JsonReader reader, Class<?> clazz) throws IOException {
-        reader.beginArray();
-        while (reader.peek() == JsonToken.BEGIN_OBJECT) {
-            parseMethod(reader, clazz);
+    private void parseMethods(List<Object> methods, Class<?> clazz) {
+        for (Object method : methods) {
+            parseMethod(asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
         }
-        reader.endArray();
     }
 
-    private void parseMethod(JsonReader reader, Class<?> clazz) throws IOException {
-        reader.beginObject();
+    private void parseMethod(Map<String, Object> data, Class<?> clazz) {
         String methodName = null;
         Class<?>[] methodParameterTypes = null;
-        while (reader.hasNext()) {
-            String name = reader.nextName();
-            if (name.equals("name")) {
-                if (methodName != null) {
-                    throw new JsonParseException("Method 'name' attribute cannot be repeated");
-                }
-                methodName = reader.nextString();
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            String propertyName = entry.getKey();
+            if (propertyName.equals("name")) {
+                methodName = asString(entry.getValue(), "name");
+            } else if (propertyName.equals("parameterTypes")) {
+                methodParameterTypes = parseTypes(asList(entry.getValue(), "Attribute 'parameterTypes' must be a list of type names"));
             } else {
-                if (methodName == null) {
-                    throw new JsonParseException("Method 'name' attribute must be precede '" + name + "' attribute");
-                }
-                if (name.equals("parameterTypes")) {
-                    if (methodParameterTypes != null) {
-                        throw new JsonParseException("Method 'parameterTypes' attribute cannot be repeated");
-                    }
-                    methodParameterTypes = parseTypes(reader);
-                } else {
-                    throw new JsonParseException("Unknown method attribute '" + name + "' (supported attributes: name, parameterTypes)");
-                }
+                throw new JSONParserException(
+                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes') in definition of method for class '" + clazz.getTypeName() + "'");
             }
         }
-        reader.endObject();
+
         if (methodName == null) {
-            throw new JsonParseException("Missing method 'name' attribute");
+            throw new JSONParserException("Missing attribute 'name' in definition of method for class '" + clazz.getTypeName() + "'");
         }
 
         if (methodParameterTypes != null) {
@@ -273,7 +235,7 @@ public final class ReflectionConfigurationParser {
                 registry.register(method);
             } catch (NoSuchMethodException e) {
                 String parameterTypeNames = Stream.of(methodParameterTypes).map(Class::getSimpleName).collect(Collectors.joining(", "));
-                throw new JsonParseException("Method " + clazz.getName() + "." + methodName + "(" + parameterTypeNames + ") not found");
+                throw new JSONParserException("Method " + clazz.getTypeName() + "." + methodName + "(" + parameterTypeNames + ") not found");
             }
         } else {
             boolean found = false;
@@ -286,27 +248,55 @@ public final class ReflectionConfigurationParser {
                 }
             }
             if (!found) {
-                throw new JsonParseException("Method " + clazz.getName() + "." + methodName + " not found");
+                throw new JSONParserException("Method " + clazz.getTypeName() + "." + methodName + " not found");
             }
         }
     }
 
-    private Class<?>[] parseTypes(JsonReader reader) throws IOException {
-        reader.beginArray();
-        List<Class<?>> types = new ArrayList<>();
-        while (reader.peek() == JsonToken.STRING) {
-            String originalTypeName = reader.nextString();
-            String typeName = originalTypeName;
-            if (typeName.indexOf('[') != -1) { // accept "int[][]", "java.lang.String[]"
-                typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(originalTypeName), true, true);
+    private Class<?>[] parseTypes(List<Object> types) {
+        List<Class<?>> result = new ArrayList<>();
+        for (Object type : types) {
+            String typeName = asString(type, "types");
+            if (typeName.indexOf('[') != -1) {
+                /* accept "int[][]", "java.lang.String[]" */
+                typeName = MetaUtil.internalNameToJava(MetaUtil.toInternalName(typeName), true, true);
             }
             Class<?> clazz = classLoader.findClassByName(typeName, false);
             if (clazz == null) {
-                throw new JsonParseException("Class " + typeName + " not found");
+                throw new JSONParserException("Class " + typeName + " not found");
             }
-            types.add(clazz);
+            result.add(clazz);
         }
-        reader.endArray();
-        return types.toArray(new Class<?>[types.size()]);
+        return result.toArray(new Class<?>[result.size()]);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Object> asList(Object data, String errorMessage) {
+        if (data instanceof List) {
+            return (List<Object>) data;
+        }
+        throw new JSONParserException(errorMessage);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object data, String errorMessage) {
+        if (data instanceof Map) {
+            return (Map<String, Object>) data;
+        }
+        throw new JSONParserException(errorMessage);
+    }
+
+    private static String asString(Object value, String propertyName) {
+        if (value instanceof String) {
+            return (String) value;
+        }
+        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
+    }
+
+    private static boolean asBoolean(Object value, String propertyName) {
+        if (value instanceof Boolean) {
+            return (boolean) value;
+        }
+        throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
     }
 }

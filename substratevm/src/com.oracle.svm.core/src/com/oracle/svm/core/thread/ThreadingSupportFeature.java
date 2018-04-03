@@ -132,15 +132,16 @@ class ThreadingSupportImpl implements ThreadingSupport {
                 if (expired) {
                     try {
                         invokeCallback();
+                        /*
+                         * Note that the callback is allowed to throw an exception (e.g., to stop or
+                         * interrupt long-running code). All code that must run to reinitialize the
+                         * recurring callback state must therefore be in a finally-block.
+                         */
                     } finally {
                         now = System.nanoTime();
                         nextDeadline = now + targetIntervalNanos;
                     }
                 }
-            } catch (SafepointException se) {
-                throw se;
-            } catch (Throwable t) {
-                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
             } finally {
                 long remainingNanos = nextDeadline - now;
                 remainingNanos = (remainingNanos < MINIMUM_INTERVAL_NANOS) ? MINIMUM_INTERVAL_NANOS : remainingNanos;
@@ -160,8 +161,14 @@ class ThreadingSupportImpl implements ThreadingSupport {
         @Uninterruptible(reason = "Required by caller, but does not apply to callee.", calleeMustBe = false)
         @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
         private void invokeCallback() {
-            Safepoint.setSafepointRequested(SafepointRequestValues.RESET);
-            callback.run(CALLBACK_ACCESS);
+            try {
+                Safepoint.setSafepointRequested(SafepointRequestValues.RESET);
+                callback.run(CALLBACK_ACCESS);
+            } catch (SafepointException se) {
+                throw se;
+            } catch (Throwable t) {
+                Log.log().string("Exception caught in recurring callback (ignored): ").object(t).newline();
+            }
         }
     }
 

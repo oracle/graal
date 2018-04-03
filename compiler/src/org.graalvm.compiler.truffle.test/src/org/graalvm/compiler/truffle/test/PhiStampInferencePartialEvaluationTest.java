@@ -50,7 +50,7 @@ public class PhiStampInferencePartialEvaluationTest extends PartialEvaluationTes
         callTarget.call(new Object[]{true});
         callTarget.call(new Object[]{false});
         new D().get(); // ensure method cannot be statically bound without receiver type info
-        assertPartialEvalNoInvokes(rootNode, new Object[]{true});
+        assertPartialEvalNoInvokes(callTarget, new Object[]{true});
     }
 
     static class IfPhiStampTestNode extends AbstractTestNode {

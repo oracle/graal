@@ -30,23 +30,71 @@ import org.graalvm.word.SignedWord;
 
 /**
  * A pointer to a 64-bit C primitive value.
+ *
+ * @since 1.0
  */
 @CPointerTo(nameOfCType = "long long")
 public interface CLongPointer extends PointerBase {
 
+    /**
+     * Reads the value at the pointer address.
+     *
+     * @since 1.0
+     */
     long read();
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     long read(int index);
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     long read(SignedWord index);
 
+    /**
+     * Writes the value at the pointer address.
+     *
+     * @since 1.0
+     */
     void write(long value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(int index, long value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(SignedWord index, long value);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CLongPointer addressOf(int index);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CLongPointer addressOf(SignedWord index);
 }

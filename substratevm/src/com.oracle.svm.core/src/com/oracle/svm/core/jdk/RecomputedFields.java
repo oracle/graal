@@ -37,7 +37,6 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
@@ -76,12 +75,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * This file contains JDK fields that need to be intercepted because their value in the hosted environment is not
  * suitable for the Substrate VM. The list is derived from the intercepted fields of the Maxine VM.
  */
-
-@TargetClass(java.util.EnumMap.class)
-final class Target_java_util_EnumMap {
-    @Alias @RecomputeFieldValue(kind = Reset) //
-    private Set<Map.Entry<?, ?>> entrySet;
-}
 
 @TargetClass(sun.util.calendar.ZoneInfoFile.class)
 final class Target_sun_util_calendar_ZoneInfoFile {
@@ -226,22 +219,6 @@ class AtomicFieldUpdaterFeature implements Feature {
         } catch (NoSuchFieldException | IllegalAccessException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-    }
-}
-
-@TargetClass(java.util.concurrent.ConcurrentHashMap.class)
-final class Target_java_util_concurrent_ConcurrentHashMap {
-
-    @Substitute
-    private static Class<?> comparableClassFor(Object x) {
-        if (x instanceof Comparable) {
-            /*
-             * We cannot do all the generic interface checks that the original implementation is
-             * doing, because we do not have the necessary metadata at run time.
-             */
-            return x.getClass();
-        }
-        return null;
     }
 }
 

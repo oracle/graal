@@ -29,10 +29,12 @@ import java.util.Arrays;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.image.AbstractBootImage;
@@ -41,13 +43,13 @@ public class NativeImageOptions {
 
     public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
 
-    @Option(help = "Class containing the default entry point method. Ignored if kind != EXECUTABLE")//
+    @Option(help = "Class containing the default entry point method. Ignored if kind != EXECUTABLE", type = OptionType.User)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
 
     @Option(help = "Name of the main entry point method. Ignored if kind != EXECUTABLE")//
     public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
 
-    @Option(help = "Name of the output file to be generated")//
+    @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
 
     @Option(help = "Generate a SHARED_LIBRARY or EXECUTABLE image")//
@@ -102,7 +104,8 @@ public class NativeImageOptions {
     @Option(help = "Suppress console normal output for unittests")//
     public static final HostedOptionKey<Boolean> SuppressStdout = new HostedOptionKey<>(false);
 
-    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building")//
+    @APIOption(name = "report-unsupported-elements-at-runtime")//
+    @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<Boolean>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
@@ -159,9 +162,6 @@ public class NativeImageOptions {
     @Option(help = "Print unsafe operation offset warnings.)")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
-    @Option(help = "Automatically enable TruffleFeature when Truffle API is on bootstrap class path.)")//
-    public static final HostedOptionKey<Boolean> TruffleFeature = new HostedOptionKey<>(true);
-
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
         if (maxNumberOfThreads < 0) {
@@ -182,4 +182,7 @@ public class NativeImageOptions {
         }
         return analysisThreads;
     }
+
+    @Option(help = "The resource to be used as a preamble of the header file.", type = OptionType.Expert) //
+    public static final HostedOptionKey<String> PreamblePath = new HostedOptionKey<>(null);
 }

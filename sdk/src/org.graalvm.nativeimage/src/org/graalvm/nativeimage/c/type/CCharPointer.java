@@ -30,23 +30,71 @@ import org.graalvm.word.SignedWord;
 
 /**
  * A pointer to a 8-bit C primitive value.
+ *
+ * @since 1.0
  */
 @CPointerTo(nameOfCType = "char")
 public interface CCharPointer extends PointerBase {
 
+    /**
+     * Reads the value at the pointer address.
+     *
+     * @since 1.0
+     */
     byte read();
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     byte read(int index);
 
+    /**
+     * Reads the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     byte read(SignedWord index);
 
+    /**
+     * Writes the value at the pointer address.
+     *
+     * @since 1.0
+     */
     void write(byte value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(int index, byte value);
 
+    /**
+     * Writes the value of the array element with the specified index, treating the pointer as an
+     * array of the C type.
+     *
+     * @since 1.0
+     */
     void write(SignedWord index, byte value);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CCharPointer addressOf(int index);
 
+    /**
+     * Computes the address of the array element with the specified index, treating the pointer as
+     * an array of the C type.
+     *
+     * @since 1.0
+     */
     CCharPointer addressOf(SignedWord index);
 }

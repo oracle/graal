@@ -30,15 +30,16 @@ import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Collections;
 
 import org.junit.Test;
 
+@SuppressWarnings("deprecation")
 public class InvokeAndReadExecTest {
     interface Tester {
         String test(String param);
@@ -86,7 +87,7 @@ public class InvokeAndReadExecTest {
         abstract static class KeyInfoImpl extends Node {
             @SuppressWarnings("unused")
             protected int access(TruffleObject obj, String name) {
-                return name.equals("test") ? KeyInfo.newBuilder().setInvocable(true).build() : 0;
+                return name.equals("test") ? KeyInfo.INVOCABLE : KeyInfo.NONE;
             }
         }
 
@@ -140,7 +141,7 @@ public class InvokeAndReadExecTest {
         abstract static class KeyInfoImpl extends Node {
             @SuppressWarnings("unused")
             protected int access(ReadExecObject obj, String name) {
-                return name.equals("test") ? KeyInfo.newBuilder().setReadable(true).build() : 0;
+                return name.equals("test") ? KeyInfo.READABLE : 0;
             }
         }
 

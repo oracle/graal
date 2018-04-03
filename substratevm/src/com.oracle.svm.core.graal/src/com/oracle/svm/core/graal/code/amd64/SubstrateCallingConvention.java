@@ -27,14 +27,17 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SubstrateCallingConvention extends CallingConvention {
-    private JavaKind[] kinds;
+    private final Type type;
+    private final JavaKind[] kinds;
 
-    SubstrateCallingConvention(int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
+    SubstrateCallingConvention(Type type, JavaKind[] kinds, int stackSize, AllocatableValue returnLocation, AllocatableValue... argumentLocations) {
         super(stackSize, returnLocation, argumentLocations);
+        this.type = type;
+        this.kinds = kinds;
     }
 
-    void setArgumentStorageKinds(JavaKind[] kinds) {
-        this.kinds = kinds;
+    public Type getType() {
+        return type;
     }
 
     public JavaKind[] getArgumentStorageKinds() {

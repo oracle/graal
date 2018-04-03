@@ -57,7 +57,7 @@ import sun.misc.Unsafe;
  * array is created. This array has twice the capacity of the previous array, which plays a
  * significant role in how indexing is implemented.
  */
-public final class ObjectHandlesImpl extends ObjectHandles {
+public final class ObjectHandlesImpl implements ObjectHandles {
     /**
      * Internal weak reference. Other code can create its own {@link WeakReference} objects and
      * handles to them, which we should distinguish from explicit weak references. Therefore, we

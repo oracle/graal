@@ -27,6 +27,8 @@ import java.io.FileDescriptor;
 
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -38,16 +40,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.Integer;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.Math;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 public class RealLog extends Log {
+
     private boolean autoflush = false;
     private int indent = 0;
 
@@ -55,13 +51,11 @@ public class RealLog extends Log {
         super();
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean isEnabled() {
         return true;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log string(String value) {
         if (value != null) {
@@ -72,7 +66,6 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log string(String str, int fill, int align) {
 
@@ -91,7 +84,6 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log string(char[] value) {
         if (value != null) {
@@ -102,12 +94,6 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Returns raw pointer into an array.", callerMustBe = true)
-    private static CCharPointer arrayBase(Object array) {
-        return (CCharPointer) Word.objectToUntrackedPointer(array).add(LayoutEncoding.getArrayBaseOffset(KnownIntrinsics.readHub(array).getLayoutEncoding()));
-    }
-
-    @Uninterruptible(reason = "Uses raw pointer into an array.")
     @Override
     public Log string(byte[] value, int offset, int length) {
         if (value == null) {
@@ -115,16 +101,39 @@ public class RealLog extends Log {
         } else if ((offset < 0) || (offset > value.length) || (length < 0) || ((offset + length) > value.length) || ((offset + length) < 0)) {
             rawString("OUT OF BOUNDS");
         } else {
-            /*
-             * We pass out a pointer into the array, without any pinning, so that we stay guaranteed
-             * allocation-free.
-             */
-            rawBytes(arrayBase(value).addressOf(offset), WordFactory.unsigned(length));
+            rawBytes(value, offset, length);
         }
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
+    /**
+     * Write a raw java array by copying it first to a stack allocated temporary buffer. Caller must
+     * ensure that the offset and length are within bounds.
+     */
+    private void rawBytes(byte[] value, int offset, int length) {
+        /*
+         * Stack allocation needs an allocation size that is a compile time constant, so we split
+         * the byte array up in multiple chunks and write them separately.
+         */
+        final int chunkSize = 256;
+        final CCharPointer bytes = StackValue.get(chunkSize);
+
+        int chunkOffset = offset;
+        int inputLength = length;
+        while (inputLength > 0) {
+            int chunkLength = Math.min(inputLength, chunkSize);
+
+            for (int i = 0; i < chunkLength; i++) {
+                byte b = value[chunkOffset + i];
+                bytes.write(i, b);
+            }
+            rawBytes(bytes, WordFactory.unsigned(chunkLength));
+
+            chunkOffset += chunkLength;
+            inputLength -= chunkLength;
+        }
+    }
+
     @Override
     public Log string(CCharPointer value) {
         if (value.notEqual(WordFactory.nullPointer())) {
@@ -135,7 +144,6 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log character(char value) {
         CCharPointer bytes = StackValue.get(SizeOf.get(CCharPointer.class));
@@ -144,7 +152,6 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log newline() {
         character('\n');
@@ -164,13 +171,12 @@ public class RealLog extends Log {
      * @param signed true if the value should be treated as a signed value (and the digits are
      *            preceded by '-' for negative values).
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
+
     @Override
     public Log number(long value, int radix, boolean signed) {
         return number(value, radix, signed, 0, NO_ALIGN);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     private Log number(long value, int radix, boolean signed, int fill, int align) {
         if (radix < 2 || radix > 36) {
             /* Ignore bogus parameter value. */
@@ -224,50 +230,42 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log signed(WordBase value) {
         return number(value.rawValue(), 10, true);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log signed(int value) {
         return number(value, 10, true);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log signed(long value) {
         return number(value, 10, true);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log unsigned(WordBase value) {
         return number(value.rawValue(), 10, false);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log unsigned(WordBase value, int fill, int align) {
         return number(value.rawValue(), 10, false, fill, align);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log unsigned(int value) {
         // unsigned expansion from int to long
         return number(value & 0xffffffffL, 10, false);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log unsigned(long value) {
         return number(value, 10, false);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log unsigned(long value, int fill, int align) {
         return number(value, 10, false, fill, align);
@@ -289,7 +287,7 @@ public class RealLog extends Log {
      * @param decimals number of decimals after the . to be printed. Note that no rounding is
      *            performed and trailing zeros are printed.
      */
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
+
     @Override
     public Log rational(long numerator, long denominator, long decimals) {
         if (denominator == 0) {
@@ -317,19 +315,16 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log hex(WordBase value) {
         return string("0x").number(value.rawValue(), 16, false);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log hex(int value) {
         return string("0x").number(value & 0xffffffffL, 16, false);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log hex(long value) {
         return string("0x").number(value, 16, false);
@@ -338,13 +333,11 @@ public class RealLog extends Log {
     private static final byte[] trueString = Boolean.TRUE.toString().getBytes();
     private static final byte[] falseString = Boolean.FALSE.toString().getBytes();
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log bool(boolean value) {
         return string(value ? trueString : falseString);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log object(Object value) {
         return (value == null ? string("null") : string(value.getClass().getName()).string("@").hex(Word.objectToUntrackedPointer(value)));
@@ -352,7 +345,6 @@ public class RealLog extends Log {
 
     private static final char spaceChar = ' ';
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log spaces(int value) {
         for (int i = 0; i < value; i += 1) {
@@ -361,58 +353,44 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log flush() {
-        ConfigurationValues.getOSInterface().flushUninterruptibly(getOutputFile());
-        /* ignore error -- they're benign */
+        ImageSingletons.lookup(LogHandler.class).flush();
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log autoflush(boolean onOrOff) {
         autoflush = onOrOff;
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log indent(boolean addOrRemove) {
         int delta = addOrRemove ? 2 : -2;
-        indent = UninterruptibleUtils.Math.max(0, indent + delta);
+        indent = Math.max(0, indent + delta);
         return newline();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     private static byte digit(long d) {
         return (byte) (d + (d < 10 ? '0' : 'a' - 10));
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Some implementations allocate.")
-    @Uninterruptible(reason = "bytes can be a raw pointer into an array.", calleeMustBe = false)
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
-        if (!ConfigurationValues.getOSInterface().writeBytesUninterruptibly(getOutputFile(), bytes, length)) {
-            /*
-             * We are in a low-level log routine and output failed, so there is little we can do.
-             */
-            ConfigurationValues.getOSInterface().abort();
-        }
+        ImageSingletons.lookup(LogHandler.class).log(bytes, length);
         return this;
     }
 
     /* Allow subclasses to customize the file descriptor that we write to. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     protected FileDescriptor getOutputFile() {
         return FileDescriptor.err;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     private void rawString(String value) {
         rawString(SubstrateUtil.getRawStringChars(value));
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
     private void rawString(char[] value) {
         int length = value.length;
 
@@ -425,7 +403,7 @@ public class RealLog extends Log {
 
         int chunkOffset = 0;
         while (length > 0) {
-            int chunkLength = UninterruptibleUtils.Math.min(length, chunkSize);
+            int chunkLength = Math.min(length, chunkSize);
 
             for (int i = 0; i < chunkLength; i++) {
                 char c = value[chunkOffset + i];
@@ -438,10 +416,9 @@ public class RealLog extends Log {
         }
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log zhex(long value) {
-        int zeros = UninterruptibleUtils.Long.numberOfLeadingZeros(value);
+        int zeros = Long.numberOfLeadingZeros(value);
         int hexZeros = zeros / 4;
         for (int i = 0; i < hexZeros; i += 1) {
             character('0');
@@ -452,9 +429,8 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     private Log zhex(int value, int wordSizeInBytes) {
-        int zeros = UninterruptibleUtils.Integer.numberOfLeadingZeros(value) - 32 + (wordSizeInBytes * 8);
+        int zeros = Integer.numberOfLeadingZeros(value) - 32 + (wordSizeInBytes * 8);
         int hexZeros = zeros / 4;
         for (int i = 0; i < hexZeros; i += 1) {
             character('0');
@@ -465,27 +441,23 @@ public class RealLog extends Log {
         return this;
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log zhex(int value) {
         return zhex(value, 4);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log zhex(short value) {
         int intValue = value;
         return zhex(intValue & 0xffff, 2);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log zhex(byte value) {
         int intValue = value;
         return zhex(intValue & 0xff, 1);
     }
 
-    @Uninterruptible(reason = "Logging may be called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
         Pointer base = WordFactory.pointer(from.rawValue());

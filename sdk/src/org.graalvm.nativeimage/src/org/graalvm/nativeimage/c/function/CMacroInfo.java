@@ -33,6 +33,8 @@ import java.lang.annotation.Target;
  * Informational only. Used to annotate a method that implements features implemented by a macro in
  * C. There is no automatic way to translate a C macro to equivalent Java code. Therefore, the body
  * of the annotated method must be written manually, and updated manually when the C macro changes.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target({ElementType.METHOD})
@@ -40,6 +42,8 @@ public @interface CMacroInfo {
 
     /**
      * Specifies the name of the C macro the annotated method corresponds to.
+     *
+     * @since 1.0
      */
     String value() default "";
 }

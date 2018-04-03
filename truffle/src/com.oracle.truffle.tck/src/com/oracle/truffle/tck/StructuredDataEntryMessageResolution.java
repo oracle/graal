@@ -27,10 +27,11 @@ package com.oracle.truffle.tck;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = StructuredDataEntry.class)
+@SuppressWarnings("deprecation")
 class StructuredDataEntryMessageResolution {
 
     @Resolve(message = "HAS_KEYS")
@@ -53,13 +54,11 @@ class StructuredDataEntryMessageResolution {
     @Resolve(message = "KEY_INFO")
     abstract static class StructuredDataEntryKeyInfoNode extends Node {
 
-        private static final int readable = KeyInfo.newBuilder().setReadable(true).build();
-
         public Object access(StructuredDataEntry data, Object identifier) {
             if (data.getSchema().getNames().contains(identifier)) {
-                return readable;
+                return KeyInfo.READABLE;
             } else {
-                return 0;
+                return KeyInfo.NONE;
             }
         }
     }

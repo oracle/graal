@@ -24,23 +24,24 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.NoSuchElementException;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -53,12 +54,15 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.KeysObject;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -128,9 +132,34 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
     }
 
+    private static int getKeySize(TruffleObject object) {
+        try {
+            Object keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), object);
+            return (int) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), (TruffleObject) keys);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static boolean contains(TruffleObject object, String key) {
+        int keyInfo = ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), object, key);
+        return KeyInfo.isReadable(keyInfo);
+    }
+
+    private static Object read(TruffleObject object, String key) {
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), object, key);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static boolean isNull(Object object) {
+        return ForeignAccess.sendIsNull(Message.IS_NULL.createNode(), (TruffleObject) object);
+    }
+
     private static class DefaultScopeTester implements TestScopeInstrument.Tester {
 
-        @SuppressWarnings("rawtypes")
         public void doTestScope(TruffleInstrument.Env env, Node node, VirtualFrame frame) throws Exception {
             Iterable<Scope> lscopes = env.findLocalScopes(node, null); // lexical
             Iterable<Scope> dscopes = env.findLocalScopes(node, frame); // dynamic
@@ -152,29 +181,30 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
                 // Lexical access:
                 TruffleObject vars = (TruffleObject) lscope.getVariables();
-                Map varsMap = JavaInterop.asJavaObject(Map.class, vars);
                 final int numVars = Math.max(line - 3, 0);
-                assertEquals("Line = " + line + ", num vars:", numVars, varsMap.size());
+                int varSize = getKeySize(vars);
+
+                assertEquals("Line = " + line + ", num vars:", numVars, varSize);
                 if (numVars >= 1) {
-                    assertTrue("Var a: ", varsMap.containsKey("a"));
-                    assertNull(varsMap.get("a"));
+                    assertTrue("Var a: ", contains(vars, "a"));
+                    assertTrue(isNull(read(vars, "a")));
                 }
                 if (numVars >= 2) {
-                    assertTrue("Var b: ", varsMap.containsKey("b"));
-                    assertNull(varsMap.get("b"));
+                    assertTrue("Var b: ", contains(vars, "b"));
+                    assertTrue(isNull(read(vars, "b")));
                 }
 
                 // Dynamic access:
                 vars = (TruffleObject) dscope.getVariables();
-                varsMap = JavaInterop.asJavaObject(Map.class, vars);
-                assertEquals("Line = " + line + ", num vars:", numVars, varsMap.size());
+                varSize = getKeySize(vars);
+                assertEquals("Line = " + line + ", num vars:", numVars, varSize);
                 if (numVars >= 1) {
-                    assertTrue("Var a: ", varsMap.containsKey("a"));
-                    assertEquals("Var a: ", 10, varsMap.get("a"));
+                    assertTrue("Var a: ", contains(vars, "a"));
+                    assertEquals("Var a: ", 10, read(vars, "a"));
                 }
                 if (numVars >= 2) {
-                    assertTrue("Var b: ", varsMap.containsKey("b"));
-                    assertEquals("Var b: ", 20, varsMap.get("b"));
+                    assertTrue("Var b: ", contains(vars, "b"));
+                    assertEquals("Var b: ", 20, read(vars, "b"));
                 }
             }
             if (line == 6) {
@@ -213,16 +243,11 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
     @TruffleLanguage.Registration(name = "", version = "", id = "test-custom-variables-scope-language", mimeType = "x-testCustomVariablesScope")
     @ProvidedTags({StandardTags.StatementTag.class})
-    public static class CustomScopeLanguage extends TruffleLanguage<Object> {
+    public static class CustomScopeLanguage extends TruffleLanguage<Env> {
 
         @Override
-        protected Object createContext(Env env) {
-            return new Object();
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Object context) {
-            return null;
+        protected Env createContext(Env env) {
+            return env;
         }
 
         @Override
@@ -236,7 +261,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        public Iterable<Scope> findLocalScopes(Object context, Node node, Frame frame) {
+        public Iterable<Scope> findLocalScopes(Env context, Node node, Frame frame) {
             return new Iterable<Scope>() {
                 @Override
                 public Iterator<Scope> iterator() {
@@ -268,9 +293,9 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
 
         @Override
-        protected Iterable<Scope> findTopScopes(Object context) {
+        protected Iterable<Scope> findTopScopes(Env context) {
             return Collections.singleton(
-                            Scope.newBuilder("TopCustomScope", JavaInterop.asTruffleObject(new TopScopeJavaObject())).arguments(JavaInterop.asTruffleObject(new double[]{11.0, 22.0})).build());
+                            Scope.newBuilder("TopCustomScope", context.asGuestValue(new TopScopeJavaObject())).arguments(context.asGuestValue(new double[]{11.0, 22.0})).build());
         }
 
         public static final class TopScopeJavaObject {
@@ -349,17 +374,17 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
         protected Object getVariables(Frame f) {
             if (f == null) {
-                return JavaInterop.asTruffleObject("V1");
+                return new TestObject("V1");
             } else {
-                return JavaInterop.asTruffleObject("V1V2V3");
+                return new TestObject("V1V2V3");
             }
         }
 
         protected Object getArguments(Frame f) {
             if (f == null) {
-                return JavaInterop.asTruffleObject("A1");
+                return new TestObject("A1");
             } else {
-                return JavaInterop.asTruffleObject("A1A2A3");
+                return new TestObject("A1A2A3");
             }
         }
 
@@ -431,15 +456,15 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             assertEquals(node, scope.getNode());
 
             if (frame == null) {
-                assertEquals("V1", JavaInterop.asJavaObject((TruffleObject) scope.getVariables()));
+                assertEquals("V1", ((TestObject) scope.getVariables()).value);
             } else {
-                assertEquals("V1V2V3", JavaInterop.asJavaObject((TruffleObject) scope.getVariables()));
+                assertEquals("V1V2V3", ((TestObject) scope.getVariables()).value);
             }
 
             if (frame == null) {
-                assertEquals("A1", JavaInterop.asJavaObject((TruffleObject) scope.getArguments()));
+                assertEquals("A1", ((TestObject) scope.getArguments()).value);
             } else {
-                assertEquals("A1A2A3", JavaInterop.asJavaObject((TruffleObject) scope.getArguments()));
+                assertEquals("A1A2A3", ((TestObject) scope.getArguments()).value);
             }
         }
 
@@ -454,8 +479,36 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             assertNull(topScope.getNode());
             TruffleObject arguments = (TruffleObject) topScope.getArguments();
             TruffleObject variables = (TruffleObject) topScope.getVariables();
-            assertTrue(JavaInterop.isJavaObject(arguments));
-            assertTrue(JavaInterop.isJavaObject(variables));
+            assertTrue(ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), arguments));
+            assertTrue(ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), variables));
+        }
+
+    }
+
+    @MessageResolution(receiverType = TestObject.class)
+    static class TestObject implements TruffleObject {
+
+        final String value;
+
+        TestObject(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return TestObjectForeign.ACCESS;
+        }
+
+        public static boolean isInstance(TruffleObject obj) {
+            return obj instanceof KeysObject;
+        }
+
+        @Resolve(message = "HAS_SIZE")
+        abstract static class HasSizeNode extends Node {
+
+            public Object access(@SuppressWarnings("unused") TestObject obj) {
+                return true;
+            }
         }
 
     }

@@ -39,17 +39,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationP
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.hub.ClassSynchronizationSupport;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -308,6 +306,23 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
+        protected double getProfileProbability(boolean negate) {
+            double probability = super.getProfileProbability(negate);
+            if (negate && HostedConfiguration.instance().isUsingAOTProfiles()) {
+                /*
+                 * Probabilities from AOT profiles are about canonical conditions as they are coming
+                 * from Graal IR, but since `BytecodeParser` assumes that probabilities are about
+                 * original conditions, it will negate them when negating original conditions during
+                 * conversion to Graal IR. Therefore, we have to negate probabilities back to their
+                 * initial value in case of AOT profiles, as otherwise they would be applied to a
+                 * wrong branch.
+                 */
+                return 1 - probability;
+            }
+            return probability;
+        }
+
+        @Override
         public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
             boolean isStatic = targetMethod.isStatic();
             if (!isStatic) {
@@ -388,36 +403,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 // Nothing to do, we do not want explicit exception checks during graph building.
                 return receiver;
             }
-        }
-
-        @Override
-        protected void genMonitorEnter(ValueNode x, int bci) {
-            super.genMonitorEnter(interceptDynamicHub(x), bci);
-        }
-
-        @Override
-        protected void genMonitorExit(ValueNode x, ValueNode escapedReturnValue, int bci) {
-            super.genMonitorExit(interceptDynamicHub(x), escapedReturnValue, bci);
-        }
-
-        /**
-         * See {@link ClassSynchronizationSupport} for an explanation of this method. This method
-         * additionally replaces the inputs that have deopt proxies with a constant which leaves a
-         * dangling deopt proxy. This is done for two reasons: 1) It is terribly hard to go
-         * backwards and fix all Phi and DeoptProxy nodes to a new value. 2) This value is always a
-         * constant that does not participate in constant folding so it should not affect
-         * deoptimization.
-         */
-        private ValueNode interceptDynamicHub(ValueNode x) {
-            ValueNode node = GraphUtil.originalValue(x);
-            if (node.isConstant()) {
-                Object oldTarget = SubstrateObjectConstant.asObject(node.asConstant());
-                if (oldTarget instanceof DynamicHub) {
-                    JavaConstant newTarget = SubstrateObjectConstant.forObject(ClassSynchronizationSupport.synchronizationTarget((DynamicHub) oldTarget));
-                    return ConstantNode.forConstant(newTarget, metaAccess, graph);
-                }
-            }
-            return x;
         }
 
         @Override

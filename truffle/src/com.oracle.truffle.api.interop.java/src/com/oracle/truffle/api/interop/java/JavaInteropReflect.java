@@ -32,11 +32,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -60,6 +60,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
+@SuppressWarnings("deprecation")
 final class JavaInteropReflect {
     static final Object[] EMPTY = {};
 
@@ -77,42 +78,6 @@ final class JavaInteropReflect {
             }
         }
         return null;
-    }
-
-    static boolean isField(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
-        final boolean onlyStatic = object.isClass();
-        return classDesc.lookupField(name, onlyStatic) != null;
-    }
-
-    static boolean isMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
-        final boolean onlyStatic = object.isClass();
-        return classDesc.lookupMethod(name, onlyStatic) != null;
-    }
-
-    static boolean isInternalMethod(JavaObject object, String name) {
-        JavaClassDesc classDesc = JavaClassDesc.forClass(object.getLookupClass());
-        final boolean onlyStatic = object.isClass();
-        JavaMethodDesc method = classDesc.lookupMethod(name, onlyStatic);
-        return method != null && method.isInternal();
-    }
-
-    static boolean isMemberType(JavaObject object, String name) {
-        final boolean onlyStatic = object.isClass();
-        if (!onlyStatic) {
-            // no support for non-static members now
-            return false;
-        }
-        Class<?> clazz = object.getLookupClass();
-        if (Modifier.isPublic(clazz.getModifiers())) {
-            for (Class<?> t : clazz.getClasses()) {
-                if (isStaticTypeOrInterface(t) && t.getSimpleName().equals(name)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     static boolean isJNIName(String name) {
@@ -153,6 +118,59 @@ final class JavaInteropReflect {
     static JavaFieldDesc findField(Class<?> clazz, String name, boolean onlyStatic) {
         JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
         return classDesc.lookupField(name, onlyStatic);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static int findKeyInfo(Class<?> clazz, String name, boolean onlyStatic) {
+        if (TruffleOptions.AOT) {
+            return 0;
+        }
+
+        boolean readable = false;
+        boolean writable = false;
+        boolean invocable = false;
+        boolean internal = false;
+
+        JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
+        JavaMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
+        if (foundMethod != null) {
+            readable = true;
+            invocable = true;
+        } else if (isJNIName(name)) {
+            foundMethod = classDesc.lookupMethodByJNIName(name, onlyStatic);
+            if (foundMethod != null) {
+                readable = true;
+                invocable = true;
+                internal = true;
+            }
+        }
+
+        if (!readable) {
+            JavaFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
+            if (foundField != null) {
+                readable = true;
+                writable = true;
+            }
+        }
+
+        if (onlyStatic) {
+            if (!readable) {
+                if ("class".equals(name)) {
+                    readable = true;
+                }
+            }
+            if (!readable) {
+                Class<?> innerClass = findInnerClass(clazz, name);
+                if (innerClass != null) {
+                    readable = true;
+                }
+            }
+        }
+
+        if (readable) {
+            return KeyInfo.READABLE | (writable ? KeyInfo.MODIFIABLE : 0) | (invocable ? KeyInfo.INVOCABLE : 0) | (internal ? KeyInfo.INTERNAL : 0);
+        }
+        return 0;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -222,12 +240,13 @@ final class JavaInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(Class<?> clazz, boolean onlyInstance, boolean includeInternal) throws SecurityException {
+    static String[] findUniquePublicMemberNames(Class<?> clazz, boolean onlyStatic, boolean includeInternal) throws SecurityException {
         JavaClassDesc classDesc = JavaClassDesc.forClass(clazz);
-        Collection<String> names = new LinkedHashSet<>();
-        names.addAll(classDesc.getFieldNames(!onlyInstance));
-        names.addAll(classDesc.getMethodNames(!onlyInstance, includeInternal));
-        if (!onlyInstance) {
+        EconomicSet<String> names = EconomicSet.create();
+        names.addAll(classDesc.getFieldNames(onlyStatic));
+        names.addAll(classDesc.getMethodNames(onlyStatic, includeInternal));
+        if (onlyStatic) {
+            names.add("class");
             if (Modifier.isPublic(clazz.getModifiers())) {
                 // no support for non-static member types now
                 for (Class<?> t : clazz.getClasses()) {
@@ -238,7 +257,7 @@ final class JavaInteropReflect {
                 }
             }
         }
-        return names.toArray(new String[0]);
+        return names.toArray(new String[names.size()]);
     }
 
     @SuppressWarnings({"unchecked"})
@@ -375,7 +394,7 @@ class FunctionProxyNode extends HostEntryRootNode<TruffleObject> implements Supp
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Method method) {
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
         if (engine == null) {
             return createTarget(new FunctionProxyNode(receiverClass, method));
         }
@@ -507,7 +526,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 
     static CallTarget lookup(Object languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
         if (engine == null) {
             return createTarget(new ObjectProxyNode(receiverClass, interfaceClass));
         }
@@ -520,6 +539,7 @@ class ObjectProxyNode extends HostEntryRootNode<TruffleObject> implements Suppli
     }
 }
 
+@SuppressWarnings("deprecation")
 @ImportStatic({Message.class, JavaInteropReflect.class})
 abstract class ProxyInvokeNode extends Node {
 

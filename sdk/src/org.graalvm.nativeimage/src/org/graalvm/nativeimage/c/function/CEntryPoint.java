@@ -55,8 +55,7 @@ import org.graalvm.word.WordBase;
  * method with a {@link CEnumLookup} annotation. For enum return types, the enum class must have a
  * method that is annotated with {@link CEnumValue}.
  *
- * @see CEntryPointContext
- * @see CEntryPointLiteral
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
@@ -64,11 +63,15 @@ public @interface CEntryPoint {
 
     /**
      * The symbol name to use for this entry point.
+     *
+     * @since 1.0
      */
     String name() default "";
 
     /**
      * Method documentation to be included in the header file, as an array of lines.
+     *
+     * @since 1.0
      */
     String[] documentation() default "";
 }

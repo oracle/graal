@@ -22,53 +22,40 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
-import static org.graalvm.compiler.serviceprovider.JDK9Method.Java8OrEarlier;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.addOpens;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.getModule;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.getPackages;
-import static org.graalvm.compiler.serviceprovider.JDK9Method.isOpenTo;
-
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.ServiceConfigurationError;
-import java.util.ServiceLoader;
-import java.util.Set;
 
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
 
 /**
- * A mechanism for accessing service providers that abstracts over whether Graal is running on
- * JVMCI-8 or JVMCI-9. In JVMCI-8, a JVMCI specific mechanism is used to lookup services via the
- * hidden JVMCI class loader. In JVMCI-9, the standard {@link ServiceLoader} mechanism is used.
+ * Interface to functionality that abstracts over which JDK version Graal is running on.
  */
 public final class GraalServices {
 
-    private GraalServices() {
+    private static int getJavaSpecificationVersion() {
+        String value = System.getProperty("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
     }
 
     /**
-     * Opens all JVMCI packages to the module of a given class. This relies on JVMCI already having
-     * opened all its packages to the module defining {@link GraalServices}.
-     *
-     * @param other all JVMCI packages will be opened to the module defining this class
+     * The integer value corresponding to the value of the {@code java.specification.version} system
+     * property after any leading {@code "1."} has been stripped.
      */
-    public static void openJVMCITo(Class<?> other) {
-        Object jvmci = getModule(Services.class);
-        Object otherModule = getModule(other);
-        if (jvmci != otherModule) {
-            Set<String> packages = getPackages(jvmci);
-            for (String pkg : packages) {
-                boolean opened = isOpenTo(jvmci, pkg, otherModule);
-                if (!opened) {
-                    try {
-                        addOpens.invoke(jvmci, pkg, otherModule);
-                    } catch (Throwable throwable) {
-                        throw new InternalError(throwable);
-                    }
-                }
-            }
-        }
+    public static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
+
+    /**
+     * Determines if the Java runtime is version 8 or earlier.
+     */
+    public static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
+
+    private GraalServices() {
     }
 
     /**
@@ -77,46 +64,9 @@ public final class GraalServices {
      * @throws SecurityException if on JDK8 and a security manager is present and it denies
      *             {@link JVMCIPermission}
      */
+    @SuppressWarnings("unchecked")
     public static <S> Iterable<S> load(Class<S> service) {
         assert !service.getName().startsWith("jdk.vm.ci") : "JVMCI services must be loaded via " + Services.class.getName();
-        if (Java8OrEarlier) {
-            return load8(service);
-        }
-        Iterable<S> iterable = ServiceLoader.load(service);
-        return new Iterable<S>() {
-            @Override
-            public Iterator<S> iterator() {
-                Iterator<S> iterator = iterable.iterator();
-                return new Iterator<S>() {
-                    @Override
-                    public boolean hasNext() {
-                        return iterator.hasNext();
-                    }
-
-                    @Override
-                    public S next() {
-                        S provider = iterator.next();
-                        // Allow Graal extensions to access JVMCI
-                        openJVMCITo(provider.getClass());
-                        return provider;
-                    }
-
-                    @Override
-                    public void remove() {
-                        iterator.remove();
-                    }
-                };
-            }
-        };
-    }
-
-    /**
-     * {@code Services.load(Class)} is only defined in JVMCI-8.
-     */
-    private static volatile Method loadMethod;
-
-    @SuppressWarnings("unchecked")
-    private static <S> Iterable<S> load8(Class<S> service) throws InternalError {
         try {
             if (loadMethod == null) {
                 loadMethod = Services.class.getMethod("load", Class.class);
@@ -126,6 +76,12 @@ public final class GraalServices {
             throw new InternalError(e);
         }
     }
+
+    /**
+     * {@code Services.load(Class)} is only defined in JVMCI-8 so we use reflection to simplify
+     * compiling with javac on JDK 9 or later.
+     */
+    private static volatile Method loadMethod;
 
     /**
      * Gets the provider for a given service for which at most one provider must be available.
@@ -158,5 +114,33 @@ public final class GraalServices {
             }
         }
         return singleProvider;
+    }
+
+    /**
+     * Gets the class file bytes for {@code c}.
+     */
+    @SuppressWarnings("unused")
+    public static InputStream getClassfileAsStream(Class<?> c) throws IOException {
+        String classfilePath = c.getName().replace('.', '/') + ".class";
+        ClassLoader cl = c.getClassLoader();
+        if (cl == null) {
+            return ClassLoader.getSystemResourceAsStream(classfilePath);
+        }
+        return cl.getResourceAsStream(classfilePath);
+    }
+
+    private static final ClassLoader JVMCI_LOADER = GraalServices.class.getClassLoader();
+    private static final ClassLoader JVMCI_PARENT_LOADER = JVMCI_LOADER == null ? null : JVMCI_LOADER.getParent();
+    static {
+        assert JVMCI_PARENT_LOADER == null || JVMCI_PARENT_LOADER.getParent() == null;
+    }
+
+    /**
+     * Determines if invoking {@link Object#toString()} on an instance of {@code c} will only run
+     * trusted code.
+     */
+    public static boolean isToStringTrusted(Class<?> c) {
+        ClassLoader cl = c.getClassLoader();
+        return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
     }
 }

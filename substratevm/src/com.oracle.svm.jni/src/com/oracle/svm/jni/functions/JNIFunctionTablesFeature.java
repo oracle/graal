@@ -188,6 +188,7 @@ public class JNIFunctionTablesFeature implements Feature {
         int index = 0;
         int[] offsets = new int[methods.length];
         CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
+        access.registerAsImmutable(pointers);
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(invokeInterfaceMetadata, method.getName());
             offsets[index] = field.getOffsetInfo().getProperty();
@@ -209,6 +210,7 @@ public class JNIFunctionTablesFeature implements Feature {
         count += (jniKinds.size() * 3 + 1) * 3;
         int[] offsets = new int[count];
         CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
+        access.registerAsImmutable(pointers);
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
             offsets[index] = field.getOffsetInfo().getProperty();

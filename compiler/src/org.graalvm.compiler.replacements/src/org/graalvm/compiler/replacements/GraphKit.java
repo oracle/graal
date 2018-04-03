@@ -29,10 +29,12 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
@@ -54,6 +56,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -98,9 +101,20 @@ public class GraphKit implements GraphBuilderTool {
     protected abstract static class Structure {
     }
 
-    public GraphKit(StructuredGraph graph, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
+    public GraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, Plugins graphBuilderPlugins, CompilationIdentifier compilationId, String name) {
         this.providers = providers;
-        this.graph = graph;
+        StructuredGraph.Builder builder = new StructuredGraph.Builder(debug.getOptions(), debug).compilationId(compilationId);
+        if (name != null) {
+            builder.name(name);
+        } else {
+            builder.method(stubMethod);
+        }
+        this.graph = builder.build();
+        graph.disableUnsafeAccessTracking();
+        if (graph.trackNodeSourcePosition()) {
+            // Set up a default value that everything constructed by GraphKit will use.
+            graph.withNodeSourcePosition(NodeSourcePosition.substitution(stubMethod));
+        }
         this.wordTypes = wordTypes;
         this.graphBuilderPlugins = graphBuilderPlugins;
         this.lastFixedNode = graph.start();
@@ -228,7 +242,7 @@ public class GraphKit implements GraphBuilderTool {
      */
     @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
-        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.placeholder(method))) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
             assert method.isStatic() == (invokeKind == InvokeKind.Static);
             Signature signature = method.getSignature();
             JavaType returnType = signature.getReturnType(null);
@@ -250,6 +264,19 @@ public class GraphKit implements GraphBuilderTool {
                 }
             }
             return invoke;
+        }
+    }
+
+    @SuppressWarnings("try")
+    public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(ResolvedJavaMethod method, InvokeKind invokeKind,
+                    FrameStateBuilder frameStateBuilder, int invokeBci, int exceptionEdgeBci, ValueNode... args) {
+        try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
+            InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, exceptionEdgeBci, args);
+            exceptionPart();
+            ExceptionObjectNode exception = exceptionObject();
+            append(new UnwindNode(exception));
+            endInvokeWithException();
+            return result;
         }
     }
 

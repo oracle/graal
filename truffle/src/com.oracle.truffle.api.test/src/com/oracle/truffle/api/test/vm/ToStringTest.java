@@ -29,11 +29,12 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 
 import org.junit.After;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("deprecation")
 public class ToStringTest {
     private PolyglotEngine engine;
 

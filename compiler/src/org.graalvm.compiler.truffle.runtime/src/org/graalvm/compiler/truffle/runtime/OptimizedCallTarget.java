@@ -22,31 +22,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleAssumptions;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleBackgroundCompilation;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
-
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -64,10 +39,39 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
-
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionValues;
+
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TraceTruffleAssumptions;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleBackgroundCompilation;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsArePrinted;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreThrown;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleExperimentalSplitting;
 
 /**
  * Call target that is optimized by Graal upon surpassing a specific invocation threshold. That is,
@@ -109,12 +113,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile String nameCache;
     private final int uninitializedNodeCount;
 
+    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
+    private boolean needsSplit;
+
     public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
         uninitializedNodeCount = runtime().getTvmci().adoptChildrenAndCount(this.rootNode);
+        knownCallNodes = TruffleCompilerOptions.getValue(TruffleExperimentalSplitting) ? new ArrayList<>(1) : null;
     }
 
     public Assumption getNodeRewritingAssumption() {
@@ -495,7 +503,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
-    static Object castArrayFixedLength(Object[] args, int length) {
+    static Object[] castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -504,10 +512,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param type the type the compiler should assume for {@code value}
      * @param condition the condition that guards the assumptions expressed by this directive
-     * @param nonNull the nullness info the compiler should assume for {@code args}
+     * @param nonNull the nullness info the compiler should assume for {@code value}
+     * @param exact if {@code true}, the compiler should assume exact type info
      */
     @SuppressWarnings({"unchecked"})
-    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull) {
+    static <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
         return (T) value;
     }
 
@@ -651,5 +660,90 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     public <T> T getOptionValue(OptionKey<T> key) {
         return PolyglotCompilerOptions.getValue(rootNode, key);
+    }
+
+    synchronized void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
+        // Keeping all the known call sites can be too much to handle in some cases
+        // so we are limiting to a 100 call sites for now
+        if (knownCallNodes.size() < 100) {
+            knownCallNodes.add(new WeakReference<>(directCallNode));
+        }
+    }
+
+    // Also removes references to reclaimed objects
+    synchronized void removeKnownCallSite(OptimizedDirectCallNode callNodeToRemove) {
+        knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
+            @Override
+            public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
+                return nodeWeakReference.get() == callNodeToRemove || nodeWeakReference.get() == null;
+            }
+        });
+    }
+
+    boolean isNeedsSplit() {
+        return needsSplit;
+    }
+
+    void polymorphicSpecialize(Node source) {
+        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplitting)) {
+            List<Node> toDump = null;
+            if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
+                toDump = new ArrayList<>();
+                pullOutParentChain(source, toDump);
+            }
+            this.maybeSetNeedsSplit(0, toDump);
+        }
+    }
+
+    private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
+        final int numberOfKnownCallNodes;
+        final OptimizedDirectCallNode onlyCaller;
+        synchronized (this) {
+            numberOfKnownCallNodes = knownCallNodes.size();
+            onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
+        }
+        if (depth > TruffleCompilerOptions.getValue(TruffleExperimentalSplittingMaxPropagationDepth) || needsSplit || numberOfKnownCallNodes == 0 ||
+                        compilationProfile.getInterpreterCallCount() == 1) {
+            return false;
+        }
+        if (numberOfKnownCallNodes == 1) {
+            if (onlyCaller != null) {
+                final RootNode callerRootNode = onlyCaller.getRootNode();
+                if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
+                    final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+                    if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
+                        pullOutParentChain(onlyCaller, toDump);
+                    }
+                    needsSplit = callerTarget.maybeSetNeedsSplit(depth + 1, toDump);
+                }
+            }
+        } else {
+            needsSplit = true;
+            maybeDump(toDump);
+        }
+        return needsSplit;
+    }
+
+    private void maybeDump(List<Node> toDump) {
+        if (TruffleCompilerOptions.getValue(TruffleExperimentalSplittingDumpDecisions)) {
+            final List<OptimizedDirectCallNode> callers = new ArrayList<>();
+            synchronized (this) {
+                for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
+                    if (nodeRef.get() != null) {
+                        callers.add(nodeRef.get());
+                    }
+                }
+            }
+            PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, callers);
+        }
+    }
+
+    private static void pullOutParentChain(Node node, List<Node> toDump) {
+        Node rootNode = node;
+        while (rootNode.getParent() != null) {
+            toDump.add(rootNode);
+            rootNode = rootNode.getParent();
+        }
+        toDump.add(rootNode);
     }
 }

@@ -33,6 +33,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
+import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
@@ -51,23 +54,38 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testLoadSource1() throws IOException {
-        testLoadSourceImpl(1);
+        testLoadExecuteSourceImpl(true, 1);
     }
 
     @Test
     public void testLoadSource2() throws IOException {
-        testLoadSourceImpl(2);
+        testLoadExecuteSourceImpl(true, 2);
     }
 
     @Test
     public void testLoadSource3() throws IOException {
-        testLoadSourceImpl(5);
+        testLoadExecuteSourceImpl(true, 5);
     }
 
-    private void testLoadSourceImpl(int runTimes) throws IOException {
+    @Test
+    public void testExecuteSource1() throws IOException {
+        testLoadExecuteSourceImpl(false, 1);
+    }
+
+    @Test
+    public void testExecuteSource2() throws IOException {
+        testLoadExecuteSourceImpl(false, 2);
+    }
+
+    @Test
+    public void testExecuteSource3() throws IOException {
+        testLoadExecuteSourceImpl(false, 5);
+    }
+
+    private void testLoadExecuteSourceImpl(boolean load, int runTimes) throws IOException {
         int initialQueryCount = InstrumentationTestLanguage.getRootSourceSectionQueryCount();
 
-        Instrument instrument = context.getEngine().getInstruments().get("testLoadSource1");
+        Instrument instrument = context.getEngine().getInstruments().get("testLoadExecuteSource");
         Source source1 = lines("STATEMENT(EXPRESSION, EXPRESSION)");
         // running the same source multiple times should not have any effect on the test result.
         for (int i = 0; i < runTimes; i++) {
@@ -76,8 +94,13 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
         Assert.assertEquals("unexpected getSourceSection calls without source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
 
-        TestLoadSource1 impl = instrument.lookup(TestLoadSource1.class);
+        TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
         assertTrue("Lookup of registered service enables the instrument", isCreated(instrument));
+        if (load) {
+            impl.attachLoad();
+        } else {
+            impl.attachExecute();
+        }
 
         Source source2 = lines("ROOT(DEFINE(f1, STATEMENT(EXPRESSION)), DEFINE(f2, STATEMENT)," +
                         "BLOCK(CALL(f1), CALL(f2)))");
@@ -113,8 +136,13 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyNewEvents, source2, source3);
         assertEvents(impl.allEvents, source1, source2, source3);
 
-        instrument = engine.getInstruments().get("testLoadSource1");
-        impl = instrument.lookup(TestLoadSource1.class);
+        instrument = engine.getInstruments().get("testLoadExecuteSource");
+        impl = instrument.lookup(TestLoadExecuteSource.class);
+        if (load) {
+            impl.attachLoad();
+        } else {
+            impl.attachExecute();
+        }
 
         assertEvents(impl.onlyNewEvents);
         assertEvents(impl.allEvents, source4);
@@ -138,31 +166,63 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
     }
 
-    @Registration(id = "testLoadSource1", services = SourceListenerTest.TestLoadSource1.class)
-    public static class TestLoadSource1 extends TruffleInstrument {
+    @Registration(id = "testLoadExecuteSource", services = SourceListenerTest.TestLoadExecuteSource.class)
+    public static class TestLoadExecuteSource extends TruffleInstrument {
+        private Env env;
         List<com.oracle.truffle.api.source.Source> onlyNewEvents = new ArrayList<>();
         List<com.oracle.truffle.api.source.Source> allEvents = new ArrayList<>();
         List<com.oracle.truffle.api.source.Source> allNotInternalEvents = new ArrayList<>();
 
-        @Override
-        protected void onCreate(Env env) {
+        void attachLoad() {
             env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+                @Override
                 public void onLoad(LoadSourceEvent event) {
                     onlyNewEvents.add(event.getSource());
                 }
             }, false);
 
             env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+                @Override
                 public void onLoad(LoadSourceEvent event) {
                     allEvents.add(event.getSource());
                 }
             }, true);
 
             env.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().includeInternal(false).build(), new LoadSourceListener() {
+                @Override
                 public void onLoad(LoadSourceEvent event) {
                     allNotInternalEvents.add(event.getSource());
                 }
             }, true);
+        }
+
+        void attachExecute() {
+            env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    onlyNewEvents.add(event.getSource());
+                }
+            }, false);
+
+            env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    allEvents.add(event.getSource());
+                }
+            }, true);
+
+            env.getInstrumenter().attachExecuteSourceListener(SourceFilter.newBuilder().includeInternal(false).build(), new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    allNotInternalEvents.add(event.getSource());
+                }
+            }, true);
+        }
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onCreate(Env env) {
+            this.env = env;
             env.registerService(this);
         }
 
@@ -263,22 +323,127 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
 
     @Test
     public void testLoadSourceNoRootSection() throws Exception {
-        Instrument instrument = engine.getInstruments().get("testLoadSource1");
-        TestLoadSource1 impl = instrument.lookup(TestLoadSource1.class);
+        Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
+        TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
+        impl.attachLoad();
+        testNoRootSectionImpl(impl);
+    }
+
+    @Test
+    public void testExecuteSourceNoRootSection() throws Exception {
+        Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
+        TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
+        impl.attachExecute();
+        testNoRootSectionImpl(impl);
+    }
+
+    private void testNoRootSectionImpl(TestLoadExecuteSource impl) throws Exception {
         com.oracle.truffle.api.source.Source source1 = com.oracle.truffle.api.source.Source.newBuilder("line1\nline2").mimeType("mime").name("NoName1").build();
         com.oracle.truffle.api.source.Source source2 = com.oracle.truffle.api.source.Source.newBuilder("line3\nline4").mimeType("mime").name("NoName2").build();
         com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("line5\nline6").mimeType("mime").name("NoName3").build();
         Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
         RootNode rootA = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node1);
         assertEvents(impl.allEvents);
-        Truffle.getRuntime().createCallTarget(rootA);
+        Truffle.getRuntime().createCallTarget(rootA).call();
         assertEvents(impl.allEvents, source1);
 
         Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(2));
         Node node3 = new SourceSectionFilterTest.SourceSectionNode(source3.createSection(2));
         RootNode rootB = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2, node3);
         assertEvents(impl.allEvents, source1);
-        Truffle.getRuntime().createCallTarget(rootB);
+        Truffle.getRuntime().createCallTarget(rootB).call();
         assertEvents(impl.allEvents, source1, source2, source3);
     }
+
+    @Test
+    public void testLoadBindingDisposal() throws Exception {
+        testBindingDisposalImpl(true);
+    }
+
+    @Test
+    public void testExecuteBindingDisposal() throws Exception {
+        testBindingDisposalImpl(false);
+    }
+
+    private void testBindingDisposalImpl(boolean load) throws Exception {
+        Instrument instrument = engine.getInstruments().get("testBindingDisposal");
+        TestBindingDisposal impl = instrument.lookup(TestBindingDisposal.class);
+        impl.doAttach(load);
+        Source source1 = lines("STATEMENT");
+        run(source1);
+        assertEvents(impl.onlyNewEvents, source1);
+        assertEvents(impl.allEvents, source1);
+
+        impl.onlyNewBinding.dispose();
+        impl.allBinding.dispose();
+        // No new events received after bindings are disposed
+        com.oracle.truffle.api.source.Source source2a = com.oracle.truffle.api.source.Source.newBuilder("line2a").mimeType("mime").name("NoName2a").build();
+        com.oracle.truffle.api.source.Source source2b = com.oracle.truffle.api.source.Source.newBuilder("line2b").mimeType("mime").name("NoName2b").build();
+        Node node2a = new SourceSectionFilterTest.SourceSectionNode(source2a.createSection(1));
+        Node node2b = new SourceSectionFilterTest.SourceSectionNode(source2b.createSection(1));
+        RootNode root2 = SourceSectionFilterTest.createRootNode(engine, null, Boolean.FALSE, node2a, node2b);
+        Truffle.getRuntime().createCallTarget(root2).call();
+        assertEvents(impl.onlyNewEvents, source1);
+        assertEvents(impl.allEvents, source1);
+
+        // Clear and reattach
+        impl.onlyNewEvents.clear();
+        impl.allEvents.clear();
+        impl.doAttach(load);
+        Source source3 = lines("VARIABLE(a, 10)");
+        run(source3);
+        assertEvents(impl.onlyNewEvents, source3);
+        assertEvents(impl.allEvents, getSourceImpl(source1), source2a, source2b, getSourceImpl(source3));
+    }
+
+    @Registration(id = "testBindingDisposal", services = SourceListenerTest.TestBindingDisposal.class)
+    public static class TestBindingDisposal extends TruffleInstrument {
+
+        private Env env;
+        List<com.oracle.truffle.api.source.Source> onlyNewEvents = new ArrayList<>();
+        EventBinding<?> onlyNewBinding;
+        List<com.oracle.truffle.api.source.Source> allEvents = new ArrayList<>();
+        EventBinding<?> allBinding;
+
+        void doAttach(boolean load) {
+            if (load) {
+                onlyNewBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+                    @Override
+                    public void onLoad(LoadSourceEvent event) {
+                        onlyNewEvents.add(event.getSource());
+                    }
+                }, false);
+
+                allBinding = env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
+                    @Override
+                    public void onLoad(LoadSourceEvent event) {
+                        allEvents.add(event.getSource());
+                    }
+                }, true);
+            } else {
+                onlyNewBinding = env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                    @Override
+                    public void onExecute(ExecuteSourceEvent event) {
+                        onlyNewEvents.add(event.getSource());
+                    }
+                }, false);
+
+                allBinding = env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+                    @Override
+                    public void onExecute(ExecuteSourceEvent event) {
+                        allEvents.add(event.getSource());
+                    }
+                }, true);
+            }
+        }
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onCreate(Env env) {
+            this.env = env;
+            env.registerService(this);
+        }
+
+    }
+
 }

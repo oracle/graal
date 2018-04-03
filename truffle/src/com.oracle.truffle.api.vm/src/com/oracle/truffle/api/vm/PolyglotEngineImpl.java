@@ -58,6 +58,7 @@ import org.graalvm.polyglot.Language;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
@@ -70,9 +71,10 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.vm.PolyglotImpl.VMObject;
+import org.graalvm.polyglot.io.FileSystem;
 
-class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements VMObject {
+@SuppressWarnings("deprecation")
+class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
 
     /**
      * Context index for the host language.
@@ -701,8 +703,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     static PolyglotEngineImpl preInitialize(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, ClassLoader contextClassLoader) {
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(impl, out, err, in, new HashMap<>(), 0, null, false, true, contextClassLoader, true, true);
         synchronized (engine) {
-            engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
-            engine.addContext(engine.preInitializedContext);
+            try {
+                engine.preInitializedContext = PolyglotContextImpl.preInitialize(engine);
+                engine.addContext(engine.preInitializedContext);
+            } finally {
+                // Reset language homes from native-image compilatio time, will be recomputed in
+                // image execution time
+                LanguageCache.resetNativeImageCacheLanguageHomes();
+            }
         }
         return engine;
     }
@@ -853,10 +861,20 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    @SuppressWarnings({"hiding"})
+    public String getImplementationName() {
+        String name = Truffle.getRuntime().getName();
+        if (name.contains("Graal")) {
+            return "Graal Engine";
+        } else {
+            return "Default Engine";
+        }
+    }
+
+    @Override
+    @SuppressWarnings({"all"})
     public synchronized Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                    boolean allowCreateThread, Predicate<String> classFilter,
-                    Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages) {
+                    boolean allowCreateThread, boolean allowHostIO, Predicate<String> classFilter,
+                    Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem) {
         checkState();
         if (boundEngine && preInitializedContext == null && !contexts.isEmpty()) {
             throw new IllegalArgumentException("Automatically created engines cannot be used to create more than one context. " +
@@ -869,12 +887,18 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         } else {
             allowedLanguages = new HashSet<>(Arrays.asList(onlyLanguages));
         }
+        final FileSystem fs;
+        if (allowHostIO) {
+            fs = fileSystem != null ? fileSystem : FileSystems.getDefaultFileSystem();
+        } else {
+            fs = FileSystems.newNoIOFileSystem();
+        }
         PolyglotContextImpl contextImpl = preInitializedContext;
         preInitializedContext = null;
         if (contextImpl != null) {
             boolean patchResult;
             try {
-                patchResult = contextImpl.patch(out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages);
+                patchResult = contextImpl.patch(out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages, fs);
             } catch (RuntimeException re) {
                 contextImpl.closeImpl(false, false);
                 PolyglotContextImpl.disposeStaticContext(null);
@@ -887,7 +911,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             }
         }
         if (contextImpl == null) {
-            contextImpl = new PolyglotContextImpl(this, out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages);
+            contextImpl = new PolyglotContextImpl(this, out, err, in, allowHostAccess, allowCreateThread, classFilter, options, arguments, allowedLanguages, fs);
             addContext(contextImpl);
         }
         Context api = impl.getAPIAccess().newContext(contextImpl);

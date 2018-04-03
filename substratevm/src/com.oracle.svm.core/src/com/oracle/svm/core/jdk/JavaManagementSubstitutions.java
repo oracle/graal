@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.RuntimeMXBean;
@@ -43,6 +44,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(java.lang.management.ManagementFactory.class)
@@ -102,10 +104,11 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public List<String> getInputArguments() {
+        if (ImageSingletons.contains(JavaMainSupport.class)) {
+            return ImageSingletons.lookup(JavaMainSupport.class).getInputArguments();
+        }
         return Collections.emptyList();
     }
-
-    /* All remaining methods are unsupported on Substrate VM. */
 
     @Override
     public ObjectName getObjectName() {
@@ -128,6 +131,8 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         }
         return id + "@" + hostName;
     }
+
+    /* All remaining methods are unsupported on Substrate VM. */
 
     @Override
     public String getVmName() {
@@ -217,30 +222,30 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
         return false;
     }
 
-    /* All remaining methods are unsupported on Substrate VM. */
-
-    @Override
-    public ObjectName getObjectName() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
     @Override
     public int getThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        return JavaThreads.singleton().getLiveThreads();
     }
 
     @Override
     public int getPeakThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        return JavaThreads.singleton().getPeakThreads();
     }
 
     @Override
     public long getTotalStartedThreadCount() {
-        throw VMError.unsupportedFeature(MSG);
+        return JavaThreads.singleton().getTotalThreads();
     }
 
     @Override
     public int getDaemonThreadCount() {
+        return JavaThreads.singleton().getDaemonThreads();
+    }
+
+    /* All remaining methods are unsupported on Substrate VM. */
+
+    @Override
+    public ObjectName getObjectName() {
         throw VMError.unsupportedFeature(MSG);
     }
 

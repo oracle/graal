@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.source.impl;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Iterator;
@@ -89,10 +91,21 @@ public abstract class SourceAccessor {
         ACCESSOR.assertNeverPartOfCompilation(msg);
     }
 
+    public static byte[] readTruffleFile(File file) throws IOException {
+        return ACCESSOR.truffleFileContent(file);
+    }
+
+    public static boolean isTruffleFile(File file) {
+        return ACCESSOR.checkTruffleFile(file);
+    }
+
     protected abstract Collection<ClassLoader> loaders();
 
     protected abstract boolean checkAOT();
 
     protected abstract void assertNeverPartOfCompilation(String msg);
 
+    protected abstract boolean checkTruffleFile(File file);
+
+    protected abstract byte[] truffleFileContent(File file) throws IOException;
 }

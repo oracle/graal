@@ -24,13 +24,14 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
+
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
 import com.oracle.truffle.tools.profiler.CPUTracer;
 import com.oracle.truffle.tools.profiler.MemoryTracer;
-import org.graalvm.options.OptionDescriptors;
 
 /**
  * The {@linkplain TruffleInstrument instrument} for the memory tracer.
@@ -83,15 +84,32 @@ public class MemoryTracerInstrument extends TruffleInstrument {
     /**
      * Does a lookup in the runtime instruments of the engine and returns an instance of the
      * {@link CPUTracer}.
-     * 
+     *
      * @since 0.30
+     * @deprecated use {@link #getTracer(Engine)} instead.
      */
-    public static MemoryTracer getTracer(PolyglotEngine engine) {
-        PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    public static MemoryTracer getTracer(com.oracle.truffle.api.vm.PolyglotEngine engine) {
+        com.oracle.truffle.api.vm.PolyglotRuntime.Instrument instrument = engine.getRuntime().getInstruments().get(ID);
         if (instrument == null) {
             throw new IllegalStateException("Memory Tracer is not installed.");
         }
         instrument.setEnabled(true);
+        return instrument.lookup(MemoryTracer.class);
+    }
+
+    /**
+     * Does a lookup in the runtime instruments of the engine and returns an instance of the
+     * {@link CPUTracer}.
+     *
+     * @since 0.33
+     */
+    public static MemoryTracer getTracer(Engine engine) {
+        Instrument instrument = engine.getInstruments().get(ID);
+        if (instrument == null) {
+            throw new IllegalStateException("Memory Tracer is not installed.");
+        }
         return instrument.lookup(MemoryTracer.class);
     }
 

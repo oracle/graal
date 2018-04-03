@@ -24,6 +24,7 @@ package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.hosted.c.query.QueryResultFormat.DELIMINATOR;
+import static com.oracle.svm.hosted.image.NativeBootImage.DEFAULT_HEADER_FILE_NAME;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,11 +39,11 @@ import com.oracle.svm.hosted.c.info.InfoTreeVisitor;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.RawStructureInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
-import com.oracle.svm.hosted.c.info.SizableInfo.SignednessValue;
 import com.oracle.svm.hosted.c.query.QueryResultFormat;
 
 public class QueryCodeWriter extends InfoTreeVisitor {
@@ -83,7 +84,8 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     @Override
     protected void visitNativeCodeInfo(NativeCodeInfo nativeCodeInfo) {
-        NativeImageHeaderPreamble.read().forEach(writer::appendln);
+        NativeImageHeaderPreamble.read("/" + DEFAULT_HEADER_FILE_NAME)
+                        .forEach(writer::appendln);
 
         for (String preDefine : nativeCodeInfo.getDirectives().getMacroDefinitions()) {
             writer.appendMacroDefinition(preDefine);

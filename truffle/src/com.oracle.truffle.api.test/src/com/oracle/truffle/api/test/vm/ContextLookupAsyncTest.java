@@ -26,9 +26,10 @@ import java.util.concurrent.Executors;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 import java.util.concurrent.Executor;
 
+@SuppressWarnings("deprecation")
 public class ContextLookupAsyncTest extends ContextLookupTest {
     @Test
     public void marker() {

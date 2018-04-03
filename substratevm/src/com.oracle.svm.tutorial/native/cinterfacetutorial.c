@@ -93,11 +93,11 @@ long long getUB1(sudata_t *sudata) {
 
 int main(void) {
   graal_isolate_t *isolate = NULL;
-  graal_isolatethread_t *thread = NULL;
-  if (graal_create_isolate(NULL, &isolate) != 0 || (thread = graal_current_thread(isolate)) == NULL) {
-    fprintf(stderr, "initialization error\n");
+  if (graal_create_isolate(NULL, &isolate) != 0) {
+    fprintf(stderr, "error on isolate creation or attach\n");
     return 1;
   }
+  graal_isolatethread_t *thread = graal_current_thread(isolate);
 
   my_data data;
   fill(&data);

@@ -40,15 +40,14 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.java.*;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.vm.PolyglotEngine;
-import com.oracle.truffle.api.vm.PolyglotEngine.Value;
-import com.oracle.truffle.api.vm.PolyglotRuntime;
+import com.oracle.truffle.api.vm.*;
 import static org.junit.Assert.assertNull;
 
+@SuppressWarnings("deprecation")
 public class ContextLookupTest {
 
     protected PolyglotEngine.Builder createBuilder() {
@@ -70,7 +69,7 @@ public class ContextLookupTest {
         LanguageLookupContext context = new LanguageLookupContext(null);
         PolyglotEngine vm = createBuilder().config(LanguageLookup.MIME_TYPE, "channel", context).build();
         Source s1 = Source.newBuilder("").name("").mimeType("").build();
-        Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
+        PolyglotEngine.Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
         result.get();
         LanguageLookup language = context.language;
 
@@ -89,7 +88,7 @@ public class ContextLookupTest {
 
     private static void assertExpectedContext(PolyglotEngine vm, LanguageLookup language, LanguageLookupContext expectedContext) {
         Source s1 = Source.newBuilder("assertContext").name("").mimeType(LanguageLookup.MIME_TYPE).build();
-        Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
+        PolyglotEngine.Value result = vm.getLanguages().get(LanguageLookup.MIME_TYPE).eval(s1);
         LanguageLookupContext prevContext = language.expectedContext;
         language.expectedContext = expectedContext;
 

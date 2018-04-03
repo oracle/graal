@@ -69,8 +69,6 @@ import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
@@ -230,21 +228,6 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerKnownIntrinsicsPlugins(InvocationPlugins plugins, boolean analysis) {
         Registration r = new Registration(plugins, KnownIntrinsics.class);
-        r.register0("currentVMThread", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forIsolateThread());
-                } else {
-                    /*
-                     * In single-threaded mode, we do not have a VMThread. The specification of
-                     * currentVMThread() says to return null.
-                     */
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), 0));
-                }
-                return true;
-            }
-        });
         r.register0("heapBase", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -478,7 +461,7 @@ public class SubstrateGraphBuilderPlugins {
                     b.addPush(JavaKind.Object, object);
                 } else {
                     FixedGuardNode fixedGuard = b.add(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.InvalidateReprofile, false));
-                    b.addPush(JavaKind.Object, new DynamicPiNode(object, fixedGuard, toType));
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, fixedGuard, toType));
                 }
                 return true;
             }

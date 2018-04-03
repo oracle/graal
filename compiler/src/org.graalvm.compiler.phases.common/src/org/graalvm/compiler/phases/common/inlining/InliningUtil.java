@@ -45,10 +45,10 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.core.common.util.Util;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -85,6 +85,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -553,7 +554,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
         } else {
             if (unwindNode != null && unwindNode.isAlive()) {
-                DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                DeoptimizeNode deoptimizeNode = addDeoptimizeNode(graph, DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                 unwindNode.replaceAndDelete(deoptimizeNode);
             }
         }
@@ -684,28 +685,42 @@ public class InliningUtil extends ValueMergeUtil {
         newNodes.addAll(invokeGraph.getNewNodes(mark));
         EconomicMap<NodeSourcePosition, NodeSourcePosition> posMap = EconomicMap.create(Equivalence.DEFAULT);
         UnmodifiableMapCursor<Node, Node> cursor = duplicates.getEntries();
+        ResolvedJavaMethod inlineeRoot = null;
         while (cursor.advance()) {
-            if (!newNodes.contains(cursor.getValue())) {
+            Node value = cursor.getValue();
+            if (!newNodes.contains(value)) {
                 continue;
             }
-            NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
-            if (pos != null) {
-                NodeSourcePosition callerPos = posMap.get(pos);
-                if (callerPos == null) {
-                    callerPos = pos.addCaller(invokePos, isSubstitution);
-                    posMap.put(pos, callerPos);
-                }
-                cursor.getValue().setNodeSourcePosition(callerPos);
+            if (isSubstitution && invokePos == null) {
+                // There's no caller information so the source position for this node will be
+                // invalid, so it should be cleared.
+                value.clearNodeSourcePosition();
             } else {
-                if (isSubstitution) {
-                    /*
-                     * If no other position is provided at least attribute the substituted node to
-                     * the original invoke.
-                     */
-                    cursor.getValue().setNodeSourcePosition(invokePos);
+                NodeSourcePosition pos = cursor.getKey().getNodeSourcePosition();
+                if (pos != null) {
+                    if (inlineeRoot == null) {
+                        assert (inlineeRoot = pos.getRootMethod()) != null;
+                    } else {
+                        assert pos.verifyRootMethod(inlineeRoot);
+                    }
+                    NodeSourcePosition callerPos = posMap.get(pos);
+                    if (callerPos == null) {
+                        callerPos = pos.addCaller(invokePos, isSubstitution);
+                        posMap.put(pos, callerPos);
+                    }
+                    value.setNodeSourcePosition(callerPos);
+                } else {
+                    if (isSubstitution) {
+                        /*
+                         * If no other position is provided at least attribute the substituted node
+                         * to the original invoke.
+                         */
+                        value.setNodeSourcePosition(invokePos);
+                    }
                 }
             }
         }
+        assert invokeGraph.verifySourcePositions();
     }
 
     public static void processMonitorId(FrameState stateAfter, MonitorIdNode monitorIdNode) {
@@ -753,7 +768,15 @@ public class InliningUtil extends ValueMergeUtil {
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
-        } else if (frameState.bci == BytecodeFrame.UNWIND_BCI || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+        } else if ((frameState.bci == BytecodeFrame.UNWIND_BCI && frameState.graph().getGuardsStage() == GuardsStage.FLOATING_GUARDS) || frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
+            /*
+             * This path converts the frame states relevant for exception unwinding to
+             * deoptimization. This is only allowed in configurations when Graal compiles code for
+             * speculative execution (e.g., JIT compilation in HotSpot) but not when compiled code
+             * must be deoptimization free (e.g., AOT compilation for native image generation).
+             * There is currently no global flag in StructuredGraph to distinguish such modes, but
+             * the GuardsStage during inlining indicates the mode in which Graal operates.
+             */
             handleMissingAfterExceptionFrameState(frameState, invoke, replacements, alwaysDuplicateStateAfter);
             return frameState;
         } else if (frameState.bci == BytecodeFrame.BEFORE_BCI) {
@@ -817,7 +840,6 @@ public class InliningUtil extends ValueMergeUtil {
         assert frameState.bci != BytecodeFrame.AFTER_EXCEPTION_BCI : frameState;
         assert frameState.bci != BytecodeFrame.BEFORE_BCI : frameState;
         assert frameState.bci != BytecodeFrame.UNKNOWN_BCI : frameState;
-        assert frameState.bci != BytecodeFrame.UNWIND_BCI : frameState;
         if (frameState.bci != BytecodeFrame.INVALID_FRAMESTATE_BCI) {
             ResolvedJavaMethod method = frameState.getMethod();
             if (method.equals(inlinedMethod)) {
@@ -849,7 +871,7 @@ public class InliningUtil extends ValueMergeUtil {
     }
 
     public static FrameState handleMissingAfterExceptionFrameState(FrameState nonReplaceableFrameState, Invoke invoke, EconomicMap<Node, Node> replacements, boolean alwaysDuplicateStateAfter) {
-        Graph graph = nonReplaceableFrameState.graph();
+        StructuredGraph graph = nonReplaceableFrameState.graph();
         NodeWorkList workList = graph.createNodeWorkList();
         workList.add(nonReplaceableFrameState);
         for (Node node : workList) {
@@ -867,7 +889,7 @@ public class InliningUtil extends ValueMergeUtil {
                         AbstractMergeNode merge = (AbstractMergeNode) fixedStateSplit;
                         while (merge.isAlive()) {
                             AbstractEndNode end = merge.forwardEnds().first();
-                            DeoptimizeNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                            DeoptimizeNode deoptimizeNode = addDeoptimizeNode(graph, DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                             end.replaceAtPredecessor(deoptimizeNode);
                             GraphUtil.killCFG(end);
                         }
@@ -886,7 +908,7 @@ public class InliningUtil extends ValueMergeUtil {
                         }
                         handleAfterBciFrameState(newInvoke.stateAfter(), invoke, alwaysDuplicateStateAfter);
                     } else {
-                        FixedNode deoptimizeNode = graph.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler));
+                        FixedNode deoptimizeNode = addDeoptimizeNode(graph, DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.NotCompiledExceptionHandler);
                         if (fixedStateSplit instanceof AbstractBeginNode) {
                             deoptimizeNode = BeginNode.begin(deoptimizeNode);
                         }
@@ -897,6 +919,11 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
         return nonReplaceableFrameState;
+    }
+
+    private static DeoptimizeNode addDeoptimizeNode(StructuredGraph graph, DeoptimizationAction action, DeoptimizationReason reason) {
+        GraalError.guarantee(graph.getGuardsStage() == GuardsStage.FLOATING_GUARDS, "Cannot introduce speculative deoptimization when Graal is used with fixed guards");
+        return graph.add(new DeoptimizeNode(action, reason));
     }
 
     /**
@@ -930,37 +957,42 @@ public class InliningUtil extends ValueMergeUtil {
      * Gets the receiver for an invoke, adding a guard if necessary to ensure it is non-null, and
      * ensuring that the resulting type is compatible with the method being invoked.
      */
+    @SuppressWarnings("try")
     public static ValueNode nonNullReceiver(Invoke invoke) {
-        MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
-        assert !callTarget.isStatic() : callTarget.targetMethod();
-        StructuredGraph graph = callTarget.graph();
-        ValueNode oldReceiver = callTarget.arguments().get(0);
-        ValueNode newReceiver = oldReceiver;
-        if (newReceiver.getStackKind() == JavaKind.Object) {
+        try (DebugCloseable position = invoke.asNode().withNodeSourcePosition()) {
+            MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
+            assert !callTarget.isStatic() : callTarget.targetMethod();
+            StructuredGraph graph = callTarget.graph();
+            ValueNode oldReceiver = callTarget.arguments().get(0);
+            ValueNode newReceiver = oldReceiver;
+            if (newReceiver.getStackKind() == JavaKind.Object) {
 
-            if (invoke.getInvokeKind() == InvokeKind.Special) {
-                Stamp paramStamp = newReceiver.stamp(NodeView.DEFAULT);
-                Stamp stamp = paramStamp.join(StampFactory.object(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
-                if (!stamp.equals(paramStamp)) {
-                    // The verifier and previous optimizations guarantee unconditionally that the
-                    // receiver is at least of the type of the method holder for a special invoke.
-                    newReceiver = graph.unique(new PiNode(newReceiver, stamp));
+                if (invoke.getInvokeKind() == InvokeKind.Special) {
+                    Stamp paramStamp = newReceiver.stamp(NodeView.DEFAULT);
+                    Stamp stamp = paramStamp.join(StampFactory.object(TypeReference.create(graph.getAssumptions(), callTarget.targetMethod().getDeclaringClass())));
+                    if (!stamp.equals(paramStamp)) {
+                        // The verifier and previous optimizations guarantee unconditionally that
+                        // the
+                        // receiver is at least of the type of the method holder for a special
+                        // invoke.
+                        newReceiver = graph.unique(new PiNode(newReceiver, stamp));
+                    }
+                }
+
+                if (!StampTool.isPointerNonNull(newReceiver)) {
+                    LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
+                    FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
+                    PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
+                    graph.addBeforeFixed(invoke.asNode(), fixedGuard);
+                    newReceiver = nonNullReceiver;
                 }
             }
 
-            if (!StampTool.isPointerNonNull(newReceiver)) {
-                LogicNode condition = graph.unique(IsNullNode.create(newReceiver));
-                FixedGuardNode fixedGuard = graph.add(new FixedGuardNode(condition, NullCheckException, InvalidateReprofile, true));
-                PiNode nonNullReceiver = graph.unique(new PiNode(newReceiver, StampFactory.objectNonNull(), fixedGuard));
-                graph.addBeforeFixed(invoke.asNode(), fixedGuard);
-                newReceiver = nonNullReceiver;
+            if (newReceiver != oldReceiver) {
+                callTarget.replaceFirstInput(oldReceiver, newReceiver);
             }
+            return newReceiver;
         }
-
-        if (newReceiver != oldReceiver) {
-            callTarget.replaceFirstInput(oldReceiver, newReceiver);
-        }
-        return newReceiver;
     }
 
     public static boolean canIntrinsify(Replacements replacements, ResolvedJavaMethod target, int invokeBci) {

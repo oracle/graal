@@ -24,7 +24,6 @@ package com.oracle.objectfile.elf;
 
 import static java.lang.Math.toIntExact;
 
-import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -159,7 +158,7 @@ public class ELFObjectFile extends ObjectFile {
     }
 
     @Override
-    public Symbol createDefinedSymbol(String name, Element baseSection, int position, int size, boolean isCode, boolean isGlobal) {
+    public Symbol createDefinedSymbol(String name, Element baseSection, long position, int size, boolean isCode, boolean isGlobal) {
         ELFSymtab symtab = createSymbolTable();
         return symtab.newDefinedEntry(name, (Section) baseSection, position, size, isGlobal, isCode);
     }
@@ -988,7 +987,7 @@ public class ELFObjectFile extends ObjectFile {
             // -- the shstrtab's contents must already be decided.
             LayoutDecision shstrtabDecision = alreadyDecided.get(shstrtab).getDecision(LayoutDecision.Kind.CONTENT);
             byte[] shstrtabContents = (byte[]) shstrtabDecision.getValue();
-            StringTable strings = new StringTable(AssemblyBuffer.createInputDisassembler(ByteBuffer.wrap(shstrtabContents)), shstrtabContents.length);
+            StringTable strings = new StringTable(shstrtabContents);
             // writing the whole section header table, by iterating over sections in the file
             SectionHeaderEntryStruct ent = new SectionHeaderEntryStruct();
             assert ent.isNullEntry();

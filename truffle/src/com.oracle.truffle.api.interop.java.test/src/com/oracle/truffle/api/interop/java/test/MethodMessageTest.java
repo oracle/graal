@@ -34,9 +34,9 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.interop.java.MethodMessage;
+import com.oracle.truffle.api.interop.java.*;
 
+@SuppressWarnings("deprecation")
 public class MethodMessageTest {
 
     public interface MathWrap {

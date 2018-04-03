@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 public class StaticAnalysisResults implements ProfilingInfo {
     public static final StaticAnalysisResults NO_RESULTS = new StaticAnalysisResults(0, null, null, null);
 
-    protected static class BytecodeEntry {
+    public static class BytecodeEntry {
         /** The bytecode index of this entry. */
         private final int bci;
 

@@ -22,28 +22,9 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
-import com.oracle.truffle.api.nodes.NodeUtil;
-import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.polyglot.Context;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -51,51 +32,20 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
+import org.graalvm.polyglot.Context;
+import org.junit.Assert;
+import org.junit.Test;
 
-public class SplittingStrategyTest {
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope doNotCompileScope;
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope growthLimitScope;
-    private static TruffleCompilerOptions.TruffleOptionsOverrideScope hardLimitScope;
+public class SplittingStrategyTest extends AbstractSplittingStrategyTest {
 
-    @BeforeClass
-    public static void before() {
-        doNotCompileScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleCompileOnly, "DisableCompilationsForThisTest");
-        growthLimitScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingGrowthLimit, 2.0);
-        hardLimitScope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes, 1000);
-    }
-
-    @AfterClass
-    public static void after() {
-        hardLimitScope.close();
-        growthLimitScope.close();
-        doNotCompileScope.close();
-    }
-
-    private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
     private final FallbackSplitInfo fallbackSplitInfo = new FallbackSplitInfo();
-    private SplitCountingListener listener;
-
-    @Before
-    public void addListener() {
-        listener = new SplitCountingListener();
-        runtime.addListener(listener);
-    }
-
-    @After
-    public void removeListener() {
-        runtime.removeListener(listener);
-    }
-
-    static class SplitCountingListener implements GraalTruffleRuntimeListener {
-
-        int splitCount = 0;
-
-        @Override
-        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
-            splitCount++;
-        }
-    }
 
     @Test
     @SuppressWarnings("try")
@@ -103,7 +53,7 @@ public class SplittingStrategyTest {
         try (TruffleCompilerOptions.TruffleOptionsOverrideScope s = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TruffleSplittingMaxNumberOfSplitNodes,
                         fallbackSplitInfo.getSplitLimit() + 1000)) {
             createDummyTargetsToBoostGrowingSplitLimit();
-            class InnerRootNode extends RootNode {
+            class InnerRootNode extends SplittableRootNode {
                 OptimizedCallTarget target;
                 @Child private DirectCallNode callNode1;
 
@@ -114,13 +64,8 @@ public class SplittingStrategyTest {
                     }
                 };
 
-                @Override
-                public boolean isCloningAllowed() {
-                    return true;
-                }
-
                 protected InnerRootNode() {
-                    super(null);
+                    super();
                 }
 
                 @Override
@@ -146,7 +91,7 @@ public class SplittingStrategyTest {
             final InnerRootNode innerRootNode = new InnerRootNode();
             final OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(innerRootNode);
 
-            final OptimizedCallTarget mid = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            final OptimizedCallTarget mid = (OptimizedCallTarget) runtime.createCallTarget(new SplittableRootNode() {
 
                 @Child private DirectCallNode callNode = null;
 
@@ -156,11 +101,6 @@ public class SplittingStrategyTest {
                         return NodeCost.POLYMORPHIC;
                     }
                 };
-
-                @Override
-                public boolean isCloningAllowed() {
-                    return true;
-                }
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -182,7 +122,7 @@ public class SplittingStrategyTest {
                 }
             });
 
-            OptimizedCallTarget outside = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            OptimizedCallTarget outside = (OptimizedCallTarget) runtime.createCallTarget(new SplittableRootNode() {
 
                 @Child private DirectCallNode outsideCallNode = null; // runtime.createDirectCallNode(mid);
 
@@ -196,11 +136,6 @@ public class SplittingStrategyTest {
                         outsideCallNode.cloneCallTarget();
                     }
                     return outsideCallNode.call(frame.getArguments());
-                }
-
-                @Override
-                public boolean isCloningAllowed() {
-                    return true;
                 }
 
                 @Override
@@ -231,37 +166,6 @@ public class SplittingStrategyTest {
         }
     }
 
-    private static int DUMMYROOTNODECOUNT = NodeUtil.countNodes(new DummyRootNode());
-
-    static class DummyRootNode extends RootNode {
-
-        @Child private Node polymorphic = new Node() {
-            @Override
-            public NodeCost getCost() {
-                return NodeCost.POLYMORPHIC;
-            }
-        };
-
-        @Override
-        public boolean isCloningAllowed() {
-            return true;
-        }
-
-        protected DummyRootNode() {
-            super(null);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return 1;
-        }
-
-        @Override
-        public String toString() {
-            return "INNER";
-        }
-    }
-
     static class CallsInnerAndSwapsCallNode extends RootNode {
 
         private final RootCallTarget toCall;
@@ -280,7 +184,7 @@ public class SplittingStrategyTest {
                 callNode = (OptimizedDirectCallNode) runtime.createDirectCallNode(toCall);
                 adoptChildren();
             }
-            return callNode.call(new Object[]{});
+            return callNode.call(noArguments);
         }
     }
 
@@ -330,41 +234,6 @@ public class SplittingStrategyTest {
             }
         }
 
-        private static Object reflectivelyGetField(Object o, String fieldName) throws NoSuchFieldException, IllegalAccessException {
-            Field fallbackEngineDataField = null;
-            Class<?> cls = o.getClass();
-            while (fallbackEngineDataField == null) {
-                try {
-                    fallbackEngineDataField = cls.getDeclaredField(fieldName);
-                } catch (NoSuchFieldException e) {
-                    if (cls.getSuperclass() != null) {
-                        cls = cls.getSuperclass();
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-            ReflectionUtils.setAccessible(fallbackEngineDataField, true);
-            return fallbackEngineDataField.get(o);
-        }
-
-        private static void reflectivelySetField(Object o, String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
-            Field fallbackEngineDataField = null;
-            Class<?> cls = o.getClass();
-            while (fallbackEngineDataField == null) {
-                try {
-                    fallbackEngineDataField = cls.getDeclaredField(fieldName);
-                } catch (NoSuchFieldException e) {
-                    if (cls.getSuperclass() != null) {
-                        cls = cls.getSuperclass();
-                    } else {
-                        throw e;
-                    }
-                }
-            }
-            ReflectionUtils.setAccessible(fallbackEngineDataField, true);
-            fallbackEngineDataField.set(o, value);
-        }
     }
 
     @Test
@@ -424,11 +293,6 @@ public class SplittingStrategyTest {
         @Override
         protected Env createContext(Env env) {
             return env;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Env context) {
-            return null;
         }
 
         @Override
@@ -509,12 +373,6 @@ public class SplittingStrategyTest {
     private static void useUpTheBudget(Context context) {
         for (int i = 0; i < 10_000; i++) {
             eval(context, "exec");
-        }
-    }
-
-    private static void createDummyTargetsToBoostGrowingSplitLimit() {
-        for (int i = 0; i < 10; i++) {
-            runtime.createCallTarget(new DummyRootNode());
         }
     }
 

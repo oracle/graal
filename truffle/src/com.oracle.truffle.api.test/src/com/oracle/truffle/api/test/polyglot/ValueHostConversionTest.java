@@ -31,12 +31,14 @@ import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.api.test.polyglot.ValueAssert.Trait.STRING;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -54,6 +56,17 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 
 /**
@@ -65,7 +78,7 @@ public class ValueHostConversionTest {
 
     @Before
     public void setUp() {
-        context = Context.create();
+        context = Context.newBuilder().allowHostAccess(true).build();
     }
 
     @After
@@ -184,19 +197,97 @@ public class ValueHostConversionTest {
     @Test
     public void testClassProperties() {
         Value recordClass = context.asValue(JavaRecord.class);
-        assertTrue(recordClass.getMemberKeys().isEmpty());
+        assertFalse(recordClass.getMemberKeys().isEmpty());
         assertTrue(recordClass.canInstantiate());
+        assertTrue(recordClass.getMetaObject().asHostObject() == Class.class);
+
+        Value newInstance = recordClass.newInstance();
+        assertTrue(newInstance.isHostObject());
+        assertTrue(newInstance.asHostObject() instanceof JavaRecord);
+
+        assertTrue(recordClass.hasMember("getName"));
+        assertEquals(JavaRecord.class.getName(), recordClass.getMember("getName").execute().asString());
+        assertTrue(recordClass.hasMember("isInstance"));
+        assertTrue(recordClass.getMember("isInstance").execute(newInstance).asBoolean());
+
+        assertTrue(newInstance.hasMember("getClass"));
+        assertSame(JavaRecord.class, newInstance.getMember("getClass").execute().asHostObject());
+        assertTrue(newInstance.getMember("getClass").execute().newInstance().asHostObject() instanceof JavaRecord);
+        assertEquals(JavaRecord.class.getName(), newInstance.getMember("getClass").execute().getMember("getName").execute().asString());
+        assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
+        assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
+
+        assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    @Test
+    public void testStaticClassProperties() {
+        Value recordClass = getStaticClass(JavaRecord.class);
+        assertTrue(recordClass.canInstantiate());
+        assertTrue(recordClass.getMetaObject().asHostObject() == Class.class);
+        assertFalse(recordClass.hasMember("getName"));
+        assertFalse(recordClass.hasMember("isInstance"));
+
+        assertTrue(recordClass.hasMember("class"));
+        assertSame(JavaRecord.class, recordClass.getMember("class").asHostObject());
+        assertArrayEquals(new String[]{"class"}, recordClass.getMemberKeys().toArray(new String[0]));
 
         Value newInstance = recordClass.newInstance();
         assertTrue(newInstance.isHostObject());
         assertTrue(newInstance.asHostObject() instanceof JavaRecord);
 
         assertTrue(newInstance.hasMember("getClass"));
+        assertSame(JavaRecord.class, newInstance.getMember("getClass").execute().asHostObject());
         assertTrue(newInstance.getMember("getClass").execute().newInstance().asHostObject() instanceof JavaRecord);
         assertTrue(newInstance.getMetaObject().newInstance().asHostObject() instanceof JavaRecord);
-        assertTrue(newInstance.getMetaObject().asHostObject() == JavaRecord.class);
+        assertSame(JavaRecord.class, newInstance.getMetaObject().asHostObject());
 
         assertValue(context, recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+
+        Value bigIntegerStatic = getStaticClass(BigInteger.class);
+        assertTrue(bigIntegerStatic.hasMember("ZERO"));
+        assertTrue(bigIntegerStatic.hasMember("ONE"));
+        Value bigIntegerOne = bigIntegerStatic.getMember("ONE");
+        assertSame(BigInteger.ONE, bigIntegerOne.asHostObject());
+
+        Value bigValue = bigIntegerStatic.newInstance("9000");
+        assertFalse(bigValue.hasMember("ZERO"));
+        assertFalse(bigValue.hasMember("ONE"));
+        Value bigResult = bigValue.getMember("add").execute(bigIntegerOne);
+        Value expectedResult = bigIntegerStatic.getMember("valueOf").execute(9001);
+        assertEquals(0, bigResult.getMember("compareTo").execute(expectedResult).asInt());
+    }
+
+    private Value getStaticClass(Class<?> clazz) {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return getCurrentContext(ProxyLanguage.class).env.lookupHostSymbol(clazz.getName());
+                    }
+                });
+            }
+
+            @Override
+            protected Object findMetaObject(LanguageContext ctx, Object value) {
+                // TODO Value.getMetaObject() should call HostLanguage.findMetaObject instead
+                if (value instanceof TruffleObject) {
+                    try {
+                        return ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), (TruffleObject) value, "getClass");
+                    } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                    }
+                    try {
+                        Object instanceClass = ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) value, "class");
+                        return ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), (TruffleObject) instanceClass, "getClass");
+                    } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+                    }
+                }
+                return "";
+            }
+        });
+        return context.asValue(context.eval(ProxyLanguage.ID, clazz.getName()));
     }
 
     @Test

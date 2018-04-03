@@ -32,14 +32,13 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -47,18 +46,18 @@ import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.tools.Profiler;
+import com.oracle.truffle.tools.*;
 
 /**
  * Test that languages and other instruments are able to retrieve the Profiler instance.
  */
+@SuppressWarnings({"deprecation"})
 public class ProfilerRetrievalTest {
 
     @Test
     public void testFromLanguage() {
-        Value profilerValue = Context.create(LanguageThatNeedsProfiler.ID).lookup(LanguageThatNeedsProfiler.ID, "profiler");
+        Value profilerValue = Context.create(LanguageThatNeedsProfiler.ID).getBindings(LanguageThatNeedsProfiler.ID).getMember("profiler");
         Assert.assertTrue(profilerValue.asBoolean());
     }
 
@@ -81,11 +80,6 @@ public class ProfilerRetrievalTest {
             Profiler profiler = env.lookup(profilerInfo, Profiler.class);
             Assert.assertNotNull(profiler);
             return profiler;
-        }
-
-        @Override
-        protected Object getLanguageGlobal(Profiler context) {
-            return null;
         }
 
         @Override
@@ -116,15 +110,27 @@ public class ProfilerRetrievalTest {
                 @Resolve(message = "KEY_INFO")
                 abstract static class VarsMapInfoNode extends Node {
 
-                    private static final int EXISTING_INFO = KeyInfo.newBuilder().setReadable(true).build();
-
-                    @SuppressWarnings("unused")
+                    /**
+                     * @param ts
+                     * @param name
+                     */
                     public Object access(TopScopeObject ts, String name) {
                         if ("profiler".equals(name)) {
-                            return EXISTING_INFO;
+                            return KeyInfo.READABLE;
                         } else {
                             return 0;
                         }
+                    }
+                }
+
+                @Resolve(message = "HAS_KEYS")
+                abstract static class HasKeysNode extends Node {
+
+                    /**
+                     * @param ts
+                     */
+                    public Object access(TopScopeObject ts) {
+                        return true;
                     }
                 }
 
@@ -134,7 +140,7 @@ public class ProfilerRetrievalTest {
                     @CompilerDirectives.TruffleBoundary
                     public Object access(TopScopeObject ts, String name) {
                         if ("profiler".equals(name)) {
-                            return JavaInterop.asTruffleObject(ts.context != null);
+                            return ts.context != null;
                         } else {
                             throw UnknownIdentifierException.raise(name);
                         }

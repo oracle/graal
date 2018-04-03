@@ -117,6 +117,12 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             options = initialOptions;
         }
 
+        if (config.useCMSGC) {
+            // Graal doesn't work with the CMS collector (e.g. GR-6777)
+            // and is deprecated (http://openjdk.java.net/jeps/291).
+            throw new GraalError("Graal does not support the CMS collector");
+        }
+
         outputDirectory = new DiagnosticsOutputDirectory(options);
         compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;

@@ -85,7 +85,7 @@ For video tutorials, presentations and publications on Graal visit the [Publicat
 To create a JVMCI enabled JDK8 on other platforms (e.g., Windows):
 
 ```
-hg clone http://hg.openjdk.java.net/graal/graal-jvmci-8
+git clone https://github.com/graalvm/graal-jvmci-8
 cd graal-jvmci-8
 mx --java-home /path/to/jdk8 build
 mx --java-home /path/to/jdk8 unittest

@@ -25,9 +25,14 @@
 package com.oracle.truffle.api.debug;
 
 import java.net.URI;
-import java.util.Objects;
+import java.util.function.Predicate;
 
+import com.oracle.truffle.api.instrumentation.SourceFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Description of a textual location in guest language source code where a {@link Breakpoint} can be
@@ -37,11 +42,9 @@ import com.oracle.truffle.api.source.Source;
  * {@link Source} or {@link URI}. It can be optionally specialized to a 1-based line number and if
  * it is, then it may also be optionally specialized to a 1-based column number.
  * </p>
- * <p>
- * Equality is value-based.
  *
  */
-final class BreakpointLocation implements Comparable<BreakpointLocation> {
+final class BreakpointLocation {
 
     /**
      * A location with {@code key == null} that always matches.
@@ -49,110 +52,150 @@ final class BreakpointLocation implements Comparable<BreakpointLocation> {
     public static final BreakpointLocation ANY = new BreakpointLocation();
 
     private final Object key;
-    private final int line;
-    private final int column;
+    private final SourceElement[] sourceElements;
+    private final SourceSection sourceSection;
+    private int line;
+    private int column;
 
     /**
      * @param key non-null source identifier
      * @param line 1-based line number, -1 for unspecified
      */
-    BreakpointLocation(Object key, int line) {
+    BreakpointLocation(Object key, SourceElement[] sourceElements, SourceSection sourceSection) {
         assert key instanceof Source || key instanceof URI;
-        assert line > 0 || line == -1;
         this.key = key;
-        this.line = line;
+        this.sourceElements = sourceElements;
+        this.sourceSection = sourceSection;
+        this.line = -1;
         this.column = -1;
     }
 
     /**
      * @param key non-null source identifier
      * @param line 1-based line number
-     * @param column 1-based column number
+     * @param column 1-based column number, -1 for unspecified
      */
-    BreakpointLocation(Object key, int line, int column) {
+    BreakpointLocation(Object key, SourceElement[] sourceElements, int line, int column) {
         assert key instanceof Source || key instanceof URI;
         assert line > 0;
-        assert column > 0;
+        assert column > 0 || column == -1;
         this.key = key;
+        this.sourceElements = sourceElements;
         this.line = line;
         this.column = column;
+        this.sourceSection = null;
     }
 
     private BreakpointLocation() {
         this.key = null;
+        this.sourceElements = null;
         this.line = -1;
         this.column = -1;
+        this.sourceSection = null;
     }
 
-    Object getKey() {
-        return key;
-    }
+    SourceFilter createSourceFilter() {
+        if (key == null) {
+            return SourceFilter.ANY;
+        }
+        SourceFilter.Builder f = SourceFilter.newBuilder();
+        if (key instanceof URI) {
+            final URI sourceUri = (URI) key;
+            f.sourceIs(new Predicate<Source>() {
+                @Override
+                public boolean test(Source s) {
+                    URI uri = s.getURI();
+                    return sourceUri.equals(uri);
+                }
 
-    public int compareTo(BreakpointLocation o) {
-        final Object key1 = key;
-        final Object key2 = o.key;
-        if (key1 instanceof Source && key2 instanceof Source) {
-            final int nameOrder = ((Source) key1).getName().compareTo(((Source) key2).getName());
-            if (nameOrder != 0) {
-                return nameOrder;
-            }
-        } else if (key1 instanceof URI && key2 instanceof URI) {
-            int uriOrder = key1.toString().compareTo(key2.toString());
-            if (uriOrder != 0) {
-                return uriOrder;
-            }
+                @Override
+                public String toString() {
+                    return "URI equals " + sourceUri;
+                }
+            });
         } else {
-            if (key1 instanceof URI) {
-                return 1;
-            } else {
-                return -1;
+            assert key instanceof Source;
+            Source s = (Source) key;
+            f.sourceIs(s);
+        }
+        return f.build();
+    }
+
+    SourceSection adjustLocation(Source source, TruffleInstrument.Env env, SuspendAnchor suspendAnchor) {
+        if (sourceSection != null) {
+            return sourceSection;
+        }
+        if (key == null) {
+            return null;
+        }
+        boolean hasColumn = column > 0;
+        SourceSection location = SuspendableLocationFinder.findNearest(source, sourceElements, line, column, suspendAnchor, env);
+        if (location != null) {
+            switch (suspendAnchor) {
+                case BEFORE:
+                    line = location.getStartLine();
+                    if (hasColumn) {
+                        column = location.getStartColumn();
+                    }
+                    break;
+                case AFTER:
+                    line = location.getEndLine();
+                    if (hasColumn) {
+                        column = location.getEndColumn();
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown suspend anchor: " + suspendAnchor);
             }
         }
-        int lineOrder = Integer.compare(line, o.line);
-        if (lineOrder != 0) {
-            return lineOrder;
-        }
-
-        int columnOrder = Integer.compare(column, o.column);
-        if (columnOrder != 0) {
-            return columnOrder;
-        }
-        return 0;
+        return location;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(key, this.line, this.column);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
+    SourceSectionFilter createLocationFilter(Source source, SuspendAnchor suspendAnchor) {
+        SourceSectionFilter.Builder f = SourceSectionFilter.newBuilder();
+        if (key == null) {
+            return f.tagIs(DebuggerTags.AlwaysHalt.class).build();
         }
-        if (obj == null) {
-            return false;
+        if (source != null) {
+            f.sourceIs(source);
+        } else {
+            f.sourceFilter(createSourceFilter());
         }
-        if (getClass() != obj.getClass()) {
-            return false;
+        if (line != -1) {
+            switch (suspendAnchor) {
+                case BEFORE:
+                    f.lineStartsIn(IndexRange.byLength(line, 1));
+                    if (column != -1) {
+                        f.columnStartsIn(IndexRange.byLength(column, 1));
+                    }
+                    break;
+                case AFTER:
+                    f.lineEndsIn(IndexRange.byLength(line, 1));
+                    if (column != -1) {
+                        f.columnEndsIn(IndexRange.byLength(column, 1));
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException(suspendAnchor.name());
+            }
         }
-        final BreakpointLocation other = (BreakpointLocation) obj;
-        if (this.line != other.line) {
-            return false;
+        if (sourceSection != null) {
+            f.sourceSectionEquals(sourceSection);
         }
-        if (this.column != other.column) {
-            return false;
+        Class<?>[] elementTags = new Class<?>[sourceElements.length];
+        for (int i = 0; i < elementTags.length; i++) {
+            elementTags[i] = sourceElements[i].getTag();
         }
-        if (!Objects.equals(key, other.key)) {
-            return false;
-        }
-        return true;
+        f.tagIs(elementTags);
+        return f.build();
     }
 
     @Override
     public String toString() {
         String keyDescription;
-        if (key instanceof Source) {
+        if (key == null) {
+            keyDescription = "AlwaysHalt";
+        } else if (key instanceof Source) {
             keyDescription = "sourceName=" + ((Source) key).getName();
         } else if (key instanceof URI) {
             keyDescription = "uri=" + ((URI) key).toString();
@@ -161,4 +204,5 @@ final class BreakpointLocation implements Comparable<BreakpointLocation> {
         }
         return keyDescription + ", line=" + line + ", column=" + column;
     }
+
 }

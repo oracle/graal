@@ -25,6 +25,9 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.PrintStream;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
@@ -379,6 +382,39 @@ public final class ProbeNode extends Node {
             chainNode = chainNode.next;
         }
         return null;
+    }
+
+    Iterator<ExecutionEventNode> lookupExecutionEventNodes(Collection<EventBinding<? extends ExecutionEventNodeFactory>> bindings) {
+        return new Iterator<ExecutionEventNode>() {
+
+            private EventChainNode chainNode = ProbeNode.this.chain;
+            private EventProviderChainNode nextNode;
+
+            @Override
+            public boolean hasNext() {
+                if (nextNode == null) {
+                    while (chainNode != null) {
+                        if (chainNode instanceof EventProviderChainNode && bindings.contains(chainNode.binding)) {
+                            nextNode = (EventProviderChainNode) chainNode;
+                            chainNode = chainNode.next;
+                            break;
+                        }
+                        chainNode = chainNode.next;
+                    }
+                }
+                return nextNode != null;
+            }
+
+            @Override
+            public ExecutionEventNode next() {
+                EventProviderChainNode node = nextNode;
+                if (node == null) {
+                    throw new NoSuchElementException();
+                }
+                nextNode = null;
+                return node.eventNode;
+            }
+        };
     }
 
     EventChainNode createParentEventChainCallback(VirtualFrame frame, EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags) {
@@ -1228,7 +1264,7 @@ public final class ProbeNode extends Node {
             return inputValues;
         }
 
-        private static final class SavedInputValueID {
+        static final class SavedInputValueID {
 
             private final EventBinding<?> binding;
             private final int index;

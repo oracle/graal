@@ -82,18 +82,15 @@ class LibFFILibraryMessageResolution {
 
         private final ContextReference<NFIContext> ctxRef = NFILanguageImpl.getCurrentContextReference();
 
-        private static final int READABLE = KeyInfo.newBuilder().setReadable(true).build();
-        private static final int NOT_EXISTING = 0;
-
         @Child private AsStringNode asString = AsStringNodeGen.create(true);
 
         public int access(LibFFILibrary receiver, Object arg) {
             String symbol = asString.execute(arg);
             try {
                 ctxRef.get().lookupSymbol(receiver, symbol);
-                return READABLE;
+                return KeyInfo.READABLE;
             } catch (UnsatisfiedLinkError ex) {
-                return NOT_EXISTING;
+                return KeyInfo.NONE;
             }
         }
     }

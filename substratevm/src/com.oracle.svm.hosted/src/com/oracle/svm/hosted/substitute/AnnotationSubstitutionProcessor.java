@@ -59,6 +59,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -66,7 +67,6 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
-import com.oracle.svm.hosted.option.HostedOptionParser;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -759,7 +759,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
         if (hosted) {
             result.append(System.lineSeparator()).append("To diagnose the issue, you can add the option ").append(
-                            HostedOptionParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+")).append(
+                            SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+")).append(
                                             ". The unsupported element is then reported at run time when it is accessed the first time.");
         }
         return result.toString();

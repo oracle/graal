@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Field;
 import java.text.BreakIterator;
 import java.util.ArrayList;
@@ -288,6 +289,16 @@ final class Util_java_util_TimeZone {
         zones.add(TimeZone.getTimeZone("UTC"));
         zones.add(defaultZone);
     }
+}
+
+@TargetClass(sun.util.locale.provider.TimeZoneNameUtility.class)
+final class Target_sun_util_locale_provider_TimeZoneNameUtility {
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    static ConcurrentHashMap<Locale, SoftReference<String[][]>> cachedZoneData = new ConcurrentHashMap<>();
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias)//
+    static Map<String, SoftReference<Map<Locale, String[]>>> cachedDisplayNames = new ConcurrentHashMap<>();
 }
 
 @TargetClass(java.text.BreakIterator.class)

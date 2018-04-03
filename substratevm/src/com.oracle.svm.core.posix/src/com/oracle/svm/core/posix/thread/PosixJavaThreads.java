@@ -62,6 +62,7 @@ import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -120,6 +121,10 @@ public final class PosixJavaThreads extends JavaThreads {
         ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));
         startData.setIsolate(CEntryPointContext.getCurrentIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
+
+        if (!thread.isDaemon()) {
+            JavaThreads.singleton().signalNonDaemonThreadStart();
+        }
 
         Pthread.pthread_tPointer newThread = StackValue.get(SizeOf.get(Pthread.pthread_tPointer.class));
         PosixUtils.checkStatusIs0(
@@ -198,7 +203,7 @@ public final class PosixJavaThreads extends JavaThreads {
 
         Thread thread = ObjectHandles.getGlobal().get(threadHandle);
 
-        boolean status = singleton().assignJavaThread(thread);
+        boolean status = singleton().assignJavaThread(thread, false);
         VMError.guarantee(status, "currentThread already initialized");
 
         /*
@@ -211,15 +216,38 @@ public final class PosixJavaThreads extends JavaThreads {
         setPthreadIdentifier(thread, Pthread.pthread_self());
         singleton().setNativeName(thread, thread.getName());
 
+        singleton().noteThreadStart(thread);
+
         try {
             thread.run();
         } catch (Throwable ex) {
             SnippetRuntime.reportUnhandledExceptionJava(ex);
         } finally {
             exit(thread);
+            singleton().noteThreadFinish(thread);
         }
 
         return WordFactory.nullPointer();
+    }
+
+    private void noteThreadStart(Thread thread) {
+        totalThreads.incrementAndGet();
+        int lThreads = liveThreads.incrementAndGet();
+        peakThreads.set(Integer.max(peakThreads.get(), lThreads));
+        if (thread.isDaemon()) {
+            daemonThreads.incrementAndGet();
+        } else {
+            nonDaemonThreads.incrementAndGet();
+        }
+    }
+
+    private void noteThreadFinish(Thread thread) {
+        liveThreads.decrementAndGet();
+        if (thread.isDaemon()) {
+            daemonThreads.decrementAndGet();
+        } else {
+            nonDaemonThreads.decrementAndGet();
+        }
     }
 }
 
@@ -319,15 +347,28 @@ class PosixParkEvent extends ParkEvent {
                     return result;
                 }
                 final int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
-                /* If I was awakened because I ran out of time, then do not wait for the ticket. */
                 if (status == Errno.ETIMEDOUT()) {
+                    /* If I was awakened because I ran out of time, do not wait for the ticket. */
                     result = WaitResult.TIMED_OUT;
                     break;
-                } else if (status == Errno.EINTR()) {
+                }
+                if (status == Errno.EINTR()) {
+                    /* If I was awakened because I was interrupted, do not wait for the ticket. */
                     result = WaitResult.INTERRUPTED;
                     break;
                 }
-                PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                if (status != 0) {
+                    /* Detailed error message. */
+                    Log.log().newline()
+                                    .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
+                                    .string("  mutex: ").hex(mutex)
+                                    .string("  cond: ").hex(cond)
+                                    .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
+                                    .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
+                                    .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
+                                    .string("]").newline();
+                    PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                }
             }
 
             if (event) {

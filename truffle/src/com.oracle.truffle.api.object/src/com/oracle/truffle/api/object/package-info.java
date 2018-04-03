@@ -25,13 +25,13 @@
 
 /*
  @ApiInfo(
- group="To Review"
+ group="Truffle"
  )
  */
 
 /**
  * Dynamic object storage model.
- * 
+ *
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.object;

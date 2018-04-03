@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
+@SuppressWarnings("deprecation")
 abstract class ToJavaNode extends Node {
     static final int LIMIT = 3;
     @Child private Node isExecutable = Message.IS_EXECUTABLE.createNode();
@@ -82,6 +83,14 @@ abstract class ToJavaNode extends Node {
             convertedValue = primitive.toPrimitive(value, targetType);
             if (convertedValue != null) {
                 return convertedValue;
+            } else if (targetType == char.class || targetType == Character.class) {
+                Integer safeChar = primitive.toInteger(value);
+                if (safeChar != null) {
+                    int v = safeChar;
+                    if (v >= 0 && v < 65536) {
+                        return (char) v;
+                    }
+                }
             }
         }
         if (targetType == Value.class && languageContext != null) {
@@ -116,7 +125,7 @@ abstract class ToJavaNode extends Node {
         return false;
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused"})
     boolean canConvert(Object value, Class<?> targetType, Type genericType, Object languageContext, boolean strict) {
         if (canConvertStrict(value, targetType)) {
             return true;
@@ -306,7 +315,7 @@ abstract class ToJavaNode extends Node {
 
     @TruffleBoundary
     private static ClassCastException newClassCastException(String message) {
-        EngineSupport engine = JavaInterop.ACCESSOR.engine();
+        EngineSupport engine = JavaInteropAccessor.ACCESSOR.engine();
         return engine != null ? engine.newClassCastException(message, null) : new ClassCastException(message);
     }
 

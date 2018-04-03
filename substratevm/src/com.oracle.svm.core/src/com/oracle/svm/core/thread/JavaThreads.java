@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 
 import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -89,7 +90,11 @@ public abstract class JavaThreads {
      */
     protected static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class);
 
-    protected final AtomicLong nonDaemonThreads = new AtomicLong();
+    protected final AtomicLong totalThreads = new AtomicLong();
+    protected final AtomicInteger peakThreads = new AtomicInteger();
+    protected final AtomicInteger liveThreads = new AtomicInteger();
+    protected final AtomicInteger daemonThreads = new AtomicInteger();
+    protected final AtomicInteger nonDaemonThreads = new AtomicInteger();
 
     /** The group we use for VM threads. */
     final ThreadGroup rootGroup = Thread.currentThread().getThreadGroup();
@@ -165,6 +170,22 @@ public abstract class JavaThreads {
         return result;
     }
 
+    public long getTotalThreads() {
+        return totalThreads.get();
+    }
+
+    public int getPeakThreads() {
+        return peakThreads.get();
+    }
+
+    public int getLiveThreads() {
+        return liveThreads.get();
+    }
+
+    public int getDaemonThreads() {
+        return daemonThreads.get();
+    }
+
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
     static Target_java_lang_ThreadGroup toTarget(ThreadGroup threadGroup) {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
@@ -198,10 +219,15 @@ public abstract class JavaThreads {
         boolean isDaemon = true;
 
         final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(null, null, isDaemon));
-        if (!assignJavaThread(isolateThread, thread)) {
+        if (!assignJavaThread(isolateThread, thread, true)) {
             return currentThread.get(isolateThread);
         }
         return thread;
+    }
+
+    /** Signal that a thread was started by calling Thread.start(). */
+    public void signalNonDaemonThreadStart() {
+        nonDaemonThreads.incrementAndGet();
     }
 
     /**
@@ -214,29 +240,33 @@ public abstract class JavaThreads {
      */
     public boolean assignJavaThread(String name, ThreadGroup group, boolean asDaemon) {
         final Thread thread = JavaThreads.fromTarget(new Target_java_lang_Thread(name, group, asDaemon));
-        return assignJavaThread(KnownIntrinsics.currentVMThread(), thread);
+        return assignJavaThread(CEntryPointContext.getCurrentIsolateThread(), thread, true);
     }
 
     /**
      * Assign a {@link Thread} object to the current thread, which must have already been attached
      * {@link VMThreads} as an {@link IsolateThread}.
+     *
+     * The manuallyStarted parameter is true if this thread was started directly by calling
+     * assignJavaThread(Thread). It is false when the thread is started using
+     * PosixJavaThreads.pthreadStartRoutine, e.g., called from PosixJavaThreads.start0.
      * 
      * @return true if successful; false if a {@link Thread} object has already been assigned.
      */
-    public boolean assignJavaThread(Thread thread) {
-        return assignJavaThread(KnownIntrinsics.currentVMThread(), thread);
+    public boolean assignJavaThread(Thread thread, boolean manuallyStarted) {
+        return assignJavaThread(CEntryPointContext.getCurrentIsolateThread(), thread, manuallyStarted);
     }
 
     @NeverInline("Truffle compilation must not inline this method")
-    private static boolean assignJavaThread(IsolateThread isolateThread, Thread thread) {
+    private static boolean assignJavaThread(IsolateThread isolateThread, Thread thread, boolean manuallyStarted) {
         if (!currentThread.compareAndSet(isolateThread, null, thread)) {
             return false;
         }
         ThreadGroup group = thread.getThreadGroup();
         toTarget(group).addUnstarted();
         toTarget(group).add(thread);
-        if (!thread.isDaemon()) {
-            assert isolateThread.equal(KnownIntrinsics.currentVMThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
+        if (!thread.isDaemon() && manuallyStarted) {
+            assert isolateThread.equal(CEntryPointContext.getCurrentIsolateThread()) : "Non-daemon threads must call this method themselves, or they can detach incompletely in a race";
             singleton().nonDaemonThreads.incrementAndGet();
         }
         return true;
@@ -426,7 +456,7 @@ public abstract class JavaThreads {
 
     private static StackTraceElement[] getStackTrace(IsolateThread thread) {
         StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
-        if (thread == KnownIntrinsics.currentVMThread()) {
+        if (thread == CEntryPointContext.getCurrentIsolateThread()) {
             /*
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
@@ -506,6 +536,9 @@ final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = AtomicReference.class)//
     AtomicReference<ParkEvent> sleepParkEvent;
 
+    @Delete //
+    private ClassLoader contextClassLoader;
+
     @Alias//
     private volatile String name;
 
@@ -550,6 +583,18 @@ final class Target_java_lang_Thread {
     @Alias
     native void setPriority(int newPriority);
 
+    @Substitute
+    @SuppressWarnings("static-method")
+    public ClassLoader getContextClassLoader() {
+        /* null indicates the system class loader */
+        return null;
+    }
+
+    @Substitute
+    public void setContextClassLoader(ClassLoader cl) {
+        // noop
+    }
+
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
     private static long nextThreadID() {
@@ -588,7 +633,7 @@ final class Target_java_lang_Thread {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             return JavaThreads.singleton().singleThread;
         }
-        IsolateThread vmThread = KnownIntrinsics.currentVMThread();
+        IsolateThread vmThread = CEntryPointContext.getCurrentIsolateThread();
         return JavaThreads.singleton().createIfNotExisting(vmThread);
     }
 
@@ -979,7 +1024,7 @@ class ThreadListOperation extends VMOperation {
     public void operate() {
         final Log trace = Log.noopLog().string("[ThreadListOperation.operate:")
                         .string("  queuingVMThread: ").hex(getQueuingVMThread())
-                        .string("  currentVMThread: ").hex(KnownIntrinsics.currentVMThread())
+                        .string("  currentVMThread: ").hex(CEntryPointContext.getCurrentIsolateThread())
                         .flush();
         list.clear();
         for (IsolateThread isolateThread = VMThreads.firstThread(); VMThreads.isNonNullThread(isolateThread); isolateThread = VMThreads.nextThread(isolateThread)) {

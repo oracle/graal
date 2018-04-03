@@ -23,8 +23,9 @@
 package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -120,7 +121,7 @@ class SubstrateSegfaultHandler {
         log.string("Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
 
         log.newline().string("Bye bye ...").newline().newline();
-        LibC.abort();
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     /** The address of the signal handler for signals handled by Java code, above. */
@@ -135,7 +136,7 @@ class SubstrateSegfaultHandler {
             /* Register sa_sigaction signal handler */
             structSigAction.sa_flags(Signal.SA_SIGINFO());
             structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
-            Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, Word.nullPointer());
+            Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
         }
     }
 }

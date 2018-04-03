@@ -23,7 +23,6 @@
 
 package com.oracle.svm.core.jdk;
 
-import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,7 +44,13 @@ public final class FileSystemProviderFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(FileSystemProviderSupport.class, new FileSystemProviderSupport());
-        addFileSystemProvider(FileSystems.getDefault().provider());
+        /*
+         * The first invocation of FileSystemProvider.installedProviders() causes the default
+         * provider to be initialized (if not already initialized) and loads any other installed
+         * providers as described by the {@link FileSystems} class.
+         */
+        List<FileSystemProvider> providers = FileSystemProvider.installedProviders();
+        providers.forEach(p -> addFileSystemProvider(p));
     }
 
     public static void addFileSystemProvider(FileSystemProvider fileSystemProvider) {

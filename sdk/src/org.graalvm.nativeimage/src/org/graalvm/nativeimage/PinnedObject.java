@@ -42,38 +42,50 @@ import org.graalvm.word.PointerBase;
  *   }
  *   // it is no longer safe to access rawData.
  * </pre>
+ *
+ * @since 1.0
  */
-public abstract class PinnedObject implements AutoCloseable {
+public interface PinnedObject extends AutoCloseable {
 
     /**
      * Create an open PinnedObject.
+     *
+     * @since 1.0
      */
-    public static PinnedObject create(Object object) {
+    static PinnedObject create(Object object) {
         return ImageSingletons.lookup(PinnedObjectSupport.class).create(object);
     }
 
     /**
      * Releases the pin for the object. After this call, the object can be moved or discarded by the
      * garbage collector.
+     *
+     * @since 1.0
      */
     @Override
-    public abstract void close();
+    void close();
 
     /**
      * Returns the Object that is the referent of this PinnedObject.
+     *
+     * @since 1.0
      */
-    public abstract Object getObject();
+    Object getObject();
 
     /**
      * Returns the raw address of the pinned object. The object layout is not specified, but usually
      * the address of an object is a pointer to to the first header word. In particular, the result
      * is not a pointer to the first array element when the object is an array.
+     *
+     * @since 1.0
      */
-    public abstract PointerBase addressOfObject();
+    PointerBase addressOfObject();
 
     /**
      * Returns a pointer to the array element with the specified index. The object must be an array.
      * No array bounds check for the index is performed.
+     *
+     * @since 1.0
      */
-    public abstract <T extends PointerBase> T addressOfArrayElement(int index);
+    <T extends PointerBase> T addressOfArrayElement(int index);
 }

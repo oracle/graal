@@ -40,6 +40,8 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.ReflectionRegistry;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
@@ -47,8 +49,6 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.RuntimeReflection;
-import com.oracle.svm.core.RuntimeReflection.RuntimeReflectionSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -112,7 +112,7 @@ public class JNIAccessFeature implements Feature {
         parser.parseAndRegisterConfigurations("JNI", JNIConfigurationFiles, JNIConfigurationResources);
     }
 
-    private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccessibilitySupport, RuntimeReflection.ReflectionRegistry {
+    private class JNIRuntimeAccessibilitySupportImpl implements JNIRuntimeAccessibilitySupport, ReflectionRegistry {
         @Override
         public void register(Class<?>... classes) {
             abortIfSealed();
@@ -267,7 +267,7 @@ public class JNIAccessFeature implements Feature {
                 FieldTypeFlow instanceFieldFlow = field.getDeclaringClass().getContextInsensitiveAnalysisObject().getInstanceFieldFlow(bigBang, field, true);
                 declaredTypeFlow.addUse(bigBang, instanceFieldFlow);
             }
-            return new JNIAccessibleField(jniClass, reflField.getName(), field.getModifiers());
+            return new JNIAccessibleField(jniClass, reflField.getName(), field.getJavaKind(), field.getModifiers());
         });
     }
 

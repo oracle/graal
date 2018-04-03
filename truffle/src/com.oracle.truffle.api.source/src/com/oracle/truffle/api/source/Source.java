@@ -29,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -231,7 +230,8 @@ public abstract class Source {
     }
 
     static String read(File file) throws IOException {
-        return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+        byte[] content = SourceAccessor.isTruffleFile(file) ? SourceAccessor.readTruffleFile(file) : Files.readAllBytes(file.toPath());
+        return new String(content, StandardCharsets.UTF_8);
     }
 
     static String read(Reader reader) throws IOException {
@@ -310,15 +310,14 @@ public abstract class Source {
      * provided by an entity which is able to interactively read output and provide an input during
      * the source execution; that can be a user I/O through an interactive shell for instance.
      * <p>
-     * Depending on {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive()
+     * Depending on {@link com.oracle.truffle.api.TruffleLanguage.Registration#interactive()
      * language interactive} capability, when <em>interactive</em> sources are executed, the
-     * appropriate result could be passed directly to the polyglot engine
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setOut(OutputStream) output stream}
-     * or {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setErr(OutputStream) error stream}
-     * and polyglot engine
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine.Builder#setIn(InputStream) input stream} can
-     * be used to read user input during the execution, to clarify the execution behavior by asking
-     * questions for instance. Non-interactive languages are expected to ignore this property.
+     * appropriate result can be passed directly to the environment
+     * {@link com.oracle.truffle.api.TruffleLanguage.Env#out() output stream} or
+     * {@link com.oracle.truffle.api.TruffleLanguage.Env#err() error stream} and
+     * {@link com.oracle.truffle.api.TruffleLanguage.Env#in() input stream} can be used to read user
+     * input during the execution, to clarify the execution behavior by asking questions for
+     * instance. Non-interactive languages are expected to ignore this property.
      * <p>
      * One can specify whether a source is interactive when {@link Builder#interactive() building
      * it}.
@@ -345,12 +344,10 @@ public abstract class Source {
      * persistent identification of the source. For example one can
      * {@link com.oracle.truffle.api.debug.DebuggerSession#install(com.oracle.truffle.api.debug.Breakpoint)
      * register a breakpoint using a URI} to a source that isn't loaded yet and it will be activated
-     * when the source is
-     * {@link com.oracle.truffle.api.vm.PolyglotEngine#eval(com.oracle.truffle.api.source.Source)
-     * evaluated}. The {@link URI} returned by this method should be as unique as possible, yet it
-     * can happen that different {@link Source sources} return the same {@link #getURI} - for
-     * example when content of a {@link Source#newBuilder(java.io.File) file on a disk} changes and
-     * is re-loaded.
+     * when the source is evaluated. The {@link URI} returned by this method should be as unique as
+     * possible, yet it can happen that different {@link Source sources} return the same
+     * {@link #getURI} - for example when content of a {@link Source#newBuilder(java.io.File) file
+     * on a disk} changes and is re-loaded.
      *
      * @return a URI, it's never <code>null</code>
      * @since 0.14
@@ -814,15 +811,14 @@ public abstract class Source {
         }
 
         /**
-         * Marks the source as interactive. {@link com.oracle.truffle.api.vm.PolyglotEngine#eval
-         * Evaluation} of interactive sources by an
-         * {@link com.oracle.truffle.api.vm.PolyglotEngine.Language#isInteractive() interactive
-         * language} can use the {@link com.oracle.truffle.api.vm.PolyglotEngine} streams to print
-         * the result and read an input. However, non-interactive languages are expected to ignore
-         * the interactive property of sources and not use the polyglot engine streams. Any desired
-         * printing of the evaluated result provided by a non-interactive language needs to be
-         * handled by the caller. Calling of this method influences the result of
-         * {@link Source#isInteractive()}.
+         * Marks the source as interactive. Evaluation of interactive sources by an
+         * {@link com.oracle.truffle.api.TruffleLanguage.Registration#interactive() interactive
+         * language} can use the {@link com.oracle.truffle.api.TruffleLanguage.Env environment}
+         * streams to print the result and read an input. However, non-interactive languages are
+         * expected to ignore the interactive property of sources and not use the environment
+         * streams. Any desired printing of the evaluated result provided by a non-interactive
+         * language needs to be handled by the caller. Calling of this method influences the result
+         * of {@link Source#isInteractive()}.
          *
          * @return the instance of this builder
          * @since 0.21
@@ -947,7 +943,7 @@ public abstract class Source {
                             read ? Source.read(file) : null,
                             absoluteFile,
                             name == null ? file.getName() : name,
-                            path == null ? absoluteFile.getPath() : path);
+                            path);
             return fileSource;
         }
 

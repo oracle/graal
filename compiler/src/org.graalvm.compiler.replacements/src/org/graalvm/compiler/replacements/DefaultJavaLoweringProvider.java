@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -673,6 +674,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         memoryWrite.setGuard(write.getGuard());
     }
 
+    @SuppressWarnings("try")
     protected void lowerCommitAllocationNode(CommitAllocationNode commit, LoweringTool tool) {
         StructuredGraph graph = commit.graph();
         if (graph.getGuardsStage() == StructuredGraph.GuardsStage.FIXED_DEOPTS) {
@@ -685,10 +687,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
                 int entryCount = virtual.entryCount();
                 AbstractNewObjectNode newObject;
-                if (virtual instanceof VirtualInstanceNode) {
-                    newObject = graph.add(createNewInstanceFromVirtual(virtual));
-                } else {
-                    newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
+                try (DebugCloseable nsp = virtual.withNodeSourcePosition()) {
+                    if (virtual instanceof VirtualInstanceNode) {
+                        newObject = graph.add(createNewInstanceFromVirtual(virtual));
+                    } else {
+                        newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
+                    }
                 }
                 recursiveLowerings.add(newObject);
                 graph.addBeforeFixed(commit, newObject);

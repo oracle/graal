@@ -41,7 +41,6 @@ final class WriteGenerator extends MessageGenerator {
     private static final int NUMBER_OF_WRITE = 3; // TruffleObject receiver,
                                                   // Object identifier, Object value
     private static final String TARGETABLE_WRITE_NODE = "TargetableWriteNode";
-    private static final String WRITE_ROOT_NODE = "WriteRootNode";
 
     WriteGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
@@ -50,13 +49,14 @@ final class WriteGenerator extends MessageGenerator {
 
     @Override
     void appendRootNode(Writer w) throws IOException {
-        w.append(indent).append("    private static final class ").append(WRITE_ROOT_NODE).append(" extends RootNode {\n");
-        w.append(indent).append("        protected ").append(WRITE_ROOT_NODE).append("() {\n");
+        w.append(indent).append("    private static final class ").append(rootNodeName).append(" extends RootNode {\n");
+        w.append(indent).append("        protected ").append(rootNodeName).append("() {\n");
         w.append(indent).append("            super(null);\n");
         w.append(indent).append("        }\n");
         w.append("\n");
         w.append(indent).append("        @Child private ").append(clazzName).append(" node = ").append(getGeneratedDSLNodeQualifiedName()).append(".create();");
         w.append("\n");
+        appendGetName(w);
         w.append(indent).append("        @Override\n");
         w.append(indent).append("        public Object execute(VirtualFrame frame) {\n");
         w.append(indent).append("            Object receiver = ForeignAccess.getReceiver(frame);\n");
@@ -80,11 +80,6 @@ final class WriteGenerator extends MessageGenerator {
     @Override
     String getTargetableNodeName() {
         return TARGETABLE_WRITE_NODE;
-    }
-
-    @Override
-    String getRootNodeName() {
-        return WRITE_ROOT_NODE;
     }
 
     @Override

@@ -39,15 +39,18 @@ import com.oracle.truffle.api.source.impl.SourceAccessor;
 
 final class FileSourceImpl extends Content implements Content.CreateURI {
     private static final boolean AOT = SourceAccessor.isAOT();
-    private final File file;
+    private final File file;    // Normalized file
     private final String name; // Name used originally to describe the source
-    private final String path; // Normalized path description of an actual file
+    private final String path; // Explicitly given path description of an actual file, may be null
+    private final String hashKey;   // Fixed hash key, the File.getPath() may change after patch
+                                    // context
 
     FileSourceImpl(String content, File file, String name, String path) {
         this.code = enforceCharSequenceContract(content);
         this.file = file.getAbsoluteFile();
         this.name = name;
         this.path = path;
+        this.hashKey = path != null ? path : file.getPath();
     }
 
     @Override
@@ -57,7 +60,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     Object getHashKey() {
-        return path;
+        return hashKey;
     }
 
     @Override
@@ -67,7 +70,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     public String getPath() {
-        return path;
+        return path != null ? path : file.getPath();
     }
 
     @Override
@@ -92,7 +95,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     public int hashCode() {
-        return path.hashCode();
+        return hashKey.hashCode();
     }
 
     @Override

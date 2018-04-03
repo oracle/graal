@@ -42,6 +42,7 @@ import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
+import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
@@ -82,6 +83,14 @@ public abstract class AbstractDebugTest {
 
     protected final DebuggerSession startSession() {
         return tester.startSession();
+    }
+
+    protected final DebuggerSession startSession(SourceElement... sourceElements) {
+        return tester.startSession(sourceElements);
+    }
+
+    protected final String getOutput() {
+        return tester.getOut();
     }
 
     protected final Thread getEvalThread() {

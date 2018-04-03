@@ -32,13 +32,14 @@ import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -49,7 +50,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -108,7 +108,7 @@ import com.oracle.svm.core.util.VMError;
  * reset to {@value SafepointRequestValues#RESET}. Because {@link #safepointRequested} still
  * eventually decrements to 0, threads can very infrequently call {@link #slowPathSafepointCheck()}
  * without cause.
- * 
+ *
  * @see SafepointCheckNode
  */
 public final class Safepoint {
@@ -180,7 +180,7 @@ public final class Safepoint {
     /** Stop at a safepoint. */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void slowPathSafepointCheck() {
-        final IsolateThread myself = KnownIntrinsics.currentVMThread();
+        final IsolateThread myself = CEntryPointContext.getCurrentIsolateThread();
         if (VMThreads.StatusSupport.isStatusIgnoreSafepoints(myself) || VMThreads.StatusSupport.isStatusExited(myself)) {
             return;
         }
@@ -192,15 +192,18 @@ public final class Safepoint {
         do {
             IsolateThread requestingThread = Master.singleton().getRequestingThread();
             if (requestingThread.isNonNull()) {
-                if (requestingThread == myself) {
+                if (VMOperationControl.isLockOwner()) {
                     /*
                      * This can happen when a VM operation executes so many safepoint checks that
                      * safepointRequested reaches zero and enters this slow path, so we just reset
-                     * the counter and return.
+                     * the counter and return. The counter is re-initialized after the safepoint is
+                     * over and normal execution continues.
                      */
                     setSafepointRequested(myself, SafepointRequestValues.RESET);
                     return;
                 }
+                VMError.guarantee(requestingThread != myself, "Must be the LockOwner");
+
                 if (needsCallback && !wasFrozen) {
                     callbackTime = System.nanoTime();
                     callbackValue = getSafepointRequestedValueBeforeSafepoint(myself);
@@ -252,7 +255,7 @@ public final class Safepoint {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static int getSafepointRequested(IsolateThread vmThread) {
+    protected static int getSafepointRequested(IsolateThread vmThread) {
         return safepointRequested.get(vmThread); // need not be volatile
     }
 
@@ -403,7 +406,7 @@ public final class Safepoint {
              */
             getMutex().assertIsLocked("Should hold mutex when freezing for a safepoint.");
 
-            requestingThread = KnownIntrinsics.currentVMThread();
+            requestingThread = CEntryPointContext.getCurrentIsolateThread();
 
             Statistics.reset();
             Statistics.setStartNanos();
@@ -418,14 +421,14 @@ public final class Safepoint {
         public void thaw(String reason) {
             assert SubstrateOptions.MultiThreaded.getValue() : "Should only thaw from a safepoint when multi-threaded.";
             isFrozen = false;
-            requestingThread = Word.nullPointer();
+            requestingThread = WordFactory.nullPointer();
             releaseSafepoints(reason);
             Statistics.setThawedNanos();
             getMutex().assertIsLocked("Should hold mutex when thawing from a safepoint.");
         }
 
         private static boolean isMyself(IsolateThread vmThread) {
-            return vmThread == KnownIntrinsics.currentVMThread();
+            return vmThread == CEntryPointContext.getCurrentIsolateThread();
         }
 
         /** Send each of the threads (except myself) a request to come to a safepoint. */

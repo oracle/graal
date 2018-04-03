@@ -151,7 +151,6 @@ meth public boolean isMimeTypeSupported(java.lang.String)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
-meth public java.lang.Iterable<?> importSymbols(java.lang.String)
 meth public java.lang.Object importSymbol(java.lang.String)
 meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 supr java.lang.Object

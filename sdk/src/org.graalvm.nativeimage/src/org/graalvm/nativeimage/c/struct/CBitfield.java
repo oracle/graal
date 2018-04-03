@@ -54,9 +54,11 @@ import org.graalvm.word.WordBase;
  * The optional parameter {@code locationIdentity} specifies the {@link LocationIdentity} to be used
  * for the memory access. Two memory accesses with two different location identities are guaranteed
  * to not alias. Note that {@link UniqueLocationIdentity} annotation, cannot be used on bitfields.
- *
+ * <p>
  * Multiple accessor methods, with different signatures according to the rules of allowed
  * signatures, are allowed for a single field.
+ * 
+ * @since 1.0
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
@@ -66,6 +68,8 @@ public @interface CBitfield {
      * Specifies the field name inside the {@link CStruct C struct}. If no name is provided, the
      * method name is used as the field name. A possible "get" or "set" prefix of the method name is
      * removed.
+     *
+     * @since 1.0
      */
     String value() default "";
 }

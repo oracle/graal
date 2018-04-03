@@ -31,9 +31,36 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 
 /**
- * An exception caused by executing Graal guest languages. Can originate from a guest or from the
- * host language.
+ * A polyglot exception represents errors that contain Graal guest languages on the stack trace. In
+ * addition to the Java stack trace it also returns a {@link #getPolyglotStackTrace() polyglot stack
+ * trace}. Methods like {@link #printStackTrace()} are implemented such that host and guest language
+ * stack traces are printed nicely.
+ * <p>
+ * A polyglot exception may have the following properties:
+ * <ul>
+ * <li>{@link #isGuestException() Guest Exception}: Is <code>true</code> if the exception was raised
+ * in guest language code.
+ * <li>{@link #isHostException() Host Exception}: Is <code>true</code> if this exception was raised
+ * in host runtime code. This may happen if the polyglot runtime host runtime methods that throw an
+ * exception. The original host exception can be accessed using {@link #asHostException()}.
+ * <li>{@link #isCancelled() Cancelled}: Is <code>true</code> if the execution got cancelled. The
+ * execution may be cancelled when {@link Context#close() closing} a context, by a guest language
+ * intrinsic or by a tool, like the debugger.
+ * <li>{@link #isExit() Exit}: Is <code>true</code> if the execution exited. The guest language
+ * triggers exit events if the guest language code request to exit the VM. The exit status can be
+ * accessed using {@link #getExitStatus()}.
+ * <li>{@link #isSyntaxError() Syntax Error}: Is <code>true</code> if the error represents a syntax
+ * error. For syntax errors a {@link #getSourceLocation() location} may be available.
+ * <li>{@link #isIncompleteSource() Incomplete Source}: Is <code>true</code> if this returns a
+ * {@link #isSyntaxError() syntax error} that indicates that the source is incomplete.
+ * <li>{@link #isInternalError() Internal Error}: Is <code>true</code> if an internal implementation
+ * error occurred in the polyglot runtime, the guest language or an instrument. It is not
+ * recommended to show such errors to the user in production. Please consider filing issues for
+ * internal implementation errors.
+ * </ul>
  *
+ * @see Context
+ * @see Value
  * @since 1.0
  */
 @SuppressWarnings("serial")
@@ -182,7 +209,10 @@ public final class PolyglotException extends RuntimeException {
     }
 
     /**
-     * Returns the original Java host exception that caused this exception.
+     * Returns the original Java host exception that caused this exception. The original host
+     * exception contains a stack trace that is hardly interpretable by users as it contains details
+     * of the language implementation. The polyglot exception provides information for user-friendly
+     * error reporting with the {@link #getPolyglotStackTrace() polyglot stack trace}.
      *
      * @throws UnsupportedOperationException if this exception is not a host exception. Call
      *             {@link #isHostException()} to ensure its originating from the host language.

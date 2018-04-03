@@ -45,12 +45,23 @@ abstract class MessageGenerator extends InteropNodeGenerator {
 
     protected final String messageName;
     protected final String receiverClassName;
+    protected final String rootNodeName;
 
     MessageGenerator(ProcessingEnvironment processingEnv, Resolve resolveAnnotation, MessageResolution messageResolutionAnnotation, TypeElement element,
                     ForeignAccessFactoryGenerator containingForeignAccessFactory) {
         super(processingEnv, element, containingForeignAccessFactory);
         this.receiverClassName = Utils.getReceiverTypeFullClassName(messageResolutionAnnotation);
         this.messageName = resolveAnnotation.message();
+        String mName = messageName.substring(messageName.lastIndexOf('.') + 1);
+        this.rootNodeName = mName + "RootNode";
+    }
+
+    public void appendGetName(Writer w) throws IOException {
+        w.append(indent).append("        @Override\n");
+        w.append(indent).append("        public String getName() {\n");
+        String rootName = "Interop::" + messageName + "::" + receiverClassName;
+        w.append(indent).append("            return \"").append(rootName).append("\";\n");
+        w.append(indent).append("        }\n\n");
     }
 
     @Override
@@ -131,11 +142,9 @@ abstract class MessageGenerator extends InteropNodeGenerator {
 
     abstract void appendRootNode(Writer w) throws IOException;
 
-    abstract String getRootNodeName();
-
     void appendRootNodeFactory(Writer w) throws IOException {
         w.append(indent).append("    public static RootNode createRoot() {\n");
-        w.append(indent).append("        return new ").append(getRootNodeName()).append("();\n");
+        w.append(indent).append("        return new ").append(rootNodeName).append("();\n");
         w.append(indent).append("    }\n");
     }
 

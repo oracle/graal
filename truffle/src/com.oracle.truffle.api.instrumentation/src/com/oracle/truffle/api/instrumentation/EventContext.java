@@ -25,6 +25,8 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
@@ -243,6 +245,18 @@ public final class EventContext {
             throw new IllegalArgumentException(String.format("Binding is not a subtype of %s.", ExecutionEventNodeFactory.class.getSimpleName()));
         }
         return probeNode.lookupExecutionEventNode(binding);
+    }
+
+    /**
+     * Returns all execution event nodes in the insertion order at this location, whose event
+     * bindings are contained in the given collection. This is useful to be able to sort out
+     * multiple bindings when installed at the same source location.
+     *
+     * @param bindings a collection of bindings to find the event nodes for at this context location
+     * @since 1.0
+     */
+    public Iterator<ExecutionEventNode> lookupExecutionEventNodes(Collection<EventBinding<? extends ExecutionEventNodeFactory>> bindings) {
+        return probeNode.lookupExecutionEventNodes(bindings);
     }
 
     /**

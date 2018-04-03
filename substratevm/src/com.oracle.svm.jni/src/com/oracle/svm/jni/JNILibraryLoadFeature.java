@@ -28,12 +28,12 @@ import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
 import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
 
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.NativeLibrarySupport.LibraryInitializer;
@@ -76,7 +76,7 @@ class JNILibraryInitializer implements LibraryInitializer {
         PointerBase symbol = lib.findSymbol(name);
         if (symbol.isNonNull()) {
             JNIOnLoadFunctionPointer onLoad = (JNIOnLoadFunctionPointer) symbol;
-            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), Word.nullPointer());
+            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), WordFactory.nullPointer());
             if (expected != JNI_VERSION_1_8() && expected != JNI_VERSION_1_6() && expected != JNI_VERSION_1_4() && expected != JNI_VERSION_1_2() && expected != JNI_VERSION_1_1()) {
                 String message = "Unsupported JNI version 0x" + Integer.toHexString(expected) + ", required by " + lib.getCanonicalIdentifier();
                 throw new UnsatisfiedLinkError(message);

@@ -303,9 +303,9 @@ public class OptionProcessor extends AbstractProcessor {
 
         CodeTypeElement unit = generateDescriptors(context, element, info);
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
-        DeclaredType unusedType = (DeclaredType) context.getType(SuppressWarnings.class);
+        DeclaredType suppressedWarnings = (DeclaredType) context.getType(SuppressWarnings.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(context.getEnvironment(), unusedType, overrideType), null);
+        unit.accept(new FixWarningsVisitor(context.getEnvironment(), suppressedWarnings, overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {

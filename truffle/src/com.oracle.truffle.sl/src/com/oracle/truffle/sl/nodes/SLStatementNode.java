@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes;
 import java.io.File;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 @NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
 @GenerateWrapper
+@ReportPolymorphism
 public abstract class SLStatementNode extends Node implements InstrumentableNode {
 
     private static final int NO_SOURCE = -1;

@@ -37,6 +37,8 @@ import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.getValu
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -153,8 +155,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
                         ArithmeticException.class,
                         IllegalArgumentException.class,
                         VirtualMachineError.class,
-                        StringIndexOutOfBoundsException.class,
-                        ClassCastException.class
+                        IndexOutOfBoundsException.class,
+                        ClassCastException.class,
+                        BufferUnderflowException.class,
+                        BufferOverflowException.class,
         });
         ResolvedJavaType[] tail = {
                         runtime.resolveType(metaAccess, "com.oracle.truffle.api.nodes.UnexpectedResultException"),

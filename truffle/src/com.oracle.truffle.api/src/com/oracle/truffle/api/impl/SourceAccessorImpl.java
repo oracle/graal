@@ -25,8 +25,11 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.impl.SourceAccessor;
+import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 
 public final class SourceAccessorImpl extends SourceAccessor {
@@ -46,4 +49,19 @@ public final class SourceAccessorImpl extends SourceAccessor {
         CompilerAsserts.neverPartOfCompilation(msg);
     }
 
+    @Override
+    protected boolean checkTruffleFile(File file) {
+        return file instanceof TruffleFileFileAdapter;
+    }
+
+    @Override
+    protected byte[] truffleFileContent(File file) throws IOException {
+        assert file instanceof TruffleFileFileAdapter : "File must be " + TruffleFileFileAdapter.class.getSimpleName();
+        final TruffleFile tf = ((TruffleFileFileAdapter) file).getTruffleFile();
+        return tf.readAllBytes();
+    }
+
+    public static File asFile(TruffleFile truffleFile) {
+        return new TruffleFileFileAdapter(truffleFile);
+    }
 }

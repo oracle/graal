@@ -24,7 +24,6 @@ package com.oracle.truffle.api.test.polyglot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -37,22 +36,19 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.graalvm.polyglot.proxy.ProxyPrimitive;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 
 /**
@@ -62,8 +58,7 @@ public class ProxySPITest {
 
     static LanguageContext langContext;
 
-    @MessageResolution(receiverType = TestFunction.class)
-    static class TestFunction implements TruffleObject {
+    static class TestFunction extends ProxyInteropObject {
 
         private final Function<TruffleObject, Object> f;
 
@@ -71,24 +66,19 @@ public class ProxySPITest {
             this.f = f;
         }
 
-        public ForeignAccess getForeignAccess() {
-            return TestFunctionForeign.ACCESS;
+        @Override
+        public boolean isExecutable() {
+            return true;
         }
 
-        static boolean isInstance(TruffleObject obj) {
-            return obj instanceof TestFunction;
-        }
-
-        @Resolve(message = "EXECUTE")
-        public abstract static class ExecuteNode extends Node {
-            Object access(TestFunction receiver, Object[] arguments) {
-                Object firstArg = arguments.length > 0 ? arguments[0] : null;
-                Object result = receiver.f.apply((TruffleObject) firstArg);
-                if (result == null) {
-                    return "null";
-                }
-                return result;
+        @Override
+        public Object execute(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            Object firstArg = arguments.length > 0 ? arguments[0] : null;
+            Object result = f.apply((TruffleObject) firstArg);
+            if (result == null) {
+                return "null";
             }
+            return result;
         }
 
     }
@@ -133,8 +123,8 @@ public class ProxySPITest {
         });
     }
 
-    private static final int EXISTING_KEY = KeyInfo.newBuilder().setReadable(true).setWritable(true).build();
-    private static final int NO_KEY = 0;
+    private static final int EXISTING_KEY = KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
+    private static final int NO_KEY = KeyInfo.INSERTABLE;
 
     @Test
     public void testArrayProxy() throws Throwable {
@@ -305,9 +295,10 @@ public class ProxySPITest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testProxyPrimitive() throws Throwable {
         Context context = Context.create();
-        ProxyPrimitive proxyOuter = new ProxyPrimitive() {
+        org.graalvm.polyglot.proxy.ProxyPrimitive proxyOuter = new org.graalvm.polyglot.proxy.ProxyPrimitive() {
             public Object asPrimitive() {
                 return 42;
             }
@@ -416,15 +407,7 @@ public class ProxySPITest {
             assertEquals(true, Message.IS_INSTANTIABLE, proxyInner);
             assertEquals(false, Message.IS_EXECUTABLE, proxyInner);
 
-            try {
-                TruffleObject dateTruffleObject = (TruffleObject) ForeignAccess.send(Message.createNew(0).createNode(), proxyInner, JavaInterop.asTruffleObject(Date.class));
-                Date date = (Date) JavaInterop.asJavaObject(dateTruffleObject);
-                Assert.assertNotNull(date);
-            } catch (InteropException ex) {
-                Assert.fail(ex.getLocalizedMessage());
-            }
             assertUnsupported(Message.createExecute(0), proxyInner, 42);
-
             assertUnsupported(Message.AS_POINTER, proxyInner);
             assertUnsupported(Message.GET_SIZE, proxyInner);
             assertEmpty(Message.KEYS, proxyInner);
@@ -452,7 +435,8 @@ public class ProxySPITest {
 
     }
 
-    private static class AllProxy implements ProxyArray, ProxyObject, ProxyPrimitive, ProxyNativeObject, ProxyExecutable, ProxyInstantiable {
+    @SuppressWarnings("deprecation")
+    private static class AllProxy implements ProxyArray, ProxyObject, org.graalvm.polyglot.proxy.ProxyPrimitive, ProxyNativeObject, ProxyExecutable, ProxyInstantiable {
 
         public Object execute(Value... t) {
             throw new TestError();

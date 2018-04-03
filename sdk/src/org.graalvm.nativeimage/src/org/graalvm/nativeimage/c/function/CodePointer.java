@@ -29,6 +29,8 @@ import org.graalvm.word.PointerBase;
 /**
  * Pointer to executable code. This interface exists mainly to improve static type checking, i.e.,
  * to prevent mixing code pointers and non-code pointers by accident.
+ * 
+ * @since 1.0
  */
 public interface CodePointer extends PointerBase {
 }

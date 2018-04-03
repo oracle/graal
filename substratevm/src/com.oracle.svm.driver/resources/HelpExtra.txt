@@ -1,0 +1,12 @@
+Non-standard options help:
+
+    --expert-options      lists image build options for experts
+    --expert-options-all  lists all image build options for experts (use at your own risk)
+
+    --configurations-path <search path of option-configuration directories>
+                          A %pathsep% separated list of directories to be treated as
+                          option-configuration directories.
+    --debug-attach[=<port>]
+                          attach to debugger during image building (default port is 8000)
+    --dry-run             output the command line that would be used for building
+ 

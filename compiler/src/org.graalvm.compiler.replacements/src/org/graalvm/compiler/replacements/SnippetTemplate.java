@@ -1516,9 +1516,7 @@ public class SnippetTemplate {
                 replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
             }
             NodeSourcePosition position = replacee.getNodeSourcePosition();
-            if (position != null) {
-                InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
-            }
+            InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After inlining snippet %s", snippet.method());
             return duplicates;
         }

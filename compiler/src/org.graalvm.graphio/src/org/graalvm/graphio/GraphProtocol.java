@@ -24,16 +24,19 @@ package org.graalvm.graphio;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition> implements Closeable {
+abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private static final int CONSTANT_POOL_MAX_SIZE = 8000;
@@ -76,7 +79,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     final int versionMinor;
 
     GraphProtocol(WritableByteChannel channel, int major, int minor) throws IOException {
-        if (major > 5 || (major == 5 && minor > 0)) {
+        if (major > 6 || (major == 6 && minor > 0)) {
             throw new IllegalArgumentException("Unrecognized version " + major + "." + minor);
         }
         this.versionMajor = major;
@@ -87,7 +90,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         writeVersion();
     }
 
-    GraphProtocol(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?> parent) {
+    GraphProtocol(GraphProtocol<?, ?, ?, ?, ?, ?, ?, ?, ?, ?> parent) {
         this.versionMajor = parent.versionMajor;
         this.versionMinor = parent.versionMinor;
         this.constantPool = parent.constantPool;
@@ -254,7 +257,19 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
 
     protected abstract int findNodeSourcePositionBCI(NodeSourcePosition pos);
 
-    protected abstract StackTraceElement findMethodStackTraceElement(ResolvedJavaMethod method, int bci, NodeSourcePosition pos);
+    protected abstract Iterable<Location> findLocation(ResolvedJavaMethod method, int bci, NodeSourcePosition pos);
+
+    protected abstract String findLocationFile(Location loc) throws IOException;
+
+    protected abstract int findLocationLine(Location loc);
+
+    protected abstract URI findLocationURI(Location loc) throws URISyntaxException;
+
+    protected abstract String findLocationLanguage(Location loc);
+
+    protected abstract int findLocationStart(Location loc);
+
+    protected abstract int findLocationEnd(Location loc);
 
     private void writeVersion() throws IOException {
         writeBytesRaw(MAGIC_BYTES);
@@ -550,12 +565,35 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             writePoolObject(method);
             final int bci = findNodeSourcePositionBCI(pos);
             writeInt(bci);
-            StackTraceElement ste = findMethodStackTraceElement(method, bci, pos);
-            if (ste != null && ste.getFileName() != null) {
-                writePoolObject(ste.getFileName());
-                writeInt(ste.getLineNumber());
-            } else {
+            Iterator<Location> ste = findLocation(method, bci, pos).iterator();
+            if (versionMajor >= 6) {
+                while (ste.hasNext()) {
+                    Location loc = ste.next();
+                    URI uri;
+                    try {
+                        uri = findLocationURI(loc);
+                    } catch (URISyntaxException ex) {
+                        throw new IOException(ex);
+                    }
+                    if (uri == null) {
+                        throw new IOException("No URI for " + loc);
+                    }
+                    writePoolObject(uri.toString());
+                    writeString(findLocationLanguage(loc));
+                    writeInt(findLocationLine(loc));
+                    writeInt(findLocationStart(loc));
+                    writeInt(findLocationEnd(loc));
+                }
                 writePoolObject(null);
+            } else {
+                Location first = ste.hasNext() ? ste.next() : null;
+                String fileName = first != null ? findLocationFile(first) : null;
+                if (fileName != null) {
+                    writePoolObject(fileName);
+                    writeInt(findLocationLine(first));
+                } else {
+                    writePoolObject(null);
+                }
             }
             writePoolObject(findNodeSourcePositionCaller(pos));
         } else {
@@ -615,7 +653,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             writeByte(POOL_METHOD);
             writePoolObject(findMethodDeclaringClass(method));
             writePoolObject(findMethodName(method));
-            writePoolObject(findMethodSignature(method));
+            final Signature methodSignature = findMethodSignature(method);
+            if (findSignature(methodSignature) == null) {
+                throw new IOException("Should be recognized as signature: " + methodSignature + " for " + method);
+            }
+            writePoolObject(methodSignature);
             writeInt(findMethodModifiers(method));
             writeBytes(findMethodCode(method));
         }

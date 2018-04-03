@@ -343,7 +343,7 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     public byte[] getOrDecideContent(Map<Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
         // our strtab's content is already decided; get the string table
         byte[] strtabContent = (byte[]) alreadyDecided.get(strtab).getDecidedValue(LayoutDecision.Kind.CONTENT);
-        StringTable table = new StringTable(AssemblyBuffer.createInputDisassembler(ByteBuffer.wrap(strtabContent).order(getOwner().getByteOrder())), strtabContent.length);
+        StringTable table = new StringTable(ByteBuffer.wrap(strtabContent).order(getOwner().getByteOrder()));
         ByteBuffer outBuffer = ByteBuffer.allocate(getWrittenSize()).order(getOwner().getByteOrder());
         OutputAssembler out = AssemblyBuffer.createOutputAssembler(outBuffer);
 

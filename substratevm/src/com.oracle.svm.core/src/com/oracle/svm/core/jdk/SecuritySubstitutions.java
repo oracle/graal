@@ -24,6 +24,7 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
+import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessControlException;
 import java.security.MessageDigestSpi;
@@ -36,6 +37,7 @@ import java.security.ProtectionDomain;
 import java.security.Provider;
 import java.security.SecureRandom;
 import java.security.SecureRandomSpi;
+import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
@@ -47,7 +49,9 @@ import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.VMError;
 
 // Checkstyle: allow reflection
 
@@ -81,6 +85,11 @@ final class Target_java_security_AccessController {
 
     @Substitute
     private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action) throws Exception {
+        return action.run();
+    }
+
+    @Substitute
+    private static <T> T doPrivilegedWithCombiner(PrivilegedExceptionAction<T> action, AccessControlContext context, Permission... perms) throws Exception {
         return action.run();
     }
 
@@ -285,6 +294,110 @@ final class Target_java_security_MessageDigest {
     @Substitute
     public static Target_java_security_MessageDigest getInstance(String algorithm, String provider) throws NoSuchAlgorithmException {
         return getInstance(algorithm);
+    }
+}
+
+@TargetClass(className = "sun.security.provider.NativePRNG")
+final class Target_sun_security_provider_NativePRNG {
+
+    /*
+     * This is originally a static final field, i.e., the RandomIO instance would be created during
+     * image generation. But it opens a file, which we must do at run time. Therefore, we intercept
+     * fields loads and lazily create the RandomIO instance on first access at run time.
+     */
+    @Alias @InjectAccessors(NativePRNGInstanceAccessors.class) //
+    static Target_sun_security_provider_NativePRNG_RandomIO INSTANCE;
+
+    @Alias
+    static native Target_sun_security_provider_NativePRNG_RandomIO initIO(Target_sun_security_provider_NativePRNG_Variant v);
+}
+
+class NativePRNGInstanceAccessors {
+    static volatile Target_sun_security_provider_NativePRNG_RandomIO INSTANCE;
+
+    static Target_sun_security_provider_NativePRNG_RandomIO get() {
+        Target_sun_security_provider_NativePRNG_RandomIO result = INSTANCE;
+        if (result == null) {
+            /* Lazy initialization on first access. */
+            result = initializeOnce();
+        }
+        return result;
+    }
+
+    // Checkstyle: stop
+    static synchronized Target_sun_security_provider_NativePRNG_RandomIO initializeOnce() {
+        // Checkstyle: resume
+
+        Target_sun_security_provider_NativePRNG_RandomIO result = INSTANCE;
+        if (result != null) {
+            /* Double-checked locking is OK because INSTANCE is volatile. */
+            return result;
+        }
+
+        result = Target_sun_security_provider_NativePRNG.initIO(Target_sun_security_provider_NativePRNG_Variant.MIXED);
+        INSTANCE = result;
+        return result;
+    }
+}
+
+@TargetClass(className = "sun.security.provider.NativePRNG", innerClass = "Variant")
+final class Target_sun_security_provider_NativePRNG_Variant {
+    @Alias static Target_sun_security_provider_NativePRNG_Variant MIXED;
+}
+
+@TargetClass(className = "sun.security.provider.NativePRNG", innerClass = "RandomIO")
+final class Target_sun_security_provider_NativePRNG_RandomIO {
+}
+
+@TargetClass(className = "javax.crypto.JceSecurityManager")
+@SuppressWarnings({"static-method", "unused"})
+final class Target_javax_crypto_JceSecurityManager {
+    @Substitute
+    Object getCryptoPermission(String var1) {
+        return Target_javax_crypto_CryptoAllPermission.INSTANCE;
+    }
+}
+
+@TargetClass(className = "javax.crypto.CryptoAllPermission")
+final class Target_javax_crypto_CryptoAllPermission {
+    @Alias //
+    static Target_javax_crypto_CryptoAllPermission INSTANCE;
+}
+
+@TargetClass(className = "javax.crypto.JceSecurity")
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_JceSecurity {
+
+    @Substitute
+    static void verifyProviderJar(URL var0) {
+        throw VMError.unimplemented();
+    }
+
+    @Substitute
+    static Exception getVerificationResult(Provider var0) {
+        throw VMError.unimplemented();
+    }
+
+    @Substitute
+    static URL getCodeBase(final Class<?> var0) {
+        throw VMError.unimplemented();
+    }
+}
+
+@TargetClass(className = "javax.crypto.JarVerifier")
+@SuppressWarnings({"static-method", "unused"})
+final class Target_javax_crypto_JarVerifier {
+
+    @Substitute
+    @TargetElement(optional = true)
+    private String verifySingleJar(URL var1) {
+        throw VMError.unimplemented();
+    }
+
+    @Substitute
+    @TargetElement(optional = true)
+    private void verifyJars(URL var1, List<String> var2) {
+        throw VMError.unimplemented();
     }
 }
 

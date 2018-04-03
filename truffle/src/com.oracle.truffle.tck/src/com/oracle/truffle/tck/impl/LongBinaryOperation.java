@@ -28,7 +28,6 @@ package com.oracle.truffle.tck.impl;
  * Binary operation on numbers. Mimics "functional interface" - e.g. has just a single method, so it
  * should be easily usable with lambdas.
  */
-@FunctionalInterface
 public interface LongBinaryOperation {
     long compute(long a, long b);
 }

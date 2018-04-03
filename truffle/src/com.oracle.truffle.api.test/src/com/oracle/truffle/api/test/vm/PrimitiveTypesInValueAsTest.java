@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.api.test.vm;
 
-import com.oracle.truffle.api.vm.PolyglotEngine;
+import com.oracle.truffle.api.vm.*;
 import java.util.Arrays;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
@@ -30,6 +30,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
+@SuppressWarnings("deprecation")
 @RunWith(Parameterized.class)
 public class PrimitiveTypesInValueAsTest {
 

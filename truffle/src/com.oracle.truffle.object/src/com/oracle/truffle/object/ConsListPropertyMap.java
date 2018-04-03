@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,7 +24,6 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.object.Property;
 import java.util.AbstractSet;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -33,6 +34,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
+
+import com.oracle.truffle.api.object.Property;
 
 /**
  * Implementation of {@link PropertyMap} as a reverse-order cons (snoc) list.
@@ -409,8 +412,6 @@ final class ConsListPropertyMap extends PropertyMap {
         return null;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
     public ConsListPropertyMap getParentMap() {
         return car;
     }
