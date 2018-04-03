@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,15 +43,9 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.java.JavaInterop;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.test.interop.values.ArrayObject;
+import com.oracle.truffle.llvm.test.interop.values.StructObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 
@@ -121,7 +115,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     public void getArray(@Inject(GetArrayNode.class) CallTarget get) {
         Object[] arr = new Object[42];
         arr[3] = value;
-        Object actual = get.call(JavaInterop.asTruffleObject(arr), 3);
+        Object actual = get.call(new ArrayObject(arr), 3);
         Assert.assertEquals(value, actual);
     }
 
@@ -135,7 +129,7 @@ public final class NameBasedInteropTest extends InteropTestBase {
     @Test
     public void setArray(@Inject(SetArrayNode.class) CallTarget set) {
         Object[] arr = new Object[42];
-        set.call(JavaInterop.asTruffleObject(arr), 5, value);
+        set.call(new ArrayObject(arr), 5, value);
         Assert.assertEquals(value, arr[5]);
     }
 
@@ -151,64 +145,4 @@ public final class NameBasedInteropTest extends InteropTestBase {
         return values;
     }
 
-    @MessageResolution(receiverType = StructObject.class)
-    static final class StructObject implements TruffleObject {
-        final Map<String, Object> properties;
-
-        StructObject(Map<String, Object> properties) {
-            this.properties = properties;
-        }
-
-        static boolean isInstance(TruffleObject object) {
-            return object instanceof StructObject;
-        }
-
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
-            @TruffleBoundary
-            Object access(StructObject obj, String name) {
-                Object value = obj.properties.get(name);
-                if (value == null) {
-                    throw UnknownIdentifierException.raise(name);
-                }
-                return value;
-            }
-        }
-
-        @Resolve(message = "WRITE")
-        abstract static class WriteNode extends Node {
-            @TruffleBoundary
-            Object access(StructObject obj, String name, Object value) {
-                if (!obj.properties.containsKey(name)) {
-                    throw UnknownIdentifierException.raise(name);
-                }
-                obj.properties.put(name, value);
-                return value;
-            }
-        }
-
-        @Resolve(message = "KEYS")
-        abstract static class KeysNode extends Node {
-            @TruffleBoundary
-            TruffleObject access(StructObject obj) {
-                return JavaInterop.asTruffleObject(obj.properties.keySet().toArray(new String[0]));
-            }
-        }
-
-        @Resolve(message = "KEY_INFO")
-        abstract static class KeyInfoNode extends Node {
-            @TruffleBoundary
-            int access(StructObject obj, String name) {
-                if (!obj.properties.containsKey(name)) {
-                    return KeyInfo.NONE;
-                }
-                return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
-            }
-        }
-
-        @Override
-        public ForeignAccess getForeignAccess() {
-            return StructObjectForeign.ACCESS;
-        }
-    }
 }

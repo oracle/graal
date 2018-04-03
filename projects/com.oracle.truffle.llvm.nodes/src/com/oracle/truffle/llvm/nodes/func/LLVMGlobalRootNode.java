@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -65,12 +64,14 @@ public class LLVMGlobalRootNode extends RootNode {
         this.applicationPath = applicationPath;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
-                LLVMTruffleObject applicationPathObj = new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(JavaInterop.asTruffleObject(applicationPath.getBytes())));
+                LLVMTruffleObject applicationPathObj = new LLVMTruffleObject(
+                                LLVMTypedForeignObject.createUnknown(com.oracle.truffle.api.interop.java.JavaInterop.asTruffleObject(applicationPath.getBytes())));
                 Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();

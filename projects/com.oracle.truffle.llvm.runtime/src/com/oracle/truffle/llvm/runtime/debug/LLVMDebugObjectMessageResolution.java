@@ -29,22 +29,59 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 
 @MessageResolution(receiverType = LLVMDebugObject.class)
 public class LLVMDebugObjectMessageResolution {
 
-    @Resolve(message = "HAS_KEYS")
-    public abstract static class LLVMDebugObjectHasKeysNode extends Node {
+    @MessageResolution(receiverType = Keys.class)
+    static final class Keys implements TruffleObject {
 
-        public Object access(@SuppressWarnings("unused") LLVMDebugObject receiver) {
-            return true;
+        private final Object[] keys;
+
+        private Keys(Object[] keys) {
+            this.keys = keys;
         }
 
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof Keys;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return KeysForeign.ACCESS;
+        }
+
+        @Resolve(message = "GET_SIZE")
+        abstract static class GetSize extends Node {
+
+            int access(Keys receiver) {
+                if (receiver.keys == null) {
+                    return 0;
+                } else {
+                    return receiver.keys.length;
+                }
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class Read extends Node {
+
+            Object access(Keys receiver, int index) {
+                if (receiver.keys == null || index < 0 || index >= receiver.keys.length) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(Integer.toString(index));
+                }
+                return receiver.keys[index];
+            }
+        }
     }
 
     @Resolve(message = "KEYS")
@@ -53,7 +90,7 @@ public class LLVMDebugObjectMessageResolution {
         @TruffleBoundary
         private static Object obtainKeys(LLVMDebugObject receiver) {
             final Object[] keys = receiver.getKeys();
-            return JavaInterop.asTruffleObject(keys);
+            return new Keys(keys);
         }
 
         public Object access(LLVMDebugObject receiver) {

@@ -29,11 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.CanResolve;
@@ -41,17 +40,20 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext.FunctionFactory;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import java.util.ArrayList;
 
 public final class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMFunctionDescriptor> functions;
+    private final ArrayList<String> functionKeys;
+
     private final LLVMScope parent;
     private final LLVMGlobalRegistry globalVariableRegistry;
 
@@ -69,6 +71,7 @@ public final class LLVMScope implements TruffleObject {
 
     private LLVMScope(LLVMScope parent) {
         this.functions = new HashMap<>();
+        this.functionKeys = new ArrayList<>();
         this.parent = parent;
         this.globalVariableRegistry = new LLVMGlobalRegistry();
     }
@@ -124,6 +127,7 @@ public final class LLVMScope implements TruffleObject {
         } else {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(generator);
             functions.put(name, functionDescriptor);
+            functionKeys.add(name);
             return functionDescriptor;
         }
     }
@@ -185,8 +189,7 @@ public final class LLVMScope implements TruffleObject {
 
             @TruffleBoundary
             private static TruffleObject getKeys(LLVMScope scope) {
-                List<String> keys = scope.functions.keySet().stream().map(s -> s.length() > 0 && s.charAt(0) == '@' ? s.substring(1) : s).collect(Collectors.toList());
-                return JavaInterop.asTruffleObject(keys.toArray(new String[keys.size()]));
+                return new Keys(scope);
             }
         }
 
@@ -202,6 +205,46 @@ public final class LLVMScope implements TruffleObject {
                     return scope.getFunctionDescriptor(globalName);
                 }
                 return null;
+            }
+        }
+    }
+
+    @MessageResolution(receiverType = Keys.class)
+    static final class Keys implements TruffleObject {
+
+        private final LLVMScope scope;
+
+        private Keys(LLVMScope scope) {
+            this.scope = scope;
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof Keys;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return KeysForeign.ACCESS;
+        }
+
+        @Resolve(message = "GET_SIZE")
+        abstract static class GetSize extends Node {
+
+            int access(Keys receiver) {
+                return receiver.scope.functionKeys.size();
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class Read extends Node {
+
+            Object access(Keys receiver, int index) {
+                try {
+                    return receiver.scope.functionKeys.get(index);
+                } catch (IndexOutOfBoundsException ex) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(Integer.toString(index));
+                }
             }
         }
     }

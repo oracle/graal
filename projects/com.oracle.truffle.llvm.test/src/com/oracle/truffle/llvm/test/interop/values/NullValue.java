@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,41 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.interop.nfi.util;
+package com.oracle.truffle.llvm.test.interop.values;
 
-import com.oracle.truffle.api.interop.CanResolve;
+import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.java.JavaInterop;
 import com.oracle.truffle.api.nodes.Node;
 
-@MessageResolution(receiverType = TestCallback.class)
-class TestCallbackMessageResolution {
+@MessageResolution(receiverType = NullValue.class)
+public final class NullValue implements TruffleObject {
 
-    @Resolve(message = "EXECUTE")
-    abstract static class ExecuteNode extends Node {
-
-        Object access(TestCallback callback, Object[] arguments) {
-            Object res = callback.call(arguments);
-            return res == null ? JavaInterop.asTruffleObject(null) : res;
-        }
+    static boolean isInstance(TruffleObject object) {
+        return object instanceof NullValue;
     }
 
-    @Resolve(message = "IS_EXECUTABLE")
-    abstract static class IsExecutable extends Node {
+    @Resolve(message = "IS_NULL")
+    abstract static class IsNullNode extends Node {
 
-        @SuppressWarnings("unused")
-        boolean access(TestCallback receiver) {
+        boolean access(@SuppressWarnings("unused") NullValue obj) {
             return true;
         }
     }
 
-    @CanResolve
-    abstract static class CanResolveTestCallback extends Node {
+    @Resolve(message = "AS_POINTER")
+    abstract static class AsPointerNode extends Node {
 
-        boolean test(TruffleObject object) {
-            return object instanceof TestCallback;
+        long access(@SuppressWarnings("unused") NullValue obj) {
+            return 0;
         }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return NullValueForeign.ACCESS;
     }
 }

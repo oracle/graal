@@ -27,13 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.interop.nfi.util;
+package com.oracle.truffle.llvm.test.interop.values;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 
+@MessageResolution(receiverType = TestCallback.class)
 public class TestCallback implements TruffleObject {
 
     public interface Function {
@@ -59,8 +63,21 @@ public class TestCallback implements TruffleObject {
         }
     }
 
+    static boolean isInstance(TruffleObject object) {
+        return object instanceof ArrayObject;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
-        return TestCallbackMessageResolutionForeign.ACCESS;
+        return TestCallbackForeign.ACCESS;
+    }
+
+    @Resolve(message = "EXECUTE")
+    abstract static class ExecuteNode extends Node {
+
+        Object access(TestCallback callback, Object[] arguments) {
+            Object res = callback.call(arguments);
+            return res == null ? new NullValue() : res;
+        }
     }
 }
