@@ -977,5 +977,13 @@ suite = {
       "maven" : False,
      },
 
+    "TRUFFLE_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for the GraalVM",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/tools-truffle.properties",
+        "builder/" : "dependency:truffle:TRUFFLE_NFI",
+      },
+    },
   },
 }

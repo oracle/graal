@@ -423,7 +423,7 @@ def _gate_java_benchmark(args, successRe):
     try:
         run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
     finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\]hs_err_pid[0-9]+\.log)', out.data)
+        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
@@ -1093,6 +1093,7 @@ mx_sdk.register_component(mx_sdk.GraalVmJvmciComponent(
     license_files=[],
     third_party_license_files=[],
     jvmci_jars=['dependency:compiler:GRAAL'],
+    graal_compiler='graal',
 ))
 
 

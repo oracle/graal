@@ -233,31 +233,31 @@ suite = {
             "findbugs": "false",
         },
 
-    "com.oracle.svm.tutorial" : {
-      "subDir": "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.svm.core"],
-      "checkstyle" : "com.oracle.svm.truffle",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : [
-        "compiler:GRAAL_NODEINFO_PROCESSOR",
-        "compiler:GRAAL_REPLACEMENTS_VERIFIER",
-        "compiler:GRAAL_OPTIONS_PROCESSOR",
-      ],
-      "workingSets" : "SVM",
-      "findbugs" : "false",
-    },
+        "com.oracle.svm.tutorial" : {
+            "subDir": "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : ["com.oracle.svm.core"],
+            "checkstyle" : "com.oracle.svm.truffle",
+            "javaCompliance" : "1.8",
+            "annotationProcessors" : [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets" : "SVM",
+            "findbugs" : "false",
+        },
 
-    "com.oracle.objectfile" : {
-      "subDir": "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [],
-      "checkstyle" : "com.oracle.svm.hosted",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["compiler:GRAAL_OPTIONS_PROCESSOR"],
-      "workingSets" : "SVM",
-      "findbugs" : "false",
-    },
+        "com.oracle.objectfile" : {
+            "subDir": "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance" : "1.8",
+            "annotationProcessors" : ["compiler:GRAAL_OPTIONS_PROCESSOR"],
+            "workingSets" : "SVM",
+            "findbugs" : "false",
+        },
 
         "com.oracle.svm.graal": {
             "subDir": "src",
@@ -528,47 +528,63 @@ suite = {
             "output": "clibraries",
         },
 
-    #
-    # Internal Distributions
-    #
-    "SVM_DRIVER": {
-      "subDir": "src",
-      "dependencies": [
-        "com.oracle.svm.driver",
-      ],
-      "distDependencies": [
-        "LIBRARY_SUPPORT",
-      ],
-    },
+        #
+        # Internal Distributions
+        #
+        "SVM_DRIVER": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.driver",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+        },
 
-   "POINTSTO": {
-      "subDir": "src",
-      "dependencies": [
-        "com.oracle.graal.pointsto",
-      ],
-      "distDependencies": [
-        "compiler:GRAAL_RUNTIME",
-      ],
-      "exclude": [
-      ]
-    },
+        "POINTSTO": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.graal.pointsto",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL_RUNTIME",
+            ],
+            "exclude": [
+            ]
+        },
 
-    "NATIVE_IMAGE": {
-      "native": True,
-      "dependencies": [
-        "bootstrap.native-image",
-      ],
-      "output": "svmbuild/native-image-root",
-    },
+        "NATIVE_IMAGE": {
+            "native": True,
+            "dependencies": [
+                "bootstrap.native-image",
+            ],
+            "output": "svmbuild/native-image-root",
+        },
 
-    "POLYGLOT_NATIVE_API" : {
-      "dependencies": [
-        "org.graalvm.polyglot.nativeapi",
-      ],
-      "distDependencies": [
-        "sdk:GRAAL_SDK",
-        "SVM",
-      ],
+        "POLYGLOT_NATIVE_API" : {
+            "dependencies": [
+                "org.graalvm.polyglot.nativeapi",
+            ],
+            "distDependencies": [
+                "sdk:GRAAL_SDK",
+                "SVM",
+            ],
+        },
+
+        "SVM_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "SubstrateVM support distribution for the GraalVM",
+            "layout" : {
+                "./" : "dependency:substratevm:LIBRARY_SUPPORT",
+                "builder/" : [
+                    "dependency:substratevm:SVM",
+                    "dependency:substratevm:OBJECTFILE",
+                    "dependency:substratevm:POINTSTO",
+                ],
+                "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+                "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+            },
+        },
     },
-  },
 }

@@ -47,12 +47,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
@@ -161,6 +161,7 @@ class NativeImage {
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
+    static final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -188,6 +189,7 @@ class NativeImage {
 
     final Registry optionRegistry;
     private final MacroOption truffleOption;
+    private LinkedHashSet<EnabledOption> enabledLanguages;
 
     protected NativeImage() {
         workDir = Paths.get(".").toAbsolutePath().normalize();
@@ -320,7 +322,7 @@ class NativeImage {
 
     private void completeOptionArgs() {
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
-        LinkedHashSet<EnabledOption> enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
+        enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
         for (EnabledOption enabledOption : optionRegistry.getEnabledOptions()) {
             if (!MacroOptionKind.Language.equals(enabledOption.getOption().kind) && enabledOption.getProperty("LauncherClass") != null) {
                 /* Also identify non-Language MacroOptions as Language if LauncherClass is set */
@@ -333,10 +335,7 @@ class NativeImage {
         }
 
         /* Create a polyglot image if we have more than one LauncherClass. */
-        Set<String> launcherClasses = enabledLanguages.stream()
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).collect(Collectors.toSet());
-        if (launcherClasses.size() > 1) {
+        if (getLauncherClasses().limit(2).count() > 1) {
             /* Use polyglot as image name if not defined on command line */
             if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
                 replaceArg(imageBuilderArgs, oHName, "polyglot");
@@ -345,8 +344,6 @@ class NativeImage {
                 /* and the PolyglotLauncher as main class if not defined on command line */
                 replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
             }
-            /* Collect the launcherClasses for enabledLanguages. */
-            addImageBuilderJavaArgs("-Dcom.oracle.graalvm.launcher.launcherclasses=" + launcherClasses.stream().collect(Collectors.joining(",")));
         }
 
         /* Provide more memory for image building if we have more than one language. */
@@ -356,6 +353,12 @@ class NativeImage {
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
+    }
+
+    private Stream<String> getLauncherClasses() {
+        return enabledLanguages.stream()
+                        .map(lang -> lang.getProperty("LauncherClass"))
+                        .filter(Objects::nonNull).distinct();
     }
 
     private void enableTruffle() {
@@ -370,6 +373,11 @@ class NativeImage {
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
+    protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
+        BiFunction<String, String, String> takeLast = (a, b) -> b;
+        return consolidateArgs(args, argPrefix, Function.identity(), Function.identity(), () -> null, takeLast);
+    }
+
     protected static boolean replaceArg(Collection<String> args, String argPrefix, String argSuffix) {
         boolean elementsRemoved = args.removeIf(arg -> arg.startsWith(argPrefix));
         args.add(argPrefix + argSuffix);
@@ -380,15 +388,18 @@ class NativeImage {
                     Function<String, T> fromSuffix, Function<T, String> toSuffix,
                     Supplier<T> init, BiFunction<T, T, T> combiner) {
         T consolidatedValue = null;
+        boolean needsConsolidate = false;
         for (String arg : args) {
             if (arg.startsWith(argPrefix)) {
                 if (consolidatedValue == null) {
                     consolidatedValue = init.get();
+                } else {
+                    needsConsolidate = true;
                 }
                 consolidatedValue = combiner.apply(consolidatedValue, fromSuffix.apply(arg.substring(argPrefix.length())));
             }
         }
-        if (consolidatedValue != null) {
+        if (consolidatedValue != null && needsConsolidate) {
             replaceArg(args, argPrefix, toSuffix.apply(consolidatedValue));
         }
         return consolidatedValue;
@@ -452,8 +463,8 @@ class NativeImage {
         BiFunction<String, String, String> takeLast = (a, b) -> b;
         consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), Function.identity(), () -> null, takeLast);
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
-        String mainClass = consolidateArgs(imageBuilderArgs, oHClass, Function.identity(), Function.identity(), () -> null, takeLast);
-        String imageKind = consolidateArgs(imageBuilderArgs, oHKind, Function.identity(), Function.identity(), () -> null, takeLast);
+        String mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
+        String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
         boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
@@ -498,6 +509,11 @@ class NativeImage {
                 /* extraImageArgs executable name overrules previous specification */
                 replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
             }
+        }
+
+        if ("org.graalvm.launcher.PolyglotLauncher".equals(mainClass) && consolidateSingleValueArg(imageBuilderJavaArgs, oDPolyglotLauncherClasses) == null) {
+            /* Collect the launcherClasses for enabledLanguages. */
+            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLauncherClasses().collect(Collectors.joining(",")));
         }
 
         if (!leftoverArgs.isEmpty()) {
@@ -711,7 +727,26 @@ class NativeImage {
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
             arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
         }
-        arguments.addAll(Arrays.asList(args));
+        for (String arg : args) {
+
+            switch (arg) {
+                case "--language:all":
+                case "--Language:all":
+                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
+                        arguments.add("--Language:" + lang);
+                    }
+                    break;
+                case "--tool:all":
+                case "--Tool:all":
+                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
+                        arguments.add("--Tool:" + lang);
+                    }
+                    break;
+                default:
+                    arguments.add(arg);
+                    break;
+            }
+        }
         while (!arguments.isEmpty()) {
             boolean consumed = false;
             for (int index = optionHandlers.size() - 1; index >= 0; --index) {

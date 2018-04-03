@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -271,6 +272,10 @@ final class MacroOption {
             MacroOption builtin = new MacroOption(optionName);
             supported.computeIfAbsent(MacroOptionKind.Builtin, key -> new HashMap<>()).put(optionName, builtin);
             return builtin;
+        }
+
+        Set<String> getAvailableOptions(MacroOptionKind forKind) {
+            return supported.get(forKind).keySet();
         }
 
         void showOptions(MacroOptionKind forKind, boolean commandLineStyle, Consumer<String> lineOut) {

@@ -46,6 +46,7 @@ from urlparse import urljoin
 import mx_gate
 import mx_unittest
 import mx_benchmark
+import mx_sdk
 
 _suite = mx.suite('truffle')
 
@@ -468,6 +469,20 @@ def check_filename_length(args):
         for x in too_long:
             mx.log_error(x)
         mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
+
+
+mx_sdk.register_component(mx_sdk.GraalVmTool(
+    name='Truffle NFI',
+    id='truffle',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=[],
+    support_distributions=[
+        'extracted-dependency:truffle:TRUFFLE_GRAALVM_SUPPORT',
+        'extracted-dependency:truffle:TRUFFLE_NFI_NATIVE',
+    ]
+))
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],

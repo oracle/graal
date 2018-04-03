@@ -42,6 +42,7 @@ import mx_compiler
 import mx_gate
 import mx_unittest
 import mx_urlrewrites
+import mx_sdk
 from mx_compiler import GraalArchiveParticipant
 from mx_compiler import run_java
 from mx_gate import Task
@@ -119,6 +120,16 @@ def suite_native_image_root(suite=None):
         suite = svm_suite()
     return join(svmbuild_dir(suite), 'native-image-root')
 
+def native_image_distribution():
+    for d in svm_suite().dists:
+        if isinstance(d, str):
+            name = d
+        else:
+            name = d.name
+        if name.startswith("NATIVE_IMAGE"):
+            return d
+    return None
+
 def remove_existing_symlink(target_path):
     if islink(target_path):
         os.remove(target_path)
@@ -139,9 +150,9 @@ def native_image_layout(dists, subdir, native_image_root):
     def symlink_jar(jar_path):
         relsymlink(jar_path, join(dest_path, basename(jar_path)))
     for dist in dists:
-        mx.logv('Add ' + type(dist).__name__ + ' '  + str(dist) + ' to ' + dest_path)
+        mx.logv('Add ' + type(dist).__name__ + ' ' + str(dist) + ' to ' + dest_path)
         symlink_jar(dist.path)
-        if not dist.isLibrary():
+        if not dist.isBaseLibrary() and dist.sourcesPath:
             symlink_jar(dist.sourcesPath)
 
 def native_image_extract(dists, subdir, native_image_root):
@@ -174,8 +185,9 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 flag_suitename_map = collections.OrderedDict([
     ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
     ('js', ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
-    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP'])),
-    ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP']))
+    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER', 'TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'], ['TRUFFLERUBY-ZIP'])),
+    ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON_GRAALVM_SUPPORT'])),
+    ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))
 ])
 
 class ToolDescriptor:
@@ -371,11 +383,12 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         if not self._allow_bootstrapping():
             return False, 'Skip bootstrapping'
 
-        # Only bootstrap if it doesn't already exist
-        symlink_path = native_image_symlink_path(self.subject.native_image_root)
-        if exists(symlink_path):
-            mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
-            return False, 'Already bootstrapped'
+        if mx.get_env("SUPPRESS_NATIVE_IMAGE_REBUILD"):
+            # Only bootstrap if it doesn't already exist
+            symlink_path = native_image_symlink_path(self.subject.native_image_root)
+            if exists(symlink_path):
+                mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
+                return False, 'Already bootstrapped'
 
         return True, ''
 
@@ -820,6 +833,33 @@ def fetch_languages(args, early_exit=True):
     for language_flag in requested:
         version = requested[language_flag]
         truffle_language_ensure(language_flag, version, early_exit=early_exit)
+
+
+mx_sdk.register_component(mx_sdk.GraalVmJreComponent(
+    name='SubstrateVM',
+    id='svm',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=[],
+    jre_lib_files=['extracted-dependency:substratevm:SVM_GRAALVM_SUPPORT'],
+    polyglot_library_build_args=[
+        "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
+        "-H:APIFunctionPrefix=poly_",
+        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:org.graalvm.polyglot.nativeapi>/resources"
+    ],
+    polyglot_library_jar_dependencies=[
+        "dependency:substratevm:POLYGLOT_NATIVE_API",
+    ],
+    has_polyglot_library_entrypoints=True,
+    launcher_configs=[
+        mx_sdk.LauncherConfig(destination="bin/native-image",
+                              jar_distributions=["dependency:substratevm:SVM_DRIVER"],
+                              main_class="com.oracle.svm.driver.NativeImage",
+                              build_args=[
+                                  "-H:-ParseRuntimeOptions",
+                              ])
+    ]
+))
 
 mx.update_commands(suite, {
     'build': [build, ''],
