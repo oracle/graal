@@ -22,7 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * This package provides a low-level mechanism to use machine-word-sized values in Java. The package
  * can only be used in the context of native images or Graal snippets.

@@ -22,7 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * The Graal-SDK native-image API allows to customize the native image generation, i.e., the
  * ahead-of-time compilation of Java code to standalone executables. It also provides interfaces and
