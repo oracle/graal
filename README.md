@@ -1,6 +1,7 @@
 # [GraalVM](https://graalvm.org/)
 
-GraalVM is an extensive project from [Oracle Labs](https://labs.oracle.com/pls/apex/f?p=LABS:10::::::) developing a new JIT Compiler and Polyglot Runtime for the JVM.
+GraalVM is an extensive project from [Oracle Labs](https://labs.oracle.com/pls/apex/f?p=LABS:10::::::)
+developing a new JIT Compiler and Polyglot Runtime for the JVM.
 It removes the isolation between programming languages and enables interoperability
 in a high-performance runtime.
 GraalVM includes the following components:
@@ -97,7 +98,7 @@ For requests regarding commercial use, please contact
 GraalVM Community Edition is distributed under a GPLv2 open source license.
 It is free to use in production and comes with no strings attached,
 but also no guarantees or support.
-GraalVM enterprise edition is available from the Oracle Technology Network
+GraalVM Enterprise Edition is available from the Oracle Technology Network
 under an evaluation license.
 It provides improved performance and security for production deployments.
 Each GraalVM component is licensed:
