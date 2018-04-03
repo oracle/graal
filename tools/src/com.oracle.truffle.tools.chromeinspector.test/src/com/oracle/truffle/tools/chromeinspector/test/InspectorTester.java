@@ -57,13 +57,23 @@ public final class InspectorTester {
     }
 
     public void finish() throws InterruptedException {
+        finish(false);
+    }
+
+    public Throwable finishErr() throws InterruptedException {
+        return finish(true);
+    }
+
+    private Throwable finish(boolean expectError) throws InterruptedException {
         synchronized (exec) {
             exec.done = true;
+            exec.catchError = expectError;
             exec.notifyAll();
         }
         exec.join();
         RemoteObject.resetIDs();
         TruffleExecutionContext.resetIDs();
+        return exec.error;
     }
 
     public long getContextId() {
@@ -135,6 +145,8 @@ public final class InspectorTester {
         private boolean done = false;
         private final StringBuilder receivedMessages = new StringBuilder();
         private final Semaphore initialized = new Semaphore(0);
+        private boolean catchError;
+        private Throwable error;
 
         InspectExecThread(boolean suspend) {
             super("Inspector Executor");
@@ -174,6 +186,14 @@ public final class InspectorTester {
                         valueFuture.complete(value);
                     }
                 } while (!done);
+            } catch (ThreadDeath td) {
+                throw td;
+            } catch (Throwable t) {
+                if (catchError) {
+                    error = t;
+                } else {
+                    throw t;
+                }
             } finally {
                 inspect.dispose();
             }

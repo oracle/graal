@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.TruffleException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ public abstract class DebugValue {
 
     final LanguageInfo preferredLanguage;
 
-    abstract Object get();
+    abstract Object get() throws DebugException;
 
     DebugValue(LanguageInfo preferredLanguage) {
         this.preferredLanguage = preferredLanguage;
@@ -68,9 +69,10 @@ public abstract class DebugValue {
      * {@link DebugStackFrame#eval(String)} to evaluate values to be set.
      *
      * @param value the value to set
+     * @throws DebugException when guest language code throws an exception
      * @since 0.17
      */
-    public abstract void set(DebugValue value);
+    public abstract void set(DebugValue value) throws DebugException;
 
     /**
      * Converts the debug value into a Java type. Class conversions which are always supported:
@@ -86,9 +88,10 @@ public abstract class DebugValue {
      *
      * @param clazz the type to convert to
      * @return the converted Java type, or <code>null</code> when the conversion was not possible.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.17
      */
-    public abstract <T> T as(Class<T> clazz);
+    public abstract <T> T as(Class<T> clazz) throws DebugException;
 
     /**
      * Returns the name of this value as it is referred to from its origin. If this value is
@@ -163,14 +166,23 @@ public abstract class DebugValue {
      *
      * @return a collection of property values, or </code>null</code> when the value does not have
      *         any concept of properties.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.19
      */
-    public final Collection<DebugValue> getProperties() {
+    public final Collection<DebugValue> getProperties() throws DebugException {
         if (!isReadable()) {
             throw new IllegalStateException("Value is not readable");
         }
         Object value = get();
-        return getProperties(value, getDebugger(), resolveLanguage(), null);
+        try {
+            return getProperties(value, getDebugger(), resolveLanguage(), null);
+        } catch (Throwable ex) {
+            if (ex instanceof TruffleException) {
+                throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+            } else {
+                throw ex;
+            }
+        }
     }
 
     static ValuePropertiesCollection getProperties(Object value, Debugger debugger, LanguageInfo language, DebugScope scope) {
@@ -194,9 +206,10 @@ public abstract class DebugValue {
     /**
      * Returns <code>true</code> if this value represents an array, <code>false</code> otherwise.
      *
+     * @throws DebugException when guest language code throws an exception
      * @since 0.19
      */
-    public final boolean isArray() {
+    public final boolean isArray() throws DebugException {
         if (!isReadable()) {
             return false;
         }
@@ -215,9 +228,10 @@ public abstract class DebugValue {
      *
      * @return a list of array elements, or <code>null</code> when the value does not represent an
      *         array.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.19
      */
-    public final List<DebugValue> getArray() {
+    public final List<DebugValue> getArray() throws DebugException {
         if (!isReadable()) {
             return null;
         }
@@ -250,9 +264,10 @@ public abstract class DebugValue {
      * value, reveals it's kind and it's features.
      *
      * @return a value representing the meta-object, or <code>null</code>
+     * @throws DebugException when guest language code throws an exception
      * @since 0.22
      */
-    public final DebugValue getMetaObject() {
+    public final DebugValue getMetaObject() throws DebugException {
         if (!isReadable()) {
             return null;
         }
@@ -275,9 +290,10 @@ public abstract class DebugValue {
      * Get a source location where this value is declared, if any.
      *
      * @return a source location of the object, or <code>null</code>
+     * @throws DebugException when guest language code throws an exception
      * @since 0.22
      */
-    public final SourceSection getSourceLocation() {
+    public final SourceSection getSourceLocation() throws DebugException {
         if (!isReadable()) {
             return null;
         }
@@ -301,9 +317,10 @@ public abstract class DebugValue {
      *
      * @return the language, or <code>null</code> when no language can be identified as the creator
      *         of the value.
+     * @throws DebugException when guest language code throws an exception
      * @since 0.27
      */
-    public final LanguageInfo getOriginalLanguage() {
+    public final LanguageInfo getOriginalLanguage() throws DebugException {
         if (!isReadable()) {
             return null;
         }
@@ -365,22 +382,30 @@ public abstract class DebugValue {
         }
 
         @Override
-        public <T> T as(Class<T> clazz) {
+        public <T> T as(Class<T> clazz) throws DebugException {
             if (!isReadable()) {
                 throw new IllegalStateException("Value is not readable");
             }
-            if (clazz == String.class) {
-                Object val = get();
-                LanguageInfo languageInfo = resolveLanguage();
-                String stringValue;
-                if (languageInfo == null) {
-                    stringValue = val.toString();
-                } else {
-                    stringValue = debugger.getEnv().toString(languageInfo, val);
+            try {
+                if (clazz == String.class) {
+                    Object val = get();
+                    LanguageInfo languageInfo = resolveLanguage();
+                    String stringValue;
+                    if (languageInfo == null) {
+                        stringValue = val.toString();
+                    } else {
+                        stringValue = debugger.getEnv().toString(languageInfo, val);
+                    }
+                    return clazz.cast(stringValue);
+                } else if (clazz == Number.class || clazz == Boolean.class) {
+                    return convertToPrimitive(clazz);
                 }
-                return clazz.cast(stringValue);
-            } else if (clazz == Number.class || clazz == Boolean.class) {
-                return convertToPrimitive(clazz);
+            } catch (Throwable ex) {
+                if (ex instanceof TruffleException) {
+                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+                } else {
+                    throw ex;
+                }
             }
             throw new UnsupportedOperationException();
         }
@@ -468,7 +493,15 @@ public abstract class DebugValue {
         @Override
         Object get() {
             checkValid();
-            return property.getValue();
+            try {
+                return property.getValue();
+            } catch (Throwable ex) {
+                if (ex instanceof TruffleException) {
+                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+                } else {
+                    throw ex;
+                }
+            }
         }
 
         @Override
@@ -516,7 +549,15 @@ public abstract class DebugValue {
         @Override
         public void set(DebugValue value) {
             checkValid();
-            property.setValue(value.get());
+            try {
+                property.setValue(value.get());
+            } catch (Throwable ex) {
+                if (ex instanceof TruffleException) {
+                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+                } else {
+                    throw ex;
+                }
+            }
         }
 
         @Override
@@ -553,7 +594,15 @@ public abstract class DebugValue {
         @Override
         Object get() {
             checkValid();
-            return map.get(getName());
+            try {
+                return map.get(getName());
+            } catch (Throwable ex) {
+                if (ex instanceof TruffleException) {
+                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+                } else {
+                    throw ex;
+                }
+            }
         }
 
         @Override
@@ -583,7 +632,15 @@ public abstract class DebugValue {
         @Override
         public void set(DebugValue value) {
             checkValid();
-            map.put(getName(), value.get());
+            try {
+                map.put(getName(), value.get());
+            } catch (Throwable ex) {
+                if (ex instanceof TruffleException) {
+                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+                } else {
+                    throw ex;
+                }
+            }
         }
 
         @Override

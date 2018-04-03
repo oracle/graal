@@ -111,9 +111,9 @@ public final class Params {
         }
     }
 
-    public Optional<Boolean> getBreakpointsActive() {
-        if (json.has("active")) {
-            return Optional.of(json.getBoolean("active"));
+    public Optional<Boolean> getBoolean(String name) {
+        if (json.has(name)) {
+            return Optional.of(json.getBoolean(name));
         } else {
             return Optional.empty();
         }

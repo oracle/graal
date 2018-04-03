@@ -96,7 +96,7 @@ public final class Debugger {
     Debugger(Env env) {
         this.env = env;
         this.msgNodes = new ObjectStructures.MessageNodes();
-        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, SuspendAnchor.BEFORE, false, null);
+        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, SuspendAnchor.BEFORE);
         this.alwaysHaltBreakpoint.setEnabled(true);
     }
 

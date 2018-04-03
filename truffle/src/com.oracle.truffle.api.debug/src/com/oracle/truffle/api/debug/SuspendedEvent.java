@@ -114,6 +114,7 @@ public final class SuspendedEvent {
     private List<Breakpoint> breakpoints;
     private InputValuesProvider inputValuesProvider;
     private Object returnValue;
+    private DebugException exception;
 
     private volatile boolean disposed;
     private volatile SteppingStrategy nextStrategy;
@@ -121,7 +122,8 @@ public final class SuspendedEvent {
     private final Map<Breakpoint, Throwable> conditionFailures;
     private DebugStackFrameIterable cachedFrames;
 
-    SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor, InputValuesProvider inputValuesProvider, Object returnValue,
+    SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor,
+                    InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures) {
         this.session = session;
         this.context = context;
@@ -129,6 +131,7 @@ public final class SuspendedEvent {
         this.materializedFrame = frame;
         this.inputValuesProvider = inputValuesProvider;
         this.returnValue = returnValue;
+        this.exception = exception;
         this.conditionFailures = conditionFailures;
         this.breakpoints = breakpoints == null ? Collections.<Breakpoint> emptyList() : Collections.<Breakpoint> unmodifiableList(breakpoints);
         this.thread = thread;
@@ -145,6 +148,7 @@ public final class SuspendedEvent {
         // cleanup data for potential memory leaks
         this.inputValuesProvider = null;
         this.returnValue = null;
+        this.exception = null;
         this.breakpoints = null;
         this.materializedFrame = null;
         this.cachedFrames = null;
@@ -280,8 +284,7 @@ public final class SuspendedEvent {
      * Returns the return value of the currently executed source location. Returns <code>null</code>
      * if the execution is suspended {@link SuspendAnchor#BEFORE before} a guest language location.
      * The returned value is <code>null</code> if an exception occurred during execution of the
-     * instrumented source element. The debug value remains valid event if the current execution was
-     * suspend.
+     * instrumented source element, the exception is provided by {@link #getException()}.
      * <p>
      * This method is not thread-safe and will throw an {@link IllegalStateException} if called on
      * another thread than it was created with.
@@ -297,8 +300,16 @@ public final class SuspendedEvent {
         return getTopStackFrame().wrapHeapValue(ret);
     }
 
-    // TODO CHumer: we also want to provide access to guest language errors. The API for that is not
-    // yet ready.
+    /**
+     * Returns the debugger representation of a guest language exception that caused this suspended
+     * event (via an exception breakpoint, for instance). Returns <code>null</code> when no
+     * exception occurred.
+     *
+     * @since 1.0
+     */
+    public DebugException getException() {
+        return exception;
+    }
 
     MaterializedFrame getMaterializedFrame() {
         return materializedFrame;

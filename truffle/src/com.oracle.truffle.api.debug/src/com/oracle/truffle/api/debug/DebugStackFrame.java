@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -41,6 +40,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import java.util.Objects;
 
 /**
  * Represents a frame in the guest language stack. A guest language stack frame consists of a
@@ -254,16 +254,12 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
      *
      * @param code the code to evaluate
      * @return the return value of the expression
+     * @throws DebugException when guest language code throws an exception
      * @since 0.17
      */
-    public DebugValue eval(String code) {
+    public DebugValue eval(String code) throws DebugException {
         verifyValidState(false);
-        Object result;
-        try {
-            result = DebuggerSession.evalInContext(event, code, currentFrame);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        Object result = DebuggerSession.evalInContext(event, code, currentFrame);
         return wrapHeapValue(result);
     }
 
@@ -338,6 +334,28 @@ public final class DebugStackFrame implements Iterable<DebugValue> {
                 return var;
             }
         };
+    }
+
+    /**
+     * @since 1.0
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof DebugStackFrame) {
+            DebugStackFrame other = (DebugStackFrame) obj;
+            return event == other.event &&
+                            (currentFrame == other.currentFrame ||
+                                            currentFrame != null && other.currentFrame != null && currentFrame.getFrame(FrameAccess.READ_ONLY) == other.currentFrame.getFrame(FrameAccess.READ_ONLY));
+        }
+        return false;
+    }
+
+    /**
+     * @since 1.0
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(event, currentFrame);
     }
 
     MaterializedFrame findTruffleFrame() {

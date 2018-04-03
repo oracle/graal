@@ -151,7 +151,7 @@ public abstract class AbstractDebugTest {
 
     protected void checkStack(DebugStackFrame frame, String... expectedFrame) {
         Map<String, DebugValue> values = new HashMap<>();
-        for (DebugValue value : frame) {
+        for (DebugValue value : frame.getScope().getDeclaredValues()) {
             values.put(value.getName(), value);
         }
         Assert.assertEquals(expectedFrame.length / 2, values.size());
@@ -166,6 +166,10 @@ public abstract class AbstractDebugTest {
 
     protected final String expectDone() {
         return tester.expectDone();
+    }
+
+    protected final Throwable expectThrowable() {
+        return tester.expectThrowable();
     }
 
     protected final void expectSuspended(SuspendedCallback handler) {
