@@ -39,7 +39,7 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMInc
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMAddressDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
@@ -70,10 +70,10 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
         this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
         this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
 
-        this.gpOffsetLoad = LLVMI32LoadNodeGen.create();
-        this.fpOffsetLoad = LLVMI32LoadNodeGen.create();
-        this.overflowArgAreaLoad = LLVMAddressDirectLoadNodeGen.create();
-        this.regSaveAreaLoad = LLVMAddressDirectLoadNodeGen.create();
+        this.gpOffsetLoad = LLVMI32LoadNodeGen.create(null);
+        this.fpOffsetLoad = LLVMI32LoadNodeGen.create(null);
+        this.overflowArgAreaLoad = LLVMAddressDirectLoadNodeGen.create(null);
+        this.regSaveAreaLoad = LLVMAddressDirectLoadNodeGen.create(null);
     }
 
     private void setGPOffset(Object address, int value) {

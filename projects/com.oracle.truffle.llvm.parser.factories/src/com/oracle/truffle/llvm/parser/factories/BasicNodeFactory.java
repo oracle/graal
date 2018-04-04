@@ -188,8 +188,7 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI1LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadExpressionNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadAddressVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadVectorNodeFactory.LLVMLoadFloatVectorNodeGen;
@@ -480,42 +479,33 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    private static LLVMExpressionNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
+    private static LLVMLoadNode createLoadVector(VectorType resultType, LLVMExpressionNode loadTarget, int size) {
         Type elemType = resultType.getElementType();
-        LLVMLoadNode load;
         if (elemType instanceof PrimitiveType) {
 
             switch (((PrimitiveType) elemType).getPrimitiveKind()) {
                 case I1:
-                    load = LLVMLoadI1VectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadI1VectorNodeGen.create(loadTarget, size);
                 case I8:
-                    load = LLVMLoadI8VectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadI8VectorNodeGen.create(loadTarget, size);
                 case I16:
-                    load = LLVMLoadI16VectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadI16VectorNodeGen.create(loadTarget, size);
                 case I32:
-                    load = LLVMLoadI32VectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadI32VectorNodeGen.create(loadTarget, size);
                 case I64:
-                    load = LLVMLoadI64VectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadI64VectorNodeGen.create(loadTarget, size);
                 case FLOAT:
-                    load = LLVMLoadFloatVectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadFloatVectorNodeGen.create(loadTarget, size);
                 case DOUBLE:
-                    load = LLVMLoadDoubleVectorNodeGen.create(size);
-                    break;
+                    return LLVMLoadDoubleVectorNodeGen.create(loadTarget, size);
                 default:
                     throw new AssertionError(elemType + " vectors not supported");
             }
         } else if (elemType instanceof PointerType) {
-            load = LLVMLoadAddressVectorNodeGen.create(size);
+            return LLVMLoadAddressVectorNodeGen.create(loadTarget, size);
         } else {
             throw new AssertionError(elemType + " vectors not supported");
         }
-        return LLVMLoadExpressionNodeGen.create(load, loadTarget);
     }
 
     @Override
@@ -1083,43 +1073,33 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createExtractValue(LLVMParserRuntime runtime, Type type, LLVMExpressionNode targetAddress) {
-        LLVMLoadNode load;
+    public LLVMLoadNode createExtractValue(LLVMParserRuntime runtime, Type type, LLVMExpressionNode targetAddress) {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I1:
-                    load = LLVMI1LoadNodeGen.create();
-                    break;
+                    return LLVMI1LoadNodeGen.create(targetAddress);
                 case I8:
-                    load = LLVMI8LoadNodeGen.create();
-                    break;
+                    return LLVMI8LoadNodeGen.create(targetAddress);
                 case I16:
-                    load = LLVMI16LoadNodeGen.create();
-                    break;
+                    return LLVMI16LoadNodeGen.create(targetAddress);
                 case I32:
-                    load = LLVMI32LoadNodeGen.create();
-                    break;
+                    return LLVMI32LoadNodeGen.create(targetAddress);
                 case I64:
-                    load = LLVMI64LoadNodeGen.create();
-                    break;
+                    return LLVMI64LoadNodeGen.create(targetAddress);
                 case FLOAT:
-                    load = LLVMFloatLoadNodeGen.create();
-                    break;
+                    return LLVMFloatLoadNodeGen.create(targetAddress);
                 case DOUBLE:
-                    load = LLVMDoubleLoadNodeGen.create();
-                    break;
+                    return LLVMDoubleLoadNodeGen.create(targetAddress);
                 case X86_FP80:
-                    load = LLVM80BitFloatDirectLoadNodeGen.create();
-                    break;
+                    return LLVM80BitFloatDirectLoadNodeGen.create(targetAddress);
                 default:
                     throw new AssertionError(type);
             }
         } else if (type instanceof PointerType || type instanceof StructureType || type instanceof ArrayType) {
-            load = LLVMAddressDirectLoadNodeGen.create();
+            return LLVMAddressDirectLoadNodeGen.create(targetAddress);
         } else {
             throw new AssertionError(type);
         }
-        return LLVMLoadExpressionNodeGen.create(load, targetAddress);
     }
 
     @Override
@@ -2067,52 +2047,42 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     private static LLVMExpressionNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
-        LLVMLoadNode load;
         if (resultType instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType).getPrimitiveKind()) {
                 case I1:
-                    load = LLVMI1LoadNodeGen.create();
-                    break;
+                    return LLVMI1LoadNodeGen.create(loadTarget);
                 case I8:
-                    load = LLVMI8LoadNodeGen.create();
-                    break;
+                    return LLVMI8LoadNodeGen.create(loadTarget);
                 case I16:
-                    load = LLVMI16LoadNodeGen.create();
-                    break;
+                    return LLVMI16LoadNodeGen.create(loadTarget);
                 case I32:
-                    load = LLVMI32LoadNodeGen.create();
-                    break;
+                    return LLVMI32LoadNodeGen.create(loadTarget);
                 case I64:
-                    load = LLVMI64LoadNodeGen.create();
-                    break;
+                    return LLVMI64LoadNodeGen.create(loadTarget);
                 case FLOAT:
-                    load = LLVMFloatLoadNodeGen.create();
-                    break;
+                    return LLVMFloatLoadNodeGen.create(loadTarget);
                 case DOUBLE:
-                    load = LLVMDoubleLoadNodeGen.create();
-                    break;
+                    return LLVMDoubleLoadNodeGen.create(loadTarget);
                 case X86_FP80:
-                    load = LLVM80BitFloatDirectLoadNodeGen.create();
-                    break;
+                    return LLVM80BitFloatDirectLoadNodeGen.create(loadTarget);
                 default:
                     throw new AssertionError(resultType);
             }
         } else if (resultType instanceof VariableBitWidthType) {
-            load = LLVMIVarBitDirectLoadNodeGen.create(bits);
+            return LLVMIVarBitDirectLoadNodeGen.create(loadTarget, bits);
         } else if (Type.isFunctionOrFunctionPointer(resultType)) {
-            load = LLVMFunctionDirectLoadNodeGen.create();
+            return LLVMFunctionDirectLoadNodeGen.create(loadTarget);
         } else if (resultType instanceof StructureType || resultType instanceof ArrayType) {
-            load = LLVMStructDirectLoadNodeGen.create();
+            return LLVMStructDirectLoadNodeGen.create(loadTarget);
         } else if (resultType instanceof PointerType) {
             if (loadTarget instanceof LLVMAccessGlobalVariableStorageNode) {
                 return new LLVMGlobalDirectLoadNode(((LLVMAccessGlobalVariableStorageNode) loadTarget).getDescriptor());
             } else {
-                load = LLVMAddressDirectLoadNodeGen.create();
+                return LLVMAddressDirectLoadNodeGen.create(loadTarget);
             }
         } else {
             throw new AssertionError(resultType);
         }
-        return LLVMLoadExpressionNodeGen.create(load, loadTarget);
     }
 
     private LLVMExpressionNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size, LLVMSourceLocation source) {

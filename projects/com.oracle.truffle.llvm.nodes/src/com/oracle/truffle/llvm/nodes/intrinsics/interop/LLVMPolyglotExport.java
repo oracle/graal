@@ -39,10 +39,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNode;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
@@ -56,14 +52,6 @@ public abstract class LLVMPolyglotExport extends LLVMIntrinsic {
     @Child LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
     @Child LLVMDataEscapeNode escape = LLVMDataEscapeNodeGen.create(PointerType.VOID);
     @Child Node write = Message.WRITE.createNode();
-
-    protected static LLVMIncrementPointerNode createIncNode() {
-        return LLVMIncrementPointerNodeGen.create();
-    }
-
-    protected static LLVMI8LoadNode loadI8() {
-        return LLVMI8LoadNodeGen.create();
-    }
 
     @Specialization
     protected Object doExport(Object name, Object value,

@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
 
     protected static LLVMI32LoadNode createRead() {
-        return LLVMI32LoadNodeGen.create();
+        return LLVMI32LoadNodeGen.create(null);
     }
 
     protected static LLVMI32StoreNode createWrite() {
