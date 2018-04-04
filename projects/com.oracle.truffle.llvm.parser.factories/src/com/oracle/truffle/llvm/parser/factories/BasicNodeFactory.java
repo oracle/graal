@@ -2045,6 +2045,30 @@ public class BasicNodeFactory implements NodeFactory {
         return addressZeroInits;
     }
 
+    @Override
+    public LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1LoadNodeGen.create(null);
+            case I8:
+                return LLVMI8LoadNodeGen.create(null);
+            case I16:
+                return LLVMI16LoadNodeGen.create(null);
+            case I32:
+                return LLVMI32LoadNodeGen.create(null);
+            case I64:
+                return LLVMI64LoadNodeGen.create(null);
+            case FLOAT:
+                return LLVMFloatLoadNodeGen.create(null);
+            case DOUBLE:
+                return LLVMDoubleLoadNodeGen.create(null);
+            case POINTER:
+                return LLVMAddressDirectLoadNodeGen.create(null);
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
+        }
+    }
+
     private static LLVMExpressionNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
         if (resultType instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType).getPrimitiveKind()) {
@@ -2081,6 +2105,30 @@ public class BasicNodeFactory implements NodeFactory {
             }
         } else {
             throw new AssertionError(resultType);
+        }
+    }
+
+    @Override
+    public LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1StoreNodeGen.create(null, null);
+            case I8:
+                return LLVMI8StoreNodeGen.create(null, null);
+            case I16:
+                return LLVMI16StoreNodeGen.create(null, null);
+            case I32:
+                return LLVMI32StoreNodeGen.create(null, null);
+            case I64:
+                return LLVMI64StoreNodeGen.create(null, null);
+            case FLOAT:
+                return LLVMFloatStoreNodeGen.create(null, null);
+            case DOUBLE:
+                return LLVMDoubleStoreNodeGen.create(null, null);
+            case POINTER:
+                return LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
         }
     }
 
