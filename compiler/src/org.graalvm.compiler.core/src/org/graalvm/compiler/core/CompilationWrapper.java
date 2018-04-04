@@ -279,13 +279,13 @@ public abstract class CompilationWrapper<T> {
 
     private void maybeExitVM(ExceptionAction action) {
         if (action == ExitVM) {
-            try {
-                // Give other compiler threads a chance to flush
-                // error handling output.
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-            }
             synchronized (ExceptionAction.class) {
+                try {
+                    // Give other compiler threads a chance to flush
+                    // error handling output.
+                    ExceptionAction.class.wait(2000);
+                } catch (InterruptedException e) {
+                }
                 TTY.println("Exiting VM after retry compilation of " + this);
                 System.exit(-1);
             }
