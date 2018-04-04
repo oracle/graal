@@ -18,6 +18,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [DebugStackTraceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackTraceElement.html) as a representation of exception stack trace.
 * Added [Breakpoint.Kind](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Kind.html) to distinguish different breakpoint kinds.
 * Added [ResultVerifier.getDefaultResultVerifier](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.html#getDefaultResultVerifier--).
+* Added [addToHostClassPath](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPolyglotBindings--) method that can be used to allow guest language users to add to the host class path.
 
 ## Version 0.33
 
