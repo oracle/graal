@@ -800,7 +800,7 @@ def native_image_context_run(func, func_args=None):
     with native_image_context() as native_image:
         func(native_image, func_args)
 
-def fetch_languages(args):
+def fetch_languages(args, early_exit=True):
     if args:
         requested = collections.OrderedDict()
         for arg in args:
@@ -813,12 +813,12 @@ def fetch_languages(args):
 
     for language_flag in requested:
         version = requested[language_flag]
-        truffle_language_ensure(language_flag, version, early_exit=True)
+        truffle_language_ensure(language_flag, version, early_exit=early_exit)
 
 mx.update_commands(suite, {
     'build': [build, ''],
     'helloworld' : [lambda args: native_image_context_run(helloworld, args), ''],
     'cinterfacetutorial' : [lambda args: native_image_context_run(cinterfacetutorial, args), ''],
-    'fetch-languages': [fetch_languages, ''],
+    'fetch-languages': [lambda args: fetch_languages(args, early_exit=False), ''],
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
 })
