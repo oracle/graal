@@ -33,16 +33,21 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class LLVMFunctionStoreNode extends LLVMStoreNode {
+public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
 
     public LLVMFunctionStoreNode(Type type) {
-        super(type);
+        this(null, type);
+    }
+
+    public LLVMFunctionStoreNode(LLVMSourceLocation sourceLocation, Type type) {
+        super(sourceLocation, type);
     }
 
     @Specialization

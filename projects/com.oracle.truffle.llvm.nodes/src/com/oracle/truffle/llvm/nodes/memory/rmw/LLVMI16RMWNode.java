@@ -52,7 +52,7 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     }
 
     protected static LLVMI16StoreNode createWrite() {
-        return LLVMI16StoreNodeGen.create();
+        return LLVMI16StoreNodeGen.create(null, null);
     }
 
     public abstract static class LLVMI16RMWXchgNode extends LLVMI16RMWNode {

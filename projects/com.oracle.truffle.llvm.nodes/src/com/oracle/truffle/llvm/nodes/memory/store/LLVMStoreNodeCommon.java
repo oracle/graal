@@ -29,14 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class LLVMStoreNode extends LLVMNode {
+public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
+    private final LLVMSourceLocation source;
     protected final Type valueType;
 
-    public LLVMStoreNode(Type valueType) {
+    public LLVMStoreNodeCommon(LLVMSourceLocation source, Type valueType) {
+        this.source = source;
         this.valueType = valueType;
     }
 
@@ -44,5 +47,8 @@ public abstract class LLVMStoreNode extends LLVMNode {
         return LLVMForeignWriteNodeGen.create(valueType);
     }
 
-    public abstract Object executeWithTarget(Object address, Object value);
+    @Override
+    public LLVMSourceLocation getSourceLocation() {
+        return source;
+    }
 }

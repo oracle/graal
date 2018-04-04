@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
@@ -85,21 +85,21 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         this.source = source;
         this.stackAllocationNode = stackAllocationNode;
 
-        this.i64RegSaveAreaStore = LLVMI64StoreNodeGen.create();
-        this.i32RegSaveAreaStore = LLVMI32StoreNodeGen.create();
-        this.fp80bitRegSaveAreaStore = LLVM80BitFloatStoreNodeGen.create();
+        this.i64RegSaveAreaStore = LLVMI64StoreNodeGen.create(null, null);
+        this.i32RegSaveAreaStore = LLVMI32StoreNodeGen.create(null, null);
+        this.fp80bitRegSaveAreaStore = LLVM80BitFloatStoreNodeGen.create(null, null);
         this.pointerArithmeticRegSaveArea = LLVMIncrementPointerNodeGen.create();
 
-        this.i64OverflowArgAreaStore = LLVMI64StoreNodeGen.create();
-        this.i32OverflowArgAreaStore = LLVMI32StoreNodeGen.create();
-        this.fp80bitOverflowArgAreaStore = LLVM80BitFloatStoreNodeGen.create();
+        this.i64OverflowArgAreaStore = LLVMI64StoreNodeGen.create(null, null);
+        this.i32OverflowArgAreaStore = LLVMI32StoreNodeGen.create(null, null);
+        this.fp80bitOverflowArgAreaStore = LLVM80BitFloatStoreNodeGen.create(null, null);
         this.pointerArithmeticOverflowArea = LLVMIncrementPointerNodeGen.create();
 
         this.pointerArithmeticStructInit = LLVMIncrementPointerNodeGen.create();
-        this.gpOffsetStore = LLVMI32StoreNodeGen.create();
-        this.fpOffsetStore = LLVMI32StoreNodeGen.create();
-        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
-        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID);
+        this.gpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
+        this.fpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
+        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
+        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
 
         this.memmove = memmove;
     }

@@ -36,6 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -43,10 +44,14 @@ import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public abstract class LLVMAddressStoreNode extends LLVMStoreNode {
+public abstract class LLVMAddressStoreNode extends LLVMStoreNodeCommon {
 
     public LLVMAddressStoreNode(Type type) {
-        super(type);
+        this(null, type);
+    }
+
+    public LLVMAddressStoreNode(LLVMSourceLocation sourceLocation, Type type) {
+        super(sourceLocation, type);
     }
 
     @Specialization

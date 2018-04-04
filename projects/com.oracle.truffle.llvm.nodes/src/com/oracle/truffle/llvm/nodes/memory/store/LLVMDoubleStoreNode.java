@@ -36,16 +36,21 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteDoubleNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
-public abstract class LLVMDoubleStoreNode extends LLVMStoreNode {
+public abstract class LLVMDoubleStoreNode extends LLVMStoreNodeCommon {
 
     public LLVMDoubleStoreNode() {
-        super(PrimitiveType.DOUBLE);
+        this(null);
+    }
+
+    public LLVMDoubleStoreNode(LLVMSourceLocation sourceLocation) {
+        super(sourceLocation, PrimitiveType.DOUBLE);
     }
 
     @Specialization

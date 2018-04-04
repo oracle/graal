@@ -34,16 +34,21 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
-public abstract class LLVMIVarBitStoreNode extends LLVMStoreNode {
+public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
 
     public LLVMIVarBitStoreNode(VariableBitWidthType type) {
-        super(type);
+        this(null, type);
+    }
+
+    public LLVMIVarBitStoreNode(LLVMSourceLocation sourceLocation, VariableBitWidthType type) {
+        super(sourceLocation, type);
     }
 
     @Specialization

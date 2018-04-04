@@ -255,7 +255,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         protected static LLVMI8StoreNode createI8Write() {
-            return LLVMI8StoreNodeGen.create();
+            return LLVMI8StoreNodeGen.create(null, null);
         }
 
         protected static LLVMI16LoadNode createI16Read() {
@@ -263,7 +263,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         protected static LLVMI16StoreNode createI16Write() {
-            return LLVMI16StoreNodeGen.create();
+            return LLVMI16StoreNodeGen.create(null, null);
         }
 
         protected static LLVMI32LoadNode createI32Read() {
@@ -271,7 +271,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         protected static LLVMI32StoreNode createI32Write() {
-            return LLVMI32StoreNodeGen.create();
+            return LLVMI32StoreNodeGen.create(null, null);
         }
 
         protected static LLVMI64LoadNode createI64Read() {
@@ -279,7 +279,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         protected static LLVMI64StoreNode createI64Write() {
-            return LLVMI64StoreNodeGen.create();
+            return LLVMI64StoreNodeGen.create(null, null);
         }
     }
 }

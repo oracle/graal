@@ -101,6 +101,6 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
     }
 
     protected LLVM80BitFloatStoreNode create80BitFloatStore() {
-        return LLVM80BitFloatStoreNodeGen.create();
+        return LLVM80BitFloatStoreNodeGen.create(null, null);
     }
 }

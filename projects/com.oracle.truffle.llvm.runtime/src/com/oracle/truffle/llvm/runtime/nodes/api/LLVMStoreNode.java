@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.store;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMStoreExpressionNode extends LLVMExpressionNode {
+@NodeChild(value = "address", type = LLVMExpressionNode.class)
+@NodeChild(value = "value", type = LLVMExpressionNode.class)
+public abstract class LLVMStoreNode extends LLVMExpressionNode {
 
-    private final LLVMSourceLocation source;
-    @Child private LLVMStoreNode store;
-
-    public LLVMStoreExpressionNode(LLVMSourceLocation source, LLVMStoreNode store) {
-        this.source = source;
-        this.store = store;
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
-    }
-
-    @Specialization
-    protected Object store(Object address, Object value) {
-        return store.executeWithTarget(address, value);
-    }
+    public abstract Object executeWithTarget(Object address, Object value);
 }
