@@ -320,10 +320,10 @@ public class GraphKit implements GraphBuilderTool {
     /**
      * Recursively {@linkplain #inline inlines} all invocations currently in the graph.
      */
-    public void inlineInvokes() {
+    public void inlineInvokes(String reason, String phase) {
         while (!graph.getNodes().filter(InvokeNode.class).isEmpty()) {
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class).snapshot()) {
-                inline(invoke);
+                inline(invoke, reason, phase);
             }
         }
 
@@ -335,7 +335,7 @@ public class GraphKit implements GraphBuilderTool {
      * Inlines a given invocation to a method. The graph of the inlined method is processed in the
      * same manner as for snippets and method substitutions.
      */
-    public void inline(InvokeNode invoke) {
+    public void inline(InvokeNode invoke, String reason, String phase) {
         ResolvedJavaMethod method = ((MethodCallTargetNode) invoke.callTarget()).targetMethod();
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -356,7 +356,7 @@ public class GraphKit implements GraphBuilderTool {
         calleeGraph.clearAllStateAfter();
         new DeadCodeEliminationPhase(Optionality.Required).apply(calleeGraph);
 
-        InliningUtil.inline(invoke, calleeGraph, false, method);
+        InliningUtil.inline(invoke, calleeGraph, false, method, reason, phase);
     }
 
     protected void pushStructure(Structure structure) {

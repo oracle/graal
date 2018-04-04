@@ -428,7 +428,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     private static void inlinePrologueAndEpilogue(SubstrateGraphKit kit, InvokeNode prologueInvoke, InvokeNode epilogueInvoke, JavaKind returnKind) {
         assert (prologueInvoke != null) == (epilogueInvoke != null);
         if (prologueInvoke != null) {
-            kit.inline(prologueInvoke);
+            kit.inline(prologueInvoke, "Inline prologue.", "GraphBuilding");
             NodeIterable<CEntryPointPrologueBailoutNode> bailoutNodes = kit.getGraph().getNodes().filter(CEntryPointPrologueBailoutNode.class);
             for (CEntryPointPrologueBailoutNode node : bailoutNodes) {
                 ValueNode result = node.getResult();
@@ -452,7 +452,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                 node.replaceAndDelete(returnNode);
             }
             if (epilogueInvoke.isAlive()) {
-                kit.inline(epilogueInvoke);
+                kit.inline(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
             }
         }
     }
