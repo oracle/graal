@@ -361,8 +361,14 @@ public class InliningLog {
         callsite.invoke = newInvoke;
     }
 
-    public String formatAsTree(boolean requireNonEmpty) {
-        if (requireNonEmpty && root.children.isEmpty()) {
+    /**
+     * Formats the inlining log as a hierarchical tree.
+     *
+     * @param nullIfEmpty specifies whether null should be returned if there are no inlining decisions
+     * @return the tree representation of the inlining log
+     */
+    public String formatAsTree(boolean nullIfEmpty) {
+        if (nullIfEmpty && root.children.isEmpty()) {
             return null;
         }
         StringBuilder builder = new StringBuilder(512);
