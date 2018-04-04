@@ -181,9 +181,9 @@ flag_suitename_map = collections.OrderedDict([
 class ToolDescriptor:
     def __init__(self, image_deps=None, builder_deps=None, native_deps=None):
         """
-        By adding a new ToolDescriptor entry in the tools_map a new --Tool:<keyname>
+        By adding a new ToolDescriptor entry in the tools_map a new --tool:<keyname>
         option is made available to native-image and also makes the tool available as
-        Tool:<keyname> in a native-image properties file Requires statement.  The tool is
+        tool:<keyname> in a native-image properties file Requires statement.  The tool is
         represented in the <native_image_root>/tools/<keyname> directory. If a
         corresponding tools-<keyname>.properties file exists in mx.substratevm it will get
         symlinked as <native_image_root>/tools/<keyname>/native-image.properties so that
@@ -593,7 +593,7 @@ def native_junit(native_image, unittest_args, build_args=None, run_args=None):
         unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, None, None, None, None)
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        native_image(build_args + extra_image_args + ['--Tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
+        native_image(build_args + extra_image_args + ['--tool:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
         unittest_image = join(junit_tmp_dir, 'svmjunit')
         mx.run([unittest_image] + run_args)
     finally:
@@ -604,13 +604,13 @@ def gate_sulong(native_image, tasks):
     with Task('Run SulongSuite tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            lli = native_image(['--Language:llvm'])
+            lli = native_image(['--language:llvm'])
             sulong.extensions.testLLVMImage(lli, unittestArgs=['--enable-timing'])
 
     with Task('Run Sulong interop tests with SVM image', tasks, tags=[GraalTags.sulong]) as t:
         if t:
             sulong = truffle_language_ensure('llvm')
-            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--Language:llvm']))
+            sulong.extensions.runLLVMUnittests(functools.partial(native_junit, native_image, build_args=['--language:llvm']))
 
 
 def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
@@ -648,7 +648,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 def build_js(native_image):
     truffle_language_ensure('js')
-    return native_image(['--Language:js', '--Tool:chromeinspector'])
+    return native_image(['--language:js', '--tool:chromeinspector'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -672,7 +672,7 @@ def test_run(cmds, expected_stdout, timeout=10):
 def build_python(native_image):
     truffle_language_ensure('llvm') # python depends on sulong
     truffle_language_ensure('python')
-    return native_image(['--Language:python', '--Tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
+    return native_image(['--language:python', '--tool:profiler', 'com.oracle.graal.python.shell.GraalPythonMain', 'python'])
 
 def test_python_smoke(args):
     """
@@ -698,7 +698,7 @@ def test_python_smoke(args):
 def build_ruby(native_image):
     truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
-    return native_image(['--Language:ruby'], setPath=False)
+    return native_image(['--language:ruby'], setPath=False)
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
