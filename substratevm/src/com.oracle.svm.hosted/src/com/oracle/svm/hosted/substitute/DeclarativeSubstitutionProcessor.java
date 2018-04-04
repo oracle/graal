@@ -542,8 +542,9 @@ class FieldDescriptor extends ElementDescriptor {
     class RecomputeFieldValueImpl extends AnnotationImpl implements RecomputeFieldValue {
         @Override
         public Kind kind() {
-            assert kind() != null;
-            return kind();
+            Kind result = get("kind", null);
+            assert result != null;
+            return result;
         }
 
         @Override
