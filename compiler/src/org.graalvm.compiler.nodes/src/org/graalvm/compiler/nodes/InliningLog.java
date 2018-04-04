@@ -114,7 +114,7 @@ public class InliningLog {
 
         public String positionString() {
             if (parent == null) {
-                return target.format("%H.%n(%p)");
+                return "compilation of " + target.format("%H.%n(%p)");
             }
             return "at " + MetaUtil.appendLocation(new StringBuilder(100), parent.target, getBci()).toString();
         }
@@ -374,10 +374,17 @@ public class InliningLog {
         String position = site.positionString();
         builder.append(indent).append(position).append(": ");
         if (site.decisions.isEmpty()) {
+            if (site.parent != null) {
+                builder.append("(no decisions made)");
+            }
+            builder.append(System.lineSeparator());
+        } else if (site.decisions.size() == 1) {
+            builder.append(site.decisions.get(0).toString());
             builder.append(System.lineSeparator());
         } else {
+            builder.append(System.lineSeparator());
             for (Decision decision : site.decisions) {
-                builder.append(decision.toString());
+                builder.append(indent + "   |-").append(decision.toString());
                 builder.append(System.lineSeparator());
             }
         }
