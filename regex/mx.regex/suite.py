@@ -37,6 +37,18 @@ suite = {
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Regex",
     },
+
+    "com.oracle.truffle.regex.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.regex",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.regex",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Truffle,Regex",
+    },
   },
 
   "distributions" : {
@@ -46,6 +58,19 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],
+    },
+
+    "TREGEX_UNIT_TESTS" : {
+      "dependencies" : [
+        "com.oracle.truffle.regex.test",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "TREGEX",
+      ],
+      "maven" : False,
     },
   }
 }
