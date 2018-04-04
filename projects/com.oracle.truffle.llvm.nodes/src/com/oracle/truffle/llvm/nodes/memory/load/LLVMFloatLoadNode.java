@@ -71,7 +71,13 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.FLOAT);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected float doFloat(LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doFloat(addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     protected float doFloat(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (float) foreignRead.execute(addr);

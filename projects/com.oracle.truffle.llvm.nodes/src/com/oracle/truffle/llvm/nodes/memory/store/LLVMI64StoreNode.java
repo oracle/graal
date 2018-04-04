@@ -98,7 +98,17 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
+    @Specialization(guards = "address.isNative()")
+    protected Object doOp(LLVMTruffleObject address, Object value,
+                    @Cached("createRecursive()") LLVMI64StoreNode recursive) {
+        return recursive.executeWithTarget(address.asNative(), value);
+    }
+
+    protected static LLVMI64StoreNode createRecursive() {
+        return LLVMI64StoreNodeGen.create(null, null);
+    }
+
+    @Specialization(guards = "address.isManaged()")
     protected Object doOp(LLVMTruffleObject address, Object value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(address, value);

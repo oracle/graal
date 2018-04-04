@@ -67,7 +67,13 @@ public abstract class LLVMI1LoadNode extends LLVMLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I1);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected boolean doI1(LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doI1(addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     protected boolean doI1(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (boolean) foreignRead.execute(addr);

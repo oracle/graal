@@ -73,7 +73,13 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I64);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected Object doI64(LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doI64(addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     protected Object doI64(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return foreignRead.execute(addr);

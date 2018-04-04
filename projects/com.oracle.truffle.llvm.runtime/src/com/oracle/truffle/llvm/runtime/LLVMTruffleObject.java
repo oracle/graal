@@ -70,6 +70,19 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         return object;
     }
 
+    public boolean isNative() {
+        return object == null;
+    }
+
+    public LLVMAddress asNative() {
+        assert isNative();
+        return LLVMAddress.fromLong(offset);
+    }
+
+    public boolean isManaged() {
+        return object != null;
+    }
+
     public LLVMTruffleObject increment(long incr) {
         return new LLVMTruffleObject(object, offset + incr);
     }

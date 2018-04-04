@@ -74,7 +74,13 @@ public abstract class LLVMDoubleStoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
+    @Specialization(guards = "address.isNative()")
+    protected Object doOp(LLVMTruffleObject address, double value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doOp(address.asNative(), value, memory);
+    }
+
+    @Specialization(guards = "address.isManaged()")
     protected Object doOp(LLVMTruffleObject address, double value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(address, value);
