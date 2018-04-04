@@ -71,7 +71,13 @@ public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.DOUBLE);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected double doDouble(LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doDouble(addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     protected double doDouble(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (double) foreignRead.execute(addr);

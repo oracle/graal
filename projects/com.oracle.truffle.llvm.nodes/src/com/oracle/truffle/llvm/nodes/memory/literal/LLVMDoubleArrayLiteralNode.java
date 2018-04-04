@@ -80,7 +80,13 @@ public abstract class LLVMDoubleArrayLiteralNode extends LLVMExpressionNode {
         return LLVMForeignWriteNodeGen.create(PrimitiveType.DOUBLE);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected LLVMAddress writeDouble(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return writeDouble(frame, addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     @ExplodeLoop
     protected LLVMTruffleObject foreignWriteDouble(VirtualFrame frame, LLVMTruffleObject addr,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {

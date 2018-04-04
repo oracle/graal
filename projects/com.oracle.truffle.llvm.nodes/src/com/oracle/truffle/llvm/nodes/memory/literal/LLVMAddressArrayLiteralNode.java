@@ -96,9 +96,15 @@ public abstract class LLVMAddressArrayLiteralNode extends LLVMExpressionNode {
         return writes;
     }
 
+    @Specialization(guards = "addr.isNative()")
+    protected LLVMAddress writeAddress(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return writeAddress(frame, addr.asNative(), memory);
+    }
+
     // TODO: work around a DSL bug (GR-6493): remove cached int a and int b
     @SuppressWarnings("unused")
-    @Specialization
+    @Specialization(guards = "addr.isManaged()")
     @ExplodeLoop
     protected LLVMTruffleObject foreignWriteRef(VirtualFrame frame, LLVMTruffleObject addr,
                     @Cached("0") int a,

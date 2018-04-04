@@ -80,7 +80,13 @@ public abstract class LLVMI64ArrayLiteralNode extends LLVMExpressionNode {
         return LLVMForeignWriteNodeGen.create(PrimitiveType.I64);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected LLVMAddress writeI64(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return writeI64(frame, addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     @ExplodeLoop
     protected LLVMTruffleObject foreignWriteI64(VirtualFrame frame, LLVMTruffleObject addr,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {

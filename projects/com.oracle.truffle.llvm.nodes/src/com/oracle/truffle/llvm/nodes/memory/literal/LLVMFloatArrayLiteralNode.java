@@ -60,12 +60,12 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
     protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return writeI64(frame, globalAccess.executeWithTarget(global), memory);
+        return writeFloat(frame, globalAccess.executeWithTarget(global), memory);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeI64(VirtualFrame frame, LLVMAddress addr,
+    protected LLVMAddress writeFloat(VirtualFrame frame, LLVMAddress addr,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         long currentPtr = addr.getVal();
         for (int i = 0; i < values.length; i++) {
@@ -80,7 +80,13 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
         return LLVMForeignWriteNodeGen.create(PrimitiveType.FLOAT);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected LLVMAddress writeFloat(VirtualFrame frame, LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return writeFloat(frame, addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     @ExplodeLoop
     protected LLVMTruffleObject foreignWriteFloat(VirtualFrame frame, LLVMTruffleObject addr,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {

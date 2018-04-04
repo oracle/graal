@@ -71,7 +71,13 @@ public abstract class LLVMI8LoadNode extends LLVMLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I8);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected byte doI8(LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doI8(addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     protected byte doI8(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (byte) foreignRead.execute(addr);

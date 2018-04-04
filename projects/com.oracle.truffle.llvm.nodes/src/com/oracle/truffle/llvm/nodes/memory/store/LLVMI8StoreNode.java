@@ -74,7 +74,13 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
+    @Specialization(guards = "address.isNative()")
+    protected Object doOp(LLVMTruffleObject address, byte value,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doOp(address.asNative(), value, memory);
+    }
+
+    @Specialization(guards = "address.isManaged()")
     protected Object doOp(LLVMTruffleObject address, byte value,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
         foreignWrite.execute(address, value);

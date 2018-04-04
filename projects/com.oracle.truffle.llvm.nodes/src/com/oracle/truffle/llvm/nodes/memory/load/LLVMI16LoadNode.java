@@ -67,7 +67,13 @@ public abstract class LLVMI16LoadNode extends LLVMLoadNode {
         return address.getI16(memory);
     }
 
-    @Specialization
+    @Specialization(guards = "addr.isNative()")
+    protected short doShort(LLVMTruffleObject addr,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        return doShort(addr.asNative(), memory);
+    }
+
+    @Specialization(guards = "addr.isManaged()")
     protected short doShort(LLVMTruffleObject addr,
                     @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
         return (short) foreignRead.execute(addr);
