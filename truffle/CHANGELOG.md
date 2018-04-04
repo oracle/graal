@@ -17,6 +17,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [DebugException](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugException.html), debugger methods that execute guest language code throws that exception and it's possible to [create exception breakpoints](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.html#newExceptionBuilder-boolean-boolean-) that suspend when guest language exception occurs.
 * Added [DebugStackTraceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackTraceElement.html) as a representation of exception stack trace.
 * Added [Breakpoint.Kind](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Kind.html) to distinguish different breakpoint kinds.
+* Added [ResultVerifier.getDefaultResultVerifier](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.html#getDefaultResultVerifier--).
 
 ## Version 0.33
 
