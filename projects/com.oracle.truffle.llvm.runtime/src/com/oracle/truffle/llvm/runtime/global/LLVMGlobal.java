@@ -110,7 +110,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMSourceType sourceType = getSourceType();
             if (sourceType == null) {
-                interopType = LLVMInteropType.SIMPLE;
+                interopType = LLVMInteropType.UNKNOWN;
             } else {
                 interopType = LLVMInteropType.fromSourceType(sourceType);
             }
