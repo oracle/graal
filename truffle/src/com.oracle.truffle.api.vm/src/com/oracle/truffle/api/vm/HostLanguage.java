@@ -166,9 +166,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             if (TruffleOptions.AOT) {
                 throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
             }
-            if (!internalContext.context.hostAccessAllowed) {
-                throw new HostLanguageException(String.format("Host class access is not allowed."));
-            }
             if (!internalContext.context.hostClassLoadingAllowed) {
                 throw new HostLanguageException(String.format("Host class loading is not allowed."));
             }
