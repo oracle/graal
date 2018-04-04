@@ -6,18 +6,18 @@ It removes the isolation between programming languages and enables interoperabil
 in a high-performance runtime.
 GraalVM includes the following components:
 
-* [Graal SDK](../sdk) contains long term supported APIs of GraalVM.
+* [Graal SDK](/sdk/) contains long term supported APIs of GraalVM.
 
-* [Graal](../compiler) dynamic compiler written in Java that integrates with
+* [Graal](/compiler/) dynamic compiler written in Java that integrates with
 the HotSpot JVM.
 
-* [Truffle](../truffle) framework for implementing languages and instruments
+* [Truffle](/truffle/) framework for implementing languages and instruments
 that use Graal as a dynamic compiler.
 
-* [Tools](../tools) contains a set of tools for Truffle guest languages
+* [Tools](/tools/) contains a set of tools for Truffle guest languages
 implemented using the instrumentation framework.
 
-* [Substrate VM](../substratevm) framework that allows ahead-of-time (AOT)
+* [Substrate VM](/substratevm/) framework that allows ahead-of-time (AOT)
 compilation of Java applications under closed-world assumption into executable
 images or shared objects.
 
@@ -38,14 +38,14 @@ We provide binaries for running GraalVM EE on Linux or Mac OS X on x86 64-bit sy
 ## Documentation
 A comprehensive GraalVM documentation can be found [on the website](https://graalvm.org/docs/).  
 It is divided into several sections:
-* [Getting Started](/docs/getting-started/)
-* [Reference Manual](/docs/reference-manual/)
-* [GraalVM as a Platform](/docs/graalvm-as-a-platform/)
-* [FAQ](/docs/faq/)
-* [Effective GraalVM](/docs/effective-graalvm/)
+* [Getting Started](/docs/docs/getting-started/)
+* [Reference Manual](/docs/docs/reference-manual/)
+* [GraalVM as a Platform](/docs/docs/graalvm-as-a-platform/)
+* [FAQ](/docs/docs/faq/)
+* [Effective GraalVM](/docs/docs/effective-graalvm/)
 
 If you can not find the answer you need or have a troubleshooting query,
-[get in touch with us](/ecosystem/).
+[get in touch with us](/docs/ecosystem/).
 
 ## Examples
 There are multiply examples [on the website](https://graalvm.org/examples/).
@@ -74,13 +74,13 @@ installation directory.
 You can also specify GraalVM as the JRE or JDK installation in your Java IDE.
 
 ## Contributing
-Get acquainted with our [contribution guide](../compiler/CONTRIBUTING.md)
+Get acquainted with our [contribution guide](/compiler/CONTRIBUTING.md)
 to learn how you can take part in improving Graal.
 Contribute your code or improvements on [GitHub](https://github.com/oracle/graal).
 
 ## Code of Conduct
 We adopted a Code of Conduct that we expect project contributors to follow.
-Please read our [Contributor Covenant Code of Conduct](/community/)
+Please read our [Contributor Covenant Code of Conduct](/docs/community/)
 to understand what actions will and will not be tolerated.
 
 ## Issues
@@ -102,9 +102,9 @@ GraalVM Enterprise Edition is available from the Oracle Technology Network
 under an evaluation license.
 It provides improved performance and security for production deployments.
 Each GraalVM component is licensed:
-[Truffle](../truffle) and its dependency [Graal SDK](../sdk) are licensed under
-the [GPL 2 with Classpath exception](../truffle/LICENSE.GPL.md)
-[Tools](../tools) project is licensed under the [GPL 2 with Classpath exception](../tools/LICENSE.GPL.md)
+[Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under
+the [GPL 2 with Classpath exception](/truffle/LICENSE.GPL.md)
+[Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](/tools/LICENSE.GPL.md)
 [TRegex](../regex) project is licensed under the [GPL 2 with Classpath exception](../regex/LICENSE.GPL.md).
-The [Graal compiler](../compiler) is licensed under the [GPL 2](../compiler/LICENSE.md)
-[Substrate VM](../substratevm) is licensed under the [GPL 2](../substratevm/LICENSE.md)
+The [Graal compiler](/compiler/) is licensed under the [GPL 2](/compiler/LICENSE.md)
+[Substrate VM](/substratevm/) is licensed under the [GPL 2](/substratevm/LICENSE.md)
