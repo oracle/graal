@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -81,18 +80,15 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     static class ForeignReadNode extends LLVMObjectReadNode {
 
         @Child LLVMInteropReadNode read;
-        @Child ForeignToLLVM toLLVM;
 
         protected ForeignReadNode(ForeignToLLVMType type) {
-            this.read = LLVMInteropReadNode.create(type.getSizeInBytes());
-            this.toLLVM = ForeignToLLVM.create(type);
+            this.read = LLVMInteropReadNode.create(type);
         }
 
         @Override
         public Object executeRead(Object obj, long offset) throws InteropException {
             LLVMTypedForeignObject object = (LLVMTypedForeignObject) obj;
-            Object ret = read.execute(object.getType(), object.getForeign(), offset);
-            return toLLVM.executeWithTarget(ret);
+            return read.execute(object.getType(), object.getForeign(), offset);
         }
 
         @Override
