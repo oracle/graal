@@ -224,15 +224,12 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadExpressionNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreExpressionNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
@@ -1763,25 +1760,25 @@ class AsmFactory {
                         assert retTypes[arg.getOutIndex()] == arg.getType();
                         if (arg.getType() instanceof PointerType) {
                             valueNodes[arg.getOutIndex()] = LLVMToAddressNodeGen.create(register);
-                            writeNodes[arg.getOutIndex()] = LLVMAddressStoreNodeGen.create(arg.getType());
+                            writeNodes[arg.getOutIndex()] = LLVMAddressStoreNodeGen.create(arg.getType(), null, null);
                         } else {
                             PrimitiveKind primitiveKind = getPrimitiveKind(arg);
                             switch (primitiveKind) {
                                 case I8:
                                     valueNodes[arg.getOutIndex()] = LLVMToI8NoZeroExtNodeGen.create(register);
-                                    writeNodes[arg.getOutIndex()] = LLVMI8StoreNodeGen.create();
+                                    writeNodes[arg.getOutIndex()] = LLVMI8StoreNodeGen.create(null, null);
                                     break;
                                 case I16:
                                     valueNodes[arg.getOutIndex()] = LLVMToI16NoZeroExtNodeGen.create(register);
-                                    writeNodes[arg.getOutIndex()] = LLVMI16StoreNodeGen.create();
+                                    writeNodes[arg.getOutIndex()] = LLVMI16StoreNodeGen.create(null, null);
                                     break;
                                 case I32:
                                     valueNodes[arg.getOutIndex()] = LLVMToI32NoZeroExtNodeGen.create(register);
-                                    writeNodes[arg.getOutIndex()] = LLVMI32StoreNodeGen.create();
+                                    writeNodes[arg.getOutIndex()] = LLVMI32StoreNodeGen.create(null, null);
                                     break;
                                 case I64:
                                     valueNodes[arg.getOutIndex()] = register;
-                                    writeNodes[arg.getOutIndex()] = LLVMI64StoreNodeGen.create();
+                                    writeNodes[arg.getOutIndex()] = LLVMI64StoreNodeGen.create(null, null);
                                     break;
                                 default:
                                     throw new AsmParseException("invalid operand size: " + arg.getType());
@@ -2042,23 +2039,17 @@ class AsmFactory {
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
                 if (type instanceof PointerType) {
-                    LLVMLoadNode load = LLVMAddressDirectLoadNodeGen.create();
-                    return LLVMLoadExpressionNodeGen.create(load, LLVMAddressReadNodeGen.create(frame));
+                    return LLVMAddressDirectLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                 }
-                LLVMLoadNode load;
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
-                        load = LLVMI8LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, LLVMAddressReadNodeGen.create(frame));
+                        return LLVMI8LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     case I16:
-                        load = LLVMI16LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, LLVMAddressReadNodeGen.create(frame));
+                        return LLVMI16LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     case I32:
-                        load = LLVMI32LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, LLVMAddressReadNodeGen.create(frame));
+                        return LLVMI32LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     case I64:
-                        load = LLVMI64LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, LLVMAddressReadNodeGen.create(frame));
+                        return LLVMI64LoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
@@ -2101,27 +2092,21 @@ class AsmFactory {
         } else if (operand instanceof AsmMemoryOperand) {
             LLVMExpressionNode address = getOperandAddress(operand);
             LLVMExpressionNode addr = LLVMToAddressNodeGen.create(address);
-            LLVMLoadNode load;
             if (type instanceof PrimitiveType) {
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
-                        load = LLVMI8LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                        return LLVMI8LoadNodeGen.create(addr);
                     case I16:
-                        load = LLVMI16LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                        return LLVMI16LoadNodeGen.create(addr);
                     case I32:
-                        load = LLVMI32LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                        return LLVMI32LoadNodeGen.create(addr);
                     case I64:
-                        load = LLVMI64LoadNodeGen.create();
-                        return LLVMLoadExpressionNodeGen.create(load, addr);
+                        return LLVMI64LoadNodeGen.create(addr);
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
             } else if (type instanceof PointerType) {
-                load = LLVMAddressDirectLoadNodeGen.create();
-                return LLVMLoadExpressionNodeGen.create(load, addr);
+                return LLVMAddressDirectLoadNodeGen.create(addr);
             } else {
                 throw new AsmParseException("unsupported operand type: " + type);
             }
@@ -2160,24 +2145,18 @@ class AsmFactory {
             Argument info = argInfo.get(op.getIndex());
             if (info.isMemory()) {
                 LLVMExpressionNode address = info.getAddress();
-                LLVMStoreNode store;
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
-                        store = LLVMI8StoreNodeGen.create();
-                        break;
+                        return LLVMI8StoreNodeGen.create(address, from);
                     case I16:
-                        store = LLVMI16StoreNodeGen.create();
-                        break;
+                        return LLVMI16StoreNodeGen.create(address, from);
                     case I32:
-                        store = LLVMI32StoreNodeGen.create();
-                        break;
+                        return LLVMI32StoreNodeGen.create(address, from);
                     case I64:
-                        store = LLVMI64StoreNodeGen.create();
-                        break;
+                        return LLVMI64StoreNodeGen.create(address, from);
                     default:
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
-                return LLVMStoreExpressionNodeGen.create(null, store, address, from);
             } else if (info.isRegister()) {
                 FrameSlot frame = getRegisterSlot(info.getRegister());
                 LLVMExpressionNode register = LLVMAMD64ReadRegisterNodeGen.create(frame);
@@ -2207,24 +2186,18 @@ class AsmFactory {
             }
         } else if (operand instanceof AsmMemoryOperand) {
             LLVMExpressionNode address = getOperandAddress(operand);
-            LLVMStoreNode store;
             switch (((PrimitiveType) type).getPrimitiveKind()) {
                 case I8:
-                    store = LLVMI8StoreNodeGen.create();
-                    break;
+                    return LLVMI8StoreNodeGen.create(null, address, from);
                 case I16:
-                    store = LLVMI16StoreNodeGen.create();
-                    break;
+                    return LLVMI16StoreNodeGen.create(null, address, from);
                 case I32:
-                    store = LLVMI32StoreNodeGen.create();
-                    break;
+                    return LLVMI32StoreNodeGen.create(null, address, from);
                 case I64:
-                    store = LLVMI64StoreNodeGen.create();
-                    break;
+                    return LLVMI64StoreNodeGen.create(null, address, from);
                 default:
                     throw new AsmParseException("unsupported operand type: " + type);
             }
-            return LLVMStoreExpressionNodeGen.create(null, store, address, from);
         }
         throw new AsmParseException("unsupported operand type: " + operand);
     }

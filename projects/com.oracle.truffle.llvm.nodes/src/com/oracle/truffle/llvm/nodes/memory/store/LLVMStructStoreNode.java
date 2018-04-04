@@ -34,20 +34,25 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeField(type = long.class, name = "structSize")
-public abstract class LLVMStructStoreNode extends LLVMStoreNode {
+public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
 
     public abstract long getStructSize();
 
     @Child private LLVMMemMoveNode memMove;
 
     protected LLVMStructStoreNode(LLVMMemMoveNode memMove, Type type) {
-        super(type);
+        this(null, memMove, type);
+    }
+
+    protected LLVMStructStoreNode(LLVMSourceLocation sourceLocation, LLVMMemMoveNode memMove, Type type) {
+        super(sourceLocation, type);
         this.memMove = memMove;
     }
 

@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -84,7 +84,7 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
     @NodeChild(value = "len", type = LLVMExpressionNode.class)
     abstract static class ReadBytesWithLengthNode extends ReadBytesNode {
 
-        @Child private LLVMLoadNode load = LLVMI8LoadNodeGen.create();
+        @Child private LLVMLoadNode load = LLVMI8LoadNodeGen.create(null);
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
 
         @Specialization
@@ -150,13 +150,13 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
         protected static LLVMLoadNode createLoad(int increment) {
             switch (increment) {
                 case 1:
-                    return LLVMI8LoadNodeGen.create();
+                    return LLVMI8LoadNodeGen.create(null);
                 case 2:
-                    return LLVMI16LoadNodeGen.create();
+                    return LLVMI16LoadNodeGen.create(null);
                 case 4:
-                    return LLVMI32LoadNodeGen.create();
+                    return LLVMI32LoadNodeGen.create(null);
                 case 8:
-                    return LLVMI64LoadNodeGen.create();
+                    return LLVMI64LoadNodeGen.create(null);
                 default:
                     throw new AssertionError("should not reach here");
             }

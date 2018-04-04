@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -49,11 +49,11 @@ public abstract class LLVMAMD64WriteNode extends Node {
 
     @Child private LLVMAMD64RegisterToLongNode readRegister;
 
-    @Child private LLVMStoreNode storeAddress = LLVMAddressStoreNodeGen.create(PrimitiveType.I64);
-    @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create();
-    @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create();
-    @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create();
-    @Child private LLVMStoreNode storeI64 = LLVMI64StoreNodeGen.create();
+    @Child private LLVMStoreNode storeAddress = LLVMAddressStoreNodeGen.create(PrimitiveType.I64, null, null);
+    @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create(null, null);
+    @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create(null, null);
+    @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create(null, null);
+    @Child private LLVMStoreNode storeI64 = LLVMI64StoreNodeGen.create(null, null);
 
     private final int shift;
     private final long mask;

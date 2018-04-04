@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.Fo
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 
 public abstract class LLVMReadStringNode extends Node {
@@ -118,7 +118,7 @@ public abstract class LLVMReadStringNode extends Node {
     static class PointerReadStringNode extends Node {
 
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
-        @Child private LLVMLoadNode read = LLVMI8LoadNodeGen.create();
+        @Child private LLVMLoadNode read = LLVMI8LoadNodeGen.create(null);
 
         public String readPointer(Object address) {
             Object ptr = address;

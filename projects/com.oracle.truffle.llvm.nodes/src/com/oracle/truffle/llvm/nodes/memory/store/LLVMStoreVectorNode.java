@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -48,12 +49,16 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
+public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
 
     private final int vectorLength;
 
     public LLVMStoreVectorNode(VectorType type) {
-        super(type);
+        this(null, type);
+    }
+
+    public LLVMStoreVectorNode(LLVMSourceLocation sourceLocation, VectorType type) {
+        super(sourceLocation, type);
         this.vectorLength = type.getNumberOfElements();
     }
 

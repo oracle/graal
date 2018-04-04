@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import java.nio.ByteBuffer;
@@ -118,7 +118,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
     abstract static class WriteStringNode extends Node {
 
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
-        @Child private LLVMStoreNode write = LLVMI8StoreNodeGen.create();
+        @Child private LLVMStoreNode write = LLVMI8StoreNodeGen.create(null, null);
 
         protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
