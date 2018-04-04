@@ -6,18 +6,18 @@ It removes the isolation between programming languages and enables interoperabil
 in a high-performance runtime.
 GraalVM includes the following components:
 
-* [Graal SDK](/sdk/) contains long term supported APIs of GraalVM.
+* [Graal SDK](sdk/README.md) contains long term supported APIs of GraalVM.
 
-* [Graal](/compiler/) dynamic compiler written in Java that integrates with
+* [Graal](compiler/README.md) dynamic compiler written in Java that integrates with
 the HotSpot JVM.
 
-* [Truffle](/truffle/) framework for implementing languages and instruments
+* [Truffle](truffle/README.md) framework for implementing languages and instruments
 that use Graal as a dynamic compiler.
 
-* [Tools](/tools/) contains a set of tools for Truffle guest languages
+* [Tools](tools/README.md) contains a set of tools for Truffle guest languages
 implemented using the instrumentation framework.
 
-* [Substrate VM](/substratevm/) framework that allows ahead-of-time (AOT)
+* [Substrate VM](substratevm/README.md) framework that allows ahead-of-time (AOT)
 compilation of Java applications under closed-world assumption into executable
 images or shared objects.
 
@@ -74,7 +74,7 @@ installation directory.
 You can also specify GraalVM as the JRE or JDK installation in your Java IDE.
 
 ## Contributing
-Get acquainted with our [contribution guide](/compiler/CONTRIBUTING.md)
+Get acquainted with our [contribution guide](compiler/CONTRIBUTING.md)
 to learn how you can take part in improving Graal.
 Contribute your code or improvements on [GitHub](https://github.com/oracle/graal).
 
@@ -103,8 +103,8 @@ under an evaluation license.
 It provides improved performance and security for production deployments.
 Each GraalVM component is licensed:
 [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under
-the [GPL 2 with Classpath exception](/truffle/LICENSE.GPL.md)
-[Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](/tools/LICENSE.GPL.md)
+the [GPL 2 with Classpath exception](truffle/LICENSE.GPL.md)
+[Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md)
 [TRegex](../regex) project is licensed under the [GPL 2 with Classpath exception](../regex/LICENSE.GPL.md).
-The [Graal compiler](/compiler/) is licensed under the [GPL 2](/compiler/LICENSE.md)
-[Substrate VM](/substratevm/) is licensed under the [GPL 2](/substratevm/LICENSE.md)
+The [Graal compiler](/compiler/) is licensed under the [GPL 2](compiler/LICENSE.md)
+[Substrate VM](/substratevm/) is licensed under the [GPL 2](substratevm/LICENSE.md)
