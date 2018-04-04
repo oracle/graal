@@ -30,6 +30,7 @@ suite = {
                 "compiler:GRAAL_RUNTIME",
             ],
             "javaCompliance": "1.8",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_VERIFIER",
@@ -96,6 +97,7 @@ suite = {
             ],
             "checkstyle": "com.oracle.graal.pointsto",
             "javaCompliance": "1.8",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_VERIFIER",
@@ -113,6 +115,7 @@ suite = {
                 "com.oracle.graal.pointsto",
             ],
             "javaCompliance": "1.8",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_VERIFIER",
@@ -189,6 +192,7 @@ suite = {
                 "com.oracle.svm.jni",
             ],
             "checkstyle": "com.oracle.svm.driver",
+            "checkstyleVersion" : "8.8",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
@@ -297,6 +301,7 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.truffle",
             "javaCompliance": "1.8",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
                 "compiler:GRAAL_REPLACEMENTS_VERIFIER",
@@ -384,6 +389,7 @@ suite = {
                 "sdk:GRAAL_SDK",
             ],
             "checkstyle": "org.graalvm.polyglot.nativeapi",
+            "checkstyleVersion" : "8.8",
             "javaCompliance" : "1.8",
             "annotationProcessors" : [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",

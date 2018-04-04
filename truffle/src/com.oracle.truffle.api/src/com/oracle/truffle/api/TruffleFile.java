@@ -515,7 +515,7 @@ public final class TruffleFile {
     public Collection<TruffleFile> list() throws IOException {
         try {
             final Collection<TruffleFile> result = new ArrayList<>();
-            try (final DirectoryStream<Path> stream = fileSystem.newDirectoryStream(path, AllFiles.INSTANCE)) {
+            try (DirectoryStream<Path> stream = fileSystem.newDirectoryStream(path, AllFiles.INSTANCE)) {
                 for (Path p : stream) {
                     result.add(new TruffleFile(fileSystem, p));
                 }
