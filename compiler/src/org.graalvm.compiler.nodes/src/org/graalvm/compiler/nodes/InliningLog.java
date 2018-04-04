@@ -114,9 +114,9 @@ public class InliningLog {
 
         public String positionString() {
             if (parent == null) {
-                return "<root>";
+                return target.format("%H.%n(%p)");
             }
-            return MetaUtil.appendLocation(new StringBuilder(100), parent.target, getBci()).toString();
+            return "at " + MetaUtil.appendLocation(new StringBuilder(100), parent.target, getBci()).toString();
         }
 
         public int getBci() {
@@ -361,7 +361,10 @@ public class InliningLog {
         callsite.invoke = newInvoke;
     }
 
-    public String formatAsTree() {
+    public String formatAsTree(boolean requireNonEmpty) {
+        if (requireNonEmpty && root.children.isEmpty()) {
+            return null;
+        }
         StringBuilder builder = new StringBuilder(512);
         formatAsTree(root, "", builder);
         return builder.toString();
@@ -369,7 +372,7 @@ public class InliningLog {
 
     private void formatAsTree(Callsite site, String indent, StringBuilder builder) {
         String position = site.positionString();
-        builder.append(indent).append("at ").append(position).append(": ");
+        builder.append(indent).append(position).append(": ");
         if (site.decisions.isEmpty()) {
             builder.append(System.lineSeparator());
         } else {

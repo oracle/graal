@@ -480,7 +480,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void logInliningTree() {
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            TTY.println(getInliningLog().formatAsTree());
+            String formattedTree = getInliningLog().formatAsTree(true);
+            if (formattedTree != null) {
+                TTY.println(formattedTree);
+            }
         }
     }
 
