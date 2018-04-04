@@ -221,7 +221,7 @@ def native_image_path(native_image_root):
     return join(native_image_dir, native_image_name)
 
 def remove_option_prefix(text, prefix):
-    if text.startswith(prefix):
+    if text.lower().startswith(prefix.lower()):
         return True, text[len(prefix):]
     return False, text
 
@@ -235,13 +235,13 @@ def extract_target_name(arg, kind):
 def native_image_extract_dependencies(args):
     deps = []
     for arg in args:
-        tool_name = extract_target_name(arg, 'Tool')[0]
+        tool_name = extract_target_name(arg, 'tool')[0]
         if tool_name in tools_map:
             tool_descriptor = tools_map[tool_name]
             deps += tool_descriptor.builder_deps
             deps += tool_descriptor.image_deps
             deps += tool_descriptor.native_deps
-        language_flag = extract_target_name(arg, 'Language')[0]
+        language_flag = extract_target_name(arg, 'language')[0]
         if language_flag in flag_suitename_map:
             language_entry = flag_suitename_map[language_flag]
             language_suite_name = language_entry[0]
@@ -804,7 +804,7 @@ def fetch_languages(args):
     if args:
         requested = collections.OrderedDict()
         for arg in args:
-            language_flag, version_info = extract_target_name(arg, 'Language')
+            language_flag, version_info = extract_target_name(arg, 'language')
             if language_flag:
                 version = version_info.partition('version=')[2] if version_info else None
                 requested[language_flag] = version
