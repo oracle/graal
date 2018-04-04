@@ -796,14 +796,11 @@ public final class Context implements AutoCloseable {
 
         /**
          * If host class loading is enabled then the guest language is allowed to load new host
-         * classes via jar or class files. Loaded host class loaders are freed when the context is
-         * {@link Context#close() closed} unless
+         * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code> then the host class loading is enabled if it is not disallowed
+         * explicitly. For host class loading to be useful {@link #allowIO(boolean) IO} operations
+         * and {@link #allowHostAccess(boolean) host access} need to be allowed as well.
          *
-         * If {@link #allowAllAccess(boolean) all access} is set to <code>true</code> then the host
-         * class loading is enabled if it is not disallowed explicitly. For host class loading to be
-         * useful to users {@link #allowIO(boolean) IO} operations need to be allowed as well.
-         *
-         * @param enabled <code>true</code> for all access by default.
          * @since 1.0
          */
         public Builder allowHostClassLoading(boolean enabled) {
