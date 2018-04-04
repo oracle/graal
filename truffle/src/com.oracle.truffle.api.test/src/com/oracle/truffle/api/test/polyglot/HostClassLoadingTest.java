@@ -356,10 +356,10 @@ public class HostClassLoadingTest {
         // need to encode to the same number of bytes. otherwise more difficult to rename
         assert newBytes.length == searchBytes.length;
 
-        int index = indexOfByteArray(bytes, searchBytes);
-        assert index >= 0;
-        for (int i = 0; i < newBytes.length; i++) {
-            bytes[i + index] = newBytes[i];
+        for (int index = 0; (index = indexOfByteArray(bytes, searchBytes)) != -1;) {
+            for (int i = 0; i < newBytes.length; i++) {
+                bytes[i + index] = newBytes[i];
+            }
         }
 
         // create the new class name with the new name
