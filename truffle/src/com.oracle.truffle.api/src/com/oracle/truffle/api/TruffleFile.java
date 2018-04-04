@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -92,6 +93,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean exists(LinkOption... options) {
         try {
             return checkAccess(EnumSet.noneOf(AccessMode.class), options);
@@ -110,6 +112,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isReadable() {
         try {
             return checkAccess(AccessMode.READ);
@@ -128,6 +131,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isWritable() {
         try {
             return checkAccess(AccessMode.WRITE);
@@ -146,6 +150,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isExecutable() {
         try {
             return checkAccess(AccessMode.EXECUTE);
@@ -165,6 +170,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isDirectory(LinkOption... options) {
         try {
             return getAttributeImpl("isDirectory", Boolean.class, options);
@@ -186,6 +192,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isRegularFile(LinkOption... options) {
         try {
             return getAttributeImpl("isRegularFile", Boolean.class, options);
@@ -205,6 +212,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isSymbolicLink() {
         try {
             return getAttributeImpl("isSymbolicLink", Boolean.class);
@@ -223,6 +231,7 @@ public final class TruffleFile {
      * @return {@code true} if the file path is absolute
      * @since 1.0
      */
+    @TruffleBoundary
     public boolean isAbsolute() {
         try {
             return path.isAbsolute();
@@ -237,6 +246,7 @@ public final class TruffleFile {
      * @return the name of file or directory denoted by this {@link TruffleFile}
      * @since 1.0
      */
+    @TruffleBoundary
     public String getName() {
         try {
             return path.getFileName().toString();
@@ -251,6 +261,7 @@ public final class TruffleFile {
      * @return the path of this {@link TruffleFile}
      * @since 1.0
      */
+    @TruffleBoundary
     public String getPath() {
         try {
             return path.toString();
@@ -266,6 +277,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
      * @since 1.0
      */
+    @TruffleBoundary
     public URI toUri() {
         try {
             final Path absolutePath = path.isAbsolute() ? path : toAbsolutePathImpl(path);
@@ -286,6 +298,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied a resolution of an absolute path
      * @since 1.0
      */
+    @TruffleBoundary
     public TruffleFile getAbsoluteFile() {
         if (path.isAbsolute()) {
             return this;
@@ -308,6 +321,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public TruffleFile getCanonicalFile(LinkOption... options) throws IOException {
         try {
             return new TruffleFile(fileSystem, fileSystem.toRealPath(path, options));
@@ -324,6 +338,7 @@ public final class TruffleFile {
      * @return the parent {@link TruffleFile}
      * @since 1.0
      */
+    @TruffleBoundary
     public TruffleFile getParent() {
         try {
             final Path parent = path.getParent();
@@ -341,6 +356,7 @@ public final class TruffleFile {
      * @throws InvalidPathException if the path string contains non valid characters
      * @since 1.0
      */
+    @TruffleBoundary
     public TruffleFile resolve(String name) {
         try {
             return new TruffleFile(fileSystem, path.resolve(name));
@@ -359,6 +375,7 @@ public final class TruffleFile {
      * @throws InvalidPathException if the path string contains non valid characters
      * @since 1.0
      */
+    @TruffleBoundary
     public TruffleFile resolveSibling(String name) {
         try {
             return new TruffleFile(fileSystem, path.resolveSibling(name));
@@ -378,6 +395,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public long size(LinkOption... options) throws IOException {
         try {
             return getAttributeImpl("size", Long.class, options);
@@ -397,6 +415,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public FileTime getLastModifiedTime(LinkOption... options) throws IOException {
         try {
             return getAttributeImpl("lastModifiedTime", FileTime.class, options);
@@ -416,6 +435,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void setLastModifiedTime(FileTime time, LinkOption... options) throws IOException {
         try {
             fileSystem.setAttribute(path, "lastModifiedTime", time, options);
@@ -435,6 +455,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public FileTime getLastAccessTime(LinkOption... options) throws IOException {
         try {
             return getAttributeImpl("lastAccessTime", FileTime.class, options);
@@ -454,6 +475,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void setLastAccessTime(FileTime time, LinkOption... options) throws IOException {
         try {
             fileSystem.setAttribute(path, "lastAccessTime", time, options);
@@ -473,6 +495,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public FileTime getCreationTime(LinkOption... options) throws IOException {
         try {
             return getAttributeImpl("creationTime", FileTime.class, options);
@@ -492,6 +515,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void setCreationTime(FileTime time, LinkOption... options) throws IOException {
         try {
             fileSystem.setAttribute(path, "creationTime", time, options);
@@ -512,6 +536,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public Collection<TruffleFile> list() throws IOException {
         try {
             final Collection<TruffleFile> result = new ArrayList<>();
@@ -543,6 +568,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
         try {
             return ByteChannelDecorator.create(fileSystem.newByteChannel(path, options, attributes));
@@ -563,6 +589,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public InputStream newInputStream(OpenOption... options) throws IOException {
         final Set<OpenOption> openOptions = new HashSet<>();
         if (options.length > 0) {
@@ -585,6 +612,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public BufferedReader newBufferedReader(Charset charset) throws IOException {
         return new BufferedReader(new InputStreamReader(newInputStream(), charset));
     }
@@ -597,6 +625,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public BufferedReader newBufferedReader() throws IOException {
         return newBufferedReader(StandardCharsets.UTF_8);
     }
@@ -610,6 +639,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public byte[] readAllBytes() throws IOException {
         try (SeekableByteChannel channel = newByteChannel(Collections.emptySet())) {
             long sizel = channel.size();
@@ -657,6 +687,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public OutputStream newOutputStream(OpenOption... options) throws IOException {
         final Set<OpenOption> openOptions = new HashSet<>(Math.max(options.length, 2) + 1);
         openOptions.add(StandardOpenOption.WRITE);
@@ -685,6 +716,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public BufferedWriter newBufferedWriter(Charset charset, OpenOption... options) throws IOException {
         return new BufferedWriter(new OutputStreamWriter(newOutputStream(options), charset));
     }
@@ -699,6 +731,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public BufferedWriter newBufferedWriter(OpenOption... options) throws IOException {
         return newBufferedWriter(StandardCharsets.UTF_8, options);
     }
@@ -714,6 +747,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void createFile(FileAttribute<?>... attributes) throws IOException {
         newByteChannel(
                         EnumSet.<StandardOpenOption> of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW),
@@ -731,6 +765,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void createDirectory(FileAttribute<?>... attributes) throws IOException {
         try {
             createDirectoryImpl(path, attributes);
@@ -754,6 +789,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void createDirectories(FileAttribute<?>... attributes) throws IOException {
         try {
             try {
@@ -801,6 +837,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void delete() throws IOException {
         try {
             fileSystem.delete(path);
@@ -829,6 +866,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void move(TruffleFile target, CopyOption... options) throws IOException {
         try {
             fileSystem.move(path, target.path, options);
@@ -850,6 +888,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     @SuppressWarnings("unchecked")
     public Set<PosixFilePermission> getPosixPermissions(LinkOption... linkOptions) throws IOException {
         try {
@@ -872,6 +911,7 @@ public final class TruffleFile {
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 1.0
      */
+    @TruffleBoundary
     public void setPosixPermissions(Set<? extends PosixFilePermission> permissions, LinkOption... linkOptions) throws IOException {
         try {
             fileSystem.setAttribute(path, "posix:permissions", permissions, linkOptions);
@@ -888,6 +928,7 @@ public final class TruffleFile {
      * @since 1.0
      */
     @Override
+    @TruffleBoundary
     public String toString() {
         return path.toString();
     }
@@ -898,6 +939,7 @@ public final class TruffleFile {
      * @since 1.0
      */
     @Override
+    @TruffleBoundary
     public int hashCode() {
         int res = 17;
         res = res * 31 + fileSystem.hashCode();
@@ -911,6 +953,7 @@ public final class TruffleFile {
      * @since 1.0
      */
     @Override
+    @TruffleBoundary
     public boolean equals(final Object other) {
         if (this == other) {
             return true;

@@ -1703,6 +1703,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @since 1.0
          */
+        @TruffleBoundary
         public TruffleFile getTruffleFile(String path) {
             return new TruffleFile(fileSystem, fileSystem.parsePath(path).normalize());
         }
@@ -1714,6 +1715,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @since 1.0
          */
+        @TruffleBoundary
         public TruffleFile getTruffleFile(URI uri) {
             checkDisposed();
             try {
