@@ -475,7 +475,13 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
             mx.warn(failure_warning)
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
 
-    language_suite_depnames = language_entry[1]
+    # Temporary inject ['TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'] Ruby dependencies dynamically
+    # until the change is merged in TruffleRuby repository
+    extra_ruby_dep = (['TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS']
+                      if language_flag == 'ruby' and mx.distribution('TRUFFLERUBY-SHARED', False)
+                      else [])
+
+    language_suite_depnames = language_entry[1] + extra_ruby_dep
     language_deps = language_suite.dists + language_suite.libs
     language_deps = [dep for dep in language_deps if dep.name in language_suite_depnames]
     native_image_layout(language_deps, language_dir, native_image_root)
