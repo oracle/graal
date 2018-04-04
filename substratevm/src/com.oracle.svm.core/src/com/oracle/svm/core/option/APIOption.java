@@ -42,6 +42,13 @@ public @interface APIOption {
     APIOptionKind kind() default APIOptionKind.Default;
 
     /**
+     * The value that will be passed to a non-boolean option when no {@code =} is specified.
+     * <p>
+     * By default {@code --option} form is equivalent to {@code --option=} (it passes empty string).
+     */
+    String[] defaultValue() default {};
+
+    /**
      * APIOptionKind can be used to customize how an {@link APIOption} gets rewritten to its
      * {@link org.graalvm.compiler.options.Option} counterpart.
      */
