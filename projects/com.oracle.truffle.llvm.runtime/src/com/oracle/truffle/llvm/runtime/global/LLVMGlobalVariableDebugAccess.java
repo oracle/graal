@@ -56,6 +56,6 @@ public final class LLVMGlobalVariableDebugAccess {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Global is not managed!");
         }
-        return context.getGlobalFrame().getValue(global.getSlot());
+        return LLVMGlobal.fromManagedStore(context.getGlobalFrame().getValue(global.getSlot()));
     }
 }

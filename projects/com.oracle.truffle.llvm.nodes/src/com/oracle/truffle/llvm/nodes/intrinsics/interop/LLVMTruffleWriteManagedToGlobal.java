@@ -58,7 +58,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         LLVMTruffleObject typedValue = (LLVMTruffleObject) attachType.execute(value, address.getInteropType());
         MaterializedFrame globalFrame = getFrameNode.execute(context.get());
-        globalFrame.setObject(address.getSlot(), LLVMGlobal.assignManaged(value));
+        globalFrame.setObject(address.getSlot(), value);
         return typedValue;
     }
 
@@ -73,7 +73,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
             if (slot.getKind() == FrameSlotKind.Object) {
                 try {
                     if (globalFrame.getObject(slot) == address) {
-                        globalFrame.setObject(slot, LLVMGlobal.assignManaged(value));
+                        globalFrame.setObject(slot, value);
                         return value;
                     }
                 } catch (FrameSlotTypeException e) {

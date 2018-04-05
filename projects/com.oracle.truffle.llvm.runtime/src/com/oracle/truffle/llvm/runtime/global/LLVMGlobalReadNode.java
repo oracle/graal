@@ -98,9 +98,8 @@ public abstract class LLVMGlobalReadNode extends LLVMNode {
             Object value = getFrame.execute(getContext()).getValue(getSlot.execute(global));
             if (value == null) {
                 return LLVMAddress.nullPointer();
-            } else {
-                return value;
             }
+            return LLVMGlobal.fromManagedStore(value);
         }
 
         @Specialization(guards = "isNative(global)")

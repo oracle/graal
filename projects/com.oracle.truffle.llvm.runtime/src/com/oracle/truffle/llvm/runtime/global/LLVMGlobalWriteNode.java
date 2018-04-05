@@ -157,7 +157,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
         protected Object doFrame(LLVMGlobal global, Object value,
                         @Cached("create()") GetFrame getFrame,
                         @Cached("create()") GetSlot getSlot) {
-            getFrame.execute(getContext()).setObject(getSlot.execute(global), value);
+            getFrame.execute(getContext()).setObject(getSlot.execute(global), LLVMGlobal.toManagedStore(value));
             return value;
         }
 
