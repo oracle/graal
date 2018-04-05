@@ -100,6 +100,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         defaultValueCache = new PolyglotValue.Default(this);
     }
 
+    Object getContextImpl() {
+        if (env != null) {
+            return LANGUAGE.getContext(env);
+        } else {
+            return null;
+        }
+    }
+
     Value getHostBindings() {
         Value bindings = this.hostBindings;
         if (bindings == null) {

@@ -1382,6 +1382,21 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * Adds an entry to the Java host class loader. All classes looked up with
+         * {@link #lookupHostSymbol(String)} will lookup classes with this new entry. If the entry
+         * was already added then calling this method again for the same entry has no effect. Given
+         * entry must not be <code>null</code>.
+         *
+         * @throws SecurityException if the file is not {@link TruffleFile#isReadable() readable}.
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public void addToHostClassPath(TruffleFile entry) {
+            Objects.requireNonNull(entry);
+            AccessAPI.engineAccess().addToHostClassPath(vmObject, entry);
+        }
+
+        /**
          * Looks up a Java class in the top-most scope the host environment. Returns
          * <code>null</code> if no symbol was found or the symbol was not accessible. Symbols might
          * not be accessible if a

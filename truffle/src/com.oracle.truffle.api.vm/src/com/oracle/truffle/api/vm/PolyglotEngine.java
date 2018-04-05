@@ -58,6 +58,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
@@ -1049,6 +1050,11 @@ public class PolyglotEngine {
             Object vmObject = VMAccessor.LANGUAGE.getVMObject(info);
             Instrument instrument = (Instrument) vmObject;
             return instrument.lookup(serviceClass);
+        }
+
+        @Override
+        public void addToHostClassPath(Object vmObject, TruffleFile entries) {
+            // not supported
         }
 
         @Override
