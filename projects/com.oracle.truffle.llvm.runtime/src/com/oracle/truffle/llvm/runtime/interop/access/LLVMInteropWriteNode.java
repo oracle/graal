@@ -70,7 +70,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
 
         // type unknown: fall back to "array of unknown value type"
         int elementAccessSize = getSize.execute(value);
-        AccessLocation location = new AccessLocation(foreign, (int) Long.divideUnsigned(offset, elementAccessSize), null);
+        AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, elementAccessSize), null);
         write(location, value);
     }
 

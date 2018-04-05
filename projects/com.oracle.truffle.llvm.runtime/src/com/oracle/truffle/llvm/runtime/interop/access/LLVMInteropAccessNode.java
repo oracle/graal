@@ -69,7 +69,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                     @Cached("create()") MakeAccessLocation makeAccessLocation) {
         long index = Long.divideUnsigned(offset, type.elementSize);
         long restOffset = Long.remainderUnsigned(offset, type.elementSize);
-        return makeAccessLocation.execute(foreign, (int) index, type.elementType, restOffset);
+        return makeAccessLocation.execute(foreign, index, type.elementType, restOffset);
     }
 
     @Specialization(guards = "checkMember(type, cachedMember, offset)")

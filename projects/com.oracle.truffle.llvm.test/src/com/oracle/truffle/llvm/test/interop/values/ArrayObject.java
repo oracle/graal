@@ -55,16 +55,16 @@ public final class ArrayObject implements TruffleObject {
     @Resolve(message = "READ")
     abstract static class ReadNode extends Node {
 
-        Object access(ArrayObject obj, int idx) {
-            return obj.array[idx];
+        Object access(ArrayObject obj, Number idx) {
+            return obj.array[(int) idx.longValue()];
         }
     }
 
     @Resolve(message = "WRITE")
     abstract static class WriteNode extends Node {
 
-        Object access(ArrayObject obj, int idx, Object value) {
-            return obj.array[idx] = value;
+        Object access(ArrayObject obj, Number idx, Object value) {
+            return obj.array[(int) idx.longValue()] = value;
         }
     }
 

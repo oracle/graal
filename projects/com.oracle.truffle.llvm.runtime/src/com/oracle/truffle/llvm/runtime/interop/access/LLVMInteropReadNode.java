@@ -68,7 +68,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
     @Fallback
     Object doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, TruffleObject foreign, long offset) {
         // type unknown: fall back to "array of unknown value type"
-        AccessLocation location = new AccessLocation(foreign, (int) Long.divideUnsigned(offset, elementAccessSize), null);
+        AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, elementAccessSize), null);
         return read(location);
     }
 
