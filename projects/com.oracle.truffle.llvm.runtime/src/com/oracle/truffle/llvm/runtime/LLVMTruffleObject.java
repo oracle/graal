@@ -37,29 +37,34 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMTruffleObjectMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
-public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider {
+public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider, TruffleObject {
 
     private final TruffleObject object;
     private final long offset;
+
+    private final LLVMInteropType exportType;
 
     public static LLVMTruffleObject createNullPointer() {
         return createPointer(0L);
     }
 
     public static LLVMTruffleObject createPointer(long ptr) {
-        return new LLVMTruffleObject(null, ptr);
+        return new LLVMTruffleObject(null, ptr, null);
     }
 
     public LLVMTruffleObject(TruffleObject object) {
-        this(object, 0);
+        this(object, 0, null);
     }
 
-    private LLVMTruffleObject(TruffleObject object, long offset) {
+    private LLVMTruffleObject(TruffleObject object, long offset, LLVMInteropType exportType) {
         this.object = object;
         this.offset = offset;
+        this.exportType = exportType;
     }
 
     public long getOffset() {
@@ -83,8 +88,26 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         return object != null;
     }
 
+    public LLVMInteropType getExportType() {
+        return exportType;
+    }
+
     public LLVMTruffleObject increment(long incr) {
-        return new LLVMTruffleObject(object, offset + incr);
+        // reset type, since the result points to something else now
+        return new LLVMTruffleObject(object, offset + incr, null);
+    }
+
+    public LLVMTruffleObject export(LLVMInteropType newType) {
+        return new LLVMTruffleObject(object, offset, newType);
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LLVMTruffleObjectMessageResolutionForeign.ACCESS;
+    }
+
+    public static boolean isInstance(TruffleObject obj) {
+        return obj instanceof LLVMTruffleObject;
     }
 
     @TruffleBoundary
@@ -153,7 +176,8 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         public Object toNative(Object obj) throws InteropException {
             LLVMTruffleObject object = (LLVMTruffleObject) obj;
             Object nativeBase = lib.toNative(object.getObject());
-            return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset);
+            // keep exportType, this is still logically pointing to the same thing
+            return new LLVMTruffleObject((TruffleObject) nativeBase, object.offset, object.exportType);
         }
     }
 
