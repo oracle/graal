@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
 public final class LocalizationSupport {
@@ -75,18 +76,20 @@ public final class LocalizationSupport {
         cache.put(bundleName, bundle);
     }
 
+    private final String includeResourceBundlesOption = SubstrateOptionsParser.commandArgument(Options.IncludeResourceBundles, "");
+
     /**
+     * Get cached resource bundle.
+     * 
      * @param locale this parameter is not currently used.
      */
     public ResourceBundle getCached(String baseName, Locale locale) {
         ResourceBundle result = cache.get(baseName);
         if (result == null) {
-            throw VMError.unsupportedFeature(
-                            "Access of resource bundle that was not pre-cached: " +
-                                            baseName +
-                                            ". More info at https://github.com/oracle/graal/blob/master/substratevm/RESOURCES.md");
+            String errorMessage = "Resource bundle not found " + baseName + ". " +
+                            "Register the resource bundle using the option " + includeResourceBundlesOption + baseName + ".";
+            throw VMError.unsupportedFeature(errorMessage);
         }
         return result;
     }
-
 }

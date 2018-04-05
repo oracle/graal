@@ -5,7 +5,7 @@ load L10N resources and show the right user messages suitable for actual
 runtime time locale, format and etc. settings.
 
 Substrate VM needs an ahead of time knowledge of resources bundles your application
-needs. Configure them by passing additional parameters to the `native-image` binary:
+needs. Resource bundles need to be passed to the `native-image` binary using the option
 ```bash
 -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle
 ```
