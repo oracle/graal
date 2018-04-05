@@ -455,5 +455,15 @@ suite = {
         "description": "Sulong documentation, license",
         "license" : "BSD-new",
     },
+    "SULONG_GRAALVM_DOCS" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Sulong documentation files for the GraalVM",
+      "layout" : {
+        "./" : "file:mx.sulong/native-image.properties",
+        "README_SULONG.md" : "file:README.md",
+        "LICENSE_SULONG" : "file:LICENSE",
+      },
+    },
   }
 }
