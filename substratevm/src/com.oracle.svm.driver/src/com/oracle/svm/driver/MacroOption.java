@@ -60,11 +60,8 @@ final class MacroOption {
         }
 
         static MacroOptionKind fromString(String kindName) {
-            /* TODO: Remove once all .properties files use lowercase */
-            String kindNameLowercase = kindName.toLowerCase();
-
             for (MacroOptionKind kind : MacroOptionKind.values()) {
-                if (kind.toString().equals(kindNameLowercase)) {
+                if (kind.toString().equals(kindName)) {
                     return kind;
                 }
             }

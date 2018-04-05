@@ -221,7 +221,7 @@ def native_image_path(native_image_root):
     return join(native_image_dir, native_image_name)
 
 def remove_option_prefix(text, prefix):
-    if text.lower().startswith(prefix.lower()):
+    if text.startswith(prefix):
         return True, text[len(prefix):]
     return False, text
 
