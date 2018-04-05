@@ -39,7 +39,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
@@ -79,10 +78,6 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public LLVMAddress executeLLVMAddress(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMAddress(executeGeneric(frame));
-    }
-
-    public LLVMTruffleAddress executeLLVMTruffleAddress(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMTruffleAddress(executeGeneric(frame));
     }
 
     public LLVMTruffleObject executeLLVMTruffleObject(VirtualFrame frame) throws UnexpectedResultException {

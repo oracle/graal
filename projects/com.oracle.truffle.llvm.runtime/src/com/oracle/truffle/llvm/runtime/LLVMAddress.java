@@ -148,7 +148,7 @@ public final class LLVMAddress implements LLVMObjectNativeLibrary.Provider, LLVM
     }
 
     public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMTruffleAddress;
+        return object instanceof LLVMAddress;
     }
 
     @Override

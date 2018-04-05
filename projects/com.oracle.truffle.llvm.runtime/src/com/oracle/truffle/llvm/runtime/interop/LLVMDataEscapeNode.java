@@ -39,13 +39,11 @@ import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -184,11 +182,6 @@ public abstract class LLVMDataEscapeNode extends Node {
     protected TruffleObject escapingVarbit(LLVMIVarBit vecto, LLVMInteropType.Structured typer) {
         CompilerDirectives.transferToInterpreter();
         throw new IllegalStateException("Exporting VarBit is not yet supported!");
-    }
-
-    @Specialization
-    protected TruffleObject escapingTruffleObject(LLVMTruffleAddress address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return address;
     }
 
     protected static boolean isForeign(LLVMTruffleObject pointer) {

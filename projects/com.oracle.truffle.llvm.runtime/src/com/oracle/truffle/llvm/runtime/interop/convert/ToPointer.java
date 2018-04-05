@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
@@ -134,11 +133,6 @@ abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMAddress fromLLVMTruffleAddress(LLVMTruffleAddress obj, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return obj.getAddress();
-    }
-
-    @Specialization
     protected LLVMGlobal fromSharedDescriptor(LLVMSharedGlobalVariable shared, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return shared.getDescriptor();
     }
@@ -193,8 +187,6 @@ abstract class ToPointer extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMFunctionDescriptor) {
             return value;
-        } else if (value instanceof LLVMTruffleAddress) {
-            return ((LLVMTruffleAddress) value).getAddress();
         } else if (value instanceof LLVMSharedGlobalVariable) {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
         } else if (value instanceof LLVMTruffleObject) {

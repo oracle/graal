@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -101,11 +100,6 @@ abstract class ToI1 extends ForeignToLLVM {
     }
 
     @Specialization
-    protected boolean fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
-        return obj.getAddress().getVal() != 0;
-    }
-
-    @Specialization
     protected boolean fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(fd).getVal() != 0;
@@ -148,8 +142,6 @@ abstract class ToI1 extends ForeignToLLVM {
             return ((LLVMFunctionDescriptor) value).toNative().asPointer() != 0;
         } else if (value instanceof LLVMBoxedPrimitive) {
             return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
-        } else if (value instanceof LLVMTruffleAddress) {
-            return ((LLVMTruffleAddress) value).getAddress().getVal() != 0;
         } else if (value instanceof LLVMSharedGlobalVariable) {
             LLVMContext context = LLVMLanguage.getLLVMContextReference().get();
             return LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal() != 0;

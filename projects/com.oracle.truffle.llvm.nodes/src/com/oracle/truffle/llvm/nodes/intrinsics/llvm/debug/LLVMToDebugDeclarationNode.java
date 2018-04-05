@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -83,12 +82,6 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     protected LLVMDebugValueProvider fromAddress(LLVMAddress address,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return new LLVMAllocationValueProvider(memory, address);
-    }
-
-    @Specialization
-    protected LLVMDebugValueProvider fromTruffleAddress(LLVMTruffleAddress truffleAddress,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return new LLVMAllocationValueProvider(memory, truffleAddress.getAddress());
     }
 
     @Specialization

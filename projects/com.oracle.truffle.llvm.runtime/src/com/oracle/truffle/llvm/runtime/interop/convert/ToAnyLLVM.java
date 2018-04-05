@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
@@ -99,11 +98,6 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMAddress fromLLVMTruffleAddress(LLVMTruffleAddress obj) {
-        return obj.getAddress();
-    }
-
-    @Specialization
     protected LLVMFunctionDescriptor fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd) {
         return fd;
     }
@@ -153,8 +147,6 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMFunctionDescriptor) {
             return value;
-        } else if (value instanceof LLVMTruffleAddress) {
-            return ((LLVMTruffleAddress) value).getAddress();
         } else if (value instanceof LLVMSharedGlobalVariable) {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
         } else if (value instanceof LLVMTruffleObject) {
