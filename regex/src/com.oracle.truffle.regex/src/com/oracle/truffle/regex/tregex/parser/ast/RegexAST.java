@@ -104,6 +104,9 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return groupCount;
     }
 
+    /**
+     * @return the number of capturing groups in the AST, including group 0.
+     */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
     }

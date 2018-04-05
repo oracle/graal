@@ -30,7 +30,6 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Arrays;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
@@ -42,19 +41,17 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public class DFAInitialStateNode extends DFAAbstractStateNode {
 
-    @CompilationFinal(dimensions = 1) private final short[] captureGroupTransitions;
     private final boolean searching;
     private final boolean trackCaptureGroups;
 
-    public DFAInitialStateNode(short[] successors, short[] captureGroupTransitions, boolean searching, boolean trackCaptureGroups) {
+    public DFAInitialStateNode(short[] successors, boolean searching, boolean trackCaptureGroups) {
         super(successors);
-        this.captureGroupTransitions = captureGroupTransitions;
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
     }
 
     private DFAInitialStateNode(DFAInitialStateNode copy) {
-        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.captureGroupTransitions, copy.searching, copy.trackCaptureGroups);
+        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.searching, copy.trackCaptureGroups);
     }
 
     public int getPrefixLength() {
@@ -95,7 +92,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
             executor.setSuccessorIndex(frame, executor.getSuccessorIndex(frame) + (successors.length / 2));
         }
         if (trackCaptureGroups) {
-            executor.setLastTransition(frame, captureGroupTransitions[executor.getSuccessorIndex(frame)]);
+            executor.setLastTransition(frame, (short) 0);
         }
     }
 

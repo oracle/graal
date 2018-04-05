@@ -143,24 +143,20 @@ public class TRegexExecRootNode extends RegexExecRootNode implements CompiledReg
             lazyResult = lazySearchNode.run(frame, regex, input, fromIndex);
             eagerResult = resultOfCurrentSearchNode;
         }
+        boolean equal;
         if (lazyResult == RegexResult.NO_MATCH) {
-            return eagerResult == RegexResult.NO_MATCH;
-        }
-        LazyCaptureGroupsResult lazyResultC = (LazyCaptureGroupsResult) lazyResult;
-        LazyCaptureGroupsResult eagerResultC = (LazyCaptureGroupsResult) eagerResult;
-        if (lazyResultC.getFindStartCallTarget() == null) {
-            lazyResultC.getCaptureGroupCallTarget().call(lazyResultC.createArgsCGNoFindStart());
+            equal = eagerResult == RegexResult.NO_MATCH;
         } else {
-            lazyResultC.getCaptureGroupCallTarget().call(lazyResultC.createArgsCG((int) lazyResultC.getFindStartCallTarget().call(lazyResultC.createArgsFindStart())));
+            ((LazyCaptureGroupsResult) lazyResult).debugForceEvaluation();
+            equal = Arrays.equals(((LazyCaptureGroupsResult) lazyResult).getResult(), ((LazyCaptureGroupsResult) eagerResult).getResult());
         }
-        boolean equal = Arrays.equals(lazyResultC.getResult(), eagerResultC.getResult());
         if (!equal) {
             System.out.println("ERROR:");
             System.out.println("Regex: " + getSource());
             System.out.println("Input: " + input);
             System.out.println("fromIndex: " + fromIndex);
-            System.out.println("Lazy  Result: " + Arrays.toString(lazyResultC.getResult()));
-            System.out.println("Eager Result: " + Arrays.toString(eagerResultC.getResult()));
+            System.out.println("Lazy  Result: " + lazyResult);
+            System.out.println("Eager Result: " + eagerResult);
         }
         return equal;
     }

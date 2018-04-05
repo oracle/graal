@@ -28,7 +28,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateTransitionBuilder;
-import com.oracle.truffle.regex.tregex.dfa.NFATransitionSet;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.BitSetMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
@@ -49,11 +48,11 @@ public class DFAExport {
 
     @CompilerDirectives.TruffleBoundary
     public static void exportDot(DFAGenerator dfaGenerator, String path, boolean shortLabels) {
-        short[] entryStates = dfaGenerator.getEntryStates();
-        Map<NFATransitionSet, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
+        DFAStateNodeBuilder[] entryStates = dfaGenerator.getEntryStates();
+        Map<DFAStateNodeBuilder, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
         TreeSet<Short> entryIDs = new TreeSet<>();
-        for (short i : entryStates) {
-            entryIDs.add(i);
+        for (DFAStateNodeBuilder s : entryStates) {
+            entryIDs.add(s.getId());
         }
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
             writer.write("digraph finite_state_machine {");
@@ -75,8 +74,14 @@ public class DFAExport {
             for (DFAStateNodeBuilder state : stateMap.values()) {
                 if (entryIDs.contains(state.getId())) {
                     for (int i = 0; i < entryStates.length; i++) {
-                        if (entryStates[i] == state.getId()) {
-                            DotExport.printConnection(writer, (i < entryStates.length / 2 ? "I^" : "I") + i, dotState(state, shortLabels), "");
+                        if (entryStates[i] == state) {
+                            String initStateLabel;
+                            if (i < entryStates.length / 2) {
+                                initStateLabel = "I^" + i;
+                            } else {
+                                initStateLabel = "I" + (i - entryStates.length / 2);
+                            }
+                            DotExport.printConnection(writer, initStateLabel, dotState(state, shortLabels), "");
                             break;
                         }
                     }

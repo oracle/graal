@@ -25,6 +25,8 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -39,30 +41,50 @@ import java.util.List;
 public final class DFAStateNodeBuilder implements JsonConvertible {
 
     private final short id;
-    private final NFATransitionSet nfaStateSet;
-    private byte unAnchoredResult;
+    private NFATransitionSet nfaStateSet;
+    private boolean initialState = false;
     private boolean overrideFinalState = false;
-    private DFAStateTransitionBuilder[] transitions;
     private boolean isFinalStateSuccessor = false;
-    private List<DFACaptureGroupTransitionBuilder> precedingTransitions;
+    private boolean isBackwardPrefixState;
     private short backwardPrefixState = -1;
+    private DFAStateTransitionBuilder[] transitions;
+    private List<DFACaptureGroupTransitionBuilder> precedingTransitions;
+    private NFAStateTransition anchoredFinalStateTransition;
+    private NFAStateTransition unAnchoredFinalStateTransition;
+    private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
+    private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
 
-    DFAStateNodeBuilder(short id, NFATransitionSet nfaStateSet) {
+    DFAStateNodeBuilder(short id, NFATransitionSet nfaStateSet, boolean isBackwardPrefixState) {
         this.id = id;
         this.nfaStateSet = nfaStateSet;
-        this.unAnchoredResult = nfaStateSet.getPreCalculatedUnAnchoredResult();
+        this.isBackwardPrefixState = isBackwardPrefixState;
+        if (isBackwardPrefixState) {
+            this.backwardPrefixState = this.id;
+        }
     }
 
     public short getId() {
         return id;
     }
 
+    public void setNfaStateSet(NFATransitionSet nfaStateSet) {
+        this.nfaStateSet = nfaStateSet;
+    }
+
     public NFATransitionSet getNfaStateSet() {
         return nfaStateSet;
     }
 
+    public void setInitialState(boolean initialState) {
+        this.initialState = initialState;
+    }
+
+    public boolean isInitialState() {
+        return initialState;
+    }
+
     public boolean isFinalState() {
-        return nfaStateSet.containsFinalState() || overrideFinalState;
+        return unAnchoredFinalStateTransition != null || overrideFinalState;
     }
 
     public void setOverrideFinalState(boolean overrideFinalState) {
@@ -70,15 +92,11 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public boolean isAnchoredFinalState() {
-        return nfaStateSet.containsAnchoredFinalState();
+        return anchoredFinalStateTransition != null;
     }
 
     public int getNumberOfSuccessors() {
         return transitions.length + (hasBackwardPrefixState() ? 1 : 0);
-    }
-
-    public boolean hasBackwardPrefixState() {
-        return backwardPrefixState >= 0;
     }
 
     public DFAStateTransitionBuilder[] getTransitions() {
@@ -101,18 +119,6 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         isFinalStateSuccessor = true;
     }
 
-    public byte getUnAnchoredResult() {
-        return unAnchoredResult;
-    }
-
-    public void setUnAnchoredResult(byte unAnchoredResult) {
-        this.unAnchoredResult = unAnchoredResult;
-    }
-
-    public byte getAnchoredResult() {
-        return nfaStateSet.getPreCalculatedAnchoredResult();
-    }
-
     public void addPrecedingTransition(DFACaptureGroupTransitionBuilder transitionBuilder) {
         if (precedingTransitions == null) {
             precedingTransitions = new ArrayList<>();
@@ -127,6 +133,18 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         return precedingTransitions;
     }
 
+    public boolean isBackwardPrefixState() {
+        return isBackwardPrefixState;
+    }
+
+    public void setIsBackwardPrefixState(boolean backwardPrefixState) {
+        isBackwardPrefixState = backwardPrefixState;
+    }
+
+    public boolean hasBackwardPrefixState() {
+        return backwardPrefixState >= 0;
+    }
+
     public short getBackwardPrefixState() {
         return backwardPrefixState;
     }
@@ -135,15 +153,112 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         this.backwardPrefixState = backwardPrefixState;
     }
 
+    public void setAnchoredFinalStateTransition(NFAStateTransition anchoredFinalStateTransition) {
+        this.anchoredFinalStateTransition = anchoredFinalStateTransition;
+    }
+
+    public NFAStateTransition getAnchoredFinalStateTransition() {
+        return anchoredFinalStateTransition;
+    }
+
+    public void setUnAnchoredFinalStateTransition(NFAStateTransition unAnchoredFinalStateTransition) {
+        this.unAnchoredFinalStateTransition = unAnchoredFinalStateTransition;
+    }
+
+    public NFAStateTransition getUnAnchoredFinalStateTransition() {
+        return unAnchoredFinalStateTransition;
+    }
+
+    public byte getPreCalculatedUnAnchoredResult() {
+        return preCalculatedUnAnchoredResult;
+    }
+
+    public byte getPreCalculatedAnchoredResult() {
+        return preCalculatedAnchoredResult;
+    }
+
+    void updatePreCalcUnAnchoredResult(int newResult) {
+        if (newResult >= 0) {
+            if (preCalculatedUnAnchoredResult == TraceFinderDFAStateNode.NO_PRE_CALC_RESULT || Byte.toUnsignedInt(preCalculatedUnAnchoredResult) > newResult) {
+                preCalculatedUnAnchoredResult = (byte) newResult;
+            }
+        }
+    }
+
+    private void updatePreCalcAnchoredResult(int newResult) {
+        if (newResult >= 0) {
+            if (preCalculatedAnchoredResult == TraceFinderDFAStateNode.NO_PRE_CALC_RESULT || Byte.toUnsignedInt(preCalculatedAnchoredResult) > newResult) {
+                preCalculatedAnchoredResult = (byte) newResult;
+            }
+        }
+    }
+
+    public void clearPreCalculatedResults() {
+        preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
+        preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
+    }
+
+    public void updateFinalStateData(DFAGenerator dfaGenerator) {
+        boolean forward = nfaStateSet.isForward();
+        for (NFAStateTransition t : nfaStateSet) {
+            NFAState target = t.getTarget(forward);
+            if (target.hasTransitionToAnchoredFinalState(forward)) {
+                if (anchoredFinalStateTransition == null) {
+                    setAnchoredFinalStateTransition(target.getTransitionToAnchoredFinalState(forward));
+                }
+            }
+            if (target.hasTransitionToUnAnchoredFinalState(forward)) {
+                setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(forward));
+                if (forward) {
+                    return;
+                }
+            }
+            if (dfaGenerator.getNfa().isTraceFinderNFA()) {
+                for (NFAStateTransition t2 : target.getNext(forward)) {
+                    NFAState target2 = t2.getTarget(forward);
+                    if (target2.isAnchoredFinalState(forward)) {
+                        assert target2.hasPossibleResults() && target2.getPossibleResults().size() == 1;
+                        updatePreCalcAnchoredResult(target2.getPossibleResults().get(0));
+                    }
+                    if (target2.isUnAnchoredFinalState(forward)) {
+                        assert target2.hasPossibleResults() && target2.getPossibleResults().size() == 1;
+                        updatePreCalcUnAnchoredResult(target2.getPossibleResults().get(0));
+                    }
+                }
+            }
+        }
+    }
+
     public String stateSetToString() {
         StringBuilder sb = new StringBuilder(nfaStateSet.toString());
-        if (unAnchoredResult != TraceFinderDFAStateNode.NO_PRE_CALC_RESULT) {
-            sb.append("_r").append(unAnchoredResult);
+        if (preCalculatedUnAnchoredResult != TraceFinderDFAStateNode.NO_PRE_CALC_RESULT) {
+            sb.append("_r").append(preCalculatedUnAnchoredResult);
         }
-        if (getAnchoredResult() != TraceFinderDFAStateNode.NO_PRE_CALC_RESULT) {
-            sb.append("_rA").append(getAnchoredResult());
+        if (preCalculatedAnchoredResult != TraceFinderDFAStateNode.NO_PRE_CALC_RESULT) {
+            sb.append("_rA").append(preCalculatedAnchoredResult);
         }
         return sb.toString();
+    }
+
+    @Override
+    public int hashCode() {
+        int hashCode = nfaStateSet.hashCode();
+        if (isBackwardPrefixState) {
+            hashCode *= 31;
+        }
+        return hashCode;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof DFAStateNodeBuilder)) {
+            return false;
+        }
+        DFAStateNodeBuilder o = (DFAStateNodeBuilder) obj;
+        return nfaStateSet.equals(o.nfaStateSet) && isBackwardPrefixState == o.isBackwardPrefixState;
     }
 
     @TruffleBoundary
@@ -160,6 +275,6 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
                         Json.prop("stateSet", Json.array(nfaStateSet.stream().map(x -> Json.val(x.getTarget().getId())))),
                         Json.prop("finalState", isFinalState()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
-                        Json.prop("transitions", Arrays.stream(transitions).map(x -> Json.val(x.getTarget().getId()))));
+                        Json.prop("transitions", Arrays.stream(transitions).map(x -> Json.val(x.getId()))));
     }
 }

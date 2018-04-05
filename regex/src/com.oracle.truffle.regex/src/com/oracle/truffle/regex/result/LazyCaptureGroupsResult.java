@@ -33,6 +33,8 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+import java.util.Arrays;
+
 public final class LazyCaptureGroupsResult extends RegexResult implements JsonConvertible {
 
     private final int fromIndex;
@@ -118,6 +120,28 @@ public final class LazyCaptureGroupsResult extends RegexResult implements JsonCo
     public Object[] createArgsCGNoFindStart() {
         assert findStartCallTarget == null;
         return new Object[]{this, getFromIndex(), getEnd()};
+    }
+
+    /**
+     * Forces evaluation of this lazy regex result. Do not use this method on any fast paths, use
+     * {@link com.oracle.truffle.regex.runtime.nodes.LazyCaptureGroupGetResultNode} instead!
+     */
+    @TruffleBoundary
+    public void debugForceEvaluation() {
+        if (getFindStartCallTarget() == null) {
+            getCaptureGroupCallTarget().call(createArgsCGNoFindStart());
+        } else {
+            getCaptureGroupCallTarget().call(createArgsCG((int) getFindStartCallTarget().call(createArgsFindStart())));
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        if (result == null) {
+            debugForceEvaluation();
+        }
+        return Arrays.toString(result);
     }
 
     @TruffleBoundary

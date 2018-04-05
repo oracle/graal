@@ -143,16 +143,34 @@ public class GroupBoundaries implements JsonConvertible {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (hasIndexUpdates()) {
-            sb.append(gbBitSetGroupExitsToJsonArray(updateIndices)).append(")");
-            sb.append("(").append(gbBitSetGroupEntriesToJsonArray(updateIndices));
+            appendBitSet(sb, updateIndices, false).append(")(");
+            appendBitSet(sb, updateIndices, true);
         }
         if (hasIndexClears()) {
             sb.append(" clr{");
-            sb.append(gbBitSetGroupExitsToJsonArray(clearIndices)).append(")");
-            sb.append("(").append(gbBitSetGroupEntriesToJsonArray(clearIndices));
+            appendBitSet(sb, clearIndices, false).append(")(");
+            appendBitSet(sb, clearIndices, true);
             sb.append("}");
         }
         return sb.toString();
+    }
+
+    @TruffleBoundary
+    private static StringBuilder appendBitSet(StringBuilder sb, CompilationFinalBitSet gbBitSet, boolean entries) {
+        boolean first = true;
+        if (gbBitSet != null) {
+            for (int i : gbBitSet) {
+                if ((i & 1) == (entries ? 0 : 1)) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        sb.append(",");
+                    }
+                    sb.append(Json.val(i / 2));
+                }
+            }
+        }
+        return sb;
     }
 
     @TruffleBoundary

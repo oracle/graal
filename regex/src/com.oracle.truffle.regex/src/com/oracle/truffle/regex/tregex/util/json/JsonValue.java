@@ -27,6 +27,7 @@ package com.oracle.truffle.regex.tregex.util.json;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -38,7 +39,7 @@ public abstract class JsonValue implements JsonConvertible {
     }
 
     public void dump(String path) {
-        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(Paths.get(path)));) {
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(Paths.get(path)))) {
             dump(writer, 0);
             writer.flush();
         } catch (IOException e) {
@@ -52,5 +53,12 @@ public abstract class JsonValue implements JsonConvertible {
         for (int i = 0; i < indent; i++) {
             writer.print(' ');
         }
+    }
+
+    @Override
+    public String toString() {
+        StringWriter stringWriter = new StringWriter();
+        dump(new PrintWriter(stringWriter), 0);
+        return stringWriter.toString();
     }
 }

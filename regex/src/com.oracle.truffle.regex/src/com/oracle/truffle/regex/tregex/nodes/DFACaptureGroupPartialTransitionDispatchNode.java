@@ -76,50 +76,52 @@ public final class DFACaptureGroupPartialTransitionDispatchNode extends Node {
         throw new IllegalStateException();
     }
 
-    public void applyAnchoredFinalTransition(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
+    public void applyPreAnchoredFinalTransition(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (precedingTransitions.length > EXPLODE_THRESHOLD) {
-            applyAnchoredFinalTransitionBoundary(executor, executor.getCGData(frame), transitionIndex, currentIndex);
+            applyPreAnchoredFinalTransitionBoundary(executor, executor.getCGData(frame), transitionIndex, currentIndex);
         } else {
-            applyAnchoredFinalTransitionExploded(frame, executor, transitionIndex, currentIndex);
+            applyPreAnchoredFinalTransitionExploded(frame, executor, transitionIndex, currentIndex);
         }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static void applyAnchoredFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getTransitionToAnchoredFinalState().applyFinalStateTransition(d, executor.isSearching(), currentIndex);
+    private static void applyPreAnchoredFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
+        executor.getCGTransitions()[transitionIndex].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(d, executor.isSearching(), currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private void applyAnchoredFinalTransitionExploded(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
+    private void applyPreAnchoredFinalTransitionExploded(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
-                executor.getCGTransitions()[possibleTransition].getTransitionToAnchoredFinalState().applyFinalStateTransition(executor.getCGData(frame), executor.isSearching(), currentIndex);
+                executor.getCGTransitions()[possibleTransition].getTransitionToAnchoredFinalState().applyPreFinalStateTransition(
+                                executor.getCGData(frame), executor.isSearching(), currentIndex);
                 return;
             }
         }
         throw new IllegalStateException();
     }
 
-    public void applyFinalTransition(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
+    public void applyPreFinalTransition(VirtualFrame frame, TRegexDFAExecutorNode executor, short transitionIndex, int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (precedingTransitions.length > EXPLODE_THRESHOLD) {
-            applyFinalTransitionBoundary(executor, executor.getCGData(frame), transitionIndex, currentIndex);
+            applyPreFinalTransitionBoundary(executor, executor.getCGData(frame), transitionIndex, currentIndex);
         } else {
-            applyFinalTransitionExploded(frame, executor, transitionIndex, currentIndex);
+            applyPreFinalTransitionExploded(frame, executor, transitionIndex, currentIndex);
         }
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static void applyFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
-        executor.getCGTransitions()[transitionIndex].getTransitionToFinalState().applyFinalStateTransition(d, executor.isSearching(), currentIndex);
+    private static void applyPreFinalTransitionBoundary(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, short transitionIndex, int currentIndex) {
+        executor.getCGTransitions()[transitionIndex].getTransitionToFinalState().applyPreFinalStateTransition(d, executor.isSearching(), currentIndex);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    private void applyFinalTransitionExploded(VirtualFrame frame, TRegexDFAExecutorNode executorNode, short transitionIndex, int currentIndex) {
+    private void applyPreFinalTransitionExploded(VirtualFrame frame, TRegexDFAExecutorNode executorNode, short transitionIndex, int currentIndex) {
         for (short possibleTransition : precedingTransitions) {
             if (transitionIndex == possibleTransition) {
-                executorNode.getCGTransitions()[possibleTransition].getTransitionToFinalState().applyFinalStateTransition(executorNode.getCGData(frame), executorNode.isSearching(), currentIndex);
+                executorNode.getCGTransitions()[possibleTransition].getTransitionToFinalState().applyPreFinalStateTransition(
+                                executorNode.getCGData(frame), executorNode.isSearching(), currentIndex);
                 return;
             }
         }

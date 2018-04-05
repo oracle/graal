@@ -71,8 +71,8 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
     public ASTStepVisitor(RegexAST ast, CompilationBuffer compilationBuffer) {
         super(ast);
         this.compilationBuffer = compilationBuffer;
-        captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
-        captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups());
+        captureGroupUpdates = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
+        captureGroupClears = new CompilationFinalBitSet(ast.getNumberOfCaptureGroups() * 2);
     }
 
     public ASTStep step(NFAState expandState) {
@@ -119,7 +119,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         }
         stepCur = stepRoot;
         Term root = (Term) stepRoot.getRoot();
-        setTraversableLookBehindAssertions(expandState instanceof NFAMatcherState ? ((NFAMatcherState) expandState).getFinishedLookBehinds() : Collections.emptySet());
+        setTraversableLookBehindAssertions(expandState instanceof NFAState ? expandState.getFinishedLookBehinds() : Collections.emptySet());
         setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
         run(root);
         curLookAheads.clear();

@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,6 +42,9 @@ public class DebugUtil {
     public static final boolean LOG_PHASES = false;
     public static final boolean LOG_BAILOUT_MESSAGES = false;
     public static final boolean LOG_AUTOMATON_SIZES = false;
+
+    private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
+                    '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
 
     @TruffleBoundary
     public static String charToString(int c) {
@@ -116,6 +121,10 @@ public class DebugUtil {
             }
         }
         return stringBuilder.toString();
+    }
+
+    public static boolean isValidCharForFileName(int c) {
+        return Character.isLetterOrDigit(c) || validSpecialCharsForFileNames.get(c);
     }
 
     public static class Timer {

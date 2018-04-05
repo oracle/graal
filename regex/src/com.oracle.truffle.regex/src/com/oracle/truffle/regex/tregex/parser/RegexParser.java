@@ -401,7 +401,7 @@ public final class RegexParser {
     }
 
     private boolean curTermIsAnchor(PositionAssertion.Type type) {
-        return curTerm != null && curTerm instanceof PositionAssertion && ((PositionAssertion) curTerm).type == type;
+        return curTerm instanceof PositionAssertion && ((PositionAssertion) curTerm).type == type;
     }
 
     private void substitute(Group substitution) {
@@ -487,6 +487,7 @@ public final class RegexParser {
         if (curGroup != root) {
             throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
         }
+        root.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         return root;
     }
 

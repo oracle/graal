@@ -82,4 +82,12 @@ public class NFAStateTransition implements JsonConvertible {
                         Json.prop("target", target.getId()),
                         Json.prop("groupBoundaries", groupBoundaries));
     }
+
+    @TruffleBoundary
+    public JsonValue toJson(boolean forward) {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("source", getSource(forward).getId()),
+                        Json.prop("target", getTarget(forward).getId()),
+                        Json.prop("groupBoundaries", groupBoundaries));
+    }
 }

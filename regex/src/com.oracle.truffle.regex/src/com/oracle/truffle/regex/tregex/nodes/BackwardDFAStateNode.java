@@ -32,12 +32,11 @@ public class BackwardDFAStateNode extends DFAStateNode {
     public BackwardDFAStateNode(short id,
                     boolean finalState,
                     boolean anchoredFinalState,
-                    boolean findSingleChar,
                     boolean hasBackwardPrefixState,
                     short loopToSelf,
                     short[] successors,
                     CharMatcher[] matchers) {
-        super(id, finalState, anchoredFinalState, findSingleChar, hasBackwardPrefixState, loopToSelf, successors, matchers);
+        super(id, finalState, anchoredFinalState, hasBackwardPrefixState, loopToSelf, successors, matchers);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {

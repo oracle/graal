@@ -37,14 +37,13 @@ public class TraceFinderDFAStateNode extends BackwardDFAStateNode {
     public TraceFinderDFAStateNode(short id,
                     boolean finalState,
                     boolean anchoredFinalState,
-                    boolean findSingleChar,
                     boolean hasBackwardPrefixState,
                     short loopToSelf,
                     short[] successors,
                     CharMatcher[] matchers,
                     byte preCalculatedUnAnchoredResult,
                     byte preCalculatedAnchoredResult) {
-        super(id, finalState, anchoredFinalState, findSingleChar, hasBackwardPrefixState, loopToSelf, successors, matchers);
+        super(id, finalState, anchoredFinalState, hasBackwardPrefixState, loopToSelf, successors, matchers);
         this.preCalculatedUnAnchoredResult = preCalculatedUnAnchoredResult;
         this.preCalculatedAnchoredResult = preCalculatedAnchoredResult;
     }

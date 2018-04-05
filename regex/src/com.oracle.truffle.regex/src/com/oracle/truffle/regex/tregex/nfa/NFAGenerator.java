@@ -39,6 +39,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -49,10 +50,15 @@ public final class NFAGenerator {
     private final RegexAST ast;
     private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNFASize, "NFA explosion");
     private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(Short.MAX_VALUE, "NFA transition explosion");
-    private final List<NFAAnchoredFinalState> anchoredInitialStates;
-    private final List<NFAFinalState> initialStates;
-    private final NFAAnchoredFinalState anchoredFinalState;
-    private final NFAFinalState finalState;
+    private final NFAState dummyInitialState;
+    private final NFAState[] anchoredInitialStates;
+    private final NFAState[] initialStates;
+    private final NFAState anchoredFinalState;
+    private final NFAState finalState;
+    private final NFAStateTransition[] anchoredEntries;
+    private final NFAStateTransition[] unAnchoredEntries;
+    private final NFAStateTransition anchoredReverseEntry;
+    private final NFAStateTransition unAnchoredReverseEntry;
     private final Deque<NFAState> expansionQueue = new ArrayDeque<>();
     private final Map<ASTNodeSet<? extends RegexASTNode>, NFAState> nfaStates = new HashMap<>();
     private final List<NFAState> hardPrefixStates = new ArrayList<>();
@@ -62,21 +68,39 @@ public final class NFAGenerator {
     private NFAGenerator(RegexAST ast, CompilationBuffer compilationBuffer) {
         this.ast = ast;
         this.astStepVisitor = new ASTStepVisitor(ast, compilationBuffer);
-        stateID.inc();
-        anchoredFinalState = new NFAAnchoredFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getReachableDollars()));
-        finalState = new NFAFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getRoot().getSubTreeParent().getMatchFound()));
-        nfaStates.put(anchoredFinalState.getStateSet(), anchoredFinalState);
-        nfaStates.put(finalState.getStateSet(), finalState);
-        anchoredInitialStates = new ArrayList<>(ast.getWrappedPrefixLength() + 1);
-        initialStates = new ArrayList<>(ast.getWrappedPrefixLength() + 1);
+        dummyInitialState = new NFAState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getWrappedRoot()), MatcherBuilder.createEmpty(), Collections.emptySet(), false);
+        nfaStates.put(dummyInitialState.getStateSet(), dummyInitialState);
+        anchoredFinalState = createFinalState(new ASTNodeSet<>(ast, ast.getReachableDollars()));
+        anchoredFinalState.setForwardAnchoredFinalState(true);
+        finalState = createFinalState(new ASTNodeSet<>(ast, ast.getRoot().getSubTreeParent().getMatchFound()));
+        finalState.setForwardUnAnchoredFinalState(true);
+        anchoredReverseEntry = createTransition(anchoredFinalState, dummyInitialState);
+        unAnchoredReverseEntry = createTransition(finalState, dummyInitialState);
+        int nEntries = ast.getWrappedPrefixLength() + 1;
+        anchoredInitialStates = new NFAState[nEntries];
+        initialStates = new NFAState[nEntries];
+        anchoredEntries = new NFAStateTransition[nEntries];
+        unAnchoredEntries = new NFAStateTransition[nEntries];
         for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
-            final NFAFinalState initialState = new NFAFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getNFAUnAnchoredInitialState(i)));
-            final NFAAnchoredFinalState anchoredInitialState = new NFAAnchoredFinalState((short) stateID.inc(), new ASTNodeSet<>(ast, ast.getNFAAnchoredInitialState(i)));
-            initialStates.add(initialState);
-            anchoredInitialStates.add(anchoredInitialState);
-            nfaStates.put(initialState.getStateSet(), initialState);
-            nfaStates.put(anchoredInitialState.getStateSet(), anchoredInitialState);
+            NFAState anchoredInitialState = createFinalState(new ASTNodeSet<>(ast, ast.getNFAAnchoredInitialState(i)));
+            anchoredInitialState.setReverseAnchoredFinalState(true);
+            anchoredInitialStates[i] = anchoredInitialState;
+            anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialState);
         }
+        for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
+            NFAState initialState = createFinalState(new ASTNodeSet<>(ast, ast.getNFAUnAnchoredInitialState(i)));
+            initialState.setReverseUnAnchoredFinalState(true);
+            initialStates[i] = initialState;
+            unAnchoredEntries[i] = createTransition(dummyInitialState, initialState);
+        }
+        ArrayList<NFAStateTransition> dummyInitNext = new ArrayList<>(nEntries * 2);
+        Collections.addAll(dummyInitNext, anchoredEntries);
+        Collections.addAll(dummyInitNext, unAnchoredEntries);
+        ArrayList<NFAStateTransition> dummyInitPrev = new ArrayList<>(2);
+        dummyInitPrev.add(anchoredReverseEntry);
+        dummyInitPrev.add(unAnchoredReverseEntry);
+        dummyInitialState.setNext(dummyInitNext, false);
+        dummyInitialState.setPrev(dummyInitPrev);
     }
 
     public static NFA createNFA(RegexAST ast, CompilationBuffer compilationBuffer) {
@@ -84,8 +108,8 @@ public final class NFAGenerator {
     }
 
     private NFA doCreateNFA() {
-        expansionQueue.addAll(initialStates);
-        expansionQueue.addAll(anchoredInitialStates);
+        Collections.addAll(expansionQueue, initialStates);
+        Collections.addAll(expansionQueue, anchoredInitialStates);
         while (!expansionQueue.isEmpty()) {
             expandNFAState(expansionQueue.pop());
         }
@@ -105,12 +129,18 @@ public final class NFAGenerator {
             deadStates.clear();
             findDeadStates(deadStates);
         }
-        return new NFA(ast, anchoredInitialStates, initialStates, anchoredFinalState, finalState, nfaStates.values(), stateID, transitionID, null);
+        for (int i = 1; i < initialStates.length; i++) {
+            // check if state was eliminated by findDeadStates
+            if (nfaStates.containsKey(initialStates[i].getStateSet())) {
+                initialStates[i].addLoopBackNext(createTransition(initialStates[i], initialStates[i - 1], new GroupBoundaries()));
+            }
+        }
+        return new NFA(ast, dummyInitialState, anchoredEntries, unAnchoredEntries, anchoredReverseEntry, unAnchoredReverseEntry, nfaStates.values(), stateID, transitionID, null);
     }
 
     private void findDeadStates(ArrayList<NFAState> deadStates) {
         for (NFAState state : nfaStates.values()) {
-            if (state instanceof NFAMatcherState && (state.getNext().isEmpty() || state.getNext().size() == 1 && state.getNext().get(0).getTarget() == state)) {
+            if (!state.isForwardFinalState() && (state.getNext().isEmpty() || state.getNext().size() == 1 && state.getNext().get(0).getTarget() == state)) {
                 deadStates.add(state);
             }
         }
@@ -177,8 +207,19 @@ public final class NFAGenerator {
         return transitions;
     }
 
+    private NFAState createFinalState(ASTNodeSet<? extends RegexASTNode> stateSet) {
+        NFAState state = new NFAState((short) stateID.inc(), stateSet, MatcherBuilder.createFull(), Collections.emptySet(), false);
+        assert !nfaStates.containsKey(state.getStateSet());
+        nfaStates.put(state.getStateSet(), state);
+        return state;
+    }
+
     private NFAStateTransition createTransition(NFAState source, NFAState target, GroupBoundaries groupBoundaries) {
         return new NFAStateTransition((short) transitionID.inc(), source, target, groupBoundaries);
+    }
+
+    private NFAStateTransition createTransition(NFAState source, NFAState target) {
+        return new NFAStateTransition((short) transitionID.inc(), source, target, new GroupBoundaries());
     }
 
     private NFAState registerMatcherState(ASTNodeSet<CharacterClass> stateSetCC,
@@ -188,7 +229,7 @@ public final class NFAGenerator {
         if (nfaStates.containsKey(stateSetCC)) {
             return nfaStates.get(stateSetCC);
         } else {
-            NFAState state = new NFAMatcherState((short) stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates);
+            NFAState state = new NFAState((short) stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates);
             expansionQueue.push(state);
             nfaStates.put(state.getStateSet(), state);
             return state;

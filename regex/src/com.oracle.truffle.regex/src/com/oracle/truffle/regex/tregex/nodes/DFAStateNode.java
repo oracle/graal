@@ -39,10 +39,9 @@ import java.util.Arrays;
 
 public class DFAStateNode extends DFAAbstractStateNode {
 
-    private static final byte FINAL_STATE_FLAG = 1;
-    private static final byte ANCHORED_FINAL_STATE_FLAG = 1 << 1;
-    private static final byte FIND_SINGLE_CHAR_FLAG = 1 << 2;
-    private static final byte HAS_BACKWARD_PREFIX_STATE_FLAG = 1 << 3;
+    private static final byte FLAG_FINAL_STATE = 1;
+    private static final byte FLAG_ANCHORED_FINAL_STATE = 1 << 1;
+    private static final byte FLAG_HAS_BACKWARD_PREFIX_STATE = 1 << 2;
 
     private final short id;
     private final byte flags;
@@ -52,36 +51,40 @@ public class DFAStateNode extends DFAAbstractStateNode {
     public DFAStateNode(short id,
                     boolean finalState,
                     boolean anchoredFinalState,
-                    boolean findSingleChar,
                     boolean hasBackwardPrefixState,
                     short loopToSelf,
                     short[] successors,
                     CharMatcher[] matchers) {
+        this(id, initFlags(finalState, anchoredFinalState, hasBackwardPrefixState), loopToSelf, successors, matchers);
+    }
+
+    DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
+        this(copyID, nodeSplitCopy.flags, nodeSplitCopy.loopToSelf,
+                        Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length),
+                        nodeSplitCopy.getMatchers());
+    }
+
+    private DFAStateNode(short id, byte flags, short loopToSelf, short[] successors, CharMatcher[] matchers) {
         super(successors);
         assert id > 0;
         this.id = id;
-        byte newFlags = 0;
-        if (finalState) {
-            newFlags |= FINAL_STATE_FLAG;
-        }
-        if (anchoredFinalState) {
-            newFlags |= ANCHORED_FINAL_STATE_FLAG;
-        }
-        if (findSingleChar) {
-            newFlags |= FIND_SINGLE_CHAR_FLAG;
-        }
-        if (hasBackwardPrefixState) {
-            newFlags |= HAS_BACKWARD_PREFIX_STATE_FLAG;
-        }
+        this.flags = flags;
         this.loopToSelf = loopToSelf;
-        this.flags = newFlags;
         this.matchers = matchers;
     }
 
-    protected DFAStateNode(DFAStateNode nodeSplitCopy, short copyID) {
-        this(copyID, nodeSplitCopy.isFinalState(), nodeSplitCopy.isAnchoredFinalState(), nodeSplitCopy.isFindSingleChar(),
-                        nodeSplitCopy.hasBackwardPrefixState(), nodeSplitCopy.loopToSelf,
-                        Arrays.copyOf(nodeSplitCopy.getSuccessors(), nodeSplitCopy.getSuccessors().length), nodeSplitCopy.getMatchers());
+    private static byte initFlags(boolean finalState, boolean anchoredFinalState, boolean hasBackwardPrefixState) {
+        byte newFlags = 0;
+        if (finalState) {
+            newFlags |= FLAG_FINAL_STATE;
+        }
+        if (anchoredFinalState) {
+            newFlags |= FLAG_ANCHORED_FINAL_STATE;
+        }
+        if (hasBackwardPrefixState) {
+            newFlags |= FLAG_HAS_BACKWARD_PREFIX_STATE;
+        }
+        return newFlags;
     }
 
     @Override
@@ -99,19 +102,15 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     public boolean isFinalState() {
-        return flagIsSet(FINAL_STATE_FLAG);
+        return flagIsSet(FLAG_FINAL_STATE);
     }
 
     public boolean isAnchoredFinalState() {
-        return flagIsSet(ANCHORED_FINAL_STATE_FLAG);
-    }
-
-    public boolean isFindSingleChar() {
-        return flagIsSet(FIND_SINGLE_CHAR_FLAG);
+        return flagIsSet(FLAG_ANCHORED_FINAL_STATE);
     }
 
     public boolean hasBackwardPrefixState() {
-        return flagIsSet(HAS_BACKWARD_PREFIX_STATE_FLAG);
+        return flagIsSet(FLAG_HAS_BACKWARD_PREFIX_STATE);
     }
 
     private boolean flagIsSet(byte flag) {
@@ -202,10 +201,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
             return hasLoopToSelf() && isLoopToSelf(successor);
         } else {
             for (int i = 0; i < matchers.length; i++) {
-                if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                    System.out.println("check " + matchers[i]);
-                }
                 if (matchers[i].match(c)) {
+                    if (executor.recordExecution()) {
+                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
+                    }
                     CompilerAsserts.partialEvaluationConstant(i);
                     successorFound1(frame, executor, i);
                     executor.setSuccessorIndex(frame, i);
@@ -243,10 +242,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
             return isLoopToSelf(successor);
         } else {
             for (int i = 0; i < matchers.length; i++) {
-                if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                    System.out.println("check " + matchers[i]);
-                }
                 if (matchers[i].match(c)) {
+                    if (executor.recordExecution()) {
+                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
+                    }
                     executor.setSuccessorIndex(frame, i);
                     if (!isLoopToSelf(i)) {
                         CompilerAsserts.partialEvaluationConstant(i);
@@ -294,10 +293,10 @@ public class DFAStateNode extends DFAAbstractStateNode {
             return isLoopToSelf(successor);
         } else {
             for (int i = 0; i < matchers.length; i++) {
-                if (DebugUtil.DEBUG_STEP_EXECUTION) {
-                    System.out.println("check " + matchers[i]);
-                }
                 if (matchers[i].match(c)) {
+                    if (executor.recordExecution()) {
+                        executor.getDebugRecorder().recordTransition(prevIndex(frame, executor), getId(), i);
+                    }
                     executor.setSuccessorIndex(frame, i);
                     if (!isLoopToSelf(i)) {
                         CompilerAsserts.partialEvaluationConstant(i);

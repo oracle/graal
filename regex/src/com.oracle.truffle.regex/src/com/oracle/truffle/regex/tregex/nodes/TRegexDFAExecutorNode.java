@@ -44,12 +44,27 @@ public final class TRegexDFAExecutorNode extends Node {
     @Child private InputCharAtNode charAtNode = InputCharAtNode.create();
     @Children private final DFAAbstractStateNode[] states;
     @Children private final DFACaptureGroupLazyTransitionNode[] cgTransitions;
+    private final TRegexDFAExecutorDebugRecorder debugRecorder;
 
-    public TRegexDFAExecutorNode(TRegexDFAExecutorProperties props, int maxNumberOfNFAStates, DFAAbstractStateNode[] states, DFACaptureGroupLazyTransitionNode[] cgTransitions) {
+    public TRegexDFAExecutorNode(
+                    TRegexDFAExecutorProperties props,
+                    int maxNumberOfNFAStates,
+                    DFAAbstractStateNode[] states,
+                    DFACaptureGroupLazyTransitionNode[] cgTransitions,
+                    TRegexDFAExecutorDebugRecorder debugRecorder) {
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
         this.states = states;
         this.cgTransitions = cgTransitions;
+        this.debugRecorder = debugRecorder;
+    }
+
+    public TRegexDFAExecutorNode(
+                    TRegexDFAExecutorProperties props,
+                    int maxNumberOfNFAStates,
+                    DFAAbstractStateNode[] states,
+                    DFACaptureGroupLazyTransitionNode[] cgTransitions) {
+        this(props, maxNumberOfNFAStates, states, cgTransitions, null);
     }
 
     private DFAInitialStateNode getInitialState() {
@@ -88,6 +103,14 @@ public final class TRegexDFAExecutorNode extends Node {
         return props.getNumberOfCaptureGroups();
     }
 
+    public boolean recordExecution() {
+        return debugRecorder != null;
+    }
+
+    public TRegexDFAExecutorDebugRecorder getDebugRecorder() {
+        return debugRecorder;
+    }
+
     /**
      * records position of the END of the match found, or -1 if no match exists.
      */
@@ -101,6 +124,9 @@ public final class TRegexDFAExecutorNode extends Node {
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
                             getFromIndex(frame), getIndex(frame), getMaxIndex(frame)));
         }
+        if (recordExecution()) {
+            debugRecorder.startRecording(frame, this);
+        }
         if (isBackward() && getFromIndex(frame) - 1 > getMaxIndex(frame)) {
             setCurMaxIndex(frame, getFromIndex(frame) - 1);
         } else {
@@ -110,6 +136,7 @@ public final class TRegexDFAExecutorNode extends Node {
             createCGData(frame);
             initResultOrder(frame);
             setResultObject(frame, null);
+            setLastTransition(frame, (short) -1);
         } else {
             setResultInt(frame, TRegexDFAExecutorNode.NO_MATCH);
         }
@@ -134,11 +161,14 @@ public final class TRegexDFAExecutorNode extends Node {
             assert getSuccessorIndex(frame) == -1;
             break;
         }
+        if (recordExecution()) {
+            debugRecorder.finishRecording();
+        }
     }
 
     /**
      * The index pointing into {@link #getInput(VirtualFrame)}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the current index of {@link #getInput(VirtualFrame)} that is being processed.
      */
@@ -153,7 +183,7 @@ public final class TRegexDFAExecutorNode extends Node {
     /**
      * The <code>fromIndex</code> argument given to
      * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the <code>fromIndex</code> argument given to
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
@@ -168,7 +198,7 @@ public final class TRegexDFAExecutorNode extends Node {
 
     /**
      * The maximum index as given by the parent {@link TRegexExecRootNode}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the maximum index as given by the parent {@link TRegexExecRootNode}.
      */
@@ -184,7 +214,7 @@ public final class TRegexDFAExecutorNode extends Node {
      * The maximum index as checked by {@link #hasNext(VirtualFrame)}. In most cases this value is
      * equal to {@link #getMaxIndex(VirtualFrame)}, but backward matching nodes change this value
      * while matching.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the maximum index as checked by {@link #hasNext(VirtualFrame)}.
      *
@@ -201,7 +231,7 @@ public final class TRegexDFAExecutorNode extends Node {
     /**
      * The <code>input</code> argument given to
      * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the <code>input</code> argument given to
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
@@ -217,7 +247,7 @@ public final class TRegexDFAExecutorNode extends Node {
     /**
      * The length of the <code>input</code> argument given to
      * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
-     * 
+     *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @return the length of the <code>input</code> argument given to
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.

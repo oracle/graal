@@ -26,14 +26,14 @@ package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import java.util.List;
 
 public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
 
@@ -45,8 +45,8 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     private DFAStateNodeBuilder target;
     private DFACaptureGroupTransitionBuilder captureGroupTransition;
 
-    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, List<NFAStateTransition> transitions, NFA nfa, boolean forward, boolean prioritySensitive) {
-        this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transitions);
+    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFAStateTransition transition, NFA nfa, boolean forward, boolean prioritySensitive) {
+        this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transition);
         this.matcherBuilder = matcherBuilder;
     }
 
@@ -116,11 +116,14 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("id", id),
+        JsonObject ret = Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
                         Json.prop("matcherBuilder", getMatcherBuilder().toString()),
-                        Json.prop("nfaTransitions", getTransitionSet().stream().map(t -> Json.val(t.getId()))),
-                        Json.prop("captureGroupTransition", captureGroupTransition));
+                        Json.prop("nfaTransitions", getTransitionSet().stream().map(t -> Json.val(t.getId()))));
+        if (captureGroupTransition != null) {
+            ret.append(Json.prop("captureGroupTransition", captureGroupTransition.toLazyTransition(new CompilationBuffer())));
+        }
+        return ret;
     }
 }

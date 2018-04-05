@@ -47,6 +47,8 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     public static final byte[][] EMPTY_INDEX_UPDATES = {};
     public static final byte[][] EMPTY_INDEX_CLEARS = {};
 
+    private static final DFACaptureGroupPartialTransitionNode EMPTY_INSTANCE = new DFACaptureGroupPartialTransitionNode(null, EMPTY_ARRAY_COPIES, EMPTY_INDEX_UPDATES, EMPTY_INDEX_CLEARS);
+
     @CompilationFinal(dimensions = 1) private final byte[] newOrder;
     @CompilationFinal(dimensions = 1) private final byte[] arrayCopies;
     @CompilationFinal(dimensions = 2) private final byte[][] indexUpdates;
@@ -60,7 +62,14 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     }
 
     public static DFACaptureGroupPartialTransitionNode create(byte[] newOrder, byte[] arrayCopies, byte[][] indexUpdates, byte[][] indexClears) {
+        if ((newOrder == null || newOrder.length == 0) && arrayCopies.length == 0 && indexUpdates.length == 0 && indexClears.length == 0) {
+            return createEmpty();
+        }
         return new DFACaptureGroupPartialTransitionNode(newOrder, arrayCopies, indexUpdates, indexClears);
+    }
+
+    public static DFACaptureGroupPartialTransitionNode createEmpty() {
+        return EMPTY_INSTANCE;
     }
 
     public boolean doesReorderResults() {
@@ -85,7 +94,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
         applyIndexClear(d.results, d.currentResultOrder);
     }
 
-    public void applyFinalStateTransition(DFACaptureGroupTrackingData d, boolean searching, final int currentIndex) {
+    public void applyPreFinalStateTransition(DFACaptureGroupTrackingData d, boolean searching, final int currentIndex) {
         if (DebugUtil.DEBUG_STEP_EXECUTION) {
             System.out.println("applying final state transition " + this);
         }
@@ -94,7 +103,6 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
             apply(d, currentIndex);
             return;
         }
-        CompilerAsserts.partialEvaluationConstant(this);
         final int source;
         if (newOrder == null) {
             source = 0;
@@ -102,6 +110,15 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
             source = Byte.toUnsignedInt(newOrder[0]);
         }
         System.arraycopy(d.results[d.currentResultOrder[source]], 0, d.currentResult, 0, d.currentResult.length);
+        applyFinalStateTransition(d, true, currentIndex);
+    }
+
+    public void applyFinalStateTransition(DFACaptureGroupTrackingData d, boolean searching, int currentIndex) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        if (!searching) {
+            apply(d, currentIndex);
+            return;
+        }
         assert arrayCopies.length == 0;
         assert indexUpdates.length <= 1;
         assert indexClears.length <= 1;
@@ -173,7 +190,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null || !(obj instanceof DFACaptureGroupPartialTransitionNode)) {
+        if (!(obj instanceof DFACaptureGroupPartialTransitionNode)) {
             return false;
         }
         DFACaptureGroupPartialTransitionNode o = (DFACaptureGroupPartialTransitionNode) obj;

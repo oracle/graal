@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -71,6 +72,28 @@ public final class RegexSource implements JsonConvertible {
     @Override
     public String toString() {
         return "/" + pattern + "/" + flags;
+    }
+
+    public String toFileName() {
+        StringBuilder sb = new StringBuilder(20);
+        int i = 0;
+        while (i < Math.min(pattern.length(), 20)) {
+            int c = pattern.codePointAt(i);
+            if (DebugUtil.isValidCharForFileName(c)) {
+                sb.appendCodePoint(c);
+            } else {
+                sb.append('_');
+            }
+            if (c > 0xffff) {
+                i += 2;
+            } else {
+                i++;
+            }
+        }
+        if (!flags.isNone()) {
+            sb.append('_').append(flags);
+        }
+        return sb.toString();
     }
 
     @TruffleBoundary
