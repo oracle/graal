@@ -56,6 +56,8 @@ import java.util.function.BiConsumer;
  * {@link #addDecision} to log negative decisions.
  */
 public class InliningLog {
+    private static final String TREE_NODE = "\u251c\u2500\u2500";
+    private static final String LAST_TREE_NODE = "\u2514\u2500\u2500";
 
     public static final class Decision {
         private final boolean positive;
@@ -364,10 +366,13 @@ public class InliningLog {
     /**
      * Formats the inlining log as a hierarchical tree.
      *
-     * @param nullIfEmpty specifies whether null should be returned if there are no inlining decisions
+     * @param nullIfEmpty specifies whether null should be returned if there are no inlining
+     *            decisions
      * @return the tree representation of the inlining log
      */
     public String formatAsTree(boolean nullIfEmpty) {
+        assert root.decisions.isEmpty();
+        assert !root.children.isEmpty() || leaves.isEmpty();
         if (nullIfEmpty && root.children.isEmpty()) {
             return null;
         }
@@ -390,7 +395,8 @@ public class InliningLog {
         } else {
             builder.append(System.lineSeparator());
             for (Decision decision : site.decisions) {
-                builder.append(indent + "   |-").append(decision.toString());
+                String node = (decision == site.decisions.get(site.decisions.size() - 1)) ? LAST_TREE_NODE : TREE_NODE;
+                builder.append(indent + "   " + node).append(decision.toString());
                 builder.append(System.lineSeparator());
             }
         }
