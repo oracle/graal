@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDBasicType;
@@ -68,9 +71,6 @@ import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.records.DwTagRecord;
 import com.oracle.truffle.llvm.parser.records.MetadataRecord;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public final class Metadata implements ParserListener {
 
@@ -144,7 +144,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case ATTACHMENT:
-                createAttachment(args);
+                createAttachment(args, false);
                 break;
 
             case GENERIC_DEBUG:
@@ -259,7 +259,7 @@ public final class Metadata implements ParserListener {
                 break;
 
             case GLOBAL_DECL_ATTACHMENT: {
-                createAttachment(args);
+                createAttachment(args, true);
                 break;
             }
 
@@ -281,7 +281,7 @@ public final class Metadata implements ParserListener {
         }
     }
 
-    private void createAttachment(long[] args) {
+    private void createAttachment(long[] args, boolean isGlobal) {
         if (args.length > 0) {
             final int offset = args.length % 2;
             final int targetIndex = (int) args[0];
@@ -289,10 +289,12 @@ public final class Metadata implements ParserListener {
             for (int i = offset; i < args.length; i += 2) {
                 final MDKind kind = metadata.getKind(args[i]);
                 final MDAttachment attachment = MDAttachment.create(kind, args[i + 1], metadata);
-                if (offset != 0) {
-                    scope.attachSymbolMetadata(targetIndex, attachment);
+                if (isGlobal) {
+                    scope.attachGlobalMetadata(targetIndex, attachment);
+                } else if (offset == 0) {
+                    scope.attachFunctionMetadata(attachment);
                 } else {
-                    scope.attachMetadata(attachment);
+                    scope.attachInstructionMetadata(targetIndex, attachment);
                 }
             }
         }
