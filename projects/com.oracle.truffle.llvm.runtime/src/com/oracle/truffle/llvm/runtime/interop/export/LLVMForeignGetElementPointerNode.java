@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
@@ -56,5 +57,28 @@ public abstract class LLVMForeignGetElementPointerNode extends Node {
             throw UnknownIdentifierException.raise(ident);
         }
         return object.increment(member.getStartOffset()).export(member.getType());
+    }
+
+    @Specialization(guards = "array.getElementType() == elementType")
+    LLVMTruffleObject doCachedArray(LLVMInteropType.Array array, LLVMTruffleObject object, long idx,
+                    @Cached("array.getElementSize()") long elementSize,
+                    @Cached("array.getElementType()") LLVMInteropType elementType) {
+        if (Long.compareUnsigned(idx, array.getLength()) >= 0) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownIdentifierException.raise(Long.toString(idx));
+        }
+        return object.increment(idx * elementSize).export(elementType);
+    }
+
+    @Specialization(replaces = "doCachedArray")
+    LLVMTruffleObject doGenericArray(LLVMInteropType.Array array, LLVMTruffleObject object, long idx) {
+        return doCachedArray(array, object, idx, array.getElementSize(), array.getElementType());
+    }
+
+    @Fallback
+    @SuppressWarnings("unused")
+    LLVMTruffleObject doError(LLVMInteropType type, LLVMTruffleObject object, Object ident) {
+        CompilerDirectives.transferToInterpreter();
+        throw UnknownIdentifierException.raise(ident.toString());
     }
 }
