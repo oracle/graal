@@ -397,7 +397,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
     @SuppressWarnings("javadoc")
     private static BitSet trimClone(BitSet set) {
         BitSet trimmedSet = new BitSet(0); // zero-length words array, sticky
-        trimmedSet.or(set); // words size ensured to be words-in-use of set, also make it non-sticky
+        trimmedSet.or(set); // words size ensured to be words-in-use of set,
+                            // also makes it non-sticky
         return trimmedSet;
     }
 
