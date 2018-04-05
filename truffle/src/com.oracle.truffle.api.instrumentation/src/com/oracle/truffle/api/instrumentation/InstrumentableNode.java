@@ -234,6 +234,11 @@ public interface InstrumentableNode extends NodeInterface {
      * all current execution event bindings to allow the language to do the materialization
      * selectively for instrumentable nodes with certain tags only.
      * <p>
+     * The returned instrumentable nodes must return themselves when this method is called on them
+     * with the same tags. Materialized nodes should not be re-materialized again. Instrumentation
+     * relies on the stability of materialized nodes. Use {@link Node#notifyInserted(Node)} when you
+     * need to change the structure of instrumentable nodes.
+     * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked
@@ -331,6 +336,9 @@ public interface InstrumentableNode extends NodeInterface {
      * <li>When nothing was found in the steps above, return <code>null</code>.</li>
      * </ol>
      * </li>
+     * <li>If <b>d.</b> didn't provide a tagged node, apply this algorithm recursively to a parent
+     * of this node, if exists. If you encounter the nearest tagged parent node found in <b>3.a</b>,
+     * return it. Otherwise, return a tagged child found in the steps above, if any.</li>
      * </ol>
      * </li>
      * </ol>
