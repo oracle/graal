@@ -470,6 +470,9 @@ void *__polyglot_as_typed(void *ptr, void *typeid);
  */
 void *__polyglot_as_typed_array(void *ptr, void *typeid);
 
+void *__polyglot_from_typed(void *p, void *typeid);
+void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeid);
+
 /**
  * Declare polyglot conversion functions for a user-defined struct type.
  *
@@ -552,6 +555,14 @@ void *__polyglot_as_typed_array(void *ptr, void *typeid);
   __attribute__((always_inline)) static inline struct type *polyglot_as_##type##_array(void *p) {                                                    \
     void *ret = __polyglot_as_typed_array(p, __polyglot_typeid_##type);                                                                              \
     return (struct type *)ret;                                                                                                                       \
+  }                                                                                                                                                  \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static void *polyglot_from_##type(struct type *s) {                                                                 \
+    return __polyglot_from_typed(s, __polyglot_typeid_##type);                                                                                       \
+  }                                                                                                                                                  \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static void *polyglot_from_##type##_array(struct type *a, uint64_t len) {                                           \
+    return __polyglot_from_typed_array(a, len, __polyglot_typeid_##type);                                                                            \
   }
 
 /** @} */
