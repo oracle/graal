@@ -36,7 +36,9 @@ import org.graalvm.polyglot.Value;
  * The {@link LanguageProvider} provides factory methods for language data types, expressions,
  * statements and scripts used for testing language inter-operability. The {@link LanguageProvider}
  * implementations are loaded by the {@link ServiceLoader} and should be registered in the
- * 'META-INF/services/org.graalvm.polyglot.tck.LanguageProvider'.
+ * 'META-INF/services/org.graalvm.polyglot.tck.LanguageProvider'. See
+ * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/TCK.md" target="_top">Test
+ * Compatibility Kit</a> for details how to add a new language provider and execute tests.
  *
  * @since 0.30
  */
