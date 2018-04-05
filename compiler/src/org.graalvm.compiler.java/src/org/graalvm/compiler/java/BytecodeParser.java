@@ -297,8 +297,10 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Node;
@@ -454,9 +456,15 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
-     * to trace the frame state before each bytecode instruction as it is parsed.
+     * to emit the frame state for each traced bytecode instruction.
      */
     public static final int TRACELEVEL_STATE = 2;
+
+    /**
+     * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
+     * to emit the block map for each traced method.
+     */
+    public static final int TRACELEVEL_BLOCKMAP = 3;
 
     /**
      * Meters the number of actual bytecodes parsed.
@@ -681,6 +689,7 @@ public class BytecodeParser implements GraphBuilderContext {
     private ValueNode originalReceiver;
     private final boolean eagerInitializing;
     private final boolean uninitializedIsError;
+    private final int traceLevel;
 
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
@@ -714,12 +723,6 @@ public class BytecodeParser implements GraphBuilderContext {
 
         assert code.getCode() != null : "method must contain bytecodes: " + method;
 
-        if (TraceBytecodeParserLevel.getValue(options) != 0) {
-            if (!Assertions.assertionsEnabled()) {
-                throw new IllegalArgumentException("A non-zero " + TraceBytecodeParserLevel.getName() + " value requires assertions to be enabled");
-            }
-        }
-
         if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
             lnt = code.getLineNumberTable();
             previousLineNumber = -1;
@@ -729,6 +732,24 @@ public class BytecodeParser implements GraphBuilderContext {
         if (graphBuilderConfig.trackNodeSourcePosition() || (parent != null && parent.graph.trackNodeSourcePosition())) {
             graph.setTrackNodeSourcePosition();
         }
+
+        int level = TraceBytecodeParserLevel.getValue(options);
+        this.traceLevel = level != 0 ? refineTraceLevel(level) : 0;
+    }
+
+    private int refineTraceLevel(int level) {
+        ResolvedJavaMethod tmethod = graph.method();
+        if (tmethod == null) {
+            tmethod = method;
+        }
+        String filterValue = DebugOptions.MethodFilter.getValue(options);
+        if (filterValue != null) {
+            MethodFilter[] filters = MethodFilter.parse(filterValue);
+            if (!MethodFilter.matches(filters, tmethod)) {
+                return 0;
+            }
+        }
+        return level;
     }
 
     protected GraphBuilderPhase.Instance getGraphBuilderInstance() {
@@ -847,7 +868,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
             currentBlock = blockMap.getStartBlock();
             setEntryState(startBlock, frameState);
-            if (startBlock.isLoopHeader) {
+            if (startBlock.isLoopHeader()) {
                 appendGoto(startBlock);
             } else {
                 setFirstInstruction(startBlock, lastInstr);
@@ -2700,7 +2721,7 @@ public class BytecodeParser implements GraphBuilderContext {
     @SuppressWarnings("try")
     private FixedNode createTarget(BciBlock block, FrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
         assert block != null && state != null;
-        assert !block.isExceptionEntry || state.stackSize() == 1;
+        assert !block.isExceptionEntry() || state.stackSize() == 1;
 
         try (DebugCloseable context = openNodeContext(state, block.startBci)) {
             if (getFirstInstruction(block) == null) {
@@ -2710,7 +2731,7 @@ public class BytecodeParser implements GraphBuilderContext {
                  * again.
                  */
                 FixedNode targetNode;
-                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader && (currentBlock.loops & ~block.loops) == 0) {
+                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && (currentBlock.loops & ~block.loops) == 0) {
                     setFirstInstruction(block, lastInstr);
                     lastInstr = null;
                 } else {
@@ -2729,11 +2750,11 @@ public class BytecodeParser implements GraphBuilderContext {
 
             // We already saw this block before, so we have to merge states.
             if (!getEntryState(block).isCompatibleWith(state)) {
-                throw bailout("stacks do not match; bytecodes would not verify");
+                throw bailout(String.format("stacks do not match on merge from %d into %s; bytecodes would not verify:%nexpect: %s%nactual: %s", bci(), block, getEntryState(block), state));
             }
 
             if (getFirstInstruction(block) instanceof LoopBeginNode) {
-                assert (block.isLoopHeader && currentBlock.getId() >= block.getId()) : "must be backward branch";
+                assert (block.isLoopHeader() && currentBlock.getId() >= block.getId()) : "must be backward branch";
                 /*
                  * Backward loop edge. We need to create a special LoopEndNode and merge with the
                  * loop begin node created before.
@@ -2820,7 +2841,7 @@ public class BytecodeParser implements GraphBuilderContext {
             debug.log("Ignoring block %s", block);
             return;
         }
-        try (Indent indent = debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, firstInstruction, block.isLoopHeader)) {
+        try (Indent indent = debug.logAndIndent("Parsing block %s  firstInstruction: %s  loopHeader: %b", block, firstInstruction, block.isLoopHeader())) {
 
             lastInstr = firstInstruction;
             frameState = getEntryState(block);
@@ -2949,7 +2970,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     @SuppressWarnings("try")
     protected void iterateBytecodesForBlock(BciBlock block) {
-        if (block.isLoopHeader) {
+        if (block.isLoopHeader()) {
             // Create the loop header block, which later will merge the backward branches of
             // the loop.
             controlFlowSplit = true;
@@ -3007,8 +3028,9 @@ public class BytecodeParser implements GraphBuilderContext {
 
                 // read the opcode
                 int opcode = stream.currentBC();
-                assert traceState();
-                assert traceInstruction(bci, opcode, bci == block.startBci);
+                if (traceLevel != 0) {
+                    traceInstruction(bci, opcode, bci == block.startBci);
+                }
                 if (parent == null && bci == entryBCI) {
                     if (block.getJsrScope() != JsrScope.EMPTY_SCOPE) {
                         throw new JsrNotSupportedBailout("OSR into a JSR scope is not supported");
@@ -3038,7 +3060,7 @@ public class BytecodeParser implements GraphBuilderContext {
             lastInstr = finishInstruction(lastInstr, frameState);
             if (bci < endBCI) {
                 if (bci > block.endBci) {
-                    assert !block.getSuccessor(0).isExceptionEntry;
+                    assert !block.getSuccessor(0).isExceptionEntry();
                     assert block.numNormalSuccessors() == 1;
                     // we fell through to the next block, add a goto and break
                     appendGoto(block.getSuccessor(0));
@@ -3127,13 +3149,6 @@ public class BytecodeParser implements GraphBuilderContext {
         if (!parsingIntrinsic() && graphBuilderConfig.insertFullInfopoints()) {
             append(new FullInfopointNode(reason, createFrameState(bci(), null), escapedReturnValue));
         }
-    }
-
-    private boolean traceState() {
-        if (TraceBytecodeParserLevel.getValue(options) >= TRACELEVEL_STATE) {
-            frameState.traceState();
-        }
-        return true;
     }
 
     protected void genIf(ValueNode x, Condition cond, ValueNode y) {
@@ -4680,15 +4695,25 @@ public class BytecodeParser implements GraphBuilderContext {
         return frameState;
     }
 
-    protected boolean traceInstruction(int bci, int opcode, boolean blockStart) {
-        if (TraceBytecodeParserLevel.getValue(options) >= TRACELEVEL_INSTRUCTIONS) {
-            traceInstructionHelper(bci, opcode, blockStart);
-        }
-        return true;
-    }
+    private boolean firstTraceEmitted;
 
-    private void traceInstructionHelper(int bci, int opcode, boolean blockStart) {
+    protected void traceInstruction(int bci, int opcode, boolean blockStart) {
+        String indent = new String(new char[getDepth() * 2]).replace('\0', ' ');
         StringBuilder sb = new StringBuilder(40);
+        String nl = System.lineSeparator();
+        if (!firstTraceEmitted) {
+            sb.append(indent).append(method.format("Parsing %H.%n(%p)%r")).append(nl);
+            if (traceLevel >= TRACELEVEL_BLOCKMAP) {
+                sb.append(indent).append("Blocks:").append(nl);
+                String bm = blockMap.toString().replace(nl, nl + indent + "  ");
+                sb.append(indent).append("  ").append(bm).append(nl);
+            }
+            firstTraceEmitted = true;
+        }
+        if (traceLevel >= TRACELEVEL_STATE) {
+            sb.append(indent).append(frameState).append(nl);
+        }
+        sb.append(indent);
         sb.append(blockStart ? '+' : '|');
         if (bci < 10) {
             sb.append("  ");
