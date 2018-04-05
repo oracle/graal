@@ -16,6 +16,9 @@ logPatterns = ["*.bgv"]
 #Tools
 include "tools/ci.hocon"
 
+#Regex
+include "regex/ci.hocon"
+
 #Examples
 #Examples gate also disabled.
 #include "examples/ci.hocon"
