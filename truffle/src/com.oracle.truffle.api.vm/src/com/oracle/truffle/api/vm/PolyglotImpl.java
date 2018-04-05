@@ -143,7 +143,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
         ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
 
-        PolyglotEngineImpl impl = preInitializedEngineRef.getAndSet(null);
+        PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
             if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine)) {
                 impl.ensureClosed(false, true);
