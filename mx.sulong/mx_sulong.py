@@ -614,14 +614,10 @@ mx_sdk.register_component(mx_sdk.GraalVmLanguage(
     ],
     launcher_configs=[
         mx_sdk.LauncherConfig(
-            destination='bin/lli',
+            destination='bin/<exe:lli>',
             jar_distributions=['dependency:sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=[
-                '--Language:llvm',
-                '-H:MaxRuntimeCompileMethods=10000',
-                '-H:+AddAllCharsets',
-            ]
+            build_args=['--Language:llvm']
         )
     ],
 ))
