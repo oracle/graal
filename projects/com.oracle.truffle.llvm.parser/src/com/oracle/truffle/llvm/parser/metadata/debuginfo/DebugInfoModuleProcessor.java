@@ -71,7 +71,7 @@ public final class DebugInfoModuleProcessor {
     private DebugInfoModuleProcessor() {
     }
 
-    public static DebugInfoFunctionProcessor processModule(ModelModule irModel, Source bitcodeSource, MetadataValueList metadata) {
+    public static void processModule(ModelModule irModel, Source bitcodeSource, MetadataValueList metadata) {
         MDUpgrade.perform(metadata);
 
         final DebugInfoCache cache = new DebugInfoCache(metadata, irModel.getSourceStaticMembers());
@@ -87,7 +87,7 @@ public final class DebugInfoModuleProcessor {
             cuNode.accept(mdParser);
         }
 
-        return new DebugInfoFunctionProcessor(cache);
+        irModel.setFunctionProcessor(new DebugInfoFunctionProcessor(cache));
     }
 
     private static final class SymbolProcessor implements ModelVisitor {
