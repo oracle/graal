@@ -1091,6 +1091,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                                 languageContext.preInitialize();
                             }
                         }
+                        // Reset language options parsed during preinitialization
+                        PolyglotLanguage language = engine.idToLanguage.get(languageId);
+                        language.clearOptionValues();
                     }
                 } finally {
                     context.leave(prev);
