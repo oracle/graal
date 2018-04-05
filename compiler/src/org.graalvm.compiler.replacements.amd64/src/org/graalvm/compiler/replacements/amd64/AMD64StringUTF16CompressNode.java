@@ -45,11 +45,7 @@ import org.graalvm.word.Pointer;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
-/**
- *
- * @author phedlin
- *
- */
+
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN)
 
 public final class AMD64StringUTF16CompressNode

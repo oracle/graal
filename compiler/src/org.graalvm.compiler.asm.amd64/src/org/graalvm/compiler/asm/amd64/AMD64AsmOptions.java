@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,8 @@
 package org.graalvm.compiler.asm.amd64;
 
 public class AMD64AsmOptions {
-    // FIXME: Absolutely NOT the way to do it!
+    // FIXME: These "options" should perhaps be set by the corresponding
+    //        HotSpot options.
     public static final int UseAVX = 3;
     public static final int UseSSE = 4;
 

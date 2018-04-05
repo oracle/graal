@@ -28,17 +28,18 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.TargetDescription;
 
+import static jdk.vm.ci.amd64.AMD64.k1;
+
 /**
  * Attributes for instructions for SSE through EVEX, also including address components.
  */
 public class AMD64InstructionAttr {
-    AMD64InstructionAttr(
-                    int inVectorLen,
-                    boolean inRexVexW,
-                    boolean inLegacyMode,
-                    boolean inNoRegMask,
-                    boolean inUsesVl,
-                    TargetDescription target) {
+    AMD64InstructionAttr(int inVectorLen,
+                         boolean inRexVexW,
+                         boolean inLegacyMode,
+                         boolean inNoRegMask,
+                         boolean inUsesVl,
+                         TargetDescription target) {
         avxVectorLen = inVectorLen;
         rexVexW = inRexVexW;
         this.target = target;
@@ -50,6 +51,7 @@ public class AMD64InstructionAttr {
         inputSizeInBits = 0;
         isEvexInstruction = false;
         evexEncoding = 0;
+        setMaskEncoding(k1.encoding);
         isClearContext = false;
         isExtendedContext = false;
     }
@@ -65,6 +67,7 @@ public class AMD64InstructionAttr {
     private int inputSizeInBits;
     private boolean isEvexInstruction;
     private int evexEncoding;
+    private int maskEncoding;
     private boolean isClearContext;
     private boolean isExtendedContext;
 
@@ -88,6 +91,10 @@ public class AMD64InstructionAttr {
         return noRegMask;
     }
 
+    public boolean isRegMask() {
+        return !noRegMask;
+    }
+
     public boolean usesVl() {
         return usesVl;
     }
@@ -106,6 +113,10 @@ public class AMD64InstructionAttr {
 
     public int getEvexEncoding() {
         return evexEncoding;
+    }
+
+    public int getMaskEncoding() {
+        return maskEncoding;
     }
 
     public boolean isClearContext() {
@@ -162,6 +173,11 @@ public class AMD64InstructionAttr {
      */
     public void setEvexEncoding(int value) {
         evexEncoding = value;
+    }
+
+    // XXX: Tentative.
+    public void setMaskEncoding(int value) {
+        maskEncoding = value & 0x7;
     }
 
     /**

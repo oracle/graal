@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -783,24 +783,23 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *   src   (rsi) the start address of source char[] to be compressed
      *   dst   (rdi) the start address of destination byte[] vector
      *   len   (rdx) the length
-     *   tmp1  (xmm)
-     *   tmp2  (xmm)
-     *   tmp3  (xmm)
-     *   tmp4  (xmm)
-     *   tmp5  (rcx)
+     *   vtmp1 (xmm)
+     *   vtmp2 (xmm)
+     *   vtmp3 (xmm)
+     *   vtmp4 (xmm)
+     *   tmp   (gpr)
      *   res   (rax) the result code (length on success, zero otherwise)
      */
     public void char_array_compress(Register src, Register dst, Register len,
-                                    Register tmp1, Register tmp2,
-                                    Register tmp3, Register tmp4,
-                                    Register tmp5, Register res) {
+                                    Register vtmp1, Register vtmp2,
+                                    Register vtmp3, Register vtmp4,
+                                    Register tmp, Register res) {
 
-        assert tmp1.getRegisterCategory().equals(AMD64.XMM);
-        assert tmp2.getRegisterCategory().equals(AMD64.XMM);
-        assert tmp3.getRegisterCategory().equals(AMD64.XMM);
-        assert tmp4.getRegisterCategory().equals(AMD64.XMM);
+        assert vtmp1.getRegisterCategory().equals(AMD64.XMM);
+        assert vtmp2.getRegisterCategory().equals(AMD64.XMM);
+        assert vtmp3.getRegisterCategory().equals(AMD64.XMM);
+        assert vtmp4.getRegisterCategory().equals(AMD64.XMM);
 
-        Label L_copy_chars_loop = new Label();
         Label L_return_length = new Label();
         Label L_return_zero = new Label();
         Label L_done = new Label();
@@ -808,205 +807,199 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
         assert len.number != res.number;
 
-        // save length for return
-        push(len);
-
-        // XXX: GraalHotSpotVMConfig config = xxx.getVMConfig();
-
-        // XXX: Should be: config.useAVX > 2 &&
+        push(len);      // Save length for return.
 
         if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
                            supports(CPUFeature.AVX512VL) &&
                            supports(CPUFeature.BMI2))) {
 
-            Label L_avx_copy_32_loop = new Label();
-            Label L_avx_copy_loop_tail = new Label();
             Label L_restore_k1_return_zero = new Label();
             Label L_avx_post_alignement = new Label();
 
-            // if length of the string is less than 16, handle it in an old fashioned way
+            // If the length of the string is less than 16, we chose not to use the
+            // AVX512 instructions.
             testl(len, -32);
             jcc(ConditionFlag.Zero, L_below_threshold);
 
-            // First check whether a character is compressable ( <= 0xFF).
-            // Create mask to test for Unicode chars inside zmm vector
-            movl(res, 0x00FF);
-            evpbroadcastw(tmp2, res, AvxVectorLen.AVX_512bit);
+            // First check whether a character is compressible (<= 0xff).
+            // Create mask to test for Unicode chars inside (zmm) vector.
+            movl(res, 0x00ff);
+            evpbroadcastw(vtmp2, res, AvxVectorLen.AVX_512bit);
 
-            // Save k1
-            kmovql(k3, k1);
+            kmovql(k3, k1);     // Save k1
 
             testl(len, -64);
             jcc(ConditionFlag.Zero, L_avx_post_alignement);
 
-            movl(tmp5, dst);
-            andl(tmp5, (32 - 1));
-            negl(tmp5);
-            andl(tmp5, (32 - 1));
+            movl(tmp, dst);
+            andl(tmp, (32 - 1));
+            negl(tmp);
+            andl(tmp, (32 - 1));
 
             // bail out when there is nothing to be done
-            testl(tmp5, 0xFFFFFFFF);
+            testl(tmp, tmp);
             jcc(ConditionFlag.Zero, L_avx_post_alignement);
 
-            // ~(~0 << len), where len is the # of remaining elements to process
-            movl(res, 0xFFFFFFFF);
-            shlxl(res, res, tmp5);
+            // Compute (1 << N) - 1 = ~(~0 << N), where N is the remaining number
+            // of characters to process.
+            movl(res, -1);
+            shlxl(res, res, tmp);
             notl(res);
-            kmovdl(k1, res);
 
-            evmovdquw(tmp1, k1, new AMD64Address(src, 0), AvxVectorLen.AVX_512bit);
-            evpcmpuw(k2, k1, tmp1, tmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
+            kmovdl(k1, res);
+            evmovdquw(vtmp1, k1, new AMD64Address(src), AvxVectorLen.AVX_512bit);
+            evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
             ktestd(k2, k1);
             jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
 
-            evpmovwb(new AMD64Address(dst, 0), k1, tmp1, AvxVectorLen.AVX_512bit);
+            evpmovwb(new AMD64Address(dst), k1, vtmp1, AvxVectorLen.AVX_512bit);
 
-            addq(src, tmp5);
-            addq(src, tmp5);
-            addq(dst, tmp5);
-            subl(len, tmp5);
+            addq(src, tmp);
+            addq(src, tmp);
+            addq(dst, tmp);
+            subl(len, tmp);
 
             bind(L_avx_post_alignement);
             // end of alignment
+            Label L_avx512_loop_tail = new Label();
 
-            movl(tmp5, len);
-            andl(tmp5, (32 - 1)); // tail count (in chars)
-            andl(len, ~(32 - 1)); // vector count (in chars)
-            jcc(ConditionFlag.Zero, L_avx_copy_loop_tail);
+            movl(tmp, len);
+            andl(tmp, -32);         // The vector count (in chars).
+            jcc(ConditionFlag.Zero, L_avx512_loop_tail);
+            andl(len, 32 - 1);      // The tail count (in chars).
 
-            leaq(src, new AMD64Address(src, len, Scale.Times2));
-            leaq(dst, new AMD64Address(dst, len, Scale.Times1));
-            negq(len);
+            leaq(src, new AMD64Address(src, tmp, Scale.Times2));
+            leaq(dst, new AMD64Address(dst, tmp, Scale.Times1));
+            negq(tmp);
 
-            bind(L_avx_copy_32_loop);
-            evmovdquw(tmp1, new AMD64Address(src, len, Scale.Times2), AvxVectorLen.AVX_512bit);
-            evpcmpuw(k2, tmp1, tmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
+            Label L_avx512_loop = new Label();
+            // Test and compress 32 chars per iteration, reading 512-bit vectors and
+            // writing 256-bit compressed ditto.
+            bind(L_avx512_loop);
+            evmovdquw(vtmp1, new AMD64Address(src, tmp, Scale.Times2), AvxVectorLen.AVX_512bit);
+            evpcmpuw(k2, vtmp1, vtmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
             kortestdl(k2, k2);
             jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
 
-            // All elements in current processed chunk are valid candidates for
-            // compression. Write a truncated byte elements to the memory.
-            evpmovwb(new AMD64Address(dst, len, Scale.Times1), tmp1, AvxVectorLen.AVX_512bit);
-            addq(len, 32);
-            jcc(ConditionFlag.NotZero, L_avx_copy_32_loop);
+            // All 32 chars in the current vector (chunk) are valid for compression,
+            // write truncated byte elements to memory.
+            evpmovwb(new AMD64Address(dst, tmp, Scale.Times1), vtmp1, AvxVectorLen.AVX_512bit);
+            addq(tmp, 32);
+            jcc(ConditionFlag.NotZero, L_avx512_loop);
 
-            bind(L_avx_copy_loop_tail);
-            // bail out when there is nothing to be done
-            testl(tmp5, 0xFFFFFFFF);
-            // Restore k1
-            kmovql(k1, k3);
+            bind(L_avx512_loop_tail);
+            kmovql(k1, k3);     // Restore k1
+
+            // All done if the tail count is zero.
+            testl(len, len);
             jcc(ConditionFlag.Zero, L_return_length);
 
-            movl(len, tmp5);
-
-            // ~(~0 << len), where len is the # of remaining elements to process
-            movl(res, 0xFFFFFFFF);
+            // Compute (1 << N) - 1 = ~(~0 << N), where N is the remaining number
+            // of characters to process.
+            movl(res, -1);
             shlxl(res, res, len);
             notl(res);
 
             kmovdl(k1, res);
-
-            evmovdquw(tmp1, k1, new AMD64Address(src, 0), AvxVectorLen.AVX_512bit);
-            evpcmpuw(k2, k1, tmp1, tmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
+            evmovdquw(vtmp1, k1, new AMD64Address(src), AvxVectorLen.AVX_512bit);
+            evpcmpuw(k2, k1, vtmp1, vtmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
             ktestd(k2, k1);
             jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
 
-            evpmovwb(new AMD64Address(dst, 0), k1, tmp1, AvxVectorLen.AVX_512bit);
-            // Restore k1
-            kmovql(k1, k3);
+            evpmovwb(new AMD64Address(dst), k1, vtmp1, AvxVectorLen.AVX_512bit);
+
+            kmovql(k1, k3);     // Restore k1
             jmp(L_return_length);
 
             bind(L_restore_k1_return_zero);
-            // Restore k1
-            kmovql(k1, k3);
+            kmovql(k1, k3);     // Restore k1
             jmp(L_return_zero);
         }
 
-        // XXX: Should be: config.useSSE > 3 &&
-
         if (UseSSE > 3 && supports(CPUFeature.SSE4_2)) {
-            Label L_sse_copy_32_loop = new Label();
-            Label L_sse_copy_16 = new Label();
-            Label L_sse_copy_tail = new Label();
+            Label L_sse_tail = new Label();
 
             bind(L_below_threshold);
 
+            movl(tmp, 0xff00ff00);  // Create mask to test for Unicode chars in vectors.
+
             movl(res, len);
+            andl(res, -16);
+            jccb(ConditionFlag.Zero, L_sse_tail);
+            andl(len, 16 - 1);
 
-            movl(tmp5, 0xff00ff00); // create mask to test for Unicode chars in vectors
+            // Compress 16 chars per iteration.
+            movdl(vtmp1, tmp);
+            pshufd(vtmp1, vtmp1, 0);    // Store Unicode mask in 'vtmp1'.
+            pxor(vtmp4, vtmp4);
 
-            // vectored compression
-            andl(len, 0xfffffff0); // vector count (in chars)
-            andl(res, 0x0000000f); // tail count (in chars)
-            testl(len, len);
-            jccb(ConditionFlag.Zero, L_sse_copy_16);
+            leaq(src, new AMD64Address(src, res, Scale.Times2));
+            leaq(dst, new AMD64Address(dst, res, Scale.Times1));
+            negq(res);
 
-            // compress 16 chars per iter
-            movdl(tmp1, tmp5);
-            pshufd(tmp1, tmp1, 0); // store Unicode mask in tmp1
-            pxor(tmp4, tmp4);
-
-            leaq(src, new AMD64Address(src, len, Scale.Times2));
-            leaq(dst, new AMD64Address(dst, len, Scale.Times1));
-            negq(len);
-
-            bind(L_sse_copy_32_loop);
-            movdqu(tmp2, new AMD64Address(src, len, Scale.Times2)); // load 1st 8 characters
-            por(tmp4, tmp2);
-            movdqu(tmp3, new AMD64Address(src, len, Scale.Times2, 16)); // load next 8 characters
-            por(tmp4, tmp3);
-            ptest(tmp4, tmp1); // check for Unicode chars in next vector
+            Label L_sse_loop = new Label();
+            // Test and compress 16 chars per iteration, reading 128-bit vectors and
+            // writing 64-bit compressed ditto.
+            bind(L_sse_loop);
+            movdqu(vtmp2, new AMD64Address(src, res, Scale.Times2));        // load 1st 8 characters
+            movdqu(vtmp3, new AMD64Address(src, res, Scale.Times2, 16));    // load next 8 characters
+            por(vtmp4, vtmp2);
+            por(vtmp4, vtmp3);
+            ptest(vtmp4, vtmp1);        // Check for Unicode chars in vector.
             jcc(ConditionFlag.NotZero, L_return_zero);
-            packuswb(tmp2, tmp3); // only ASCII chars; compress each to 1 byte
-            movdqu(new AMD64Address(dst, len, Scale.Times2), tmp2);
-            addq(len, 16);
-            jcc(ConditionFlag.NotZero, L_sse_copy_32_loop);
 
-            // compress next vector of 8 chars (if any)
-            bind(L_sse_copy_16);
-            movl(len, res);
-            andl(len, 0xfffffff8); // vector count (in chars)
-            andl(res, 0x00000007); // tail count (in chars)
-            testl(len, len);
-            jccb(ConditionFlag.Zero, L_sse_copy_tail);
+            packuswb(vtmp2, vtmp3);     // Only ASCII chars; compress each to a byte.
+            movdqu(new AMD64Address(dst, res, Scale.Times1), vtmp2);
+            addq(res, 16);
+            jcc(ConditionFlag.NotZero, L_sse_loop);
 
-            movdl(tmp1, tmp5);
-            pshufd(tmp1, tmp1, 0); // store Unicode mask in tmp1Reg
-            pxor(tmp3, tmp3);
+            Label L_copy_chars = new Label();
+            // Test and compress another 8 chars before final tail copy.
+            bind(L_sse_tail);
+            movl(res, len);
+            andl(res, -8);
+            jccb(ConditionFlag.Zero, L_copy_chars);
+            andl(len, 8 - 1);
 
-            movdqu(tmp2, new AMD64Address(src, 0));
-            ptest(tmp2, tmp1); // check for Unicode chars in vector
+            movdl(vtmp1, tmp);
+            pshufd(vtmp1, vtmp1, 0);    // Store Unicode mask in 'vtmp1'.
+            pxor(vtmp3, vtmp3);
+
+            movdqu(vtmp2, new AMD64Address(src));
+            ptest(vtmp2, vtmp1);        // Check for Unicode chars in vector.
             jccb(ConditionFlag.NotZero, L_return_zero);
-            packuswb(tmp2, tmp3); // only LATIN1 chars; compress each to 1 byte
-            movq(new AMD64Address(dst, 0), tmp2);
+            packuswb(vtmp2, vtmp3);     // Only ASCII chars; compress each to a byte.
+            movq(new AMD64Address(dst), vtmp2);
             addq(src, 16);
             addq(dst, 8);
 
-            bind(L_sse_copy_tail);
-            movl(len, res);
+            bind(L_copy_chars);
         }
 
-        // Compress 1 char per iter
+        // Compress any remaining characters using a vanilla implementation.
         testl(len, len);
         jccb(ConditionFlag.Zero, L_return_length);
         leaq(src, new AMD64Address(src, len, Scale.Times2));
         leaq(dst, new AMD64Address(dst, len, Scale.Times1));
         negq(len);
 
+        Label L_copy_chars_loop = new Label();
+        // Compress a single character per iteration.
         bind(L_copy_chars_loop);
         movzwl(res, new AMD64Address(src, len, Scale.Times2));
-        testl(res, 0xff00); // check if Unicode char
+        testl(res, 0xff00);     // Check if Unicode character.
         jccb(ConditionFlag.NotZero, L_return_zero);
-        movb(new AMD64Address(dst, len, Scale.Times1), res); // ASCII char; compress to 1 byte
+        // An ASCII character; compress to a byte.
+        movb(new AMD64Address(dst, len, Scale.Times1), res);
         incrementq(len, 1);
         jcc(ConditionFlag.NotZero, L_copy_chars_loop);
 
-        // if compression succeeded, return length
+        // If compression succeeded, return the length.
         bind(L_return_length);
         pop(res);
         jmpb(L_done);
 
-        // if compression failed, return 0
+        // If compression failed, return 0.
         bind(L_return_zero);
         xorl(res, res);
         addq(rsp, 8 /*wordSize*/);
@@ -1020,172 +1013,172 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      *   src    (rsi) the start address of source byte[] to be inflated
      *   dst    (rdi) the start address of destination char[] array
      *   len    (rdx) the length
-     *   tmp1   (xmm)
-     *   tmp2   (rcx)
+     *   vtmp   (xmm)
+     *   tmp    (gpr)
      */
     public void byte_array_inflate(Register src, Register dst, Register len,
-                                   Register tmp1, Register tmp2) {
+                                   Register vtmp, Register tmp) {
 
-        assert tmp1.getRegisterCategory().equals(AMD64.XMM);
+        assert vtmp.getRegisterCategory().equals(AMD64.XMM);
 
-        Label L_copy_chars_loop = new Label();
         Label L_done = new Label();
         Label L_below_threshold = new Label();
 
-        assert src.number != dst.number && src.number != len.number && src.number != tmp2.number;
-        assert dst.number != len.number && dst.number != tmp2.number;
-        assert len.number != tmp2.number;
-
-        // XXX: GraalHotSpotVMConfig config = xxx.getVMConfig();
-
-        // XXX: Should be: config.useAVX > 2 &&
+        assert src.number != dst.number && src.number != len.number && src.number != tmp.number;
+        assert dst.number != len.number && dst.number != tmp.number;
+        assert len.number != tmp.number;
 
         if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
                            supports(CPUFeature.AVX512VL) &&
                            supports(CPUFeature.BMI2))) {
-            Label L_avx_copy_32_loop = new Label();
-            Label L_avx_copy_tail = new Label();
 
-            Register tmp3_aliased = len;
-
-            // if length of the string is less than 16, handle it in an old fashioned way
+            // If the length of the string is less than 16, we chose not to use the
+            // AVX512 instructions.
             testl(len, -16);
             jcc(ConditionFlag.Zero, L_below_threshold);
 
-            // In order to use only one arithmetic operation for the main loop we use
-            // this pre-calculation
-            movl(tmp2, len);
-            andl(tmp2, (32 - 1)); // tail count (in chars), 32 element wide loop
-            andl(len, -32);     // vector count
-            jccb(ConditionFlag.Zero, L_avx_copy_tail);
+            Label L_avx512_tail = new Label();
+            // Test for suitable number chunks with respect to the size of the vector
+            // operation, mask off remaining number of chars (bytes) to inflate (such
+            // that 'len' will always hold the number of bytes left to inflate) after
+            // committing to the vector loop.
+            // Adjust vector pointers to upper address bounds and inverse loop index.
+            // This will keep the loop condition simple.
+            //
+            // NOTE: The above idiom/pattern is used in all the loops below.
 
-            leaq(src, new AMD64Address(src, len, Scale.Times1));
-            leaq(dst, new AMD64Address(dst, len, Scale.Times1));
-            negq(len);
+            movl(tmp, len);
+            andl(tmp, -32);     // The vector count (in chars).
+            jccb(ConditionFlag.Zero, L_avx512_tail);
+            andl(len, 32 - 1);  // The tail count (in chars).
 
-            // inflate 32 chars per iter
-            bind(L_avx_copy_32_loop);
-            vpmovzxbw(tmp1, new AMD64Address(src, len, Scale.Times1), AvxVectorLen.AVX_512bit);
-            evmovdquw(new AMD64Address(dst, len, Scale.Times2), tmp1, AvxVectorLen.AVX_512bit);
-            addq(len, 32);
-            jcc(ConditionFlag.NotZero, L_avx_copy_32_loop);
+            leaq(src, new AMD64Address(src, tmp, Scale.Times1));
+            leaq(dst, new AMD64Address(dst, tmp, Scale.Times2));
+            negq(tmp);
 
-            bind(L_avx_copy_tail);
-            // bail out when there is nothing to be done
-            testl(tmp2, -1); // we don't destroy the contents of tmp2 here
+            Label L_avx512_loop = new Label();
+            // Inflate 32 chars per iteration, reading 256-bit compact vectors
+            // and writing 512-bit inflated ditto.
+            bind(L_avx512_loop);
+            evpmovzxbw(vtmp, new AMD64Address(src, tmp, Scale.Times1), AvxVectorLen.AVX_512bit);
+            evmovdquw(new AMD64Address(dst, tmp, Scale.Times2), vtmp, AvxVectorLen.AVX_512bit);
+            addq(tmp, 32);
+            jcc(ConditionFlag.NotZero, L_avx512_loop);
+
+            bind(L_avx512_tail);
+            // All done if the tail count is zero.
+            testl(len, len);
             jcc(ConditionFlag.Zero, L_done);
 
-            // Save k1
-            kmovql(k2, k1);
+            kmovql(k2, k1);     // Save k1 XXX: Do we really need to?
 
-            // ~(~0 << length), where length is the # of remaining elements to process
-            movl(tmp3_aliased, -1);
-            shlxl(tmp3_aliased, tmp3_aliased, tmp2);
-            notl(tmp3_aliased);
-            kmovdl(k1, tmp3_aliased);
-            evpmovzxbw(tmp1, k1, new AMD64Address(src, 0), AvxVectorLen.AVX_512bit);
-            evmovdquw(new AMD64Address(dst, 0), k1, tmp1, AvxVectorLen.AVX_512bit);
+            // Compute (1 << N) - 1 = ~(~0 << N), where N is the remaining number
+            // of characters to process.
+            movl(tmp, -1);
+            shlxl(tmp, tmp, len);
+            notl(tmp);
 
-            // Restore k1
-            kmovql(k1, k2);
+            kmovdl(k1, tmp);
+            evpmovzxbw(vtmp, k1, new AMD64Address(src), AvxVectorLen.AVX_512bit);
+            evmovdquw(new AMD64Address(dst), k1, vtmp, AvxVectorLen.AVX_512bit);
+            kmovql(k1, k2);     // Restore k1
             jmp(L_done);
         }
 
-        // XXX: Should be: config.useSSE > 3 &&
+        if (UseSSE > 3 && supports(CPUFeature.SSE4_1)) {
 
-        if (UseSSE > 3 && supports(CPUFeature.SSE4_2)) {
-            Label L_sse_copy_16_loop = new Label();
-            Label L_sse_copy_8_loop = new Label();
-            Label L_sse_copy_bytes = new Label();
-            Label L_sse_copy_new_tail = new Label();
-            Label L_sse_copy_tail = new Label();
-
-            movl(tmp2, len);
-
-            // XXX: Should be: config.useAVX > 1
+            Label L_sse_tail = new Label();
 
             if (UseAVX > 1 && supports(CPUFeature.AVX2)) {
-                andl(tmp2, (16 - 1));
-                andl(len, -16);
-                jccb(ConditionFlag.Zero, L_sse_copy_new_tail);
-            } else {
-                andl(tmp2, 0x00000007);   // tail count (in chars)
-                andl(len, 0xfffffff8);    // vector count (in chars)
-                jccb(ConditionFlag.Zero, L_sse_copy_tail);
-            }
 
-            // vectored inflation
-            leaq(src, new AMD64Address(src, len, Scale.Times1));
-            leaq(dst, new AMD64Address(dst, len, Scale.Times2));
-            negq(len);
+                Label L_avx2_tail = new Label();
 
-            // XXX: Should be: config.useAVX > 1
+                movl(tmp, len);
+                andl(tmp, -16);
+                jccb(ConditionFlag.Zero, L_avx2_tail);
+                andl(len, 16 - 1);
 
-            if (UseAVX > 1 && supports(CPUFeature.AVX2)) {
-                bind(L_sse_copy_16_loop);
-                vpmovzxbw(tmp1, new AMD64Address(src, len, Scale.Times1), AvxVectorLen.AVX_256bit);
-                vmovdqu(new AMD64Address(dst, len, Scale.Times2), tmp1);
-                addq(len, 16);
-                jcc(ConditionFlag.NotZero, L_sse_copy_16_loop);
+                leaq(src, new AMD64Address(src, tmp, Scale.Times1));
+                leaq(dst, new AMD64Address(dst, tmp, Scale.Times2));
+                negq(tmp);
+
+                Label L_avx2_loop = new Label();
+                // Inflate 16 bytes (chars) per iteration, reading 128-bit compact vectors
+                // and writing 256-bit inflated ditto.
+                bind(L_avx2_loop);
+                vpmovzxbw(vtmp, new AMD64Address(src, tmp, Scale.Times1), AvxVectorLen.AVX_256bit);
+                vmovdqu(new AMD64Address(dst, tmp, Scale.Times2), vtmp);
+                addq(tmp, 16);
+                jcc(ConditionFlag.NotZero, L_avx2_loop);
 
                 bind(L_below_threshold);
-                bind(L_sse_copy_new_tail);
+                bind(L_avx2_tail);
 
-                // XXX: Should be: config.useAVX > 2 &&
+                movl(tmp, len);
+                andl(tmp, -8);
+                jccb(ConditionFlag.Zero, L_sse_tail);
+                andl(len, 8 - 1);
 
-                if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
-                                   supports(CPUFeature.AVX512VL) &&
-                                   supports(CPUFeature.BMI2))) {
-                    movl(tmp2, len);
-                } else {
-                    movl(len, tmp2);
-                }
-
-                andl(tmp2, 0x00000007);
-                andl(len, 0xFFFFFFF8);
-                jccb(ConditionFlag.Zero, L_sse_copy_tail);
-
-                pmovzxbw(tmp1, new AMD64Address(src, 0));
-                movdqu(new AMD64Address(dst, 0), tmp1);
+                // Inflate another 8 bytes before final tail copy.
+                pmovzxbw(vtmp, new AMD64Address(src));
+                movdqu(new AMD64Address(dst), vtmp);
                 addq(src, 8);
-                addq(dst, 2 * 8);
+                addq(dst, 16);
 
-                jmp(L_sse_copy_tail);
+                // Fall-through to L_sse_tail.
+            } else {
+                // When there is no AVX2 support available, we use AVX/SSE support to
+                // inflate into maximum 128-bits per operation.
+
+                movl(tmp, len);
+                andl(tmp, -8);
+                jccb(ConditionFlag.Zero, L_sse_tail);
+                andl(len, 8 - 1);
+
+                leaq(src, new AMD64Address(src, tmp, Scale.Times1));
+                leaq(dst, new AMD64Address(dst, tmp, Scale.Times2));
+                negq(tmp);
+
+                Label L_sse_copy_8_loop = new Label();
+                // Inflate 8 bytes (chars) per iteration, reading 64-bit compact vectors
+                // and writing 128-bit inflated ditto.
+                bind(L_sse_copy_8_loop);
+                pmovzxbw(vtmp, new AMD64Address(src, tmp, Scale.Times1));
+                movdqu(new AMD64Address(dst, tmp, Scale.Times2), vtmp);
+                addq(tmp, 8);
+                jcc(ConditionFlag.NotZero, L_sse_copy_8_loop);
+
+                // Fall-through to L_sse_tail.
             }
 
-            // inflate 8 chars per iter
-            bind(L_sse_copy_8_loop);
-            pmovzxbw(tmp1, new AMD64Address(src, len, Scale.Times1));  // unpack to 8 words
-            movdqu(new AMD64Address(dst, len, Scale.Times2), tmp1);
-            addq(len, 8);
-            jcc(ConditionFlag.NotZero, L_sse_copy_8_loop);
+            Label L_copy_chars = new Label();
 
-            bind(L_sse_copy_tail);
-            movl(len, tmp2);
-
+            bind(L_sse_tail);
             cmpl(len, 4);
-            jccb(ConditionFlag.Less, L_sse_copy_bytes);
+            jccb(ConditionFlag.Less, L_copy_chars);
 
-            movdl(tmp1, new AMD64Address(src, 0));  // load 4 byte chars
-            pmovzxbw(tmp1, tmp1);
-            movq(new AMD64Address(dst, 0), tmp1);
+            movdl(vtmp, new AMD64Address(src));
+            pmovzxbw(vtmp, vtmp);
+            movq(new AMD64Address(dst), vtmp);
             subq(len, 4);
             addq(src, 4);
             addq(dst, 8);
 
-            bind(L_sse_copy_bytes);
+            bind(L_copy_chars);
         }
 
+        // Inflate any remaining characters (bytes) using a vanilla implementation.
         testl(len, len);
         jccb(ConditionFlag.Zero, L_done);
         leaq(src, new AMD64Address(src, len, Scale.Times1));
         leaq(dst, new AMD64Address(dst, len, Scale.Times2));
         negq(len);
 
-        // inflate 1 char per iter
+        Label L_copy_chars_loop = new Label();
+        // Inflate a single byte (char) per iteration.
         bind(L_copy_chars_loop);
-        movzbl(tmp2, new AMD64Address(src, len, Scale.Times1));  // load byte char
-        movw(new AMD64Address(dst, len, Scale.Times2), tmp2);  // inflate byte char to word
+        movzbl(tmp, new AMD64Address(src, len, Scale.Times1));
+        movw(new AMD64Address(dst, len, Scale.Times2), tmp);
         incrementq(len, 1);
         jcc(ConditionFlag.NotZero, L_copy_chars_loop);
 

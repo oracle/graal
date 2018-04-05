@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -190,11 +190,21 @@ public class AMD64Assembler extends Assembler {
         private static final int REXWRXB = 0x4F;
         private static final int VEX_3BYTES = 0xC4;
         private static final int VEX_2BYTES = 0xC5;
+        private static final int EVEX_4BYTES = 0x62;
     }
 
     private static class VexPrefix {
         private static final int VEX_R = 0x80;
         private static final int VEX_W = 0x80;
+    }
+
+    private static class EVexPrefix {
+        private static final int EVEX_F = 0x04;
+        private static final int EVEX_V_prim = 0x08;
+        private static final int EVEX_R_prim = 0x10;
+        private static final int EVEX_B = 0x10;
+        private static final int EVEX_W = 0x80;
+        private static final int EVEX_Z = 0x80;
     }
 
     private static class VexSimdPrefix {
@@ -444,7 +454,8 @@ public class AMD64Assembler extends Assembler {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + " instruction [" + instructionPosition + ", " + nextInstructionPosition + "[ operand at " + operandPosition + " size " + operandSize;
+            return getClass().getSimpleName() + " instruction [" + instructionPosition + ", " +
+                   nextInstructionPosition + "[ operand at " + operandPosition + " size " + operandSize;
         }
     }
 
@@ -480,14 +491,18 @@ public class AMD64Assembler extends Assembler {
     }
 
     private static int encode(Register r) {
-        assert r.encoding < 16 && r.encoding >= 0 : "encoding out of range: " + r.encoding;
+        if (r.getRegisterCategory().equals(AMD64.XMM)) {
+            assert r.encoding < 32 && r.encoding >= 0 : "XMM encoding out of range: " + r.encoding;
+        } else {
+            assert r.encoding < 16 && r.encoding >= 0 : "Register encoding out of range: " + r.encoding;
+        }
         return r.encoding & 0x7;
     }
 
     /**
-     * Get RXB bits for register-register instruction. In that encoding, ModRM.rm contains a
-     * register index. The R bit extends the ModRM.reg field and the B bit extends the ModRM.rm
-     * field. The X bit must be 0.
+     * Get RXB bits for register-register instruction. In that encoding, ModRM.rm contains
+     * a register index. The R bit extends the ModRM.reg field and the B bit extends the
+     * ModRM.rm field. The X bit must be 0.
      */
     protected static int getRXB(Register reg, Register rm) {
         int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
@@ -496,8 +511,28 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field. There
-     * are two cases for the memory operand:<br>
+     * Get RXB bits for register-register instructions in EVex encoding, Where ModRM.rm contains
+     * a register index. The R bit extends the ModRM.reg field and the X and B bits extends the
+     * ModRM.rm field.
+     */
+    protected static int getEVexRXB(Register reg, Register rm) {
+        int rxb = (reg == null ? 0 : reg.encoding & 0x08) >> 1;
+        rxb |= (rm == null ? 0 : rm.encoding & 0x18) >> 3;
+        return rxb;
+    }
+
+    protected static int getRprim(Register reg) {
+        return (reg == null ? 0 : reg.encoding >= 16 ? EVexPrefix.EVEX_R_prim : 0);
+    }
+
+    protected static int getVprim(Register nds) {
+        return (nds == null ? 0 : nds.encoding >= 16 ? EVexPrefix.EVEX_V_prim : 0);
+    }
+
+    /**
+     * Get RXB bits for register-memory instruction. The R bit extends the ModRM.reg field.
+     * There are two cases for the memory operand:
+     * <br>
      * ModRM.rm contains the base register: In that case, B extends the ModRM.rm field and X = 0.
      * <br>
      * There is an SIB byte: In that case, X extends SIB.index and B extends SIB.base.
@@ -1922,177 +1957,271 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xC0 | encode);
     }
 
-    // XXX: Temporary addition (while waiting for the Vector assembler).
+    // Insn: VMOVDQU16 zmm1 {k1}{z}, zmm2/m512
+    // Code: EVEX.512.F2.0F.W1 6F /r
 
-    public final void evmovdquw(Register dst, AMD64Address src, int vector_len) {
-        assert supports(CPUFeature.AVX512F); // evex
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* vex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ true, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        attributes.setIsEvexInstruction();
-        // int prefix = (_legacy_mode_bw) ? VEX_SIMD_F2 : VEX_SIMD_F3;
-        vexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F, attributes);
-        emitByte(0x6F);
-        emitOperandHelper(dst, src, 0);
-      }
-
-    public final void evmovdquw(Register dst, Register mask, AMD64Address src, int vectorLen) {
+    public final void evmovdquw(Register dst, AMD64Address src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert mask.getRegisterCategory().equals(AMD64.MASK);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vectorLen, /* vex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ true, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        // FIXME: attributes.setEmbededOpmaskRegisterSpecifier(mask);
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* vex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ true, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
         attributes.setIsEvexInstruction();
-        vexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
+        evexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x6F);
         emitOperandHelper(dst, src, 0);
     }
 
-    public final void evmovdquw(AMD64Address dst, Register src, int vector_len) {
-        assert supports(CPUFeature.AVX512F); // evex
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        assert !src.equals(Register.None);
+    public final void evmovdquw(Register dst, Register mask, AMD64Address src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
+        assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* vex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ true, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        attributes.setIsEvexInstruction();
-        vexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F, attributes);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst, 0);
-      }
-
-    public final void evmovdquw(AMD64Address dst, Register mask, Register src, int vector_len) {
-        assert supports(CPUFeature.AVX512F); // evex
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
         assert mask.getRegisterCategory().equals(AMD64.MASK);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        assert !src.equals(Register.None);
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* vex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ true, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* vex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ false, /* uses_vl */ true, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setMaskEncoding(mask.encoding);
         attributes.setIsClearContext();
-        // FIXME: attributes.set_embedded_opmask_register_specifier(mask);
         attributes.setIsEvexInstruction();
-        vexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
-        emitByte(0x7F);
-        emitOperandHelper(src, dst, 0);
-    }
-
-    public final void evmovdquq(Register dst, AMD64Address src, int vectorLen) {
-        assert supports(CPUFeature.AVX512F);
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vectorLen, /* vex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ true, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        attributes.setIsEvexInstruction();
-        vexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F, attributes);
+        evexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x6F);
         emitOperandHelper(dst, src, 0);
     }
 
-    // XXX:
-    // duplicate 2-byte integer data from src into programmed locations in dest : requires AVX512BW and AVX512VL
+    // Insn: VMOVDQU16 zmm2/m512 {k1}{z}, zmm1
+    // Code: EVEX.512.F2.0F.W1 7F /r
 
-    public final void evpbroadcastw(Register dst, Register src, int vector_len) {
+    public final void evmovdquw(AMD64Address dst, Register src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
-        assert supports(CPUFeature.AVX512VL);
-        assert dst.getRegisterCategory().equals(AMD64.XMM);
-        assert src.getRegisterCategory().equals(AMD64.XMM);
-        //assert(VM_Version::supports_evex(), "");
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* vex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ true, target);
-        int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
-        emitByte(0x79);
+        assert src.getRegisterCategory().equals(AMD64.XMM);
+        assert !src.equals(Register.None);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* vex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ true, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setIsEvexInstruction();
+        evexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x7F);
+        emitOperandHelper(src, dst, 0);
+    }
+
+    public final void evmovdquw(AMD64Address dst, Register mask, Register src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
+        assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
+        assert mask.getRegisterCategory().equals(AMD64.MASK);
+        assert src.getRegisterCategory().equals(AMD64.XMM);
+        assert !src.equals(Register.None);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* vex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ false, /* uses_vl */ true, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setMaskEncoding(mask.encoding);
+        attributes.setIsEvexInstruction();
+        evexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x7F);
+        emitOperandHelper(src, dst, 0);
+    }
+
+    // Insn: VMOVDQU64 zmm1 {k1}{z}, zmm2/m512
+    // Code: EVEX.512.F3.0F.W1 6F /r
+
+    public final void evmovdquq(Register dst, AMD64Address src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
+        assert supports(CPUFeature.AVX512F);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* vex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ false, /* uses_vl */ true, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setIsEvexInstruction();
+        evexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F, attributes);
+        emitByte(0x6F);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    // Insn: VPBROADCASTW zmm1 {k1}{z}, reg
+    // Code: EVEX.512.66.0F38.W0 7B /r
+
+    public final void evpbroadcastw(Register dst, Register src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
+        assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
+        assert src.getRegisterCategory().equals(AMD64.CPU);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* vex_w */ false, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ true, target);
+        int encode = evexPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38,
+                                         attributes);
+        emitByte(0x7B);
         emitByte(0xC0 | encode);
     }
 
-    public final void evpcmpeqb(Register kdst, Register nds, AMD64Address src, int vectorLen) {
+    public final void evpcmpeqb(Register kdst, Register nds, AMD64Address src, int vec_len) {
         assert supports(CPUFeature.AVX512BW);
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vectorLen, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
-        attributes.setIsEvexInstruction();
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
         attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setIsEvexInstruction();
         vexPrefix(src, nds, kdst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x74);
         emitOperandHelper(kdst, src, 0);
     }
 
-    public final void evpcmpuw(Register kdst, Register nds, Register src, int vcc, int vector_len) {
+    // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
+    // Code: EVEX.NDS.512.66.0F3A.W1 3E /r ib
+
+    public final void evpcmpuw(Register kdst, Register nds, Register src, int vcc, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
         assert kdst.getRegisterCategory().equals(AMD64.MASK);
         assert nds.getRegisterCategory().equals(AMD64.XMM);
         assert src.getRegisterCategory().equals(AMD64.XMM);
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* rex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ false, target);
         attributes.setIsEvexInstruction();
-        int encode = vexPrefixAndEncode(kdst, nds, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_3A, attributes);
+        int encode = evexPrefixAndEncode(kdst, nds, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_3A, attributes);
         emitByte(0x3E);
         emitByte(0xC0 | encode);
         emitByte(vcc);
       }
 
-    public final void evpcmpuw(Register kdst, Register mask, Register nds, Register src, int vcc, int vector_len) {
+    // Insn: VPCMPUW k1 {k2}, zmm2, zmm3/m512, imm8
+    // Code: EVEX.NDS.512.66.0F3A.W1 3E /r ib
+
+    public final void evpcmpuw(Register kdst, Register mask, Register nds, Register src, int vcc, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
         assert kdst.getRegisterCategory().equals(AMD64.MASK);
         assert mask.getRegisterCategory().equals(AMD64.MASK);
         assert nds.getRegisterCategory().equals(AMD64.XMM);
         assert src.getRegisterCategory().equals(AMD64.XMM);
-        //assert(is_vector_masking(), "");
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* rex_w */ true, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ false, target);
-        attributes.setIsClearContext();
-        // FIXME: attributes.set_embedded_opmask_register_specifier(mask);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ true, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ false, /* uses_vl */ false, target);
+        attributes.setMaskEncoding(mask.encoding);
         attributes.setIsEvexInstruction();
-        int encode = vexPrefixAndEncode(kdst, nds, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_3A, attributes);
+        int encode = evexPrefixAndEncode(kdst, nds, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_3A, attributes);
         emitByte(0x3E);
         emitByte(0xC0 | encode);
         emitByte(vcc);
-      }
+    }
 
-    public final void evpmovwb(AMD64Address dst, Register src, int vector_len) {
+    // Insn: VPMOVWB ymm1/m256 {k1}{z}, zmm2
+    // Code: EVEX.512.F3.0F38.W0 30 /r
+
+    public final void evpmovwb(AMD64Address dst, Register src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
         assert src.getRegisterCategory().equals(AMD64.XMM);
         assert !src.equals(Register.None);
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ false, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ false, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
         attributes.setIsEvexInstruction();
-        vexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F_38, attributes);
+        evexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F_38, attributes);
         emitByte(0x30);
         emitOperandHelper(src, dst, 0);
-      }
+    }
 
-    public final void evpmovwb(AMD64Address dst, Register mask, Register src, int vector_len) {
-        // XXX: assert(is_vector_masking(), "");
+    public final void evpmovwb(AMD64Address dst, Register mask, Register src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
         assert mask.getRegisterCategory().equals(AMD64.MASK);
         assert src.getRegisterCategory().equals(AMD64.XMM);
         assert !src.equals(Register.None);
-        
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ false, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        attributes.setIsClearContext();
-        // FIXME: attributes.set_embedded_opmask_register_specifier(mask);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ false, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ false, /* uses_vl */ false, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setMaskEncoding(mask.encoding);
         attributes.setIsEvexInstruction();
-        vexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F_38, attributes);
+        evexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F_38, attributes);
         emitByte(0x30);
         emitOperandHelper(src, dst, 0);
-      }
+    }
 
-    public final void evpmovzxbw(Register dst, Register mask, AMD64Address src, int vector_len) {
-        //assert(is_vector_masking(), "");
+    // Insn: VPMOVZXBW zmm1 {k1}{z}, ymm2/m256
+    // Code: EVEX.512.66.0F38.WIG 30 /r
+
+    public final void evpmovzxbw(Register dst, AMD64Address src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
         assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
+        assert dst.getRegisterCategory().equals(AMD64.XMM);
+        assert !dst.equals(Register.None);
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ false, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ false, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setIsEvexInstruction();
+        evexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
+        emitByte(0x30);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void evpmovzxbw(Register dst, Register mask, AMD64Address src, int vec_len) {
+        // NOTE: Support for 128-bit and 256-bit vectors also requires AVX512VL.
+        assert supports(CPUFeature.AVX512BW);
+        // NOTE: Currently only 512-bit vectors.
+        assert vec_len == AvxVectorLen.AVX_512bit;
+
         assert mask.getRegisterCategory().equals(AMD64.MASK);
         assert dst.getRegisterCategory().equals(AMD64.XMM);
         assert !dst.equals(Register.None);
 
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vector_len, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ false, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        // FIXME: attributes.set_embedded_opmask_register_specifier(mask);
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ false, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ false, /* uses_vl */ false, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+        attributes.setMaskEncoding(mask.encoding);
         attributes.setIsEvexInstruction();
-        vexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
+        evexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
         emitByte(0x30);
         emitOperandHelper(dst, src, 0);
     }
@@ -2222,7 +2351,6 @@ public class AMD64Assembler extends Assembler {
         }
     }
 
-    // XXX: Temporary
     public final void kmovdl(Register dst, Register src) {
         assert supports(CPUFeature.AVX512BW);
 
@@ -2230,7 +2358,7 @@ public class AMD64Assembler extends Assembler {
             AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ true, /* legacy_mode */ true, /* no_mask_reg */ true, /* uses_vl */ false, target);
             int encode = vexPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_NONE, VexOpcode.VEX_OPCODE_0F, attributes);
             emitByte(0x90);
-            emitByte(0xC0 | encode);          
+            emitByte(0xC0 | encode);
         } else {
             AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ false, /* legacy_mode */ true, /* no_mask_reg */ true, /* uses_vl */ false, target);
             int encode = vexPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F2, VexOpcode.VEX_OPCODE_0F, attributes);
@@ -2258,9 +2386,9 @@ public class AMD64Assembler extends Assembler {
 
     // This instruction produces ZF or CF flags
     public final void kortestdl(Register src1, Register src2) {
+        assert supports(CPUFeature.AVX512BW);
         assert src1.getRegisterCategory().equals(AMD64.MASK);
         assert src2.getRegisterCategory().equals(AMD64.MASK);
-        assert supports(CPUFeature.AVX512BW);
 
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ true, /* legacy_mode */ true, /* no_mask_reg */ true, /* uses_vl */ false, target);
         int encode = vexPrefixAndEncode(src1, Register.None, src2, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
@@ -2270,9 +2398,9 @@ public class AMD64Assembler extends Assembler {
 
     // This instruction produces ZF or CF flags
     public final void kortestql(Register src1, Register src2) {
+        assert supports(CPUFeature.AVX512BW);
         assert src1.getRegisterCategory().equals(AMD64.MASK);
         assert src2.getRegisterCategory().equals(AMD64.MASK);
-        assert supports(CPUFeature.AVX512BW);
 
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ true, /* legacy_mode */ true, /* no_mask_reg */ true, /* uses_vl */ false, target);
         int encode = vexPrefixAndEncode(src1, Register.None, src2, VexSimdPrefix.VEX_SIMD_NONE, VexOpcode.VEX_OPCODE_0F, attributes);
@@ -2281,10 +2409,10 @@ public class AMD64Assembler extends Assembler {
     }
 
     public final void ktestd(Register src1, Register src2) {
+        assert supports(CPUFeature.AVX512BW);
         assert src1.getRegisterCategory().equals(AMD64.MASK);
         assert src2.getRegisterCategory().equals(AMD64.MASK);
-        assert supports(CPUFeature.AVX512BW);
-        
+
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ true, /* legacy_mode */ true, /* no_mask_reg */ true, /* uses_vl */ false, target);
         int encode = vexPrefixAndEncode(src1, Register.None, src2, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x99);
@@ -2429,19 +2557,14 @@ public class AMD64Assembler extends Assembler {
 
     public final void movq(AMD64Address dst, Register src) {
         if (src.getRegisterCategory().equals(AMD64.XMM)) {
-            // XXX: Actual asm insn is: VMOVQ r64/m64, xmm1 (VEX.128.66.0F.W1 7E /r)
+
+            // Insn: VMOVQ r64/m64, xmm1
+            // Code: VEX.128.66.0F.W1 7E /r
 
             AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rexVexW */ true, /* legacyMode */ false, /* noMaskReg */ true, /* usesVl */ false, target);
             simdPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F, attributes);
             emitByte(0x7E);
             emitOperandHelper(src, dst, 0);
-
-            // XXX: Actual asm insn is: MOVQ xmm2/m64, xmm1 (66 0F D6 /r)
-            //emitByte(0x66);
-            //emitByte(0x0F);
-            //emitByte(0xD6);
-            //emitOperandHelper(src, dst, 0);
-
         } else {
             // gpr version of movq
             prefixq(dst, src);
@@ -2911,7 +3034,7 @@ public class AMD64Assembler extends Assembler {
     public final void pmovzxbw(Register dst, Register src) {
         assert dst.getRegisterCategory().equals(AMD64.XMM);
         assert src.getRegisterCategory().equals(AMD64.XMM);
-        assert supports(CPUFeature.SSE4_1);
+        assert supports(CPUFeature.AVX);
 
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
         int encode = simdPrefixAndEncode(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
@@ -2919,11 +3042,22 @@ public class AMD64Assembler extends Assembler {
         emitByte(0xC0 | encode);
     }
 
-    public final void vpmovzxbw(Register dst, AMD64Address src, int vectorLen) {
-        assert supports(CPUFeature.AVX);
-        // XXX legacy_mode should be: _legacy_mode_bw
-        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vectorLen, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ true, /* uses_vl */ false, target);
-        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
+    // Insn: VPMOVZXBW xmm1, xmm2/m64
+    // Code: VEX.128.66.0F38.WIG 30 /r
+
+    // Insn: VPMOVZXBW ymm1, xmm2/m128
+    // Code: VEX.256.66.0F38.WIG 30 /r
+
+    public final void vpmovzxbw(Register dst, AMD64Address src, int vec_len) {
+        // NOTE: Support for 128-bit req. AVX, 256-bit req. AVX2.
+        assert supports(CPUFeature.AVX2);
+        // NOTE: Only 128 & 256-bit vectors.
+        assert vec_len != AvxVectorLen.AVX_512bit;
+
+        AMD64InstructionAttr attributes = new AMD64InstructionAttr(vec_len, /* rex_w */ false, /* legacy_mode */ false,
+                                                                   /* no_mask_reg */ true, /* uses_vl */ false, target);
+        attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_HVM,
+                                        /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
         vexPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
         emitByte(0x30);
         emitOperandHelper(dst, src, 0);
@@ -3160,7 +3294,7 @@ public class AMD64Assembler extends Assembler {
         int encode = vexPrefixAndEncode(dst, src2, src1, VexSimdPrefix.VEX_SIMD_66, VexOpcode.VEX_OPCODE_0F_38, attributes);
         emitByte(0xF7);
         emitByte(0xC0 | encode);
-      }
+    }
 
     public final void shrl(Register dst, int imm8) {
         assert isShiftCount(imm8 >> 1) : "illegal shift count";
@@ -3368,6 +3502,123 @@ public class AMD64Assembler extends Assembler {
         }
         return regEnc << 3 | rmEnc;
     }
+
+    /*
+    Instruction Format and EVEX illustrated below:
+    within brackets are optional.
+
+    #of bytes:      4       1       1       1       1,2,4       1
+    [Prefixes]    EVEX   OpCode   ModR/M  [SIB]   [Disp8*N] [Immediate]
+                                                 [Disp16,32]
+
+    The EVEX prefix is a 4-byte prefix, with the first two bytes derived from unused encoding
+    form of the 32-bit-mode-only BOUND instruction. The layout of the EVEX prefix is shown in
+    Figure 2-11. The first byte must be 62H, followed by three pay-load bytes, denoted as P0,
+    P1, and P2 individually or collectively as P[23:0] (see Figure 2-11).
+
+    EVEX: 0x62 | P0 | P1 | P2
+
+        7   6   5   4   3   2   1   0
+    P0  R   X   B   R'  0   0   m   m       P[ 7: 0]
+    P1  W   v   v   v   v   1   p   p       P[15: 8]
+    P2  z   L'  L   b   V'  a   a   a       P[23:16]
+
+    Figure 2-11. Bit Field Layout of the EVEX Prefix
+
+    Table 2-30. EVEX Prefix Bit Field Functional Grouping
+    Notation        Bit field Group         Position        Comment
+    EVEX.RXB    Next-8 register specifier   P[7 : 5]    Combine with ModR/M.reg, ModR/M.rm (base, index/vidx).
+    EVEX.X      High-16 register specifier  P[6]        Combine with EVEX.B and ModR/M.rm, when SIB/VSIB absent.
+    EVEX.R’     High-16 register specifier  P[4]        Combine with EVEX.R and ModR/M.reg.
+    --          Reserved                    P[3 : 2]    Must be 0.
+    EVEX.mm     Compressed legacy escape    P[1 : 0]    Identical to low two bits of VEX.mmmmm.
+
+    EVEX.W      Osize promotion/Opcode ext  P[15]
+    EVEX.vvvv   NDS register specifier      P[14 : 11]  Same as VEX.vvvv.
+    --          Fixed Value                 P[10]       Must be 1.
+    EVEX.pp     Compressed legacy prefix    P[9 : 8]    Identical to VEX.pp.
+
+    EVEX.z      Zeroing/Merging             P[23]
+    EVEX.L’L    Vector length/RC            P[22 : 21]
+    EVEX.b      Broadcast/RC/SAE Context    P[20]
+    EVEX.V’     High-16 NDS/VIDX register   P[19]       Combine with EVEX.vvvv or when VSIB present.
+    EVEX.aaa    Embedded opmask register    P[18 : 16]
+
+    NOTE: All extension encodings (i.e. RXB, R' and V') in inverse.
+     */
+
+    private void evexPrefix(int rxb, int RnV, int nds, int pre, int opc, AMD64InstructionAttr attr) {
+        assert (opc == VexOpcode.VEX_OPCODE_0F_38 || opc == VexOpcode.VEX_OPCODE_0F_3A ||
+                opc == VexOpcode.VEX_OPCODE_0F);
+
+        emitByte(Prefix.EVEX_4BYTES);
+
+        int P0 = (rxb << 5) | (RnV & EVexPrefix.EVEX_R_prim);
+        P0 = ~P0 & 0xf0 | opc;
+        emitByte(P0);
+
+        int P1 = (attr.isRexVexW() ? EVexPrefix.EVEX_W : 0) | (~nds & 0xf) << 3 | EVexPrefix.EVEX_F | pre;
+        emitByte(P1);
+
+        int P2 = attr.isRegMask() ? (attr.isClearContext() ? EVexPrefix.EVEX_Z : 0) : 0;
+        P2 |= (attr.getVectorLen() & 0x3) << 5;
+        P2 |= attr.isExtendedContext() ? EVexPrefix.EVEX_B : 0;
+        P2 |= (RnV & EVexPrefix.EVEX_V_prim) ^ EVexPrefix.EVEX_V_prim & EVexPrefix.EVEX_V_prim;
+        P2 |= attr.isRegMask() ? attr.getMaskEncoding() : 0;
+        emitByte(P2);
+    }
+
+    private void evexPrefix(AMD64Address addr, Register nds, Register src, int pre, int opc, AMD64InstructionAttr attr) {
+        int rxb = getRXB(src, addr);
+        int RnV = getRprim(src) + getVprim(nds);
+        evexPrefix(rxb, RnV, nds.isValid() ? nds.encoding : 0, pre, opc, attr);
+        setCurAttributes(attr);
+    }
+
+    private int evexPrefixAndEncode(Register dst, Register nds, Register src, int pre, int opc, AMD64InstructionAttr attr) {
+        int rxb = getEVexRXB(dst, src);
+        int RnV = getRprim(dst) + getVprim(nds);
+        evexPrefix(rxb, RnV, nds.isValid() ? nds.encoding : 0, pre, opc, attr);
+        // return modrm byte components for operands
+        return (((dst.encoding & 7) << 3) | (src.encoding & 7));
+    }
+
+    /*
+
+    #of bytes:    2,3      1       1       1       1,2,4       1
+    [Prefixes]    VEX   OpCode   ModR/M  [SIB]   [Disp8*N] [Immediate]
+                                                [Disp16,32]
+
+
+    VEX: 0xC4 | B1 | B2
+
+        7   6   5   4   3   2   1   0
+    B1  R   X   B   m   m   m   m   m       P[ 7: 0]
+    B2  W   v   v   v   v   L   p   p       P[15: 8]
+
+    VEX: 0xC5 | B1
+
+        7   6   5   4   3   2   1   0
+    B1  R   v   v   v   v   L   p   p       P[7:0]
+
+    Figure 2-9. Bit Field Layout of the VEX Prefix
+
+    Table 2-X. VEX Prefix Bit Field Functional Grouping
+    Notation        Bit field Group         Position        Comment
+    VEX.RXB     Next-8 register specifier   P[7 : 5]    Combine with ModR/M.reg, ModR/M.rm (base, index/vidx).
+    VEX.R       REX.R inverse               P[7]        Combine with EVEX.R and ModR/M.reg.
+    VEX.X       REX.X inverse               P[6]        Combine with EVEX.B and ModR/M.rm, when SIB/VSIB absent.
+    VEX.B       REX.B inverse               P[5]
+    VEX.mmmmmm  0F, 0F_38, 0F_3A encoding   P[4 : 0]    b01/0x0F, b10/0F_38, b11/0F_3A (all other reserved)
+
+    VEX.W       Opcode specific             P[15]
+    VEX.vvvv    A register specifier        P[14 : 11]  In inverse form, b1111 if not used.
+                                            P[6 : 3]
+    VEX.L       Vector length/RC            P[10]       b0/scalar or 128b vec, b1/256b vec.
+                                            P[2]
+    VEX.pp      Compressed legacy prefix    P[9 : 8]    b00/None, b01/0x66, b10/0xF3, b11/0xF2
+                                            P[1 : 0]
+     */
 
     private void vexPrefix(int rxb, int ndsEncoding, int pre, int opc, AMD64InstructionAttr attributes) {
         int vectorLen = attributes.getVectorLen();
@@ -3827,7 +4078,6 @@ public class AMD64Assembler extends Assembler {
         assert src.getRegisterCategory().equals(AMD64.XMM);
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_128bit, /* rex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ true, target);
         attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        attributes.setIsClearContext();
         simdPrefix(src, Register.None, dst, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x7F);
         emitOperandHelper(src, dst, 0);
@@ -3850,7 +4100,6 @@ public class AMD64Assembler extends Assembler {
 
         AMD64InstructionAttr attributes = new AMD64InstructionAttr(AvxVectorLen.AVX_256bit, /* vex_w */ false, /* legacy_mode */ false, /* no_mask_reg */ false, /* uses_vl */ true, target);
         attributes.setAddressAttributes(/* tuple_type */ EvexTupleType.EVEX_FVM, /* input_size_in_bits */ EvexInputSizeInBits.EVEX_NObit);
-        attributes.setIsClearContext();
         // swap src<->dst for encoding
         vexPrefix(dst, Register.None, src, VexSimdPrefix.VEX_SIMD_F3, VexOpcode.VEX_OPCODE_0F, attributes);
         emitByte(0x7F);
@@ -4042,11 +4291,11 @@ public class AMD64Assembler extends Assembler {
     protected final void patchJumpTarget(int branch, int branchTarget) {
         int op = getByte(branch);
         assert op == 0xE8 // call
-                || op == 0x00 // jump table entry
-                || op == 0xE9 // jmp
-                || op == 0xEB // short jmp
-                || (op & 0xF0) == 0x70 // short jcc
-                || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
+            || op == 0x00 // jump table entry
+            || op == 0xE9 // jmp
+            || op == 0xEB // short jmp
+            || (op & 0xF0) == 0x70 // short jcc
+            || op == 0x0F && (getByte(branch + 1) & 0xF0) == 0x80 // jcc
         : "Invalid opcode at patch point branch=" + branch + ", branchTarget=" + branchTarget + ", op=" + op;
 
         if (op == 0x00) {

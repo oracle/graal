@@ -330,7 +330,7 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
                     // k7 == 11..11, if operands equal, otherwise k7 has some 0
                     masm.evpcmpeqb(k7, vec1, new AMD64Address(str2, result, scale), AvxVectorLen.AVX_512bit);
                 } else {
-                    masm.vpmovzxbw(vec1, new AMD64Address(str1, result, scale1), AvxVectorLen.AVX_512bit);
+                    masm.evpmovzxbw(vec1, new AMD64Address(str1, result, scale1), AvxVectorLen.AVX_512bit);
                     // k7 == 11..11, if operands equal, otherwise k7 has some 0
                     masm.evpcmpeqb(k7, vec1, new AMD64Address(str2, result, scale2), AvxVectorLen.AVX_512bit);
                 }

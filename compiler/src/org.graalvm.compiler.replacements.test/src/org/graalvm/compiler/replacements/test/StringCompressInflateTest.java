@@ -29,22 +29,26 @@ import org.graalvm.compiler.replacements.amd64.AMD64StringUTF16CompressNode;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
+import java.io.UnsupportedEncodingException;
+
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+
 /**
- * Tests {@link StringSubstitutions}.
+ * Test intrinsic/node substitutions for (innate) methods StringLatin1.inflate
+ * and StringUTF16.compress provided by {@link AMD64StringLatin1Substitutions}
+ * and {@link AMD64StringUTF16Substitutions}.
  */
 @AddExports({"java.base/java.lang"})
-
 public final class StringCompressInflateTest extends MethodSubstitutionTest {
 
     final static int N = 1000;
 
     @Test
-    public void testStringLatin1Inflate() throws ClassNotFoundException
+    public void testStringLatin1Inflate() throws ClassNotFoundException,
+                                                 UnsupportedEncodingException
     {
         if (Java8OrEarlier)
             return;   // StringLatin1.inflate introduced in Java 9.
@@ -69,10 +73,33 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             Object nil = tms.invokeJava(src, 0, dst, 0, i2sz(i));
 
             assert nil == null;
-            String str = new String(src);
+
+            // Perform a sanity check:
+            for (int j = 0; j < i; j++)
+            {
+                assert (dst[j] & 0xff00) == 0;
+                assert (32 <= dst[j] && dst[j] <= 126) ||
+                      (160 <= dst[j] && dst[j] <= 255);
+                assert ((byte)dst[j] == src[j]);
+            }
+
+            String str = new String(src, 0, src.length, "ISO8859_1");
+
+            for (int j = 0; j < src.length; j++)
+            {
+                assert ((char)src[j] & 0xff) == str.charAt(j);
+            }
 
             // Invoke char[] testInflate(String)
             char[] inflate1 = (char[]) tms.invokeTest(str);
+
+            // Another sanity check:
+            for (int j = 0; j < i; j++)
+            {
+                assert (inflate1[j] & 0xff00) == 0;
+                assert (32 <= inflate1[j] && inflate1[j] <= 126) ||
+                      (160 <= inflate1[j] && inflate1[j] <= 255);
+            }
 
             assertDeepEquals(dst, inflate1);
 
@@ -82,9 +109,10 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             assertDeepEquals(dst, inflate2);
         }
     }
-    
+
     @Test
-    public void testStringUTF16Compress() throws ClassNotFoundException
+    public void testStringUTF16Compress() throws ClassNotFoundException,
+                                                 UnsupportedEncodingException
     {
         if (Java8OrEarlier)
             return;   // StringUTF16.compress introduced in Java 9.
@@ -108,17 +136,27 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
             Object len = tms.invokeJava(src, 0, dst, 0, i2sz(i));
 
             assert (int)len == i2sz(i);
-             
+
             // Invoke String testCompress(char[])
             String str1 = (String) tms.invokeTest(src);
 
-            assertDeepEquals(dst, str1.getBytes());
+            assertDeepEquals(dst, str1.getBytes("ISO8859_1"));
 
             // Invoke String testCompress(char[]) through code handle.
             String str2 = (String) tms.invokeCode(src);
 
-            assertDeepEquals(dst, str2.getBytes());
+            assertDeepEquals(dst, str2.getBytes("ISO8859_1"));
         }
+    }
+
+    @SuppressWarnings("all")
+    public static String testCompress(char[] a) {
+        return new String(a);
+    }
+
+    @SuppressWarnings("all")
+    public static char[] testInflate(String a) {
+        return a.toCharArray();
     }
 
     private class TestMethods
@@ -127,17 +165,13 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         {
             java_method = getResolvedJavaMethod(java_class, java_mname, params);
             test_method = getResolvedJavaMethod(test_mname);
-            test_graph  = testGraph(test_mname);
+            test_graph  = testGraph(test_mname, java_mname);
 
             assert java_method != null;
             assert test_method != null;
 
             // Force the test method to be compiled.
             test_code = getCode(test_method);
-
-            //HotSpotCodeCacheProvider ccp = (HotSpotCodeCacheProvider) getCodeCache();
-            //System.out.println(ccp.disassemble(getCode(java_method)));
-            //System.out.println(ccp.disassemble(test_code));
 
             assert test_code != null;
         }
@@ -182,8 +216,8 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
     {
         for (int ch = 32, i = 0; i < v.length; i++)
         {
-            v[i] = (byte) ch;
-            ch = ch == 126 ? 32 : ch + 1; //160 : (ch == 255 ? 32 : ch + 1);
+            v[i] = (byte) (ch & 0xff);
+            ch = ch == 126 ? 160 : (ch == 255 ? 32 : ch + 1);
         }
         return v;
     }
@@ -192,31 +226,12 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
     {
         for (int ch = 32, i = 0; i < v.length; i++)
         {
-            v[i] = (char) ch;
-            ch = ch == 126 ? 32 : ch + 1; //160 : (ch == 255 ? 32 : ch + 1);
+            v[i] = (char) (ch & 0xff);
+            ch = ch == 126 ? 160 : (ch == 255 ? 32 : ch + 1);
         }
         return v;
     }
 
     private static int i2sz(int i) { return i * 3; }
-    
-    @SuppressWarnings("all")
-    public static String testCompress(char[] a) {
-        return new String(a);
-    }
-/*
-    public int testCompress2(char[] a, byte[] b) {
-        assert a.length == b.length;
-
-        java_method = getResolvedJavaMethod(java_class, java_mname, params);
-
-        this.invokeSafe(javaMethod, receiver, args)
-        return StringUTF16.compress(a, 0, b, 0, a.length);
-    }
-*/
-    @SuppressWarnings("all")
-    public static char[] testInflate(String a) {
-        return a.toCharArray();
-    }
 
 }
