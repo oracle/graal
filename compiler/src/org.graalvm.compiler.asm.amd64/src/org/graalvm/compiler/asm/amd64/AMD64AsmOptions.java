@@ -25,6 +25,10 @@
 package org.graalvm.compiler.asm.amd64;
 
 public class AMD64AsmOptions {
+    // FIXME: Absolutely NOT the way to do it!
+    public static final int UseAVX = 3;
+    public static final int UseSSE = 4;
+
     public static final boolean UseNormalNop = false;
     public static final boolean UseAddressNop = true;
     public static final boolean UseIncDec = true;

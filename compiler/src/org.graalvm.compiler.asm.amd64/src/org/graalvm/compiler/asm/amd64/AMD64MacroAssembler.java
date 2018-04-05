@@ -24,10 +24,16 @@
  */
 package org.graalvm.compiler.asm.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.k1;
+import static jdk.vm.ci.amd64.AMD64.k2;
+import static jdk.vm.ci.amd64.AMD64.k3;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsp;
+
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseAVX;
+import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseSSE;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseIncDec;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmLoadAndClearUpper;
 import static org.graalvm.compiler.asm.amd64.AMD64AsmOptions.UseXmmRegToRegMoveAll;
@@ -37,6 +43,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
 import org.graalvm.compiler.core.common.NumUtil;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
@@ -269,14 +276,15 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     /**
-     * Non-atomic write of a 64-bit constant to memory. Do not use if the address might be a
-     * volatile field!
+     * Non-atomic write of a 64-bit constant to memory. Do not use if the
+     * address might be a volatile field!
      */
     public final void movlong(AMD64Address dst, long src) {
         if (NumUtil.isInt(src)) {
             AMD64MIOp.MOV.emit(this, OperandSize.QWORD, dst, (int) src);
         } else {
-            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(), dst.getDisplacement() + 4);
+            AMD64Address high = new AMD64Address(dst.getBase(), dst.getIndex(), dst.getScale(),
+                                                 dst.getDisplacement() + 4);
             movl(dst, (int) (src & 0xFFFFFFFF));
             movl(high, (int) (src >> 32));
         }
@@ -346,13 +354,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     // IndexOf for constant substrings with size >= 8 chars
     // which don't need to be loaded through stack.
-    public void stringIndexofC8(Register str1, Register str2,
-                    Register cnt1, Register cnt2,
-                    int intCnt2, Register result,
-                    Register vec, Register tmp) {
+    public void stringIndexofC8(Register str1, Register str2, Register cnt1, Register cnt2,
+                                int intCnt2, Register result, Register vec, Register tmp) {
         // assert(UseSSE42Intrinsics, "SSE4.2 is required");
 
-        // This method uses pcmpestri inxtruction with bound registers
+        // This method uses pcmpestri instruction with bound registers
         // inputs:
         // xmm - substring
         // rax - substring length (elements count)
@@ -504,10 +510,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     } // string_indexofC8
 
     // Small strings are loaded through stack if they cross page boundary.
-    public void stringIndexOf(Register str1, Register str2,
-                    Register cnt1, Register cnt2,
-                    int intCnt2, Register result,
-                    Register vec, Register tmp, int vmPageSize) {
+    public void stringIndexOf(Register str1, Register str2, Register cnt1, Register cnt2,
+                              int intCnt2, Register result, Register vec, Register tmp, int vmPageSize) {
         //
         // int_cnt2 is length of small (< 8 chars) constant substring
         // or (-1) for non constant substring in which case its length
@@ -771,6 +775,421 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         bind(cleanup);
         pop(rsp); // restore SP
 
+    }
+
+    /* Compress a UTF16 string which de facto is a Latin1 string into a byte array
+     * representation (buffer).
+     *
+     *   src   (rsi) the start address of source char[] to be compressed
+     *   dst   (rdi) the start address of destination byte[] vector
+     *   len   (rdx) the length
+     *   tmp1  (xmm)
+     *   tmp2  (xmm)
+     *   tmp3  (xmm)
+     *   tmp4  (xmm)
+     *   tmp5  (rcx)
+     *   res   (rax) the result code (length on success, zero otherwise)
+     */
+    public void char_array_compress(Register src, Register dst, Register len,
+                                    Register tmp1, Register tmp2,
+                                    Register tmp3, Register tmp4,
+                                    Register tmp5, Register res) {
+
+        assert tmp1.getRegisterCategory().equals(AMD64.XMM);
+        assert tmp2.getRegisterCategory().equals(AMD64.XMM);
+        assert tmp3.getRegisterCategory().equals(AMD64.XMM);
+        assert tmp4.getRegisterCategory().equals(AMD64.XMM);
+
+        Label L_copy_chars_loop = new Label();
+        Label L_return_length = new Label();
+        Label L_return_zero = new Label();
+        Label L_done = new Label();
+        Label L_below_threshold = new Label();
+
+        assert len.number != res.number;
+
+        // save length for return
+        push(len);
+
+        // XXX: GraalHotSpotVMConfig config = xxx.getVMConfig();
+
+        // XXX: Should be: config.useAVX > 2 &&
+
+        if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
+                           supports(CPUFeature.AVX512VL) &&
+                           supports(CPUFeature.BMI2))) {
+
+            Label L_avx_copy_32_loop = new Label();
+            Label L_avx_copy_loop_tail = new Label();
+            Label L_restore_k1_return_zero = new Label();
+            Label L_avx_post_alignement = new Label();
+
+            // if length of the string is less than 16, handle it in an old fashioned way
+            testl(len, -32);
+            jcc(ConditionFlag.Zero, L_below_threshold);
+
+            // First check whether a character is compressable ( <= 0xFF).
+            // Create mask to test for Unicode chars inside zmm vector
+            movl(res, 0x00FF);
+            evpbroadcastw(tmp2, res, AvxVectorLen.AVX_512bit);
+
+            // Save k1
+            kmovql(k3, k1);
+
+            testl(len, -64);
+            jcc(ConditionFlag.Zero, L_avx_post_alignement);
+
+            movl(tmp5, dst);
+            andl(tmp5, (32 - 1));
+            negl(tmp5);
+            andl(tmp5, (32 - 1));
+
+            // bail out when there is nothing to be done
+            testl(tmp5, 0xFFFFFFFF);
+            jcc(ConditionFlag.Zero, L_avx_post_alignement);
+
+            // ~(~0 << len), where len is the # of remaining elements to process
+            movl(res, 0xFFFFFFFF);
+            shlxl(res, res, tmp5);
+            notl(res);
+            kmovdl(k1, res);
+
+            evmovdquw(tmp1, k1, new AMD64Address(src, 0), AvxVectorLen.AVX_512bit);
+            evpcmpuw(k2, k1, tmp1, tmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
+            ktestd(k2, k1);
+            jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
+
+            evpmovwb(new AMD64Address(dst, 0), k1, tmp1, AvxVectorLen.AVX_512bit);
+
+            addq(src, tmp5);
+            addq(src, tmp5);
+            addq(dst, tmp5);
+            subl(len, tmp5);
+
+            bind(L_avx_post_alignement);
+            // end of alignment
+
+            movl(tmp5, len);
+            andl(tmp5, (32 - 1)); // tail count (in chars)
+            andl(len, ~(32 - 1)); // vector count (in chars)
+            jcc(ConditionFlag.Zero, L_avx_copy_loop_tail);
+
+            leaq(src, new AMD64Address(src, len, Scale.Times2));
+            leaq(dst, new AMD64Address(dst, len, Scale.Times1));
+            negq(len);
+
+            bind(L_avx_copy_32_loop);
+            evmovdquw(tmp1, new AMD64Address(src, len, Scale.Times2), AvxVectorLen.AVX_512bit);
+            evpcmpuw(k2, tmp1, tmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
+            kortestdl(k2, k2);
+            jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
+
+            // All elements in current processed chunk are valid candidates for
+            // compression. Write a truncated byte elements to the memory.
+            evpmovwb(new AMD64Address(dst, len, Scale.Times1), tmp1, AvxVectorLen.AVX_512bit);
+            addq(len, 32);
+            jcc(ConditionFlag.NotZero, L_avx_copy_32_loop);
+
+            bind(L_avx_copy_loop_tail);
+            // bail out when there is nothing to be done
+            testl(tmp5, 0xFFFFFFFF);
+            // Restore k1
+            kmovql(k1, k3);
+            jcc(ConditionFlag.Zero, L_return_length);
+
+            movl(len, tmp5);
+
+            // ~(~0 << len), where len is the # of remaining elements to process
+            movl(res, 0xFFFFFFFF);
+            shlxl(res, res, len);
+            notl(res);
+
+            kmovdl(k1, res);
+
+            evmovdquw(tmp1, k1, new AMD64Address(src, 0), AvxVectorLen.AVX_512bit);
+            evpcmpuw(k2, k1, tmp1, tmp2, 2 /*le*/, AvxVectorLen.AVX_512bit);
+            ktestd(k2, k1);
+            jcc(ConditionFlag.CarryClear, L_restore_k1_return_zero);
+
+            evpmovwb(new AMD64Address(dst, 0), k1, tmp1, AvxVectorLen.AVX_512bit);
+            // Restore k1
+            kmovql(k1, k3);
+            jmp(L_return_length);
+
+            bind(L_restore_k1_return_zero);
+            // Restore k1
+            kmovql(k1, k3);
+            jmp(L_return_zero);
+        }
+
+        // XXX: Should be: config.useSSE > 3 &&
+
+        if (UseSSE > 3 && supports(CPUFeature.SSE4_2)) {
+            Label L_sse_copy_32_loop = new Label();
+            Label L_sse_copy_16 = new Label();
+            Label L_sse_copy_tail = new Label();
+
+            bind(L_below_threshold);
+
+            movl(res, len);
+
+            movl(tmp5, 0xff00ff00); // create mask to test for Unicode chars in vectors
+
+            // vectored compression
+            andl(len, 0xfffffff0); // vector count (in chars)
+            andl(res, 0x0000000f); // tail count (in chars)
+            testl(len, len);
+            jccb(ConditionFlag.Zero, L_sse_copy_16);
+
+            // compress 16 chars per iter
+            movdl(tmp1, tmp5);
+            pshufd(tmp1, tmp1, 0); // store Unicode mask in tmp1
+            pxor(tmp4, tmp4);
+
+            leaq(src, new AMD64Address(src, len, Scale.Times2));
+            leaq(dst, new AMD64Address(dst, len, Scale.Times1));
+            negq(len);
+
+            bind(L_sse_copy_32_loop);
+            movdqu(tmp2, new AMD64Address(src, len, Scale.Times2)); // load 1st 8 characters
+            por(tmp4, tmp2);
+            movdqu(tmp3, new AMD64Address(src, len, Scale.Times2, 16)); // load next 8 characters
+            por(tmp4, tmp3);
+            ptest(tmp4, tmp1); // check for Unicode chars in next vector
+            jcc(ConditionFlag.NotZero, L_return_zero);
+            packuswb(tmp2, tmp3); // only ASCII chars; compress each to 1 byte
+            movdqu(new AMD64Address(dst, len, Scale.Times2), tmp2);
+            addq(len, 16);
+            jcc(ConditionFlag.NotZero, L_sse_copy_32_loop);
+
+            // compress next vector of 8 chars (if any)
+            bind(L_sse_copy_16);
+            movl(len, res);
+            andl(len, 0xfffffff8); // vector count (in chars)
+            andl(res, 0x00000007); // tail count (in chars)
+            testl(len, len);
+            jccb(ConditionFlag.Zero, L_sse_copy_tail);
+
+            movdl(tmp1, tmp5);
+            pshufd(tmp1, tmp1, 0); // store Unicode mask in tmp1Reg
+            pxor(tmp3, tmp3);
+
+            movdqu(tmp2, new AMD64Address(src, 0));
+            ptest(tmp2, tmp1); // check for Unicode chars in vector
+            jccb(ConditionFlag.NotZero, L_return_zero);
+            packuswb(tmp2, tmp3); // only LATIN1 chars; compress each to 1 byte
+            movq(new AMD64Address(dst, 0), tmp2);
+            addq(src, 16);
+            addq(dst, 8);
+
+            bind(L_sse_copy_tail);
+            movl(len, res);
+        }
+
+        // Compress 1 char per iter
+        testl(len, len);
+        jccb(ConditionFlag.Zero, L_return_length);
+        leaq(src, new AMD64Address(src, len, Scale.Times2));
+        leaq(dst, new AMD64Address(dst, len, Scale.Times1));
+        negq(len);
+
+        bind(L_copy_chars_loop);
+        movzwl(res, new AMD64Address(src, len, Scale.Times2));
+        testl(res, 0xff00); // check if Unicode char
+        jccb(ConditionFlag.NotZero, L_return_zero);
+        movb(new AMD64Address(dst, len, Scale.Times1), res); // ASCII char; compress to 1 byte
+        incrementq(len, 1);
+        jcc(ConditionFlag.NotZero, L_copy_chars_loop);
+
+        // if compression succeeded, return length
+        bind(L_return_length);
+        pop(res);
+        jmpb(L_done);
+
+        // if compression failed, return 0
+        bind(L_return_zero);
+        xorl(res, res);
+        addq(rsp, 8 /*wordSize*/);
+
+        bind(L_done);
+    }
+
+    /* Copy (inflate) a Latin1 string using a byte[] array representation into
+     * a UTF16 string using a char[] array representation.
+     *
+     *   src    (rsi) the start address of source byte[] to be inflated
+     *   dst    (rdi) the start address of destination char[] array
+     *   len    (rdx) the length
+     *   tmp1   (xmm)
+     *   tmp2   (rcx)
+     */
+    public void byte_array_inflate(Register src, Register dst, Register len,
+                                   Register tmp1, Register tmp2) {
+
+        assert tmp1.getRegisterCategory().equals(AMD64.XMM);
+
+        Label L_copy_chars_loop = new Label();
+        Label L_done = new Label();
+        Label L_below_threshold = new Label();
+
+        assert src.number != dst.number && src.number != len.number && src.number != tmp2.number;
+        assert dst.number != len.number && dst.number != tmp2.number;
+        assert len.number != tmp2.number;
+
+        // XXX: GraalHotSpotVMConfig config = xxx.getVMConfig();
+
+        // XXX: Should be: config.useAVX > 2 &&
+
+        if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
+                           supports(CPUFeature.AVX512VL) &&
+                           supports(CPUFeature.BMI2))) {
+            Label L_avx_copy_32_loop = new Label();
+            Label L_avx_copy_tail = new Label();
+
+            Register tmp3_aliased = len;
+
+            // if length of the string is less than 16, handle it in an old fashioned way
+            testl(len, -16);
+            jcc(ConditionFlag.Zero, L_below_threshold);
+
+            // In order to use only one arithmetic operation for the main loop we use
+            // this pre-calculation
+            movl(tmp2, len);
+            andl(tmp2, (32 - 1)); // tail count (in chars), 32 element wide loop
+            andl(len, -32);     // vector count
+            jccb(ConditionFlag.Zero, L_avx_copy_tail);
+
+            leaq(src, new AMD64Address(src, len, Scale.Times1));
+            leaq(dst, new AMD64Address(dst, len, Scale.Times1));
+            negq(len);
+
+            // inflate 32 chars per iter
+            bind(L_avx_copy_32_loop);
+            vpmovzxbw(tmp1, new AMD64Address(src, len, Scale.Times1), AvxVectorLen.AVX_512bit);
+            evmovdquw(new AMD64Address(dst, len, Scale.Times2), tmp1, AvxVectorLen.AVX_512bit);
+            addq(len, 32);
+            jcc(ConditionFlag.NotZero, L_avx_copy_32_loop);
+
+            bind(L_avx_copy_tail);
+            // bail out when there is nothing to be done
+            testl(tmp2, -1); // we don't destroy the contents of tmp2 here
+            jcc(ConditionFlag.Zero, L_done);
+
+            // Save k1
+            kmovql(k2, k1);
+
+            // ~(~0 << length), where length is the # of remaining elements to process
+            movl(tmp3_aliased, -1);
+            shlxl(tmp3_aliased, tmp3_aliased, tmp2);
+            notl(tmp3_aliased);
+            kmovdl(k1, tmp3_aliased);
+            evpmovzxbw(tmp1, k1, new AMD64Address(src, 0), AvxVectorLen.AVX_512bit);
+            evmovdquw(new AMD64Address(dst, 0), k1, tmp1, AvxVectorLen.AVX_512bit);
+
+            // Restore k1
+            kmovql(k1, k2);
+            jmp(L_done);
+        }
+
+        // XXX: Should be: config.useSSE > 3 &&
+
+        if (UseSSE > 3 && supports(CPUFeature.SSE4_2)) {
+            Label L_sse_copy_16_loop = new Label();
+            Label L_sse_copy_8_loop = new Label();
+            Label L_sse_copy_bytes = new Label();
+            Label L_sse_copy_new_tail = new Label();
+            Label L_sse_copy_tail = new Label();
+
+            movl(tmp2, len);
+
+            // XXX: Should be: config.useAVX > 1
+
+            if (UseAVX > 1 && supports(CPUFeature.AVX2)) {
+                andl(tmp2, (16 - 1));
+                andl(len, -16);
+                jccb(ConditionFlag.Zero, L_sse_copy_new_tail);
+            } else {
+                andl(tmp2, 0x00000007);   // tail count (in chars)
+                andl(len, 0xfffffff8);    // vector count (in chars)
+                jccb(ConditionFlag.Zero, L_sse_copy_tail);
+            }
+
+            // vectored inflation
+            leaq(src, new AMD64Address(src, len, Scale.Times1));
+            leaq(dst, new AMD64Address(dst, len, Scale.Times2));
+            negq(len);
+
+            // XXX: Should be: config.useAVX > 1
+
+            if (UseAVX > 1 && supports(CPUFeature.AVX2)) {
+                bind(L_sse_copy_16_loop);
+                vpmovzxbw(tmp1, new AMD64Address(src, len, Scale.Times1), AvxVectorLen.AVX_256bit);
+                vmovdqu(new AMD64Address(dst, len, Scale.Times2), tmp1);
+                addq(len, 16);
+                jcc(ConditionFlag.NotZero, L_sse_copy_16_loop);
+
+                bind(L_below_threshold);
+                bind(L_sse_copy_new_tail);
+
+                // XXX: Should be: config.useAVX > 2 &&
+
+                if (UseAVX > 2 && (supports(CPUFeature.AVX512BW) &&
+                                   supports(CPUFeature.AVX512VL) &&
+                                   supports(CPUFeature.BMI2))) {
+                    movl(tmp2, len);
+                } else {
+                    movl(len, tmp2);
+                }
+
+                andl(tmp2, 0x00000007);
+                andl(len, 0xFFFFFFF8);
+                jccb(ConditionFlag.Zero, L_sse_copy_tail);
+
+                pmovzxbw(tmp1, new AMD64Address(src, 0));
+                movdqu(new AMD64Address(dst, 0), tmp1);
+                addq(src, 8);
+                addq(dst, 2 * 8);
+
+                jmp(L_sse_copy_tail);
+            }
+
+            // inflate 8 chars per iter
+            bind(L_sse_copy_8_loop);
+            pmovzxbw(tmp1, new AMD64Address(src, len, Scale.Times1));  // unpack to 8 words
+            movdqu(new AMD64Address(dst, len, Scale.Times2), tmp1);
+            addq(len, 8);
+            jcc(ConditionFlag.NotZero, L_sse_copy_8_loop);
+
+            bind(L_sse_copy_tail);
+            movl(len, tmp2);
+
+            cmpl(len, 4);
+            jccb(ConditionFlag.Less, L_sse_copy_bytes);
+
+            movdl(tmp1, new AMD64Address(src, 0));  // load 4 byte chars
+            pmovzxbw(tmp1, tmp1);
+            movq(new AMD64Address(dst, 0), tmp1);
+            subq(len, 4);
+            addq(src, 4);
+            addq(dst, 8);
+
+            bind(L_sse_copy_bytes);
+        }
+
+        testl(len, len);
+        jccb(ConditionFlag.Zero, L_done);
+        leaq(src, new AMD64Address(src, len, Scale.Times1));
+        leaq(dst, new AMD64Address(dst, len, Scale.Times2));
+        negq(len);
+
+        // inflate 1 char per iter
+        bind(L_copy_chars_loop);
+        movzbl(tmp2, new AMD64Address(src, len, Scale.Times1));  // load byte char
+        movw(new AMD64Address(dst, len, Scale.Times2), tmp2);  // inflate byte char to word
+        incrementq(len, 1);
+        jcc(ConditionFlag.NotZero, L_copy_chars_loop);
+
+        bind(L_done);
     }
 
 }

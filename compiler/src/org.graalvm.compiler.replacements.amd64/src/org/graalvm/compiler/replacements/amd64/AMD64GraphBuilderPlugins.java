@@ -209,6 +209,8 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareToUTF16", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class,
+                                         "inflate", byte[].class, int.class, char[].class, int.class, int.class);
         }
     }
 
@@ -218,6 +220,8 @@ public class AMD64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
+            r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class,
+                                         "compress", char[].class, int.class, byte[].class, int.class, int.class);
         }
     }
 
