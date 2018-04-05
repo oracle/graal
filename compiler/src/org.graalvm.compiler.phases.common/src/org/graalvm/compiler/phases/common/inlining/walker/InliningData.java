@@ -393,14 +393,14 @@ public class InliningData {
     }
 
     @SuppressWarnings("try")
-    private void doInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation) {
+    private void doInline(CallsiteHolderExplorable callerCallsiteHolder, MethodInvocation calleeInvocation, String reason) {
         StructuredGraph callerGraph = callerCallsiteHolder.graph();
         InlineInfo calleeInfo = calleeInvocation.callee();
         try {
             try (DebugContext.Scope scope = debug.scope("doInline", callerGraph)) {
                 EconomicSet<Node> canonicalizedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
-                EconomicSet<Node> parameterUsages = calleeInfo.inline(new Providers(context));
+                EconomicSet<Node> parameterUsages = calleeInfo.inline(new Providers(context), reason);
                 canonicalizedNodes.addAll(parameterUsages);
                 counterInliningRuns.increment(debug);
                 debug.dump(DebugContext.DETAILED_LEVEL, callerGraph, "after %s", calleeInfo);
@@ -449,8 +449,9 @@ public class InliningData {
         assert callerCallsiteHolder.containsInvoke(calleeInfo.invoke());
         counterInliningConsidered.increment(debug);
 
-        if (inliningPolicy.isWorthInlining(context.getReplacements(), calleeInvocation, inliningDepth, true)) {
-            doInline(callerCallsiteHolder, calleeInvocation);
+        InliningPolicy.Decision decision = inliningPolicy.isWorthInlining(context.getReplacements(), calleeInvocation, inliningDepth, true);
+        if (decision.shouldInline()) {
+            doInline(callerCallsiteHolder, calleeInvocation, decision.getReason());
             return true;
         }
 
@@ -483,7 +484,7 @@ public class InliningData {
      * <p>
      * The {@link InlineInfo} used to get things rolling is kept around in the
      * {@link MethodInvocation}, it will be needed in case of inlining, see
-     * {@link InlineInfo#inline(Providers)}
+     * {@link InlineInfo#inline(Providers, String)}
      * </p>
      */
     private void processNextInvoke() {
@@ -709,7 +710,7 @@ public class InliningData {
 
         final MethodInvocation currentInvocation = currentInvocation();
 
-        final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(context.getReplacements(), currentInvocation, inliningDepth(), false));
+        final boolean backtrack = (!currentInvocation.isRoot() && !inliningPolicy.isWorthInlining(context.getReplacements(), currentInvocation, inliningDepth(), false).shouldInline());
         if (backtrack) {
             int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
             assert remainingGraphs > 0;
