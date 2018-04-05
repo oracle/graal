@@ -72,6 +72,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CHeader;
+import com.oracle.svm.core.c.CTypedef;
 
 @SuppressWarnings("unused")
 @CHeader(value = PolyglotAPIHeader.class)
@@ -693,6 +694,7 @@ public final class PolyglotNativeAPI {
     }
 
     @CStruct(value = "poly_thread", isIncomplete = true)
+    @CTypedef(name = "poly_thread")
     interface PolyglotIsolateThread extends IsolateThread {
     }
 }

@@ -36,7 +36,7 @@ extern "C" {
  * On success, the current thread is attached to the created isolate, and the
  * address of the isolate structure is written to the passed pointer.
  */
-poly_status poly_create_isolate(poly_isolate_params params, poly_isolate** isolate);
+poly_status poly_create_isolate(poly_isolate_params params, poly_isolate* isolate);
 
 /*
  * Attaches the current thread to the passed isolate.
@@ -45,21 +45,21 @@ poly_status poly_create_isolate(poly_isolate_params params, poly_isolate** isola
  * If the thread has already been attached, the call succeeds and also provides
  * the thread's isolate thread structure.
  */
-poly_status poly_attach_thread(poly_isolate* isolate, poly_thread** thread);
+poly_status poly_attach_thread(poly_isolate isolate, poly_thread* thread);
 
 /*
  * Given an isolate to which the current thread is attached, returns the address of
  * the thread's associated isolate thread structure.  If the current thread is not
  * attached to the passed isolate or if another error occurs, returns NULL.
  */
-poly_thread* poly_current_thread(poly_isolate* isolate);
+poly_thread poly_current_thread(poly_isolate isolate);
 
 /*
  * Given an isolate thread structure for the current thread, determines to which
  * isolate it belongs and returns the address of its isolate structure.  If an
  * error occurs, returns NULL instead.
  */
-poly_isolate* poly_current_isolate(poly_thread* thread);
+poly_isolate poly_current_isolate(poly_thread thread);
 
 /*
  * Detaches the passed isolate thread from its isolate and discards any state or
@@ -67,7 +67,7 @@ poly_isolate* poly_current_isolate(poly_thread* thread);
  * be executing in the isolate thread's context.
  * Returns poly_ok on success, or poly_generic_failure on failure.
  */
-poly_status poly_detach_thread(poly_thread* thread);
+poly_status poly_detach_thread(poly_thread thread);
 
 /*
  * Tears down the passed isolate, waiting for any attached threads to detach from
@@ -75,7 +75,7 @@ poly_status poly_detach_thread(poly_thread* thread);
  * that is associated with it.
  * Returns poly_ok on success, or poly_generic_failure on failure.
  */
-poly_status poly_tear_down_isolate(poly_isolate* isolate);
+poly_status poly_tear_down_isolate(poly_isolate isolate);
 
 
 #if defined(__cplusplus)

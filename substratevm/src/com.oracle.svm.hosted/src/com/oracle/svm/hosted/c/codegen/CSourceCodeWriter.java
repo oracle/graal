@@ -32,8 +32,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
@@ -44,6 +47,7 @@ import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
+import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 
@@ -192,19 +196,31 @@ public class CSourceCodeWriter {
                 return "void";
             case Object:
                 ElementInfo elementInfo = nativeLibs.findElementInfo(type);
-                if (elementInfo instanceof PointerToInfo || elementInfo instanceof StructInfo) {
-                    return elementInfo.getName() + "*";
+                if (elementInfo instanceof PointerToInfo) {
+                    PointerToInfo pointerToInfo = (PointerToInfo) elementInfo;
+                    return pointerToInfo.getTypedefName() != null ? pointerToInfo.getTypedefName() : pointerToInfo.getName() + "*";
+                } else if (elementInfo instanceof StructInfo) {
+                    StructInfo structInfo = (StructInfo) elementInfo;
+                    return structInfo.getTypedefName() != null ? structInfo.getTypedefName() : structInfo.getName() + "*";
                 } else if (elementInfo instanceof EnumInfo) {
                     return elementInfo.getName();
                 } else if (metaAccess.lookupJavaType(UnsignedWord.class).isAssignableFrom(type)) {
                     return "size_t";
                 } else if (metaAccess.lookupJavaType(SignedWord.class).isAssignableFrom(type)) {
                     return "ssize_t";
+                } else if (isFunctionPointer(metaAccess, type)) {
+                    return InfoTreeBuilder.getTypedefName(type) != null ? InfoTreeBuilder.getTypedefName(type) : "void *";
                 }
                 return "void *";
             default:
                 throw shouldNotReachHere();
         }
+    }
+
+    private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
+        boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
+        return functionPointer &&
+                Arrays.stream(type.getDeclaredMethods()).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
     }
 
     /**

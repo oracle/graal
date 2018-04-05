@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
 import com.oracle.svm.hosted.c.NativeCodeContext;
@@ -156,10 +157,16 @@ public class InfoTreeBuilder {
         }
 
         String typeName = getPointerToTypeName(type);
-        PointerToInfo pointerToInfo = new PointerToInfo(typeName, elementKind(accessorInfos), type);
+        String typedefName = getTypedefName(type);
+        PointerToInfo pointerToInfo = new PointerToInfo(typeName, typedefName, elementKind(accessorInfos), type);
         pointerToInfo.adoptChildren(accessorInfos);
         nativeCodeInfo.adoptChild(pointerToInfo);
         nativeLibs.registerElementInfo(type, pointerToInfo);
+    }
+
+    public static String getTypedefName(ResolvedJavaType type) {
+        CTypedef typedefAnnotation = type.getAnnotation(CTypedef.class);
+        return typedefAnnotation != null ? typedefAnnotation.name() : null;
     }
 
     private void createStructInfo(ResolvedJavaType type) {

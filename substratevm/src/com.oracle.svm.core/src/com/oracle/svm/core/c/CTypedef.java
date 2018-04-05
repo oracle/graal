@@ -20,48 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef POLYGLOT_TYPES_H
-#define POLYGLOT_TYPES_H
+package com.oracle.svm.core.c;
 
-typedef enum {
-  poly_ok,
-  poly_invalid_arg,
-  poly_object_expected,
-  poly_string_expected,
-  poly_name_expected,
-  poly_function_expected,
-  poly_number_expected,
-  poly_boolean_expected,
-  poly_array_expected,
-  poly_generic_failure,
-  poly_pending_exception,
-  poly_cancelled,
-  poly_status_last
-} poly_status;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-typedef struct {
-  char* error_message;
-  void* engine_reserved;
-  unsigned int engine_error_code;
-  poly_status error_code;
-} poly_extended_error_info;
+/**
+ * Defines the name of the typedef to be used in signatures instead of pointers.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface CTypedef {
 
-typedef void* poly_handle;
+    /**
+     * Name of the typedef to be used for this pointer.
+     */
+    String name();
 
-typedef poly_handle poly_value;
-
-typedef poly_handle poly_engine;
-
-typedef poly_handle poly_context;
-
-typedef poly_handle poly_callback_info;
-
-typedef graal_create_isolate_params_t poly_isolate_params;
-
-typedef graal_isolate_t* poly_isolate;
-
-typedef graal_isolatethread_t* poly_thread;
-
-typedef poly_value (*poly_callback)(poly_thread thread, poly_callback_info info);
-
-#endif
+}
