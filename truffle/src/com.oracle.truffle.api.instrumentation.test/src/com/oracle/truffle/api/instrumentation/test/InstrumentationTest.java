@@ -758,6 +758,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     execOtherLang = new ExecutableNode(fakeOtherLanguage) {
                         @Override
                         public Object execute(VirtualFrame frame) {
+                            assertNotNull(getParent());
                             return "";
                         }
                     };
@@ -824,6 +825,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return new ExecutableNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    assertNotNull(getParent());
                     return "Parsed by " + ID;
                 }
             };
