@@ -278,21 +278,10 @@ public final class NFIContextExtension implements ContextExtension {
         return types;
     }
 
-    /**
-     * On Darwin, some native symbols are given a prefix supposedly to prevent mangling, e.g. glob,
-     * chmod.
-     */
-    private static final String NO_MANGLE_PREFIX = "\"\\01_";
-
-    public TruffleObject getNativeFunction(LLVMContext context, String nameIn) {
+    public TruffleObject getNativeFunction(LLVMContext context, String name) {
         CompilerAsserts.neverPartOfCompilation();
         addLibraries(context);
 
-        String name = nameIn;
-        if (name.contains(NO_MANGLE_PREFIX)) {
-            name = name.replace(NO_MANGLE_PREFIX, "");
-            name = name.substring(0, name.length() - 1);
-        }
         for (TruffleObject libraryHandle : libraryHandles.values()) {
             TruffleObject symbol = getNativeFunction(libraryHandle, name);
             if (symbol != null) {
