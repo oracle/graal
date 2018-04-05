@@ -59,32 +59,16 @@ public final class LLVMIdentifier {
         }
     }
 
-    private static final Pattern NUMERIC_VARNAME_PATTERN = Pattern.compile("\\d+");
-
-    public static String toBlockName(String name) {
-        if (NUMERIC_VARNAME_PATTERN.matcher(name).matches()) {
-            return String.format("%%\"%s\"", name);
-        } else {
-            return "%" + escapeNameIfNecessary(name);
-        }
+    public static String toExplicitBlockName(String name) {
+        return toLocalIdentifier(name);
     }
-
-    private static final String IMPLICIT_BLOCK_PREFIX = "implicit";
 
     public static String toImplicitBlockName(int label) {
-        return IMPLICIT_BLOCK_PREFIX + String.valueOf(label);
-    }
-
-    public static String extractLabelFromImplicitBlockName(String name) {
-        return name.substring(IMPLICIT_BLOCK_PREFIX.length());
-    }
-
-    public static boolean isImplicitBlockName(String name) {
-        return name.startsWith(IMPLICIT_BLOCK_PREFIX);
+        return String.format("%d", label);
     }
 
     public static String toTypeIdentifier(String name) {
-        return escapeNameIfNecessary(name);
+        return toLocalIdentifier(name);
     }
 
     private static final Pattern UNESCAPED_VARNAME_PATTERN = Pattern.compile("[\\w\\d\\u0024_\\u002e]+");

@@ -29,12 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.model.functions;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
-import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
+import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
@@ -50,12 +56,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class FunctionDefinition implements Constant, ValueSymbol, MetadataAttachmentHolder {
 
@@ -109,7 +109,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
 
     @Override
     public void setName(String name) {
-        this.name = LLVMIdentifier.toGlobalIdentifier(name);
+        this.name = name;
     }
 
     @Override
@@ -175,7 +175,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
         for (final InstructionBlock block : blocks) {
             if (block.getName().equals(LLVMIdentifier.UNKNOWN)) {
                 do {
-                    block.setImplicitName(symbolIndex++);
+                    block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
                     // avoid name clashes
                 } while (explicitBlockNames.contains(block.getName()));
             }
@@ -211,7 +211,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     }
 
     public void nameBlock(int index, String argName) {
-        blocks[index].setName(argName);
+        blocks[index].setName(LLVMIdentifier.toExplicitBlockName(argName));
     }
 
     @Override
@@ -229,8 +229,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     @Override
     public String toString() {
         CompilerAsserts.neverPartOfCompilation();
-        final String formalArgs = parameters.stream().map(FunctionParameter::getName).collect(Collectors.joining(", "));
-        return String.format("FunctionDefinition %s(%s) {%d blocks}", name, formalArgs, blocks == null ? 0 : blocks.length);
+        return String.format("%s %s {...}", type.toString(), name);
     }
 
     public LLVMSourceLocation getLexicalScope() {

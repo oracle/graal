@@ -137,7 +137,7 @@ public final class PrimitiveType extends Type {
         if (Type.isIntegerType(this)) {
             return String.format("i%d", getBitSize());
         } else {
-            return kind.name();
+            return kind.name().toLowerCase();
         }
     }
 

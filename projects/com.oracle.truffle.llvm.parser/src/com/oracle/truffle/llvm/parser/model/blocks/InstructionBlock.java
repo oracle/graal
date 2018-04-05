@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.model.blocks;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class InstructionBlock {
 
@@ -76,11 +76,7 @@ public final class InstructionBlock {
     }
 
     public void setName(String name) {
-        this.name = LLVMIdentifier.toBlockName(name);
-    }
-
-    public void setImplicitName(int label) {
-        this.name = LLVMIdentifier.toImplicitBlockName(label);
+        this.name = LLVMIdentifier.toExplicitBlockName(name);
     }
 
     public TerminatingInstruction getTerminatingInstruction() {
