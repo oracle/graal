@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.interop.export;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -41,7 +40,6 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignAccessNodeFactory.AttachTypeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignAccessNodeFactory.ReadNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignAccessNodeFactory.WriteNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
@@ -72,36 +70,15 @@ public abstract class LLVMForeignAccessNode {
         Object doValue(LLVMTruffleObject ptr, LLVMInteropType.Value type,
                         @Cached("type.getKind()") @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
                         @Cached("createLoadNode(cachedKind)") LLVMLoadNode load,
-                        @Cached("create()") LLVMDataEscapeNode dataEscape,
-                        @Cached("create()") AttachTypeNode attachType) {
+                        @Cached("create()") LLVMDataEscapeNode dataEscape) {
             Object ret = load.executeWithTarget(ptr);
-            Object escaped = dataEscape.executeWithTarget(ret);
-            return attachType.execute(escaped, type.getBaseType());
+            return dataEscape.executeWithType(ret, type.getBaseType());
         }
 
         LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
             CompilerAsserts.neverPartOfCompilation();
             ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
             return ctxRef.get().getInteropNodeFactory().createLoadNode(kind);
-        }
-    }
-
-    abstract static class AttachTypeNode extends Node {
-
-        protected abstract Object execute(Object value, LLVMInteropType.Structured type);
-
-        public static AttachTypeNode create() {
-            return AttachTypeNodeGen.create();
-        }
-
-        @Specialization
-        Object doLLVMTruffleObject(LLVMTruffleObject value, LLVMInteropType.Structured type) {
-            return value.export(type);
-        }
-
-        @Fallback
-        Object doOther(Object other, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            return other;
         }
     }
 

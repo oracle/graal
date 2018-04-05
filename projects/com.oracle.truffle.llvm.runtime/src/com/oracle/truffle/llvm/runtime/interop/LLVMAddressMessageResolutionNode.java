@@ -99,8 +99,8 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         }
     }
 
-    public LLVMDataEscapeNode getPrepareValueForEscapeNode(Type t) {
-        return LLVMDataEscapeNodeGen.create(t);
+    public LLVMDataEscapeNode getPrepareValueForEscapeNode() {
+        return LLVMDataEscapeNodeGen.create();
     }
 
     public boolean typeGuard(LLVMTruffleAddress receiver, Type type) {
@@ -124,7 +124,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                         @Cached("getType(receiver)") @SuppressWarnings("unused") Type cachedType,
                         @Cached("index") int cachedIndex,
                         @Cached("getPointeeType(receiver)") PrimitiveType elementType,
-                        @Cached("getPrepareValueForEscapeNode(elementType)") LLVMDataEscapeNode prepareValueForEscape,
+                        @Cached("getPrepareValueForEscapeNode()") LLVMDataEscapeNode prepareValueForEscape,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return prepareValueForEscape.executeWithTarget(doRead(memory, receiver, elementType, cachedIndex));
         }
@@ -133,7 +133,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         protected Object doCachedType(LLVMTruffleAddress receiver, int index,
                         @Cached("getType(receiver)") @SuppressWarnings("unused") Type cachedType,
                         @Cached("getPointeeType(receiver)") PrimitiveType elementType,
-                        @Cached("getPrepareValueForEscapeNode(elementType)") LLVMDataEscapeNode prepareValueForEscape,
+                        @Cached("getPrepareValueForEscapeNode()") LLVMDataEscapeNode prepareValueForEscape,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return prepareValueForEscape.executeWithTarget(doRead(memory, receiver, elementType, index));
         }
@@ -142,7 +142,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         protected Object doRegular(LLVMTruffleAddress receiver, int index,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             if (receiver.getType() instanceof PointerType && ((PointerType) receiver.getType()).getPointeeType() instanceof PrimitiveType) {
-                return LLVMDataEscapeNode.slowConvert(doRead(memory, receiver, (PrimitiveType) ((PointerType) receiver.getType()).getPointeeType(), index), getPointeeType(receiver));
+                return LLVMDataEscapeNode.slowConvert(doRead(memory, receiver, (PrimitiveType) ((PointerType) receiver.getType()).getPointeeType(), index));
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(
@@ -190,7 +190,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                         @Cached("receiver.getDescriptor()") LLVMGlobal cachedReceiver,
                         @Cached("create()") ReadObjectNode globalAccess,
                         @Cached("getElementType(cachedReceiver)") @SuppressWarnings("unused") Type elementType,
-                        @Cached("getPrepareValueForEscapeNode(elementType)") LLVMDataEscapeNode prepareValueForEscape) {
+                        @Cached("getPrepareValueForEscapeNode()") LLVMDataEscapeNode prepareValueForEscape) {
             if (index != 0) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
@@ -205,7 +205,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            return LLVMDataEscapeNode.slowConvert(globalAccess.execute(receiver.getDescriptor()), receiver.getDescriptor().getType());
+            return LLVMDataEscapeNode.slowConvert(globalAccess.execute(receiver.getDescriptor()));
         }
     }
 

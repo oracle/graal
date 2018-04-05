@@ -53,13 +53,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
@@ -69,12 +67,12 @@ public abstract class LLVMTruffleInvoke extends LLVMIntrinsic {
     @Child private ForeignToLLVM toLLVM;
     @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-    public LLVMTruffleInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args, Type[] argTypes) {
+    public LLVMTruffleInvoke(ForeignToLLVM toLLVM, LLVMExpressionNode[] args) {
         this.toLLVM = toLLVM;
         this.args = args;
         this.prepareValuesForEscape = new LLVMDataEscapeNode[args.length];
         for (int i = 0; i < prepareValuesForEscape.length; i++) {
-            prepareValuesForEscape[i] = LLVMDataEscapeNodeGen.create(argTypes[i]);
+            prepareValuesForEscape[i] = LLVMDataEscapeNode.create();
         }
         this.foreignInvoke = Message.createInvoke(args.length).createNode();
     }

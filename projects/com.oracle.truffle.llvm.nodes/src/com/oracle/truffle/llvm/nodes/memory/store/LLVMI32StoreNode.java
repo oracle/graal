@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI32Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
 
@@ -50,7 +49,7 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
     }
 
     public LLVMI32StoreNode(LLVMSourceLocation sourceLocation) {
-        super(sourceLocation, PrimitiveType.I32);
+        super(sourceLocation);
     }
 
     @Specialization

@@ -45,7 +45,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
@@ -113,7 +112,7 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
     protected LLVMForeignWriteNode[] createForeignWrites() {
         LLVMForeignWriteNode[] writes = new LLVMForeignWriteNode[values.length];
         for (int i = 0; i < writes.length; i++) {
-            writes[i] = LLVMForeignWriteNodeGen.create(PointerType.VOID);
+            writes[i] = LLVMForeignWriteNodeGen.create();
         }
         return writes;
     }

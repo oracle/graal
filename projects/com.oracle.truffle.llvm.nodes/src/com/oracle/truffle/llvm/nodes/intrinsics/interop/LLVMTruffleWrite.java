@@ -47,9 +47,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMTruffleWrite {
 
@@ -78,8 +76,8 @@ public final class LLVMTruffleWrite {
         @Child protected LLVMDataEscapeNode prepareValueForEscape;
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-        public LLVMTruffleWriteToName(Type typeOfValue) {
-            this.prepareValueForEscape = LLVMDataEscapeNodeGen.create(typeOfValue);
+        public LLVMTruffleWriteToName() {
+            this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 
         @SuppressWarnings("unused")
@@ -116,8 +114,8 @@ public final class LLVMTruffleWrite {
         @Child protected LLVMDataEscapeNode prepareValueForEscape;
         @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.create();
 
-        public LLVMTruffleWriteToIndex(Type typeOfValue) {
-            this.prepareValueForEscape = LLVMDataEscapeNodeGen.create(typeOfValue);
+        public LLVMTruffleWriteToIndex() {
+            this.prepareValueForEscape = LLVMDataEscapeNode.create();
         }
 
         @Specialization

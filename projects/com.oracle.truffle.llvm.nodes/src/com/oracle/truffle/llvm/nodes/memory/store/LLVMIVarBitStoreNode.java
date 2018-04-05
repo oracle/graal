@@ -38,17 +38,15 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
 
-    public LLVMIVarBitStoreNode(VariableBitWidthType type) {
-        this(null, type);
+    public LLVMIVarBitStoreNode() {
+        this(null);
     }
 
-    public LLVMIVarBitStoreNode(LLVMSourceLocation sourceLocation, VariableBitWidthType type) {
-        super(sourceLocation, type);
+    public LLVMIVarBitStoreNode(LLVMSourceLocation sourceLocation) {
+        super(sourceLocation);
     }
 
     @Specialization
@@ -86,6 +84,6 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
 
     @Override
     protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS));
+        return LLVMForeignWriteNodeGen.create();
     }
 }

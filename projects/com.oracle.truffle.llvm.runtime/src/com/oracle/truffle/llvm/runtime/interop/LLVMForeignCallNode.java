@@ -58,14 +58,10 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  */
 abstract class LLVMForeignCallNode extends Node {
 
-    @Child protected LLVMDataEscapeNode prepareValueForEscape;
+    @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNode.create();
 
     protected LLVMMemory getLLVMMemory() {
         return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
-    }
-
-    protected LLVMForeignCallNode(Type returnType) {
-        this.prepareValueForEscape = LLVMDataEscapeNodeGen.create(returnType);
     }
 
     public static class PackForeignArgumentsNode extends Node {

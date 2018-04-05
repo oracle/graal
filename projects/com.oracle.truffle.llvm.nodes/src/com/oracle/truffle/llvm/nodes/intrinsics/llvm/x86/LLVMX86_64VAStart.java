@@ -50,7 +50,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
 @NodeChild
@@ -98,8 +97,8 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         this.pointerArithmeticStructInit = LLVMIncrementPointerNodeGen.create();
         this.gpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
         this.fpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
-        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
-        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
+        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(null, null);
+        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(null, null);
 
         this.memmove = memmove;
     }

@@ -46,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = int.class, name = "numberExplicitArguments")
@@ -67,8 +66,8 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
         this.pointerArithmeticStructInit = LLVMIncrementPointerNodeGen.create();
         this.gpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
         this.fpOffsetStore = LLVMI32StoreNodeGen.create(null, null);
-        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
-        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
+        this.overflowArgAreaStore = LLVMAddressStoreNodeGen.create(null, null);
+        this.regSaveAreaStore = LLVMAddressStoreNodeGen.create(null, null);
 
         this.gpOffsetLoad = LLVMI32LoadNodeGen.create(null);
         this.fpOffsetLoad = LLVMI32LoadNodeGen.create(null);

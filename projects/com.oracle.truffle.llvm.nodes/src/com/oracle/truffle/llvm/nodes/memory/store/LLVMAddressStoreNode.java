@@ -42,16 +42,15 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNod
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMAddressStoreNode extends LLVMStoreNodeCommon {
 
-    public LLVMAddressStoreNode(Type type) {
-        this(null, type);
+    public LLVMAddressStoreNode() {
+        this(null);
     }
 
-    public LLVMAddressStoreNode(LLVMSourceLocation sourceLocation, Type type) {
-        super(sourceLocation, type);
+    public LLVMAddressStoreNode(LLVMSourceLocation sourceLocation) {
+        super(sourceLocation);
     }
 
     @Specialization

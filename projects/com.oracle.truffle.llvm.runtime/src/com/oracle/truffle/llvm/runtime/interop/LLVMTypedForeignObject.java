@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 @ValueType
 public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInternalTruffleObject {
@@ -100,7 +99,7 @@ public final class LLVMTypedForeignObject implements LLVMObjectAccess, LLVMInter
     static class ForeignWriteNode extends LLVMObjectWriteNode {
 
         @Child LLVMInteropWriteNode write = LLVMInteropWriteNode.create();
-        @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNodeGen.create(PointerType.VOID);
+        @Child LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
 
         @Override
         public void executeWrite(Object obj, long offset, Object value) throws InteropException {
