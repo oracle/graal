@@ -49,6 +49,6 @@ import java.lang.annotation.Target;
  * See {@link TargetClass} for an overview of the annotation system.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE})
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.TYPE, ElementType.FIELD})
 public @interface Substitute {
 }

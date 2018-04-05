@@ -437,10 +437,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(name = "isAssignableFrom")
     private boolean isAssignableFromClass(Class<?> cls) {
-        return isAssignableFrom(KnownIntrinsics.unsafeCast(cls, DynamicHub.class));
+        return isAssignableFromHub(KnownIntrinsics.unsafeCast(cls, DynamicHub.class));
     }
 
-    public boolean isAssignableFrom(DynamicHub hub) {
+    public boolean isAssignableFromHub(DynamicHub hub) {
         int checkTypeID = hub.getTypeID();
         for (int i = 0; i < assignableFromMatches.length; i += 2) {
             if (UnsignedMath.belowThan(checkTypeID - assignableFromMatches[i], assignableFromMatches[i + 1])) {

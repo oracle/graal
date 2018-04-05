@@ -51,10 +51,16 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
     private final ResolvedJavaMethod original;
     private final ResolvedJavaMethod annotated;
     private final LocalVariableTable localVariableTable;
+    private final boolean inClassSubstitution;
 
     public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated) {
+        this(original, annotated, false);
+    }
+
+    public SubstitutionMethod(ResolvedJavaMethod original, ResolvedJavaMethod annotated, boolean inClassSubstitution) {
         this.original = original;
         this.annotated = annotated;
+        this.inClassSubstitution = inClassSubstitution;
 
         LocalVariableTable newLocalVariableTable = null;
         if (annotated.getLocalVariableTable() != null) {
@@ -113,7 +119,7 @@ public class SubstitutionMethod implements ResolvedJavaMethod, GraphProvider {
 
     @Override
     public ResolvedJavaType getDeclaringClass() {
-        return original.getDeclaringClass();
+        return (inClassSubstitution ? annotated.getDeclaringClass() : original.getDeclaringClass());
     }
 
     @Override
