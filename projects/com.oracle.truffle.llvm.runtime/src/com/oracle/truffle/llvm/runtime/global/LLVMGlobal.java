@@ -318,7 +318,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         public boolean isPointer(Object obj) {
             LLVMGlobal global = (LLVMGlobal) obj;
             Object value = getContext().getGlobalFrame().getValue(global.slot);
-            return (value instanceof LLVMAddress || value instanceof Managed) && getNativeLibrary().isPointer(value);
+            return value instanceof LLVMAddress || value instanceof Managed && getNativeLibrary().isPointer(((Managed) value).wrapped);
         }
 
         @Override
@@ -331,6 +331,9 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             LLVMGlobal global = (LLVMGlobal) obj;
             Object value = getContext().getGlobalFrame().getValue(global.slot);
             assert value instanceof LLVMAddress || value instanceof Managed;
+            if (value instanceof Managed) {
+                return getNativeLibrary().asPointer(((Managed) value).wrapped);
+            }
             return getNativeLibrary().asPointer(value);
         }
     }
@@ -339,6 +342,8 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         Object value = context.getGlobalFrame().getValue(slot);
         if (value instanceof LLVMAddress) {
             return (LLVMAddress) value;
+        } else if (value instanceof Managed) {
+            return transformToNative(memory, context, ((Managed) value).wrapped);
         }
 
         return transformToNative(memory, context, value);
