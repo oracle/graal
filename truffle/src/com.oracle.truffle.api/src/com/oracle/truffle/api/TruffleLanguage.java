@@ -2055,35 +2055,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object evalInContext(String code, Node node, final MaterializedFrame mFrame) {
-            RootNode rootNode = node.getRootNode();
-            if (rootNode == null) {
-                throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
-            }
-
-            LanguageInfo info = rootNode.getLanguageInfo();
-            if (info == null) {
-                throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
-            }
-
-            final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();
-            ExecutableNode fragment = null;
-            CallTarget target = null;
-            fragment = API.nodes().getLanguageSpi(info).parseInline(source, node, mFrame);
-            if (fragment == null) {
-                target = API.nodes().getLanguageSpi(info).parse(source, node, mFrame);
-            }
-
+        public Object evalInContext(Source source, Node node, final MaterializedFrame mFrame) {
+            LanguageInfo info = node.getRootNode().getLanguageInfo();
+            assert info != null;
+            CallTarget target = API.nodes().getLanguageSpi(info).parse(source, node, mFrame);
             try {
-                if (fragment != null) {
-                    return fragment.execute(mFrame);
+                if (target instanceof RootCallTarget) {
+                    RootNode exec = ((RootCallTarget) target).getRootNode();
+                    return exec.execute(mFrame);
                 } else {
-                    if (target instanceof RootCallTarget) {
-                        RootNode exec = ((RootCallTarget) target).getRootNode();
-                        return exec.execute(mFrame);
-                    } else {
-                        throw new IllegalStateException("" + target);
-                    }
+                    throw new IllegalStateException("" + target);
                 }
             } catch (Exception ex) {
                 if (ex instanceof RuntimeException) {

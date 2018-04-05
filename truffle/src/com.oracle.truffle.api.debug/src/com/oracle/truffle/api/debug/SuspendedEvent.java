@@ -111,6 +111,7 @@ public final class SuspendedEvent {
     private DebuggerSession session;
     private SuspendedContext context;
     private MaterializedFrame materializedFrame;
+    private InsertableNode insertableNode;
     private List<Breakpoint> breakpoints;
     private InputValuesProvider inputValuesProvider;
     private Object returnValue;
@@ -123,12 +124,13 @@ public final class SuspendedEvent {
     private DebugStackFrameIterable cachedFrames;
 
     SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor,
-                    InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
+                    InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     List<Breakpoint> breakpoints, Map<Breakpoint, Throwable> conditionFailures) {
         this.session = session;
         this.context = context;
         this.suspendAnchor = suspendAnchor;
         this.materializedFrame = frame;
+        this.insertableNode = insertableNode;
         this.inputValuesProvider = inputValuesProvider;
         this.returnValue = returnValue;
         this.exception = exception;
@@ -154,6 +156,7 @@ public final class SuspendedEvent {
         this.cachedFrames = null;
         this.session = null;
         this.context = null;
+        this.insertableNode = null;
     }
 
     void verifyValidState(boolean allowDifferentThread) {
@@ -206,6 +209,10 @@ public final class SuspendedEvent {
 
     SuspendedContext getContext() {
         return context;
+    }
+
+    InsertableNode getInsertableNode() {
+        return insertableNode;
     }
 
     /**

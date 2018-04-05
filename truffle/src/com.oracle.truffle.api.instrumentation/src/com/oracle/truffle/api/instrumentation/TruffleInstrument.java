@@ -41,6 +41,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Scope;
@@ -381,9 +382,17 @@ public abstract class TruffleInstrument {
             @Override
             public Object execute(VirtualFrame frame) {
                 assert frameDescriptor == null || frameDescriptor == frame.getFrameDescriptor();
+                assureAdopted();
                 Object ret = fragment.execute(frame);
                 assert checkNullOrInterop(ret);
                 return ret;
+            }
+
+            private void assureAdopted() {
+                if (getParent() == null) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalStateException("Needs to be inserted into the AST before execution.");
+                }
             }
 
             private boolean checkNullOrInterop(Object obj) {

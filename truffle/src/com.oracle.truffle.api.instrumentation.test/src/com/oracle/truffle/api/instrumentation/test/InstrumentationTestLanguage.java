@@ -270,6 +270,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         @Override
         public Object execute(VirtualFrame frame) {
+            assert getParent() != null;
             return node.execute(frame);
         }
 

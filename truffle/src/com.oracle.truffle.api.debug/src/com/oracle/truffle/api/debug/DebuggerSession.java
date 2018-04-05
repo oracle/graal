@@ -67,6 +67,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -847,7 +848,7 @@ public final class DebuggerSession implements Closeable {
         boolean hitBreakpoint = breaks != null && !breaks.isEmpty();
         if (hitStepping || hitBreakpoint) {
             s.consume();
-            doSuspend(SuspendedContext.create(source.getContext()), suspendAnchor, frame, inputValuesProvider, returnValue, exception, breaks, breakpointFailures);
+            doSuspend(SuspendedContext.create(source.getContext()), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks, breakpointFailures);
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSuspendAnchors());
@@ -866,7 +867,7 @@ public final class DebuggerSession implements Closeable {
         }
     }
 
-    private void notifyUnwindCallback(MaterializedFrame frame) {
+    private void notifyUnwindCallback(MaterializedFrame frame, InsertableNode insertableNode) {
         Thread currentThread = Thread.currentThread();
         SteppingStrategy s = getSteppingStrategy(currentThread);
         // We must have an active stepping strategy on this thread when unwind finished
@@ -898,18 +899,18 @@ public final class DebuggerSession implements Closeable {
             }
         });
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.AFTER, caller.frame, null, null, null, Collections.emptyList(), Collections.emptyMap());
+        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
     }
 
     private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
-                    InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
+                    InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
         SuspendedEvent suspendedEvent;
         try {
-            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, inputValuesProvider, returnValue, exception, breaks, conditionFailures);
+            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures);
             if (exception != null) {
                 exception.setSuspendedEvent(suspendedEvent);
             }
@@ -1029,7 +1030,7 @@ public final class DebuggerSession implements Closeable {
             frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
         }
         try {
-            return Debugger.ACCESSOR.evalInContext(node, frame, code);
+            return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
             throw new DebugException(ev.getSession().getDebugger(), "Evaluation was killed.", null, true, null);
         } catch (Throwable ex) {
@@ -1043,6 +1044,27 @@ public final class DebuggerSession implements Closeable {
             } else {
                 throw ex;
             }
+        }
+    }
+
+    private static Object evalInContext(SuspendedEvent ev, Node node, MaterializedFrame frame, String code) {
+        RootNode rootNode = node.getRootNode();
+        if (rootNode == null) {
+            throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
+        }
+
+        LanguageInfo info = rootNode.getLanguageInfo();
+        if (info == null) {
+            throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
+        }
+
+        final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();
+        ExecutableNode fragment = ev.getSession().getDebugger().getEnv().parseInline(source, node, frame);
+        if (fragment != null) {
+            ev.getInsertableNode().setParentOf(fragment);
+            return fragment.execute(frame);
+        } else {
+            return Debugger.ACCESSOR.evalInContext(source, node, frame);
         }
     }
 
@@ -1195,7 +1217,7 @@ public final class DebuggerSession implements Closeable {
 
     }
 
-    private final class RootSteppingDepthNode extends ExecutionEventNode {
+    private final class RootSteppingDepthNode extends ExecutionEventNode implements InsertableNode {
 
         @Override
         protected void onEnter(VirtualFrame frame) {
@@ -1227,6 +1249,11 @@ public final class DebuggerSession implements Closeable {
             }
         }
 
+        @Override
+        public void setParentOf(Node child) {
+            insert(child);
+        }
+
         @TruffleBoundary
         private void doEnter() {
             SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
@@ -1249,7 +1276,7 @@ public final class DebuggerSession implements Closeable {
             if (steppingStrategy != null) {
                 Object info = steppingStrategy.notifyOnUnwind();
                 if (info == ProbeNode.UNWIND_ACTION_REENTER) {
-                    notifyUnwindCallback(frame);
+                    notifyUnwindCallback(frame, this);
                 }
                 return info;
             } else {
