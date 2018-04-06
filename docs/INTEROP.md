@@ -1,65 +1,92 @@
 # Interoperability
 
-Sulong supports standard Truffle interop messages. This document explains what
+Sulong supports standard Polyglot interop messages. This document explains what
 it does when it receives them, how to get it to explicitly send them, and what
 messages it sends for normal LLVM operations on foreign objects.
 
-## How Sulong responds
+Detailed reference documentation of Polyglot interop support in Sulong can be
+found in `polyglot.h` (in `mxbuild/sulong-libs/polyglot.h` when building from
+source).
 
-### `IS_EXECUTABLE`
+## How Sulong responds to messages from other languages
 
-Returns `true` only for `LLVMFunctionDescriptor` objects.
+### `HAS_SIZE`, `GET_SIZE`
 
-### `HAS_SIZE`
+Values created with `polyglot_from_*_array` behave as polyglot arrays. The size
+is explicitly set from the `len` argument.
 
-Returns true for `LLVMAddress` objects (arrays), although they have no size.
-This is a hack, to allow using LLVM arrays via `JavaInterop`.
+### `HAS_KEYS`, `KEYS`, `KEY_INFO`
 
-### `GET_SIZE`
+Values created with `polyglot_from_*` behave as objects with named keys. Struct
+members are directly translated to member keys. Primitives and pointer values
+are readable and writable. Nested structs or arrays are only readable.
 
-Throws an unsupported exception, even though `HAS_SIZE` returned `true`.
+### `READ`, `WRITE`
 
-### `READ`
+For pointers to structs (created with `polyglot_from_*`), the key must be a
+string specifying the member name of the struct. For pointers to arrays (created
+with `polyglot_from_*_array`), the key must be an integer number specifying the
+array index. The index will be bounds checked.
 
-The name must be a Java `int` or `long`.
+For struct members of primitive or pointer type, the `READ` message results in a
+memory read and the `WRITE` message results in a memory write.
 
-This is implemented for arrays only (`LLVMAddress`), and returns the array's
-element with the given index. Bounds are not checked.
+For complex data types (e.g. structs within structs, or arrays of structs),
+the `READ` message will do pointer arithmetic to produce a new polyglot value
+representing the nested value. `WRITE` is not supported for complex data types.
 
-### `WRITE`
+### `IS_EXECUTABLE`, `EXECUTE`
 
-The name must be a Java `int` or `long`.
-
-Stores the value in the array at the given position (works only for
-`LLVMAddress`). Bounds are not checked.
+Function pointers in Sulong respond to the `EXECUTE` message.
 
 ## How to explicitly send messages from Sulong
 
-You can use the built-ins defined in `include/polyglot.h`.
+You can use the built-ins defined in `polyglot.h`.
 
 ## What messages are sent for LLVM operations on foreign objects
 
-`object[index]` sends `READ`
+Foreign objects are represented as untyped pointers. The foreign objects can be
+accessed from Sulong using various methods:
 
-`object[index] = value` sends `WRITE`
+### primitive arrays
 
-`object()` sends `EXECUTE`
+Foreign array values can be accessed by casting them to the corresponding C
+pointer type and accessing them. This works for primitive arrays and pointer
+arrays.
 
-## Intrinsic functions
+```
+int *array = (int*) value;
+int x = array[index];  // sends READ(index), possibly followed by UNBOX
+array[index] = value;  // sends WRITE(index, value)
+```
 
-### `string.h`
+### executable objects
 
-Strings are assumed to be non-null terminated.
-* `strlen`: Sends a `HAS_SIZE` followed by a `GET_SIZE`.
-* `strcmp`: Sends `READ`s for each character, casts them to `char` and
-compares them.
+Executable foreign objects can be cast to a function pointer type and called.
 
-## Currently unsupported operations
+```
+void (*fn)(int) = (void (*)(int)) value;
+fn(5);  // sends EXECUTE
+```
 
-It is not possible to access members of objects from foreign languages or share
-structs with foreign languages.
+### structs or arrays of structs
 
-## Helper functions
+For accessing user-defined structs, foreign values can be converted to pointers
+with explicit type information.
 
-`truffle_managed_malloc` has the same signature as `malloc` but gives you
-memory in which you can store references to managed objects.
+```
+struct MyStruct {
+  int someField;
+};
+
+DECLARE_POLYGLOT_STRUCT(MyStruct)
+
+struct MyStruct *myStruct = polyglot_as_MyStruct(value);
+int x = myStruct->someField;  // sends READ("someField")
+myStruct->someField = 5;      // sends WRITE("someField", 5)
+```
+
+### explicit access
+
+Other interop messages can be sent directly using the built-ins defined in
+`polyglot.h`.
