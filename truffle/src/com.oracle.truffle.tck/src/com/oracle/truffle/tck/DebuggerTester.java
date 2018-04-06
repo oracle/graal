@@ -94,6 +94,11 @@ public final class DebuggerTester implements AutoCloseable {
         }
     }
 
+    private static void err(String message) {
+        PrintStream out = System.err;
+        out.println("DebuggerTester: " + message);
+    }
+
     private final ExecutingLoop executingLoop;
     private SuspendedCallback handler;
 
@@ -672,16 +677,29 @@ public final class DebuggerTester implements AutoCloseable {
     }
 
     private void assertBreakpoints(Source source, List<Breakpoint> breakpoints, Set<Breakpoint> breakpointsResolved, List<Breakpoint> breakpointsHit) {
-        try (DebuggerSession session = startSession()) {
+        try (DebuggerSession session = startSession(new SourceElement[0])) {
             for (Breakpoint breakpoint : breakpoints) {
                 session.install(breakpoint);
             }
             startEval(source);
             while (breakpointsHit.size() != breakpoints.size()) {
-                expectSuspended((SuspendedEvent event) -> {
-                    breakpointsHit.addAll(event.getBreakpoints());
-                    event.prepareContinue();
-                });
+                try {
+                    expectSuspended((SuspendedEvent event) -> {
+                        breakpointsHit.addAll(event.getBreakpoints());
+                        event.prepareContinue();
+                    });
+                } catch (Throwable t) {
+                    Set<Breakpoint> notHit = new HashSet<>(breakpoints);
+                    notHit.removeAll(breakpointsHit);
+                    for (Breakpoint b : notHit) {
+                        err("Not hit " + b + ": " + b.getLocationDescription());
+                    }
+                    err("---");
+                    for (Breakpoint b : breakpointsHit) {
+                        err("Hit     " + b + ": " + b.getLocationDescription());
+                    }
+                    throw t;
+                }
             }
             expectDone();
         }

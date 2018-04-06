@@ -55,7 +55,9 @@ class DefaultNearestNodeSearch {
      * <ul>
      * <li>When the offset is inside the context node, we search for the first tagged parent node
      * and call {@link #findChildTaggedNode(Node, int, Set, boolean)} to find a tagged child. If we
-     * find it, we return it, if not, we return the tagged parent.</li>
+     * find it, we return it, if not, we continue to search recursively for a tagged child of node's
+     * parent. If we encounter the first tagged parent node, return it, otherwise return tagged
+     * child found during the recursive process, if any.</li>
      * <li>When the offset is behind the context node, we return the last tagged child of the
      * context node.</li>
      * <li>When the offset is before the context node, we return the first tagged child of the
@@ -70,8 +72,15 @@ class DefaultNearestNodeSearch {
         if (startIndex <= offset && offset <= endIndex) {
             Node parent = findParentTaggedNode(node, tags);
             Node ch = findChildTaggedNode(node, offset, tags, parent != null, false);
-            if (ch == null) {
-                return parent;
+            while (ch == null) {
+                if (node == parent) {
+                    return parent;
+                }
+                node = node.getParent();
+                if (node == null) {
+                    break;
+                }
+                ch = findChildTaggedNode(node, offset, tags, parent != null, false);
             }
             return ch;
         } else if (endIndex < offset) {
