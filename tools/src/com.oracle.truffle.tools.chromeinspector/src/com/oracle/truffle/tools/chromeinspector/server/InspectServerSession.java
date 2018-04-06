@@ -242,7 +242,10 @@ public final class InspectServerSession {
                 debugger.setPauseOnExceptions(cmd.getParams().getState());
                 break;
             case "Debugger.setBreakpointsActive":
-                debugger.setBreakpointsActive(cmd.getParams().getBreakpointsActive());
+                debugger.setBreakpointsActive(cmd.getParams().getBoolean("active"));
+                break;
+            case "Debugger.setSkipAllPauses":
+                debugger.setSkipAllPauses(cmd.getParams().getBoolean("skip"));
                 break;
             case "Debugger.setBreakpointByUrl":
                 json = cmd.getParams().getJSONObject();

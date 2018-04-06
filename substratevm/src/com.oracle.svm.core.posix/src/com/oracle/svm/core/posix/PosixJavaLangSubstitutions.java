@@ -349,7 +349,8 @@ final class Target_java_lang_UNIXProcess {
                 int status = waitForProcessExit(pid);
                 // Checkstyle: stop
                 // We need to use synchronized to synchronize with non-substituted UNIXProcess code
-                synchronized (Target_java_lang_UNIXProcess.this) { // Checkstyle: resume
+                synchronized (Target_java_lang_UNIXProcess.this) {
+                    // Checkstyle: resume
                     Target_java_lang_UNIXProcess.this.exitcode = status;
                     Target_java_lang_UNIXProcess.this.hasExited = true;
                     Target_java_lang_UNIXProcess.this.notifyAll();

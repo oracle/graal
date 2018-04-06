@@ -1116,6 +1116,18 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
+     * Returns the home location for this language. This corresponds to the directory in which the
+     * Jar file is located, if run from a Jar file. For an AOT compiled binary, this corresponds to
+     * the location of the language files in the default GraalVM distribution layout. executable or
+     * shared library.
+     *
+     * @since 1.0
+     */
+    protected final String getLanguageHome() {
+        return AccessAPI.engineAccess().getLanguageHome(AccessAPI.nodesAccess().getEngineObject(languageInfo));
+    }
+
+    /**
      * Represents execution environment of the {@link TruffleLanguage}. Each active
      * {@link TruffleLanguage} receives instance of the environment before any code is executed upon
      * it. The environment has knowledge of all active languages and can exchange symbols between
@@ -1367,6 +1379,21 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public boolean isHostLookupAllowed() {
             return AccessAPI.engineAccess().isHostAccessAllowed(vmObject, this);
+        }
+
+        /**
+         * Adds an entry to the Java host class loader. All classes looked up with
+         * {@link #lookupHostSymbol(String)} will lookup classes with this new entry. If the entry
+         * was already added then calling this method again for the same entry has no effect. Given
+         * entry must not be <code>null</code>.
+         *
+         * @throws SecurityException if the file is not {@link TruffleFile#isReadable() readable}.
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public void addToHostClassPath(TruffleFile entry) {
+            Objects.requireNonNull(entry);
+            AccessAPI.engineAccess().addToHostClassPath(vmObject, entry);
         }
 
         /**
@@ -1691,6 +1718,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @since 1.0
          */
+        @TruffleBoundary
         public TruffleFile getTruffleFile(String path) {
             return new TruffleFile(fileSystem, fileSystem.parsePath(path).normalize());
         }
@@ -1702,6 +1730,7 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @since 1.0
          */
+        @TruffleBoundary
         public TruffleFile getTruffleFile(URI uri) {
             checkDisposed();
             try {
@@ -2043,35 +2072,16 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
-        public Object evalInContext(String code, Node node, final MaterializedFrame mFrame) {
-            RootNode rootNode = node.getRootNode();
-            if (rootNode == null) {
-                throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
-            }
-
-            LanguageInfo info = rootNode.getLanguageInfo();
-            if (info == null) {
-                throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
-            }
-
-            final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();
-            ExecutableNode fragment = null;
-            CallTarget target = null;
-            fragment = API.nodes().getLanguageSpi(info).parseInline(source, node, mFrame);
-            if (fragment == null) {
-                target = API.nodes().getLanguageSpi(info).parse(source, node, mFrame);
-            }
-
+        public Object evalInContext(Source source, Node node, final MaterializedFrame mFrame) {
+            LanguageInfo info = node.getRootNode().getLanguageInfo();
+            assert info != null;
+            CallTarget target = API.nodes().getLanguageSpi(info).parse(source, node, mFrame);
             try {
-                if (fragment != null) {
-                    return fragment.execute(mFrame);
+                if (target instanceof RootCallTarget) {
+                    RootNode exec = ((RootCallTarget) target).getRootNode();
+                    return exec.execute(mFrame);
                 } else {
-                    if (target instanceof RootCallTarget) {
-                        RootNode exec = ((RootCallTarget) target).getRootNode();
-                        return exec.execute(mFrame);
-                    } else {
-                        throw new IllegalStateException("" + target);
-                    }
+                    throw new IllegalStateException("" + target);
                 }
             } catch (Exception ex) {
                 if (ex instanceof RuntimeException) {

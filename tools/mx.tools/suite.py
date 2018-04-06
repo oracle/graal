@@ -41,6 +41,7 @@ suite = {
             ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector.test",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
             "license" : "GPLv2-CPE",

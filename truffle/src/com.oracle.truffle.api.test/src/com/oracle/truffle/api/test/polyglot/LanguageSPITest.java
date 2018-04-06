@@ -891,7 +891,7 @@ public class LanguageSPITest {
 
     @Test
     public void testExceptionGetSourceLocation() {
-        try (final Context context = Context.create(LanguageSPITestLanguage.ID)) {
+        try (Context context = Context.create(LanguageSPITestLanguage.ID)) {
             final String text = "0123456789";
             LanguageSPITestLanguage.runinside = (env) -> {
                 Source src = Source.newBuilder(text).mimeType(LanguageSPITestLanguage.ID).name("test.txt").build();

@@ -829,7 +829,8 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(ScalaDaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-        if mx_compiler.jdk.javaCompliance >= '9':
+        # Do not add corba module on JDK>=11 (http://openjdk.java.net/jeps/320)
+        if mx_compiler.jdk.javaCompliance >= '9' and mx_compiler.jdk.javaCompliance < '11':
             vmArgs += ["--add-modules", "java.corba"]
         return vmArgs
 

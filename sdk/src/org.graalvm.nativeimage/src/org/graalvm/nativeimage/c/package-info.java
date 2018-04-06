@@ -22,7 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * This package and its sub-packages provide a fast and lightweight interface between Java code and
  * C code.

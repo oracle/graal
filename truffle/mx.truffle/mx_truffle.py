@@ -33,6 +33,7 @@ import zipfile
 from collections import OrderedDict
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import tempfile
+import shutil
 
 import mx
 
@@ -65,11 +66,13 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 #mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)
 
-
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
-    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm'] + args)
-    checkLinks(os.sep.join([_suite.dir, 'javadoc']))
+    mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm,com.oracle.truffle.api.metadata'] + args)
+    javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
+    checkLinks(javadoc_dir)
+    shutil.move(os.sep.join([javadoc_dir, 'index.html']), os.sep.join([javadoc_dir, 'overview-frames.html']))
+    shutil.copy(os.sep.join([javadoc_dir, 'overview-summary.html']), os.sep.join([javadoc_dir, 'index.html']))
 
 def checkLinks(javadocDir):
     href = re.compile('(?<=href=").*?(?=")')

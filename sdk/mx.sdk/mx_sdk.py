@@ -27,12 +27,17 @@
 # ----------------------------------------------------------------------------------------------------
 
 import mx
+import os
+import shutil
 
 _suite = mx.suite('sdk')
 
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     mx.javadoc(['--unified', '--exclude-packages', 'org.graalvm.polyglot.tck'] + args)
+    javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
+    shutil.move(os.sep.join([javadoc_dir, 'index.html']), os.sep.join([javadoc_dir, 'overview-frames.html']))
+    shutil.copy(os.sep.join([javadoc_dir, 'overview-summary.html']), os.sep.join([javadoc_dir, 'index.html']))
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],

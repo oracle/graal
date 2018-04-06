@@ -22,7 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * This package provides parts of the Java / C interface that are related to standard C pointer
  * types, as well as utility functions to convert between Java types and C types.

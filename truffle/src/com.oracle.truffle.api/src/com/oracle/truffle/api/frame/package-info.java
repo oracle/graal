@@ -25,17 +25,15 @@
 
 /*
  @ApiInfo(
- group="To Review"
+ group="Truffle"
  )
  */
 
 /**
- * Representation of a {@link com.oracle.truffle.api.frame.Frame stack frame}. While
- * {@link com.oracle.truffle.api.TruffleLanguage based language} is executing its stack parameters
- * and local variables are represented by {@link com.oracle.truffle.api.frame.VirtualFrame}. Such a
- * frame can be converted into {@link com.oracle.truffle.api.frame.MaterializedFrame} stored on a
- * heap for later access when the actual stack is elsewhere.
- * 
+ * Package containing stack frame representation classes. Such a frames can be converted into
+ * {@link com.oracle.truffle.api.frame.MaterializedFrame} stored on a heap for later access when the
+ * actual stack is elsewhere.
+ *
  * @since 0.8 or older
  */
 package com.oracle.truffle.api.frame;

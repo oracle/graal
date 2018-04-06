@@ -48,6 +48,7 @@ import com.oracle.truffle.tools.chromeinspector.events.Event;
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.OutputConsumerInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.PropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
@@ -336,11 +337,13 @@ public final class TruffleRuntime extends RuntimeDomain {
         return result;
     }
 
-    static void fillExceptionDetails(JSONObject obj, GuestLanguageException ex) {
-        JSONObject exceptionDetails = new JSONObject();
-        exceptionDetails.put("text", ex.getLocalizedMessage());
-        // TODO: add more details
-        obj.put("exceptionDetails", exceptionDetails);
+    private void fillExceptionDetails(JSONObject obj, GuestLanguageException ex) {
+        fillExceptionDetails(obj, ex, context);
+    }
+
+    static void fillExceptionDetails(JSONObject obj, GuestLanguageException ex, TruffleExecutionContext context) {
+        ExceptionDetails exceptionDetails = new ExceptionDetails(ex.getDebugException());
+        obj.put("exceptionDetails", exceptionDetails.createJSON(context));
     }
 
     @Override

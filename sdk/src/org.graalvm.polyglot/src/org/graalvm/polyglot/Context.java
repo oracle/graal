@@ -675,6 +675,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateThread;
         private boolean allowAllAccess;
         private Boolean allowIO;
+        private Boolean allowHostClassLoading;
         private FileSystem customFileSystem;
 
         Builder(String... onlyLanguages) {
@@ -778,6 +779,8 @@ public final class Context implements AutoCloseable {
          * <ul>
          * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
          * <li>The access to public {@link #allowHostAccess(boolean) host classes}.
+         * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
+         * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
          * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
@@ -788,6 +791,20 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowAllAccess(boolean enabled) {
             this.allowAllAccess = enabled;
+            return this;
+        }
+
+        /**
+         * If host class loading is enabled then the guest language is allowed to load new host
+         * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code> then the host class loading is enabled if it is not disallowed
+         * explicitly. For host class loading to be useful {@link #allowIO(boolean) IO} operations
+         * and {@link #allowHostAccess(boolean) host access} need to be allowed as well.
+         *
+         * @since 1.0
+         */
+        public Builder allowHostClassLoading(boolean enabled) {
+            this.allowHostClassLoading = enabled;
             return this;
         }
 
@@ -921,6 +938,9 @@ public final class Context implements AutoCloseable {
             if (allowIO == null) {
                 allowIO = allowAllAccess;
             }
+            if (allowHostClassLoading == null) {
+                allowHostClassLoading = allowAllAccess;
+            }
             if (!allowIO && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
@@ -939,12 +959,12 @@ public final class Context implements AutoCloseable {
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
                 return engine.impl.createContext(null, null, null, allowHostAccess, allowCreateThread, allowIO,
-                                hostClassFilter,
-                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
+                                allowHostClassLoading,
+                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             } else {
                 return engine.impl.createContext(out, err, in, allowHostAccess, allowCreateThread, allowIO,
-                                hostClassFilter,
-                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
+                                allowHostClassLoading,
+                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             }
         }
 

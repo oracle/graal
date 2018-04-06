@@ -66,6 +66,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -132,7 +133,7 @@ public class SLDebugTest {
 
     protected void checkStack(DebugStackFrame frame, String name, String... expectedFrame) {
         assertEquals(name, frame.getName());
-        checkDebugValues("variables", frame, expectedFrame);
+        checkDebugValues("variables", frame.getScope(), expectedFrame);
     }
 
     protected void checkArgs(DebugStackFrame frame, String... expectedArgs) {
@@ -148,11 +149,26 @@ public class SLDebugTest {
         checkDebugValues("arguments", arguments, expectedArgs);
     }
 
+    private static void checkDebugValues(String msg, DebugScope scope, String... expected) {
+        Map<String, DebugValue> valMap = new HashMap<>();
+        while (scope != null) {
+            for (DebugValue value : scope.getDeclaredValues()) {
+                valMap.put(value.getName(), value);
+            }
+            scope = scope.getParent();
+        }
+        checkDebugValues(msg, valMap, expected);
+    }
+
     private static void checkDebugValues(String msg, Iterable<DebugValue> values, String... expected) {
         Map<String, DebugValue> valMap = new HashMap<>();
         for (DebugValue value : values) {
             valMap.put(value.getName(), value);
         }
+        checkDebugValues(msg, valMap, expected);
+    }
+
+    private static void checkDebugValues(String msg, Map<String, DebugValue> valMap, String... expected) {
         String message = String.format("Frame %s expected %s got %s", msg, Arrays.toString(expected), valMap.toString());
         Assert.assertEquals(message, expected.length / 2, valMap.size());
         for (int i = 0; i < expected.length; i = i + 2) {
@@ -1156,6 +1172,39 @@ public class SLDebugTest {
                         "<8:10 - 8:14> (-12,1) -12\n" +
                         "<1:10 - 9:1> () -12";
         checkExpressionStepPositions(stepOverPositions, true, StepDepth.INTO, StepDepth.OVER);
+    }
+
+    @Test
+    public void testExceptions() {
+        final Source source = slCode("function main() {\n" +
+                        "  i = \"0\";\n" +
+                        "  return invert(i);\n" +
+                        "}\n" +
+                        "function invert(n) {\n" +
+                        "  x = 10 / n;\n" +
+                        "  return x;\n" +
+                        "}\n");
+        try (DebuggerSession session = startSession()) {
+            Breakpoint excBreakpoint = Breakpoint.newExceptionBuilder(true, true).build();
+            session.install(excBreakpoint);
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugException exception = event.getException();
+                Assert.assertNotNull(exception);
+                assertTrue(exception.getMessage(), exception.getMessage().startsWith("Type error"));
+                SourceSection throwLocation = exception.getThrowLocation();
+                assertEquals(6, throwLocation.getStartLine());
+                // Repair the 'n' argument and rewind
+                event.getTopStackFrame().getScope().getArguments().iterator().next().set(event.getTopStackFrame().eval("function main() {return 2;}"));
+                event.prepareUnwindFrame(event.getTopStackFrame());
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                assert event != null;
+                // Continue after unwind
+            });
+            assertEquals("5", expectDone());
+        }
     }
 
     private static void assertNumber(Object real, double expected) {

@@ -58,6 +58,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
@@ -1052,6 +1053,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public void addToHostClassPath(Object vmObject, TruffleFile entries) {
+            // not supported
+        }
+
+        @Override
         public <S> S lookup(LanguageInfo language, Class<S> type) {
             PolyglotRuntime.LanguageShared cache = (PolyglotRuntime.LanguageShared) VMAccessor.NODES.getEngineObject(language);
             return VMAccessor.LANGUAGE.lookup(cache.getLanguageEnsureInitialized(), type);
@@ -1480,6 +1486,11 @@ public class PolyglotEngine {
         @Override
         public boolean isDefaultFileSystem(FileSystem fs) {
             return false;
+        }
+
+        @Override
+        public String getLanguageHome(Object engineObject) {
+            return ((PolyglotRuntime.LanguageShared) engineObject).cache.getLanguageHome();
         }
     }
 }

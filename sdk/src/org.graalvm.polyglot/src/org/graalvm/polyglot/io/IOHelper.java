@@ -102,8 +102,8 @@ final class IOHelper {
         } else {
             final Set<StandardOpenOption> readOptions = EnumSet.of(StandardOpenOption.READ);
             final Set<StandardOpenOption> writeOptions = EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
-            try (final SeekableByteChannel sourceChannel = sourceFileSystem.newByteChannel(sourceReal, readOptions);
-                            final SeekableByteChannel targetChannel = targetFileSystem.newByteChannel(targetReal, writeOptions)) {
+            try (SeekableByteChannel sourceChannel = sourceFileSystem.newByteChannel(sourceReal, readOptions);
+                            SeekableByteChannel targetChannel = targetFileSystem.newByteChannel(targetReal, writeOptions)) {
                 final ByteBuffer buffer = ByteBuffer.allocateDirect(1 << 16);
                 while (sourceChannel.read(buffer) != -1) {
                     buffer.flip();

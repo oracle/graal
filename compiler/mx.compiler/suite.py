@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.145.3",
+  "mxversion" : "5.149.2",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -494,6 +494,7 @@ suite = {
         "org.graalvm.compiler.bytecode",
       ],
       "javaCompliance" : "1.8",
+      "checkstyleVersion" : "8.8",
       "annotationProcessors" : [
         "GRAAL_OPTIONS_PROCESSOR",
         "GRAAL_NODEINFO_PROCESSOR"

@@ -46,6 +46,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
@@ -291,6 +292,10 @@ public abstract class Accessor {
         public abstract Object findMetaObjectForLanguage(Object vmObject, Object value);
 
         public abstract boolean isDefaultFileSystem(FileSystem fs);
+
+        public abstract String getLanguageHome(Object engineObject);
+
+        public abstract void addToHostClassPath(Object vmObject, TruffleFile entries);
     }
 
     public abstract static class LanguageSupport {
@@ -306,7 +311,7 @@ public abstract class Accessor {
 
         public abstract void postInitEnv(Env env);
 
-        public abstract Object evalInContext(String code, Node node, MaterializedFrame frame);
+        public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
 

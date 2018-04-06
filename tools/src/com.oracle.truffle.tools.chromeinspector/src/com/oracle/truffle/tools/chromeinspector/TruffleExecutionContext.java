@@ -35,12 +35,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.debug.DebugException;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.SourceLoadInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
 /**
  * The Truffle engine execution context.
@@ -137,6 +139,14 @@ public final class TruffleExecutionContext {
         return roh;
     }
 
+    public RemoteObject createAndRegister(DebugValue value) {
+        RemoteObject ro = new RemoteObject(value, getErr());
+        if (ro.getId() != null) {
+            getRemoteObjectsHandler().register(ro);
+        }
+        return ro;
+    }
+
     void setSuspendThreadExecutor(SuspendedThreadExecutor suspendThreadExecutor) {
         this.suspendThreadExecutor = suspendThreadExecutor;
     }
@@ -168,8 +178,8 @@ public final class TruffleExecutionContext {
             params = cf.get();
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
-            if (cause instanceof TruffleException && !((TruffleException) cause).isInternalError()) {
-                throw new GuestLanguageException((TruffleException) cause);
+            if (cause instanceof DebugException && !((DebugException) cause).isInternalError()) {
+                throw new GuestLanguageException((DebugException) cause);
             }
             if (cause instanceof CommandProcessException) {
                 throw (CommandProcessException) cause;
@@ -249,16 +259,17 @@ public final class TruffleExecutionContext {
         }
     }
 
+    /** A checked variant of DebugException. */
     static final class GuestLanguageException extends Exception {
 
         private static final long serialVersionUID = 7386388514508637851L;
 
-        private GuestLanguageException(TruffleException truffleException) {
-            super((Throwable) truffleException);
+        private GuestLanguageException(DebugException truffleException) {
+            super(truffleException);
         }
 
-        TruffleException getTruffleException() {
-            return (TruffleException) getCause();
+        DebugException getDebugException() {
+            return (DebugException) getCause();
         }
     }
 }
