@@ -418,7 +418,7 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
     def newestOutput(self):
         return mx.TimeStampFile(native_image_path(self.subject.native_image_root))
 
-def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False):
+def truffle_language_ensure(language_flag, version=None, native_image_root=None, early_exit=False, extract=True):
     """
     Ensures that we have a valid suite for the given language_flag, by downloading a binary if necessary
     and providing the suite distribution artifacts in the native-image directory hierachy (via symlinks).
@@ -474,6 +474,11 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
         if failure_warning:
             mx.warn(failure_warning)
         mx.abort('Binary suite not found and no local copy of ' + language_suite_name + ' available.')
+
+    if not extract:
+        if not exists(join(native_image_root, language_dir)):
+            mx.abort('Language subdir \'' + language_flag + '\' should already exist with extract=False')
+        return language_suite
 
     # Temporary inject ['TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'] Ruby dependencies dynamically
     # until the change is merged in TruffleRuby repository
@@ -707,7 +712,7 @@ def test_ruby(args):
     aot_bin = args[0]
     debug_build = args[1] if len(args) >= 2 else 'release'
 
-    truffleruby_suite = truffle_language_ensure('ruby')
+    truffleruby_suite = truffle_language_ensure('ruby', extract=False)
 
     suite_dir = truffleruby_suite.dir
     distsToExtract = ['TRUFFLERUBY-ZIP', 'TRUFFLERUBY-SPECS']
