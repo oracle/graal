@@ -31,11 +31,10 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -86,9 +85,12 @@ public class CInterfaceEnumTool {
         return (kind == JavaKind.Long) ? convertJavaToCLongMethod : convertJavaToCIntMethod;
     }
 
-    public InvokeNode createEnumValueInvoke(HostedGraphKit kit, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
+    public ValueNode createEnumValueInvoke(HostedGraphKit kit, EnumInfo enumInfo, JavaKind resultKind, ValueNode arg) {
         ResolvedJavaMethod valueMethod = getValueMethodForKind(resultKind);
-        return invokeEnumValue(kit, CallTargetFactory.from(kit), kit.getFrameState(), kit.bci(), enumInfo, valueMethod, arg);
+        int invokeBci = kit.bci();
+        int exceptionEdgeBci = kit.bci();
+        MethodCallTargetNode callTarget = invokeEnumValue(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, valueMethod, arg);
+        return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
     }
 
     boolean replaceEnumValueInvoke(BytecodeParser p, EnumInfo enumInfo, ResolvedJavaMethod method, ValueNode[] args) {
@@ -96,8 +98,11 @@ public class CInterfaceEnumTool {
         JavaType originalReturnType = method.getSignature().getReturnType(null);
 
         assert args.length == 1;
-        InvokeNode invoke = invokeEnumValue(p, CallTargetFactory.from(p), p.getFrameStateBuilder(), p.bci(), enumInfo, valueMethod, args[0]);
+        MethodCallTargetNode callTarget = invokeEnumValue(p, CallTargetFactory.from(p), p.bci(), enumInfo, valueMethod, args[0]);
+        JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
+        p.handleReplacedInvoke(callTarget, pushKind);
 
+        ValueNode invoke = p.getFrameStateBuilder().pop(pushKind);
         ValueNode adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(p.getGraph(), invoke, invoke.stamp(NodeView.DEFAULT).getStackKind(), originalReturnType.getJavaKind(), false);
         Stamp originalStamp = p.getInvokeReturnStamp(null).getTrustedStamp();
         adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(p.getGraph(), adapted, originalReturnType.getJavaKind(), originalStamp.getStackKind(), false);
@@ -105,29 +110,21 @@ public class CInterfaceEnumTool {
         return true;
     }
 
-    private InvokeNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, FrameStateBuilder frameState,
-                    int bci, EnumInfo enumInfo, ResolvedJavaMethod valueMethod, ValueNode arg) {
-
+    private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, ResolvedJavaMethod valueMethod, ValueNode arg) {
         ResolvedJavaType returnType = (ResolvedJavaType) valueMethod.getSignature().getReturnType(null);
         ValueNode[] args = new ValueNode[2];
         args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
         args[1] = arg;
 
         StampPair returnStamp = StampFactory.forDeclaredType(null, returnType, false);
-        MethodCallTargetNode callTargetNode = b.append(callTargetFactory.createMethodCallTarget(InvokeKind.Virtual, valueMethod, args, returnStamp, bci));
-
-        Stamp invokeStamp = StampFactory.forKind(returnType.getJavaKind());
-        InvokeNode invoke = b.append(new InvokeNode(callTargetNode, bci, invokeStamp));
-
-        frameState.push(returnType.getJavaKind(), invoke);
-        FrameState stateWithInvoke = frameState.create(bci, invoke);
-        frameState.pop(returnType.getJavaKind());
-        invoke.setStateAfter(stateWithInvoke);
-        return invoke;
+        return b.append(callTargetFactory.createMethodCallTarget(InvokeKind.Virtual, valueMethod, args, returnStamp, bci));
     }
 
     public ValueNode createEnumLookupInvoke(HostedGraphKit kit, ResolvedJavaType enumType, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
-        InvokeNode invoke = invokeEnumLookup(kit, CallTargetFactory.from(kit), kit.getFrameState(), kit.bci(), enumInfo, parameterKind, arg);
+        int invokeBci = kit.bci();
+        int exceptionEdgeBci = kit.bci();
+        MethodCallTargetNode callTarget = invokeEnumLookup(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, parameterKind, arg);
+        InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
         ObjectStamp resultStamp = StampFactory.object(TypeReference.create(null, enumType), false);
         return kit.unique(new PiNode(invoke, resultStamp));
     }
@@ -137,18 +134,23 @@ public class CInterfaceEnumTool {
         assert args.length == 1;
         JavaKind methodParameterKind = method.getSignature().getParameterType(0, null).getJavaKind();
 
-        InvokeNode invokeNode = invokeEnumLookup(p, CallTargetFactory.from(p), p.getFrameStateBuilder(), p.bci(), enumInfo, methodParameterKind, args[0]);
+        MethodCallTargetNode callTarget = invokeEnumLookup(p, CallTargetFactory.from(p), p.bci(), enumInfo, methodParameterKind, args[0]);
+        JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
+        p.handleReplacedInvoke(callTarget, pushKind);
 
         Stamp returnStamp = p.getInvokeReturnStamp(null).getTrustedStamp();
+        ValueNode invokeNode = p.getFrameStateBuilder().pop(pushKind);
+
+        assert invokeNode instanceof InvokeNode || invokeNode instanceof InvokeWithExceptionNode;
         assert returnStamp.getStackKind() == JavaKind.Object && invokeNode.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object;
         assert StampTool.typeOrNull(invokeNode.stamp(NodeView.DEFAULT)).isAssignableFrom(StampTool.typeOrNull(returnStamp));
 
         ValueNode adapted = p.getGraph().unique(new PiNode(invokeNode, returnStamp));
-        p.push(CInterfaceInvocationPlugin.pushKind(method), adapted);
+        p.push(pushKind, adapted);
         return true;
     }
 
-    private InvokeNode invokeEnumLookup(GraphBuilderTool b, CallTargetFactory callTargetFactory, FrameStateBuilder frameState, int bci, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
+    private MethodCallTargetNode invokeEnumLookup(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
         ValueNode[] args = new ValueNode[2];
         args[0] = ConstantNode.forConstant(snippetReflection.forObject(enumInfo.getRuntimeData()), b.getMetaAccess(), b.getGraph());
         assert !Modifier.isStatic(convertCToJavaMethod.getModifiers()) && convertCToJavaMethod.getSignature().getParameterCount(false) == 1;
@@ -157,16 +159,6 @@ public class CInterfaceEnumTool {
 
         ResolvedJavaType convertReturnType = (ResolvedJavaType) convertCToJavaMethod.getSignature().getReturnType(null);
         StampPair returnStamp = StampFactory.forDeclaredType(null, convertReturnType, false);
-        MethodCallTargetNode callTargetNode = b.append(
-                        callTargetFactory.createMethodCallTarget(InvokeKind.Virtual, convertCToJavaMethod, args, returnStamp, bci));
-
-        Stamp invokeStamp = StampFactory.object(TypeReference.createWithoutAssumptions(convertReturnType));
-        InvokeNode invoke = b.append(new InvokeNode(callTargetNode, bci, invokeStamp));
-
-        frameState.push(convertReturnType.getJavaKind(), invoke);
-        FrameState stateWithInvoke = frameState.create(bci, invoke);
-        frameState.pop(convertReturnType.getJavaKind());
-        invoke.setStateAfter(stateWithInvoke);
-        return invoke;
+        return b.append(callTargetFactory.createMethodCallTarget(InvokeKind.Virtual, convertCToJavaMethod, args, returnStamp, bci));
     }
 }

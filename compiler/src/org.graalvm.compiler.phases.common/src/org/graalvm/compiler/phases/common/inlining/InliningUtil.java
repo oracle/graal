@@ -341,7 +341,13 @@ public class InliningUtil extends ValueMergeUtil {
      */
     @SuppressWarnings("try")
     public static UnmodifiableEconomicMap<Node, Node> inline(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod) {
-        return inline(invoke, inlineGraph, receiverNullCheck, inlineeMethod, "reason not specified", "phase not specified");
+        try {
+            return inline(invoke, inlineGraph, receiverNullCheck, inlineeMethod, "reason not specified", "phase not specified");
+        } catch (GraalError ex) {
+            ex.addContext("inlining into", invoke.asNode().graph().method());
+            ex.addContext("inlinee", inlineGraph.method());
+            throw ex;
+        }
     }
 
     /**
