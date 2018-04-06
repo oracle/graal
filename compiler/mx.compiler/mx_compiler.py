@@ -134,6 +134,11 @@ def add_jvmci_classpath_entry(entry):
     """
     _jvmci_classpath.append(entry)
 
+if jdk.javaCompliance != '9' and jdk.javaCompliance != '10':
+    # The jdk.internal.vm.compiler.management module is
+    # not available in 9 nor upgradeable in 10
+    add_jvmci_classpath_entry(JVMCIClasspathEntry('GRAAL_MANAGEMENT'))
+
 _bootclasspath_appends = []
 
 def add_bootclasspath_append(dep):
@@ -866,26 +871,37 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 class GraalArchiveParticipant:
+    
+    providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
     def __init__(self, dist, isTest=False):
         self.dist = dist
         self.isTest = isTest
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
+        self.versionedServices = {}
         self.arc = arc
 
     def __add__(self, arcname, contents):
-        if arcname.startswith('META-INF/providers/'):
+        m = GraalArchiveParticipant.providersRE.match(arcname)
+        if m:
             if self.isTest:
                 # The test distributions must not have their @ServiceProvider
                 # generated providers converted to real services otherwise
                 # bad things can happen such as InvocationPlugins being registered twice.
                 pass
             else:
-                provider = arcname[len('META-INF/providers/'):]
+                provider = m.group(2)
                 for service in contents.strip().split(os.linesep):
                     assert service
-                    self.services.setdefault(service, []).append(provider)
+                    version = m.group(1)
+                    if version is None:
+                        # Non-versioned service
+                        self.services.setdefault(service, []).append(provider)
+                    else:
+                        # Versioned service
+                        services = self.versionedServices.setdefault(version, {})
+                        services.setdefault(service, []).append(provider)
             return True
         elif arcname.endswith('_OptionDescriptors.class'):
             if self.isTest:
@@ -902,7 +918,11 @@ class GraalArchiveParticipant:
         return False
 
     def __closing__(self):
-        pass
+        for version, services in self.versionedServices.iteritems():
+            for service, providers in services.iteritems():
+                arcname = 'META-INF/versions/{}/META-INF/services/{}'.format(version, service)
+                # Convert providers to a set before printing to remove duplicates
+                self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)) + '\n')
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')

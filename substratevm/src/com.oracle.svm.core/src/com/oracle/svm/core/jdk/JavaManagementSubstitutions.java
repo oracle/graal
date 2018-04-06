@@ -22,7 +22,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.RuntimeMXBean;
@@ -36,10 +35,11 @@ import java.util.Map;
 
 import javax.management.ObjectName;
 
-import org.graalvm.compiler.debug.PathUtilities;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -122,7 +122,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         try {
             id = (Integer) Compiler.command(new Object[]{"com.oracle.svm.core.posix.PosixUtils.getpid()int"});
         } catch (Throwable t) {
-            id = PathUtilities.getGlobalTimeStamp();
+            id = GraalServices.getGlobalTimeStamp();
         }
         try {
             hostName = InetAddress.getLocalHost().getHostName();

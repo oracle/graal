@@ -37,7 +37,7 @@ import java.lang.annotation.Target;
  * operation in a negated form. As a consequence it cannot declare any other guards. The expected
  * signature of the method must match to the signature of a {@link Specialization} with the
  * additional limitation that only generically executable argument types are allowed. A generically
- * executable argument is a an argument hat can be executed from the child {@link Node} using an
+ * executable argument is an argument that can be executed from the child {@link Node} using an
  * execute method without {@link UnsupportedOperationException}. In many cases the generically
  * executable type is {@link Object}. An operation is limited to just one {@link Fallback}
  * specialization which is always ordered at the end of the specialization chain.

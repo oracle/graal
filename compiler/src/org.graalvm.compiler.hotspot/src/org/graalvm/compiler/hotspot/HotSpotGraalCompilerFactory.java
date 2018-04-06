@@ -26,8 +26,6 @@ import static jdk.vm.ci.common.InitTimer.timer;
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 
 import java.io.PrintStream;
-import java.util.Collections;
-import java.util.Map;
 
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.options.Option;
@@ -196,12 +194,5 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
             }
         }
         return level;
-    }
-
-    public Map<String, Object> mbeans() {
-        HotSpotGraalCompiler compiler = createCompiler(HotSpotJVMCIRuntime.runtime());
-        String name = "org.graalvm.compiler.hotspot:type=Options";
-        Object bean = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMBean();
-        return Collections.singletonMap(name, bean);
     }
 }

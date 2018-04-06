@@ -33,8 +33,10 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
@@ -45,6 +47,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
@@ -54,19 +57,31 @@ import org.graalvm.compiler.hotspot.CompilerConfigurationFactory.BackendMap;
 import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.options.EnumOptionKey;
+import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCIBackend;
 
 //JaCoCo Exclude
@@ -96,10 +111,18 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private final GraalHotSpotVMConfig config;
 
-    private final OptionValues options;
+    /**
+     * The options can be {@linkplain #setOptionValues(String[], Object[]) updated} by external
+     * interfaces such as JMX. This comes with the risk that inconsistencies can arise as an
+     * {@link OptionValues} object can be cached by various parts of Graal instead of always
+     * obtaining them from this object. However, concurrent updates are never lost.
+     */
+    private AtomicReference<OptionValues> optionsRef = new AtomicReference<>();
+
+    private final HotSpotGraalCompiler compiler;
+
     private final DiagnosticsOutputDirectory outputDirectory;
     private final Map<ExceptionAction, Integer> compilationProblemsPerAction;
-    private final HotSpotGraalMBean mBean;
 
     /**
      * @param compilerConfigurationFactory factory for the compiler configuration
@@ -112,10 +135,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         // Only set HotSpotPrintInlining if it still has its default value (false).
         if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && config.printInlining) {
-            options = new OptionValues(initialOptions, HotSpotPrintInlining, true);
+            optionsRef.set(new OptionValues(initialOptions, HotSpotPrintInlining, true));
         } else {
-            options = initialOptions;
+            optionsRef.set(initialOptions);
         }
+        OptionValues options = optionsRef.get();
 
         if (config.useCMSGC) {
             // Graal doesn't work with the CMS collector (e.g. GR-6777)
@@ -128,8 +152,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
 
-        HotSpotGraalCompiler compiler = new HotSpotGraalCompiler(jvmciRuntime, this, initialOptions);
-        this.mBean = createHotSpotGraalMBean(compiler);
+        compiler = new HotSpotGraalCompiler(jvmciRuntime, this, options);
+        management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
+        if (management != null) {
+            management.initialize(this);
+        }
 
         BackendMap backendMap = compilerConfigurationFactory.createBackendMap();
 
@@ -178,14 +205,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         bootstrapJVMCI = config.getFlag("BootstrapJVMCI", Boolean.class);
     }
 
-    private static HotSpotGraalMBean createHotSpotGraalMBean(HotSpotGraalCompiler compiler) {
-        try {
-            return HotSpotGraalMBean.create(compiler);
-        } catch (LinkageError ex) {
-            return null;
-        }
-    }
-
     private HotSpotBackend registerBackend(HotSpotBackend backend) {
         Class<? extends Architecture> arch = backend.getTarget().arch.getClass();
         HotSpotBackend oldValue = backends.put(arch, backend);
@@ -203,20 +222,60 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return config;
     }
 
+    /**
+     * Polling the management interface to see if any JMX clients are connected can be expensive
+     * (current implementation calls a synchronized method) so only do it at most once a second
+     * second.
+     */
+    private static final int MANAGEMENT_POLL_INTERVAL_MS = 1000;
+
+    /**
+     * Time management was last polled or {@link Long#MIN_VALUE} if the last poll detected that JMX
+     * is activated.
+     */
+    private long lastManagementPollTime;
+
     @Override
     public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugHandlersFactory> factories) {
+        if (management != null && pollManagement()) {
+            if (compilable instanceof HotSpotResolvedJavaMethod) {
+                HotSpotResolvedObjectType type = ((HotSpotResolvedJavaMethod) compilable).getDeclaringClass();
+                if (type instanceof HotSpotResolvedJavaType) {
+                    Class<?> clazz = ((HotSpotResolvedJavaType) type).mirror();
+                    try {
+                        ClassLoader cl = clazz.getClassLoader();
+                        if (cl != null) {
+                            loaders.add(cl);
+                        }
+                    } catch (SecurityException e) {
+                        // This loader can obviously not be used for resolving class names
+                    }
+                }
+            }
+        }
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
         return DebugContext.create(compilationOptions, description, metricValues, DEFAULT_LOG_STREAM, factories);
     }
 
-    @Override
-    public OptionValues getOptions() {
-        return mBean == null ? options : mBean.optionsFor(options, null);
+    private boolean pollManagement() {
+        if (lastManagementPollTime == Long.MIN_VALUE) {
+            return true;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastManagementPollTime > MANAGEMENT_POLL_INTERVAL_MS) {
+            Object objectName = management.poll();
+            if (objectName != null) {
+                lastManagementPollTime = Long.MIN_VALUE;
+                return true;
+            }
+            lastManagementPollTime = now;
+        }
+        return false;
     }
 
     @Override
-    public OptionValues getOptions(ResolvedJavaMethod forMethod) {
-        return mBean == null ? options : mBean.optionsFor(options, forMethod);
+    public OptionValues getOptions() {
+        return optionsRef.get();
     }
 
     @Override
@@ -240,7 +299,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         if (clazz == RuntimeProvider.class) {
             return (T) this;
         } else if (clazz == OptionValues.class) {
-            return (T) options;
+            return (T) optionsRef.get();
         } else if (clazz == StackIntrospection.class) {
             return (T) this;
         } else if (clazz == SnippetReflectionProvider.class) {
@@ -271,14 +330,14 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
      * @param phase the execution phase being entered
      */
     void phaseTransition(String phase) {
-        if (Options.UseCompilationStatistics.getValue(options)) {
+        if (Options.UseCompilationStatistics.getValue(optionsRef.get())) {
             CompilationStatistics.clear(phase);
         }
     }
 
     void shutdown() {
         shutdown = true;
-        metricValues.print(options);
+        metricValues.print(optionsRef.get());
 
         phaseTransition("final");
 
@@ -287,7 +346,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 TTY.out().out().println(group);
             }
         }
-        BenchmarkCounters.shutdown(runtime(), options, runtimeStartTime);
+        BenchmarkCounters.shutdown(runtime(), optionsRef.get(), runtimeStartTime);
 
         outputDirectory.close();
     }
@@ -323,7 +382,167 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return compilationProblemsPerAction;
     }
 
-    Object getMBean() {
-        return mBean;
+    // ------- Management interface ---------
+
+    private final HotSpotGraalManagementRegistration management;
+
+    /**
+     * Set of weak references to {@link ClassLoader}s available for resolving class names present in
+     * management {@linkplain #invokeManagementAction(String, Object[]) action} arguments.
+     */
+    private final WeakClassLoaderSet loaders = new WeakClassLoaderSet(ClassLoader.getSystemClassLoader());
+
+    /**
+     * Sets or updates this object's {@linkplain #getOptions() options} from {@code names} and
+     * {@code values}. Enum option values can be passed as the {@link Enum#name()} of the value. A
+     * value of {@code "null"} will be converted to {@code null} for other options.
+     *
+     * @return an array of Strings where the element at index i is {@code names[i]} if setting the
+     *         denoted option succeeded otherwise an error message describing the failure to set the
+     *         option
+     */
+    public String[] setOptionValues(String[] names, Object[] values) {
+        EconomicMap<String, OptionDescriptor> optionDescriptors = getOptionDescriptors();
+        EconomicMap<OptionKey<?>, Object> newValues = EconomicMap.create(names.length);
+        String[] result = new String[names.length];
+        for (int i = 0; i < names.length; i++) {
+            String name = names[i];
+            OptionDescriptor option = optionDescriptors.get(name);
+            if (option != null) {
+                Object value = values[i];
+                Class<?> optionValueType = option.getOptionValueType();
+                OptionKey<?> optionKey = option.getOptionKey();
+                if (optionKey instanceof EnumOptionKey && value instanceof String) {
+                    EnumOptionKey<?> enumOptionKey = (EnumOptionKey<?>) optionKey;
+                    try {
+                        value = enumOptionKey.valueOf((String) value);
+                    } catch (IllegalArgumentException e) {
+                        result[i] = e.getMessage();
+                        continue;
+                    }
+                }
+                if (value == null || optionValueType.isAssignableFrom(value.getClass())) {
+                    newValues.put(optionKey, value);
+                    result[i] = name;
+                } else {
+                    result[i] = "Invalid type of option '" + name + "': required " + optionValueType.getSimpleName() + ", got " + (value == null ? "null" : value.getClass().getName());
+                }
+            } else {
+                result[i] = "Unknown option: " + name;
+            }
+        }
+
+        OptionValues currentOptions;
+        OptionValues newOptions;
+        do {
+            currentOptions = optionsRef.get();
+            newOptions = new OptionValues(currentOptions, newValues);
+        } while (!optionsRef.compareAndSet(currentOptions, newOptions));
+
+        return result;
+
+    }
+
+    /**
+     * Gets the values for the options corresponding to {@code names}. Enum option values are
+     * returned as strings. All other options return {@code "null"} if they have a {@code null}
+     * value.
+     *
+     * @param names a list of option names
+     * @return the values for each named option. If an element in {@code names} does not denote an
+     *         existing option, the corresponding element in the returned array will be the array
+     *         itself (i.e. the array is the sentinel meaning no option exists).
+     */
+    public Object[] getOptionValues(String... names) {
+        Object[] values = new Object[names.length];
+        EconomicMap<String, OptionDescriptor> optionDescriptors = getOptionDescriptors();
+        for (int i = 0; i < names.length; i++) {
+            OptionDescriptor option = optionDescriptors.get(names[i]);
+            if (option != null) {
+                OptionKey<?> optionKey = option.getOptionKey();
+                Object value = optionKey.getValue(getOptions());
+                if (optionKey instanceof EnumOptionKey) {
+                    value = String.valueOf(value);
+                } else if (value == null) {
+                    value = "null";
+                }
+                values[i] = value;
+            } else {
+                // Self reference to `values` denotes the option does not exist
+                values[i] = values;
+            }
+        }
+        return values;
+    }
+
+    private static EconomicMap<String, OptionDescriptor> getOptionDescriptors() {
+        EconomicMap<String, OptionDescriptor> result = EconomicMap.create();
+        for (OptionDescriptors set : OptionsParser.getOptionsLoader()) {
+            for (OptionDescriptor option : set) {
+                result.put(option.getName(), option);
+            }
+        }
+        return result;
+    }
+
+    private void dumpMethod(String className, String methodName, String filter, String host, int port) throws Exception {
+        EconomicSet<ClassNotFoundException> failures = EconomicSet.create();
+        EconomicSet<Class<?>> found = loaders.resolve(className, failures);
+        if (found.isEmpty()) {
+            ClassNotFoundException cause = failures.isEmpty() ? new ClassNotFoundException(className) : failures.iterator().next();
+            throw new Exception("Cannot find class " + className + " to schedule recompilation", cause);
+        }
+        for (Class<?> clazz : found) {
+            ResolvedJavaType type = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(clazz);
+            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+                if (methodName.equals(method.getName()) && method instanceof HotSpotResolvedJavaMethod) {
+                    HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
+                    dumpMethod(hotSpotMethod, filter, host, port);
+                }
+            }
+        }
+    }
+
+    private void dumpMethod(HotSpotResolvedJavaMethod hotSpotMethod, String filter, String host, int port) throws Exception {
+        EconomicMap<OptionKey<?>, Object> extra = EconomicMap.create();
+        extra.put(DebugOptions.Dump, filter);
+        extra.put(DebugOptions.PrintGraphHost, host);
+        extra.put(DebugOptions.PrintBinaryGraphPort, port);
+        OptionValues compileOptions = new OptionValues(getOptions(), extra);
+        compiler.compileMethod(new HotSpotCompilationRequest(hotSpotMethod, -1, 0L), false, compileOptions);
+    }
+
+    public Object invokeManagementAction(String actionName, Object[] params) throws Exception {
+        if ("dumpMethod".equals(actionName)) {
+            if (params.length != 0 && params[0] instanceof HotSpotResolvedJavaMethod) {
+                HotSpotResolvedJavaMethod method = param(params, 0, "method", HotSpotResolvedJavaMethod.class, null);
+                String filter = param(params, 1, "filter", String.class, ":3");
+                String host = param(params, 2, "host", String.class, "localhost");
+                Number port = param(params, 3, "port", Number.class, 4445);
+                dumpMethod(method, filter, host, port.intValue());
+            } else {
+                String className = param(params, 0, "className", String.class, null);
+                String methodName = param(params, 1, "methodName", String.class, null);
+                String filter = param(params, 2, "filter", String.class, ":3");
+                String host = param(params, 3, "host", String.class, "localhost");
+                Number port = param(params, 4, "port", Number.class, 4445);
+                dumpMethod(className, methodName, filter, host, port.intValue());
+            }
+        }
+        return null;
+    }
+
+    private static <T> T param(Object[] arr, int index, String name, Class<T> type, T defaultValue) {
+        Object value = arr.length > index ? arr[index] : null;
+        if (value == null || (value instanceof String && ((String) value).isEmpty())) {
+            if (defaultValue == null) {
+                throw new IllegalArgumentException(name + " must be specified");
+            }
+            value = defaultValue;
+        }
+        if (type.isInstance(value)) {
+            return type.cast(value);
+        }
+        throw new IllegalArgumentException("Expecting " + type.getName() + " for " + name + " but was " + value);
     }
 }

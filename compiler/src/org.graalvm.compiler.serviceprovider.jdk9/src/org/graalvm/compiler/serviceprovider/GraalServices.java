@@ -22,11 +22,14 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
+import static java.lang.Thread.currentThread;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
@@ -178,4 +181,131 @@ public final class GraalServices {
         return false;
     }
 
+    /**
+     * Gets a unique identifier for this execution such as a process ID or a
+     * {@linkplain #getGlobalTimeStamp() fixed timestamp}.
+     */
+    public static String getExecutionID() {
+        return Long.toString(ProcessHandle.current().pid());
+    }
+
+    private static final AtomicLong globalTimeStamp = new AtomicLong();
+
+    /**
+     * Gets a time stamp for the current process. This method will always return the same value for
+     * the current VM execution.
+     */
+    public static long getGlobalTimeStamp() {
+        if (globalTimeStamp.get() == 0) {
+            globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
+        }
+        return globalTimeStamp.get();
+    }
+
+    /**
+     * Access to thread specific information made available via Java Management Extensions (JMX).
+     * Using this abstraction enables avoiding a dependency to the {@code java.management} and
+     * {@code jdk.management} modules on JDK 9 and later.
+     */
+    public abstract static class JMXService {
+        protected abstract long getThreadAllocatedBytes(long id);
+
+        protected abstract long getCurrentThreadCpuTime();
+
+        protected abstract boolean isThreadAllocatedMemorySupported();
+
+        protected abstract boolean isCurrentThreadCpuTimeSupported();
+    }
+
+    static class LazyJMX {
+        // In this implementation for JDK 9 and later, we cannot reference
+        // JMX classes directly since that would introduce a dependency from Graal
+        // to the {@code java.management} and {@code jdk.management} modules
+        // and we want Graal to be able to run without these modules being required.
+        static final JMXService jmx = loadSingle(JMXService.class, false);
+    }
+
+    /**
+     * Returns an approximation of the total amount of memory, in bytes, allocated in heap memory
+     * for the thread of the specified ID. The returned value is an approximation because some Java
+     * virtual machine implementations may use object allocation mechanisms that result in a delay
+     * between the time an object is allocated and the time its size is recorded.
+     * <p>
+     * If the thread of the specified ID is not alive or does not exist, this method returns
+     * {@code -1}. If thread memory allocation measurement is disabled, this method returns
+     * {@code -1}. A thread is alive if it has been started and has not yet died.
+     * <p>
+     * If thread memory allocation measurement is enabled after the thread has started, the Java
+     * virtual machine implementation may choose any time up to and including the time that the
+     * capability is enabled as the point where thread memory allocation measurement starts.
+     *
+     * @param id the thread ID of a thread
+     * @return an approximation of the total memory allocated, in bytes, in heap memory for a thread
+     *         of the specified ID if the thread of the specified ID exists, the thread is alive,
+     *         and thread memory allocation measurement is enabled; {@code -1} otherwise.
+     *
+     * @throws IllegalArgumentException if {@code id} {@code <=} {@code 0}.
+     * @throws UnsupportedOperationException if the Java virtual machine implementation does not
+     *             {@linkplain #isThreadAllocatedMemorySupported() support} thread memory allocation
+     *             measurement.
+     */
+    public static long getThreadAllocatedBytes(long id) {
+        JMXService jmx = LazyJMX.jmx;
+        if (jmx == null) {
+            throw new UnsupportedOperationException();
+        }
+        return jmx.getThreadAllocatedBytes(id);
+    }
+
+    /**
+     * Convenience method for calling {@link #getThreadAllocatedBytes(long)} with the id of the
+     * current thread.
+     */
+    public static long getCurrentThreadAllocatedBytes() {
+        return getThreadAllocatedBytes(currentThread().getId());
+    }
+
+    /**
+     * Returns the total CPU time for the current thread in nanoseconds. The returned value is of
+     * nanoseconds precision but not necessarily nanoseconds accuracy. If the implementation
+     * distinguishes between user mode time and system mode time, the returned CPU time is the
+     * amount of time that the current thread has executed in user mode or system mode.
+     *
+     * @return the total CPU time for the current thread if CPU time measurement is enabled;
+     *         {@code -1} otherwise.
+     *
+     * @throws UnsupportedOperationException if the Java virtual machine does not
+     *             {@linkplain #isCurrentThreadCpuTimeSupported() support} CPU time measurement for
+     *             the current thread
+     */
+    public static long getCurrentThreadCpuTime() {
+        JMXService jmx = LazyJMX.jmx;
+        if (jmx == null) {
+            throw new UnsupportedOperationException();
+        }
+        return jmx.getCurrentThreadCpuTime();
+    }
+
+    /**
+     * Determines if the Java virtual machine implementation supports thread memory allocation
+     * measurement.
+     */
+    public static boolean isThreadAllocatedMemorySupported() {
+        JMXService jmx = LazyJMX.jmx;
+        if (jmx == null) {
+            return false;
+        }
+        return jmx.isThreadAllocatedMemorySupported();
+    }
+
+    /**
+     * Determines if the Java virtual machine supports CPU time measurement for the current thread.
+     */
+    public static boolean isCurrentThreadCpuTimeSupported() {
+        JMXService jmx = LazyJMX.jmx;
+        if (jmx == null) {
+            return false;
+        }
+        return jmx.isCurrentThreadCpuTimeSupported();
+    }
 }

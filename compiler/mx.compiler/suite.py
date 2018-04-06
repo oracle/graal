@@ -139,6 +139,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "uses" : ["org.graalvm.compiler.serviceprovider.GraalServices.JMXService"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "9",
       "multiReleaseJarVersion" : "9",
@@ -329,14 +330,13 @@ suite = {
         "org.graalvm.compiler.printer",
         "org.graalvm.compiler.runtime",
       ],
+      "uses" : [
+        "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
+      ],
       "imports" : [
         # All other internal packages are exported dynamically -
         # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
         "jdk.internal.module",
-      ],
-      "runtimeDeps" : [
-        "java.management",
-        "jdk.management"
       ],
 
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -360,6 +360,41 @@ suite = {
       "multiReleaseJarVersion" : "9",
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "9",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.management" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot",
+      ],
+
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+      ],
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,HotSpot",
+    },
+
+    "org.graalvm.compiler.hotspot.management.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot",
+        "org.graalvm.compiler.hotspot.management",
+      ],
+      "imports" : [
+        "java.management",
+      ],
+
+      "multiReleaseJarVersion" : "11",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "annotationProcessors" : [
+        "GRAAL_SERVICEPROVIDER_PROCESSOR",
+      ],
+      "javaCompliance" : "11",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -1673,6 +1708,24 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK",
         "truffle:TRUFFLE_API",
+      ],
+      "exclude" : [
+        "JVMCI_SERVICES",
+        "JVMCI_API",
+        "JVMCI_HOTSPOT",
+      ],
+    },
+
+    "GRAAL_MANAGEMENT" : {
+      # This distribution defines a module.
+      "moduleName" : "jdk.internal.vm.compiler.management",
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.management",
+        "org.graalvm.compiler.hotspot.management.jdk11",
+      ],
+      "distDependencies" : [
+        "GRAAL",
       ],
       "exclude" : [
         "JVMCI_SERVICES",
