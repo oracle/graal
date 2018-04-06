@@ -3,7 +3,8 @@
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
 ## Version 1.0
-Added Context.Builder#allowHostClassLoading to allow loading of new classes by the guest language.
+* Added Context.Builder#allowHostClassLoading to allow loading of new classes by the guest language.
+* Added `Value.getSourceLocation()` to find a function `SourceSection`.
 
 ## Version 0.33
 * Expose Runtime name as Engine#getImplementationName();

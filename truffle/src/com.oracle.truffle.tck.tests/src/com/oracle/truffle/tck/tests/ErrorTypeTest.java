@@ -160,7 +160,7 @@ public class ErrorTypeTest {
                             TestRun test = it.next();
                             boolean remove = false;
                             for (Snippet overload : overloads) {
-                                if (areParametersAssignable(overload.getParameterTypes(), test.gatActualParameterTypes())) {
+                                if (areParametersAssignable(overload.getParameterTypes(), test.getActualParameterTypes())) {
                                     remove = true;
                                     break;
                                 }
@@ -230,16 +230,24 @@ public class ErrorTypeTest {
             } catch (PolyglotException pe) {
                 try {
                     TestUtil.validateResult(testRun, null, pe);
-                } catch (PolyglotException e) {
+                } catch (PolyglotException | AssertionError e) {
                     if (pe.equals(e)) {
                         passed = true;
                     } else {
-                        throw e;
+                        throw new AssertionError(
+                                        TestUtil.formatErrorMessage(
+                                                        "Unexpected Exception: " + e.getMessage() + ", expected: " + pe.getMessage(),
+                                                        testRun,
+                                                        context),
+                                        e);
                     }
                 }
             }
             if (!passed) {
-                throw new AssertionError("Expected exception.");
+                throw new AssertionError(TestUtil.formatErrorMessage(
+                                "Expected PolyglotException, but executed successfully.",
+                                testRun,
+                                context));
             }
         } finally {
             TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, passed));

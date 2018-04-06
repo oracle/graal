@@ -28,6 +28,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.tck.InlineSnippet;
 
 public interface InlineVerifier {
+    String ID = "TckVerifierInstrument";
 
     /**
      * Sets the {@link InlineSnippet} to parse.

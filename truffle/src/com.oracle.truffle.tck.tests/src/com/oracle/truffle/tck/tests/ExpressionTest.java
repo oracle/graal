@@ -97,6 +97,13 @@ public class ExpressionTest {
                 TestUtil.validateResult(testRun, null, pe);
                 success = true;
             }
+        } catch (PolyglotException | AssertionError e) {
+            throw new AssertionError(
+                            TestUtil.formatErrorMessage(
+                                            "Unexpected Exception: " + e.getMessage(),
+                                            testRun,
+                                            context),
+                            e);
         } finally {
             TEST_RESULT_MATCHER.accept(new AbstractMap.SimpleImmutableEntry<>(testRun, success));
         }

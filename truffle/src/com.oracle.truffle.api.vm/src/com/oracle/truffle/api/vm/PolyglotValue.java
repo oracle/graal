@@ -59,6 +59,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToHostValueNode;
+import org.graalvm.polyglot.SourceSection;
 
 @SuppressWarnings("deprecation")
 abstract class PolyglotValue extends AbstractValueImpl {
@@ -86,7 +87,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
             if (value == null) {
                 s = "null";
             } else {
-                s = LANGUAGE.toStringIfVisible(languageContext.env, value, false);
+                PolyglotLanguageContext displayLanguageContext = languageContext;
+                final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, value);
+                if (resolvedLanguage != null) {
+                    displayLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+                }
+                s = LANGUAGE.toStringIfVisible(displayLanguageContext.env, value, false);
             }
             args[i] = s;
         }
@@ -116,7 +122,12 @@ abstract class PolyglotValue extends AbstractValueImpl {
         } else if (target instanceof PolyglotBindings) {
             return "Polyglot Bindings";
         } else {
-            return LANGUAGE.findMetaObject(languageContext.env, target);
+            final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, target);
+            if (resolvedLanguage == null) {
+                return null;
+            }
+            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+            return LANGUAGE.findMetaObject(resolvedLanguageContext.env, target);
         }
     }
 
@@ -154,7 +165,7 @@ abstract class PolyglotValue extends AbstractValueImpl {
         PolyglotLanguageContext displayContext = languageContext;
         if (!(receiver instanceof Number || receiver instanceof String || receiver instanceof Character || receiver instanceof Boolean)) {
             try {
-                PolyglotLanguage resolvedDisplayLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, receiver);
+                PolyglotLanguage resolvedDisplayLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
                 if (resolvedDisplayLanguage != null) {
                     displayLanguage = resolvedDisplayLanguage;
                 }
@@ -320,10 +331,33 @@ abstract class PolyglotValue extends AbstractValueImpl {
             } else if (receiver instanceof PolyglotBindings) {
                 return "Polyglot Bindings";
             } else {
-                return LANGUAGE.toStringIfVisible(languageContext.env, receiver, false);
+                PolyglotLanguageContext displayLanguageContext = languageContext;
+                final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
+                if (resolvedLanguage != null) {
+                    displayLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+                }
+                return LANGUAGE.toStringIfVisible(displayLanguageContext.env, receiver, false);
             }
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
+        } finally {
+            languageContext.leave(prev);
+        }
+    }
+
+    @Override
+    public SourceSection getSourceLocation(Object receiver) {
+        Object prev = languageContext.enter();
+        try {
+            final PolyglotLanguage resolvedLanguage = PolyglotImpl.EngineImpl.findObjectLanguage(languageContext.context, languageContext, receiver);
+            if (resolvedLanguage == null) {
+                return null;
+            }
+            final PolyglotLanguageContext resolvedLanguageContext = languageContext.context.contexts[resolvedLanguage.index];
+            com.oracle.truffle.api.source.SourceSection result = LANGUAGE.findSourceLocation(resolvedLanguageContext.env, receiver);
+            return result != null ? VMAccessor.engine().createSourceSection(resolvedLanguageContext, null, result) : null;
+        } catch (final Throwable t) {
+            throw PolyglotImpl.wrapGuestException(languageContext, t);
         } finally {
             languageContext.leave(prev);
         }

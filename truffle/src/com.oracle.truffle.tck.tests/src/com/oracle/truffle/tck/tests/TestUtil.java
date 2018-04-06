@@ -39,6 +39,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.ResultVerifier;
 import org.graalvm.polyglot.tck.Snippet;
@@ -161,6 +162,47 @@ final class TestUtil {
                     final List<List<Map.Entry<String, ? extends Snippet>>> applicableParameters,
                     final Collection<? super TestRun> collector) {
         computeAllPermutationsImpl(operator, applicableParameters, collector, 0, new int[applicableParameters.size()]);
+    }
+
+    static String formatErrorMessage(
+                    final String errorMessage,
+                    final TestRun testRun,
+                    final TestContext testContext) {
+        final String language = testRun.getID();
+        final Snippet snippet = testRun.getSnippet();
+        final StringBuilder message = new StringBuilder();
+        message.append(String.format("Running snippet '%s' retrieved from '%s' provider (java class %s) with parameters:\n",
+                        snippet.getId(),
+                        language,
+                        testContext.getInstalledProviders().get(language).getClass().getName()));
+        final List<? extends Entry<String, ? extends Snippet>> actualParameterSnippets = testRun.getActualParameterSnippets();
+        final List<? extends Value> actualParameters = testRun.getActualParameters();
+        for (int i = 0; i < actualParameterSnippets.size(); i++) {
+            final Map.Entry<String, ? extends Snippet> actualParameterSnippet = actualParameterSnippets.get(i);
+            final String paramLanguage = actualParameterSnippet.getKey();
+            final Snippet paramSnippet = actualParameterSnippet.getValue();
+            final Value actualParameter = actualParameters.get(i);
+            message.append(String.format("'%s' from '%s' provider, value: %s (Meta Object: %s)\n",
+                            paramSnippet.getId(),
+                            paramLanguage,
+                            actualParameter,
+                            actualParameter.getMetaObject()));
+        }
+        message.append("failed:\n");
+        message.append(errorMessage);
+        message.append('\n');
+        message.append("Snippet: ").append(getSource(snippet.getExecutableValue())).append('\n');
+        int i = 0;
+        for (Map.Entry<String, ? extends Snippet> langAndparamSnippet : testRun.getActualParameterSnippets()) {
+            final Snippet paramSnippet = langAndparamSnippet.getValue();
+            message.append(String.format("Parameter %d Snippet: ", i++)).append(getSource(paramSnippet.getExecutableValue())).append('\n');
+        }
+        return message.toString();
+    }
+
+    private static CharSequence getSource(final Value value) {
+        final SourceSection section = value.getSourceLocation();
+        return section == null ? null : section.getCharacters();
     }
 
     private static void computeAllPermutationsImpl(

@@ -431,33 +431,44 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return languageContext.env;
         }
 
-        static PolyglotLanguage findObjectLanguage(PolyglotContextImpl context, Object value) {
-            PolyglotLanguageContext[] contexts = context.contexts;
-            for (PolyglotLanguageContext languageContext : contexts) {
-                PolyglotLanguage language = languageContext.language;
-                if (!language.isInitialized()) {
-                    continue;
-                }
-                if (language.cache.singletonLanguage instanceof HostLanguage) {
-                    // The HostLanguage might not have context created even when JavaObjects exist
-                    // Check it separately:
-                    if (((HostLanguage) language.cache.singletonLanguage).isObjectOfLanguage(value)) {
-                        return language;
-                    } else {
-                        continue;
+        static PolyglotLanguage findObjectLanguage(PolyglotContextImpl context, PolyglotLanguageContext currentlanguageContext, Object value) {
+            PolyglotLanguage foundLanguage = null;
+            final PolyglotLanguageContext hostLanguageContext = context.getHostContext();
+            // The HostLanguage might not have context created even when JavaObjects exist
+            // Check it separately:
+            if (currentlanguageContext != null && isPrimitive(value)) {
+                return currentlanguageContext.language;
+            } else if (((HostLanguage) hostLanguageContext.language.cache.singletonLanguage).isObjectOfLanguage(value)) {
+                foundLanguage = hostLanguageContext.language;
+            } else if (currentlanguageContext != null && VMAccessor.LANGUAGE.isObjectOfLanguage(currentlanguageContext.env, value)) {
+                foundLanguage = currentlanguageContext.language;
+            } else {
+                for (PolyglotLanguageContext searchContext : context.contexts) {
+                    if (searchContext != currentlanguageContext) {
+                        final PolyglotLanguage searchLanguage = searchContext.language;
+                        if (searchLanguage.isInitialized()) {
+                            final Env searchEnv = searchContext.env;
+                            if (searchEnv != null && VMAccessor.LANGUAGE.isObjectOfLanguage(searchEnv, value)) {
+                                foundLanguage = searchLanguage;
+                                break;
+                            }
+                        }
                     }
                 }
-                Env env = languageContext.env;
-                if (env != null && LANGUAGE.isObjectOfLanguage(env, value)) {
-                    return language;
-                }
             }
-            return null;
+            return foundLanguage;
+        }
+
+        private static boolean isPrimitive(final Object value) {
+            final Class<?> valueClass = value.getClass();
+            return valueClass == Boolean.class || valueClass == Byte.class || valueClass == Short.class || valueClass == Integer.class || valueClass == Long.class ||
+                            valueClass == Float.class || valueClass == Double.class ||
+                            valueClass == Character.class || valueClass == String.class;
         }
 
         @Override
         public LanguageInfo getObjectLanguage(Object obj, Object vmObject) {
-            PolyglotLanguage language = findObjectLanguage(PolyglotContextImpl.requireContext(), obj);
+            PolyglotLanguage language = findObjectLanguage(PolyglotContextImpl.requireContext(), null, obj);
             if (language != null) {
                 return language.info;
             }
