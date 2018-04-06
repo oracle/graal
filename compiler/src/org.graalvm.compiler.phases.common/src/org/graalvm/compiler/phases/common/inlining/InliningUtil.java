@@ -424,7 +424,7 @@ public class InliningUtil extends ValueMergeUtil {
         try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
             if (scope != null) {
-                graph.getInliningLog().addDecision(invoke, true, reason, phase, duplicates, inlineGraph.getInliningLog());
+                graph.getInliningLog().addDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
             }
         }
 
