@@ -56,6 +56,8 @@ import java.util.function.BiConsumer;
  * {@link #addDecision} to log negative decisions.
  */
 public class InliningLog {
+    private static final String TREE_NODE = "\u251c\u2500\u2500";
+    private static final String LAST_TREE_NODE = "\u2514\u2500\u2500";
 
     public static final class Decision {
         private final boolean positive;
@@ -114,9 +116,9 @@ public class InliningLog {
 
         public String positionString() {
             if (parent == null) {
-                return "<root>";
+                return "compilation of " + target.format("%H.%n(%p)");
             }
-            return MetaUtil.appendLocation(new StringBuilder(100), parent.target, getBci()).toString();
+            return "at " + MetaUtil.appendLocation(new StringBuilder(100), parent.target, getBci()).toString();
         }
 
         public int getBci() {
@@ -361,7 +363,19 @@ public class InliningLog {
         callsite.invoke = newInvoke;
     }
 
-    public String formatAsTree() {
+    /**
+     * Formats the inlining log as a hierarchical tree.
+     *
+     * @param nullIfEmpty specifies whether null should be returned if there are no inlining
+     *            decisions
+     * @return the tree representation of the inlining log
+     */
+    public String formatAsTree(boolean nullIfEmpty) {
+        assert root.decisions.isEmpty();
+        assert !root.children.isEmpty() || leaves.isEmpty();
+        if (nullIfEmpty && root.children.isEmpty()) {
+            return null;
+        }
         StringBuilder builder = new StringBuilder(512);
         formatAsTree(root, "", builder);
         return builder.toString();
@@ -369,12 +383,20 @@ public class InliningLog {
 
     private void formatAsTree(Callsite site, String indent, StringBuilder builder) {
         String position = site.positionString();
-        builder.append(indent).append("at ").append(position).append(": ");
+        builder.append(indent).append(position).append(": ");
         if (site.decisions.isEmpty()) {
+            if (site.parent != null) {
+                builder.append("(no decisions made)");
+            }
+            builder.append(System.lineSeparator());
+        } else if (site.decisions.size() == 1) {
+            builder.append(site.decisions.get(0).toString());
             builder.append(System.lineSeparator());
         } else {
+            builder.append(System.lineSeparator());
             for (Decision decision : site.decisions) {
-                builder.append(decision.toString());
+                String node = (decision == site.decisions.get(site.decisions.size() - 1)) ? LAST_TREE_NODE : TREE_NODE;
+                builder.append(indent + "   " + node).append(decision.toString());
                 builder.append(System.lineSeparator());
             }
         }

@@ -116,6 +116,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
+    static class TraceInliningHeader {
+        static {
+            TTY.println("TraceInlining output format:");
+            TTY.println("  compilation of 'Signature of the compilation root method':");
+            TTY.println("    at 'Signature of the root method' ['Bytecode index']: <'Phase'> 'Child method signature': 'Decision made about this callsite'");
+            TTY.println("      at 'Signature of the child method' ['Bytecode index']: ");
+            TTY.println("         \u251c\u2500\u2500<'Phase 1'> 'Grandchild method signature': 'First decision made about this callsite'");
+            TTY.println("         \u2514\u2500\u2500<'Phase 2'> 'Grandchild method signature': 'Second decision made about this callsite'");
+            TTY.println("      at 'Signature of the child method' ['Bytecode index']: <'Phase'> 'Another grandchild method signature': 'The only decision made about this callsite.'");
+            TTY.println("  etc.");
+        }
+
+        static void init() {
+        }
+    }
+
     /**
      * Constants denoting whether or not {@link Assumption}s can be made while processing a graph.
      */
@@ -480,7 +496,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void logInliningTree() {
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            TTY.println(getInliningLog().formatAsTree());
+            TraceInliningHeader.init();
+            String formattedTree = getInliningLog().formatAsTree(true);
+            if (formattedTree != null) {
+                TTY.println(formattedTree);
+            }
         }
     }
 
