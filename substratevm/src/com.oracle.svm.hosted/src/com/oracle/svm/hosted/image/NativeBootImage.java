@@ -63,9 +63,11 @@ import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CHeader.Header;
+import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -146,8 +148,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.appendln("#define " + imageHeaderGuard);
 
         writer.appendln();
-        if (NativeImageOptions.getCStandard() != CStandards.C89) {
+        if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C89)) {
             writer.appendln("#include <stdbool.h>");
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C11)) {
+            writer.appendln("#include <stdint.h>");
         }
         List<String> dependencies = header.dependsOn().stream()
                         .map(NativeBootImage::instantiateCHeader)
@@ -263,7 +268,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.append("typedef ");
         }
 
-        writer.append(CSourceCodeWriter.findCTypeName(metaAccess, nativeLibs, (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass())));
+        writer.append(CSourceCodeWriter.toCTypeName(m,
+                        (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
+                        false,
+                        false, // GR-9242
+                        metaAccess,
+                        nativeLibs));
         writer.append(" ");
 
         assert !cEntryPointData.getSymbolName().isEmpty();
@@ -278,7 +288,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
             writer.append(sep);
             sep = ", ";
-            writer.append(CSourceCodeWriter.findCTypeName(metaAccess, nativeLibs, (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass())));
+            writer.append(CSourceCodeWriter.toCTypeName(m,
+                            (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
+                            m.getParameters()[i].getDeclaredAnnotation(CConst.class) != null,
+                            m.getParameters()[i].getDeclaredAnnotation(CUnsigned.class) != null,
+                            metaAccess, nativeLibs));
             Parameter param = m.getParameters()[i];
             if (param.isNamePresent()) {
                 writer.append(" ");

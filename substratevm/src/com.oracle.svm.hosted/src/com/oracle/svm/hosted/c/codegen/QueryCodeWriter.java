@@ -23,14 +23,18 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 import static com.oracle.svm.hosted.c.query.QueryResultFormat.DELIMINATOR;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumConstantInfo;
@@ -95,6 +99,13 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         }
 
         writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>"));
+
+        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
+            writer.includeFiles(Collections.singletonList("<stdbool.h>"));
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
+            writer.includeFiles(Collections.singletonList("<stdint.h>"));
+        }
 
         /* Write general macro definitions. */
         writer.appendln();
