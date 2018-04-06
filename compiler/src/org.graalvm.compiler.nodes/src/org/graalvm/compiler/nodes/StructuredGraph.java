@@ -380,7 +380,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         assert trackNodeSourcePosition != null;
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog(rootMethod, options);
+        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options));
         this.callerContext = context;
     }
 

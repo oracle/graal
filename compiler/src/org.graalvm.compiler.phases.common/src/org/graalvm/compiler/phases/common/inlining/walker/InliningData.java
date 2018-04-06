@@ -374,14 +374,16 @@ public class InliningData {
             if (usedTypes.isEmpty()) {
                 // No type left that is worth checking for.
                 InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
-                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "no types remaining after filtering less frequent types (%d types previously)", ptypes.length);
+                invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "no types remaining after filtering less frequent types (%d types previously)",
+                                ptypes.length);
                 return null;
             }
 
             for (ResolvedJavaMethod concrete : concreteMethods) {
                 if (!checkTargetConditions(invoke, concrete)) {
                     InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "it is a polymorphic method call and at least one invoked method cannot be inlined");
-                    invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null, "it is a polymorphic method call and at least one invoked method cannot be inlined");
+                    invoke.asNode().graph().getInliningLog().addDecision(invoke, false, "InliningPhase", null, null,
+                                    "it is a polymorphic method call and at least one invoked method cannot be inlined");
                     return null;
                 }
             }

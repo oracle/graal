@@ -47,9 +47,9 @@ public interface InliningPolicy {
             return reason;
         }
 
-        public Decision withReason(boolean isTracing, String reason, Object... args) {
+        public Decision withReason(boolean isTracing, String newReason, Object... args) {
             if (isTracing) {
-                return new Decision(shouldInline, String.format(reason, args));
+                return new Decision(shouldInline, String.format(newReason, args));
             } else {
                 return this;
             }
