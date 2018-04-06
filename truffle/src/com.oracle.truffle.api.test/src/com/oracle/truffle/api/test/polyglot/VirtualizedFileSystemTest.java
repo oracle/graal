@@ -66,6 +66,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -73,6 +74,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.io.FileSystem;
+import org.junit.Before;
 
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
@@ -162,6 +164,11 @@ public class VirtualizedFileSystemTest {
 
     public VirtualizedFileSystemTest(final Configuration cfg) {
         this.cfg = cfg;
+    }
+
+    @Before
+    public void setUp() {
+        Engine.create().close();
     }
 
     @After
