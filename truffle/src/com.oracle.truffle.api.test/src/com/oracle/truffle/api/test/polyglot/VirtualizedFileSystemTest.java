@@ -34,6 +34,7 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -113,6 +114,15 @@ public class VirtualizedFileSystemTest {
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, true));
+        // No IO under language home
+        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
+        privateDir = createContent(
+                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+                        fullIO);
+        final String langHome = privateDir.toString();
+        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, true, false, true, () -> {
+            System.setProperty(LANGAUGE_ID + ".home", langHome);
+        }));
         // Checked IO
         accessibleDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
@@ -168,6 +178,8 @@ public class VirtualizedFileSystemTest {
 
     @Before
     public void setUp() {
+        Optional.ofNullable(this.cfg.getBeforeAction()).ifPresent(Runnable::run);
+        resetLanguageHomes();
         Engine.create().close();
     }
 
@@ -633,6 +645,7 @@ public class VirtualizedFileSystemTest {
         private final boolean readable;
         private final boolean writable;
         private final boolean allowsUserDir;
+        private final Runnable beforeAction;
 
         Configuration(
                         final String name,
@@ -643,7 +656,7 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, path, fileSystem, needsURI, readable, writable, allowsUserDir);
+            this(name, context, path, path, fileSystem, needsURI, readable, writable, allowsUserDir, null);
         }
 
         Configuration(
@@ -656,6 +669,20 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
+            this(name, context, path, userDir, fileSystem, needsURI, readable, writable, allowsUserDir, null);
+        }
+
+        Configuration(
+                        final String name,
+                        final Context context,
+                        final Path path,
+                        final Path userDir,
+                        final FileSystem fileSystem,
+                        final boolean needsURI,
+                        final boolean readable,
+                        final boolean writable,
+                        final boolean allowsUserDir,
+                        final Runnable beforeAction) {
             Objects.requireNonNull(name, "Name must be non null.");
             Objects.requireNonNull(context, "Context must be non null.");
             Objects.requireNonNull(path, "Path must be non null.");
@@ -670,6 +697,11 @@ public class VirtualizedFileSystemTest {
             this.readable = readable;
             this.writable = writable;
             this.allowsUserDir = allowsUserDir;
+            this.beforeAction = beforeAction;
+        }
+
+        Runnable getBeforeAction() {
+            return beforeAction;
         }
 
         String getName() {
@@ -830,6 +862,17 @@ public class VirtualizedFileSystemTest {
         try {
             fs.delete(path);
         } catch (NoSuchFileException notFound) {
+        }
+    }
+
+    private static void resetLanguageHomes() {
+        try {
+            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.api.vm.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
+            final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
+            reset.setAccessible(true);
+            reset.invoke(null);
+        } catch (ReflectiveOperationException re) {
+            throw new RuntimeException(re);
         }
     }
 
