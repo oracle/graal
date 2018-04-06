@@ -38,7 +38,9 @@ public class GraalCompilerOptions {
     public static final OptionKey<Boolean> PrintCompilation = new OptionKey<>(false);
     @Option(help = "Pattern for method(s) that will trigger an exception when compiled. " +
                    "This option exists to test handling compilation crashes gracefully. " +
-                   "See the MethodFilter option for the pattern syntax. ", type = OptionType.Debug)
+                   "See the MethodFilter option for the pattern syntax. A ':Bailout' " +
+                   "suffix will raise a bailout exception and a ':PermanentBailout' " +
+                   "suffix will raise a permanent bailout exception.", type = OptionType.Debug)
     public static final OptionKey<String> CrashAt = new OptionKey<>(null);
     @Option(help = "file:doc-files/CompilationBailoutActionHelp.txt", type = OptionType.User)
     public static final EnumOptionKey<ExceptionAction> CompilationBailoutAction = new EnumOptionKey<>(ExceptionAction.Silent);
