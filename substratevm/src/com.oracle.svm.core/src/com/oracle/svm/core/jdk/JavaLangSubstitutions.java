@@ -637,17 +637,12 @@ final class Target_java_lang_ApplicationShutdownHooks {
 @TargetClass(className = "java.lang.Shutdown")
 final class Target_java_lang_Shutdown {
 
-    // { Allow all upper-case name: Checkstyle: stop
-    @Alias//
-    static int MAX_SYSTEM_HOOKS;
-    // } Checkstyle: resume
-
     /**
      * Re-initialize the map of registered hooks, because any hooks registered during native image
      * construction can not survive into the running image.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static Runnable[] hooks = new Runnable[MAX_SYSTEM_HOOKS];
+    static Runnable[] hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
 
     @Substitute
     static void halt0(@SuppressWarnings("unused") int status) {
@@ -659,6 +654,22 @@ final class Target_java_lang_Shutdown {
     static void runAllFinalizers() {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
     }
+
+    @Alias
+    static native void shutdown();
+
+    @Alias
+    static native void add(int slot, boolean registerShutdownInProgress, Runnable hook);
+}
+
+/** Utility methods for Target_java_lang_Shutdown. */
+final class Util_java_lang_Shutdown {
+
+    /**
+     * Value *copied* from {@code java.lang.Shutdown.MAX_SYSTEM_HOOKS} so that the value can be used
+     * during image generation (@Alias values are only visible at run time).
+     */
+    static final int MAX_SYSTEM_HOOKS = 10;
 }
 
 @TargetClass(java.lang.Package.class)
