@@ -60,7 +60,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import java.util.Collections;
 
-@TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "0.01", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
+@TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "6.0.0", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
 // TODO: remove Sulong.SULONG_LIBRARY_MIME_TYPE after GR-5904 is closed.
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, DebuggerTags.AlwaysHalt.class})
