@@ -51,8 +51,8 @@ public class ExactInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public EconomicSet<Node> inline(Providers providers) {
-        return inline(invoke, concrete, inlineableElement, !suppressNullCheck);
+    public EconomicSet<Node> inline(Providers providers, String reason) {
+        return inline(invoke, concrete, inlineableElement, !suppressNullCheck, reason);
     }
 
     @Override

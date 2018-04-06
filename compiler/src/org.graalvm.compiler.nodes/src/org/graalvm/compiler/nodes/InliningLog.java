@@ -28,10 +28,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.options.OptionValues;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -128,13 +126,13 @@ public class InliningLog {
 
     private final Callsite root;
     private final EconomicMap<Invokable, Callsite> leaves;
-    private final OptionValues options;
+    private final boolean enabled;
 
-    public InliningLog(ResolvedJavaMethod rootMethod, OptionValues options) {
+    public InliningLog(ResolvedJavaMethod rootMethod, boolean enabled) {
         this.root = new Callsite(null, null);
         this.root.target = rootMethod;
         this.leaves = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-        this.options = options;
+        this.enabled = enabled;
     }
 
     /**
@@ -144,12 +142,15 @@ public class InliningLog {
      * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
      * and the {@link InliningLog} of the inlined graph must be provided.
      */
-    public void addDecision(Invokable invoke, boolean positive, String reason, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog) {
+    public void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+        if (!enabled) {
+            return;
+        }
         assert leaves.containsKey(invoke);
         assert (!positive && replacements == null && calleeLog == null) || (positive && replacements != null && calleeLog != null);
         Callsite callsite = leaves.get(invoke);
         callsite.target = callsite.invoke.getTargetMethod();
-        Decision decision = new Decision(positive, reason, phase, invoke.getTargetMethod());
+        Decision decision = new Decision(positive, String.format(reason, args), phase, invoke.getTargetMethod());
         callsite.decisions.add(decision);
         if (positive) {
             leaves.removeKey(invoke);
@@ -277,7 +278,7 @@ public class InliningLog {
 
         @Override
         public void close() {
-            if (GraalOptions.TraceInlining.getValue(options)) {
+            if (enabled) {
                 assert activated != null;
                 activated = null;
             }
@@ -307,7 +308,7 @@ public class InliningLog {
      * @return a bound {@link UpdateScope} object, or a {@code null} if tracing is disabled
      */
     public UpdateScope openUpdateScope(BiConsumer<Invokable, Invokable> updater) {
-        if (GraalOptions.TraceInlining.getValue(options)) {
+        if (enabled) {
             UpdateScope scope = new UpdateScope(updater);
             scope.activate();
             return scope;
@@ -326,7 +327,7 @@ public class InliningLog {
      * @see #openUpdateScope
      */
     public UpdateScope openDefaultUpdateScope() {
-        if (GraalOptions.TraceInlining.getValue(options)) {
+        if (enabled) {
             noUpdates.activate();
             return noUpdates;
         } else {
