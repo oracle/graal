@@ -216,6 +216,25 @@ final class Target_sun_misc_Cleaner {
     protected static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 }
 
+/** PerfCounter methods that access the lb field fail with SIGSEV. */
+@TargetClass(sun.misc.PerfCounter.class)
+final class Target_sun_misc_PerfCounter {
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    public long get() {
+        return 0;
+    }
+
+    @Substitute
+    public void set(@SuppressWarnings("unused") long var1) {
+    }
+
+    @Substitute
+    public void add(@SuppressWarnings("unused") long var1) {
+    }
+}
+
 @TargetClass(sun.misc.SharedSecrets.class)
 final class Target_sun_misc_SharedSecrets {
     @Substitute

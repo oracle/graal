@@ -202,14 +202,14 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
-        return hub.isAssignableFrom(((SubstrateType) other).hub);
+        return hub.isAssignableFromHub(((SubstrateType) other).hub);
     }
 
     @Override
     public boolean isInstance(JavaConstant obj) {
         if (obj.getJavaKind() == JavaKind.Object && !obj.isNull()) {
             DynamicHub objHub = KnownIntrinsics.readHub(SubstrateObjectConstant.asObject(obj));
-            return hub.isAssignableFrom(objHub);
+            return hub.isAssignableFromHub(objHub);
         }
         return false;
     }

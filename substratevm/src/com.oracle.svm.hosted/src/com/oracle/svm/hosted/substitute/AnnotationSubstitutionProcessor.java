@@ -460,15 +460,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             handleOriginalMethodInSubstitutionClass(c);
         }
 
-        for (Field f : originalClass.getDeclaredFields()) {
-            registerAsDeleted(null, metaAccess.lookupJavaField(f), SUBSTITUTION_DELETE);
-        }
         for (Field f : annotatedClass.getDeclaredFields()) {
             ResolvedJavaField field = metaAccess.lookupJavaField(f);
             ResolvedJavaField alias = fieldValueRecomputation(annotatedClass, field, field, f);
             if (!alias.equals(field)) {
                 register(fieldSubstitutions, field, null, alias);
+            } else {
+                handleAnnotatedFieldInSubstitutionClass(f, originalClass);
             }
+        }
+        for (Field f : originalClass.getDeclaredFields()) {
+            handleOriginalFieldInSubstitutionClass(f);
         }
     }
 
@@ -489,9 +491,28 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else if (substituteAnnotation != null) {
-            register(methodSubstitutions, annotated, original, annotated);
+            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true);
+            register(methodSubstitutions, annotated, original, substitution);
         } else if (keepOriginalAnnotation != null) {
             register(methodSubstitutions, annotated, original, original);
+        }
+    }
+
+    private void handleAnnotatedFieldInSubstitutionClass(Field annotatedField, Class<?> originalClass) {
+        Substitute substituteAnnotation = lookupAnnotation(annotatedField, Substitute.class);
+
+        if (substituteAnnotation == null) {
+            /* Unannotated field in substitution class: a regular field, nothing to do. */
+            return;
+        }
+
+        ResolvedJavaField annotated = metaAccess.lookupJavaField(annotatedField);
+        ResolvedJavaField original = findOriginalField(annotatedField, originalClass, false);
+
+        if (original == null) {
+            /* Optional target that is not present, so nothing to do. */
+        } else {
+            register(fieldSubstitutions, annotated, original, annotated);
         }
     }
 
@@ -510,6 +531,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 register(methodSubstitutions, null, method, method);
             } else {
                 registerAsDeleted(null, method, SUBSTITUTION_DELETE);
+            }
+        }
+    }
+
+    private void handleOriginalFieldInSubstitutionClass(Field f) {
+        ResolvedJavaField field = metaAccess.lookupJavaField(f);
+        if (!fieldSubstitutions.containsKey(field)) {
+            if (field.isSynthetic()) {
+                register(fieldSubstitutions, null, field, field);
+            } else {
+                registerAsDeleted(null, field, SUBSTITUTION_DELETE);
             }
         }
     }
