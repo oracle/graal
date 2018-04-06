@@ -38,22 +38,26 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.AccessLocation;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public abstract class LLVMInteropReadNode extends LLVMNode {
 
-    public static LLVMInteropReadNode create(int elementAccessSize) {
-        return LLVMInteropReadNodeGen.create(elementAccessSize);
+    public static LLVMInteropReadNode create(ForeignToLLVMType type) {
+        return LLVMInteropReadNodeGen.create(type);
     }
 
-    @Child Node read = Message.READ.createNode();
+    @Child Node read;
+    @Child ForeignToLLVM foreignToLLVM;
 
     private final int elementAccessSize;
 
-    protected LLVMInteropReadNode(int elementAccessSize) {
-        this.elementAccessSize = elementAccessSize;
+    protected LLVMInteropReadNode(ForeignToLLVMType type) {
+        this.read = Message.READ.createNode();
+        this.foreignToLLVM = ForeignToLLVM.create(type);
+        this.elementAccessSize = type.getSizeInBytes();
     }
 
     public abstract Object execute(LLVMInteropType.Structured type, TruffleObject foreign, long offset);
@@ -68,7 +72,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
     @Fallback
     Object doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, TruffleObject foreign, long offset) {
         // type unknown: fall back to "array of unknown value type"
-        AccessLocation location = new AccessLocation(foreign, (int) Long.divideUnsigned(offset, elementAccessSize), null);
+        AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, elementAccessSize), null);
         return read(location);
     }
 
@@ -80,10 +84,6 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
             CompilerDirectives.transferToInterpreter();
             throw ex.raise();
         }
-
-        if (location.type != null) {
-            ret = LLVMTypedForeignObject.create((TruffleObject) ret, location.type);
-        }
-        return ret;
+        return foreignToLLVM.executeWithType(ret, location.type);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,42 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTruffleAddressMessageResolutionForeign;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class LLVMTruffleAddress implements LLVMInternalTruffleObject {
-    private final long address;
-    private final Type type;
+@NodeChild(value = "ptr", type = LLVMExpressionNode.class)
+@NodeChild(value = "typeid", type = LLVMTypeIDNode.class)
+public abstract class LLVMPolyglotFromTyped extends LLVMIntrinsic {
 
-    public LLVMTruffleAddress(LLVMAddress address, Type type) {
-        this.address = address.getVal();
-        this.type = type;
+    public static LLVMPolyglotFromTyped createStruct(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
+        return LLVMPolyglotFromTypedNodeGen.create(ptr, LLVMTypeIDNode.createStruct(typeid));
     }
 
-    public LLVMAddress getAddress() {
-        return LLVMAddress.fromLong(address);
+    public static LLVMPolyglotFromTyped createArray(LLVMExpressionNode ptr, LLVMExpressionNode len, LLVMExpressionNode typeid) {
+        return LLVMPolyglotFromTypedNodeGen.create(ptr, LLVMTypeIDNode.createSizedArray(typeid, len));
     }
 
-    public Type getType() {
-        return type;
+    @Specialization
+    LLVMTruffleObject doAddress(LLVMAddress address, LLVMInteropType.Structured type) {
+        return LLVMTruffleObject.createPointer(address.getVal()).export(type);
     }
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMTruffleAddress;
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMTruffleAddressMessageResolutionForeign.ACCESS;
-    }
-
-    @Override
-    public String toString() {
-        return Long.toString(address);
+    @Specialization
+    LLVMTruffleObject doObject(LLVMTruffleObject object, LLVMInteropType.Structured type) {
+        return object.export(type);
     }
 }

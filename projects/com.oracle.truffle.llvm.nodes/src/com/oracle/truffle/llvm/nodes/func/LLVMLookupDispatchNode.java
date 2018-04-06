@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
@@ -148,7 +147,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
         LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
         for (int i = 0; i < type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET; i++) {
-            args[i] = LLVMDataEscapeNodeGen.create(type.getArgumentTypes()[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
+            args[i] = LLVMDataEscapeNode.create();
         }
         return args;
     }

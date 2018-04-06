@@ -471,6 +471,20 @@ void *__polyglot_as_typed(void *ptr, void *typeid);
 void *__polyglot_as_typed_array(void *ptr, void *typeid);
 
 /**
+ * Internal function. Do not use directly.
+ *
+ * @see POLYGLOT_DECLARE_STRUCT
+ */
+void *__polyglot_from_typed(void *p, void *typeid);
+
+/**
+ * Internal function. Do not use directly.
+ *
+ * @see POLYGLOT_DECLARE_STRUCT
+ */
+void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeid);
+
+/**
  * Declare polyglot conversion functions for a user-defined struct type.
  *
  * Given this struct definition:
@@ -483,23 +497,43 @@ void *__polyglot_as_typed_array(void *ptr, void *typeid);
  * POLYGLOT_DECLARE_STRUCT(MyStruct)
  * \endcode
  *
- * This macro will generate two conversion functions:
+ * This macro will generate the following conversion functions:
  *
  * \code
  * struct MyStruct *polyglot_as_MyStruct(void *value);
+ * struct MyStruct *polyglot_as_MyStruct_array(void *value);
+ * void *polyglot_from_MyStruct(struct MyStruct *s);
+ * void *polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
  * \endcode
- *
+ */
+#define POLYGLOT_DECLARE_STRUCT(type)                                                                                                                \
+  static struct type __polyglot_typeid_##type[0];                                                                                                    \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static inline struct type *polyglot_as_##type(void *p) {                                                            \
+    void *ret = __polyglot_as_typed(p, __polyglot_typeid_##type);                                                                                    \
+    return (struct type *)ret;                                                                                                                       \
+  }                                                                                                                                                  \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static inline struct type *polyglot_as_##type##_array(void *p) {                                                    \
+    void *ret = __polyglot_as_typed_array(p, __polyglot_typeid_##type);                                                                              \
+    return (struct type *)ret;                                                                                                                       \
+  }                                                                                                                                                  \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static void *polyglot_from_##type(struct type *s) {                                                                 \
+    return __polyglot_from_typed(s, __polyglot_typeid_##type);                                                                                       \
+  }                                                                                                                                                  \
+                                                                                                                                                     \
+  __attribute__((always_inline)) static void *polyglot_from_##type##_array(struct type *arr, uint64_t len) {                                         \
+    return __polyglot_from_typed_array(arr, len, __polyglot_typeid_##type);                                                                          \
+  }
+
+#ifdef DOXYGEN // documentation only
+struct MyStruct;
+
+/**
  * Converts a polyglot value to a pointer to MyStruct. Accessing members of the
  * returned value is equivalent to calling {@link polyglot_get_member} or
  * {@link polyglot_put_member} on the original value.
- *
- * \code
- * struct MyStruct *polyglot_as_MyStruct_array(void *value);
- * \endcode
- *
- * Converts a polyglot value to an array of MyStruct. Accessing the returned
- * array is equivalent to calling {@link polyglot_get_array_element} or
- * {@link polyglot_set_array_element} on the original value.
  *
  * For example, this code snippet:
  *
@@ -507,11 +541,6 @@ void *__polyglot_as_typed_array(void *ptr, void *typeid);
  * struct MyStruct *myStruct = polyglot_as_MyStruct(value);
  * int x = myStruct->someMember;
  * myStruct->someMember = 42;
- *
- * struct MyStruct *arr = polyglot_as_MyStruct_array(arrayValue);
- * for (int i = 0; i < polyglot_get_array_size(arr); i++) {
- *   sum += arr[i].someMember;
- * }
  * \endcode
  *
  * is equivalent to
@@ -519,11 +548,6 @@ void *__polyglot_as_typed_array(void *ptr, void *typeid);
  * \code
  * int x = polyglot_as_i32(polyglot_get_member(value, "someMember"));
  * polyglot_put_member(value, "someMember", (int) 42);
- *
- * for (int i = 0; i < polyglot_get_array_size(arrayValue); i++) {
- *   void *elem = polyglot_get_array_element(arrayValue, i);
- *   sum += polyglot_as_i32(polyglot_get_member(elem, "someMember"));
- * }
  * \endcode
  *
  * This will also work for structs or arrays nested inside the top level struct.
@@ -538,21 +562,125 @@ void *__polyglot_as_typed_array(void *ptr, void *typeid);
  * is equivalent to
  *
  * \code
- * polyglot_put_member(polyglot_get_member(value, "nestedStruct"), (int) 42);
+ * void *nested = polyglot_get_member(value, "nestedStruct");
+ * polyglot_put_member(nested, "x", (int) 42);
  * \endcode
+ *
+ * The returned pointer is a view of the original value, and does not need to be
+ * freed separately.
+ *
+ * \param value a polyglot value with members corresponding to struct members
+ * \return struct view of the polyglot value
+ * \see POLYGLOT_DECLARE_STRUCT
  */
-#define POLYGLOT_DECLARE_STRUCT(type)                                                                                                                \
-  static struct type __polyglot_typeid_##type[0];                                                                                                    \
-                                                                                                                                                     \
-  __attribute__((always_inline)) static inline struct type *polyglot_as_##type(void *p) {                                                            \
-    void *ret = __polyglot_as_typed(p, __polyglot_typeid_##type);                                                                                    \
-    return (struct type *)ret;                                                                                                                       \
-  }                                                                                                                                                  \
-                                                                                                                                                     \
-  __attribute__((always_inline)) static inline struct type *polyglot_as_##type##_array(void *p) {                                                    \
-    void *ret = __polyglot_as_typed_array(p, __polyglot_typeid_##type);                                                                              \
-    return (struct type *)ret;                                                                                                                       \
-  }
+struct MyStruct *polyglot_as_MyStruct(void *value);
+
+/**
+ * Converts a polyglot value to an array of MyStruct. Accessing the returned
+ * array is equivalent to calling {@link polyglot_get_array_element} or
+ * {@link polyglot_set_array_element} on the original value.
+ *
+ * For example, this code snippet:
+ *
+ * \code
+ * struct MyStruct *arr = polyglot_as_MyStruct_array(arrayValue);
+ * for (int i = 0; i < polyglot_get_array_size(arr); i++) {
+ *   sum += arr[i].someMember;
+ * }
+ * \endcode
+ *
+ * is equivalent to
+ *
+ * \code
+ * for (int i = 0; i < polyglot_get_array_size(arrayValue); i++) {
+ *   void *elem = polyglot_get_array_element(arrayValue, i);
+ *   sum += polyglot_as_i32(polyglot_get_member(elem, "someMember"));
+ * }
+ * \endcode
+ *
+ * The returned pointer is a view of the original value, and does not need to be
+ * freed separately.
+ *
+ * \param value a polyglot array value
+ * \return array view of the polyglot value
+ * \see POLYGLOT_DECLARE_STRUCT
+ */
+struct MyStruct *polyglot_as_MyStruct_array(void *value);
+
+/**
+ * Create a polyglot value from a native pointer to MyStruct. The resulting
+ * polyglot value can be passed to other languages and accessed from there.
+ *
+ * For example, given this code snippet:
+ *
+ * \code
+ * struct MyStruct *s = malloc(sizeof(*s));
+ * s->someMember = ...;
+ * void *value = polyglot_from_MyStruct(s);
+ * someJSFunction(value);
+ * \endcode
+ *
+ * The following JavaScript code can access the native pointer as if it were a
+ * JavaScript object:
+ *
+ * \code
+ * function someJSFunction(value) {
+ *   ...
+ *   result = value.someMember;
+ *   ...
+ * }
+ * \endcode
+ *
+ * Primitive or pointer members will be {@link polyglot_get_member readable} and
+ * {@link polyglot_put_member writable}. Members that are inline structured
+ * types will be only {@link polyglot_get_member readable}.
+ *
+ * The returned pointer will be semantically equal to the original pointer. In
+ * particular, if one of them is freed, the other will become invalid.
+ *
+ * \param s a pointer to a single MyStruct
+ * \return a polyglot value representing s
+ * \see POLYGLOT_DECLARE_STRUCT
+ */
+void *polyglot_from_MyStruct(struct MyStruct *s);
+
+/**
+ * Create a polyglot value from a native pointer to an array of MyStruct. The
+ * resulting polyglot value can be passed to other languages and accessed from
+ * there.
+ *
+ * For example, given this code snippet:
+ *
+ * \code
+ * struct MyStruct *s = calloc(len, sizeof(*s));
+ * s[idx].someMember = ...;
+ * void *value = polyglot_from_MyStruct_array(s, len);
+ * someJSFunction(value);
+ * \endcode
+ *
+ * The following JavaScript code can access the native pointer as if it were a
+ * JavaScript array:
+ *
+ * \code
+ * function someJSFunction(value) {
+ *   ...
+ *   result = value[idx].someMember;
+ *   ...
+ * }
+ * \endcode
+ *
+ * The array access will be bounds checked with the given array length.
+ *
+ * The returned pointer will be semantically equal to the original pointer. In
+ * particular, if one of them is freed, the other will become invalid.
+ *
+ * \param arr a pointer to an array of MyStruct
+ * \param len the length of the array
+ * \return a polyglot value representing arr
+ * \see POLYGLOT_DECLARE_STRUCT
+ */
+void *polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
+#endif
 
 /** @} */
 

@@ -64,14 +64,14 @@ public class LLVMFunctionMessageResolution {
 
         @Child private LLVMForeignCallNode executeNode;
 
-        protected Object access(@SuppressWarnings("unused") VirtualFrame frame, LLVMFunctionDescriptor object, Object[] arguments) {
-            return getHelperNode(object).executeCall(object, arguments);
+        protected Object access(LLVMFunctionDescriptor object, Object[] arguments) {
+            return getHelperNode().executeCall(object, arguments);
         }
 
-        private LLVMForeignCallNode getHelperNode(LLVMFunctionDescriptor function) {
+        private LLVMForeignCallNode getHelperNode() {
             if (executeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                executeNode = insert(LLVMForeignCallNodeGen.create(function.getType().getReturnType()));
+                executeNode = insert(LLVMForeignCallNodeGen.create());
             }
 
             return executeNode;

@@ -53,12 +53,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
 
     private final int vectorLength;
 
-    public LLVMStoreVectorNode(VectorType type) {
-        this(null, type);
+    public LLVMStoreVectorNode(int vectorLength) {
+        super(null);
+        this.vectorLength = vectorLength;
     }
 
     public LLVMStoreVectorNode(LLVMSourceLocation sourceLocation, VectorType type) {
-        super(sourceLocation, type);
+        super(sourceLocation);
         this.vectorLength = type.getNumberOfElements();
     }
 
@@ -204,7 +205,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     LLVMStoreVectorNode createRecursive() {
-        return LLVMStoreVectorNodeGen.create((VectorType) valueType, null, null);
+        return LLVMStoreVectorNodeGen.create(vectorLength, null, null);
     }
 
     @Specialization(guards = "address.isManaged()")

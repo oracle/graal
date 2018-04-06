@@ -27,57 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.interop.values;
+package com.oracle.truffle.llvm.runtime.interop.export;
 
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 
-@MessageResolution(receiverType = ArrayObject.class)
-public final class ArrayObject implements TruffleObject {
+public interface InteropNodeFactory {
 
-    final Object[] array;
+    LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind);
 
-    public ArrayObject(Object... array) {
-        this.array = array;
-    }
-
-    public Object get(int i) {
-        return array[i];
-    }
-
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof ArrayObject;
-    }
-
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-
-        Object access(ArrayObject obj, Number idx) {
-            return obj.array[(int) idx.longValue()];
-        }
-    }
-
-    @Resolve(message = "WRITE")
-    abstract static class WriteNode extends Node {
-
-        Object access(ArrayObject obj, Number idx, Object value) {
-            return obj.array[(int) idx.longValue()] = value;
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class SizeNode extends Node {
-
-        int access(ArrayObject obj) {
-            return obj.array.length;
-        }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ArrayObjectForeign.ACCESS;
-    }
+    LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind);
 }

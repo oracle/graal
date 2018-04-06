@@ -1382,7 +1382,7 @@ public class BasicNodeFactory implements NodeFactory {
                     throw new AssertionError(llvmType);
             }
         } else if (llvmType instanceof PointerType) {
-            store = LLVMAddressStoreNodeGen.create(llvmType, null, null);
+            store = LLVMAddressStoreNodeGen.create(null, null);
         } else {
             throw new AssertionError(llvmType);
         }
@@ -1416,7 +1416,7 @@ public class BasicNodeFactory implements NodeFactory {
     private LLVMStoreNode createMemoryStore(LLVMParserRuntime runtime, Type resolvedType) {
         if (resolvedType instanceof ArrayType || resolvedType instanceof StructureType) {
             int byteSize = runtime.getContext().getByteSize(resolvedType);
-            return LLVMStructStoreNodeGen.create(null, createMemMove(), resolvedType, null, null, byteSize);
+            return LLVMStructStoreNodeGen.create(null, createMemMove(), null, null, byteSize);
         } else if (resolvedType instanceof PrimitiveType) {
             switch (((PrimitiveType) resolvedType).getPrimitiveKind()) {
                 case I8:
@@ -1437,7 +1437,7 @@ public class BasicNodeFactory implements NodeFactory {
                     throw new AssertionError(resolvedType);
             }
         } else if (resolvedType instanceof PointerType || Type.isFunctionOrFunctionPointer(resolvedType)) {
-            return LLVMAddressStoreNodeGen.create(resolvedType, null, null);
+            return LLVMAddressStoreNodeGen.create(null, null);
         }
         throw new AssertionError(resolvedType);
     }
@@ -2045,6 +2045,30 @@ public class BasicNodeFactory implements NodeFactory {
         return addressZeroInits;
     }
 
+    @Override
+    public LLVMLoadNode createLoadNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1LoadNodeGen.create(null);
+            case I8:
+                return LLVMI8LoadNodeGen.create(null);
+            case I16:
+                return LLVMI16LoadNodeGen.create(null);
+            case I32:
+                return LLVMI32LoadNodeGen.create(null);
+            case I64:
+                return LLVMI64LoadNodeGen.create(null);
+            case FLOAT:
+                return LLVMFloatLoadNodeGen.create(null);
+            case DOUBLE:
+                return LLVMDoubleLoadNodeGen.create(null);
+            case POINTER:
+                return LLVMAddressDirectLoadNodeGen.create(null);
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
+        }
+    }
+
     private static LLVMExpressionNode createLoad(Type resultType, LLVMExpressionNode loadTarget, int bits) {
         if (resultType instanceof PrimitiveType) {
             switch (((PrimitiveType) resultType).getPrimitiveKind()) {
@@ -2084,6 +2108,30 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
+    @Override
+    public LLVMStoreNode createStoreNode(LLVMInteropType.ValueKind kind) {
+        switch (kind) {
+            case I1:
+                return LLVMI1StoreNodeGen.create(null, null);
+            case I8:
+                return LLVMI8StoreNodeGen.create(null, null);
+            case I16:
+                return LLVMI16StoreNodeGen.create(null, null);
+            case I32:
+                return LLVMI32StoreNodeGen.create(null, null);
+            case I64:
+                return LLVMI64StoreNodeGen.create(null, null);
+            case FLOAT:
+                return LLVMFloatStoreNodeGen.create(null, null);
+            case DOUBLE:
+                return LLVMDoubleStoreNodeGen.create(null, null);
+            case POINTER:
+                return LLVMAddressStoreNodeGen.create(null, null);
+            default:
+                throw new IllegalStateException("unexpected interop kind " + kind);
+        }
+    }
+
     private LLVMExpressionNode createStore(LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, int size, LLVMSourceLocation source) {
         if (type instanceof PrimitiveType) {
             switch (((PrimitiveType) type).getPrimitiveKind()) {
@@ -2107,16 +2155,16 @@ public class BasicNodeFactory implements NodeFactory {
                     throw new AssertionError(type);
             }
         } else if (type instanceof VariableBitWidthType) {
-            return LLVMIVarBitStoreNodeGen.create(source, (VariableBitWidthType) type, pointerNode, valueNode);
+            return LLVMIVarBitStoreNodeGen.create(source, pointerNode, valueNode);
         } else if (Type.isFunctionOrFunctionPointer(type)) {
-            return LLVMFunctionStoreNodeGen.create(source, type, pointerNode, valueNode);
+            return LLVMFunctionStoreNodeGen.create(source, pointerNode, valueNode);
         } else if (type instanceof StructureType || type instanceof ArrayType) {
-            return LLVMStructStoreNodeGen.create(source, createMemMove(), type, pointerNode, valueNode, size);
+            return LLVMStructStoreNodeGen.create(source, createMemMove(), pointerNode, valueNode, size);
         } else if (type instanceof PointerType) {
             if (pointerNode instanceof LLVMAccessGlobalVariableStorageNode) {
                 return LLVMGlobalVariableStoreNodeGen.create(((LLVMAccessGlobalVariableStorageNode) pointerNode).getDescriptor(), source, valueNode);
             } else {
-                return LLVMAddressStoreNodeGen.create(source, type, pointerNode, valueNode);
+                return LLVMAddressStoreNodeGen.create(source, pointerNode, valueNode);
             }
         } else if (type instanceof VectorType) {
             VectorType vectorType = (VectorType) type;

@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 @NodeField(type = long.class, name = "structSize")
 public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
@@ -47,12 +46,12 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
 
     @Child private LLVMMemMoveNode memMove;
 
-    protected LLVMStructStoreNode(LLVMMemMoveNode memMove, Type type) {
-        this(null, memMove, type);
+    protected LLVMStructStoreNode(LLVMMemMoveNode memMove) {
+        this(null, memMove);
     }
 
-    protected LLVMStructStoreNode(LLVMSourceLocation sourceLocation, LLVMMemMoveNode memMove, Type type) {
-        super(sourceLocation, type);
+    protected LLVMStructStoreNode(LLVMSourceLocation sourceLocation, LLVMMemMoveNode memMove) {
+        super(sourceLocation);
         this.memMove = memMove;
     }
 

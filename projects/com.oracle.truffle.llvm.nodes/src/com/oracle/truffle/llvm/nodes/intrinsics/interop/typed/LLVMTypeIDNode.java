@@ -35,13 +35,13 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFactory.ArrayNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFactory.SizedArrayNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFactory.StructNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTypeIDNode extends LLVMNode {
 
     public abstract LLVMInteropType.Structured execute(VirtualFrame frame);
@@ -54,6 +54,11 @@ public abstract class LLVMTypeIDNode extends LLVMNode {
         return ArrayNodeGen.create(child);
     }
 
+    public static LLVMTypeIDNode createSizedArray(LLVMExpressionNode type, LLVMExpressionNode len) {
+        return SizedArrayNodeGen.create(type, len);
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     abstract static class Struct extends LLVMTypeIDNode {
 
         @Specialization
@@ -69,8 +74,15 @@ public abstract class LLVMTypeIDNode extends LLVMNode {
             CompilerDirectives.transferToInterpreter();
             return fallback(typeid);
         }
+
+        @Fallback
+        LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("don't call __polyglot_[as|from]_typed functions directly, use POLYGLOT_DECLARE_* macros");
+        }
     }
 
+    @NodeChild(type = LLVMExpressionNode.class)
     abstract static class Array extends LLVMTypeIDNode {
 
         @Specialization
@@ -83,11 +95,33 @@ public abstract class LLVMTypeIDNode extends LLVMNode {
             CompilerDirectives.transferToInterpreter();
             return fallback(typeid);
         }
+
+        @Fallback
+        LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("don't call __polyglot_as_typed_array function directly, use POLYGLOT_DECLARE_* macros");
+        }
     }
 
-    @Fallback
-    LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
-        CompilerDirectives.transferToInterpreter();
-        throw new AssertionError("don't call __polyglot_*_typed functions directly, use POLYGLOT_DECLARE_* macros");
+    @NodeChild(value = "type", type = LLVMExpressionNode.class)
+    @NodeChild(value = "len", type = LLVMExpressionNode.class)
+    abstract static class SizedArray extends LLVMTypeIDNode {
+
+        @Specialization
+        LLVMInteropType.Structured doGlobal(LLVMGlobal typeid, long len) {
+            LLVMInteropType type = typeid.getInteropType();
+            if (type instanceof LLVMInteropType.Array) {
+                return ((LLVMInteropType.Array) type).resize(len);
+            }
+
+            CompilerDirectives.transferToInterpreter();
+            return fallback(typeid, len);
+        }
+
+        @Fallback
+        LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid, @SuppressWarnings("unused") Object len) {
+            CompilerDirectives.transferToInterpreter();
+            throw new AssertionError("don't call __polyglot_from_typed_array function directly, use POLYGLOT_DECLARE_* macros");
+        }
     }
 }

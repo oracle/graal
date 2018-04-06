@@ -36,7 +36,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -65,13 +64,6 @@ public abstract class LLVMGlobalVariableStoreNode extends LLVMExpressionNode {
     protected Object doNative(LLVMAddress value,
                     @Cached("create()") WriteObjectNode globalAccess) {
         globalAccess.execute(descriptor, value);
-        return null;
-    }
-
-    @Specialization
-    protected Object doNative(LLVMTruffleAddress value,
-                    @Cached("create()") WriteObjectNode globalAccess) {
-        globalAccess.execute(descriptor, value.getAddress());
         return null;
     }
 

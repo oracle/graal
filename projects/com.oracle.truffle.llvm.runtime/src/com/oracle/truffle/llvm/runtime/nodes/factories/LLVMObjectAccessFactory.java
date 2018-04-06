@@ -42,7 +42,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
@@ -53,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFa
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.DynamicObjectReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.DynamicObjectWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactoryFactory.GetWriteIdentifierNodeGen;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMObjectAccessFactory {
 
@@ -61,8 +59,8 @@ public abstract class LLVMObjectAccessFactory {
         return CachedReadNodeGen.create(type);
     }
 
-    public static LLVMObjectWriteNode createWrite(Type type) {
-        return CachedWriteNodeGen.create(type);
+    public static LLVMObjectWriteNode createWrite() {
+        return CachedWriteNodeGen.create();
     }
 
     abstract static class CachedReadNode extends LLVMObjectReadNode {
@@ -179,12 +177,6 @@ public abstract class LLVMObjectAccessFactory {
 
         static final int TYPE_LIMIT = 8;
 
-        private final Type type;
-
-        CachedWriteNode(Type type) {
-            this.type = type;
-        }
-
         @Override
         public boolean canAccess(Object obj) {
             return obj instanceof LLVMObjectAccess || obj instanceof TruffleObject;
@@ -205,9 +197,9 @@ public abstract class LLVMObjectAccessFactory {
             if (obj instanceof LLVMObjectAccess) {
                 return ((LLVMObjectAccess) obj).createWriteNode();
             } else if (obj instanceof DynamicObject) {
-                return DynamicObjectWriteNodeGen.create(type);
+                return DynamicObjectWriteNodeGen.create();
             } else {
-                return new FallbackWriteNode(type, false);
+                return new FallbackWriteNode(false);
             }
         }
     }
@@ -215,12 +207,6 @@ public abstract class LLVMObjectAccessFactory {
     abstract static class DynamicObjectWriteNode extends LLVMObjectWriteNode {
 
         static final int TYPE_LIMIT = 8;
-
-        private final Type type;
-
-        DynamicObjectWriteNode(Type type) {
-            this.type = type;
-        }
 
         @Override
         public boolean canAccess(Object obj) {
@@ -250,7 +236,7 @@ public abstract class LLVMObjectAccessFactory {
             if (objectType instanceof LLVMObjectAccess) {
                 return ((LLVMObjectAccess) objectType).createWriteNode();
             } else {
-                return new FallbackWriteNode(type, true);
+                return new FallbackWriteNode(true);
             }
         }
     }
@@ -259,12 +245,11 @@ public abstract class LLVMObjectAccessFactory {
 
         @Child private Node write = Message.WRITE.createNode();
         @Child private GetWriteIdentifierNode getWriteIdentifier = GetWriteIdentifierNodeGen.create();
-        @Child private LLVMDataEscapeNode dataEscape;
+        @Child private LLVMDataEscapeNode dataEscape = LLVMDataEscapeNode.create();
 
         private final boolean acceptDynamicObject;
 
-        FallbackWriteNode(Type type, boolean acceptDynamicObject) {
-            this.dataEscape = LLVMDataEscapeNodeGen.create(type);
+        FallbackWriteNode(boolean acceptDynamicObject) {
             this.acceptDynamicObject = acceptDynamicObject;
         }
 

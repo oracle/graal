@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperationNode {
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
@@ -74,7 +73,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
 
     @TruffleBoundary
     protected LLVMAddressStoreNode createAddressStoreNode() {
-        return LLVMAddressStoreNodeGen.create(PointerType.VOID, null, null);
+        return LLVMAddressStoreNodeGen.create(null, null);
     }
 
     private long exec(long code, Object addr, ContextReference<LLVMContext> context, LLVMAddressStoreNode store) throws AssertionError {

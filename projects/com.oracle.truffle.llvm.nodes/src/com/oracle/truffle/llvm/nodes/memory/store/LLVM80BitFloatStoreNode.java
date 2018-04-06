@@ -38,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
 
@@ -47,7 +46,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     }
 
     public LLVM80BitFloatStoreNode(LLVMSourceLocation sourceLocation) {
-        super(sourceLocation, PrimitiveType.X86_FP80);
+        super(sourceLocation);
     }
 
     @Specialization
@@ -86,6 +85,6 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
 
     @Override
     protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create(PrimitiveType.getIntegerType(I8_SIZE_IN_BITS));
+        return LLVMForeignWriteNodeGen.create();
     }
 }

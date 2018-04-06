@@ -34,7 +34,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -47,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 @TypeSystem({boolean.class, byte.class, short.class, int.class, char.class, long.class, double.class, float.class, byte[].class, LLVMI8Vector.class, LLVMI64Vector.class, LLVMI32Vector.class,
                 LLVMI1Vector.class, LLVMI16Vector.class, LLVMFloatVector.class, LLVMDoubleVector.class, LLVMIVarBit.class,
-                LLVMTruffleAddress.class,
                 LLVMTruffleObject.class,
                 LLVM80BitFloat.class,
                 LLVMFunctionDescriptor.class,

@@ -1760,7 +1760,7 @@ class AsmFactory {
                         assert retTypes[arg.getOutIndex()] == arg.getType();
                         if (arg.getType() instanceof PointerType) {
                             valueNodes[arg.getOutIndex()] = LLVMToAddressNodeGen.create(register);
-                            writeNodes[arg.getOutIndex()] = LLVMAddressStoreNodeGen.create(arg.getType(), null, null);
+                            writeNodes[arg.getOutIndex()] = LLVMAddressStoreNodeGen.create(null, null);
                         } else {
                             PrimitiveKind primitiveKind = getPrimitiveKind(arg);
                             switch (primitiveKind) {

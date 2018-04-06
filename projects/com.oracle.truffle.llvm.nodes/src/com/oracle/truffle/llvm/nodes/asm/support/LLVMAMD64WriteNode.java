@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMAMD64WriteNode extends Node {
     public static final long MASK_16 = 0xFFFFFFFFFFFF0000L;
@@ -49,7 +48,7 @@ public abstract class LLVMAMD64WriteNode extends Node {
 
     @Child private LLVMAMD64RegisterToLongNode readRegister;
 
-    @Child private LLVMStoreNode storeAddress = LLVMAddressStoreNodeGen.create(PrimitiveType.I64, null, null);
+    @Child private LLVMStoreNode storeAddress = LLVMAddressStoreNodeGen.create(null, null);
     @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create(null, null);
     @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create(null, null);
     @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create(null, null);

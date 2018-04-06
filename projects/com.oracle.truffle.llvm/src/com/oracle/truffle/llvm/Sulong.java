@@ -92,7 +92,7 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected LLVMContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        LLVMContext newContext = new LLVMContext(env, getContextExtensions(env));
+        LLVMContext newContext = new LLVMContext(env, getContextExtensions(env), getNodeFactory(env));
         if (mainContext == null) {
             mainContext = newContext;
         } else {
@@ -111,7 +111,7 @@ public final class Sulong extends LLVMLanguage {
     protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
         LLVMContext context = findLLVMContext();
-        return (new Runner(getNodeFactory())).parse(this, context, source);
+        return (new Runner(getNodeFactory(findLLVMContext().getEnv()))).parse(this, context, source);
     }
 
     @Override
@@ -162,8 +162,8 @@ public final class Sulong extends LLVMLanguage {
         return OptionDescriptors.create(optionDescriptors);
     }
 
-    private NodeFactory getNodeFactory() {
-        String config = findLLVMContext().getEnv().getOptions().get(SulongEngineOption.CONFIGURATION);
+    private NodeFactory getNodeFactory(Env env) {
+        String config = env.getOptions().get(SulongEngineOption.CONFIGURATION);
         for (Configuration c : configurations) {
             if (config.equals(c.getConfigurationName())) {
                 return c.getNodeFactory(findLLVMContext());

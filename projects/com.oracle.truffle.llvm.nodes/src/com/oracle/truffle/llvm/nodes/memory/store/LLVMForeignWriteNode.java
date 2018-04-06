@@ -36,14 +36,13 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     @Child private LLVMObjectWriteNode write;
 
-    protected LLVMForeignWriteNode(Type valueType) {
-        this.write = LLVMObjectAccessFactory.createWrite(valueType);
+    protected LLVMForeignWriteNode() {
+        this.write = LLVMObjectAccessFactory.createWrite();
     }
 
     public abstract void execute(LLVMTruffleObject addr, Object value);
