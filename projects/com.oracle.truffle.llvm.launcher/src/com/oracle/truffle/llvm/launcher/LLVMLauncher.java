@@ -162,8 +162,8 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
-        if (file == null) {
-            throw abort("Error: no bitcode file provided.", 6);
+        if (file == null && versionAction != VersionAction.PrintAndExit) {
+            throw abort("No bitcode file provided.", 6);
         }
     }
 
