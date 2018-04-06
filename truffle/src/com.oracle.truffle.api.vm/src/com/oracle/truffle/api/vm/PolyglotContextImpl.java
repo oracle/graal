@@ -999,7 +999,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
                     Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem) {
         CompilerAsserts.neverPartOfCompilation();
-        patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newNativeAccessAllowed, newCreateThreadAllowed, newHostClassLoadingAllowed, newClassFilter, newApplicationArguments, newAllowedPublicLanguages);
+        patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newNativeAccessAllowed, newCreateThreadAllowed, newHostClassLoadingAllowed, newClassFilter, newApplicationArguments,
+                        newAllowedPublicLanguages);
         ((FileSystems.PreInitializeContextFileSystem) fileSystem).patchDelegate(newFileSystem);
         final Map<String, Map<String, String>> optionsByLanguage = new HashMap<>();
         for (String optionKey : newOptions.keySet()) {
@@ -1077,6 +1078,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         null,
                         null,
                         null,
+                        false,
                         false,
                         false,
                         false,
