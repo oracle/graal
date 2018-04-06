@@ -26,16 +26,15 @@ package com.oracle.truffle.tck.instrumentation;
 
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.tck.InlineSnippet;
 import org.junit.Assert;
 
-import com.oracle.truffle.api.Assumption;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.tck.InlineSnippet;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -43,6 +42,8 @@ import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
@@ -52,7 +53,6 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.common.inline.InlineVerifier;
-import org.graalvm.polyglot.PolyglotException;
 
 /**
  * Verify constraints of Truffle languages.
@@ -63,8 +63,8 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     static final String ID = "TckVerifierInstrument";
 
     private Env env;
-    private InlineScriptsRunner inlineScriptsRunner;
-    private EventBinding<InlineScriptsRunner> inlineBinding;
+    private InlineScriptFactory inlineScriptFactory;
+    private EventBinding<InlineScriptFactory> inlineBinding;
 
     @Override
     protected void onCreate(Env instrumentEnv) {
@@ -78,113 +78,106 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
     @Override
     public void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
         if (inlineSnippet != null) {
-            inlineScriptsRunner = new InlineScriptsRunner();
-            inlineBinding = env.getInstrumenter().attachExecutionEventListener(
+            inlineScriptFactory = new InlineScriptFactory(languageId, inlineSnippet, verifier);
+            inlineBinding = env.getInstrumenter().attachExecutionEventFactory(
                             SourceSectionFilter.newBuilder().tagIs(StatementTag.class, CallTag.class).build(),
-                            inlineScriptsRunner);
-            inlineScriptsRunner.setSnippet(languageId, inlineSnippet, verifier);
+                            inlineScriptFactory);
         } else if (inlineBinding != null) {
             inlineBinding.dispose();
             inlineBinding = null;
-            inlineScriptsRunner = null;
+            inlineScriptFactory = null;
         }
     }
 
-    private class InlineScriptsRunner implements ExecutionEventListener {
+    private class InlineScriptFactory implements ExecutionEventNodeFactory {
 
-        private volatile Source snippet;
-        @CompilationFinal private volatile Predicate<SourceSection> predicate;
-        @CompilationFinal private volatile ExecutableNode inlineNode;
-        @CompilationFinal private volatile FrameDescriptor inlineDescriptor;
-        @CompilationFinal private InlineVerifier.ResultVerifier resultVerifier;
-        @CompilationFinal private Assumption inlineSnippetChanged = Truffle.getRuntime().createAssumption("Inline Snippet Changed");
+        private final Source snippet;
+        private final Predicate<SourceSection> predicate;
+        private final InlineVerifier.ResultVerifier resultVerifier;
 
-        InlineScriptsRunner() {
+        InlineScriptFactory(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
+            CharSequence code = inlineSnippet.getCode();
+            snippet = Source.newBuilder(code).language(languageId).name("inline_source").build();
+            predicate = inlineSnippet.getLocationPredicate();
+            resultVerifier = verifier;
         }
 
         @Override
-        public void onEnter(EventContext context, VirtualFrame frame) {
-            executeSnippet(context, frame);
-        }
-
-        @Override
-        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-            executeSnippet(context, frame);
-        }
-
-        @Override
-        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-            executeSnippet(context, frame);
-        }
-
-        private void executeSnippet(EventContext context, VirtualFrame frame) {
-            if (!inlineSnippetChanged.isValid()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (snippet != null) {
-                if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
-                    if (inlineNode == null || inlineDescriptor != frame.getFrameDescriptor()) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        try {
-                            inlineNode = env.parseInline(snippet, context.getInstrumentedNode(), frame.materialize());
-                        } catch (ThreadDeath t) {
-                            throw t;
-                        } catch (Throwable t) {
-                            verify(t);
-                            throw t;
-                        }
-                        inlineDescriptor = frame.getFrameDescriptor();
-                    }
-                    try {
-                        Object ret = inlineNode.execute(frame);
-                        if (resultVerifier != null) {
-                            verify(ret);
-                        }
-                    } catch (ThreadDeath t) {
-                        throw t;
-                    } catch (Throwable t) {
-                        CompilerDirectives.transferToInterpreter();
-                        verify(t);
-                        throw t;
-                    }
-                }
+        public ExecutionEventNode create(EventContext context) {
+            if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
+                return new InlineScriptNode(context);
+            } else {
+                return null;
             }
         }
 
-        @TruffleBoundary
-        private void verify(final Throwable exception) {
-            final PolyglotException pe = VerifierInstrument.TruffleTCKAccessor.engineAccess().wrapGuestException(snippet.getLanguage(), exception);
-            resultVerifier.verify(pe);
-        }
-
-        @TruffleBoundary
-        private void verify(final Object result) {
-            resultVerifier.verify(result);
-        }
-
-        @TruffleBoundary
         private boolean canRunAt(com.oracle.truffle.api.source.SourceSection ss) {
             SourceSection section = TruffleTCKAccessor.instrumentAccess().createSourceSection(env, null, ss);
             return predicate.test(section);
         }
 
-        private void setSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
-            if (inlineSnippet != null) {
-                CharSequence code = inlineSnippet.getCode();
-                this.snippet = Source.newBuilder(code).language(languageId).name("inline_source").build();
-                this.predicate = inlineSnippet.getLocationPredicate();
-                this.resultVerifier = verifier;
-            } else {
-                this.snippet = null;
-                this.predicate = null;
-                this.resultVerifier = null;
-            }
-            this.inlineNode = null;
-            Assumption old = this.inlineSnippetChanged;
-            inlineSnippetChanged = Truffle.getRuntime().createAssumption("Inline Snippet Changed");
-            old.invalidate();
-        }
+        private class InlineScriptNode extends ExecutionEventNode {
 
+            private final Node instrumentedNode;
+            @CompilationFinal private volatile ExecutableNode inlineNode;
+
+            InlineScriptNode(EventContext context) {
+                this.instrumentedNode = context.getInstrumentedNode();
+            }
+
+            @Override
+            protected void onEnter(VirtualFrame frame) {
+                executeSnippet(frame);
+            }
+
+            @Override
+            protected void onReturnValue(VirtualFrame frame, Object result) {
+                executeSnippet(frame);
+            }
+
+            @Override
+            protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
+                executeSnippet(frame);
+            }
+
+            private void executeSnippet(VirtualFrame frame) {
+                if (inlineNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    try {
+                        inlineNode = env.parseInline(snippet, instrumentedNode, frame.materialize());
+                    } catch (ThreadDeath t) {
+                        throw t;
+                    } catch (Throwable t) {
+                        verify(t);
+                        throw t;
+                    }
+                    insert(inlineNode);
+                }
+                try {
+                    Object ret = inlineNode.execute(frame);
+                    if (resultVerifier != null) {
+                        verify(ret);
+                    }
+                } catch (ThreadDeath t) {
+                    throw t;
+                } catch (Throwable t) {
+                    CompilerDirectives.transferToInterpreter();
+                    verify(t);
+                    throw t;
+                }
+            }
+
+            @TruffleBoundary
+            private void verify(final Throwable exception) {
+                final PolyglotException pe = VerifierInstrument.TruffleTCKAccessor.engineAccess().wrapGuestException(snippet.getLanguage(), exception);
+                resultVerifier.verify(pe);
+            }
+
+            @TruffleBoundary
+            private void verify(final Object result) {
+                resultVerifier.verify(result);
+            }
+        }
     }
 
     private static class RootFrameChecker implements ExecutionEventListener {
