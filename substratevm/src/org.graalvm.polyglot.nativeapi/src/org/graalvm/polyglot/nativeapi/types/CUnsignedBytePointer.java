@@ -20,23 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.nativeapi;
+package org.graalvm.polyglot.nativeapi.types;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
+import org.graalvm.word.PointerBase;
 
-import org.graalvm.nativeimage.c.CContext.Directives;
+/**
+ * A pointer to a {@code uint8_t} value from `stdint.h` in C.
+ *
+ * @since 1.0
+ */
+@CPointerTo(nameOfCType = "uint8_t")
+public interface CUnsignedBytePointer extends PointerBase {
 
-public class PolyglotNativeAPICContext implements Directives {
+    /**
+     * Reads the value at the pointer address.
+     *
+     * @since 1.0
+     */
+    byte read();
 
-    @Override
-    public List<String> getHeaderFiles() {
-        return Arrays.asList("<polyglot_types.h>");
-    }
+    /**
+     * Writes the value at the pointer address.
+     *
+     * @since 1.0
+     */
+    void write(byte value);
 
-    @Override
-    public List<String> getOptions() {
-        return Collections.singletonList("-I" + System.getProperty("org.graalvm.polyglot.nativeapi.libraryPath"));
-    }
 }

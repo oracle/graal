@@ -20,8 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.nativeapi;
+package org.graalvm.polyglot.nativeapi.types;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -32,17 +33,17 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.polyglot.nativeapi.PolyglotNativeAPI.PolyglotIsolateThread;
+import org.graalvm.polyglot.nativeapi.PolyglotNativeAPICContext;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.CTypedef;
 
 @CContext(PolyglotNativeAPICContext.class)
-class PolyglotNativeAPITypes {
+public class PolyglotNativeAPITypes {
 
     @CEnum("poly_status")
-    enum PolyglotStatus {
+    public enum PolyglotStatus {
         poly_ok,
 
         poly_invalid_arg,
@@ -74,7 +75,7 @@ class PolyglotNativeAPITypes {
     }
 
     @CStruct("poly_extended_error_info")
-    interface PolyglotExtendedErrorInfo extends PointerBase {
+    public interface PolyglotExtendedErrorInfo extends PointerBase {
 
         @CField("error_code")
         void setErrorCode(int errorCode);
@@ -85,14 +86,14 @@ class PolyglotNativeAPITypes {
     }
 
     @CPointerTo(value = PolyglotExtendedErrorInfo.class)
-    interface ExtendedErrorInfoPointer extends PointerBase {
+    public interface ExtendedErrorInfoPointer extends PointerBase {
 
         void write(PolyglotExtendedErrorInfo value);
 
     }
 
     @CPointerTo(nameOfCType = "size_t")
-    interface SizeTPointer extends PointerBase {
+    public interface SizeTPointer extends PointerBase {
 
         UnsignedWord read();
 
@@ -102,11 +103,11 @@ class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_engine")
     @CTypedef(name = "poly_engine")
-    interface PolyglotEnginePointer extends PointerBase, ObjectHandle {
+    public interface PolyglotEngine extends PointerBase, ObjectHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_engine")
-    interface PolyglotEnginePointerPointer extends PointerBase, ObjectHandle {
+    public interface PolyglotEnginePointer extends PointerBase, ObjectHandle {
 
         void write(ObjectHandle value);
 
@@ -114,17 +115,17 @@ class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_handle")
     @CTypedef(name = "poly_handle")
-    interface PolyglotHandlePointer extends PointerBase, ObjectHandle {
+    public interface PolyglotHandle extends PointerBase, ObjectHandle {
 
     }
 
     @CPointerTo(nameOfCType = "poly_context")
     @CTypedef(name = "poly_context")
-    interface PolyglotContextPointer extends PointerBase, ObjectHandle {
+    public interface PolyglotContext extends PointerBase, ObjectHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_context")
-    interface PolyglotContextPointerPointer extends PointerBase, ObjectHandle {
+    public interface PolyglotContextPointer extends PointerBase, ObjectHandle {
 
         void write(ObjectHandle value);
 
@@ -132,13 +133,13 @@ class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_value")
     @CTypedef(name = "poly_value")
-    interface PolyglotValuePointer extends PointerBase, ObjectHandle {
+    public interface PolyglotValue extends PointerBase, ObjectHandle {
     }
 
     @CPointerTo(nameOfCType = "poly_value")
-    interface PolyglotValuePointerPointer extends PointerBase, ObjectHandle {
+    public interface PolyglotValuePointer extends PointerBase, ObjectHandle {
 
-        PolyglotValuePointer read(int index);
+        PolyglotValue read(int index);
 
         void write(ObjectHandle value);
 
@@ -147,13 +148,17 @@ class PolyglotNativeAPITypes {
 
     @CPointerTo(nameOfCType = "poly_callback_info")
     @CTypedef(name = "poly_callback_info")
-    interface PolyglotCallbackInfo extends ObjectHandle, PointerBase {
+    public interface PolyglotCallbackInfo extends ObjectHandle, PointerBase {
     }
 
     @CTypedef(name = "poly_callback")
-    interface PolyglotCallbackPointer extends CFunctionPointer {
+    public interface PolyglotCallback extends CFunctionPointer {
         @InvokeCFunctionPointer
-        PolyglotValuePointer invoke(PolyglotIsolateThread ithread, PolyglotCallbackInfo info);
+        PolyglotValue invoke(PolyglotIsolateThread ithread, PolyglotCallbackInfo info);
     }
 
+    @CStruct(value = "poly_thread", isIncomplete = true)
+    @CTypedef(name = "poly_thread")
+    public interface PolyglotIsolateThread extends IsolateThread {
+    }
 }

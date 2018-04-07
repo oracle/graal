@@ -22,7 +22,7 @@
  */
 package org.graalvm.polyglot.nativeapi;
 
-import org.graalvm.polyglot.nativeapi.PolyglotNativeAPITypes.PolyglotStatus;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus;
 
 class PolyglotNativeAPIError extends RuntimeException {
 
