@@ -66,13 +66,4 @@ public class HeapPolicyOptions {
 
     @Option(help = "Defines the upper bound for the number of remaining bytes in the young generation that cause a collection when `System.gc` is called.") //
     public static final RuntimeOptionKey<Long> UserRequestedGCThreshold = new RuntimeOptionKey<>(16L * 1024L * 1024L);
-
-    /* Options that are no longer used. TODO: Remove uses in user scripts. */
-
-    @Option(help = "Deprecated: Set the maximum young generation size with '--native.Xmn<value>'.") //
-    public static final RuntimeOptionKey<Long> YoungGenerationSize = new RuntimeOptionKey<>(0L);
-
-    @Option(help = "Deprecated: Set the maximum heap size with '--native.Xmx<value>'.") //
-    public static final RuntimeOptionKey<Long> OldGenerationSize = new RuntimeOptionKey<>(0L);
-
 }

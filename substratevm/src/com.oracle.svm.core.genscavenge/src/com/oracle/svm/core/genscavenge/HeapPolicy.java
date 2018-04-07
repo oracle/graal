@@ -170,15 +170,11 @@ public class HeapPolicy {
         if (xmn.getEpoch() > 0) {
             /* If `-Xmn` has been parsed from the command line, use that value. */
             result = WordFactory.unsigned(xmn.getValue());
-        } else if (HeapPolicyOptions.YoungGenerationSize.getValue().longValue() != HeapPolicyOptions.YoungGenerationSize.getDefaultValue().longValue()) {
-            /* If YoungGenerationSize has a non-default value, then use that value. */
-            result = WordFactory.unsigned(HeapPolicyOptions.YoungGenerationSize.getValue().longValue());
         } else {
             /* The default value is just big enough. */
             result = m(256);
         }
         trace.string("  -Xmn.epoch: ").unsigned(xmn.getEpoch()).string("  -Xmn.value: ").unsigned(xmn.getValue())
-                        .string("  YoungGenerationSize: ").unsigned(HeapPolicyOptions.YoungGenerationSize.getValue().longValue())
                         .string("  returns: ").unsigned(result).string("]").newline();
         return result;
     }
@@ -203,13 +199,6 @@ public class HeapPolicy {
         if (xmx.getEpoch() > 0) {
             /* If `-Xmx` has been parsed from the command line, use that value. */
             result = WordFactory.unsigned(xmx.getValue());
-        } else if ((HeapPolicyOptions.YoungGenerationSize.getValue().longValue() != HeapPolicyOptions.YoungGenerationSize.getDefaultValue().longValue()) &&
-                        (HeapPolicyOptions.OldGenerationSize.getValue().longValue() != HeapPolicyOptions.OldGenerationSize.getDefaultValue().longValue())) {
-            /*
-             * If both YoungGenerationSize and OldGenerationSize have non-default values, then sum
-             * them.
-             */
-            result = WordFactory.unsigned(HeapPolicyOptions.YoungGenerationSize.getValue().longValue() + HeapPolicyOptions.OldGenerationSize.getValue().longValue());
         } else {
             /*
              * Otherwise, the maximum size of the heap is a fraction of the size of the physical
@@ -221,8 +210,6 @@ public class HeapPolicy {
         maximumHeapSize = result;
         if (trace.isEnabled()) {
             trace.string("  -Xmx.epoch: ").unsigned(xmx.getEpoch()).string("  -Xmx.value: ").unsigned(xmx.getValue())
-                            .string("  YoungGenerationSize: ").unsigned(HeapPolicyOptions.YoungGenerationSize.getValue().longValue())
-                            .string("  OldGenerationSize: ").unsigned(HeapPolicyOptions.OldGenerationSize.getValue().longValue())
                             .string("  MaximumHeapSizePercent: ").unsigned(HeapPolicyOptions.MaximumHeapSizePercent.getValue().intValue())
                             .string("  PhysicalMemory.size(): ").unsigned(PhysicalMemory.size())
                             .newline();
