@@ -159,7 +159,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public void run() {
                 BytecodeProvider replacementBytecodeProvider = replacements.getDefaultReplacementBytecodeProvider();
-                registerObjectPlugins(invocationPlugins, options, replacementBytecodeProvider);
+                registerObjectPlugins(invocationPlugins, options, config, replacementBytecodeProvider, foreignCalls);
                 registerClassPlugins(plugins, config, replacementBytecodeProvider);
                 registerSystemPlugins(invocationPlugins, foreignCalls);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacementBytecodeProvider);
@@ -185,7 +185,7 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, BytecodeProvider bytecodeProvider) {
+    private static void registerObjectPlugins(InvocationPlugins plugins, OptionValues options, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider, ForeignCallsProvider foreignCalls) {
         Registration r = new Registration(plugins, Object.class, bytecodeProvider);
         if (!GeneratePIC.getValue(options)) {
             // FIXME: clone() requires speculation and requires a fix in here (to check that
@@ -209,6 +209,12 @@ public class HotSpotGraphBuilderPlugins {
             });
         }
         r.registerMethodSubstitution(ObjectSubstitutions.class, "hashCode", Receiver.class);
+        if (config.inlineNotify()) {
+            r.registerMethodSubstitution(ObjectSubstitutions.class, "notify", Receiver.class);
+        }
+        if (config.inlineNotifyAll()) {
+            r.registerMethodSubstitution(ObjectSubstitutions.class, "notifyAll", Receiver.class);
+        }
     }
 
     private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
