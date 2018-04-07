@@ -22,6 +22,9 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TruffleCompilationExceptionsAreFatal;
+import static org.graalvm.compiler.truffle.common.TruffleCompilerOptions.TrufflePerformanceWarningsAreFatal;
+
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -59,6 +62,20 @@ public interface TruffleCompilerRuntime {
      */
     static TruffleCompilerRuntime getRuntime() {
         return TruffleCompilerRuntimeInstance.INSTANCE;
+    }
+
+    /**
+     * Determines whether an exception during a Truffle compilation should result in calling
+     * {@link System#exit(int)}.
+     */
+    static boolean areTruffleCompilationExceptionsFatal() {
+        /*
+         * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled but
+         * respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
+         */
+        boolean truffleCompilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
+        assert TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleCompilerOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
+        return truffleCompilationExceptionsAreFatal || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
     }
 
     /**

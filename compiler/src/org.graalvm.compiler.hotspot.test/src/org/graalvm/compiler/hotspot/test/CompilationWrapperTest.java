@@ -130,6 +130,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Collections.emptyList(),
                         Arrays.asList(
                                         "-Dgraal.CompilationFailureAction=ExitVM",
+                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
                                         "-Dgraal.CrashAt=root test1"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
@@ -147,6 +148,22 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
                                         "-Dgraal.CrashAt=root test1"),
+                        "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
+    }
+
+    /**
+     * Tests that TrufflePerformanceWarningsAreFatal generates diagnostic output.
+     */
+    @Test
+    public void testTruffleCompilation3() throws IOException, InterruptedException {
+        Probe[] probes = {
+                        new Probe("Exiting VM due to TrufflePerformanceWarningsAreFatal=true", 1),
+        };
+        testHelper(Arrays.asList(probes),
+                        Arrays.asList(
+                                        "-Dgraal.CompilationFailureAction=Silent",
+                                        "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
+                                        "-Dgraal.CrashAt=root test1:PermanentBailout"),
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 

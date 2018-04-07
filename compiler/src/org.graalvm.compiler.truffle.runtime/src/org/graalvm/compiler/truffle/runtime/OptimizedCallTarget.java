@@ -46,6 +46,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.LazyFrameBoxingQuery;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
@@ -433,14 +434,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 final InternalError error = new InternalError(reasonAndStackTrace.get());
                 throw new OptimizationFailedException(error, this);
             }
-            /*
-             * Automatically enable TruffleCompilationExceptionsAreFatal when asserts are enabled
-             * but respect TruffleCompilationExceptionsAreFatal if it's been explicitly set.
-             */
-            boolean truffleCompilationExceptionsAreFatal = TruffleCompilerOptions.getValue(TruffleCompilationExceptionsAreFatal);
-            assert TruffleCompilationExceptionsAreFatal.hasBeenSet(TruffleCompilerOptions.getOptions()) || (truffleCompilationExceptionsAreFatal = true) == true;
-            truffleCompilationExceptionsAreFatal = truffleCompilationExceptionsAreFatal || TruffleCompilerOptions.getValue(TrufflePerformanceWarningsAreFatal);
 
+            boolean truffleCompilationExceptionsAreFatal = TruffleCompilerRuntime.areTruffleCompilationExceptionsFatal();
             if (TruffleCompilerOptions.getValue(TruffleCompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
                 log(reasonAndStackTrace.get());
                 if (truffleCompilationExceptionsAreFatal) {
