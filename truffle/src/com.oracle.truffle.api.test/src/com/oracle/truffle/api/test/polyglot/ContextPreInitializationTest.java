@@ -163,7 +163,7 @@ public class ContextPreInitializationTest {
     }
 
     @Test
-    public void testArgumentsSingleLanguPreInitialization() throws Exception {
+    public void testArgumentsSingleLanguagePreInitialization2() throws Exception {
         setPatchable(FIRST);
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -427,7 +427,7 @@ public class ContextPreInitializationTest {
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         final CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
-        assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
+        assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
         System.getProperties().remove(SYS_OPTION1_KEY);
@@ -454,7 +454,7 @@ public class ContextPreInitializationTest {
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         final CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
-        assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
+        assertTrue(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option1));
         assertFalse(firstLangCtx.optionValues.get(ContextPreInitializationTestFirstLanguage.Option2));
         firstLangCtx.optionValues.clear();
         System.getProperties().remove(SYS_OPTION1_KEY);
