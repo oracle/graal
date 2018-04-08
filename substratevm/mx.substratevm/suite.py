@@ -383,9 +383,16 @@ suite = {
 
         "org.graalvm.polyglot.nativeapi" : {
             "subDir": "src",
-            "sourceDirs" : ["src"],
+            "sourceDirs" : [
+                "src",
+                "resources",
+            ],
             "dependencies" : [
                 "sdk:GRAAL_SDK",
+                "com.oracle.svm.hosted",
+            ],
+            "buildDependencies" : [
+                "org.graalvm.polyglot.nativeapi.native",
             ],
             "checkstyle": "org.graalvm.polyglot.nativeapi",
             "checkstyleVersion" : "8.8",
@@ -397,6 +404,24 @@ suite = {
             ],
             "workingSets" : "SVM",
             "findbugs": "false",
+        },
+
+        "org.graalvm.polyglot.nativeapi.native" : {
+            "subDir" : "src",
+            "native" : True,
+            "output" : "mxbuild/org.graalvm.polyglot.nativeapi.native",
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "results" : ["linux-amd64/polyglot-nativeapi.o"],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "results" : ["darwin-amd64/polyglot-nativeapi.o"],
+                    },
+                },
+            }
         },
 
         "bootstrap.native-image" : {
@@ -542,6 +567,7 @@ suite = {
       ],
       "distDependencies": [
         "sdk:GRAAL_SDK",
+        "SVM",
       ],
     },
   },

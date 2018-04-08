@@ -42,12 +42,12 @@ import com.oracle.svm.core.util.VMError;
  */
 public class NativeImageHeaderPreamble {
 
-    public static List<String> read(String preambleResource) {
-        return getResource(preambleResource);
+    public static List<String> read(ClassLoader imageClassloader, String preambleResource) {
+        return getResource(imageClassloader, preambleResource);
     }
 
-    private static List<String> getResource(String resourceName) {
-        try (InputStream input = NativeImageHeaderPreamble.class.getResourceAsStream(resourceName)) {
+    private static List<String> getResource(ClassLoader imageClassloader, String resourceName) {
+        try (InputStream input = imageClassloader.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
             return reader.lines().collect(Collectors.toList());
         } catch (IOException e) {

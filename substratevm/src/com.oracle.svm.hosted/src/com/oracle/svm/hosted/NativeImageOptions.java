@@ -116,11 +116,20 @@ public class NativeImageOptions {
     @Option(help = "Report the original exception cause for unsupported features.")//
     public static final HostedOptionKey<Boolean> ReportUnsupportedFeaturesCause = new HostedOptionKey<>(false);
 
+    /**
+     * Enum with all C standards.
+     *
+     * When changing this enum, please change the CStandard option help message and keep the
+     * standards in the chronological orders.
+     */
     public enum CStandards {
-        /* When changing this enum, please change the CStandard option help message. */
         C89,
         C99,
-        C11
+        C11;
+
+        public boolean compatibleWith(CStandards standard) {
+            return this.compareTo(standard) >= 0;
+        }
     }
 
     @Option(help = "C standard to use in header files. Possible values are: [C89, C99, C11]", type = User)//
@@ -182,7 +191,4 @@ public class NativeImageOptions {
         }
         return analysisThreads;
     }
-
-    @Option(help = "The resource to be used as a preamble of the header file.", type = OptionType.Expert) //
-    public static final HostedOptionKey<String> PreamblePath = new HostedOptionKey<>(null);
 }

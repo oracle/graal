@@ -20,23 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.polyglot.nativeapi;
+package com.oracle.svm.core.c;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import org.graalvm.nativeimage.c.CContext.Directives;
-
-public class PolyglotNativeAPICContext implements Directives {
-
-    @Override
-    public List<String> getHeaderFiles() {
-        return Arrays.asList("<polyglot_types.h>");
-    }
-
-    @Override
-    public List<String> getOptions() {
-        return Collections.singletonList("-I" + System.getProperty("org.graalvm.polyglot.nativeapi.libraryPath"));
-    }
+/**
+ * Qualifies a C integer type as unsigned in the method signature.
+ *
+ * Can be placed only on integer types function arguments as it applies only to the function
+ * declaration where const primitive types have no effect.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.PARAMETER, ElementType.TYPE_USE})
+public @interface CUnsigned {
 }

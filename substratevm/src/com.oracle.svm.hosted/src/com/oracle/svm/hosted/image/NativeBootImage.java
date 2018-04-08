@@ -24,6 +24,10 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -31,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,11 +43,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -55,13 +63,19 @@ import com.oracle.objectfile.ObjectFile.Section;
 import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.CConst;
 import com.oracle.svm.core.c.CGlobalDataImpl;
-import com.oracle.svm.core.c.NativeImageHeaderPreamble;
+import com.oracle.svm.core.c.CHeader;
+import com.oracle.svm.core.c.CHeader.Header;
+import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.posix.PosixIsolates;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -85,8 +99,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public abstract class NativeBootImage extends AbstractBootImage {
 
     private static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
-
-    public static final String DEFAULT_HEADER_FILE_NAME = "graal_isolate.h";
 
     @Override
     public Section getTextSection() {
@@ -113,41 +125,121 @@ public abstract class NativeBootImage extends AbstractBootImage {
         }
     }
 
-    void writeHeaderFile(Path outFile, String imageName, boolean dynamic) {
-        List<HostedMethod> methodsWithHeader = uniqueEntryPoints.stream().filter(this::shouldWriteHeader).collect(Collectors.toList());
-        methodsWithHeader.sort(NativeBootImage::sortMethodsByFileNameAndPosition);
+    void writeHeaderFiles(Path outputDir, String imageName, boolean dynamic) {
+        /* Group methods by header files. */
+        Map<? extends Class<? extends Header>, List<HostedMethod>> hostedMethods = uniqueEntryPoints.stream()
+                        .filter(this::shouldWriteHeader)
+                        .map(m -> Pair.create(cHeader(m), m))
+                        .collect(Collectors.groupingBy(Pair::getLeft, Collectors.mapping(Pair::getRight, Collectors.toList())));
 
-        if (methodsWithHeader.size() > 0) {
-            CSourceCodeWriter writer = new CSourceCodeWriter(outFile.getParent());
-            String imageHeaderGuard = "__" + imageName.toUpperCase().replaceAll("[^A-Z0-9]", "_") + "_H";
+        hostedMethods.forEach((headerClass, methods) -> {
+            methods.sort(NativeBootImage::sortMethodsByFileNameAndPosition);
+            Header header = headerClass == Header.class ? defaultCHeaderAnnotation(imageName) : instantiateCHeader(headerClass);
+            writeHeaderFile(outputDir, header, methods, dynamic);
+        });
+    }
 
-            writer.appendln("#ifndef " + imageHeaderGuard);
-            writer.appendln("#define " + imageHeaderGuard);
+    private void writeHeaderFile(Path outDir, CHeader.Header header, List<HostedMethod> methods, boolean dynamic) {
+        CSourceCodeWriter writer = new CSourceCodeWriter(outDir.getParent());
+        String imageHeaderGuard = "__" + header.name().toUpperCase().replaceAll("[^A-Z0-9]", "_") + "_H";
+        String dynamicSuffix = dynamic ? "_dynamic.h" : ".h";
 
-            String preamblePath = NativeImageOptions.PreamblePath.getValue();
-            if (preamblePath != null) {
-                NativeImageHeaderPreamble.read(preamblePath).forEach(writer::appendln);
-            } else {
-                writer.appendln("#include <" + DEFAULT_HEADER_FILE_NAME + ">");
-            }
+        writer.appendln("#ifndef " + imageHeaderGuard);
+        writer.appendln("#define " + imageHeaderGuard);
 
-            if (NativeImageOptions.getCStandard() != CStandards.C89) {
-                writer.appendln("#include <stdbool.h>");
-            }
+        writer.appendln();
+        if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C89)) {
+            writer.appendln("#include <stdbool.h>");
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C11)) {
+            writer.appendln("#include <stdint.h>");
+        }
+        List<String> dependencies = header.dependsOn().stream()
+                        .map(NativeBootImage::instantiateCHeader)
+                        .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
+        writer.includeFiles(dependencies);
 
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintWriter printWriter = new PrintWriter(baos);
+        header.writePreamble(printWriter);
+        printWriter.flush();
+        for (String line : baos.toString().split("\\r?\\n")) {
+            writer.appendln(line);
+        }
+
+        if (methods.size() > 0) {
+            writer.appendln();
             writer.appendln("#if defined(__cplusplus)");
             writer.appendln("extern \"C\" {");
             writer.appendln("#endif");
+            writer.appendln();
 
-            methodsWithHeader.forEach(m -> writeMethodHeader(m, writer, dynamic));
+            methods.forEach(m -> writeMethodHeader(m, writer, dynamic));
 
             writer.appendln("#if defined(__cplusplus)");
             writer.appendln("}");
             writer.appendln("#endif");
-
-            writer.appendln("#endif");
-            writer.writeFile(outFile.getFileName().toString(), false);
         }
+
+        writer.appendln("#endif");
+
+        String fileName = outDir.getFileName().resolve(header.name() + dynamicSuffix).toString();
+        writer.writeFile(fileName, false);
+    }
+
+    /**
+     * Looks up the corresponding {@link CHeader} annotation for the {@link HostedMethod}. Returns
+     * {@code null} if no annotation was found.
+     */
+    private static Class<? extends CHeader.Header> cHeader(HostedMethod entryPointStub) {
+        /* check if method is annotated */
+        AnalysisMethod entryPoint = CEntryPointCallStubSupport.singleton().getMethodForStub((CEntryPointCallStubMethod) entryPointStub.wrapped.wrapped);
+        CHeader methodAnnotation = entryPoint.getDeclaredAnnotation(CHeader.class);
+        if (methodAnnotation != null) {
+            return methodAnnotation.value();
+        }
+
+        /* check if enclosing classes are annotated */
+        AnalysisType enclosingType = entryPoint.getDeclaringClass();
+        while (enclosingType != null) {
+            CHeader enclosing = enclosingType.getDeclaredAnnotation(CHeader.class);
+            if (enclosing != null) {
+                return enclosing.value();
+            }
+            enclosingType = enclosingType.getEnclosingType();
+        }
+
+        return CHeader.Header.class;
+    }
+
+    private static Header instantiateCHeader(Class<? extends CHeader.Header> header) {
+        try {
+            Constructor<?> constructor = header.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            return (CHeader.Header) constructor.newInstance();
+        } catch (NoSuchMethodException e) {
+            throw UserError.abort("CHeader " + header.getName() + " can't be instantiated. Please make sure that it has a nullary constructor.");
+        } catch (InstantiationException e) {
+            throw UserError.abort("CHeader " + header.getName() + " can't be instantiated. Make sure that " + header.getSimpleName() + " is not abstract.");
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere("We set the constructor to accessible.");
+        } catch (InvocationTargetException e) {
+            throw UserError.abort("CHeader " + header.getName() + " can't be instantiated. The constructor threw and exception: " + e.getTargetException().getMessage());
+        }
+    }
+
+    private static CHeader.Header defaultCHeaderAnnotation(String defaultHeaderName) {
+        return new CHeader.Header() {
+            @Override
+            public String name() {
+                return defaultHeaderName;
+            }
+
+            @Override
+            public List<Class<? extends Header>> dependsOn() {
+                return Collections.singletonList(GraalIsolateHeader.class);
+            }
+        };
     }
 
     private static int sortMethodsByFileNameAndPosition(HostedMethod stub1, HostedMethod stub2) {
@@ -176,7 +268,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             writer.append("typedef ");
         }
 
-        writer.append(CSourceCodeWriter.findCTypeName(metaAccess, nativeLibs, (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass())));
+        writer.append(CSourceCodeWriter.toCTypeName(m,
+                        (ResolvedJavaType) m.getSignature().getReturnType(m.getDeclaringClass()),
+                        false,
+                        false, // GR-9242
+                        metaAccess,
+                        nativeLibs));
         writer.append(" ");
 
         assert !cEntryPointData.getSymbolName().isEmpty();
@@ -191,7 +288,11 @@ public abstract class NativeBootImage extends AbstractBootImage {
         for (int i = 0; i < m.getSignature().getParameterCount(false); i++) {
             writer.append(sep);
             sep = ", ";
-            writer.append(CSourceCodeWriter.findCTypeName(metaAccess, nativeLibs, (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass())));
+            writer.append(CSourceCodeWriter.toCTypeName(m,
+                            (ResolvedJavaType) m.getSignature().getParameterType(i, m.getDeclaringClass()),
+                            m.getParameters()[i].getDeclaredAnnotation(CConst.class) != null,
+                            m.getParameters()[i].getDeclaredAnnotation(CUnsigned.class) != null,
+                            metaAccess, nativeLibs));
             Parameter param = m.getParameters()[i];
             if (param.isNamePresent()) {
                 writer.append(" ");
@@ -617,8 +718,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
     }
 
     public NativeBootImage(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints) {
-        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints);
+                    List<HostedMethod> entryPoints, ClassLoader imageClassLoader) {
+        super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
 
         uniqueEntryPoints.addAll(entryPoints);
 

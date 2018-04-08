@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,43 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.c.info;
+package com.oracle.svm.core.c.function;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.io.PrintWriter;
 
-public class RawStructureInfo extends StructInfo {
+import com.oracle.svm.core.c.CHeader;
+import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 
-    private boolean isPlanned;
-    private RawStructureInfo parentInfo;
-
-    public RawStructureInfo(String typeName, String typedefAnnotation, ResolvedJavaType annotatedType) {
-        super(typeName, typedefAnnotation, annotatedType, false);
+public class GraalIsolateHeader implements CHeader.Header {
+    @Override
+    public String name() {
+        return "graal_isolate";
     }
 
     @Override
-    public void accept(InfoTreeVisitor visitor) {
-        visitor.visitRawStructureInfo(this);
-    }
-
-    @Override
-    public boolean isIncomplete() {
-        return false;
-    }
-
-    public boolean isPlanned() {
-        return isPlanned;
-    }
-
-    public void setPlanned() {
-        this.isPlanned = true;
-    }
-
-    public RawStructureInfo getParentInfo() {
-        return parentInfo;
-    }
-
-    public void setParentInfo(RawStructureInfo parentInfo) {
-        assert this.parentInfo == null;
-        this.parentInfo = parentInfo;
+    public void writePreamble(PrintWriter writer) {
+        NativeImageHeaderPreamble.read(NativeImageHeaderPreamble.class.getClassLoader(), "graal_isolate.preamble")
+                        .forEach(writer::println);
     }
 }

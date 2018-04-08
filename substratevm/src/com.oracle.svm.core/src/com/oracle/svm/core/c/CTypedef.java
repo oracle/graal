@@ -20,27 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef __GRAAL_ISOLATE
-#define __GRAAL_ISOLATE
-/*
- * Structure representing an isolate. A pointer to such a structure can be
- * passed to an entry point as the execution context.
+package com.oracle.svm.core.c;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Defines the name of the typedef to be used in signatures instead of pointers.
  */
-struct __graal_isolate_t;
-typedef struct __graal_isolate_t graal_isolate_t;
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface CTypedef {
 
-/*
- * Structure representing a thread that is attached to an isolate. A pointer to
- * such a structure can be passed to an entry point as the execution context,
- * requiring that the calling thread has been attached to that isolate.
- */
-struct __graal_isolatethread_t;
-typedef struct __graal_isolatethread_t graal_isolatethread_t;
+    /**
+     * Name of the typedef to be used for this pointer.
+     */
+    String name();
 
-/* Parameters for the creation of a new isolate. */
-struct __graal_create_isolate_params_t {
-    /* for future use */
-};
-typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
-
-#endif
+}

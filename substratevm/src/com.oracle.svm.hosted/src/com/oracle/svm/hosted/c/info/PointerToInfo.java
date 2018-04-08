@@ -27,10 +27,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class PointerToInfo extends SizableInfo {
 
     private final ResolvedJavaType annotatedType;
+    private final String typedefName;
 
-    public PointerToInfo(String name, ElementKind kind, ResolvedJavaType annotatedType) {
+    PointerToInfo(String name, String typedefName, ElementKind kind, ResolvedJavaType annotatedType) {
         super(name, kind);
         this.annotatedType = annotatedType;
+        this.typedefName = typedefName;
     }
 
     @Override
@@ -41,5 +43,9 @@ public class PointerToInfo extends SizableInfo {
     @Override
     public void accept(InfoTreeVisitor visitor) {
         visitor.visitPointerToInfo(this);
+    }
+
+    public String getTypedefName() {
+        return typedefName;
     }
 }
