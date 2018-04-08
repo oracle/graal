@@ -116,12 +116,14 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_context", documentation = {
                     "Creates a context within an polyglot engine.",
                     "Context holds all of the program data. Each context is by default isolated from all other contexts",
-                    "with respect to program data and evaluation semantics."
+                    "with respect to program data and evaluation semantics.",
+                    "Note: context allows access to all resources in embedded programs; ",
+                    "in the future this will be restricted and replaced with finer grained APIs."
     })
     public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, PolyglotEngine engine, PolyglotContextPointer context) {
         return withHandledErrors(() -> {
             Engine jEngine = ObjectHandles.getGlobal().get(engine);
-            Context c = Context.newBuilder().engine(jEngine).build();
+            Context c = Context.newBuilder().engine(jEngine).allowAllAccess(true).build();
             context.write(createHandle(c));
         });
     }

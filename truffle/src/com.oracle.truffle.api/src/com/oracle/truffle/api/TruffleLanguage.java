@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1518,6 +1518,17 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             return AccessAPI.engineAccess().asHostException(exception);
+        }
+
+        /**
+         * Returns <code>true</code> if access to native code is generally allowed. If this method
+         * returns <code>false</code> then loading native libraries with the Truffle NFI will fail.
+         *
+         * @since 1.0
+         */
+        @TruffleBoundary
+        public boolean isNativeAccessAllowed() {
+            return AccessAPI.engineAccess().isNativeAccessAllowed(vmObject, this);
         }
 
         /**

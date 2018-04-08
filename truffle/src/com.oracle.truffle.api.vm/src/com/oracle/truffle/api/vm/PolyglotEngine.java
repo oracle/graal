@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1011,6 +1011,12 @@ public class PolyglotEngine {
         @Override
         public boolean isHostAccessAllowed(Object vmObject, Env env) {
             return false;
+        }
+
+        @Override
+        public boolean isNativeAccessAllowed(Object vmObject, Env env) {
+            // now way to specify access rights with legacy PolyglotEngine
+            return true;
         }
 
         @Override

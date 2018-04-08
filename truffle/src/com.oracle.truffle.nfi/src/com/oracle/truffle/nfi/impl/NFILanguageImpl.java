@@ -84,6 +84,10 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (!ctxRef.get().env.isNativeAccessAllowed()) {
+                CompilerDirectives.transferToInterpreter();
+                throw new UnsatisfiedLinkError("Access to native code is not allowed.");
+            }
             if (cached == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 cached = ctxRef.get().loadLibrary(name, flags);
@@ -94,12 +98,19 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
     private static class GetDefaultLibraryNode extends RootNode {
 
-        GetDefaultLibraryNode() {
-            super(null);
+        private final ContextReference<NFIContext> ctxRef;
+
+        GetDefaultLibraryNode(NFILanguageImpl language) {
+            super(language);
+            this.ctxRef = language.getContextReference();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (!ctxRef.get().env.isNativeAccessAllowed()) {
+                CompilerDirectives.transferToInterpreter();
+                throw new UnsatisfiedLinkError("Access to native code is not allowed.");
+            }
             return LibFFILibrary.createDefault();
         }
     }
@@ -112,7 +123,7 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
         NFIContext ctx = getContextReference().get();
 
         if (descriptor.isDefaultLibrary()) {
-            root = new GetDefaultLibraryNode();
+            root = new GetDefaultLibraryNode(this);
         } else {
             int flags = 0;
             boolean lazyOrNow = false;

@@ -24,11 +24,17 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.MessageResolution;
+import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.nodes.Node;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 final class NFILibrary implements TruffleObject {
 
@@ -57,5 +63,49 @@ final class NFILibrary implements TruffleObject {
     @TruffleBoundary
     void preBindSymbol(String name, TruffleObject symbol) {
         symbols.put(name, symbol);
+    }
+
+    @TruffleBoundary
+    Keys getSymbols() {
+        return new Keys(symbols.keySet());
+    }
+
+    @MessageResolution(receiverType = Keys.class)
+    static final class Keys implements TruffleObject {
+
+        private final Object[] keys;
+
+        private Keys(Set<String> keySet) {
+            this.keys = keySet.toArray();
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof Keys;
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return KeysForeign.ACCESS;
+        }
+
+        @Resolve(message = "GET_SIZE")
+        abstract static class GetSize extends Node {
+
+            int access(Keys receiver) {
+                return receiver.keys.length;
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class Read extends Node {
+
+            Object access(Keys receiver, int index) {
+                if (index < 0 || index >= receiver.keys.length) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(Integer.toString(index));
+                }
+                return receiver.keys[index];
+            }
+        }
     }
 }

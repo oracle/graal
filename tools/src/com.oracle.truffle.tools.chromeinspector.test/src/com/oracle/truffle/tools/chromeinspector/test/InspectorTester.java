@@ -161,7 +161,7 @@ public final class InspectorTester {
             try {
                 contextId = engine.getInstruments().get(InspectorTestInstrument.ID).lookup(Long.class);
                 inspect.setMessageListener(this);
-                context = Context.newBuilder().engine(engine).build();
+                context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();
                 Source source = null;
                 CompletableFuture<Value> valueFuture = null;

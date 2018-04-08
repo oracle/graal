@@ -169,11 +169,7 @@ public final class PolyglotLauncher extends Launcher {
             return;
         }
         Context.Builder contextBuilder = Context.newBuilder().options(options).in(System.in).out(System.out).err(System.err);
-        if (!isAOT()) {
-            contextBuilder.allowHostAccess(true);
-        }
-        contextBuilder.allowCreateThread(true);
-        contextBuilder.allowIO(true);
+        contextBuilder.allowAllAccess(true);
 
         if (version) {
             printVersion(Engine.newBuilder().options(options).build());

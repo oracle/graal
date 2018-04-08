@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -672,6 +672,7 @@ public final class Context implements AutoCloseable {
         private Map<String, String[]> arguments;
         private Predicate<String> hostClassFilter;
         private Boolean allowHostAccess;
+        private Boolean allowNativeAccess;
         private Boolean allowCreateThread;
         private boolean allowAllAccess;
         private Boolean allowIO;
@@ -747,6 +748,16 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowHostAccess(boolean enabled) {
             this.allowHostAccess = enabled;
+            return this;
+        }
+
+        /**
+         * Allows guest languages to access the native interface.
+         *
+         * @since 1.0
+         */
+        public Builder allowNativeAccess(boolean enabled) {
+            this.allowNativeAccess = enabled;
             return this;
         }
 
@@ -932,6 +943,9 @@ public final class Context implements AutoCloseable {
             if (allowHostAccess == null) {
                 allowHostAccess = allowAllAccess;
             }
+            if (allowNativeAccess == null) {
+                allowNativeAccess = allowAllAccess;
+            }
             if (allowCreateThread == null) {
                 allowCreateThread = allowAllAccess;
             }
@@ -958,11 +972,11 @@ public final class Context implements AutoCloseable {
                 }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, allowHostAccess, allowCreateThread, allowIO,
+                return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
                                 hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             } else {
-                return engine.impl.createContext(out, err, in, allowHostAccess, allowCreateThread, allowIO,
+                return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
                                 hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             }
