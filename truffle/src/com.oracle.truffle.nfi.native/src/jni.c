@@ -77,7 +77,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_initializeNa
 
     ret->Object = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/Object"));
     ret->String = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/String"));
-    ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/lang/UnsatisfiedLinkError"));
+    ret->UnsatisfiedLinkError = (jclass) (*env)->NewGlobalRef(env, (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/NFIUnsatisfiedLinkError"));
 
     jclass LibFFIClosure_RetPatches = (*env)->FindClass(env, "com/oracle/truffle/nfi/impl/LibFFIClosure$RetPatches");
     ret->RetPatches_count = (*env)->GetFieldID(env, LibFFIClosure_RetPatches, "count", "I");

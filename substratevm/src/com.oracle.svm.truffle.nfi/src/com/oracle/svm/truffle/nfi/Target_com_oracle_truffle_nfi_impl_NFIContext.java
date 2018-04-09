@@ -262,7 +262,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             if (error != null) {
-                throw new UnsatisfiedLinkError(error);
+                throw new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error);
             }
         }
         return ret.rawValue();
