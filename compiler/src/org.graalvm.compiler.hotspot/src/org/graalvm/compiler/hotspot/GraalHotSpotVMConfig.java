@@ -157,7 +157,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
-    public final boolean inlineNotify = getFlag("InlineNotify", Boolean.class);
+    public final boolean inlineNotify = isJDK8 ? false : getFlag("InlineNotify", Boolean.class);
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
     public final boolean forceUnreachable = getFlag("ForceUnreachable", Boolean.class);
     public final int codeSegmentSize = getFlag("CodeCacheSegmentSize", Integer.class);
