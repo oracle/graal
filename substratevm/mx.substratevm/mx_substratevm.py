@@ -703,7 +703,10 @@ def test_python_smoke(args):
 def build_ruby(native_image):
     truffle_language_ensure('llvm') # ruby depends on sulong
     truffle_language_ensure('ruby')
-    return native_image(['--language:ruby'], setPath=False)
+
+    # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
+    ruby_bin_dir = join(suite_native_image_root(), 'languages', 'ruby', 'bin')
+    return native_image(['-H:Path=' + ruby_bin_dir, '-H:Name=truffleruby', '--language:ruby'], setPath=False)
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
