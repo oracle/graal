@@ -184,7 +184,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 
 flag_suitename_map = collections.OrderedDict([
     ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
-    ('js', ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
+    ('js', ('graal-js', ['GRAALJS', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
     ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER', 'TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'], ['TRUFFLERUBY-ZIP'])),
     ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON_GRAALVM_SUPPORT'])),
     ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))  # JLINE?
@@ -223,6 +223,7 @@ tools_map = {
     'native-image' : ToolDescriptor(image_deps=['substratevm:SVM_DRIVER']),
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'nfi' : ToolDescriptor(), # just an alias for truffle (to be removed soon)
+    'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
     'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
     'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
