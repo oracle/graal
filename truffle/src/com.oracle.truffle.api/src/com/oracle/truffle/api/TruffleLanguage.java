@@ -1839,6 +1839,7 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
+        @TruffleBoundary
         void postInit() {
             try {
                 spi.initializeContext(context);
@@ -2014,9 +2015,15 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public Object createEnvContext(Env env) {
-            RootNode root = new RootNode(env.spi) {
+            TruffleLanguage<?> lang = env.spi.languageInfo != null ? env.spi : null;
+            RootNode root = new RootNode(lang) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    return executeImpl(env);
+                }
+
+                @TruffleBoundary
+                private Object executeImpl(@SuppressWarnings("hiding") Env env) {
                     Object context = env.getSpi().createContext(env);
                     env.context = context;
                     Assumption contextUnchanged = env.contextUnchangedAssumption;
@@ -2046,7 +2053,8 @@ public abstract class TruffleLanguage<C> {
 
         @Override
         public void postInitEnv(Env env) {
-            RootNode root = new RootNode(env.spi) {
+            TruffleLanguage<?> lang = env.spi.languageInfo != null ? env.spi : null;
+            RootNode root = new RootNode(lang) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     env.postInit();
