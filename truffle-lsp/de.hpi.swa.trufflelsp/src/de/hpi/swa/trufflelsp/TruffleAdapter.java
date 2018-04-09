@@ -85,20 +85,21 @@ public class TruffleAdapter {
     public static final URI RUBY_DUMMY_URI = URI.create("truffle:rubytestABC.rb");
 
     private LanguageClient client;
-    private Workspace workspace;
+    private Server server;
     private Context context;
     private Map<String, String> uri2LangId = new HashMap<>();
+    private Map<String, String> uri2Text = new HashMap<>();
 
     protected Context getContext() {
         if (this.context == null) {
-            this.context = Context.create(); // TODO(ds) load all languages?
+            this.context = Context.newBuilder().allowAllAccess(false).allowNativeAccess(true).build(); // TODO(ds) load all languages?
         }
         return this.context;
     }
 
-    public void connect(final LanguageClient client, Workspace workspace) {
+    public void connect(final LanguageClient client, final Server server) {
         this.client = client;
-        this.workspace = workspace;
+        this.server = server;
     }
 
     public void reportDiagnostics(final List<Diagnostic> diagnostics, final String documentUri) {
@@ -169,6 +170,8 @@ public class TruffleAdapter {
 
             this.uri2LangId.putIfAbsent(documentUri, langId);
             ssProvider.initLang(langId);
+
+            this.uri2Text.put(documentUri, text);
 
             // TODO(ds) Clean-up does not clean SL built-in functions
             ssProvider.remove(langId, documentUri);
@@ -333,7 +336,7 @@ public class TruffleAdapter {
         } catch (IllegalStateException | IOException e) {
             e.printStackTrace(ServerLauncher.errWriter());
         } catch (PolyglotException e) {
-            if (this.workspace.isVerbose()) {
+            if (this.server.isVerbose()) {
                 e.printStackTrace(ServerLauncher.errWriter());
             }
 
@@ -492,7 +495,8 @@ public class TruffleAdapter {
                                 SourceElement.values(), line + 1, character, env);
                 Node nodeForLocalScoping = node;
                 if (node != null) {
-                    int offset = source.getLineStartOffset(line + 1);
+                    int offset = source.getLineStartOffset(line + 1); // TODO(ds) this +1 causes line out of bounds at
+                                                                      // com.oracle.truffle.api.source.TextMap.lineStartOffset(TextMap.java:204)
                     if (character > 0) {
                         offset += character - 1;
                     }
@@ -804,5 +808,13 @@ public class TruffleAdapter {
         });
 
         return bestMatchedSection[0] == null ? null : bestMatchedSection[0].getCharacters();
+    }
+
+    public void exec(String uri) {
+        try {
+            this.getContext().eval(Source.newBuilder(this.uri2LangId.get(uri), this.uri2Text.get(uri), uri).build());
+        } catch (IOException e) {
+            e.printStackTrace(ServerLauncher.errWriter());
+        }
     }
 }

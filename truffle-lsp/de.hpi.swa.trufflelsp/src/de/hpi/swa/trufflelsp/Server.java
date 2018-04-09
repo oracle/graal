@@ -16,7 +16,9 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
+import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
@@ -25,10 +27,14 @@ import org.eclipse.lsp4j.DocumentHighlight;
 import org.eclipse.lsp4j.DocumentOnTypeFormattingParams;
 import org.eclipse.lsp4j.DocumentRangeFormattingParams;
 import org.eclipse.lsp4j.DocumentSymbolParams;
+import org.eclipse.lsp4j.ExecuteCommandOptions;
+import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.ServerCapabilities;
@@ -40,6 +46,7 @@ import org.eclipse.lsp4j.TextDocumentPositionParams;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.WorkspaceEdit;
+import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
@@ -47,22 +54,21 @@ import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 
-public class Server implements LanguageServer, LanguageClientAware, TextDocumentService {
+public class Server implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
     private int shutdown = 1;
     private LanguageClient client;
-    private final Workspace workspace;
     private TruffleAdapter truffle;
     private Map<String, String> openedFileUri2LangId;
+    private String trace_server = "off";
 
     public Server() {
         this.openedFileUri2LangId = new HashMap<>();
         this.truffle = new TruffleAdapter();
-        this.workspace = new Workspace();
     }
 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
         List<String> triggerCharacters = Arrays.asList("=");
-        final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(triggerCharacters);
+// final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(triggerCharacters);
 
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
@@ -70,7 +76,7 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(false);
         capabilities.setDocumentHighlightProvider(false);
-        // capabilities.setCodeLensProvider(new CodeLensOptions(true));
+        capabilities.setCodeLensProvider(new CodeLensOptions(false));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
         completionOptions.setTriggerCharacters(triggerCharacters);
@@ -78,9 +84,11 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         // capabilities.setSignatureHelpProvider(signatureHelpOptions);
         capabilities.setHoverProvider(false);
 
+        capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList("harvest_types")));
+
         final InitializeResult res = new InitializeResult(capabilities);
 
-        if (this.workspace.isVerbose()) {
+        if (this.isVerbose()) {
             ServerLauncher.logMsg(params.toString());
         }
 
@@ -115,13 +123,13 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     }
 
     public WorkspaceService getWorkspaceService() {
-        return this.workspace;
+        return this;
     }
 
     @Override
-    public void connect(LanguageClient client) {
+    public void connect(@SuppressWarnings("hiding") LanguageClient client) {
         this.client = client;
-        this.truffle.connect(client, this.workspace);
+        this.truffle.connect(client, this);
     }
 
     public LanguageClient getClient() {
@@ -196,7 +204,13 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         // List<CodeLens> result = new ArrayList<>();
         // som.getCodeLenses(result, params.getTextDocument().getUri());
         // return CompletableFuture.completedFuture(result);
-        return CompletableFuture.supplyAsync(() -> new ArrayList<>());
+
+        CodeLens codeLens = new CodeLens(new Range(new Position(), new Position()));
+        Command command = new Command("Harvest types (exec this code)", "harvest_types");
+        command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+        codeLens.setCommand(command);
+
+        return CompletableFuture.completedFuture(Arrays.asList(codeLens));
     }
 
     @Override
@@ -260,7 +274,7 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     }
 
     private void parseDocument(String documentUri, final String langId, final String text) {
-        if (this.workspace.isVerbose()) {
+        if (this.isVerbose()) {
             ServerLauncher.logMsg("URI: " + documentUri);
             ServerLauncher.logMsg("langId: " + langId);
             // ServerLauncher.logMsg("Text: " + text);
@@ -283,6 +297,45 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     public void didSave(DidSaveTextDocumentParams params) {
         // TODO Auto-generated method stub
 
+    }
+
+    @Override
+    public CompletableFuture<List<? extends SymbolInformation>> symbol(WorkspaceSymbolParams params) {
+        List<? extends SymbolInformation> result = new ArrayList<>();
+        return CompletableFuture.completedFuture(result);
+    }
+
+    @Override
+    public void didChangeConfiguration(DidChangeConfigurationParams params) {
+        if (params.getSettings() instanceof Map<?, ?>) {
+            Map<?, ?> settings = (Map<?, ?>) params.getSettings();
+            if (settings.get("truffleLsp") instanceof Map<?, ?>) {
+                Map<?, ?> truffleLsp = (Map<?, ?>) settings.get("truffleLsp");
+                if (truffleLsp.get("trace") instanceof Map<?, ?>) {
+                    Map<?, ?> trace = (Map<?, ?>) truffleLsp.get("trace");
+                    if (trace.get("server") instanceof String) {
+                        trace_server = (String) trace.get("server");
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
+// System.out.println(params);
+    }
+
+    public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
+        if ("harvest_types".equals(params.getCommand())) {
+            String uri = (String) params.getArguments().get(0);
+            this.truffle.exec(uri);
+        }
+        return CompletableFuture.completedFuture(new Object());
+    }
+
+    public boolean isVerbose() {
+        return "verbose".equals(this.trace_server);
     }
 
 }
