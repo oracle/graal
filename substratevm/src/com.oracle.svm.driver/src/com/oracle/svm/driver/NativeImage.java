@@ -432,8 +432,6 @@ class NativeImage {
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
-        /* Append user provided imageBuilderArgs to imageBuilderArgs */
-        imageBuilderArgs.addAll(customImageBuilderArgs);
 
         /* Perform option consolidation of imageBuilderArgs */
         Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
@@ -628,6 +626,7 @@ class NativeImage {
     }
 
     void addCustomImageBuilderArgs(String arg) {
+        imageBuilderArgs.add(arg);
         customImageBuilderArgs.add(arg);
     }
 
