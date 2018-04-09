@@ -359,7 +359,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
-        this.speculationLog = speculationLog;
+        if (speculationLog != null && !(speculationLog instanceof GraphSpeculationLog)) {
+            this.speculationLog = new GraphSpeculationLog(speculationLog);
+        } else {
+            this.speculationLog = speculationLog;
+        }
         this.useProfilingInfo = useProfilingInfo;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         assert trackNodeSourcePosition != null;
