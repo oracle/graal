@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.ExecuteMainNodeGen;
+import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.LookupNodeGen;
 import com.oracle.truffle.llvm.parser.BitcodeParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
@@ -64,6 +66,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
@@ -107,20 +111,22 @@ public final class Runner {
     @MessageResolution(receiverType = SulongLibrary.class)
     abstract static class SulongLibraryMessageResolution {
 
-        @Resolve(message = "READ")
-        abstract static class ReadNode extends Node {
+        abstract static class LookupNode extends Node {
 
-            Object access(SulongLibrary boxed, String name) {
-                Object ret = lookup(boxed, name);
-                if (ret == null) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnknownIdentifierException.raise(name);
-                }
-                return ret;
+            abstract LLVMFunctionDescriptor execute(SulongLibrary library, String name);
+
+            @Specialization(guards = {"library == cachedLibrary", "name.equals(cachedName)"})
+            @SuppressWarnings("unused")
+            LLVMFunctionDescriptor doCached(SulongLibrary library, String name,
+                            @Cached("library") SulongLibrary cachedLibrary,
+                            @Cached("name") String cachedName,
+                            @Cached("doGeneric(cachedLibrary, cachedName)") LLVMFunctionDescriptor cachedResult) {
+                return cachedResult;
             }
 
+            @Specialization(replaces = "doCached")
             @TruffleBoundary
-            Object lookup(SulongLibrary boxed, String name) {
+            LLVMFunctionDescriptor doGeneric(SulongLibrary library, String name) {
                 if (name.startsWith("@")) {
                     // safeguard: external users are never supposed to see the "@"
                     // TODO remove after getting rid of the @
@@ -128,11 +134,56 @@ public final class Runner {
                 }
 
                 String atname = "@" + name;
-                LLVMFunctionDescriptor d = boxed.lookup(atname);
+                LLVMFunctionDescriptor d = library.lookup(atname);
                 if (d != null) {
                     return d;
                 }
-                return boxed.lookup(name);
+                return library.lookup(name);
+            }
+        }
+
+        @Resolve(message = "READ")
+        abstract static class ReadNode extends Node {
+
+            @Child LookupNode lookup = LookupNodeGen.create();
+
+            Object access(SulongLibrary boxed, String name) {
+                Object ret = lookup.execute(boxed, name);
+                if (ret == null) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(name);
+                }
+                return ret;
+            }
+        }
+
+        @Resolve(message = "INVOKE")
+        abstract static class InvokeNode extends Node {
+
+            @Child LookupNode lookup = LookupNodeGen.create();
+            @Child LLVMForeignCallNode call = LLVMForeignCallNodeGen.create();
+
+            Object access(SulongLibrary library, String name, Object[] arguments) {
+                LLVMFunctionDescriptor fn = lookup.execute(library, name);
+                if (fn == null) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw UnknownIdentifierException.raise(name);
+                }
+                return call.executeCall(fn, arguments);
+            }
+        }
+
+        @Resolve(message = "KEY_INFO")
+        abstract static class KeyInfoNode extends Node {
+
+            @Child LookupNode lookup = LookupNodeGen.create();
+
+            int access(SulongLibrary library, String name) {
+                if (lookup.execute(library, name) != null) {
+                    return KeyInfo.READABLE | KeyInfo.INVOCABLE;
+                } else {
+                    return KeyInfo.NONE;
+                }
             }
         }
 
