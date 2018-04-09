@@ -27,6 +27,23 @@ suite = {
             "checkstyle": "org.graalvm.word",
             "license": "GPLv2-CPE",
         },
+        "org.graalvm.component.installer" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "1.8",
+            "license" : "GPLv2-CPE",
+        },
+        "org.graalvm.component.installer.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies": [
+                "mx:JUNIT",
+                "org.graalvm.component.installer"
+            ],
+            "javaCompliance" : "1.8",
+            "license" : "GPLv2-CPE",
+            "workingSets" : "Tools",
+        },
         "polyglot.launcher": {
             "class": "GraalVmPolyglotLauncher",
             "launcherConfig": {
@@ -93,13 +110,37 @@ suite = {
                     },
                 },
             },
-
         },
         "LOCATOR": {
             "dependencies": ["com.oracle.graalvm.locator"],
             "distDependencies": [
                 "truffle:TRUFFLE_API",
             ],
+        },
+        "INSTALLER": {
+            "subDir" : "src",
+            "mainClass" : "org.graalvm.component.installer.ComponentInstaller",
+            "dependencies": ["org.graalvm.component.installer"],
+        },
+        "INSTALLER_TESTS": {
+            "subDir" : "src",
+            "dependencies": ["org.graalvm.component.installer.test"],
+            "exclude": [
+                "mx:HAMCREST",
+                "mx:JUNIT",
+            ],
+            "distDependencies": [
+                "INSTALLER",
+            ],
+        },
+        "INSTALLER_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "GraalVM Installer support distribution for the GraalVM",
+            "layout" : {
+                "./" : "dependency:vm:INSTALLER",
+                "bin/" : "file:mx.vm/gu",
+            },
         },
     },
 }

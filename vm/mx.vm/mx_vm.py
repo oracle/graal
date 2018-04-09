@@ -38,6 +38,16 @@ import mx_subst
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
 
+mx_sdk.register_component(mx_sdk.GraalVmJreComponent(
+    name='Component installer',
+    id='installer',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=[],
+    jre_lib_files=['extracted-dependency:vm:INSTALLER_GRAALVM_SUPPORT'],
+    provided_executables=['link:<support>/bin/gu'],
+))
+
 
 class BaseGraalVmLayoutDistribution(mx.LayoutTARDistribution):
     def __init__(self, suite, name, deps, components, include_jdk, exclLibs, platformDependent, theLicense,
@@ -60,8 +70,15 @@ class BaseGraalVmLayoutDistribution(mx.LayoutTARDistribution):
             return _jdk_base
 
         def _get_support(comp=None, start=None, **kwargs):
-            # this only
-            return relpath(join('jre', _get_languages_or_tool(comp=comp), _get_component_id(comp=comp)), start=start)
+            if isinstance(comp, mx_sdk.GraalVmTruffleComponent):
+                _base_location = join('jre', _get_languages_or_tool(comp=comp))
+            elif isinstance(comp, mx_sdk.GraalVmJdkComponent):
+                _base_location = join('lib')
+            elif isinstance(comp, mx_sdk.GraalVmJreComponent):
+                _base_location = join('jre', 'lib')
+            else:
+                mx.abort('The \'<support>\' substitution is not available for component \'{}\' of type \'{}\''.format(_component.name), type(_component))
+            return relpath(join(_base_location, _get_component_id(comp=comp)), start=start)
 
         path_substitutions = mx_subst.SubstitutionEngine(mx_subst.path_substitutions)
         path_substitutions.register_no_arg('jdk_base', _get_jdk_base)
