@@ -76,6 +76,11 @@ class NFIRootNode extends RootNode {
     }
 
     @Override
+    public boolean isInternal() {
+        return true;
+    }
+
+    @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         TruffleObject library = (TruffleObject) loadLibrary.call(new Object[0]);
