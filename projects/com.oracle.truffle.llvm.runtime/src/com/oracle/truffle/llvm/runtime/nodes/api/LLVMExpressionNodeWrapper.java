@@ -38,7 +38,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -689,37 +688,6 @@ final class LLVMExpressionNodeWrapper extends LLVMExpressionNode implements Wrap
     }
 
     @Override
-    public LLVMTruffleAddress executeLLVMTruffleAddress(VirtualFrame frame) throws UnexpectedResultException {
-        LLVMTruffleAddress returnValue;
-        for (;;) {
-            boolean wasOnReturnExecuted = false;
-            try {
-                probeNode.onEnter(frame);
-                returnValue = delegateNode.executeLLVMTruffleAddress(frame);
-                wasOnReturnExecuted = true;
-                probeNode.onReturnValue(frame, returnValue);
-                break;
-            } catch (UnexpectedResultException e) {
-                wasOnReturnExecuted = true;
-                probeNode.onReturnValue(frame, null);
-                throw e;
-            } catch (Throwable t) {
-                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
-                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
-                    continue;
-                } else if (result instanceof LLVMTruffleAddress) {
-                    returnValue = (LLVMTruffleAddress) result;
-                    break;
-                } else if (result != null) {
-                    throw new UnexpectedResultException(result);
-                }
-                throw t;
-            }
-        }
-        return returnValue;
-    }
-
-    @Override
     public LLVMTruffleObject executeLLVMTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
         LLVMTruffleObject returnValue;
         for (;;) {
@@ -728,7 +696,7 @@ final class LLVMExpressionNodeWrapper extends LLVMExpressionNode implements Wrap
                 probeNode.onEnter(frame);
                 returnValue = delegateNode.executeLLVMTruffleObject(frame);
                 wasOnReturnExecuted = true;
-                probeNode.onReturnValue(frame, null);
+                probeNode.onReturnValue(frame, returnValue);
                 break;
             } catch (UnexpectedResultException e) {
                 wasOnReturnExecuted = true;
