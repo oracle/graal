@@ -60,7 +60,7 @@ class LibFFILibraryMessageResolution {
         protected TruffleObject lookup(LibFFILibrary receiver, String symbol) {
             try {
                 return ctxRef.get().lookupSymbol(receiver, symbol);
-            } catch (NFIUnsatisfiedLinkError ex) {
+            } catch (UnsatisfiedLinkError ex) {
                 throw UnknownIdentifierException.raise(symbol);
             }
         }
@@ -89,7 +89,7 @@ class LibFFILibraryMessageResolution {
             try {
                 ctxRef.get().lookupSymbol(receiver, symbol);
                 return KeyInfo.READABLE;
-            } catch (NFIUnsatisfiedLinkError ex) {
+            } catch (UnsatisfiedLinkError ex) {
                 return KeyInfo.NONE;
             }
         }
