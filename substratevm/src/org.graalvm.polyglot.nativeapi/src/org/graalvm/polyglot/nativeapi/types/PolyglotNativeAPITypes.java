@@ -139,7 +139,7 @@ public class PolyglotNativeAPITypes {
     @CPointerTo(nameOfCType = "poly_value")
     public interface PolyglotValuePointer extends PointerBase, ObjectHandle {
 
-        PolyglotValue read(int index);
+        PolyglotValue read(long index);
 
         void write(ObjectHandle value);
 
