@@ -22,12 +22,14 @@
  */
 package com.oracle.svm.driver;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Queue;
 
+import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.InvalidMacroException;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
-import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -40,7 +42,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String headArg = args.peek();
         boolean consumed = false;
         try {
-            consumed = nativeImage.optionRegistry.enableOption(headArg, new HashSet<>(), null);
+            consumed = nativeImage.optionRegistry.enableOption(headArg, new HashSet<>(), null, this::applyEnabled);
         } catch (VerboseInvalidMacroException e1) {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
@@ -50,5 +52,31 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
         }
         return consumed;
+    }
+
+    private void applyEnabled(MacroOption.EnabledOption enabledOption) {
+        Path imageJarsDirectory = enabledOption.getOption().getOptionDirectory();
+        if (imageJarsDirectory == null) {
+            return;
+        }
+
+        Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
+        if (Files.isDirectory(builderJarsDirectory)) {
+            NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
+        }
+        NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
+
+        String imageName = enabledOption.getProperty("ImageName");
+        if (imageName != null) {
+            nativeImage.addImageBuilderArg(NativeImage.oHName + imageName);
+        }
+
+        String launcherClass = enabledOption.getProperty("LauncherClass");
+        if (launcherClass != null) {
+            nativeImage.addImageBuilderArg(NativeImage.oHClass + launcherClass);
+        }
+
+        enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
+        enabledOption.forEachPropertyValue("Args", nativeImage::addImageBuilderArg);
     }
 }

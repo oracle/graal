@@ -74,12 +74,8 @@ final class MacroOption {
         }
     }
 
-    Path getImageJarsDirectory() {
+    Path getOptionDirectory() {
         return optionDirectory;
-    }
-
-    Path getBuilderJarsDirectory() {
-        return optionDirectory.resolve("builder");
     }
 
     String getOptionName() {
@@ -305,7 +301,7 @@ final class MacroOption {
             }
         }
 
-        boolean enableOption(String optionString, HashSet<MacroOption> addedCheck, MacroOption context) {
+        boolean enableOption(String optionString, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             String specString;
             if (context == null) {
                 if (optionString.startsWith(macroOptionPrefix)) {
@@ -347,14 +343,14 @@ final class MacroOption {
             MacroOption option = supported.get(kindPart).get(optionName);
             if (option != null) {
                 String optionArg = parts.length == 2 ? parts[1] : null;
-                enableResolved(option, optionArg, addedCheck, context);
+                enableResolved(option, optionArg, addedCheck, context, enabler);
             } else {
                 throw new VerboseInvalidMacroException("Unknown name in option specification: " + kindPart + ":" + optionName, kindPart, context);
             }
             return true;
         }
 
-        private void enableResolved(MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context) {
+        private void enableResolved(MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             if (addedCheck.contains(option)) {
                 if (option.kind.equals(MacroOptionKind.Builtin)) {
                     return;
@@ -366,7 +362,7 @@ final class MacroOption {
             String requires = enabledOption.getProperty("Requires", "");
             if (!requires.isEmpty()) {
                 for (String specString : requires.split(" ")) {
-                    enableOption(specString, addedCheck, option);
+                    enableOption(specString, addedCheck, option, enabler);
                 }
             }
 
@@ -376,8 +372,9 @@ final class MacroOption {
                  * Every language requires Truffle. If it is not specified explicitly as a
                  * requirement, add it automatically.
                  */
-                enableResolved(truffleOption, null, addedCheck, context);
+                enableResolved(truffleOption, null, addedCheck, context, enabler);
             }
+            enabler.accept(enabledOption);
             enabled.add(enabledOption);
         }
 
@@ -391,32 +388,6 @@ final class MacroOption {
 
         EnabledOption getEnabledOption(MacroOption option) {
             return enabled.stream().filter(eo -> eo.getOption().equals(option)).findFirst().orElse(null);
-        }
-
-        void applyOptions(NativeImage nativeImage) {
-            for (EnabledOption enabledOption : getEnabledOptions()) {
-                if (enabledOption.getOption().kind.equals(MacroOptionKind.Builtin)) {
-                    continue;
-                }
-
-                if (Files.isDirectory(enabledOption.getOption().getBuilderJarsDirectory())) {
-                    NativeImage.getJars(enabledOption.getOption().getBuilderJarsDirectory()).forEach(nativeImage::addImageBuilderClasspath);
-                }
-                NativeImage.getJars(enabledOption.getOption().getImageJarsDirectory()).forEach(nativeImage::addImageClasspath);
-
-                String imageName = enabledOption.getProperty("ImageName");
-                if (imageName != null) {
-                    nativeImage.addImageBuilderArg(NativeImage.oHName + imageName);
-                }
-
-                String launcherClass = enabledOption.getProperty("LauncherClass");
-                if (launcherClass != null) {
-                    nativeImage.addImageBuilderArg(NativeImage.oHClass + launcherClass);
-                }
-
-                enabledOption.forEachPropertyValue("JavaArgs", nativeImage::addImageBuilderJavaArgs);
-                enabledOption.forEachPropertyValue("Args", nativeImage::addImageBuilderArg);
-            }
         }
     }
 

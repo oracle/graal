@@ -318,9 +318,7 @@ class NativeImage {
         getJars(bootDir).forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
     }
 
-    private void applyOptionArgs() {
-        optionRegistry.applyOptions(this);
-
+    private void completeOptionArgs() {
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
         LinkedHashSet<EnabledOption> enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
         for (EnabledOption enabledOption : optionRegistry.getEnabledOptions()) {
@@ -415,7 +413,7 @@ class NativeImage {
     private void completeImageBuildArgs(String[] args) {
         List<String> leftoverArgs = processNativeImageArgs(args);
 
-        applyOptionArgs();
+        completeOptionArgs();
 
         /* If no customImageClasspath was specified put "." on classpath */
         if (customImageClasspath.isEmpty()) {
