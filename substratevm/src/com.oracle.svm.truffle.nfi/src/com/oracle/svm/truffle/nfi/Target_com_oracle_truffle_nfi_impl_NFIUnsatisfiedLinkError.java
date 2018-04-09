@@ -25,12 +25,10 @@ package com.oracle.svm.truffle.nfi;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@SuppressWarnings("serial")
 @TargetClass(className = "com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError", onlyWith = TruffleNFIFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError extends UnsatisfiedLinkError {
+final class Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError {
 
     @Alias
-    Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(String message) {
-        super(message);
+    Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(@SuppressWarnings("unused") String message) {
     }
 }
