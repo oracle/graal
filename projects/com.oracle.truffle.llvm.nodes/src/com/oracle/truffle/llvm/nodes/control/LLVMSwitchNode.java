@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -39,7 +38,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-@GenerateWrapper
 public abstract class LLVMSwitchNode extends LLVMControlFlowNode implements InstrumentableNode {
 
     public LLVMSwitchNode(LLVMSourceLocation sourceSection) {

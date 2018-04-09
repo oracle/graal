@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -55,7 +54,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * operation.
  */
 @TypeSystemReference(LLVMTypes.class)
-@GenerateWrapper
 public abstract class LLVMExpressionNode extends LLVMNode implements InstrumentableNode {
 
     @Override
