@@ -74,6 +74,11 @@ import com.oracle.truffle.sl.SLLanguage;
 import de.hpi.swa.trufflelsp.helper.Pair;
 
 public class TruffleAdapter {
+    private static final Node HAS_SIZE = Message.HAS_SIZE.createNode();
+    private static final Node KEYS = Message.KEYS.createNode();
+    private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
+    private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
+
     public static final String SOURCE_SECTION_ID = "TruffleLSPTestSection";
     public static final String SOURCE_SECTION_ID_RUBY = "TruffleLSPTestSectionRuby";
     public static final String SOURCE_SECTION_DUMMY = "TruffleLSPDummySection";
@@ -183,7 +188,7 @@ public class TruffleAdapter {
                     range = sourceSectionToRange(te.getSourceLocation());
                 }
 
-                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle " + te.isIncompleteSource()));
+                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
             } else {
                 throw new RuntimeException(e);
             }
@@ -291,8 +296,8 @@ public class TruffleAdapter {
                                 if (variables instanceof TruffleObject) {
                                     TruffleObject truffleObj = (TruffleObject) variables;
                                     try {
-                                        TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
-                                        boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                                        TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
+                                        boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
                                         if (!hasSize) {
                                             System.out.println("No size!!!");
                                             continue;
@@ -309,8 +314,7 @@ public class TruffleAdapter {
                             for (Entry<Object, Object> entry : map.entrySet()) {
                                 if (entry.getValue() instanceof TruffleObject) {
                                     TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
-                                    boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
-                                                    truffleObjVal);
+                                    boolean isExecutable = ForeignAccess.sendIsExecutable(IS_EXECUTABLE, truffleObjVal);
                                     System.out.println(entry.getKey() + " " + entry.getValue() + " isExecutable: " + isExecutable);
 // SymbolInformation si = new SymbolInformation(entry.getKey().toString(), isExecutable ?
 // SymbolKind.Function : SymbolKind.Variable,
@@ -354,7 +358,7 @@ public class TruffleAdapter {
                     range = sourceSectionToRange(te.getSourceLocation());
                 }
 
-                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle " + te.isIncompleteSource()));
+                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
             } else {
                 throw new RuntimeException(e);
             }
@@ -433,7 +437,7 @@ public class TruffleAdapter {
         for (Entry<Object, Object> entry : map.entrySet()) {
             if (entry.getValue() instanceof TruffleObject) {
                 TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
-                boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
+                boolean isExecutable = ForeignAccess.sendIsExecutable(IS_EXECUTABLE,
                                 truffleObjVal);
                 SymbolInformation si = new SymbolInformation(entry.getKey().toString(), isExecutable ? SymbolKind.Function : SymbolKind.Variable,
                                 new Location(uri, new Range(new Position(), new Position())));
@@ -453,8 +457,8 @@ public class TruffleAdapter {
             if (variables instanceof TruffleObject) {
                 TruffleObject truffleObj = (TruffleObject) variables;
                 try {
-                    TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
-                    boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
+                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
                     if (!hasSize) {
                         System.out.println("No size!!!");
                         continue;
@@ -516,18 +520,18 @@ public class TruffleAdapter {
                 if (node instanceof InstrumentableNode) {
                     InstrumentableNode instrumentableNode = (InstrumentableNode) node;
                     if (instrumentableNode.isInstrumentable()) {
-                        // VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], new
-                        // FrameDescriptor());
+// VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], new
+// FrameDescriptor());
                         VirtualFrame frame = null;
-                        // Here we do not use the original node, but the (potential) copy
+// Here we do not use the original node, but the (potential) copy
                         Iterable<Scope> localScopes = env.findLocalScopes(nodeForLocalScoping, frame);
                         for (Scope scope : localScopes) {
                             Object variables = scope.getVariables();
                             if (variables instanceof TruffleObject) {
                                 TruffleObject truffleObj = (TruffleObject) variables;
                                 try {
-                                    TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
-                                    boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
+                                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
                                     if (!hasSize) {
                                         System.out.println("No size!!!");
                                         continue;
@@ -555,11 +559,14 @@ public class TruffleAdapter {
                 for (Entry<Object, Object> entry : map.entrySet()) {
                     if (entry.getValue() instanceof TruffleObject) {
                         TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
-                        boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
-                                        truffleObjVal);
+                        boolean isExecutable = ForeignAccess.sendIsExecutable(IS_EXECUTABLE, truffleObjVal);
+                        boolean isInstatiatable = ForeignAccess.sendIsExecutable(IS_INSTANTIABLE, truffleObjVal);
                         CompletionItem completion = new CompletionItem(entry.getKey().toString());
                         if (isExecutable) {
                             completion.setKind(CompletionItemKind.Function);
+                        }
+                        if (isInstatiatable) {
+                            completion.setKind(CompletionItemKind.Class);
                         }
                         completions.getItems().add(completion);
                     }
@@ -649,8 +656,8 @@ public class TruffleAdapter {
                             if (variables instanceof TruffleObject) {
                                 TruffleObject truffleObj = (TruffleObject) variables;
                                 try {
-                                    TruffleObject keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), truffleObj, true);
-                                    boolean hasSize = ForeignAccess.sendHasSize(Message.HAS_SIZE.createNode(), keys);
+                                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
+                                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
                                     if (!hasSize) {
                                         System.out.println("No size!!!");
                                         continue;
@@ -677,7 +684,7 @@ public class TruffleAdapter {
                 for (Entry<Object, Object> entry : map.entrySet()) {
                     if (entry.getValue() instanceof TruffleObject) {
                         TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
-                        boolean isExecutable = ForeignAccess.sendIsExecutable(Message.IS_EXECUTABLE.createNode(),
+                        boolean isExecutable = ForeignAccess.sendIsExecutable(IS_EXECUTABLE,
                                         truffleObjVal);
                         CompletionItem completion = new CompletionItem(entry.getKey().toString());
                         if (isExecutable) {
