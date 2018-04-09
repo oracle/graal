@@ -253,10 +253,9 @@ import com.oracle.truffle.llvm.nodes.op.LLVMLogicNodeFactory.LLVMShlNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMLogicNodeFactory.LLVMXorNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMAccessGlobalVariableStorageNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVM80BitFloatSelectNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMAddressSelectNodeGen;
+import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMGenericSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMDoubleSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMFloatSelectNodeGen;
-import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMFunctionSelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI16SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI1SelectNodeGen;
 import com.oracle.truffle.llvm.nodes.others.LLVMSelectNodeFactory.LLVMI32SelectNodeGen;
@@ -1110,57 +1109,47 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createSelect(LLVMParserRuntime runtime, Type type, LLVMExpressionNode condition, LLVMExpressionNode trueValue, LLVMExpressionNode falseValue) {
         if (type instanceof VectorType) {
-            if (type instanceof VectorType) {
-                final Type elementType = ((VectorType) type).getElementType();
-                if (elementType == PrimitiveType.I1) {
-                    return LLVMI1VectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType == PrimitiveType.I8) {
-                    return LLVMI8VectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType == PrimitiveType.I16) {
-                    return LLVMI16VectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType == PrimitiveType.I32) {
-                    return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType == PrimitiveType.I64) {
-                    return LLVMI64VectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType == PrimitiveType.FLOAT) {
-                    return LLVMFloatVectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType == PrimitiveType.DOUBLE) {
-                    return LLVMDoubleVectorSelectNodeGen.create(condition, trueValue, falseValue);
-                } else if (elementType instanceof PointerType) {
-                    return LLVMAddressVectorSelectNodeGen.create(condition, trueValue, falseValue);
-                }
-            }
-            throw new AssertionError("Cannot create vector select for type: " + type);
-        } else {
-            if (Type.isFunctionOrFunctionPointer(type)) {
-                return LLVMFunctionSelectNodeGen.create(condition, trueValue, falseValue);
-            } else if (type instanceof PointerType) {
-                return LLVMAddressSelectNodeGen.create(condition, trueValue, falseValue);
-            } else if (type instanceof PrimitiveType) {
-                switch (((PrimitiveType) type).getPrimitiveKind()) {
-                    case I1:
-                        return LLVMI1SelectNodeGen.create(condition, trueValue, falseValue);
-                    case I8:
-                        return LLVMI8SelectNodeGen.create(condition, trueValue, falseValue);
-                    case I16:
-                        return LLVMI16SelectNodeGen.create(condition, trueValue, falseValue);
-                    case I32:
-                        return LLVMI32SelectNodeGen.create(condition, trueValue, falseValue);
-                    case I64:
-                        return LLVMI64SelectNodeGen.create(condition, trueValue, falseValue);
-                    case FLOAT:
-                        return LLVMFloatSelectNodeGen.create(condition, trueValue, falseValue);
-                    case DOUBLE:
-                        return LLVMDoubleSelectNodeGen.create(condition, trueValue, falseValue);
-                    case X86_FP80:
-                        return LLVM80BitFloatSelectNodeGen.create(condition, trueValue, falseValue);
-                    default:
-                        throw new AssertionError(type);
-                }
+            final Type elementType = ((VectorType) type).getElementType();
+            if (elementType == PrimitiveType.I1) {
+                return LLVMI1VectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType == PrimitiveType.I8) {
+                return LLVMI8VectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType == PrimitiveType.I16) {
+                return LLVMI16VectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType == PrimitiveType.I32) {
+                return LLVMI32VectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType == PrimitiveType.I64) {
+                return LLVMI64VectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType == PrimitiveType.FLOAT) {
+                return LLVMFloatVectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType == PrimitiveType.DOUBLE) {
+                return LLVMDoubleVectorSelectNodeGen.create(condition, trueValue, falseValue);
+            } else if (elementType instanceof PointerType) {
+                return LLVMAddressVectorSelectNodeGen.create(condition, trueValue, falseValue);
             } else {
-                throw new AssertionError(type);
+                throw new AssertionError("Cannot create vector select for type: " + type);
+            }
+        } else if (type instanceof PrimitiveType) {
+            switch (((PrimitiveType) type).getPrimitiveKind()) {
+                case I1:
+                    return LLVMI1SelectNodeGen.create(condition, trueValue, falseValue);
+                case I8:
+                    return LLVMI8SelectNodeGen.create(condition, trueValue, falseValue);
+                case I16:
+                    return LLVMI16SelectNodeGen.create(condition, trueValue, falseValue);
+                case I32:
+                    return LLVMI32SelectNodeGen.create(condition, trueValue, falseValue);
+                case I64:
+                    return LLVMI64SelectNodeGen.create(condition, trueValue, falseValue);
+                case FLOAT:
+                    return LLVMFloatSelectNodeGen.create(condition, trueValue, falseValue);
+                case DOUBLE:
+                    return LLVMDoubleSelectNodeGen.create(condition, trueValue, falseValue);
+                case X86_FP80:
+                    return LLVM80BitFloatSelectNodeGen.create(condition, trueValue, falseValue);
             }
         }
+        return LLVMGenericSelectNodeGen.create(condition, trueValue, falseValue);
     }
 
     @Override
