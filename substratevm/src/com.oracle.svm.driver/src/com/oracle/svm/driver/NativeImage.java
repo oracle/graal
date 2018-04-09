@@ -45,12 +45,15 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Queue;
+import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -162,6 +165,7 @@ class NativeImage {
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     static final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
+    static final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -173,6 +177,7 @@ class NativeImage {
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> imageBuilderJavaArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> customJavaArgs = new LinkedHashSet<>();
     private final LinkedHashSet<String> customImageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
@@ -297,7 +302,7 @@ class NativeImage {
     private void prepareImageBuildArgs() {
         Path svmDir = getRootDir().resolve(Paths.get("lib", "svm"));
         getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
-        getJars(svmDir).forEach(this::addImageClasspath);
+        getJars(svmDir).forEach(this::addImageProvidedClasspath);
         Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
         addImageBuilderArg(oHCLibraryPath + clibrariesDir);
         if (Files.isDirectory(svmDir.resolve("inspect"))) {
@@ -355,10 +360,26 @@ class NativeImage {
         }
     }
 
-    private Stream<String> getLauncherClasses() {
-        return enabledLanguages.stream()
+    private Stream<String> getLanguageLauncherClasses() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language)
                         .map(lang -> lang.getProperty("LauncherClass"))
                         .filter(Objects::nonNull).distinct();
+    }
+
+    private Stream<String> getLauncherClasses() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
+                        .map(lang -> lang.getProperty("LauncherClass"))
+                        .filter(Objects::nonNull).distinct();
+    }
+
+    private Stream<String> getRelativeLauncherClassPath() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
+                        .map(lang -> lang.getProperty("LauncherClassPath"))
+                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
+    }
+
+    private Stream<Path> getAbsoluteLauncherClassPath() {
+        return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> getRootDir().resolve(p));
     }
 
     private void enableTruffle() {
@@ -368,8 +389,9 @@ class NativeImage {
         addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
         addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
 
-        Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
-        getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
+        // TODO: use a LauncherClassPath property
+        // Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
+        // getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
@@ -511,9 +533,26 @@ class NativeImage {
             }
         }
 
+        boolean isGraalVMLauncher = false;
         if ("org.graalvm.launcher.PolyglotLauncher".equals(mainClass) && consolidateSingleValueArg(imageBuilderJavaArgs, oDPolyglotLauncherClasses) == null) {
             /* Collect the launcherClasses for enabledLanguages. */
-            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLauncherClasses().collect(Collectors.joining(",")));
+            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLanguageLauncherClasses().collect(Collectors.joining(",")));
+            isGraalVMLauncher = true;
+        }
+
+        if (!isGraalVMLauncher && mainClass != null) {
+            isGraalVMLauncher = getLauncherClasses().anyMatch(mainClass::equals);
+        }
+
+        if (isGraalVMLauncher) {
+            showVerboseMessage(verbose || dryRun, "Automatically appending LauncherClassPath");
+            getAbsoluteLauncherClassPath().forEach(p -> {
+                if (!Files.isRegularFile(p)) {
+                    System.err.println(String.format("WARNING: Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
+                } else {
+                    addImageClasspath(p);
+                }
+            });
         }
 
         if (!leftoverArgs.isEmpty()) {
@@ -523,7 +562,22 @@ class NativeImage {
 
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
         finalImageClasspath.addAll(imageBuilderClasspath);
+        finalImageClasspath.addAll(imageProvidedClasspath);
         finalImageClasspath.addAll(imageClasspath);
+
+        if (isGraalVMLauncher && collectListArgs(imageBuilderJavaArgs, oDLauncherClasspath, File.pathSeparator).isEmpty()) {
+            StringJoiner sj = new StringJoiner(File.pathSeparator, oDLauncherClasspath, "");
+            for (Path p : imageClasspath) {
+                Path canonical = canonicalize(p);
+                if (!canonical.startsWith(rootDir)) {
+                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", canonical, rootDir));
+                    continue;
+                }
+                sj.add(Paths.get("jre").resolve(rootDir.relativize(canonical)).toString());
+            }
+            addImageBuilderJavaArgs(sj.toString());
+        }
+
         buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
@@ -635,6 +689,14 @@ class NativeImage {
         imageClasspath.add(canonicalize(classpath));
     }
 
+    /**
+     * For adding classpath elements that are not normally on the classpath in the Java version:
+     * svm jars, truffle jars etc.
+     */
+    void addImageProvidedClasspath(Path classpath) {
+        imageProvidedClasspath.add(canonicalize(classpath));
+    }
+
     void addCustomImageClasspath(Path classpath) {
         customImageClasspath.add(canonicalize(classpath));
     }
@@ -731,15 +793,13 @@ class NativeImage {
 
             switch (arg) {
                 case "--language:all":
-                case "--Language:all":
                     for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
-                        arguments.add("--Language:" + lang);
+                        arguments.add("--language:" + lang);
                     }
                     break;
                 case "--tool:all":
-                case "--Tool:all":
                     for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
-                        arguments.add("--Tool:" + lang);
+                        arguments.add("--tool:" + lang);
                     }
                     break;
                 default:

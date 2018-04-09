@@ -146,7 +146,7 @@ def _tools_gate_runner(args, tasks):
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 
-mx_sdk.register_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     name='GraalVM Chrome Inspector',
     id='chromeinspector',
     documentation_files=[],
@@ -155,9 +155,9 @@ mx_sdk.register_component(mx_sdk.GraalVmTool(
     truffle_jars=['dependency:tools:CHROMEINSPECTOR'],
     support_distributions=['extracted-dependency:tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
-))
+), _suite)
 
-mx_sdk.register_component(mx_sdk.GraalVmTool(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     name='GraalVM Profiler',
     id='profiler',
     documentation_files=[],
@@ -166,7 +166,7 @@ mx_sdk.register_component(mx_sdk.GraalVmTool(
     truffle_jars=['dependency:tools:TRUFFLE_PROFILER'],
     support_distributions=['extracted-dependency:tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
-))
+), _suite)
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],

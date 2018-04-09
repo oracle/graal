@@ -511,8 +511,9 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
     option_properties = join(language_suite.mxDir, 'native-image.properties')
     target_path = remove_existing_symlink(join(native_image_root, language_dir, 'native-image.properties'))
     if exists(option_properties):
-        mx.logv('Add symlink to ' + str(option_properties))
-        relsymlink(option_properties, target_path)
+        if not exists(target_path):
+            mx.logv('Add symlink to ' + str(option_properties))
+            relsymlink(option_properties, target_path)
     else:
         native_image_option_properties('languages', language_flag, native_image_root)
     return language_suite
@@ -835,31 +836,46 @@ def fetch_languages(args, early_exit=True):
         truffle_language_ensure(language_flag, version, early_exit=early_exit)
 
 
-mx_sdk.register_component(mx_sdk.GraalVmJreComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     name='SubstrateVM',
     id='svm',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],
     jre_lib_files=['extracted-dependency:substratevm:SVM_GRAALVM_SUPPORT'],
+    launcher_configs=[
+        mx_sdk.LauncherConfig(
+            destination="bin/native-image",
+            jar_distributions=["dependency:substratevm:SVM_DRIVER"],
+            main_class="com.oracle.svm.driver.NativeImage",
+            build_args=[
+                "-H:-ParseRuntimeOptions",
+            ]
+        )
+    ]
+), suite)
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+    name='Polyglot.Native',
+    id='polyglot',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=[],
     polyglot_library_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
-        "-H:APIFunctionPrefix=poly_",
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:org.graalvm.polyglot.nativeapi>/resources"
+        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>/include",
+        "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>/lib",
+        "-H:CStandard=C11",
     ],
     polyglot_library_jar_dependencies=[
         "dependency:substratevm:POLYGLOT_NATIVE_API",
     ],
+    polyglot_library_build_dependencies=[
+        "dependency:substratevm:POLYGLOT_NATIVE_API_SUPPORT",
+    ],
     has_polyglot_library_entrypoints=True,
-    launcher_configs=[
-        mx_sdk.LauncherConfig(destination="bin/native-image",
-                              jar_distributions=["dependency:substratevm:SVM_DRIVER"],
-                              main_class="com.oracle.svm.driver.NativeImage",
-                              build_args=[
-                                  "-H:-ParseRuntimeOptions",
-                              ])
-    ]
-))
+), suite)
 
 mx.update_commands(suite, {
     'build': [build, ''],

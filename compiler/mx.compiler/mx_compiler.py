@@ -1086,7 +1086,7 @@ def makegraaljdk(args):
         mx.abort('Can only make GraalJDK for JDK 8 currently')
 
 
-mx_sdk.register_component(mx_sdk.GraalVmJvmciComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     name='Graal compiler',
     id='graal',
     documentation_files=[],
@@ -1094,7 +1094,7 @@ mx_sdk.register_component(mx_sdk.GraalVmJvmciComponent(
     third_party_license_files=[],
     jvmci_jars=['dependency:compiler:GRAAL'],
     graal_compiler='graal',
-))
+), _suite)
 
 
 mx.update_commands(_suite, {

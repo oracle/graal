@@ -438,7 +438,7 @@ public abstract class Launcher {
             printHelp(helpCategory);
             // @formatter:off
             System.out.println();
-            System.out.println("Runtime Options:");
+            System.out.println("Runtime options:");
             printOption("--polyglot",                   "Run with all other guest languages accessible.");
             printOption("--native",                     "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
             printOption("--native.[option]",            "Pass options to the native image. To see available options, use '--native.help'.");
@@ -526,7 +526,7 @@ public abstract class Launcher {
         }
         if (!languagesOptions.isEmpty()) {
             System.out.println();
-            System.out.println("Language Options:");
+            System.out.println("Language options:");
             for (Language language : languages) {
                 List<PrintableOption> options = languagesOptions.get(language);
                 if (options != null) {
@@ -1321,7 +1321,9 @@ public abstract class Launcher {
                 if (result == null) {
                     return null;
                 }
-                assert result.getFileName().equals(p.getFileName());
+                if (!result.getFileName().equals(p.getFileName())) {
+                    System.err.println(String.format("WARNING: It seems that this launcher has been moved! Expected its path to end with %s but it was in %s", expectedRelative, absolute));
+                }
                 result = result.getParent();
                 p = p.getParent();
             }
@@ -1335,6 +1337,9 @@ public abstract class Launcher {
             Path result = trimAbsolutePath(executable, LANGUAGE_HOME_RELATIVE_PATH);
             if (result == null) {
                 abort(String.format("Error while getting the GraalVM home: getCurrentExecutablePath()=%s and LANGUAGE_HOME_RELATIVE_PATH=%s", executable, LANGUAGE_HOME_RELATIVE_PATH));
+            }
+            if (verbose) {
+                System.out.println(String.format("Resolving language home: executable=%s, LANGUAGE_HOME_RELATIVE_PATH=%s -> languageHome=%s", executable, LANGUAGE_HOME_RELATIVE_PATH, result));
             }
             return result;
         }
@@ -1352,6 +1357,9 @@ public abstract class Launcher {
                 home = jreOrJdk.getParent();
             } else {
                 home = jreOrJdk;
+            }
+            if (verbose) {
+                System.out.println(String.format("Resolving GraalVM home from language home: languageHome=%s -> home=%s", languageHome, home));
             }
             return home;
         }
@@ -1380,6 +1388,9 @@ public abstract class Launcher {
                 if (result == null) {
                     abort(String.format("Error while getting the GraalVM home: getCurrentExecutablePath()=%s and GRAAL_HOME_RELATIVE_PATH=%s", executable, GRAAL_HOME_RELATIVE_PATH));
                 }
+                if (verbose) {
+                    System.out.println(String.format("Resolving GraalVM home: executable=%s, GRAAL_HOME_RELATIVE_PATH=%s -> home=%s", executable, GRAAL_HOME_RELATIVE_PATH, result));
+                }
                 return result;
             }
             // Fallback, should probably be removed after a while
@@ -1391,6 +1402,9 @@ public abstract class Launcher {
                 home = jreOrJdk.getParent();
             } else {
                 home = jreOrJdk;
+            }
+            if (verbose) {
+                System.out.println(String.format("Resolving GraalVM home with fallback: executable=%s -> home=%s", executable, home));
             }
             return home;
         }

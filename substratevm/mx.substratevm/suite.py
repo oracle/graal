@@ -410,18 +410,7 @@ suite = {
             "subDir" : "src",
             "native" : True,
             "output" : "mxbuild/org.graalvm.polyglot.nativeapi.native",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results" : ["linux-amd64/polyglot-nativeapi.o"],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results" : ["darwin-amd64/polyglot-nativeapi.o"],
-                    },
-                },
-            }
+            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
         },
 
         "bootstrap.native-image" : {
@@ -569,6 +558,16 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "SVM",
             ],
+        },
+
+        "POLYGLOT_NATIVE_API_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "polyglot.nativeapi support distribution for the GraalVM",
+            "layout" : {
+                "include/" : "file:<path:org.graalvm.polyglot.nativeapi>/resources/*.h",
+                "lib/" : ["dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o"],
+            },
         },
 
         "SVM_GRAALVM_SUPPORT" : {

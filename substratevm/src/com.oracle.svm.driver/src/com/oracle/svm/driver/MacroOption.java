@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -38,6 +39,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 final class MacroOption {
     enum MacroOptionKind {
@@ -385,6 +387,11 @@ final class MacroOption {
 
         LinkedHashSet<EnabledOption> getEnabledOptions(MacroOptionKind kind) {
             return enabled.stream().filter(eo -> kind.equals(eo.option.kind)).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Stream<EnabledOption> getEnabledOptionsStream(MacroOptionKind kind, MacroOptionKind... otherKinds) {
+            EnumSet<MacroOptionKind> kindSet = EnumSet.of(kind, otherKinds);
+            return enabled.stream().filter(eo -> kindSet.contains(eo.option.kind));
         }
 
         LinkedHashSet<EnabledOption> getEnabledOptions() {

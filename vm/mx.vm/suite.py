@@ -24,13 +24,13 @@ suite = {
                 "truffle:TRUFFLE_API",
             ],
             "javaCompliance": "1.8",
-            "checkstyle": "org.graalvm.word",
             "license": "GPLv2-CPE",
         },
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "javaCompliance" : "1.8",
+            "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
         },
         "org.graalvm.component.installer.test" : {
@@ -41,8 +41,8 @@ suite = {
                 "org.graalvm.component.installer"
             ],
             "javaCompliance" : "1.8",
+            "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
-            "workingSets" : "Tools",
         },
         "polyglot.launcher": {
             "class": "GraalVmPolyglotLauncher",
@@ -50,7 +50,7 @@ suite = {
                 "build_args": [
                     "-H:-ParseRuntimeOptions",
                     "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
-                    "--Language:all"
+                    "--language:all"
                 ],
                 "jar_distributions": [
                     "dependency:sdk:LAUNCHER_COMMON",
@@ -105,6 +105,7 @@ suite = {
                 "darwin": {
                     "<others>": {
                         "layout": {
+                            # on macOS the <arch> directory is not used
                             "<jdk_base>/jre/lib/": "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>",
                         }
                     },
@@ -140,6 +141,7 @@ suite = {
             "layout" : {
                 "./" : "dependency:vm:INSTALLER",
                 "bin/" : "file:mx.vm/gu",
+                "components/polyglot/.registry" : "string:",
             },
         },
     },

@@ -83,7 +83,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 class GraalVmComponent(object):
     def __init__(self, name, id, documentation_files, license_files, third_party_license_files, launcher_configs=None,
                  provided_executables=None,
-                 polyglot_library_build_args=None, polyglot_library_jar_dependencies=None,
+                 polyglot_library_build_args=None, polyglot_library_jar_dependencies=None, polyglot_library_build_dependencies=None,
                  has_polyglot_library_entrypoints=False,
                  boot_jars=None, priority=None):
         """
@@ -95,6 +95,7 @@ class GraalVmComponent(object):
         :type provided_executables: list[str]
         :type polyglot_library_build_args: list[str]
         :type polyglot_library_jar_dependencies: list[str]
+        :type polyglot_library_build_dependencies: list[str]
         :type has_polyglot_library_entrypoints: bool
         :type boot_jars: list[str]
         :type priority: int
@@ -107,6 +108,7 @@ class GraalVmComponent(object):
         self.provided_executables = provided_executables or []
         self.polyglot_library_build_args = polyglot_library_build_args or []
         self.polyglot_library_jar_dependencies = polyglot_library_jar_dependencies or []
+        self.polyglot_library_build_dependencies = polyglot_library_build_dependencies or []
         self.has_polyglot_library_entrypoints = has_polyglot_library_entrypoints
         self.boot_jars = boot_jars or []
         self.priority = priority or 0
@@ -119,6 +121,7 @@ class GraalVmComponent(object):
         assert isinstance(self.provided_executables, list)
         assert isinstance(self.polyglot_library_build_args, list)
         assert isinstance(self.polyglot_library_jar_dependencies, list)
+        assert isinstance(self.polyglot_library_build_dependencies, list)
         assert isinstance(self.boot_jars, list)
         assert isinstance(self.launcher_configs, list)
 
@@ -129,7 +132,7 @@ class GraalVmComponent(object):
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, name, id, documentation_files, license_files, third_party_license_files, truffle_jars,
                  support_distributions=None, launcher_configs=None, provided_executables=None,
-                 polyglot_library_build_args=None, polyglot_library_jar_dependencies=None,
+                 polyglot_library_build_args=None, polyglot_library_jar_dependencies=None, polyglot_library_build_dependencies=None,
                  has_polyglot_library_entrypoints=False, boot_jars=None, priority=None):
         """
         :type truffle_jars: list[str]
@@ -138,7 +141,7 @@ class GraalVmTruffleComponent(GraalVmComponent):
         """
         super(GraalVmTruffleComponent, self).__init__(name, id, documentation_files, license_files,
                                                       third_party_license_files, launcher_configs, provided_executables,
-                                                      polyglot_library_build_args, polyglot_library_jar_dependencies,
+                                                      polyglot_library_build_args, polyglot_library_jar_dependencies, polyglot_library_build_dependencies,
                                                       has_polyglot_library_entrypoints, boot_jars,
                                                       priority)
 
@@ -156,7 +159,7 @@ class GraalVmLanguage(GraalVmTruffleComponent):
 class GraalVmTool(GraalVmTruffleComponent):
     def __init__(self, name, id, documentation_files, license_files, third_party_license_files, truffle_jars,
                  support_distributions=None, launcher_configs=None, provided_executables=None,
-                 polyglot_library_build_args=None, polyglot_library_jar_dependencies=None,
+                 polyglot_library_build_args=None, polyglot_library_jar_dependencies=None, polyglot_library_build_dependencies=None,
                  has_polyglot_library_entrypoints=False, boot_jars=None, priority=None,
                  include_by_default=False):
         super(GraalVmTool, self).__init__(name, id, documentation_files, license_files, third_party_license_files,
@@ -165,6 +168,7 @@ class GraalVmTool(GraalVmTruffleComponent):
                                           launcher_configs, provided_executables,
                                           polyglot_library_build_args,
                                           polyglot_library_jar_dependencies,
+                                          polyglot_library_build_dependencies,
                                           has_polyglot_library_entrypoints,
                                           boot_jars,
                                           priority)
@@ -173,7 +177,7 @@ class GraalVmTool(GraalVmTruffleComponent):
 
 class GraalVmJdkComponent(GraalVmComponent):
     def __init__(self, name, id, documentation_files, license_files, third_party_license_files, jdk_lib_files, launcher_configs=None,
-                 provided_executables=None, polyglot_library_build_args=None, polyglot_library_jar_dependencies=None,
+                 provided_executables=None, polyglot_library_build_args=None, polyglot_library_jar_dependencies=None, polyglot_library_build_dependencies=None,
                  has_polyglot_library_entrypoints=False, boot_jars=None, priority=None):
         """
         :type jdk_lib_files: list[str]
@@ -182,6 +186,7 @@ class GraalVmJdkComponent(GraalVmComponent):
                                                   third_party_license_files, launcher_configs, provided_executables,
                                                   polyglot_library_build_args,
                                                   polyglot_library_jar_dependencies,
+                                                  polyglot_library_build_dependencies,
                                                   has_polyglot_library_entrypoints,
                                                   boot_jars,
                                                   priority)
@@ -193,7 +198,7 @@ class GraalVmJdkComponent(GraalVmComponent):
 
 class GraalVmJreComponent(GraalVmComponent):
     def __init__(self, name, id, documentation_files, license_files, third_party_license_files, jre_lib_files, launcher_configs=None,
-                 provided_executables=None, polyglot_library_build_args=None, polyglot_library_jar_dependencies=None,
+                 provided_executables=None, polyglot_library_build_args=None, polyglot_library_jar_dependencies=None, polyglot_library_build_dependencies=None,
                  has_polyglot_library_entrypoints=False, boot_jars=None, priority=None):
         """
         :type jre_lib_files: list[str]
@@ -202,6 +207,7 @@ class GraalVmJreComponent(GraalVmComponent):
                                                   third_party_license_files, launcher_configs, provided_executables,
                                                   polyglot_library_build_args,
                                                   polyglot_library_jar_dependencies,
+                                                  polyglot_library_build_dependencies,
                                                   has_polyglot_library_entrypoints,
                                                   boot_jars,
                                                   priority)
@@ -214,7 +220,7 @@ class GraalVmJreComponent(GraalVmComponent):
 class GraalVmJvmciComponent(GraalVmJreComponent):
     def __init__(self, name, id, documentation_files, license_files, third_party_license_files,  jvmci_jars, jre_lib_files=None,
                  graal_compiler=None, launcher_configs=None, provided_executables=None, polyglot_library_build_args=None, polyglot_library_jar_dependencies=None,
-                 has_polyglot_library_entrypoints=False, boot_jars=None, priority=None):
+                 polyglot_library_build_dependencies=None, has_polyglot_library_entrypoints=False, boot_jars=None, priority=None):
         """
         :type jvmci_jars: list[str]
         :type graal_compiler: str
@@ -223,6 +229,7 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
                                                     third_party_license_files, jre_lib_files, launcher_configs, provided_executables,
                                                     polyglot_library_build_args,
                                                     polyglot_library_jar_dependencies,
+                                                    polyglot_library_build_dependencies,
                                                     has_polyglot_library_entrypoints,
                                                     boot_jars,
                                                     priority)
@@ -236,19 +243,24 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
 _graalvm_components = []
 
 
-def register_component(component):
+def register_graalvm_component(component, suite):
     """
     :type component: GraalVmComponent
+    :type suite: mx.Suite
     """
     assert not any((c for c in _graalvm_components if c.name == component.name and isinstance(component, c.__class__)))
+    component.__suite = suite
     _graalvm_components.append(component)
 
 
-def graalvm_components():
+def graalvm_components(opt_limit_to_suite=True):
     """
     :rtype: list[GraalVmComponent]
     """
-    return _graalvm_components
+    if opt_limit_to_suite and mx.get_opts().specific_suites:
+        return [c for c in _graalvm_components if c.__suite.name in mx.get_opts().specific_suites]
+    else:
+        return _graalvm_components
 
 
 mx.update_commands(_suite, {
