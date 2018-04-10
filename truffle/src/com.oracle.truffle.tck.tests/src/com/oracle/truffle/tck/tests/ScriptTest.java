@@ -67,7 +67,10 @@ public class ScriptTest {
 
     @Before
     public void setUp() {
-        Engine.newBuilder().build();
+        // JUnit mixes test executions from different classes. There are still tests using the
+        // deprecated PolyglotEngine. For tests executed by Parametrized runner
+        // creating Context as a test parameter we need to ensure that correct SPI is used.
+        Engine.create().close();
     }
 
     public ScriptTest(final TestRun testRun) {
