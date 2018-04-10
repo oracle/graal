@@ -1839,6 +1839,7 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
+        @TruffleBoundary
         void postInit() {
             try {
                 spi.initializeContext(context);
