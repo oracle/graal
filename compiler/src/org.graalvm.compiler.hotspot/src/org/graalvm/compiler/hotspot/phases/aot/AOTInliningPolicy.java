@@ -70,7 +70,7 @@ public class AOTInliningPolicy extends GreedyInliningPolicy {
         for (int i = 0; i < info.numberOfMethods(); ++i) {
             HotSpotResolvedObjectType t = (HotSpotResolvedObjectType) info.methodAt(i).getDeclaringClass();
             if (t.getFingerprint() == 0) {
-                return InliningPolicy.Decision.YES;
+                return InliningPolicy.Decision.NO;
             }
         }
 
@@ -110,6 +110,6 @@ public class AOTInliningPolicy extends GreedyInliningPolicy {
         }
 
         InliningUtil.traceNotInlinedMethod(info, inliningDepth, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes, maximumNodes);
-        return InliningPolicy.Decision.YES.withReason(isTracing, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes, maximumNodes);
+        return InliningPolicy.Decision.NO.withReason(isTracing, "relevance-based (relevance=%f, probability=%f, bonus=%f, nodes=%d > %f)", relevance, probability, inliningBonus, nodes, maximumNodes);
     }
 }
