@@ -265,14 +265,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     String getLanguageHome() {
         if (languageHome == null) {
-            String home = System.getProperty(id + ".home");
-            if (home == null) {
-                String graalVmHome = System.getProperty("graalvm.home");
-                if (graalVmHome != null) {
-                    home = Paths.get(graalVmHome).resolve("jre").resolve("languages").resolve(id).toString();
-                }
-            }
-            languageHome = home;
+            languageHome = System.getProperty(id + ".home");
         }
         return languageHome;
     }
