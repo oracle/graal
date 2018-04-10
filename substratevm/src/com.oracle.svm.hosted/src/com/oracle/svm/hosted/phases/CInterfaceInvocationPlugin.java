@@ -71,20 +71,19 @@ import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.CInterfaceError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
+import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.EnumInfo;
-import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaKind;
@@ -132,8 +131,6 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
         } else if (methodInfo instanceof EnumValueInfo) {
             return enumTool.replaceEnumValueInvoke((BytecodeParser) b, (EnumInfo) methodInfo.getParent(), method, args);
-        } else if (methodInfo instanceof EnumLookupInfo) {
-            return enumTool.replaceEnumLookupInvoke((BytecodeParser) b, (EnumInfo) methodInfo.getParent(), method, args);
         } else if (method.getAnnotation(InvokeCFunctionPointer.class) != null) {
             return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall);
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
@@ -523,7 +520,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return true;
     }
 
-    static JavaKind pushKind(ResolvedJavaMethod method) {
+    public static JavaKind pushKind(ResolvedJavaMethod method) {
         return method.getSignature().getReturnKind().getStackKind();
     }
 }

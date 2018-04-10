@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
@@ -56,6 +57,7 @@ import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.cenum.CEnumLookupCallWrapperMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -598,7 +600,12 @@ public class InfoTreeBuilder {
                 createEnumValueInfo(enumInfo, method);
             }
             if (getMethodAnnotation(method, CEnumLookup.class) != null) {
-                createEnumLookupInfo(enumInfo, method);
+                // at this point the original method has already been substituted
+                assert method instanceof AnalysisMethod;
+                AnalysisMethod aMethod = (AnalysisMethod) method;
+                assert aMethod.getWrapped() instanceof CEnumLookupCallWrapperMethod;
+                CEnumLookupCallWrapperMethod wrapperMethod = (CEnumLookupCallWrapperMethod) aMethod.getWrapped();
+                createEnumLookupInfo(enumInfo, wrapperMethod.getOriginal());
             }
         }
         nativeCodeInfo.adoptChild(enumInfo);

@@ -205,6 +205,7 @@ import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.cenum.CEnumLookupCallWrapperSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
@@ -506,8 +507,10 @@ public class NativeImageGenerator {
                     ImageSingletons.add(UnsafeAutomaticSubstitutionProcessor.class, automaticSubstitutions);
                     automaticSubstitutions.init(originalMetaAccess);
 
+                    CEnumLookupCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumLookupCallWrapperSubstitutionProcessor();
+
                     SubstitutionProcessor substitutions = SubstitutionProcessor.chainUpInOrder(harnessSubstitutions, new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
-                                    annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions);
+                                    annotationSubstitutions, cfunctionSubstitutions, automaticSubstitutions, cEnumProcessor);
                     aUniverse = new AnalysisUniverse(svmHost, target, substitutions, originalMetaAccess, originalSnippetReflection, new SubstrateSnippetReflectionProvider());
                     aMetaAccess = new AnalysisMetaAccess(aUniverse, originalMetaAccess);
 
@@ -516,6 +519,8 @@ public class NativeImageGenerator {
                     AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess);
                     aSnippetReflection = new HostedSnippetReflectionProvider(svmHost);
                     nativeLibs = processNativeLibraryImports(aMetaAccess, aConstantReflection, aSnippetReflection);
+
+                    cEnumProcessor.setNativeLibraries(nativeLibs);
 
                     /*
                      * Install all snippets so that the types, methods, and fields used in the
