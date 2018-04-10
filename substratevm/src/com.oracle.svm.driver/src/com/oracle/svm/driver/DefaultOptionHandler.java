@@ -97,7 +97,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (jarFilePathStr == null) {
                     NativeImage.showError("-jar requires jar file specification");
                 }
-                handleJarFileArg(Paths.get(jarFilePathStr).toFile());
+                handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)).toFile());
                 return true;
             case "--verbose":
                 args.poll();
