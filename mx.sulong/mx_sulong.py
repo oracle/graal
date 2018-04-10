@@ -601,7 +601,7 @@ class SulongDocsProject(ArchiveProject):
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
-mx_sdk.register_component(mx_sdk.GraalVmLanguage(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Sulong',
     id='llvm',
     documentation_files=['extracted-dependency:sulong:SULONG_GRAALVM_DOCS/README_SULONG.md'],
@@ -620,7 +620,7 @@ mx_sdk.register_component(mx_sdk.GraalVmLanguage(
             build_args=['--language:llvm']
         )
     ],
-))
+), _suite)
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
