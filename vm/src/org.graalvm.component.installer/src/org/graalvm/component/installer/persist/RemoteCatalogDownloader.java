@@ -80,11 +80,11 @@ public class RemoteCatalogDownloader implements Supplier<ComponentRegistry> {
         
         StringBuilder sb = new StringBuilder();
         Map<String, String> graalCaps = local.getGraalCapabilities();
-        sb.append(graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION));
+        sb.append(graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase());
         sb.append("_");
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME));
+        sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
         sb.append("_");
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH));
+        sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase());
         
         Properties props = new Properties();
         try (FileInputStream fis = new FileInputStream(dn.getLocalFile())) {

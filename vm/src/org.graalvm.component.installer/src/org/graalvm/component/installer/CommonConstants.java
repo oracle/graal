@@ -43,7 +43,7 @@ public class CommonConstants {
     public static final String PATH_COMPONENT_STORAGE = "jre/lib/installer/components"; // NOI18N
     // the trailing backspace is important !
     public static final String PATH_POLYGLOT_REGISTRY = "jre/lib/installer/components/polyglot/"; // NOI18N
-
+    
     public static final String PATH_JRE_BIN = "jre/bin/"; // NOI18N
 
     public static final String SYSPROP_CATALOG_URL = "org.graalvm.component.catalog"; // NOI18N

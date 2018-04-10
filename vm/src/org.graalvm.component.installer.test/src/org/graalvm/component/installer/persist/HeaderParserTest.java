@@ -133,7 +133,7 @@ public class HeaderParserTest extends TestBase {
     @Test
     public void testFoo() {
         try {
-            r("graalvm_common; filter := \"()\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"()\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
@@ -156,31 +156,31 @@ public class HeaderParserTest extends TestBase {
         }
 
         try {
-            r("graalvm_common;").parseRequiredCapabilities();
+            r("org.graalvm;").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_MissingVersionFilter", ex.getMessage());
         }
         try {
-            r("graalvm_common; unknown = aaa").parseRequiredCapabilities();
+            r("org.graalvm; unknown = aaa").parseRequiredCapabilities();
             fail("Should fail on unknown parameter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_UnsupportedParameters", ex.getMessage());
         }
         try {
-            r("graalvm_common; unknown := aaa").parseRequiredCapabilities();
+            r("org.graalvm; unknown := aaa").parseRequiredCapabilities();
             fail("Should fail on unknown directive");
         } catch (MetadataException ex) {
             assertEquals("ERROR_UnsupportedDirectives", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := aaa").parseRequiredCapabilities();
+            r("org.graalvm; filter := aaa").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := ()").parseRequiredCapabilities();
+            r("org.graalvm; filter := ()").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidParameterSyntax", ex.getMessage());
@@ -190,13 +190,13 @@ public class HeaderParserTest extends TestBase {
     @Test
     public void testBadFilterSyntax() {
         try {
-            r("graalvm_common; filter := \"()\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"()\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"(\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
@@ -206,19 +206,19 @@ public class HeaderParserTest extends TestBase {
     @Test
     public void testBadFilterParenthesis() {
         try {
-            r("graalvm_common; filter := \"(graalvm_version=0.32\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(graalvm_version=0.32\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"(graalvm_version=0.32)(whatever=111)\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(graalvm_version=0.32)(whatever=111)\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"&(graalvm_version=0.32)(whatever=111)\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"&(graalvm_version=0.32)(whatever=111)\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
@@ -228,19 +228,19 @@ public class HeaderParserTest extends TestBase {
     @Test
     public void testInvalidFilterAttributeValues() {
         try {
-            r("graalvm_common; filter := \"(&(graalvm_version=0.~32)(whatever=111))\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(&(graalvm_version=0.~32)(whatever=111))\"").parseRequiredCapabilities();
             fail("Should fail on invalid filter attribute value");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"(&(graalvm_version=0.>32)(whatever=111))\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(&(graalvm_version=0.>32)(whatever=111))\"").parseRequiredCapabilities();
             fail("Should fail on invalid filter attribute value");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"(&(graalvm_version=0.<32)(whatever=111))\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(&(graalvm_version=0.<32)(whatever=111))\"").parseRequiredCapabilities();
             fail("Should fail on invalid filter attribute value");
         } catch (MetadataException ex) {
             assertEquals("ERROR_InvalidFilterSpecification", ex.getMessage());
@@ -250,19 +250,19 @@ public class HeaderParserTest extends TestBase {
     @Test
     public void testInvalidFilterOperations() {
         try {
-            r("graalvm_common; filter := \"(graalvm_version>0.32\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(graalvm_version>0.32\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_UnsupportedFilterOperation", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"(graalvm_version<0.32\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(graalvm_version<0.32\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_UnsupportedFilterOperation", ex.getMessage());
         }
         try {
-            r("graalvm_common; filter := \"(graalvm_version=0.32*eee\"").parseRequiredCapabilities();
+            r("org.graalvm; filter := \"(graalvm_version=0.32*eee\"").parseRequiredCapabilities();
             fail("Should fail on missing filter");
         } catch (MetadataException ex) {
             assertEquals("ERROR_UnsupportedFilterOperation", ex.getMessage());
@@ -273,14 +273,14 @@ public class HeaderParserTest extends TestBase {
 
     @Test
     public void testFilterValueEscaping() {
-        Map<String, String> attrs = r("graalvm_common; filter := \"(graalvm_version=0\\32)\"").parseRequiredCapabilities();
+        Map<String, String> attrs = r("org.graalvm; filter := \"(graalvm_version=0\\32)\"").parseRequiredCapabilities();
         assertEquals("0\\32", attrs.get("graalvm_version"));
     }
 
     @Test
     @SuppressWarnings("rawtypes")
     public void testFilterMutlipleValues() {
-        Map m = r("graalvm_common; filter := \"(&(graalvm_version=0.32)(whatever=111))\"").parseRequiredCapabilities();
+        Map m = r("org.graalvm; filter := \"(&(graalvm_version=0.32)(whatever=111))\"").parseRequiredCapabilities();
         assertEquals("0.32", m.get("graalvm_version"));
         assertEquals("111", m.get("whatever"));
     }
@@ -289,6 +289,6 @@ public class HeaderParserTest extends TestBase {
     public void testFilterDuplicateValues() {
         exc.expect(MetadataException.class);
         exc.expectMessage("ERROR_DuplicateFilterAttribute");
-        r("graalvm_common; filter := \"(&(graalvm_version=0.32)(graalvm_version=111))\"").parseRequiredCapabilities();
+        r("org.graalvm; filter := \"(&(graalvm_version=0.32)(graalvm_version=111))\"").parseRequiredCapabilities();
     }
 }

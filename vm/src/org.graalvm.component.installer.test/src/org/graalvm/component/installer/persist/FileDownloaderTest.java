@@ -99,7 +99,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.setShaDigest(new byte[0]);
         dn.download();
         
-        byte[] check = RemoteStorage.toHashBytes(null, "d3a45ea326b379cc3d543cc56130ee9bd395fd1c1d51a470e8c2c8af1129829c", this);
+        byte[] check = RemoteStorage.toHashBytes(null, "b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa", this);
         assertArrayEquals(check, dn.getDigest());
     }
     

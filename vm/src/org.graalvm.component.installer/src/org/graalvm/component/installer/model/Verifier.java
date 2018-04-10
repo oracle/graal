@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
 import org.graalvm.component.installer.ComponentInstaller;
 import org.graalvm.component.installer.DependencyException;
@@ -94,6 +93,7 @@ public class Verifier {
         return errors;
     }
 
+    @SuppressWarnings("StringEquality")
     public Verifier validateRequirements() {
         // check the component is not in the registry
         ComponentInfo existing = registry.findComponent(componentInfo.getId());
@@ -123,8 +123,8 @@ public class Verifier {
         for (String s : requiredCaps.keySet()) {
             String reqVal = requiredCaps.get(s);
             String graalVal = graalCaps.get(s);
-
-            if (!Objects.equals(graalVal, reqVal)) {
+            if ((reqVal != graalVal) && 
+                (reqVal == null || graalVal == null || (reqVal.compareToIgnoreCase(graalVal) != 0))) {
                 String val = graalVal != null ? graalVal : feedback.l10n("VERIFY_CapabilityMissing");
                 addOrThrow(new DependencyException.Mismatch(
                                 GRAALVM_CAPABILITY,

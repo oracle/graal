@@ -66,7 +66,7 @@ public class FileDownloader {
 
     private File  localFile;
     private long size;
-    private static boolean deleteTemporary;
+    private static boolean deleteTemporary = !Boolean.FALSE.toString().equals(System.getProperty("org.graalvm.component.installer.deleteTemporary"));
     private boolean verbose;
     private static File tempDir; 
     private boolean displayProgress;
