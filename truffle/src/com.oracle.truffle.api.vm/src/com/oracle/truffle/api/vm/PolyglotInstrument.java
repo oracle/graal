@@ -113,13 +113,15 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     void ensureClosed() {
         assert Thread.holdsLock(engine);
         if (created) {
-            if (created) {
-                INSTRUMENT.disposeInstrument(engine.instrumentationHandler, this, false);
+            synchronized (instrumentLock) {
+                if (created) {
+                    INSTRUMENT.disposeInstrument(engine.instrumentationHandler, this, false);
+                }
+                created = false;
+                initialized = false;
+                options = null;
+                optionValues = null;
             }
-            created = false;
-            initialized = false;
-            options = null;
-            optionValues = null;
         }
     }
 
