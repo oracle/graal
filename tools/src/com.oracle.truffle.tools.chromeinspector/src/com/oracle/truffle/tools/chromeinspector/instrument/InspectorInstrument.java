@@ -188,6 +188,12 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = TruffleExecutionContext.create(contextName, env, err);
+            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak);
+            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
+            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
+            info.println("To start debugging, open the following URL in Chrome:");
+            info.println("    " + address);
+            info.flush();
             if (debugBreak || waitAttached) {
                 final EventBinding<?>[] execEnter = new EventBinding<?>[1];
                 execEnter[0] = env.getInstrumenter().attachContextsListener(new ContextsListener() {
@@ -222,12 +228,6 @@ public final class InspectorInstrument extends TruffleInstrument {
                     }
                 }, true);
             }
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak);
-            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
-            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
-            info.println("To start debugging, open the following URL in Chrome:");
-            info.println("    " + address);
-            info.flush();
             return address;
         }
 

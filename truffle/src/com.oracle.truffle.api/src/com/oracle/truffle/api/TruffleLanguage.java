@@ -2207,6 +2207,7 @@ public abstract class TruffleLanguage<C> {
                             options,
                             applicationArguments,
                             fileSystem);
+            newEnv.initialized = env.initialized;
             newEnv.context = env.context;
             env.valid = false;
             return env.spi.patchContext(env.context, newEnv) ? newEnv : null;
