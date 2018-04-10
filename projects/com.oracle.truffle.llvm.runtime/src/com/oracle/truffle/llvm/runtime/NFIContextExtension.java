@@ -39,6 +39,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -225,11 +226,13 @@ public final class NFIContextExtension implements ContextExtension {
 
     private static TruffleObject getNativeFunction(TruffleObject library, String name) {
         CompilerAsserts.neverPartOfCompilation();
-        try {
-            return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, name.substring(1));
-        } catch (UnknownIdentifierException ex) {
+        String demangledName = name.substring(1);
+        if (!KeyInfo.isReadable(ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), library, demangledName))) {
             // try another library
             return null;
+        }
+        try {
+            return (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), library, demangledName);
         } catch (Throwable ex) {
             throw new IllegalStateException(ex);
         }
