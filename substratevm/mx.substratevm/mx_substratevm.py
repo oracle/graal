@@ -527,7 +527,7 @@ GraalTags = Tags([
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True):
     common_args = [] if common_args is None else common_args
-    base_args = []
+    base_args = ['-H:Path=' + svmbuild_dir()]
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
@@ -543,10 +543,8 @@ def native_image_context(common_args=None, hosted_assertions=True):
             if sep:
                 return after.split(' ')[0].rstrip()
         return None
-    def native_image_func(args, setPath=True):
+    def native_image_func(args):
         all_args = base_args + common_args + args
-        if setPath:
-            all_args = ['-H:Path=' + svmbuild_dir()] + all_args
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
@@ -706,7 +704,7 @@ def build_ruby(native_image):
 
     # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
     ruby_bin_dir = join(suite_native_image_root(), 'languages', 'ruby', 'bin')
-    return native_image(['-H:Path=' + ruby_bin_dir, '-H:Name=truffleruby', '--language:ruby'], setPath=False)
+    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir])
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:
