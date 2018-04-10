@@ -148,7 +148,8 @@ mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     name='GraalVM Chrome Inspector',
-    id='chromeinspector',
+    short_name='inspector',
+    dir_name='chromeinspector',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],
@@ -159,7 +160,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     name='GraalVM Profiler',
-    id='profiler',
+    short_name='profiler',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],

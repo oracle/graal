@@ -475,7 +475,7 @@ def check_filename_length(args):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     name='Truffle NFI',
-    id='truffle',
+    short_name='truffle',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],

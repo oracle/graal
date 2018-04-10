@@ -215,7 +215,7 @@ final class MacroOption {
         boolean forEachPropertyValue(String propertyKey, Consumer<String> target) {
             String propertyValueRaw = option.properties.get(propertyKey);
             if (propertyValueRaw != null) {
-                for (String propertyValue : Arrays.asList(propertyValueRaw.split(" "))) {
+                for (String propertyValue : propertyValueRaw.split(" ")) {
                     target.accept(resolvePropertyValue(propertyValue));
                 }
                 return true;

@@ -187,7 +187,7 @@ flag_suitename_map = collections.OrderedDict([
     ('js', ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
     ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER', 'TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'], ['TRUFFLERUBY-ZIP'])),
     ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON_GRAALVM_SUPPORT'])),
-    ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))
+    ('R', ('fastr', ['FASTR', 'XZ-1.6', 'GNU_ICONV', 'GNUR', 'ANTLR-3.5'], ['FASTR_RELEASE']))  # JLINE?
 ])
 
 class ToolDescriptor:
@@ -838,7 +838,7 @@ def fetch_languages(args, early_exit=True):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     name='SubstrateVM',
-    id='svm',
+    short_name='svm',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],
@@ -858,23 +858,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
     name='Polyglot.Native',
-    id='polyglot',
+    short_name='polynative',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],
-    polyglot_library_build_args=[
+    polyglot_lib_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>/include",
         "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>/lib",
         "-H:CStandard=C11",
     ],
-    polyglot_library_jar_dependencies=[
+    polyglot_lib_jar_dependencies=[
         "dependency:substratevm:POLYGLOT_NATIVE_API",
     ],
-    polyglot_library_build_dependencies=[
+    polyglot_lib_build_dependencies=[
         "dependency:substratevm:POLYGLOT_NATIVE_API_SUPPORT",
     ],
-    has_polyglot_library_entrypoints=True,
+    has_polyglot_lib_entrypoints=True,
 ), suite)
 
 mx.update_commands(suite, {

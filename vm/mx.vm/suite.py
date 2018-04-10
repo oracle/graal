@@ -1,7 +1,8 @@
 suite = {
     "name": "vm",
-    "version": "1.0.0-dev",
-    "mxversion": "5.144.0",
+    "version": "1.0.0-rc1-dev",
+    "mxversion": "5.151.0",
+    "defaultLicense" : "GPLv2-CPE",
     "imports": {
         "suites": [
             {
@@ -11,6 +12,132 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
+            # Dynamic imports for components:
+            {
+                "name": "graal-nodejs",
+                "subdir": True,
+                "dynamic": True,
+                "version": "90ebc1e6811729be3aa9b13c3a10ee06ec9b83b1",
+                "urls" : [
+                    {"url" : "https://github.com/oracle/js.git", "kind" : "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name": "graal-js",
+                "subdir": True,
+                "dynamic": True,
+                "version": "90ebc1e6811729be3aa9b13c3a10ee06ec9b83b1",
+                "urls": [
+                    {"url": "https://github.com/oracle/js.git", "kind" : "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name": "truffleruby",
+                "version": "86a287aae820fb9cca4cad050ed4a44ca5151e8d",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ],
+                "os_arch": {
+                    "linux": {
+                        "sparcv9": {
+                            "ignore": True
+                        },
+                        "<others>": {
+                            "ignore": False
+                        }
+                    },
+                    "<others>": {
+                        "<others>": {
+                            "ignore": False
+                        }
+                    }
+                }
+            },
+            {
+                "name": "fastr",
+                "version": "2c164fafbbf84dbde64fb041b65e9967ba7ca465",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            {
+                "name": "sulong",
+                "version": "499438a69432653afe744e42fb1a3808e9ee4b6b",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/graalvm/sulong.git", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ],
+                "os_arch": {
+                    "<others>": {
+                        "sparcv9": {
+                            "ignore": True
+                        },
+                        "<others>": {
+                            "ignore": False
+                        }
+                    }
+                }
+            },
+            {
+                "name": "graalpython",
+                "version": "45b4443d3c422e07dd9d0b07f848a7b742dfeeed",
+                "dynamic": True,
+                "urls": [
+                    {"url": "https://github.com/oracle/graalpython.git", "kind": "git"},
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ]
+            },
+            # {
+            #     "name": "tools",
+            #     "subdir": True,
+            #     "dynamic": True,
+            #     "urls": [
+            #         {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+            #     ],
+            # },
+            # {
+            #     "name": "compiler",
+            #     "subdir": True,
+            #     "dynamic": True,
+            #     "urls": [
+            #         {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+            #     ],
+            # },
+            # {
+            #     "name": "substratevm",
+            #     "subdir": True,
+            #     "dynamic": True,
+            #     "urls": [
+            #         {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+            #     ],
+            #     "os_arch": {
+            #         "linux": {
+            #             "sparcv9": {
+            #                 "ignore": True
+            #             },
+            #             "<others>": {
+            #                 "ignore": False
+            #             }
+            #         },
+            #         "darwin": {
+            #             "<others>": {
+            #                 "ignore": False
+            #             }
+            #         },
+            #         "<others>": {
+            #             "<others>": {
+            #                 "ignore": True
+            #             }
+            #         }
+            #     }
+            # },
         ]
     },
 
@@ -62,56 +189,6 @@ suite = {
     },
 
     "distributions": {
-        "GRAALVM": {
-            "native": True,
-            "class": "GraalVmLayoutDistribution",
-            "platformDependent": True,
-            "description": "GraalVM distribution",
-            "layout": {
-                "<jdk_base>/": [
-                    "file:LICENSE",
-                    "file:THIRDPARTYLICENSE",
-                    "file:README.md",
-                ],
-                "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
-                "<jdk_base>/jre/bin/polyglot": "dependency:polyglot.launcher",
-                "<jdk_base>/bin/polyglot": "link:../jre/bin/polyglot",
-                "<jdk_base>/jre/lib/boot/": [
-                    "dependency:sdk:GRAAL_SDK",
-                ],
-                "<jdk_base>/jre/lib/graalvm/": [
-                    "dependency:sdk:LAUNCHER_COMMON",
-                ],
-                "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
-                    "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
-                ],
-                "<jdk_base>/jre/lib/truffle/": [
-                    "dependency:truffle:TRUFFLE_API",
-                    "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
-                    "dependency:truffle:TRUFFLE_NFI",
-                    "dependency:truffle:TRUFFLE_TCK",
-                    "dependency:LOCATOR",
-                    "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
-                ],
-            },
-            "os_arch": {
-                "<others>": {
-                    "<others>": {
-                        "layout": {
-                            "<jdk_base>/jre/lib/<arch>/": "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>",
-                        }
-                    },
-                },
-                "darwin": {
-                    "<others>": {
-                        "layout": {
-                            # on macOS the <arch> directory is not used
-                            "<jdk_base>/jre/lib/": "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>",
-                        }
-                    },
-                },
-            },
-        },
         "LOCATOR": {
             "dependencies": ["com.oracle.graalvm.locator"],
             "distDependencies": [

@@ -1088,7 +1088,8 @@ def makegraaljdk(args):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     name='Graal compiler',
-    id='graal',
+    short_name='compiler',
+    dir_name='graal',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],

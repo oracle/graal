@@ -12,19 +12,24 @@ jdks: {
 
   # Snapshot of http://hg.openjdk.java.net/jdk/hs
   oraclejdkSNAPSHOT : {name : labsjdk, version : "20180130-162725", platformspecific: true}
+
+  openjdk8 : {name : openjdk, version : "8u161-jvmci-0.42", platformspecific: true}
 }
 
 # Overlay placeholder for pinning mx to a specific revision
-mx : {}
+mx : {
+  packages: {
+    mx: 4d5d8996ce6268a773edbdc9a5f85932cf013f2d
+  }
+}
 
 labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
 labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
 
-# GR-5675
-# openjdk8 :      { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
+openjdk8 :        { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
-oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
-oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
+oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
+oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"

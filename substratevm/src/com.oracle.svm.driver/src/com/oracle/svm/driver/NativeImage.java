@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.StringJoiner;
@@ -454,9 +453,10 @@ class NativeImage {
 
         /* If no customImageClasspath was specified put "." on classpath */
         if (customImageClasspath.isEmpty()) {
-            addCustomImageClasspath(Paths.get("."));
+            addImageProvidedClasspath(Paths.get("."));
+        } else {
+            imageClasspath.addAll(customImageClasspath);
         }
-        imageClasspath.addAll(customImageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -553,6 +553,7 @@ class NativeImage {
                     addImageClasspath(p);
                 }
             });
+            addImageClasspath(getRootDir().resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
         }
 
         if (!leftoverArgs.isEmpty()) {
@@ -690,8 +691,8 @@ class NativeImage {
     }
 
     /**
-     * For adding classpath elements that are not normally on the classpath in the Java version:
-     * svm jars, truffle jars etc.
+     * For adding classpath elements that are not normally on the classpath in the Java version: svm
+     * jars, truffle jars etc.
      */
     void addImageProvidedClasspath(Path classpath) {
         imageProvidedClasspath.add(canonicalize(classpath));
