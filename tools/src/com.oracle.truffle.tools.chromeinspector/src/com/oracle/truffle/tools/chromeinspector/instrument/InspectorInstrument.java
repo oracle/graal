@@ -198,6 +198,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             info.flush();
             if (debugBreak || waitAttached) {
                 final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();
+                final AtomicBoolean disposeBinding = new AtomicBoolean(false);
                 execEnter.set(env.getInstrumenter().attachContextsListener(new ContextsListener() {
                     @Override
                     public void onContextCreated(TruffleContext context) {
@@ -217,6 +218,8 @@ public final class InspectorInstrument extends TruffleInstrument {
                         final EventBinding<?> binding = execEnter.getAndSet(null);
                         if (binding != null) {
                             binding.dispose();
+                        } else {
+                            disposeBinding.set(true);
                         }
                     }
 
