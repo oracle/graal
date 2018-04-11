@@ -104,15 +104,7 @@ public abstract class LLVMSelectNode extends LLVMExpressionNode {
         }
     }
 
-    public abstract static class LLVMAddressSelectNode extends LLVMSelectNode {
-
-        @Specialization
-        protected Object doOp(boolean cond, Object trueBranch, Object elseBranch) {
-            return conditionProfile.profile(cond) ? trueBranch : elseBranch;
-        }
-    }
-
-    public abstract static class LLVMFunctionSelectNode extends LLVMSelectNode {
+    public abstract static class LLVMGenericSelectNode extends LLVMSelectNode {
 
         @Specialization
         protected Object doOp(boolean cond, Object trueBranch, Object elseBranch) {
