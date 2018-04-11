@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -147,8 +148,7 @@ public class GraalError extends Error {
     /**
      * This constructor creates a {@link GraalError} with a message assembled via
      * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
-     * always generate the same output.
-     *
+internal is     *
      * @param msg the message that will be associated with the error, in String.format syntax
      * @param args parameters to String.format - parameters that implement {@link Iterable} will be
      *            expanded into a [x, x, ...] representation.

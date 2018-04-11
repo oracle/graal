@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.meta.JavaKind.Int;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -164,7 +165,12 @@ public class AArch64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register dst = asRegister(result);
-            masm.loadAddress(dst, (AArch64Address) crb.recordDataReferenceInCode(data), data.getAlignment());
+            if (crb.compilationResult.isImmutablePIC()) {
+                crb.recordDataReferenceInCode(data);
+                masm.addressOf(dst);
+            } else {
+                masm.loadAddress(dst, (AArch64Address) crb.recordDataReferenceInCode(data), data.getAlignment());
+            }
         }
     }
 
@@ -464,7 +470,7 @@ public class AArch64Move {
         }
     }
 
-    private static void reg2stack(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
+    static void reg2stack(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         AArch64Address dest = loadStackSlotAddress(crb, masm, asStackSlot(result), Value.ILLEGAL);
         Register src = asRegister(input);
         // use the slot kind to define the operand size
@@ -477,7 +483,7 @@ public class AArch64Move {
         }
     }
 
-    private static void stack2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
+    static void stack2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         AArch64Kind kind = (AArch64Kind) input.getPlatformKind();
         // use the slot kind to define the operand size
         final int size = kind.getSizeInBytes() * Byte.SIZE;
@@ -522,6 +528,12 @@ public class AArch64Move {
             case Float:
                 if (AArch64MacroAssembler.isFloatImmediate(input.asFloat())) {
                     masm.fmov(32, dst, input.asFloat());
+                } else if (crb.compilationResult.isImmutablePIC()) {
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        masm.mov(scratch, Float.floatToRawIntBits(input.asFloat()));
+                        masm.fmov(32, dst, scratch);
+                    }
                 } else {
                     masm.fldr(32, dst, (AArch64Address) crb.asFloatConstRef(input));
                 }
@@ -529,6 +541,12 @@ public class AArch64Move {
             case Double:
                 if (AArch64MacroAssembler.isDoubleImmediate(input.asDouble())) {
                     masm.fmov(64, dst, input.asDouble());
+                } else if (crb.compilationResult.isImmutablePIC()) {
+                    try (ScratchRegister scr = masm.getScratchRegister()) {
+                        Register scratch = scr.getRegister();
+                        masm.mov(scratch, Double.doubleToRawLongBits(input.asDouble()));
+                        masm.fmov(64, dst, scratch);
+                    }
                 } else {
                     masm.fldr(64, dst, (AArch64Address) crb.asDoubleConstRef(input));
                 }

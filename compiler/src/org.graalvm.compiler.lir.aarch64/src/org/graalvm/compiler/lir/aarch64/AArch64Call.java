@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +23,12 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.aarch64.AArch64.r8;
+import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
@@ -198,12 +201,16 @@ public class AArch64Call {
     public static void directCall(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget, Register scratch, LIRFrameState info, Label label) {
         int before = masm.position();
         if (scratch != null) {
-            /*
-             * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
-             * immediate address which is fixed up by HotSpot.
-             */
-            masm.movNativeAddress(scratch, 0L);
-            masm.blr(scratch);
+            if (GeneratePIC.getValue(crb.getOptions())) {
+                masm.bl(0);
+            } else {
+                /*
+                 * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
+                 * immediate address which is fixed up by HotSpot.
+                 */
+                masm.movNativeAddress(scratch, 0L);
+                masm.blr(scratch);
+            }
         } else {
             // Address is fixed up by HotSpot.
             masm.bl(0);
@@ -230,8 +237,12 @@ public class AArch64Call {
     public static void directJmp(CompilationResultBuilder crb, AArch64MacroAssembler masm, InvokeTarget callTarget) {
         try (AArch64MacroAssembler.ScratchRegister scratch = masm.getScratchRegister()) {
             int before = masm.position();
-            masm.movNativeAddress(scratch.getRegister(), 0L);
-            masm.jmp(scratch.getRegister());
+            if (GeneratePIC.getValue(crb.getOptions())) {
+                masm.jmp();
+            } else {
+                masm.movNativeAddress(scratch.getRegister(), 0L);
+                masm.jmp(scratch.getRegister());
+            }
             int after = masm.position();
             crb.recordDirectCall(before, after, callTarget, null);
             masm.ensureUniquePC();
