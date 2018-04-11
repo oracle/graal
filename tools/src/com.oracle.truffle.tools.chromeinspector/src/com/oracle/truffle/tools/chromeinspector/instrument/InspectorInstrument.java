@@ -45,6 +45,8 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Chrome inspector as an instrument.
@@ -188,9 +190,16 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = TruffleExecutionContext.create(contextName, env, err);
+            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak);
+            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
+            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
+            info.println("To start debugging, open the following URL in Chrome:");
+            info.println("    " + address);
+            info.flush();
             if (debugBreak || waitAttached) {
-                final EventBinding<?>[] execEnter = new EventBinding<?>[1];
-                execEnter[0] = env.getInstrumenter().attachContextsListener(new ContextsListener() {
+                final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();
+                final AtomicBoolean disposeBinding = new AtomicBoolean(false);
+                execEnter.set(env.getInstrumenter().attachContextsListener(new ContextsListener() {
                     @Override
                     public void onContextCreated(TruffleContext context) {
                     }
@@ -206,7 +215,12 @@ public final class InspectorInstrument extends TruffleInstrument {
                             executionContext.waitForRunPermission();
                         } catch (InterruptedException ex) {
                         }
-                        execEnter[0].dispose();
+                        final EventBinding<?> binding = execEnter.getAndSet(null);
+                        if (binding != null) {
+                            binding.dispose();
+                        } else {
+                            disposeBinding.set(true);
+                        }
                     }
 
                     @Override
@@ -220,14 +234,11 @@ public final class InspectorInstrument extends TruffleInstrument {
                     @Override
                     public void onContextClosed(TruffleContext context) {
                     }
-                }, true);
+                }, true));
+                if (disposeBinding.get()) {
+                    execEnter.get().dispose();
+                }
             }
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak);
-            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
-            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
-            info.println("To start debugging, open the following URL in Chrome:");
-            info.println("    " + address);
-            info.flush();
             return address;
         }
 
