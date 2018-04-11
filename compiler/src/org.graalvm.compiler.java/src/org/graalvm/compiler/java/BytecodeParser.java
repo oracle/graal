@@ -327,6 +327,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -1697,6 +1698,7 @@ public class BytecodeParser implements GraphBuilderContext {
             targetMethod = originalMethod;
         }
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
+        graph.getInliningLog().addDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
         if (partialIntrinsicExit) {
             // This invoke must never be later inlined as it might select the intrinsic graph.
             // Until there is a mechanism to guarantee that any late inlining will not select
@@ -2193,60 +2195,80 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     private boolean inline(ResolvedJavaMethod targetMethod, ResolvedJavaMethod inlinedMethod, BytecodeProvider intrinsicBytecodeProvider, ValueNode[] args) {
-        IntrinsicContext intrinsic = this.intrinsicContext;
+        try (InliningLog.RootScope scope = graph.getInliningLog().openRootScope(targetMethod, bci())) {
+            IntrinsicContext intrinsic = this.intrinsicContext;
 
-        if (intrinsic == null && !graphBuilderConfig.insertFullInfopoints() &&
-                        targetMethod.equals(inlinedMethod) &&
-                        (targetMethod.getModifiers() & (STATIC | SYNCHRONIZED)) == 0 &&
-                        tryFastInlineAccessor(args, targetMethod)) {
-            return true;
-        }
-
-        if (intrinsic != null && intrinsic.isCallToOriginal(targetMethod)) {
-            if (intrinsic.isCompilationRoot()) {
-                // A root compiled intrinsic needs to deoptimize
-                // if the slow path is taken. During frame state
-                // assignment, the deopt node will get its stateBefore
-                // from the start node of the intrinsic
-                append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
-                printInlining(targetMethod, inlinedMethod, true, "compilation root (bytecode parsing)");
+            if (intrinsic == null && !graphBuilderConfig.insertFullInfopoints() &&
+                            targetMethod.equals(inlinedMethod) &&
+                            (targetMethod.getModifiers() & (STATIC | SYNCHRONIZED)) == 0 &&
+                            tryFastInlineAccessor(args, targetMethod)) {
                 return true;
-            } else {
-                if (intrinsic.getOriginalMethod().isNative()) {
-                    printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
-                    return false;
-                }
-                if (canInlinePartialIntrinsicExit() && InlinePartialIntrinsicExitDuringParsing.getValue(options)) {
-                    // Otherwise inline the original method. Any frame state created
-                    // during the inlining will exclude frame(s) in the
-                    // intrinsic method (see FrameStateBuilder.create(int bci)).
-                    notifyBeforeInline(inlinedMethod);
-                    printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
-                    parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
-                    notifyAfterInline(inlinedMethod);
+            }
+
+            if (intrinsic != null && intrinsic.isCallToOriginal(targetMethod)) {
+                if (intrinsic.isCompilationRoot()) {
+                    // A root compiled intrinsic needs to deoptimize
+                    // if the slow path is taken. During frame state
+                    // assignment, the deopt node will get its stateBefore
+                    // from the start node of the intrinsic
+                    append(new DeoptimizeNode(InvalidateRecompile, RuntimeConstraint));
+                    printInlining(targetMethod, inlinedMethod, true, "compilation root (bytecode parsing)");
+                    if (scope != null) {
+                        graph.getInliningLog().addDecision(scope.getInvoke(), true, "GraphBuilderPhase", null, null, "compilation root");
+                    }
                     return true;
                 } else {
-                    printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
+                    if (intrinsic.getOriginalMethod().isNative()) {
+                        printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
+                        if (scope != null) {
+                            graph.getInliningLog().addDecision(scope.getInvoke(), false, "GraphBuilderPhase", null, null, "native method");
+                        }
+                        return false;
+                    }
+                    if (canInlinePartialIntrinsicExit() && InlinePartialIntrinsicExitDuringParsing.getValue(options)) {
+                        // Otherwise inline the original method. Any frame state created
+                        // during the inlining will exclude frame(s) in the
+                        // intrinsic method (see FrameStateBuilder.create(int bci)).
+                        notifyBeforeInline(inlinedMethod);
+                        printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
+                        if (scope != null) {
+                            graph.getInliningLog().addDecision(scope.getInvoke(), true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        }
+                        parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
+                        notifyAfterInline(inlinedMethod);
+                        return true;
+                    } else {
+                        printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
+                        if (scope != null) {
+                            graph.getInliningLog().addDecision(scope.getInvoke(), false, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        }
+                        return false;
+                    }
+                }
+            } else {
+                boolean isIntrinsic = intrinsicBytecodeProvider != null;
+                if (intrinsic == null && isIntrinsic) {
+                    assert !inlinedMethod.equals(targetMethod);
+                    intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, intrinsicBytecodeProvider, INLINE_DURING_PARSING);
+                }
+                if (inlinedMethod.hasBytecodes()) {
+                    notifyBeforeInline(inlinedMethod);
+                    printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
+                    if (scope != null) {
+                        graph.getInliningLog().addDecision(scope.getInvoke(), true, "GraphBuilderPhase", null, null, "inline method");
+                    }
+                    parseAndInlineCallee(inlinedMethod, args, intrinsic);
+                    notifyAfterInline(inlinedMethod);
+                } else {
+                    printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
+                    if (scope != null) {
+                        graph.getInliningLog().addDecision(scope.getInvoke(), false, "GraphBuilderPhase", null, null, "no bytecodes (abstract or native)");
+                    }
                     return false;
                 }
             }
-        } else {
-            boolean isIntrinsic = intrinsicBytecodeProvider != null;
-            if (intrinsic == null && isIntrinsic) {
-                assert !inlinedMethod.equals(targetMethod);
-                intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, intrinsicBytecodeProvider, INLINE_DURING_PARSING);
-            }
-            if (inlinedMethod.hasBytecodes()) {
-                notifyBeforeInline(inlinedMethod);
-                printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
-                parseAndInlineCallee(inlinedMethod, args, intrinsic);
-                notifyAfterInline(inlinedMethod);
-            } else {
-                printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
-                return false;
-            }
+            return true;
         }
-        return true;
     }
 
     protected void notifyBeforeInline(ResolvedJavaMethod inlinedMethod) {
