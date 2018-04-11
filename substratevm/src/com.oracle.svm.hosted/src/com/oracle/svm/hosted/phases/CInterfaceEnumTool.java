@@ -26,7 +26,6 @@ import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -36,7 +35,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
@@ -50,7 +48,6 @@ import com.oracle.svm.hosted.c.info.EnumInfo;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -96,23 +93,6 @@ public class CInterfaceEnumTool {
         return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
     }
 
-    boolean replaceEnumValueInvoke(BytecodeParser p, EnumInfo enumInfo, ResolvedJavaMethod method, ValueNode[] args) {
-        ResolvedJavaMethod valueMethod = getValueMethodForKind(method.getSignature().getReturnKind());
-        JavaType originalReturnType = method.getSignature().getReturnType(null);
-
-        assert args.length == 1;
-        MethodCallTargetNode callTarget = invokeEnumValue(p, CallTargetFactory.from(p), p.bci(), enumInfo, valueMethod, args[0]);
-        JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
-        p.handleReplacedInvoke(callTarget, pushKind);
-
-        ValueNode invoke = p.getFrameStateBuilder().pop(pushKind);
-        ValueNode adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(p.getGraph(), invoke, invoke.stamp(NodeView.DEFAULT).getStackKind(), originalReturnType.getJavaKind(), false);
-        Stamp originalStamp = p.getInvokeReturnStamp(null).getTrustedStamp();
-        adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(p.getGraph(), adapted, originalReturnType.getJavaKind(), originalStamp.getStackKind(), false);
-        p.push(CInterfaceInvocationPlugin.pushKind(method), adapted);
-        return true;
-    }
-
     private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, ResolvedJavaMethod valueMethod, ValueNode arg) {
         ResolvedJavaType returnType = (ResolvedJavaType) valueMethod.getSignature().getReturnType(null);
         ValueNode[] args = new ValueNode[2];
@@ -131,7 +111,7 @@ public class CInterfaceEnumTool {
         InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
 
         // Create the instanceof guard to narrow the return type for the analysis
-        LogicNode instanceOfNode = kit.append(InstanceOfNode.create(TypeReference.createExactTrusted(enumType), invoke));
+        LogicNode instanceOfNode = kit.append(InstanceOfNode.createAllowNull(TypeReference.createExactTrusted(enumType), invoke, null, null));
         FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOfNode, DeoptimizationReason.ClassCastException, DeoptimizationAction.None));
 
         // Create the PiNode anchored at the guard to narrow the return type for compilation

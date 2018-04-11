@@ -28,12 +28,10 @@ import java.util.Arrays;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -77,8 +75,6 @@ import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
-import com.oracle.svm.hosted.c.info.EnumInfo;
-import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
@@ -97,14 +93,11 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
 
     private final NativeLibraries nativeLibs;
 
-    private final CInterfaceEnumTool enumTool;
-
     private final ResolvedJavaType functionPointerType;
 
-    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, NativeLibraries nativeLibs) {
+    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, WordTypes wordTypes, NativeLibraries nativeLibs) {
         this.wordTypes = wordTypes;
         this.nativeLibs = nativeLibs;
-        this.enumTool = new CInterfaceEnumTool(metaAccess, snippetReflection);
         this.functionPointerType = metaAccess.lookupJavaType(CFunctionPointer.class);
     }
 
@@ -129,8 +122,6 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
-        } else if (methodInfo instanceof EnumValueInfo) {
-            return enumTool.replaceEnumValueInvoke((BytecodeParser) b, (EnumInfo) methodInfo.getParent(), method, args);
         } else if (method.getAnnotation(InvokeCFunctionPointer.class) != null) {
             return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall);
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
@@ -379,7 +370,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return locationIdentity;
     }
 
-    static ValueNode adaptPrimitiveType(StructuredGraph graph, ValueNode value, JavaKind fromKind, JavaKind toKind, boolean isUnsigned) {
+    public static ValueNode adaptPrimitiveType(StructuredGraph graph, ValueNode value, JavaKind fromKind, JavaKind toKind, boolean isUnsigned) {
         if (fromKind == toKind) {
             return value;
         }

@@ -26,9 +26,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
+import org.graalvm.nativeimage.c.constant.CEnumValue;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-import com.oracle.svm.hosted.c.NativeLibraries;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -36,24 +36,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Substitutes methods declared as {@code native} with {@link CEnumLookup} annotation with a
  * synthetic graph that calls the appropriate EnumRuntimeData.convertCToJava(long) method.
  */
-public class CEnumLookupCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
+public class CEnumCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
 
-    private final Map<ResolvedJavaMethod, CEnumLookupCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
+    private final Map<ResolvedJavaMethod, CEnumCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
 
-    public CEnumLookupCallWrapperSubstitutionProcessor() {
+    public CEnumCallWrapperSubstitutionProcessor() {
         super();
-    }
-
-    public void setNativeLibraries(NativeLibraries nativeLibraries) {
-        for (CEnumLookupCallWrapperMethod m : callWrappers.values()) {
-            m.setNativeLibraries(nativeLibraries);
-        }
     }
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (method.getAnnotation(CEnumLookup.class) != null) {
-            return callWrappers.computeIfAbsent(method, CEnumLookupCallWrapperMethod::new);
+        if (method.getAnnotation(CEnumLookup.class) != null || method.getAnnotation(CEnumValue.class) != null) {
+            return callWrappers.computeIfAbsent(method, CEnumCallWrapperMethod::new);
         } else {
             return method;
         }
@@ -61,8 +55,8 @@ public class CEnumLookupCallWrapperSubstitutionProcessor extends SubstitutionPro
 
     @Override
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof CEnumLookupCallWrapperMethod) {
-            return ((CEnumLookupCallWrapperMethod) method).getOriginal();
+        if (method instanceof CEnumCallWrapperMethod) {
+            return ((CEnumCallWrapperMethod) method).getOriginal();
         }
         return method;
     }

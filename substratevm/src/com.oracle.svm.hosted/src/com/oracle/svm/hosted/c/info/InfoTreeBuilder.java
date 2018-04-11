@@ -57,7 +57,7 @@ import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
-import com.oracle.svm.hosted.cenum.CEnumLookupCallWrapperMethod;
+import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -600,12 +600,7 @@ public class InfoTreeBuilder {
                 createEnumValueInfo(enumInfo, method);
             }
             if (getMethodAnnotation(method, CEnumLookup.class) != null) {
-                // at this point the original method has already been substituted
-                assert method instanceof AnalysisMethod;
-                AnalysisMethod aMethod = (AnalysisMethod) method;
-                assert aMethod.getWrapped() instanceof CEnumLookupCallWrapperMethod;
-                CEnumLookupCallWrapperMethod wrapperMethod = (CEnumLookupCallWrapperMethod) aMethod.getWrapped();
-                createEnumLookupInfo(enumInfo, wrapperMethod.getOriginal());
+                createEnumLookupInfo(enumInfo, method);
             }
         }
         nativeCodeInfo.adoptChild(enumInfo);
@@ -631,8 +626,19 @@ public class InfoTreeBuilder {
         enumInfo.adoptChild(constantInfo);
     }
 
+    private static ResolvedJavaMethod originalMethod(ResolvedJavaMethod method) {
+        assert method instanceof AnalysisMethod;
+        AnalysisMethod analysisMethod = (AnalysisMethod) method;
+        assert analysisMethod.getWrapped() instanceof CEnumCallWrapperMethod;
+        CEnumCallWrapperMethod wrapperMethod = (CEnumCallWrapperMethod) analysisMethod.getWrapped();
+        return wrapperMethod.getOriginal();
+    }
+
     private void createEnumValueInfo(EnumInfo enumInfo, ResolvedJavaMethod method) {
-        if (!Modifier.isNative(method.getModifiers()) || Modifier.isStatic(method.getModifiers())) {
+
+        /* Check the modifiers of the original method. The synthetic method is not native. */
+        ResolvedJavaMethod originalMethod = originalMethod(method);
+        if (!Modifier.isNative(originalMethod.getModifiers()) || Modifier.isStatic(originalMethod.getModifiers())) {
             nativeLibs.addError("Method annotated with @" + CEnumValue.class.getSimpleName() + " must be a non-static native method", method);
             return;
         }
@@ -652,8 +658,11 @@ public class InfoTreeBuilder {
     }
 
     private void createEnumLookupInfo(EnumInfo enumInfo, ResolvedJavaMethod method) {
-        if (!Modifier.isNative(method.getModifiers()) || !Modifier.isStatic(method.getModifiers())) {
-            nativeLibs.addError("Method annotated with @" + CEnumValue.class.getSimpleName() + " must be a static native method", method);
+
+        /* Check the modifiers of the original method. The synthetic method is not native. */
+        ResolvedJavaMethod originalMethod = originalMethod(method);
+        if (!Modifier.isNative(originalMethod.getModifiers()) || !Modifier.isStatic(originalMethod.getModifiers())) {
+            nativeLibs.addError("Method annotated with @" + CEnumLookup.class.getSimpleName() + " must be a static native method", method);
             return;
         }
         if (method.getSignature().getParameterCount(false) != 1 || elementKind((ResolvedJavaType) method.getSignature().getParameterType(0, method.getDeclaringClass())) != ElementKind.INTEGER) {
