@@ -138,7 +138,7 @@ public abstract class Stub {
      */
     public Stub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
         this.linkage = linkage;
-        this.options = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningStubsAndSnippets.getValue(options));
+        this.options = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options));
         this.providers = providers;
     }
 
