@@ -38,6 +38,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -45,6 +47,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
     private final boolean legacyMimeTypeEval;
+
+    @Child ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
 
     public static LLVMPolyglotEval create(LLVMExpressionNode id, LLVMExpressionNode code) {
         return LLVMPolyglotEvalNodeGen.create(false, id, code);
@@ -78,7 +82,8 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                     @Cached("readSrc.executeWithTarget(srcPointer)") String src,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("getCallTarget(id, src, context)") CallTarget callTarget) {
-        return callTarget.call();
+        Object foreign = callTarget.call();
+        return toLLVM.executeWithTarget(foreign);
     }
 
     @Specialization(replaces = "doCached")
@@ -86,6 +91,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                     @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return getCallTarget(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer), context).call();
+        Object foreign = getCallTarget(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer), context).call();
+        return toLLVM.executeWithTarget(foreign);
     }
 }
