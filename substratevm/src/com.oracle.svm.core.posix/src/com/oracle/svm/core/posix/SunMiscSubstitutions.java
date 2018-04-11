@@ -58,7 +58,7 @@ final class Target_sun_misc_SharedSecrets {
                 public Console console() {
                     if (Target_java_io_Console.istty()) {
                         if (Target_java_lang_System.cons == null) {
-                            Target_java_lang_System.cons = KnownIntrinsics.unsafeCast(new Target_java_io_Console(), Console.class);
+                            Target_java_lang_System.cons = Util_java_io_Console.toConsole(new Target_java_io_Console());
                         }
                         return Target_java_lang_System.cons;
                     }
@@ -74,6 +74,13 @@ final class Target_sun_misc_SharedSecrets {
             };
         }
         return javaIOAccess;
+    }
+
+    @Alias private static sun.misc.JavaLangAccess javaLangAccess;
+
+    @Substitute
+    public static sun.misc.JavaLangAccess getJavaLangAccess() {
+        return javaLangAccess;
     }
 }
 
