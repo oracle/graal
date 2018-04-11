@@ -24,14 +24,6 @@ package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.posix.headers.Errno.errno;
 import static com.oracle.svm.core.posix.headers.Errno.strerror;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_ANON;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_PRIVATE;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_EXEC;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
-import static com.oracle.svm.core.posix.headers.Mman.mmap;
-import static com.oracle.svm.core.posix.headers.Mman.munmap;
 
 import java.io.FileDescriptor;
 
@@ -41,7 +33,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -53,15 +44,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.OSInterface;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.UnistdNoTransitions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.util.PointerUtils;
-import com.oracle.svm.core.util.UnsignedUtils;
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 public abstract class PosixOSInterface extends OSInterface {
@@ -193,111 +180,6 @@ public abstract class PosixOSInterface extends OSInterface {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void abort() {
         LibC.abort();
-    }
-
-    @Override
-    public Pointer allocateVirtualMemory(UnsignedWord size, boolean executable) {
-        trackVirtualMemory(size);
-        int protect = PROT_READ() | PROT_WRITE() | (executable ? PROT_EXEC() : 0);
-        int flags = MAP_ANON() | MAP_PRIVATE();
-        final Pointer result = mmap(WordFactory.nullPointer(), size, protect, flags, -1, 0);
-        if (result.equal(MAP_FAILED())) {
-            // Turn the mmap failure into a null Pointer.
-            return WordFactory.nullPointer();
-        }
-        return result;
-    }
-
-    @Override
-    public boolean freeVirtualMemory(PointerBase start, UnsignedWord size) {
-        untrackVirtualMemory(size);
-        final int unmapResult = munmap(start, size);
-        // Turn the munmap result into a boolean.
-        return (unmapResult == 0);
-    }
-
-    /**
-     * Allocate the requested amount of virtual memory at the requested alignment.
-     *
-     * @return A Pointer to the aligned memory, or a null Pointer.
-     */
-    @Override
-    public Pointer allocateVirtualMemoryAligned(UnsignedWord size, UnsignedWord alignment) {
-        // This happens in stages:
-        // (1) Reserve a container that is large enough for the requested size *and* the alignment.
-        // (2) Locate the result at the requested alignment within the container.
-        // (3) Clean up any over-allocated prefix and suffix pages.
-
-        // All communication with mmap and munmap happen in terms of page_sized objects.
-        final UnsignedWord pageSize = getPageSize();
-        // (1) Reserve a container that is large enough for the requested size *and* the alignment.
-        // - The container occupies the open-right interval [containerStart .. containerEnd).
-        // - This will be too big, but I'll give back the extra later.
-        final UnsignedWord containerSize = alignment.add(size);
-        final UnsignedWord pagedContainerSize = UnsignedUtils.roundUp(containerSize, pageSize);
-        final Pointer containerStart = allocateVirtualMemory(pagedContainerSize, false);
-        if (containerStart.isNull()) {
-            // No exception is needed: this is just a failure to reserve the virtual address space.
-            return WordFactory.nullPointer();
-        }
-        final Pointer containerEnd = containerStart.add(pagedContainerSize);
-        // (2) Locate the result at the requested alignment within the container.
-        // - The result occupies [start .. end).
-        final Pointer start = PointerUtils.roundUp(containerStart, alignment);
-        final Pointer end = start.add(size);
-        if (virtualMemoryVerboseDebugging) {
-            Log.log().string("allocateVirtualMemoryAligned(size: ").unsigned(size).string(" ").hex(size).string(", alignment: ").unsigned(alignment).string(" ").hex(alignment).string(")").newline();
-            Log.log().string("  container:   [").hex(containerStart).string(" .. ").hex(containerEnd).string(")").newline();
-            Log.log().string("  result:      [").hex(start).string(" .. ").hex(end).string(")").newline();
-        }
-        // (3) Clean up any over-allocated prefix and suffix pages.
-        // - The prefix occupies [containerStart .. pagedStart).
-        final Pointer pagedStart = PointerUtils.roundDown(start, pageSize);
-        final Pointer prefixStart = containerStart;
-        final Pointer prefixEnd = pagedStart;
-        final UnsignedWord prefixSize = prefixEnd.subtract(prefixStart);
-        if (prefixSize.aboveOrEqual(pageSize)) {
-            if (virtualMemoryVerboseDebugging) {
-                Log.log().string("  prefix:      [").hex(prefixStart).string(" .. ").hex(prefixEnd).string(")").newline();
-            }
-            final boolean prefixUnmap = freeVirtualMemory(prefixStart, prefixSize);
-            if (!prefixUnmap) {
-                // Throwing an exception would be better.
-                // If this unmap fails, I will have reserved virtual address space
-                // that I won't be able to give back.
-                return WordFactory.nullPointer();
-            }
-        }
-        // - The suffix occupies [pagedEnd .. containerEnd).
-        final Pointer pagedEnd = PointerUtils.roundUp(end, pageSize);
-        final Pointer suffixStart = pagedEnd;
-        final Pointer suffixEnd = containerEnd;
-        final UnsignedWord suffixSize = suffixEnd.subtract(suffixStart);
-        if (suffixSize.aboveOrEqual(pageSize)) {
-            if (virtualMemoryVerboseDebugging) {
-                Log.log().string("  suffix:      [").hex(suffixStart).string(" .. ").hex(suffixEnd).string(")").newline();
-            }
-            final boolean suffixUnmap = freeVirtualMemory(suffixStart, suffixSize);
-            if (!suffixUnmap) {
-                // Throwing an exception would be better.
-                // If this unmap fails, I will have reserved virtual address space
-                // that I won't be able to give back.
-                return WordFactory.nullPointer();
-            }
-        }
-        return start;
-    }
-
-    @Override
-    public boolean freeVirtualMemoryAligned(PointerBase start, UnsignedWord size, UnsignedWord alignment) {
-        final UnsignedWord pageSize = getPageSize();
-        // Re-discover the paged-aligned ends of the memory region.
-        final Pointer end = ((Pointer) start).add(size);
-        final Pointer pagedStart = PointerUtils.roundDown(start, pageSize);
-        final Pointer pagedEnd = PointerUtils.roundUp(end, pageSize);
-        final UnsignedWord pagedSize = pagedEnd.subtract(pagedStart);
-        // Return that virtual address space to the operating system.
-        return freeVirtualMemory(pagedStart, pagedSize);
     }
 
     @TargetClass(java.io.FileDescriptor.class)
@@ -440,43 +322,4 @@ public abstract class PosixOSInterface extends OSInterface {
         }
         return result.length() != 0 ? result : defaultMsg;
     }
-
-    protected void trackVirtualMemory(UnsignedWord size) {
-        tracker.track(size);
-    }
-
-    protected void untrackVirtualMemory(UnsignedWord size) {
-        tracker.untrack(size);
-    }
-
-    // Immutable state.
-    private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
-    // Verbose debugging.
-    private static final boolean virtualMemoryVerboseDebugging = false;
-
-    /**
-     * Make sure that allocation does not go completely wild.
-     *
-     * These methods do not allocate a new OutOfMemoryError instance and throw it. Rather they work
-     * with {@linkplain SnippetRuntime#THROW_CACHED_OUT_OF_MEMORY_ERROR} to throw a cached
-     * OutOfMemoryError instance.
-     */
-    protected static class VirtualMemoryTracker {
-
-        // Mutable state.
-        private UnsignedWord totalAllocated;
-
-        protected VirtualMemoryTracker() {
-            this.totalAllocated = WordFactory.zero();
-        }
-
-        public void track(UnsignedWord size) {
-            totalAllocated = totalAllocated.add(size);
-        }
-
-        public void untrack(UnsignedWord size) {
-            totalAllocated = totalAllocated.subtract(size);
-        }
-    }
-
 }
