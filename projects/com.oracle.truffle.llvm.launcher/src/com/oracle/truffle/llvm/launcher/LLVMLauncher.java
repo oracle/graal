@@ -75,7 +75,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         List<String> libs = new ArrayList<>();
 
         ListIterator<String> iterator = arguments.listIterator();
-        loop: while (iterator.hasNext()) {
+        while (iterator.hasNext()) {
             String option = iterator.next();
             if (option.length() < 2 || !option.startsWith("-")) {
                 iterator.previous();
@@ -96,20 +96,21 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     break;
                 default:
                     // options with argument
+                    String optionName = option;
                     String argument;
                     int equalsIndex = option.indexOf('=');
                     if (equalsIndex > 0) {
                         argument = option.substring(equalsIndex + 1);
-                        option = option.substring(0, equalsIndex);
+                        optionName = option.substring(0, equalsIndex);
                     } else if (iterator.hasNext()) {
                         argument = iterator.next();
                     } else {
                         argument = null;
                     }
-                    switch (option) {
+                    switch (optionName) {
                         case "-L":
                             if (argument == null) {
-                                throw abort("Missing argument for " + option);
+                                throw abort("Missing argument for " + optionName);
                             }
                             path.add(argument);
                             iterator.remove();
@@ -120,7 +121,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                             break;
                         case "--lib":
                             if (argument == null) {
-                                throw abort("Missing argument for " + option);
+                                throw abort("Missing argument for " + optionName);
                             }
                             libs.add(argument);
                             iterator.remove();
@@ -135,7 +136,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                             if (equalsIndex < 0 && argument != null) {
                                 iterator.previous();
                             }
-                            continue loop;
+                            break;
                     }
                     break;
             }
