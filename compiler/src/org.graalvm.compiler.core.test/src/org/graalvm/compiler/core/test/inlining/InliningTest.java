@@ -229,8 +229,7 @@ public class InliningTest extends GraalCompilerTest {
             graph = getGraph("traceInliningTest", options, false);
         }
         String inliningTree = graph.getInliningLog().formatAsTree(false);
-        String expectedRegex =
-                        "compilation of org.graalvm.compiler.core.test.inlining.InliningTest.traceInliningTest.*: \\R" +
+        String expectedRegex = "compilation of org.graalvm.compiler.core.test.inlining.InliningTest.traceInliningTest.*: \\R" +
                         "  at .*org.graalvm.compiler.core.test.inlining.InliningTest.traceInliningTest.*: <GraphBuilderPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callTrivial.*: yes, inline method\\R" +
                         "    at .*org.graalvm.compiler.core.test.inlining.InliningTest.callTrivial.*: .*\\R" +
                         "       ├──<GraphBuilderPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callNonTrivial.*: .*(.*\\R)*" +
