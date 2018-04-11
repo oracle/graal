@@ -1698,6 +1698,7 @@ public class BytecodeParser implements GraphBuilderContext {
             targetMethod = originalMethod;
         }
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
+        graph.getInliningLog().addDecision(invoke, false, "GraphBuilderPhase", null, null, "invocation plugin did not replace invoke");
         if (partialIntrinsicExit) {
             // This invoke must never be later inlined as it might select the intrinsic graph.
             // Until there is a mechanism to guarantee that any late inlining will not select
