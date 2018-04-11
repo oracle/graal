@@ -1373,6 +1373,36 @@ public final class PosixJavaNIOSubstitutions {
             return handle(result, "Force failed");
         }
 
+        /* Translated from src/java.base/unix/native/libnio/ch/FileDispatcherImpl.c */
+        /* { Do not re-format commented out C code: @formatter:off. */
+        // JNIEXPORT jint JNICALL
+        // Java_sun_nio_ch_FileDispatcherImpl_allocate0(JNIEnv *env, jobject this,
+        //                                              jobject fdo, jlong size) {
+        @Substitute @TargetElement(optional = true /* Introduced in JDK 8u162. */)
+        private static int allocate0(FileDescriptor fd, long size) throws IOException {
+            // #if defined(__linux__)
+            if (IsDefined.__linux__()) {
+                //     /*
+                //      * On Linux, if the file size is being increased, then ftruncate64()
+                //      * will modify the metadata value of the size without actually allocating
+                //      * any blocks which can cause a SIGBUS error if the file is subsequently
+                //      * memory-mapped.
+                //      */
+                //     return handle(env,
+                //                   fallocate64(fdval(env, fdo), 0, 0, size),
+                //                   "Allocation failed");
+                return handle(Fcntl.fallocate(fdval(fd), 0, WordFactory.zero(), WordFactory.signed(size)),
+                                "Allocation failed");
+            } else {
+                //     return handle(env,
+                //                   ftruncate64(fdval(env, fdo), size),
+                //                   "Truncation failed");
+                return handle(Unistd.ftruncate(fdval(fd), size),
+                                "Truncation failed");
+            }
+        }
+        /* } Do not re-format commented out C code: @formatter:on. */
+
         @Substitute
         private static int truncate0(FileDescriptor fdo, long size) throws IOException {
             return handle(ftruncate(fdval(fdo), size), "Truncation failed");
