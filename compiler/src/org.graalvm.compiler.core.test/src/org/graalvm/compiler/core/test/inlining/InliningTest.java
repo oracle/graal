@@ -232,8 +232,8 @@ public class InliningTest extends GraalCompilerTest {
         String expectedRegex = "compilation of org.graalvm.compiler.core.test.inlining.InliningTest.traceInliningTest.*: \\R" +
                         "  at .*org.graalvm.compiler.core.test.inlining.InliningTest.traceInliningTest.*: <GraphBuilderPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callTrivial.*: yes, inline method\\R" +
                         "    at .*org.graalvm.compiler.core.test.inlining.InliningTest.callTrivial.*: .*\\R" +
-                        "       ├──<GraphBuilderPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callNonTrivial.*: .*(.*\\R)*" +
-                        "       └──<InliningPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callNonTrivial.*: .*(.*\\R)*";
+                        "       .*<GraphBuilderPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callNonTrivial.*: .*(.*\\R)*" +
+                        "       .*<InliningPhase> org.graalvm.compiler.core.test.inlining.InliningTest.callNonTrivial.*: .*(.*\\R)*";
         Pattern expectedPattern = Pattern.compile(expectedRegex, Pattern.MULTILINE);
         Assert.assertTrue("Got: " + inliningTree, expectedPattern.matcher(inliningTree).matches());
     }
