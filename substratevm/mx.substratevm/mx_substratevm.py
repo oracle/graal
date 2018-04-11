@@ -174,7 +174,7 @@ def native_image_option_properties(option_kind, option_flag, native_image_root):
 flag_suitename_map = collections.OrderedDict([
     ('llvm', ('sulong', ['SULONG', 'SULONG_LAUNCHER'], ['SULONG_LIBS', 'SULONG_DOC'])),
     ('js', ('graal-js', ['GRAALJS', 'TREGEX', 'GRAALJS_LAUNCHER', 'ICU4J'], ['ICU4J-DIST'], 'js')),
-    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER'], ['TRUFFLERUBY-ZIP'])),
+    ('ruby', ('truffleruby', ['TRUFFLERUBY', 'TRUFFLERUBY-LAUNCHER', 'TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'], ['TRUFFLERUBY-ZIP'])),
     ('python', ('graalpython', ['GRAALPYTHON', 'GRAALPYTHON-LAUNCHER', 'GRAALPYTHON-ENV'], ['GRAALPYTHON-ZIP']))
 ])
 
@@ -480,13 +480,7 @@ def truffle_language_ensure(language_flag, version=None, native_image_root=None,
             mx.abort('Language subdir \'' + language_flag + '\' should already exist with extract=False')
         return language_suite
 
-    # Temporary inject ['TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS'] Ruby dependencies dynamically
-    # until the change is merged in TruffleRuby repository
-    extra_ruby_dep = (['TRUFFLERUBY-SHARED', 'TRUFFLERUBY-ANNOTATIONS']
-                      if language_flag == 'ruby' and mx.distribution('TRUFFLERUBY-SHARED', False)
-                      else [])
-
-    language_suite_depnames = language_entry[1] + extra_ruby_dep
+    language_suite_depnames = language_entry[1]
     language_deps = language_suite.dists + language_suite.libs
     language_deps = [dep for dep in language_deps if dep.name in language_suite_depnames]
     native_image_layout(language_deps, language_dir, native_image_root)
