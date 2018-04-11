@@ -483,7 +483,7 @@ class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
-        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), Function.identity(), () -> null, takeLast);
+        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
         String mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
         String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
