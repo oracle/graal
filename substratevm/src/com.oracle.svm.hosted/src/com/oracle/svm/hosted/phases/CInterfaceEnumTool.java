@@ -26,28 +26,28 @@ import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.type.StampTool;
 
 import com.oracle.svm.core.c.enums.EnumRuntimeData;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.info.EnumInfo;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -93,23 +93,6 @@ public class CInterfaceEnumTool {
         return kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
     }
 
-    boolean replaceEnumValueInvoke(BytecodeParser p, EnumInfo enumInfo, ResolvedJavaMethod method, ValueNode[] args) {
-        ResolvedJavaMethod valueMethod = getValueMethodForKind(method.getSignature().getReturnKind());
-        JavaType originalReturnType = method.getSignature().getReturnType(null);
-
-        assert args.length == 1;
-        MethodCallTargetNode callTarget = invokeEnumValue(p, CallTargetFactory.from(p), p.bci(), enumInfo, valueMethod, args[0]);
-        JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
-        p.handleReplacedInvoke(callTarget, pushKind);
-
-        ValueNode invoke = p.getFrameStateBuilder().pop(pushKind);
-        ValueNode adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(p.getGraph(), invoke, invoke.stamp(NodeView.DEFAULT).getStackKind(), originalReturnType.getJavaKind(), false);
-        Stamp originalStamp = p.getInvokeReturnStamp(null).getTrustedStamp();
-        adapted = CInterfaceInvocationPlugin.adaptPrimitiveType(p.getGraph(), adapted, originalReturnType.getJavaKind(), originalStamp.getStackKind(), false);
-        p.push(CInterfaceInvocationPlugin.pushKind(method), adapted);
-        return true;
-    }
-
     private MethodCallTargetNode invokeEnumValue(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, ResolvedJavaMethod valueMethod, ValueNode arg) {
         ResolvedJavaType returnType = (ResolvedJavaType) valueMethod.getSignature().getReturnType(null);
         ValueNode[] args = new ValueNode[2];
@@ -121,33 +104,19 @@ public class CInterfaceEnumTool {
     }
 
     public ValueNode createEnumLookupInvoke(HostedGraphKit kit, ResolvedJavaType enumType, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
+        // Create the invoke to the actual target method: EnumRuntimeData.convertCToJava
         int invokeBci = kit.bci();
         int exceptionEdgeBci = kit.bci();
         MethodCallTargetNode callTarget = invokeEnumLookup(kit, CallTargetFactory.from(kit), invokeBci, enumInfo, parameterKind, arg);
         InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(callTarget, kit.getFrameState(), invokeBci, exceptionEdgeBci);
+
+        // Create the instanceof guard to narrow the return type for the analysis
+        LogicNode instanceOfNode = kit.append(InstanceOfNode.createAllowNull(TypeReference.createExactTrusted(enumType), invoke, null, null));
+        FixedGuardNode guard = kit.append(new FixedGuardNode(instanceOfNode, DeoptimizationReason.ClassCastException, DeoptimizationAction.None));
+
+        // Create the PiNode anchored at the guard to narrow the return type for compilation
         ObjectStamp resultStamp = StampFactory.object(TypeReference.create(null, enumType), false);
-        return kit.unique(new PiNode(invoke, resultStamp));
-    }
-
-    boolean replaceEnumLookupInvoke(BytecodeParser p, EnumInfo enumInfo, ResolvedJavaMethod method, ValueNode[] args) {
-        assert Modifier.isStatic(method.getModifiers()) && method.getSignature().getParameterCount(false) == 1;
-        assert args.length == 1;
-        JavaKind methodParameterKind = method.getSignature().getParameterType(0, null).getJavaKind();
-
-        MethodCallTargetNode callTarget = invokeEnumLookup(p, CallTargetFactory.from(p), p.bci(), enumInfo, methodParameterKind, args[0]);
-        JavaKind pushKind = CInterfaceInvocationPlugin.pushKind(method);
-        p.handleReplacedInvoke(callTarget, pushKind);
-
-        Stamp returnStamp = p.getInvokeReturnStamp(null).getTrustedStamp();
-        ValueNode invokeNode = p.getFrameStateBuilder().pop(pushKind);
-
-        assert invokeNode instanceof InvokeNode || invokeNode instanceof InvokeWithExceptionNode;
-        assert returnStamp.getStackKind() == JavaKind.Object && invokeNode.stamp(NodeView.DEFAULT).getStackKind() == JavaKind.Object;
-        assert StampTool.typeOrNull(invokeNode.stamp(NodeView.DEFAULT)).isAssignableFrom(StampTool.typeOrNull(returnStamp));
-
-        ValueNode adapted = p.getGraph().unique(new PiNode(invokeNode, returnStamp));
-        p.push(pushKind, adapted);
-        return true;
+        return kit.unique(new PiNode(invoke, resultStamp, guard));
     }
 
     private MethodCallTargetNode invokeEnumLookup(GraphBuilderTool b, CallTargetFactory callTargetFactory, int bci, EnumInfo enumInfo, JavaKind parameterKind, ValueNode arg) {
