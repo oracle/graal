@@ -68,6 +68,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<sys/times.h>",
                     "<sys/uio.h>",
                     "<sys/wait.h>",
+                    "<termios.h>",
                     "<time.h>",
                     "<unistd.h>",
                     "<zlib.h>"
