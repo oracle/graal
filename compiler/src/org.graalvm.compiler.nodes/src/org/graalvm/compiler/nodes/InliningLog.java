@@ -345,11 +345,11 @@ public class InliningLog {
     /**
      * Used to change the current effective root of the method being compiled.
      *
-     * This root scope is used in situations in which a phase does its own ad-hoc inlining,
-     * in which it replaces an Invoke with other nodes, some of which may be other Invokes.
-     * The prime example for this is the bytecode parser, which does not create separate graphs
-     * with their own inlining logs when inlining an Invoke, but instead continues recursively
-     * parsing the graph corresponding to the Invoke.
+     * This root scope is used in situations in which a phase does its own ad-hoc inlining, in which
+     * it replaces an Invoke with other nodes, some of which may be other Invokes. The prime example
+     * for this is the bytecode parser, which does not create separate graphs with their own
+     * inlining logs when inlining an Invoke, but instead continues recursively parsing the graph
+     * corresponding to the Invoke.
      *
      * Root scopes can be nested.
      *

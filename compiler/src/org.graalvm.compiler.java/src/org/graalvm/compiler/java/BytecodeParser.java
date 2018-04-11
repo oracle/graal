@@ -2199,9 +2199,9 @@ public class BytecodeParser implements GraphBuilderContext {
             IntrinsicContext intrinsic = this.intrinsicContext;
 
             if (intrinsic == null && !graphBuilderConfig.insertFullInfopoints() &&
-                    targetMethod.equals(inlinedMethod) &&
-                    (targetMethod.getModifiers() & (STATIC | SYNCHRONIZED)) == 0 &&
-                    tryFastInlineAccessor(args, targetMethod)) {
+                            targetMethod.equals(inlinedMethod) &&
+                            (targetMethod.getModifiers() & (STATIC | SYNCHRONIZED)) == 0 &&
+                            tryFastInlineAccessor(args, targetMethod)) {
                 return true;
             }
 
