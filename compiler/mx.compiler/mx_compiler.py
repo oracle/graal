@@ -480,7 +480,7 @@ def jvmci_ci_version_gate_runner(tasks):
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
     if jdk.javaCompliance >= '9':
-        with Task('JDK9_java_base_test', tasks, tags=GraalTags.test) as t:
+        with Task('JDK_java_base_test', tasks, tags=GraalTags.test) as t:
             if t: java_base_unittest(_remove_empty_entries(extraVMarguments))
 
     # Run unit tests in hosted mode
@@ -871,7 +871,7 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 class GraalArchiveParticipant:
-    
+
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
     def __init__(self, dist, isTest=False):
         self.dist = dist
@@ -956,7 +956,13 @@ def java_base_unittest(args):
 
     basejdk = mx.JDKConfig(basejdk_dir)
     savedJava = jdk.java
+    saved_jvmci_classpath = list(_jvmci_classpath)
     try:
+        # Remove GRAAL_MANAGEMENT from the module path as it
+        # depends on the java.management module which is not in
+        # the limited module set
+        _jvmci_classpath[:] = [e for e in _jvmci_classpath if e._name != 'GRAAL_MANAGEMENT']
+
         jdk.java = basejdk.java
         if mx_gate.Task.verbose:
             extra_args = ['--verbose', '--enable-timing']
@@ -965,6 +971,7 @@ def java_base_unittest(args):
         mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         jdk.java = savedJava
+        _jvmci_classpath[:] = saved_jvmci_classpath
 
 def microbench(*args):
     mx.abort("`mx microbench` is deprecated.\n" +

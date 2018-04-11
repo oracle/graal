@@ -10,12 +10,17 @@ jdks: {
   oraclejdk9 : {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
   oraclejdk10 : {name : oraclejdk, version : "10+46", platformspecific: true}
 
-  # Snapshot of http://hg.openjdk.java.net/jdk/hs
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180130-162725", platformspecific: true}
+  # Snapshot of http://hg.openjdk.java.net/jdk/jdk
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180413-151126", platformspecific: true}
 }
 
-# Overlay placeholder for pinning mx to a specific revision
-mx : {}
+# This must always point to HEAD in the master branch but can be used to point
+# to another branch/commit in a Graal PR when mx changes are required for the PR.
+mx : {
+  packages : {
+    mx: "HEAD"
+  }
+}
 
 labsjdk8 :      { downloads : { JAVA_HOME : ${jdks.labsjdk8},      EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
 labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.oraclejdk9} ]} }}
@@ -25,6 +30,7 @@ labsjdk8Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk8Debug}, EXTRA_JAVA_HO
 
 oraclejdk9 :      { downloads : { JAVA_HOME : ${jdks.oraclejdk9},   EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8} ]} }}
 oraclejdk10 :     { downloads : { JAVA_HOME : ${jdks.oraclejdk10},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk9} ]} }}
+oraclejdk11 :     { downloads : { JAVA_HOME : ${jdks.oraclejdkSNAPSHOT},  EXTRA_JAVA_HOMES : { pathlist :[ ${jdks.labsjdk8}, ${jdks.oraclejdk10} ]} }}
 
 common : ${mx} {
   timelimit : "30:00"

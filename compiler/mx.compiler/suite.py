@@ -141,7 +141,7 @@ suite = {
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
       "uses" : ["org.graalvm.compiler.serviceprovider.GraalServices.JMXService"],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9",
+      "javaCompliance" : "9+",
       "multiReleaseJarVersion" : "9",
       "workingSets" : "API,Graal",
     },
@@ -359,7 +359,7 @@ suite = {
       ],
       "multiReleaseJarVersion" : "9",
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "9",
+      "javaCompliance" : "9+",
       "workingSets" : "Graal,HotSpot",
     },
 
