@@ -527,7 +527,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, compareAndSwapBarrierType(cas)));
+        BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
+        LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, barrierType));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
@@ -539,7 +540,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
-        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, atomicReadAndWriteBarrierType(n)));
+        BarrierType barrierType = storeBarrierType(n.object(), n.newValue());
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
@@ -888,23 +890,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
-    protected BarrierType unsafeStoreBarrierType(RawStoreNode store) {
+    private static BarrierType unsafeStoreBarrierType(RawStoreNode store) {
         if (!store.needsBarrier()) {
             return BarrierType.NONE;
         }
         return storeBarrierType(store.object(), store.value());
     }
 
-    protected BarrierType compareAndSwapBarrierType(UnsafeCompareAndSwapNode cas) {
-        return storeBarrierType(cas.object(), cas.expected());
-    }
-
-    protected BarrierType atomicReadAndWriteBarrierType(AtomicReadAndWriteNode n) {
-        return storeBarrierType(n.object(), n.newValue());
-    }
-
-    protected BarrierType storeBarrierType(ValueNode object, ValueNode value) {
-        if (value.getStackKind() == JavaKind.Object) {
+    private static BarrierType storeBarrierType(ValueNode object, ValueNode value) {
+        if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
             if (type != null && !type.isArray()) {
                 return BarrierType.IMPRECISE;

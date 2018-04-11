@@ -31,14 +31,10 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -47,16 +43,14 @@ import jdk.vm.ci.meta.JavaKind;
 public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implements Lowerable {
     public static final NodeClass<CompareAndSetVMThreadLocalNode> TYPE = NodeClass.create(CompareAndSetVMThreadLocalNode.class);
 
-    protected final VMThreadLocalInfo threadLocalInfo;
-    protected final BarrierType barrierType;
+    private final VMThreadLocalInfo threadLocalInfo;
     @Input protected ValueNode holder;
     @Input protected ValueNode expect;
     @Input protected ValueNode update;
 
-    public CompareAndSetVMThreadLocalNode(VMThreadLocalInfo threadLocalInfo, ValueNode holder, ValueNode expect, ValueNode update, BarrierType barrierType) {
+    public CompareAndSetVMThreadLocalNode(VMThreadLocalInfo threadLocalInfo, ValueNode holder, ValueNode expect, ValueNode update) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean.getStackKind()));
         this.threadLocalInfo = threadLocalInfo;
-        this.barrierType = barrierType;
         this.holder = holder;
         this.expect = expect;
         this.update = update;
@@ -66,10 +60,10 @@ public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implement
     public void lower(LoweringTool tool) {
         assert threadLocalInfo.offset >= 0;
 
-        ConstantNode offset = ConstantNode.forIntegerKind(FrameAccess.getWordKind(), threadLocalInfo.offset, holder.graph());
-        AddressNode address = graph().unique(new OffsetAddressNode(holder, offset));
-        LogicCompareAndSwapNode atomic = graph().add(new LogicCompareAndSwapNode(address, threadLocalInfo.locationIdentity, expect, update, barrierType));
+        ConstantNode offset = ConstantNode.forLong(threadLocalInfo.offset, holder.graph());
+        UnsafeCompareAndSwapNode atomic = graph().add(new UnsafeCompareAndSwapNode(holder, offset, expect, update, threadLocalInfo.storageKind, threadLocalInfo.locationIdentity));
         atomic.setStateAfter(stateAfter());
         graph().replaceFixedWithFixed(this, atomic);
+        tool.getLowerer().lower(atomic, tool);
     }
 }
