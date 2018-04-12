@@ -88,42 +88,42 @@ abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization
-    protected Object fromInt(int value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromInt(int value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromChar(char value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromChar(char value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromLong(long value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromLong(long value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromByte(byte value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromByte(byte value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromShort(short value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromShort(short value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromFloat(float value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromFloat(float value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromDouble(double value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromDouble(double value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
     @Specialization
-    protected Object fromBoolean(boolean value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMBoxedPrimitive fromBoolean(boolean value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return new LLVMBoxedPrimitive(value);
     }
 
