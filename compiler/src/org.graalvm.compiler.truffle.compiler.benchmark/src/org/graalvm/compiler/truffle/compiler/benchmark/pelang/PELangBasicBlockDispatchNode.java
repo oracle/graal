@@ -2,6 +2,7 @@ package org.graalvm.compiler.truffle.compiler.benchmark.pelang;
 
 import org.graalvm.compiler.truffle.compiler.benchmark.pelang.PELangBasicBlockNode.Execution;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -17,6 +18,8 @@ public class PELangBasicBlockDispatchNode extends PELangExpressionNode {
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object executeGeneric(VirtualFrame frame) {
+        CompilerAsserts.compilationConstant(blockNodes.length);
+
         if (blockNodes.length == 0) {
             return PELangNull.Instance;
         }
