@@ -36,7 +36,7 @@ extern "C" {
  * On success, the current thread is attached to the created isolate, and the
  * address of the isolate structure is written to the passed pointer.
  */
-poly_status poly_create_isolate(poly_isolate_params params, poly_isolate* isolate);
+poly_status poly_create_isolate(const poly_isolate_params* params, poly_isolate* isolate);
 
 /*
  * Attaches the current thread to the passed isolate.

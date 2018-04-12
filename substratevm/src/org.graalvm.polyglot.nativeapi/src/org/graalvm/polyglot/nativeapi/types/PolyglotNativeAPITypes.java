@@ -74,7 +74,7 @@ public class PolyglotNativeAPITypes {
         public native int getCValue();
     }
 
-    @CStruct("poly_extended_error_info")
+    @CStruct(value = "poly_extended_error_info")
     public interface PolyglotExtendedErrorInfo extends PointerBase {
 
         @CField("error_code")
@@ -86,7 +86,7 @@ public class PolyglotNativeAPITypes {
     }
 
     @CPointerTo(value = PolyglotExtendedErrorInfo.class)
-    public interface ExtendedErrorInfoPointer extends PointerBase {
+    public interface PolyglotExtendedErrorInfoPointer extends PointerBase {
 
         void write(PolyglotExtendedErrorInfo value);
 
