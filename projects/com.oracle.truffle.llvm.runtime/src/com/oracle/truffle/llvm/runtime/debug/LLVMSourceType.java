@@ -32,11 +32,17 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Supplier;
 
-public abstract class LLVMSourceType {
+public abstract class LLVMSourceType implements TruffleObject {
+
+    public static boolean isInstance(TruffleObject object) {
+        return object instanceof LLVMSourceType;
+    }
 
     public static final LLVMSourceType UNSUPPORTED = new LLVMSourceType(() -> "<unsupported>", 0, 0, 0, null) {
 
@@ -154,5 +160,10 @@ public abstract class LLVMSourceType {
     @Override
     public String toString() {
         return getName();
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LLVMSourceTypeMessageResolutionForeign.ACCESS;
     }
 }
