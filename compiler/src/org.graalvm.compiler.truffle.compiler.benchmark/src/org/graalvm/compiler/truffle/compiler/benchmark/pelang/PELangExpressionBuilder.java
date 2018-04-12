@@ -56,7 +56,7 @@ public class PELangExpressionBuilder {
         return add(literal(-value), read(identifier));
     }
 
-    public PELangExpressionNode block(PELangExpressionNode... bodyNodes) {
+    public PELangExpressionNode expressionBlock(PELangExpressionNode... bodyNodes) {
         return new PELangExpressionBlockNode(bodyNodes);
     }
 
@@ -66,7 +66,7 @@ public class PELangExpressionBuilder {
     }
 
     public PELangExpressionNode branch(PELangExpressionNode conditionNode, PELangExpressionNode thenNode) {
-        return branch(conditionNode, thenNode, block());
+        return branch(conditionNode, thenNode, expressionBlock());
     }
 
     public PELangExpressionNode loop(PELangExpressionNode conditionNode, PELangExpressionNode bodyNode) {
@@ -95,6 +95,18 @@ public class PELangExpressionBuilder {
 
     public PELangExpressionNode increment(String value, String identifier) {
         return write(add(literal(value), read(identifier)), identifier);
+    }
+
+    public PELangExpressionNode dispatch(PELangBasicBlockNode... blockNodes) {
+        return new PELangBasicBlockDispatchNode(blockNodes);
+    }
+
+    public PELangBasicBlockNode basicBlock(PELangExpressionNode bodyNode, int successor) {
+        return new PELangSingleSuccessorNode(bodyNode, successor);
+    }
+
+    public PELangBasicBlockNode basicBlock(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
+        return new PELangDoubleSuccessorNode(bodyNode, trueSuccessor, falseSuccessor);
     }
 
 }
