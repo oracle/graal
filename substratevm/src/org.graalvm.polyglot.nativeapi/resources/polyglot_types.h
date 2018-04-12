@@ -58,6 +58,8 @@ typedef poly_handle poly_context;
 
 typedef poly_handle poly_callback_info;
 
+typedef poly_handle poly_language;
+
 typedef graal_create_isolate_params_t poly_isolate_params;
 
 typedef graal_isolate_t* poly_isolate;

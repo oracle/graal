@@ -136,6 +136,19 @@ public class PolyglotNativeAPITypes {
     public interface PolyglotValue extends PointerBase, ObjectHandle {
     }
 
+    @CPointerTo(nameOfCType = "poly_language")
+    @CTypedef(name = "poly_language")
+    public interface PolyglotLanguage extends PointerBase, ObjectHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_language")
+    public interface PolyglotLanguagePointer extends PointerBase, ObjectHandle {
+
+        void write(ObjectHandle value);
+
+        void write(int i, ObjectHandle value);
+    }
+
     @CPointerTo(nameOfCType = "poly_value")
     public interface PolyglotValuePointer extends PointerBase, ObjectHandle {
 
