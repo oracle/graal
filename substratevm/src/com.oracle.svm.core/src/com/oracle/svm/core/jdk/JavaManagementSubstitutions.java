@@ -205,11 +205,21 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     }
 }
 
-final class SubstrateThreadMXBean implements ThreadMXBean {
+final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     private static final String MSG = "ThreadMXBean methods";
 
     SubstrateThreadMXBean() {
+    }
+
+    @Override
+    public boolean isThreadAllocatedMemoryEnabled() {
+        return false;
+    }
+
+    @Override
+    public boolean isThreadAllocatedMemorySupported() {
+        return false;
     }
 
     @Override
@@ -351,6 +361,31 @@ final class SubstrateThreadMXBean implements ThreadMXBean {
 
     @Override
     public ThreadInfo[] dumpAllThreads(boolean lockedMonitors, boolean lockedSynchronizers) {
+        throw VMError.unsupportedFeature(MSG);
+    }
+
+    @Override
+    public long getThreadAllocatedBytes(long arg0) {
+        throw VMError.unsupportedFeature(MSG);
+    }
+
+    @Override
+    public long[] getThreadAllocatedBytes(long[] arg0) {
+        throw VMError.unsupportedFeature(MSG);
+    }
+
+    @Override
+    public long[] getThreadCpuTime(long[] arg0) {
+        throw VMError.unsupportedFeature(MSG);
+    }
+
+    @Override
+    public long[] getThreadUserTime(long[] arg0) {
+        throw VMError.unsupportedFeature(MSG);
+    }
+
+    @Override
+    public void setThreadAllocatedMemoryEnabled(boolean arg0) {
         throw VMError.unsupportedFeature(MSG);
     }
 }
