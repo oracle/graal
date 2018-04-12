@@ -23,6 +23,8 @@
 #ifndef POLYGLOT_TYPES_H
 #define POLYGLOT_TYPES_H
 
+#define POLY_AUTO_LENGTH SIZE_MAX
+
 typedef enum {
   poly_ok,
   poly_invalid_arg,
