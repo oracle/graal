@@ -40,7 +40,7 @@ public abstract class PELangExpressionNode extends Node {
         return PELangTypesGen.expectString(executeGeneric(frame));
     }
 
-    protected long evaluateCondition(VirtualFrame frame) {
+    public long evaluateCondition(VirtualFrame frame) {
         try {
             return executeLong(frame);
         } catch (UnexpectedResultException ex) {
