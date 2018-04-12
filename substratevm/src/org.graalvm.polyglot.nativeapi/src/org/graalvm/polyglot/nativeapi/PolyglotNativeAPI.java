@@ -297,7 +297,8 @@ public final class PolyglotNativeAPI {
                     " @param language_id the language identifier.",
                     " @param name_utf8 given to the evaluate source code.",
                     " @param source_utf8 the source code to be evaluated.",
-                    " @return the result of the evaluation.",
+                    " @param result <code>poly_value</code> that is the result of the evaluation.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @see org::graalvm::polyglot::Context::eval",
                     " @since 1.0",
     })
@@ -324,8 +325,8 @@ public final class PolyglotNativeAPI {
                     "",
                     " @param context for which we extract the bindings.",
                     " @param language_id the language identifier.",
-                    " @return a value whose members correspond to the symbols in the top scope of the `language_id`.",
-                    " @error poly_generic_failure if the language does not exist, if context is already closed, ",
+                    " @param result a value whose members correspond to the symbols in the top scope of the `language_id`.",
+                    " @return poly_generic_failure if the language does not exist, if context is already closed, ",
                     "        in case the lazy initialization failed due to a guest language error.",
                     " @see org::graalvm::polyglot::Context::getBindings",
                     " @since 1.0",
@@ -349,7 +350,7 @@ public final class PolyglotNativeAPI {
                     "`Polyglot.import(\"name\")` and set using `Polyglot.export(\"name\", value)`. Please see ",
                     "the individual language reference on how to access these symbols.",
                     "",
-                    " @error poly_generic_failure if context is already closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is already closed.",
                     " @see org::graalvm::polyglot::Context::getPolyglotBindings",
                     " @since 1.0",
     })
@@ -363,8 +364,9 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_can_execute", documentation = {
                     "Checks whether a polyglot value can be executed.",
                     "",
-                    " @param value a polyglot value",
-                    " @return true if the value can be executed",
+                    " @param value a polyglot value.",
+                    " @param result true if the value can be executed, false otherwise.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @see org::graalvm::polyglot::Value::canExecute",
                     " @since 1.0",
     })
@@ -379,8 +381,11 @@ public final class PolyglotNativeAPI {
                     "Executes a value if it can be executed and returns its result. All arguments passed ",
                     "must be polyglot values.",
                     "",
-                    " @error if the underlying context was closed, if a wrong number of arguments was ",
-                    " provided or one of the arguments was not applicable, if this value cannot be executed,",
+                    " @param value to be executed.",
+                    " @param args array of poly_value.",
+                    " @param args_size length of the args array.",
+                    " @return poly_ok if all works, poly_generic_error if the underlying context was closed, if a wrong ",
+                    "         number of arguments was provided or one of the arguments was not applicable, if this value cannot be executed,",
                     " and if a guest language error occurred during execution.",
                     " @see org::graalvm::polyglot::Value::execute",
                     " @since 1.0",
@@ -403,7 +408,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_get_member", documentation = {
                     "Returns the member with a given `utf8_identifier` or `null` if the member does not exist.",
                     "",
-                    " @error poly_generic_failure if the value has no members, the given identifier exists ",
+                    " @return poly_ok if all works, poly_generic_failure if the value has no members, the given identifier exists ",
                     "        but is not readable, if a guest language error occurred during execution.",
                     " @see org::graalvm::polyglot::Value::getMember",
                     " @since 1.0",
@@ -418,8 +423,9 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_put_member", documentation = {
                     "Sets the value of a member with the `utf8_identifier`.",
                     "",
-                    " @error poly_generic_failure if the context is already closed, if the value does not have any members,",
-                    "        the key does not exist and new members cannot be added, or the existing member is not modifiable.",
+                    " @return poly_ok if all works, poly_generic_failure if the context is already closed, if the value does ",
+                    "         not have any members, the key does not exist and new members cannot be added, or the existing ",
+                    "         member is not modifiable.",
                     " @see org::graalvm::polyglot::Value::putMember",
                     " @since 1.0",
     })
@@ -435,6 +441,8 @@ public final class PolyglotNativeAPI {
                     "Returns `true` if such a member exists for the given `utf8_identifier`. If the value has no members ",
                     "then it returns `false`.",
                     "",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    "         during execution.",
                     " @see org::graalvm::polyglot::Value::putMember",
                     " @since 1.0",
     })
@@ -448,7 +456,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_boolean", documentation = {
                     "Creates a polyglot boolean value from a C boolean.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -463,7 +471,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_int8", documentation = {
                     "Creates a polyglot integer number from `int8_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -478,7 +486,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_int16", documentation = {
                     "Creates a polyglot integer number from `int16_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -493,7 +501,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_int32", documentation = {
                     "Creates a polyglot integer number from `int32_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -508,7 +516,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_int64", documentation = {
                     "Creates a polyglot integer number from `int64_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -523,7 +531,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_uint8", documentation = {
                     "Creates a polyglot integer number from `uint8_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -538,7 +546,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_uint16", documentation = {
                     "Creates a polyglot integer number from `uint16_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -553,7 +561,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_uint32", documentation = {
                     "Creates a polyglot integer number from `uint32_t`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -568,7 +576,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_float", documentation = {
                     "Creates a polyglot floating point number from C `float`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -583,7 +591,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_double", documentation = {
                     "Creates a polyglot floating point number from C `double`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -597,7 +605,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_character", documentation = {
                     "Creates a polyglot character from C `char`.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -615,7 +623,7 @@ public final class PolyglotNativeAPI {
                     " @param string the C string, null terminated or not.",
                     " @param length the length of C string, or POLY_AUTO_LENGTH if the string is null terminated.",
                     " @return the polyglot string value.",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -629,7 +637,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_null", documentation = {
                     "Creates the polyglot `null` value.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::Context::asValue",
                     " @since 1.0",
     })
@@ -643,7 +651,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_create_object", documentation = {
                     "Creates a polyglot object with no members.",
                     "",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed.",
                     " @see org::graalvm::polyglot::ProxyObject::fromMap",
                     " @since 1.0",
     })
@@ -660,8 +668,8 @@ public final class PolyglotNativeAPI {
                     "",
                     " @param value_array array containing polyglot values",
                     " @param array_length the number of elements in the value_array",
-                    " @error poly_generic_failure if context is null, if the underlying context was closed, if the array ",
-                    "        does not contain polyglot values.",
+                    " @return poly_ok if all works, poly_generic_failure if context is null, if the underlying context was closed, ",
+                    "         if the array does not contain polyglot values.",
                     " @see org::graalvm::polyglot::ProxyArray::fromList",
                     " @since 1.0",
     })
@@ -686,7 +694,7 @@ public final class PolyglotNativeAPI {
                     "",
                     " @param value value that we are checking.",
                     " @return true if the value has array elements.",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::hasArrayElements",
                     " @since 1.0",
@@ -707,9 +715,9 @@ public final class PolyglotNativeAPI {
                     " @param value value that has array elements.",
                     " @param index index of the element starting from 0.",
                     " @return the array element.",
-                    " @error poly_array_expected if the value has no array elements.",
-                    " @error poly_generic_failure if the array index does not exist, if index is not readable, if the ",
-                    "        underlying context was closed, if guest language error occurred during execution.",
+                    " @return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not readable, if the ",
+                    "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the ",
+                    "         value has no array elements.",
                     " @see org::graalvm::polyglot::Value::getArrayElement",
                     " @since 1.0",
     })
@@ -732,10 +740,9 @@ public final class PolyglotNativeAPI {
                     " @param value value that we are checking.",
                     " @param index index of the element starting from 0.",
                     " @param element to be written into the array.",
-                    " @return true if the value has array elements.",
-                    " @error poly_array_expected if the value has no array elements.",
-                    " @error poly_generic_failure if the array index does not exist, if index is not writeable, if the ",
-                    "        underlying context was closed, if guest language error occurred during execution.",
+                    " @param result true if the value has array elements.",
+                    " @return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not writeable, if the ",
+                    "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the value has no array elements..",
                     " @see org::graalvm::polyglot::Value::setArrayElement",
                     " @since 1.0",
     })
@@ -760,9 +767,9 @@ public final class PolyglotNativeAPI {
                     " @param index index of the element starting from 0.",
                     " @param element to be written into the array.",
                     " @return true if the value has array elements.",
-                    " @error poly_array_expected if the value has no array elements.",
-                    " @error poly_generic_failure if the array index does not exist, if index is not removable, if the ",
-                    "        underlying context was closed, if guest language error occurred during execution.",
+                    " @return poly_ok if all works, poly_generic_failure if the array index does not exist, if index is not removable, if the ",
+                    "         underlying context was closed, if guest language error occurred during execution, poly_array_expected if the ",
+                    "         value has no array elements.",
                     " @see org::graalvm::polyglot::Value::removeArrayElement",
                     " @since 1.0",
     })
@@ -780,10 +787,9 @@ public final class PolyglotNativeAPI {
                     "Gets the size of the polyglot value that has array elements.",
                     "",
                     " @param value value that has array elements.",
-                    " @return number of elements in the value.",
-                    " @error poly_array_expected if the value has no array elements.",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
-                    "        during execution.",
+                    " @param result number of elements in the value.",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    "         during execution, poly_array_expected if the value has no array elements.",
                     " @see org::graalvm::polyglot::Value::removeArrayElement",
                     " @since 1.0",
     })
@@ -800,7 +806,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_is_null", documentation = {
                     "Returns `true` if this value is `null` like.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::isNull",
                     " @since 1.0"
@@ -815,7 +821,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_is_boolean", documentation = {
                     "Returns `true` if this value represents a boolean value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
                     "        if the underlying context was closed, if value could not be converted. ",
                     " @see org::graalvm::polyglot::Value::isBoolean",
                     " @since 1.0",
@@ -830,7 +836,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_is_string", documentation = {
                     "Returns `true` if this value represents a string.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::isString",
                     " @since 1.0"
@@ -845,7 +851,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_is_number", documentation = {
                     "Returns `true` if this value represents a number.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::isNumber",
                     " @since 1.0",
@@ -860,7 +866,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_float", documentation = {
                     "Returns `true` if this value is a number and can fit into a C float.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::fitsInFloat",
                     " @since 1.0",
@@ -875,7 +881,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_double", documentation = {
                     "Returns `true` if this value is a number and can fit into a C double.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::fitsInDouble",
                     " @since 1.0"
@@ -890,7 +896,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_int8", documentation = {
                     "Returns `true` if this value is a number and can fit into `int8_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::fitsInByte",
                     " @since 1.0"
@@ -905,7 +911,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_int16", documentation = {
                     "Returns `true` if this value is a number and can fit into `int16_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @since 1.0"
     })
@@ -924,7 +930,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_int32", documentation = {
                     "Returns `true` if this value is a number and can fit into `int32_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::fitsInInt",
                     " @since 1.0"
@@ -939,7 +945,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_int64", documentation = {
                     "Returns `true` if this value is a number and can fit into `int64_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @see org::graalvm::polyglot::Value::fitsInLong",
                     " @since 1.0"
@@ -954,7 +960,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_uint8", documentation = {
                     "Returns `true` if this value is a number and can fit into `uint8_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @since 1.0"
     })
@@ -973,7 +979,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_uint16", documentation = {
                     "Returns `true` if this value is a number and can fit into `uint16_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @since 1.0"
     })
@@ -992,7 +998,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_fits_in_uint32", documentation = {
                     "Returns `true` if this value is a number and can fit into `uint32_t`.",
                     "",
-                    " @error poly_generic_failure if the underlying context was closed, if guest language error occurred ",
+                    " @return poly_ok if all works, poly_generic_failure if the underlying context was closed, if guest language error occurred ",
                     "        during execution.",
                     " @since 1.0"
     })
@@ -1012,8 +1018,8 @@ public final class PolyglotNativeAPI {
                     "Fills the `buffer` with with a string encoded in UTF-8 and stores the number of written bytes to `result`. If the ",
                     "the buffer is `NULL` writes the required size to `result`.",
                     "",
-                    " @error poly_string_expected if the value is not a string",
-                    " @error poly_generic_failure if a guest language error occurred during execution.",
+                    " @return poly_ok if all works, poly_generic_failure if a guest language error occurred during execution ",
+                    "         poly_string_expected if the value is not a string.",
                     " @since 1.0",
     })
     public static PolyglotStatus poly_value_as_string_utf8(PolyglotIsolateThread thread, PolyglotValue value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
@@ -1030,8 +1036,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_boolean", documentation = {
                     "Returns a boolean representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted. ",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted. ",
                     " @see org::graalvm::polyglot::Value::asBoolean",
                     " @since 1.0",
     })
@@ -1049,8 +1055,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_int8", documentation = {
                     "Returns a int8_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted. ",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted. ",
                     " @see org::graalvm::polyglot::Value::asByte",
                     " @since 1.0",
     })
@@ -1064,8 +1070,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_int16", documentation = {
                     "Returns a int32_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted.",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asInt",
                     " @since 1.0",
     })
@@ -1083,8 +1089,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_int32", documentation = {
                     "Returns a int32_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted.",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asInt",
                     " @since 1.0",
     })
@@ -1098,8 +1104,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_int64", documentation = {
                     "Returns a int64_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted.",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asInt",
                     " @since 1.0",
     })
@@ -1113,8 +1119,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_uint8", documentation = {
                     "Returns a uint8_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted.",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asInt",
                     " @since 1.0",
     })
@@ -1132,8 +1138,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_uint16", documentation = {
                     "Returns a uint16_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
-                    "        if the underlying context was closed, if value could not be converted.",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    "         if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asInt",
                     " @since 1.0",
     })
@@ -1151,7 +1157,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_uint32", documentation = {
                     "Returns a uint32_t representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
                     "        if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asLong",
                     " @since 1.0",
@@ -1170,7 +1176,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_float", documentation = {
                     "Returns a float representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    " @return poly_ok if all works, poly_generic_failure if value is null, if a guest language error occurred during execution, ",
                     "        if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asFloat",
                     " @since 1.0",
@@ -1185,7 +1191,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_double", documentation = {
                     "Returns a double representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is <code>null</code>, if a guest language error occurred during execution, ",
+                    " @return poly_ok if all works, poly_generic_failure if value is <code>null</code>, if a guest language error occurred during execution, ",
                     "        if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asDouble",
                     " @since 1.0",
