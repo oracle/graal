@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -79,6 +80,14 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     protected Object doOp(LLVMAddress address, LLVMAddress value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.putI64(address, value.getVal());
+        return null;
+    }
+
+    @Specialization
+    protected Object doOp(LLVMAddress address, LLVMFunctionDescriptor value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        memory.putI64(address, toAddress.executeWithTarget(value).getVal());
         return null;
     }
 
