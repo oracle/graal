@@ -28,6 +28,7 @@ import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.Polygl
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_ok;
 
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -42,6 +43,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CDoublePointer;
 import org.graalvm.nativeimage.c.type.CFloatPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -64,6 +66,8 @@ import org.graalvm.polyglot.nativeapi.types.CUnsignedShortPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotCallback;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotCallbackInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContext;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContextBuilder;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContextBuilderPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContextPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngine;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEnginePointer;
@@ -113,12 +117,11 @@ public final class PolyglotNativeAPI {
 
     @CEntryPoint(name = "poly_create_engine", documentation = {
                     "Creates a polyglot engine: An execution engine for Graal guest languages that allows to inspect the ",
-                    "installed languages and to create language execution contexts.",
+                    "installed languages and can have multiple execution contexts.",
                     "",
-                    "Engine is a unit that holds configuration, instruments, and compiled code for all contexts created ",
-                    "from this engine.",
+                    "Engine is a unit that holds configuration, instruments, and compiled code for all contexts assigned ",
+                    "to this engine.",
                     " @since 1.0",
-
     })
     public static PolyglotStatus poly_create_engine(PolyglotIsolateThread thread, PolyglotEnginePointer result) {
         return withHandledErrors(() -> {
@@ -128,21 +131,162 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_create_context", documentation = {
-                    "Creates a context within a polyglot engine.",
+                    "Creates a context with default configuration.",
                     "",
                     "A context holds all of the program data. Each context is by default isolated from all other contexts",
                     "with respect to program data and evaluation semantics.",
                     "",
-                    "Note: context allows access to all resources in embedded programs; ",
-                    "in the future this will be restricted and replaced with finer grained APIs.",
-                    " @param engine in which the context is created.",
+                    " @param permitted_languages array of 0 terminated language identifiers in UTF-8 that are permitted, or NULL for ",
+                    "        supporting all available languages.",
+                    " @param length of the array of language identifiers.",
+                    " @param result the created context.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, PolyglotEngine engine, PolyglotContextPointer result) {
+    public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextPointer result) {
         return withHandledErrors(() -> {
-            Engine jEngine = fetchHandle(engine);
-            Context c = Context.newBuilder().engine(jEngine).allowAllAccess(true).build();
+            Context c;
+            if (permitted_languages.isNull()) {
+                c = Context.create();
+            } else {
+                List<String> jPermittedLangs = new ArrayList<>();
+                for (int i = 0; length.aboveThan(i); i++) {
+                    jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
+                }
+                c = Context.create(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
+            }
             result.write(createHandle(c));
+        });
+    }
+
+    @CEntryPoint(name = "poly_create_context_builder", documentation = {
+                    "Creates a context with a new engine polyglot engine with a list ",
+                    "",
+                    "A context holds all of the program data. Each context is by default isolated from all other contexts",
+                    "with respect to program data and evaluation semantics.",
+                    "",
+                    " @param permittedLanguages array of 0 terminated language identifiers in UTF-8 that are permitted.",
+                    " @param length of the array of language identifiers.",
+                    " @param result the created context.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_create_context_builder(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextBuilderPointer result) {
+        return withHandledErrors(() -> {
+            List<String> jPermittedLangs = new ArrayList<>();
+            for (int i = 0; length.aboveThan(i); i++) {
+                jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
+            }
+            Context.Builder c = Context.newBuilder(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
+            result.write(createHandle(c));
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_engine", documentation = {
+                    "Sets an engine for the context builder.",
+                    "",
+                    " @param context_builder that is assigned an engine.",
+                    " @param engine to assign to this builder.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_engine(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, PolyglotEngine engine) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            Engine jEngine = fetchHandle(engine);
+            contextBuilder.engine(jEngine);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_option", documentation = {
+                    "Sets an option on a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is assigned an option.",
+                    " @param key_utf8 0 terminated and UTF-8 encoded key for the option.",
+                    " @param value_utf8 0 terminated and UTF-8 encoded value for the option.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_option(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, @CConst CCharPointer key_utf8, @CConst CCharPointer value_utf8) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.option(CTypeConversion.toJavaString(key_utf8), CTypeConversion.toJavaString(value_utf8));
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_allow_all_access", documentation = {
+                    "Allows or disallows all access for a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is modified.",
+                    " @param allow_all_access bool value that defines all access.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_allow_all_access(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_all_access) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.allowAllAccess(allow_all_access);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_allow_IO", documentation = {
+                    "Allows or disallows IO for a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is modified.",
+                    " @param allow_IO bool value that is passed to the builder.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_allow_IO(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_IO) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.allowIO(allow_IO);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_allow_native_access", documentation = {
+                    "Allows or disallows native access for a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is modified.",
+                    " @param allow_native_access bool value that is passed to the builder.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_allow_native_access(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_native_access) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.allowNativeAccess(allow_native_access);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_allow_create_thread", documentation = {
+                    "Allows or disallows thread creation or a <code>poly_context_builder</code>.",
+                    "",
+                    " @param context_builder that is modified.",
+                    " @param allow_create_thread bool value that is passed to the builder.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_allow_create_thread(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_create_thread) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            contextBuilder.allowNativeAccess(allow_create_thread);
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_builder_build", documentation = {
+                    "Builds a <code>context</code> from a <code>context_builder</code>. The same builder can be used to ",
+                    "produce multiple <code>poly_context</code> instances.",
+                    "",
+                    " @param context_builder that is allowed all access.",
+                    " @param result the created context.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_builder_build(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, PolyglotContextPointer result) {
+        return withHandledErrors(() -> {
+            Context.Builder contextBuilder = fetchHandle(context_builder);
+            result.write(createHandle(contextBuilder.build()));
         });
     }
 
@@ -1041,7 +1185,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_value_as_double", documentation = {
                     "Returns a double representation of the value.",
                     "",
-                    " @error poly_generic_failure if value is null, if a guest language error occurred during execution, ",
+                    " @error poly_generic_failure if value is <code>null</code>, if a guest language error occurred during execution, ",
                     "        if the underlying context was closed, if value could not be converted.",
                     " @see org::graalvm::polyglot::Value::asDouble",
                     " @since 1.0",
@@ -1197,7 +1341,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_release_handle", documentation = {
                     "Destroys a poly_handle. After this point the handle must not be used anymore. ",
                     "",
-                    "Handles are: poly_engine, poly_context, poly_language, poly_value, and poly_callback_info.",
+                    "Handles are: poly_engine, poly_context, poly_context_builder, poly_language, poly_value, and poly_callback_info.",
                     " @since 1.0",
     })
     public static PolyglotStatus poly_release_handle(PolyglotIsolateThread thread, PolyglotHandle handle) {
