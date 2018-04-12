@@ -25,11 +25,11 @@ package org.graalvm.compiler.truffle.compiler.benchmark.pelang;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class PELangBlockNode extends PELangExpressionNode {
+public final class PELangExpressionBlockNode extends PELangExpressionNode {
 
     @Children private final PELangExpressionNode[] bodyNodes;
 
-    public PELangBlockNode(PELangExpressionNode[] bodyNodes) {
+    public PELangExpressionBlockNode(PELangExpressionNode[] bodyNodes) {
         this.bodyNodes = bodyNodes;
     }
 

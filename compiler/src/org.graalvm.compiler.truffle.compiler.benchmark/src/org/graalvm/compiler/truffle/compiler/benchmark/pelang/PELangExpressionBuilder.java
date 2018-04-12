@@ -57,7 +57,7 @@ public class PELangExpressionBuilder {
     }
 
     public PELangExpressionNode block(PELangExpressionNode... bodyNodes) {
-        return new PELangBlockNode(bodyNodes);
+        return new PELangExpressionBlockNode(bodyNodes);
     }
 
     public PELangExpressionNode branch(PELangExpressionNode conditionNode, PELangExpressionNode thenNode,
