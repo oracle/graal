@@ -25,6 +25,7 @@ package org.graalvm.compiler.hotspot.management;
 import static java.lang.Thread.currentThread;
 
 import java.lang.management.ManagementFactory;
+import java.util.List;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices.JMXService;
@@ -57,5 +58,10 @@ public class JMXServiceProvider extends JMXService {
     @Override
     protected boolean isCurrentThreadCpuTimeSupported() {
         return threadMXBean.isThreadCpuTimeSupported();
+    }
+
+    @Override
+    protected List<String> getInputArguments() {
+        return ManagementFactory.getRuntimeMXBean().getInputArguments();
     }
 }

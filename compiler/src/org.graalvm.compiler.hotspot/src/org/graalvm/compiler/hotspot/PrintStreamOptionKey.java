@@ -27,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.List;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
@@ -116,8 +117,10 @@ public class PrintStreamOptionKey extends OptionKey<String> {
                 /*
                  * Add the JVM and Java arguments to the log file to help identity it.
                  */
-                String inputArguments = String.join(" ", java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments());
-                ps.println("VM Arguments: " + inputArguments);
+                List<String> inputArguments = GraalServices.getInputArguments();
+                if (inputArguments != null) {
+                    ps.println("VM Arguments: " + String.join(" ", inputArguments));
+                }
                 String cmd = System.getProperty("sun.java.command");
                 if (cmd != null) {
                     ps.println("sun.java.command=" + cmd);

@@ -27,6 +27,7 @@ import static java.lang.Thread.currentThread;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
@@ -216,6 +217,8 @@ public final class GraalServices {
 
         protected abstract boolean isCurrentThreadCpuTimeSupported();
 
+        protected abstract List<String> getInputArguments();
+
         // Placing this static field in JMXService (instead of GraalServices)
         // allows for lazy initialization.
         static final JMXService instance = loadSingle(JMXService.class, false);
@@ -303,5 +306,27 @@ public final class GraalServices {
             return false;
         }
         return jmx.isCurrentThreadCpuTimeSupported();
+    }
+
+    /**
+     * Gets the input arguments passed to the Java virtual machine which does not include the
+     * arguments to the {@code main} method. This method returns an empty list if there is no input
+     * argument to the Java virtual machine.
+     * <p>
+     * Some Java virtual machine implementations may take input arguments from multiple different
+     * sources: for examples, arguments passed from the application that launches the Java virtual
+     * machine such as the 'java' command, environment variables, configuration files, etc.
+     * <p>
+     * Typically, not all command-line options to the 'java' command are passed to the Java virtual
+     * machine. Thus, the returned input arguments may not include all command-line options.
+     *
+     * @return the input arguments to the JVM or {@code null} if they are unavailable
+     */
+    public static List<String> getInputArguments() {
+        JMXService jmx = JMXService.instance;
+        if (jmx == null) {
+            return null;
+        }
+        return jmx.getInputArguments();
     }
 }
