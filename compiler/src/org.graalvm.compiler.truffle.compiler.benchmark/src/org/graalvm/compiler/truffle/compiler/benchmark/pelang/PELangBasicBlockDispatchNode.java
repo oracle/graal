@@ -19,13 +19,8 @@ public class PELangBasicBlockDispatchNode extends PELangExpressionNode {
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public Object executeGeneric(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(blockNodes.length);
-
-        if (blockNodes.length == 0) {
-            return PELangNull.Instance;
-        }
-
         Object result = PELangNull.Instance;
-        int blockIndex = 0;
+        int blockIndex = (blockNodes.length == 0) ? PELangBasicBlockNode.NO_SUCCESSOR : 0;
 
         while (blockIndex != PELangBasicBlockNode.NO_SUCCESSOR) {
             Execution execution = blockNodes[blockIndex].executeBlock(frame);
