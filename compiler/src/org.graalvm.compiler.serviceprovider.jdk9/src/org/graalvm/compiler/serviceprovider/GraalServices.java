@@ -215,14 +215,10 @@ public final class GraalServices {
         protected abstract boolean isThreadAllocatedMemorySupported();
 
         protected abstract boolean isCurrentThreadCpuTimeSupported();
-    }
 
-    static class LazyJMX {
-        // In this implementation for JDK 9 and later, we cannot reference
-        // JMX classes directly since that would introduce a dependency from Graal
-        // to the {@code java.management} and {@code jdk.management} modules
-        // and we want Graal to be able to run without these modules being required.
-        static final JMXService jmx = loadSingle(JMXService.class, false);
+        // Placing this static field in JMXService (instead of GraalServices)
+        // allows for lazy initialization.
+        static final JMXService instance = loadSingle(JMXService.class, false);
     }
 
     /**
@@ -250,7 +246,7 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
-        JMXService jmx = LazyJMX.jmx;
+        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             throw new UnsupportedOperationException();
         }
@@ -279,7 +275,7 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
-        JMXService jmx = LazyJMX.jmx;
+        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             throw new UnsupportedOperationException();
         }
@@ -291,7 +287,7 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
-        JMXService jmx = LazyJMX.jmx;
+        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return false;
         }
@@ -302,7 +298,7 @@ public final class GraalServices {
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
-        JMXService jmx = LazyJMX.jmx;
+        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return false;
         }

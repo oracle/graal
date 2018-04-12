@@ -23,7 +23,7 @@
 package org.graalvm.compiler.serviceprovider;
 
 import static java.lang.Thread.currentThread;
-import static org.graalvm.compiler.serviceprovider.GraalServices.LazyJMX.jmx;
+import static org.graalvm.compiler.serviceprovider.GraalServices.JMXService.jmx;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -216,9 +216,9 @@ public final class GraalServices {
         protected boolean isCurrentThreadCpuTimeSupported() {
             return threadMXBean.isCurrentThreadCpuTimeSupported();
         }
-    }
 
-    static class LazyJMX {
+        // Placing this static field in JMXService (instead of GraalServices)
+        // allows for lazy initialization.
         static final JMXService jmx = new JMXService();
     }
 
