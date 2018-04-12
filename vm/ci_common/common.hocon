@@ -101,11 +101,23 @@ vm_linux: ${common_vm_linux} {
   capabilities: [linux, amd64, manycores, ram16gb, fast]
 }
 
+vm_darwin: ${common_vm_darwin} {
+  capabilities: [darwin_sierra, amd64, ram16gb]
+}
+
 gate_vm_linux: ${vm_linux} {
   targets: [gate]
 }
 
+gate_vm_darwin: ${vm_darwin} {
+  targets: [gate]
+}
+
 post-merge_vm_linux: ${vm_linux} {
+  targets: [post-merge]
+}
+
+post-merge_vm_darwin: ${vm_darwin} {
   targets: [post-merge]
 }
 
@@ -120,10 +132,10 @@ builds += [
     run: [
       [export, "SUITES="${vm_all_suites}]
       [mx, --dynamicimports, "$SUITES", build]
-      [mx, --dynamicimports, "$SUITES", deploy-binary, ${binaries-repository}]
+      [mx, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
       [export, "SUITES="${vm_base_suites}]
       [mx, --dynamicimports, "$SUITES", build]
-      [mx, --dynamicimports, "$SUITES", deploy-binary, ${binaries-repository}]
+      [mx, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
     ]
     name: gate-vm-build-linux-amd64
   },

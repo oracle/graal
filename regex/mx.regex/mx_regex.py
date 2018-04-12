@@ -37,7 +37,7 @@ def _tregex_tests_gate_runner(args, tasks):
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     name='TRegex',
-    identifier='regex',
+    short_name='regex',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],

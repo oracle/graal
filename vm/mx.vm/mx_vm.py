@@ -62,9 +62,12 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
     def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution, base_dir=None, layout=None, path=None, **kw_args):
         self.components = components
-        self.jdk_base, _jdk_dir = _get_jdk_dir()
-        if base_dir:
-            self.jdk_base = '/'.join([base_dir, self.jdk_base]) if self.jdk_base and self.jdk_base != '.' else base_dir
+        base_dir = base_dir or '.'
+        _src_jdk_base, _jdk_dir = _get_jdk_dir()
+        if base_dir != '.':
+            self.jdk_base = '/'.join([base_dir, _src_jdk_base]) if _src_jdk_base and _src_jdk_base != '.' else base_dir
+        else:
+            self.jdk_base = _src_jdk_base
 
         def _get_component_id(comp=None, **kwargs):
             """
@@ -127,7 +130,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             :type dest: str
             :type src: list[str | dict] | str | dict
             """
-            assert dest.startswith('<jdk_base>'), dest
+            assert dest.startswith('<jdk_base>') or base_dir == '.' or dest.startswith(base_dir), dest
             src = src if isinstance(src, list) else [src]
             if not src:
                 return
@@ -159,13 +162,16 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
         if is_graalvm:
             # Add base JDK
-            _add(layout, '<jdk_base>', {
+            exclude_base = _jdk_dir
+            if _src_jdk_base != '.':
+                exclude_base = join(exclude_base, _src_jdk_base)
+            _add(layout, base_dir, {
                 'source_type': 'file',
                 'path': '{}'.format(_jdk_dir),
                 'exclude': [
-                    _jdk_dir + '/LICENSE',
-                    _jdk_dir + '/release',
-                    _jdk_dir + '/lib/visualvm',
+                    exclude_base + '/LICENSE',
+                    exclude_base + '/release',
+                    exclude_base + '/lib/visualvm',
                 ]
             })
 
@@ -615,9 +621,14 @@ class GraalVmLauncher(GraalVmNativeImage):
             #  we only look at self.native_image_config.build_args because we might not be ready for more
             for arg in self.native_image_config.build_args:
                 language_flag, _ = svm_support.extract_target_name(arg, 'language')
-                if language_flag and language_flag in svm_support.flag_suitename_map:
-                    suite_name, jars, support = svm_support.flag_suitename_map[language_flag][0:3]  # drop potential 3rd element
-                    self.buildDependencies += [suite_name + ':' + e for e in jars + support]
+                if language_flag == 'all':
+                    language_flags = [component.dir_name for component in mx_sdk.graalvm_components() if isinstance(component, mx_sdk.GraalVmLanguage) and component.include_in_polyglot]
+                else:
+                    language_flags = [language_flag]
+                for language_flag in language_flags:
+                    if language_flag:
+                        suite_name, jars, support = svm_support.flag_suitename_map[language_flag][0:3]  # drop potential 3rd element
+                        self.buildDependencies += [suite_name + ':' + e for e in jars + support]
 
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
@@ -652,6 +663,16 @@ class GraalVmLibrary(GraalVmNativeImage):
     def __init__(self, suite, name, deps, workingSets, native_image_config, **kw_args):
         assert isinstance(native_image_config, mx_sdk.LibraryConfig), type(native_image_config).__name__
         super(GraalVmLibrary, self).__init__(suite, name, deps, workingSets, native_image_config=native_image_config, **kw_args)
+
+        svm_support = _get_svm_support()
+        assert svm_support.is_supported(), "Needs svm to build " + str(self)
+        # fetch_languages will need a bunch of distributions add them as build deps
+        if not hasattr(self, 'buildDependencies'):
+            self.buildDependencies = []
+        language_ids = set((component.dir_name for component in mx_sdk.graalvm_components() if isinstance(component, mx_sdk.GraalVmLanguage) and component.include_in_polyglot))
+        for language_id in language_ids:
+            suite_name, jars, support = svm_support.flag_suitename_map[language_id][0:3]  # drop potential 3rd element
+            self.buildDependencies += [suite_name + ':' + e for e in jars + support]
 
     def build_args(self):
         return super(GraalVmLibrary, self).build_args() + ["-H:Kind=SHARED_LIBRARY"]
@@ -834,8 +855,12 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
 
     def prepare(self, daemons):
         args = self.get_build_args()
-        mx.logv("{}.fetch_languages({})".format(self.subject, args))
-        self.svm_support.fetch_languages(args)  # Ensure languages are symlinked in native_image_root
+        mx.logvv("{}.fetch_languages({})".format(self.subject, args))
+        try:
+            self.svm_support.fetch_languages(args)  # Ensure languages are symlinked in native_image_root
+        except IOError as e:
+            mx.log_error("Error while preparing '{}'.\nSubject's dependencies are: {},\nits build dependencies are:{}.\nfetch_language arguments: {}".format(self, self.subject.deps, getattr(self.subject, 'buildDependencies'), args))
+            raise e
 
     def build(self):
         build_args = self.get_build_args()
@@ -989,9 +1014,16 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             assert len(self.components) == 1
             return InstallableComponentArchiver(path, self.components[0], **_kw_args)
 
+        other_involved_components = []
+        if _get_svm_support().is_supported() and component.launcher_configs:
+            other_involved_components += [component for component in mx_sdk.graalvm_components() if component.dir_name == 'svm']
+
+        name = '{}_INSTALLABLE'.format(component.dir_name.upper())
+        if other_involved_components:
+            name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
         super(GraalVmInstallableComponent, self).__init__(
             suite=_suite,
-            name='{}_INSTALLABLE'.format(component.dir_name.upper()),
+            name=name,
             deps=[],
             components=[component],
             is_graalvm=False,

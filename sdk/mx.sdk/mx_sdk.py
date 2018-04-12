@@ -260,7 +260,7 @@ def register_graalvm_component(component, suite):
     _graalvm_components.append(component)
 
 
-def graalvm_components(opt_limit_to_suite=True):
+def graalvm_components(opt_limit_to_suite=False):
     """
     :rtype: list[GraalVmComponent]
     """
