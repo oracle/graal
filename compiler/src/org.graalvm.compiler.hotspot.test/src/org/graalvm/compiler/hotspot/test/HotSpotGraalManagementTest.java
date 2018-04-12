@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.hotspot.test.HotSpotGraalManagementTest.JunitShield.findAttributeInfo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -42,6 +43,7 @@ import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
 import javax.management.MBeanServer;
+import javax.management.MBeanServerFactory;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
@@ -55,6 +57,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.junit.Assert;
+import org.junit.AssumptionViolatedException;
 import org.junit.Test;
 
 public class HotSpotGraalManagementTest {
@@ -62,10 +65,11 @@ public class HotSpotGraalManagementTest {
     private static final boolean DEBUG = Boolean.getBoolean(HotSpotGraalManagementTest.class.getSimpleName() + ".DEBUG");
 
     public HotSpotGraalManagementTest() {
-        // No support for registering Graal MBean yet on JDK9 (GR-4025). We cannot
-        // rely on an exception being thrown when accessing ManagementFactory.platformMBeanServer
-        // via reflection as recent JDK9 changes now allow this and issue a warning instead.
-        // Assume.assumeTrue(GraalTest.Java8OrEarlier);
+        try {
+            MBeanServerFactory.findMBeanServer(null);
+        } catch (NoClassDefFoundError e) {
+            throw new AssumptionViolatedException("Management classes/module(s) not available: " + e);
+        }
     }
 
     @Test
@@ -109,7 +113,7 @@ public class HotSpotGraalManagementTest {
         AttributeList newValues = new AttributeList();
         for (OptionDescriptors set : OptionsParser.getOptionsLoader()) {
             for (OptionDescriptor option : set) {
-                testOption(info, mbeanName, server, runtime, option, newValues, originalValues);
+                JunitShield.testOption(info, mbeanName, server, runtime, option, newValues, originalValues);
             }
         }
 
@@ -133,107 +137,124 @@ public class HotSpotGraalManagementTest {
     }
 
     /**
-     * Tests changing the value of {@code option} via the management interface to a) a new legal
-     * value and b) an illegal value.
+     * Junit scans all methods of a test class and tries to resolve all method parameter and return
+     * types. We hide such methods in an inner class to prevent errors such as:
+     *
+     * <pre>
+     * java.lang.NoClassDefFoundError: javax/management/MBeanInfo
+     *     at java.base/java.lang.Class.getDeclaredMethods0(Native Method)
+     *     at java.base/java.lang.Class.privateGetDeclaredMethods(Class.java:3119)
+     *     at java.base/java.lang.Class.getDeclaredMethods(Class.java:2268)
+     *     at org.junit.internal.MethodSorter.getDeclaredMethods(MethodSorter.java:54)
+     *     at org.junit.runners.model.TestClass.scanAnnotatedMembers(TestClass.java:65)
+     *     at org.junit.runners.model.TestClass.<init>(TestClass.java:57)
+     *
+     * </pre>
      */
-    private static void testOption(MBeanInfo mbeanInfo,
-                    ObjectName mbeanName,
-                    MBeanServer server,
-                    HotSpotGraalRuntime runtime,
-                    OptionDescriptor option,
-                    AttributeList newValues,
-                    AttributeList originalValues) throws Exception {
-        OptionKey<?> optionKey = option.getOptionKey();
-        Object currentValue = optionKey.getValue(runtime.getOptions());
-        Class<?> optionType = option.getOptionValueType();
-        String name = option.getName();
-        if (DEBUG) {
-            System.out.println("Testing option " + name);
-        }
-        MBeanAttributeInfo attrInfo = findAttributeInfo(name, mbeanInfo);
-        assertNotNull("Attribute not found for option " + name, attrInfo);
+    static class JunitShield {
+        /**
+         * Tests changing the value of {@code option} via the management interface to a) a new legal
+         * value and b) an illegal value.
+         */
+        private static void testOption(MBeanInfo mbeanInfo,
+                        ObjectName mbeanName,
+                        MBeanServer server,
+                        HotSpotGraalRuntime runtime,
+                        OptionDescriptor option,
+                        AttributeList newValues,
+                        AttributeList originalValues) throws Exception {
+            OptionKey<?> optionKey = option.getOptionKey();
+            Object currentValue = optionKey.getValue(runtime.getOptions());
+            Class<?> optionType = option.getOptionValueType();
+            String name = option.getName();
+            if (DEBUG) {
+                System.out.println("Testing option " + name);
+            }
+            MBeanAttributeInfo attrInfo = findAttributeInfo(name, mbeanInfo);
+            assertNotNull("Attribute not found for option " + name, attrInfo);
 
-        Object expectAttributeValue = currentValue;
-        if (optionKey instanceof EnumOptionKey) {
-            expectAttributeValue = String.valueOf(currentValue);
-        } else if (currentValue == null) {
-            expectAttributeValue = "null";
-        }
-        Object actualAttributeValue = server.getAttribute(mbeanName, name);
-        assertEquals(expectAttributeValue, actualAttributeValue);
+            Object expectAttributeValue = currentValue;
+            if (optionKey instanceof EnumOptionKey) {
+                expectAttributeValue = String.valueOf(currentValue);
+            } else if (currentValue == null) {
+                expectAttributeValue = "null";
+            }
+            Object actualAttributeValue = server.getAttribute(mbeanName, name);
+            assertEquals(expectAttributeValue, actualAttributeValue);
 
-        Object newValue = null;
-        Object illegalValue = "illegalValue";
-        if (optionKey instanceof EnumOptionKey) {
-            EnumOptionKey<?> enumOptionKey = (EnumOptionKey<?>) optionKey;
-            for (Object obj : enumOptionKey.getAllValues()) {
-                if (obj != currentValue) {
-                    newValue = obj;
+            Object newValue = null;
+            Object illegalValue = "illegalValue";
+            if (optionKey instanceof EnumOptionKey) {
+                EnumOptionKey<?> enumOptionKey = (EnumOptionKey<?>) optionKey;
+                for (Object obj : enumOptionKey.getAllValues()) {
+                    if (obj != currentValue) {
+                        newValue = obj;
+                    }
+                }
+            } else if (optionType == Boolean.class) {
+                newValue = currentValue == null ? Boolean.TRUE : !((boolean) currentValue);
+            } else if (optionType == String.class) {
+                newValue = currentValue + "Prime";
+                illegalValue = Integer.valueOf(42);
+            } else if (optionType == Float.class) {
+                newValue = currentValue == null ? 33F : ((float) currentValue) + 11F;
+            } else if (optionType == Double.class) {
+                newValue = currentValue == null ? 33D : ((double) currentValue) + 11D;
+            } else if (optionType == Integer.class) {
+                newValue = currentValue == null ? 33 : ((int) currentValue) + 11;
+            } else if (optionType == Long.class) {
+                newValue = currentValue == null ? 33L : ((long) currentValue) + 11L;
+            }
+
+            if (DEBUG) {
+                System.out.printf("Changing %s from %s to %s%n", name, currentValue, newValue);
+            }
+            Attribute newAttributeValue = new Attribute(name, newValue);
+            newValues.add(newAttributeValue);
+            server.setAttribute(mbeanName, newAttributeValue);
+            Attribute originalAttributeValue = new Attribute(name, currentValue);
+            try {
+                Object actual = optionKey.getValue(runtime.getOptions());
+                assertEquals(newValue, actual);
+                actual = server.getAttribute(mbeanName, name);
+                if (optionKey instanceof EnumOptionKey) {
+                    newValue = String.valueOf(newValue);
+                }
+                assertEquals(newValue, actual);
+            } finally {
+                if (DEBUG) {
+                    System.out.printf("Resetting %s to %s%n", name, currentValue);
+                }
+                originalValues.add(originalAttributeValue);
+                server.setAttribute(mbeanName, originalAttributeValue);
+            }
+
+            try {
+                if (DEBUG) {
+                    System.out.printf("Changing %s from %s to illegal value %s%n", name, currentValue, illegalValue);
+                }
+                server.setAttribute(mbeanName, new Attribute(name, illegalValue));
+                Assert.fail("Expected setting " + name + " to " + illegalValue + " to fail");
+            } catch (Exception e) {
+                // Expected
+            } finally {
+                if (DEBUG) {
+                    System.out.printf("Resetting %s to %s%n", name, currentValue);
+                }
+                server.setAttribute(mbeanName, originalAttributeValue);
+            }
+        }
+
+        static MBeanAttributeInfo findAttributeInfo(String attrName, MBeanInfo info) {
+            for (MBeanAttributeInfo attr : info.getAttributes()) {
+                if (attr.getName().equals(attrName)) {
+                    assertTrue("Readable", attr.isReadable());
+                    assertTrue("Writable", attr.isWritable());
+                    return attr;
                 }
             }
-        } else if (optionType == Boolean.class) {
-            newValue = currentValue == null ? Boolean.TRUE : !((boolean) currentValue);
-        } else if (optionType == String.class) {
-            newValue = currentValue + "Prime";
-            illegalValue = Integer.valueOf(42);
-        } else if (optionType == Float.class) {
-            newValue = currentValue == null ? 33F : ((float) currentValue) + 11F;
-        } else if (optionType == Double.class) {
-            newValue = currentValue == null ? 33D : ((double) currentValue) + 11D;
-        } else if (optionType == Integer.class) {
-            newValue = currentValue == null ? 33 : ((int) currentValue) + 11;
-        } else if (optionType == Long.class) {
-            newValue = currentValue == null ? 33L : ((long) currentValue) + 11L;
+            return null;
         }
-
-        if (DEBUG) {
-            System.out.printf("Changing %s from %s to %s%n", name, currentValue, newValue);
-        }
-        Attribute newAttributeValue = new Attribute(name, newValue);
-        newValues.add(newAttributeValue);
-        server.setAttribute(mbeanName, newAttributeValue);
-        Attribute originalAttributeValue = new Attribute(name, currentValue);
-        try {
-            Object actual = optionKey.getValue(runtime.getOptions());
-            assertEquals(newValue, actual);
-            actual = server.getAttribute(mbeanName, name);
-            if (optionKey instanceof EnumOptionKey) {
-                newValue = String.valueOf(newValue);
-            }
-            assertEquals(newValue, actual);
-        } finally {
-            if (DEBUG) {
-                System.out.printf("Resetting %s to %s%n", name, currentValue);
-            }
-            originalValues.add(originalAttributeValue);
-            server.setAttribute(mbeanName, originalAttributeValue);
-        }
-
-        try {
-            if (DEBUG) {
-                System.out.printf("Changing %s from %s to illegal value %s%n", name, currentValue, illegalValue);
-            }
-            server.setAttribute(mbeanName, new Attribute(name, illegalValue));
-            Assert.fail("Expected setting " + name + " to " + illegalValue + " to fail");
-        } catch (Exception e) {
-            // Expected
-        } finally {
-            if (DEBUG) {
-                System.out.printf("Resetting %s to %s%n", name, currentValue);
-            }
-            server.setAttribute(mbeanName, originalAttributeValue);
-        }
-    }
-
-    private static MBeanAttributeInfo findAttributeInfo(String attrName, MBeanInfo info) {
-        for (MBeanAttributeInfo attr : info.getAttributes()) {
-            if (attr.getName().equals(attrName)) {
-                assertTrue("Readable", attr.isReadable());
-                assertTrue("Writable", attr.isWritable());
-                return attr;
-            }
-        }
-        return null;
     }
 
     @Test
