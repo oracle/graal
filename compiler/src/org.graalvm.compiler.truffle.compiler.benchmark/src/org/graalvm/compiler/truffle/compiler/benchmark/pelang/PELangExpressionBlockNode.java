@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.compiler.benchmark.pelang;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public final class PELangExpressionBlockNode extends PELangExpressionNode {
 
@@ -34,9 +35,9 @@ public final class PELangExpressionBlockNode extends PELangExpressionNode {
     }
 
     @Override
+    @ExplodeLoop
     public Object executeGeneric(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(bodyNodes.length);
-
         Object lastResult = PELangNull.Instance;
 
         for (PELangExpressionNode bodyNode : bodyNodes) {
