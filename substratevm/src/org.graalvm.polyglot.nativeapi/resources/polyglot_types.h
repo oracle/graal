@@ -56,6 +56,8 @@ typedef poly_handle poly_engine;
 
 typedef poly_handle poly_context;
 
+typedef poly_handle poly_context_builder;
+
 typedef poly_handle poly_callback_info;
 
 typedef poly_handle poly_language;
