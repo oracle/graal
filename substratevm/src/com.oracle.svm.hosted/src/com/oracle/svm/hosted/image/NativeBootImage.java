@@ -73,7 +73,7 @@ import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
-import com.oracle.svm.core.graal.posix.PosixIsolates;
+import com.oracle.svm.core.posix.PosixIsolates;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;

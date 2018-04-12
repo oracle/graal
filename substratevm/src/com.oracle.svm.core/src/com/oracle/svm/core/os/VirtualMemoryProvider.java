@@ -24,16 +24,36 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
 public interface VirtualMemoryProvider {
     @Fold
     static VirtualMemoryProvider get() {
         return ImageSingletons.lookup(VirtualMemoryProvider.class);
     }
+
+    /**
+     * Performs initializations <em>for the current isolate</em>, before any other methods of this
+     * interface may be called.
+     *
+     * @return initialization result code, non-zero in case of an error.
+     */
+    @Uninterruptible(reason = "Still being initialized.")
+    int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters);
+
+    /**
+     * Tear down <em>for the current isolate</em>. This must be the last method of this interface
+     * that is called in an isolate.
+     */
+    @Uninterruptible(reason = "Tear-down in progress.")
+    int tearDown();
 
     /**
      * Reserve a block of virtual address space.
