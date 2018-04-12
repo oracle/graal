@@ -22,22 +22,20 @@
  */
 package org.graalvm.compiler.truffle.compiler.benchmark.pelang;
 
-import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-@TypeSystemReference(PELangTypes.class)
 public abstract class PELangExpressionNode extends Node {
 
     public abstract Object executeGeneric(VirtualFrame frame);
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return PELangTypesGen.expectLong(executeGeneric(frame));
+        return expectLong(executeGeneric(frame));
     }
 
     public String executeString(VirtualFrame frame) throws UnexpectedResultException {
-        return PELangTypesGen.expectString(executeGeneric(frame));
+        return expectString(executeGeneric(frame));
     }
 
     public long evaluateCondition(VirtualFrame frame) {
@@ -46,6 +44,20 @@ public abstract class PELangExpressionNode extends Node {
         } catch (UnexpectedResultException ex) {
             throw new PELangException("expected value of type long", this);
         }
+    }
+
+    private static long expectLong(Object value) throws UnexpectedResultException {
+        if (value instanceof Long) {
+            return (long) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    private static String expectString(Object value) throws UnexpectedResultException {
+        if (value instanceof String) {
+            return (String) value;
+        }
+        throw new UnexpectedResultException(value);
     }
 
 }
