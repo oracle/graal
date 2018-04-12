@@ -1,4 +1,4 @@
 function main() {  
-  eval("application/x-sl", "function foo() { return 14 + 2; }");
+  eval("sl", "function foo() { return 14 + 2; }");
   println(foo());
 }
