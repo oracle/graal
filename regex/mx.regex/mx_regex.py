@@ -24,6 +24,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import mx
+import mx_sdk
 from mx_unittest import unittest
 from mx_gate import Task, add_gate_runner
 
@@ -33,5 +34,15 @@ def _tregex_tests_gate_runner(args, tasks):
     with Task('UnitTests', tasks, tags=['default', 'all']) as t:
         if t:
             unittest(['--enable-timing', '--very-verbose', 'com.oracle.truffle.regex'])
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    name='TRegex',
+    identifier='regex',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['dependency:regex:TREGEX'],
+    support_distributions=['extracted-dependency:regex:TREGEX_GRAALVM_SUPPORT'],
+), _suite)
 
 add_gate_runner(_suite, _tregex_tests_gate_runner)
