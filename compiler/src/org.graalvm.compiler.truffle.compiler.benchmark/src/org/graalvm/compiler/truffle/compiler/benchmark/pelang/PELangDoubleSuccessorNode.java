@@ -14,9 +14,11 @@ public class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
     }
 
     @Override
-    public int executeBlock(VirtualFrame frame) {
+    public Execution executeBlock(VirtualFrame frame) {
         long conditionResult = bodyNode.evaluateCondition(frame);
-        return (conditionResult == 0L) ? firstSuccessor : secondSuccessor;
+        int successor = (conditionResult == 0L) ? firstSuccessor : secondSuccessor;
+
+        return new Execution(conditionResult, successor);
     }
 
 }

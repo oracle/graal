@@ -12,9 +12,9 @@ public class PELangSingleSuccessorNode extends PELangBasicBlockNode {
     }
 
     @Override
-    public int executeBlock(VirtualFrame frame) {
-        bodyNode.executeGeneric(frame);
-        return successor;
+    public Execution executeBlock(VirtualFrame frame) {
+        Object result = bodyNode.executeGeneric(frame);
+        return new Execution(result, successor);
     }
 
 }
