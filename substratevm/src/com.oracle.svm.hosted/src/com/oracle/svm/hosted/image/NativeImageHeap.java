@@ -179,6 +179,11 @@ public final class NativeImageHeap {
         return readOnlyRelocatable.offsetInSection();
     }
 
+    long getFirstRelocatablePointerOffsetInSection() {
+        assert firstRelocatablePointerOffsetInSection != -1;
+        return firstRelocatablePointerOffsetInSection;
+    }
+
     long getReadOnlyRelocatablePartitionSize() {
         return readOnlyRelocatable.getSize();
     }
@@ -675,11 +680,17 @@ public final class NativeImageHeap {
     private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, Object target) {
         assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
         buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
+        if (firstRelocatablePointerOffsetInSection == -1) {
+            firstRelocatablePointerOffsetInSection = index;
+        }
     }
 
     private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
         assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
         buffer.addDirectRelocationWithAddend(index, objectSize(), objectHeaderBits, target);
+        if (firstRelocatablePointerOffsetInSection == -1) {
+            firstRelocatablePointerOffsetInSection = index;
+        }
     }
 
     /**
@@ -977,6 +988,7 @@ public final class NativeImageHeap {
     private final HeapPartition readOnlyPrimitive;
     private final HeapPartition readOnlyReference;
     private final HeapPartition readOnlyRelocatable;
+    private long firstRelocatablePointerOffsetInSection = -1;
     private final HeapPartition writablePrimitive;
     private final HeapPartition writableReference;
 
