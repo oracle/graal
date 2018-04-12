@@ -603,8 +603,7 @@ mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     name='Sulong',
-    short_name='sulong',
-    dir_name='llvm',
+    short_name='llvm',
     documentation_files=['extracted-dependency:sulong:SULONG_GRAALVM_DOCS/README_SULONG.md'],
     license_files=['link:<support>/LICENSE_SULONG'],
     third_party_license_files=[],
