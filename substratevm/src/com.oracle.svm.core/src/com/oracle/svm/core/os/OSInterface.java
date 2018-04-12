@@ -28,12 +28,8 @@ import java.io.IOException;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 public abstract class OSInterface {
@@ -49,47 +45,6 @@ public abstract class OSInterface {
     public OSInterface() {
         super();
     }
-
-    /**
-     * Reserve a block of virtual address space.
-     *
-     * @param size The size of the requested reservation.
-     * @param executable If true, the space is allocated with execute permissions.
-     * @return A pointer to the reserved space if successful, or {@link WordFactory#nullPointer()}
-     *         otherwise.
-     */
-    public abstract Pointer allocateVirtualMemory(UnsignedWord size, boolean executable);
-
-    /**
-     * Delete the mapping for the specified range of virtual addresses.
-     *
-     * @param start A pointer returned by
-     *            {@link OSInterface#allocateVirtualMemory(UnsignedWord, boolean)}.
-     * @param size The size of the allocation.
-     * @return true on success, false otherwise.
-     */
-    public abstract boolean freeVirtualMemory(PointerBase start, UnsignedWord size);
-
-    /**
-     * Reserve a block of virtual address space at a given alignment.
-     *
-     * @param size The size of the requested reservation.
-     * @param alignment The requested alignment.
-     * @return A pointer to the reserved space if successful, or {@link WordFactory#nullPointer()}
-     *         otherwise.
-     */
-    public abstract Pointer allocateVirtualMemoryAligned(UnsignedWord size, UnsignedWord alignment);
-
-    /**
-     * Release a reservation for a block of virtual address space at a given alignment.
-     *
-     * @param start A pointer returned by
-     *            {@link OSInterface#allocateVirtualMemoryAligned(UnsignedWord, UnsignedWord)}.
-     * @param size The size of the allocation.
-     * @param alignment The alignment of the allocation.
-     * @return true on success, or false otherwise.
-     */
-    public abstract boolean freeVirtualMemoryAligned(PointerBase start, UnsignedWord size, UnsignedWord alignment);
 
     public void writeBytes(FileDescriptor descriptor, byte[] bytes) throws IOException {
         if (bytes == null) {
@@ -155,11 +110,4 @@ public abstract class OSInterface {
     }
 
     public abstract FileDescriptor redirectStandardIO(StandardIO stdio, int nativeFD);
-
-    /**
-     * Return the size of a virtual memory page.
-     */
-    public UnsignedWord getPageSize() {
-        return WordFactory.unsigned(UnsafeAccess.UNSAFE.pageSize());
-    }
 }
