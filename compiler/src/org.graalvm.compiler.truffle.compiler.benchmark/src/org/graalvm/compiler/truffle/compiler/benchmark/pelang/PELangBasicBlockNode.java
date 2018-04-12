@@ -17,6 +17,25 @@ public abstract class PELangBasicBlockNode extends PELangExpressionNode {
         return executeBlock(frame);
     }
 
-    public abstract int executeBlock(VirtualFrame frame);
+    public abstract Execution executeBlock(VirtualFrame frame);
+
+    public static class Execution {
+        private final Object result;
+        private final int successor;
+
+        public Execution(Object result, int successor) {
+            this.result = result;
+            this.successor = successor;
+        }
+
+        public Object getResult() {
+            return result;
+        }
+
+        public int getSuccessor() {
+            return successor;
+        }
+
+    }
 
 }
