@@ -442,16 +442,26 @@ public final class NativeImageHeap {
             final boolean fieldsAreImmutable = canonicalObj instanceof String;
             for (HostedField field : clazz.getInstanceFields(true)) {
                 if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
-                    written = written || (field.isWritten() && !field.isFinal());
-                    if (field.getType().getStorageKind() == JavaKind.Object) {
+                    boolean fieldRelocatable = false;
+                    if (field.getJavaKind() == JavaKind.Object) {
                         assert field.hasLocation();
-                        Object fieldValue = readObjectField(field, con);
-                        if (spawnIsolates()) {
-                            relocatable = relocatable || fieldValue instanceof RelocatedPointer;
+                        JavaConstant value = field.readValue(con);
+                        if (value.getJavaKind() == JavaKind.Object) {
+                            Object obj = SubstrateObjectConstant.asObject(value);
+                            if (spawnIsolates()) {
+                                fieldRelocatable = obj instanceof RelocatedPointer;
+                            }
+                            recursiveAddObject(obj, canonicalizable, fieldsAreImmutable, info);
+                            references = true;
                         }
-                        recursiveAddObject(fieldValue, canonicalizable, fieldsAreImmutable, info);
-                        references = true;
                     }
+                    /*
+                     * The analysis considers relocatable pointers to be written because their
+                     * eventual value is assigned at runtime by the dynamic linker and it cannot be
+                     * inlined. Relocatable pointers are read-only for our purposes, however.
+                     */
+                    relocatable = relocatable || fieldRelocatable;
+                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                 }
 
             }
@@ -515,7 +525,7 @@ public final class NativeImageHeap {
             }
             return references ? readOnlyReference : readOnlyPrimitive;
         } else {
-            assert !relocatable;
+            VMError.guarantee(!relocatable, "Objects with relocatable pointers must be immutable");
             return references ? writableReference : writablePrimitive;
         }
     }
@@ -622,7 +632,7 @@ public final class NativeImageHeap {
                 int shift = compressEncoding.getShift();
                 writePointer(buffer, index, targetInfo.getOffsetInSection() >>> shift);
             } else {
-                buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
+                addDirectRelocationWithoutAddend(buffer, index, target);
             }
         }
     }
@@ -658,8 +668,18 @@ public final class NativeImageHeap {
         } else {
             // The address of the DynamicHub target will have to be added by the link editor.
             // DynamicHubs are the size of Object references.
-            buffer.addDirectRelocationWithAddend(index, objectSize(), objectHeaderBits, target);
+            addDirectRelocationWithAddend(buffer, index, target, objectHeaderBits);
         }
+    }
+
+    private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, Object target) {
+        assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
+        buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
+    }
+
+    private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
+        assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
+        buffer.addDirectRelocationWithAddend(index, objectSize(), objectHeaderBits, target);
     }
 
     /**
@@ -673,7 +693,7 @@ public final class NativeImageHeap {
         HostedMethod method = ((MethodPointer) pointer).getMethod();
         if (method.isCodeAddressOffsetValid()) {
             // Only compiled methods inserted in vtables require relocation.
-            buffer.addDirectRelocationWithoutAddend(index, objectSize(), pointer);
+            addDirectRelocationWithoutAddend(buffer, index, pointer);
         }
     }
 
@@ -864,6 +884,7 @@ public final class NativeImageHeap {
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIntIndexInSection(layout.getArrayElementOffset(kind, i));
                     final Object element = aUniverse.replaceObject(oarray[i]);
+                    assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }
             } else {
