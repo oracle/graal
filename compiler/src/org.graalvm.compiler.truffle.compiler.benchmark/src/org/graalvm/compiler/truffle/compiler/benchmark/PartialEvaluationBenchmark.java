@@ -73,6 +73,11 @@ public abstract class PartialEvaluationBenchmark extends GraalBenchmark {
         partialEvaluator = truffleCompiler.getPartialEvaluator();
         callTarget = createCallTarget();
 
+        // call the target a few times
+        callTarget.call();
+        callTarget.call();
+        callTarget.call();
+
         debugContext = DebugContext.DISABLED;
         allowAssumptions = AllowAssumptions.YES;
         cancellable = new CancellableCompileTask();
