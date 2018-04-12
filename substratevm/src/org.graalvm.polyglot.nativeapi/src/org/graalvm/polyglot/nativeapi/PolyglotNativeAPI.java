@@ -28,11 +28,12 @@ import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.Polygl
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_ok;
 
 import java.nio.charset.Charset;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
@@ -41,7 +42,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CDoublePointer;
 import org.graalvm.nativeimage.c.type.CFloatPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.nativeapi.types.CBoolPointer;
@@ -70,6 +71,8 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExten
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfoPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotHandle;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguage;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguagePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValue;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValuePointer;
@@ -1054,44 +1057,43 @@ public final class PolyglotNativeAPI {
         });
     }
 
-    @CEntryPoint(name = "poly_number_of_languages", documentation = {
+    @CEntryPoint(name = "poly_engine_get_languages_size", documentation = {
                     "Returns the number of languages available in an engine.",
                     "",
+                    " @engine engine for which the number of languages is returned",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_number_of_languages(PolyglotIsolateThread thread, PolyglotEngine engine, CInt32Pointer result) {
+    public static PolyglotStatus poly_engine_get_languages_size(PolyglotIsolateThread thread, PolyglotEngine engine, CInt32Pointer result) {
         return withHandledErrors(() -> result.write(((Engine) fetchHandle(engine)).getLanguages().size()));
     }
 
-    @CEntryPoint(name = "poly_name_length_of_languages", documentation = {
-                    "Returns an array of size returned by {@link poly_number_of_languages} where each element corresponds to the ",
-                    "UTF8 length of the language identifier.",
+    @CEntryPoint(name = "poly_engine_get_languages", documentation = {
+                    "Returns an array of size returned by {@link poly_engine_get_languages_size} where each element is a <code>poly_language<code> handle.",
                     "",
+                    " @param engine for which languages are returned.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_name_length_of_languages(PolyglotIsolateThread thread, PolyglotEngine engine, CInt32Pointer length_of_language_names) {
+    public static PolyglotStatus poly_engine_get_languages(PolyglotIsolateThread thread, PolyglotEngine engine, PolyglotLanguagePointer result) {
         return withHandledErrors(() -> {
-            String[] sortedLangs = sortedLangs(fetchHandle(engine));
-            for (int i = 0; i < sortedLangs.length; i++) {
-                length_of_language_names.write(i, sortedLangs[i].getBytes(UTF8_CHARSET).length);
+            Engine jEngine = fetchHandle(engine);
+            List<Language> sortedLanguages = sortedLangs(fetchHandle(engine));
+            for (int i = 0; i < sortedLanguages.size(); i++) {
+                result.write(i, createHandle(sortedLanguages.get(i)));
             }
         });
     }
 
-    @CEntryPoint(name = "poly_available_languages", documentation = {
-                    "Fills the array of strings with language identifiers encoded in UTF8.",
+    @CEntryPoint(name = "poly_language_get_id", documentation = {
+                    "Gets the primary identification string of this language. The language id is",
+                    "used as the primary way of identifying languages in the polyglot API. (eg. <code>js</code>)",
                     "",
-                    " @param engine for which we check available languages.",
-                    " @return array of language identifiers.",
+                    " @return a language ID string.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_available_languages(PolyglotIsolateThread thread, PolyglotEngine engine, CCharPointerPointer lang_ids) {
+    public static PolyglotStatus poly_language_get_id(PolyglotIsolateThread thread, PolyglotLanguage language, CCharPointer utf8_result, UnsignedWord buffer_size, SizeTPointer length) {
         return withHandledErrors(() -> {
-            String[] langIds = sortedLangs(fetchHandle(engine));
-            for (int i = 0; i < langIds.length; i++) {
-                CCharPointer name = lang_ids.read(i);
-                CTypeConversion.toCString(langIds[i], UTF8_CHARSET, name, WordFactory.unsigned(langIds[i].getBytes(UTF8_CHARSET).length));
-            }
+            Language jLanguage = fetchHandle(language);
+            writeString(jLanguage.getId(), utf8_result, buffer_size, length, UTF8_CHARSET);
         });
     }
 
@@ -1195,7 +1197,7 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_release_handle", documentation = {
                     "Destroys a poly_handle. After this point the handle must not be used anymore. ",
                     "",
-                    "Handles are: poly_engine, poly_context, poly_value, and poly_callback_info.",
+                    "Handles are: poly_engine, poly_context, poly_language, poly_value, and poly_callback_info.",
                     " @since 1.0",
     })
     public static PolyglotStatus poly_release_handle(PolyglotIsolateThread thread, PolyglotHandle handle) {
@@ -1221,11 +1223,12 @@ public final class PolyglotNativeAPI {
         }
     }
 
-    private static String[] sortedLangs(Engine engine) {
-        Set<String> langSet = engine.getLanguages().keySet();
-        String[] langs = langSet.toArray(new String[langSet.size()]);
-        Arrays.sort(langs);
-        return langs;
+    private static List<Language> sortedLangs(Engine engine) {
+
+        return engine.getLanguages().entrySet().stream()
+                        .sorted(Comparator.comparing(Entry::getKey))
+                        .map(Entry::getValue)
+                        .collect(Collectors.toList());
     }
 
     private static void resetErrorState() {
