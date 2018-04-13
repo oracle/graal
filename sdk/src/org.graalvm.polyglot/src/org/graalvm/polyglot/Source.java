@@ -410,8 +410,8 @@ public final class Source {
     }
 
     /**
-     * Shortcut for creating a source object language and char sequence. The given characters must
-     * not mutate after they were accessed for the first time.
+     * Shortcut for creating a source object from a language and char sequence. The given characters
+     * must not mutate after they were accessed for the first time.
      *
      * @since 1.0
      */
