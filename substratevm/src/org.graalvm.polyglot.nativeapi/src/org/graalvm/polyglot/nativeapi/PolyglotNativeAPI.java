@@ -130,32 +130,27 @@ public final class PolyglotNativeAPI {
         });
     }
 
-    @CEntryPoint(name = "poly_create_context", documentation = {
-                    "Creates a context with default configuration.",
+    @CEntryPoint(name = "poly_engine_get_languages", documentation = {
+                    "Returns an array of size returned by {@link poly_engine_get_languages_size} where each element is a <code>poly_language<code> handle.",
                     "",
-                    "A context holds all of the program data. Each context is by default isolated from all other contexts",
-                    "with respect to program data and evaluation semantics.",
-                    "",
-                    " @param permitted_languages array of 0 terminated language identifiers in UTF-8 that are permitted, or NULL for ",
-                    "        supporting all available languages.",
-                    " @param length of the array of language identifiers.",
-                    " @param result the created context.",
-                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @param engine for which languages are returned.",
+                    " @param language_array array to write <code>poly_language</code>s to or NULL.",
+                    " @param size the number of languages in the engine.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextPointer result) {
+    public static PolyglotStatus poly_engine_get_languages(PolyglotIsolateThread thread, PolyglotEngine engine, PolyglotLanguagePointer language_array, SizeTPointer size) {
         return withHandledErrors(() -> {
-            Context c;
-            if (permitted_languages.isNull()) {
-                c = Context.create();
+            Engine jEngine = fetchHandle(engine);
+            UnsignedWord languagesSize = WordFactory.unsigned(jEngine.getLanguages().size());
+            if (language_array.isNull()) {
+                size.write(languagesSize);
             } else {
-                List<String> jPermittedLangs = new ArrayList<>();
-                for (int i = 0; length.aboveThan(i); i++) {
-                    jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
+                size.write(languagesSize);
+                List<Language> sortedLanguages = sortedLangs(fetchHandle(engine));
+                for (int i = 0; i < sortedLanguages.size(); i++) {
+                    language_array.write(i, createHandle(sortedLanguages.get(i)));
                 }
-                c = Context.create(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
             }
-            result.write(createHandle(c));
         });
     }
 
@@ -229,7 +224,7 @@ public final class PolyglotNativeAPI {
         });
     }
 
-    @CEntryPoint(name = "poly_context_builder_allow_IO", documentation = {
+    @CEntryPoint(name = "poly_context_builder_allow_io", documentation = {
                     "Allows or disallows IO for a <code>poly_context_builder</code>.",
                     "",
                     " @param context_builder that is modified.",
@@ -237,7 +232,7 @@ public final class PolyglotNativeAPI {
                     " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_context_builder_allow_IO(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_IO) {
+    public static PolyglotStatus poly_context_builder_allow_io(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, boolean allow_IO) {
         return withHandledErrors(() -> {
             Context.Builder contextBuilder = fetchHandle(context_builder);
             contextBuilder.allowIO(allow_IO);
@@ -290,6 +285,35 @@ public final class PolyglotNativeAPI {
         });
     }
 
+    @CEntryPoint(name = "poly_create_context", documentation = {
+                    "Creates a context with default configuration.",
+                    "",
+                    "A context holds all of the program data. Each context is by default isolated from all other contexts",
+                    "with respect to program data and evaluation semantics.",
+                    "",
+                    " @param permitted_languages array of 0 terminated language identifiers in UTF-8 that are permitted, or NULL for ",
+                    "        supporting all available languages.",
+                    " @param length of the array of language identifiers.",
+                    " @param result the created context.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextPointer result) {
+        return withHandledErrors(() -> {
+            Context c;
+            if (permitted_languages.isNull()) {
+                c = Context.create();
+            } else {
+                List<String> jPermittedLangs = new ArrayList<>();
+                for (int i = 0; length.aboveThan(i); i++) {
+                    jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
+                }
+                c = Context.create(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
+            }
+            result.write(createHandle(c));
+        });
+    }
+
     @CEntryPoint(name = "poly_context_eval", documentation = {
                     "Evaluate a source of guest languages inside a context.",
                     "",
@@ -312,6 +336,22 @@ public final class PolyglotNativeAPI {
 
             Source sourceCode = Source.newBuilder(languageName, jCode, jName).build();
             result.write(createHandle(c.eval(sourceCode)));
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_get_engine", documentation = {
+                    "Returns the engine this context belongs to.",
+                    "",
+                    " @param context for which we extract the bindings.",
+                    " @param result a value whose members correspond to the symbols in the top scope of the `language_id`.",
+                    " @return poly_ok if everything is fine, poly_generic_failure if there is an error.",
+                    " @see org::graalvm::polyglot::Context::getEngine",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_get_engine(PolyglotIsolateThread thread, PolyglotContext context, PolyglotValuePointer result) {
+        return withHandledErrors(() -> {
+            Context jContext = fetchHandle(context);
+            result.write(createHandle(jContext.getEngine()));
         });
     }
 
@@ -1207,32 +1247,6 @@ public final class PolyglotNativeAPI {
         });
     }
 
-    @CEntryPoint(name = "poly_engine_get_languages_size", documentation = {
-                    "Returns the number of languages available in an engine.",
-                    "",
-                    " @engine engine for which the number of languages is returned",
-                    " @since 1.0",
-    })
-    public static PolyglotStatus poly_engine_get_languages_size(PolyglotIsolateThread thread, PolyglotEngine engine, CInt32Pointer result) {
-        return withHandledErrors(() -> result.write(((Engine) fetchHandle(engine)).getLanguages().size()));
-    }
-
-    @CEntryPoint(name = "poly_engine_get_languages", documentation = {
-                    "Returns an array of size returned by {@link poly_engine_get_languages_size} where each element is a <code>poly_language<code> handle.",
-                    "",
-                    " @param engine for which languages are returned.",
-                    " @since 1.0",
-    })
-    public static PolyglotStatus poly_engine_get_languages(PolyglotIsolateThread thread, PolyglotEngine engine, PolyglotLanguagePointer result) {
-        return withHandledErrors(() -> {
-            Engine jEngine = fetchHandle(engine);
-            List<Language> sortedLanguages = sortedLangs(fetchHandle(engine));
-            for (int i = 0; i < sortedLanguages.size(); i++) {
-                result.write(i, createHandle(sortedLanguages.get(i)));
-            }
-        });
-    }
-
     @CEntryPoint(name = "poly_language_get_id", documentation = {
                     "Gets the primary identification string of this language. The language id is",
                     "used as the primary way of identifying languages in the polyglot API. (eg. <code>js</code>)",
@@ -1296,9 +1310,9 @@ public final class PolyglotNativeAPI {
                 } finally {
                     PolyglotCallbackInfoInternal info = fetchHandle(cbInfo);
                     for (ObjectHandle arg : info.arguments) {
-                        freeHandle(arg);
+                        destroyHandle(arg);
                     }
-                    freeHandle(cbInfo);
+                    destroyHandle(cbInfo);
                 }
             };
             value.write(createHandle(c.asValue(executable)));
@@ -1344,14 +1358,14 @@ public final class PolyglotNativeAPI {
         return withHandledErrors(() -> exceptionsTL.set(new CallbackException(CTypeConversion.toJavaString(utf8_message))));
     }
 
-    @CEntryPoint(name = "poly_release_handle", documentation = {
-                    "Destroys a poly_handle. After this point the handle must not be used anymore. ",
+    @CEntryPoint(name = "poly_destroy_handle", documentation = {
+                    "Destroys a poly_handle. After this point, the handle must not be used anymore. ",
                     "",
                     "Handles are: poly_engine, poly_context, poly_context_builder, poly_language, poly_value, and poly_callback_info.",
                     " @since 1.0",
     })
-    public static PolyglotStatus poly_release_handle(PolyglotIsolateThread thread, PolyglotHandle handle) {
-        return withHandledErrors(() -> ObjectHandles.getGlobal().destroy(handle));
+    public static PolyglotStatus poly_destroy_handle(PolyglotIsolateThread thread, PolyglotHandle handle) {
+        return withHandledErrors(() -> destroyHandle(handle));
     }
 
     private static class PolyglotCallbackInfoInternal {
@@ -1428,7 +1442,7 @@ public final class PolyglotNativeAPI {
         return ObjectHandles.getGlobal().get(object);
     }
 
-    private static void freeHandle(ObjectHandle handle) {
+    private static void destroyHandle(ObjectHandle handle) {
         ObjectHandles.getGlobal().destroy(handle);
     }
 
