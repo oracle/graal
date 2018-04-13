@@ -76,14 +76,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         @CompilationFinal private volatile PolyglotContextImpl singleContext;
     }
 
-    @CompilationFinal private static SingleContextState SINGLE_CONTEXT_STATE = new SingleContextState();
+    @CompilationFinal private static SingleContextState singleContextState = new SingleContextState();
 
     /*
      * Used from testing using reflection. Its invalid to call it anywhere else than testing. Used
      * in ContextLookupCompilationTest.
      */
     static void resetSingleContextState() {
-        SINGLE_CONTEXT_STATE = new SingleContextState();
+        singleContextState = new SingleContextState();
     }
 
     private final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
@@ -189,7 +189,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * Marks a context used globally. Potentially invalidating the global single context assumption.
      */
     static void initializeStaticContext(PolyglotContextImpl context) {
-        SingleContextState state = SINGLE_CONTEXT_STATE;
+        SingleContextState state = singleContextState;
         if (state.singleContextAssumption.isValid()) {
             synchronized (state) {
                 if (state.singleContextAssumption.isValid()) {
@@ -209,7 +209,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * there is no code that could rely on the singleContextAssumption.
      */
     static void disposeStaticContext(PolyglotContextImpl context) {
-        SingleContextState state = SINGLE_CONTEXT_STATE;
+        SingleContextState state = singleContextState;
         if (state.singleContextAssumption.isValid()) {
             synchronized (state) {
                 if (state.singleContextAssumption.isValid()) {
@@ -289,15 +289,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     static PolyglotContextImpl current() {
-        if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
-            if (SINGLE_CONTEXT_STATE.contextThreadLocal.isSet()) {
-                return SINGLE_CONTEXT_STATE.singleContext;
+        if (singleContextState.singleContextAssumption.isValid()) {
+            if (singleContextState.contextThreadLocal.isSet()) {
+                return singleContextState.singleContext;
             } else {
                 CompilerDirectives.transferToInterpreter();
                 return null;
             }
         } else {
-            return (PolyglotContextImpl) SINGLE_CONTEXT_STATE.contextThreadLocal.get();
+            return (PolyglotContextImpl) singleContextState.contextThreadLocal.get();
         }
     }
 
@@ -332,9 +332,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     boolean needsEnter() {
-        if (SINGLE_CONTEXT_STATE.singleContextAssumption.isValid()) {
+        if (singleContextState.singleContextAssumption.isValid()) {
             // if its a single context we know which one to enter
-            return !SINGLE_CONTEXT_STATE.contextThreadLocal.isSet();
+            return !singleContextState.contextThreadLocal.isSet();
         } else {
             return current() != this;
         }
@@ -349,7 +349,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         PolyglotThreadInfo info = getCachedThreadInfo();
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.thread == Thread.currentThread())) {
             // fast-path -> same thread
-            context = SINGLE_CONTEXT_STATE.contextThreadLocal.setReturnParent(this);
+            context = singleContextState.contextThreadLocal.setReturnParent(this);
             info.enter();
         } else {
             // slow path -> changed thread
@@ -373,7 +373,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
             leaveThreadChanged();
         }
-        SINGLE_CONTEXT_STATE.contextThreadLocal.set(prev);
+        singleContextState.contextThreadLocal.set(prev);
     }
 
     @TruffleBoundary
@@ -408,7 +408,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
 
             // enter the thread info already
-            prev = (PolyglotContextImpl) SINGLE_CONTEXT_STATE.contextThreadLocal.setReturnParent(this);
+            prev = (PolyglotContextImpl) singleContextState.contextThreadLocal.setReturnParent(this);
             threadInfo.enter();
 
             if (transitionToMultiThreading) {

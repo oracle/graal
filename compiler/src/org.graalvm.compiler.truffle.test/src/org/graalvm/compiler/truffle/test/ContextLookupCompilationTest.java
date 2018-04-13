@@ -232,7 +232,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         }
     }
 
-    private static final void resetSingleContextState() {
+    private static void resetSingleContextState() {
         try {
             Class<?> c = Class.forName("com.oracle.truffle.api.vm.PolyglotContextImpl");
             java.lang.reflect.Method m = c.getDeclaredMethod("resetSingleContextState");
