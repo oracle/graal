@@ -652,6 +652,7 @@ class GraalVmPolyglotLauncher(GraalVmLauncher):
 
     def build_args(self):
         graalvm_destination = get_graalvm_distribution().find_single_source_location('dependency:' + self.name)
+        graalvm_destination = relpath(graalvm_destination, _get_graalvm_archive_path(""))
         return super(GraalVmPolyglotLauncher, self).build_args() + [
             '-H:-ParseRuntimeOptions',
             '-Dorg.graalvm.launcher.classpath=' + graalvm_home_relative_classpath(self.native_image_jar_distributions),
