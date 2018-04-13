@@ -39,9 +39,9 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 @TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID)
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
-    static final String ID = "proxyLanguage";
+    public static final String ID = "proxyLanguage";
 
-    static class LanguageContext {
+    public static class LanguageContext {
         final Env env;
 
         LanguageContext(Env env) {
@@ -59,6 +59,14 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     public static void setDelegate(ProxyLanguage delegate) {
         delegate.wrapper = false;
         ProxyLanguage.delegate = delegate;
+    }
+
+    public static LanguageContext getCurrentContext() {
+        return getCurrentContext(ProxyLanguage.class);
+    }
+
+    public static ContextReference<LanguageContext> getCurrentContextReference() {
+        return getCurrentLanguage(ProxyLanguage.class).getContextReference();
     }
 
     @Override
