@@ -1476,25 +1476,6 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "org.graalvm.compiler.truffle.compiler.benchmark" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "mx:JMH_1_18",
-        "truffle:TRUFFLE_API",
-        "org.graalvm.compiler.microbenchmarks",
-        "org.graalvm.compiler.truffle.compiler",
-        "org.graalvm.compiler.truffle.runtime",
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8+",
-      "checkPackagePrefix" : "false",
-      "annotationProcessors" : ["mx:JMH_1_18", "truffle:TRUFFLE_DSL_PROCESSOR"],
-      "findbugsIgnoresGenerated" : True,
-      "workingSets" : "Graal,Truffle,Bench",
-      "testProject" : True,
-    },
-
     "org.graalvm.compiler.truffle.compiler.amd64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1792,6 +1773,58 @@ suite = {
       "workingSets" : "Graal,Truffle,AArch64",
     },
 
+    "org.graalvm.compiler.truffle.pelang" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "checkPackagePrefix" : "false",
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "findbugsIgnoresGenerated" : True,
+      "workingSets" : "Graal,Truffle",
+      "testProject" : False,
+    },
+
+    "org.graalvm.compiler.truffle.pelang.benchmark" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JMH_1_18",
+        "org.graalvm.compiler.microbenchmarks",
+        "org.graalvm.compiler.truffle.compiler",
+        "org.graalvm.compiler.truffle.pelang",
+        "org.graalvm.compiler.truffle.runtime",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "checkPackagePrefix" : "false",
+      "annotationProcessors" : ["mx:JMH_1_18"],
+      "findbugsIgnoresGenerated" : True,
+      "workingSets" : "Graal,Truffle,Bench",
+      "testProject" : True,
+    },
+
+    "org.graalvm.compiler.truffle.pelang.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.compiler.truffle.compiler",
+        "org.graalvm.compiler.truffle.pelang",
+        "org.graalvm.compiler.truffle.runtime",
+        "org.graalvm.compiler.truffle.test",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "checkPackagePrefix" : "false",
+      "findbugsIgnoresGenerated" : True,
+      "workingSets" : "Graal,Truffle,Test",
+      "testProject" : True,
+    },
+
     # ------------- blackbox micro benchmarks -------------
 
     "org.graalvm.micro.benchmarks" : {
@@ -1941,6 +1974,7 @@ suite = {
         "org.graalvm.compiler.nodes.test",
         "org.graalvm.compiler.phases.common.test",
         "org.graalvm.compiler.truffle.test",
+        "org.graalvm.compiler.truffle.pelang.test",
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.compiler.replacements.jdk9.test",
@@ -2266,6 +2300,7 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.virtual.bench",
         "org.graalvm.compiler.microbenchmarks",
+        "org.graalvm.compiler.truffle.pelang.benchmark",
       ],
       "distDependencies" : [
         "GRAAL_TEST",
