@@ -247,7 +247,7 @@ class GraalVmJvmciComponent(GraalVmJreComponent):
         assert isinstance(self.jvmci_jars, list)
 
 
-_graalvm_components = []
+_graalvm_components = dict()
 
 
 def register_graalvm_component(component, suite):
@@ -255,19 +255,35 @@ def register_graalvm_component(component, suite):
     :type component: GraalVmComponent
     :type suite: mx.Suite
     """
-    assert not any((c for c in _graalvm_components if c.name == component.name and isinstance(component, c.__class__)))
-    component.__suite = suite
-    _graalvm_components.append(component)
+    def _log_ignored_component(kept, ignored):
+        """
+        :type kept: GraalVmComponent
+        :type ignored: GraalVmComponent
+        """
+        mx.log('Suites \'{}\' and \'{}\' are registering a component with the same short name (\'{}\'), with priority \'{}\' and \'{}\' respectively.'.format(kept.__suite.name, ignored.__suite.name, kept.short_name, kept.priority, ignored.priority))
+        mx.log('Ignoring the one from suite \'{}\'.'.format(ignored.__suite.name))
 
+    component.__suite = suite
+    _prev = _graalvm_components.get(component.short_name, None)
+    if _prev:
+        if _prev.priority == component.priority:
+            mx.abort('Suites \'{}\' and \'{}\' are registering a component with the same short name (\'{}\') and priority (\'{}\')'.format(_prev.__suite.name, suite.name, _prev.short_name, _prev.priority))
+        elif _prev.priority < component.priority:
+            _graalvm_components[component.short_name] = component
+            _log_ignored_component(component, _prev)
+        else:
+            _log_ignored_component(_prev, component)
+    else:
+        _graalvm_components[component.short_name] = component
 
 def graalvm_components(opt_limit_to_suite=False):
     """
     :rtype: list[GraalVmComponent]
     """
     if opt_limit_to_suite and mx.get_opts().specific_suites:
-        return [c for c in _graalvm_components if c.__suite.name in mx.get_opts().specific_suites]
+        return [c for c in _graalvm_components.values() if c.__suite.name in mx.get_opts().specific_suites]
     else:
-        return _graalvm_components
+        return _graalvm_components.values()
 
 
 mx.update_commands(_suite, {

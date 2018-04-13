@@ -857,16 +857,18 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 ), suite)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     name='Polyglot.Native',
     short_name='polynative',
+    dir_name='polyglot',
     documentation_files=[],
     license_files=[],
     third_party_license_files=[],
+    jre_lib_files=['extracted-dependency:substratevm:POLYGLOT_NATIVE_API_SUPPORT'],
     polyglot_lib_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
-        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>/include",
-        "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>/lib",
+        "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",
+        "-Dorg.graalvm.polyglot.nativeapi.nativeLibraryPath=<path:POLYGLOT_NATIVE_API_SUPPORT>",
         "-H:CStandard=C11",
     ],
     polyglot_lib_jar_dependencies=[

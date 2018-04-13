@@ -567,13 +567,26 @@ suite = {
             ],
         },
 
+        "POLYGLOT_NATIVE_API_HEADERS" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "polyglot.nativeapi header files for the GraalVM build process",
+            "layout" : {
+                "./" : [
+                    "file:<path:org.graalvm.polyglot.nativeapi>/resources/*.h",
+                ],
+            },
+        },
+
         "POLYGLOT_NATIVE_API_SUPPORT" : {
             "native" : True,
             "platformDependent" : True,
             "description" : "polyglot.nativeapi support distribution for the GraalVM",
             "layout" : {
-                "include/" : "file:<path:org.graalvm.polyglot.nativeapi>/resources/*.h",
-                "lib/" : ["dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o"],
+                "./" : [
+                    "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
+                    "dependency:POLYGLOT_NATIVE_API",
+                ],
             },
         },
 

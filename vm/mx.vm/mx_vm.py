@@ -56,6 +56,14 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     provided_executables=['link:<support>/bin/gu'],
 ), _suite)
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
+    name='GraalVM license files',
+    short_name='gvm',
+    documentation_files=[],
+    license_files=[],
+    third_party_license_files=['extracted-dependency:vm:VM_GRAALVM_SUPPORT/GraalCE_license_3rd_party_license.txt'],
+), _suite)
+
 
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
     __metaclass__ = ABCMeta
@@ -169,6 +177,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 'source_type': 'file',
                 'path': '{}'.format(_jdk_dir),
                 'exclude': [
+                    exclude_base + '/COPYRIGHT',
                     exclude_base + '/LICENSE',
                     exclude_base + '/release',
                     exclude_base + '/lib/visualvm',
@@ -1017,7 +1026,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 
         other_involved_components = []
         if _get_svm_support().is_supported() and component.launcher_configs:
-            other_involved_components += [component for component in mx_sdk.graalvm_components() if component.dir_name == 'svm']
+            other_involved_components += [c for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
         if other_involved_components:
@@ -1042,8 +1051,6 @@ _graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _base_graalvm_layout = {
    "<jdk_base>/": [
-       "file:LICENSE",
-       "file:THIRDPARTYLICENSE",
        "file:README.md",
    ],
    "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
