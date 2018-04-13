@@ -157,6 +157,7 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
+    public final boolean inlineNotify = isJDK8 ? false : getFlag("InlineNotify", Boolean.class);
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
     public final boolean forceUnreachable = getFlag("ForceUnreachable", Boolean.class);
     public final int codeSegmentSize = getFlag("CodeCacheSegmentSize", Integer.class);
@@ -214,6 +215,14 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
 
     public boolean useSquareToLenIntrinsic() {
         return useSquareToLenIntrinsic && squareToLen != 0;
+    }
+
+    public boolean inlineNotify() {
+        return inlineNotify && notifyAddress != 0;
+    }
+
+    public boolean inlineNotifyAll() {
+        return inlineNotify && notifyAllAddress != 0;
     }
 
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
@@ -741,6 +750,8 @@ public class GraalHotSpotVMConfig extends HotSpotVMConfigAccess {
     public final long exceptionHandlerForPcAddress = getAddress("JVMCIRuntime::exception_handler_for_pc");
     public final long monitorenterAddress = getAddress("JVMCIRuntime::monitorenter");
     public final long monitorexitAddress = getAddress("JVMCIRuntime::monitorexit");
+    public final long notifyAddress = getAddress("JVMCIRuntime::object_notify", 0L);
+    public final long notifyAllAddress = getAddress("JVMCIRuntime::object_notifyAll", 0L);
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
     public final long throwClassCastExceptionAddress = getAddress("JVMCIRuntime::throw_class_cast_exception");
