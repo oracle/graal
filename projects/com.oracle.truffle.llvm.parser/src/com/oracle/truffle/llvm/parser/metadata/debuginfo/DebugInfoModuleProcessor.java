@@ -52,7 +52,6 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
@@ -165,11 +164,6 @@ public final class DebugInfoModuleProcessor {
         @Override
         public void visit(GlobalAlias alias) {
             visitGlobal(alias);
-        }
-
-        @Override
-        public void visit(GlobalConstant constant) {
-            visitGlobal(constant);
         }
 
         @Override

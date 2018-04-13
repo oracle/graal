@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
 
@@ -58,7 +59,6 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import java.util.Collections;
 
 @TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "6.0.0", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
@@ -117,12 +117,12 @@ public final class Sulong extends LLVMLanguage {
     @Override
     @SuppressWarnings("deprecation") // for compatibility, will be removed in a future release
     protected Object findExportedSymbol(LLVMContext context, String globalName, boolean onlyExplicit) {
-        String atname = "@" + globalName; // for interop
-        if (context.getGlobalScope().functionExists(atname)) {
-            return context.getGlobalScope().getFunctionDescriptor(atname);
+        String atname = globalName.startsWith("@") ? globalName : "@" + globalName; // for interop
+        if (context.getGlobalScope().functions().contains(atname)) {
+            return context.getGlobalScope().functions().get(atname);
         }
-        if (context.getGlobalScope().functionExists(globalName)) {
-            return context.getGlobalScope().getFunctionDescriptor(globalName);
+        if (context.getGlobalScope().globals().contains(globalName)) {
+            return context.getGlobalScope().globals().get(globalName);
         }
         return null;
     }

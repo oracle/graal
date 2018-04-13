@@ -40,7 +40,7 @@ public final class LLVMBitcodeLibraryFunctions {
         @Child protected DirectCallNode callNode;
 
         protected LibraryFunctionNode(LLVMContext context, String name) {
-            LLVMFunctionDescriptor descriptor = context.getGlobalScope().getFunctionDescriptor(name);
+            LLVMFunctionDescriptor descriptor = context.getGlobalScope().functions().get(name);
             callNode = DirectCallNode.create(descriptor.getLLVMIRFunction());
         }
 

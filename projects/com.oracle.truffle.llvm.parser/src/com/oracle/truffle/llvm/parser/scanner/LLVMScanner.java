@@ -30,14 +30,6 @@
 
 package com.oracle.truffle.llvm.parser.scanner;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
-import com.oracle.truffle.llvm.parser.elf.ElfFile;
-import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
-import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
@@ -47,6 +39,14 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
+import com.oracle.truffle.llvm.parser.elf.ElfFile;
+import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
+import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
+import com.oracle.truffle.llvm.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.model.ModelModule;
 
 public final class LLVMScanner {
 
@@ -87,6 +87,11 @@ public final class LLVMScanner {
     }
 
     public static ModelModule parse(Source source, ByteBuffer bytes) {
+        assert bytes != null;
+        if (!isSupportedFile(bytes)) {
+            return null;
+        }
+
         final ModelModule model = new ModelModule();
 
         ByteBuffer b = bytes.duplicate();
@@ -109,7 +114,8 @@ public final class LLVMScanner {
             ElfFile elfFile = ElfFile.create(b);
             Entry llvmbc = elfFile.getSectionHeaderTable().getEntry(".llvmbc");
             if (llvmbc == null) {
-                throw new RuntimeException("ELF File does not contain an .llvmbc section.");
+                // ELF File does not contain an .llvmbc section
+                return null;
             }
             ElfDynamicSection dynamicSection = elfFile.getDynamicSection();
             if (dynamicSection != null) {
@@ -132,7 +138,7 @@ public final class LLVMScanner {
         return model;
     }
 
-    public static boolean isSupportedFile(ByteBuffer bytes) {
+    private static boolean isSupportedFile(ByteBuffer bytes) {
         ByteBuffer duplicate = bytes.duplicate();
         BitStream bs = BitStream.create(duplicate);
         long magicWord = bs.read(0, Integer.SIZE);

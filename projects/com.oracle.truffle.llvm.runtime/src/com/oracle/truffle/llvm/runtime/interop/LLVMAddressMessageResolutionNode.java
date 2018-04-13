@@ -63,7 +63,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
 
     public PrimitiveType getPointeeType(LLVMGlobal receiver) {
-        Type t = receiver.getType();
+        Type t = receiver.getPointeeType();
         if (t instanceof PrimitiveType) {
             return (PrimitiveType) t;
         } else {
@@ -91,7 +91,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         public abstract Object executeWithTarget(Object receiver, int index);
 
         protected Type getElementType(LLVMGlobal variable) {
-            return variable.getType();
+            return variable.getPointeeType();
         }
 
         @Specialization(guards = "receiver.getDescriptor() == cachedReceiver")
@@ -125,19 +125,19 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
         @Child private SlowPathForeignToLLVM slowConvert;
 
         public boolean isPointerTypeGlobal(LLVMSharedGlobalVariable global) {
-            return global.getDescriptor().getType() instanceof PointerType;
+            return global.getDescriptor().getPointeeType() instanceof PointerType;
         }
 
         public boolean isPrimitiveTypeGlobal(LLVMSharedGlobalVariable global) {
-            return global.getDescriptor().getType() instanceof PrimitiveType;
+            return global.getDescriptor().getPointeeType() instanceof PrimitiveType;
         }
 
         public boolean isPrimitiveTypeGlobal(LLVMGlobal global) {
-            return global.getType() instanceof PrimitiveType;
+            return global.getPointeeType() instanceof PrimitiveType;
         }
 
         public boolean isPointerTypeGlobal(LLVMGlobal global) {
-            return global.getType() instanceof PointerType;
+            return global.getPointeeType() instanceof PointerType;
         }
 
         public boolean notLLVM(TruffleObject object) {
@@ -228,13 +228,13 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.slowConvert = insert(SlowPathForeignToLLVM.createSlowPathNode());
             }
-            if (receiver.getDescriptor().getType() instanceof PrimitiveType) {
-                doSlowWrite(memory, context.get(), receiver.getDescriptor(), (PrimitiveType) receiver.getDescriptor().getType(), value, slowConvert);
+            if (receiver.getDescriptor().getPointeeType() instanceof PrimitiveType) {
+                doSlowWrite(memory, context.get(), receiver.getDescriptor(), (PrimitiveType) receiver.getDescriptor().getPointeeType(), value, slowConvert);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise(
                                 String.format("Pointer with (currently) unsupported type dereferenced (unsupported: %s) - please only dereference pointers to primitive types from foreign languages (e.g. int*).",
-                                                String.valueOf(receiver.getDescriptor().getType())));
+                                                String.valueOf(receiver.getDescriptor().getPointeeType())));
             }
             return value;
         }

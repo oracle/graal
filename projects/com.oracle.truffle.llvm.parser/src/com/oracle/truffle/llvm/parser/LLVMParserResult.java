@@ -29,53 +29,55 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.llvm.runtime.LLVMScope;
+import java.util.List;
+
+import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 
 public final class LLVMParserResult {
 
-    private final LLVMScope scope;
-    private final RootCallTarget mainCallTarget;
-    private final RootCallTarget globalVarInits;
-    private final RootCallTarget globalVarDeallocs;
-    private final RootCallTarget constructorFunctions;
-    private final RootCallTarget destructorFunctions;
+    private final LLVMParserRuntime runtime;
+    private final List<FunctionSymbol> externalFunctions;
+    private final List<GlobalVariable> definedGlobals;
+    private final List<GlobalVariable> externalGlobals;
+    private final List<String> importedFunctions;
+    private final List<String> importedGlobals;
 
-    LLVMParserResult(LLVMScope scope,
-                    RootCallTarget mainCallTarget,
-                    RootCallTarget globalVarInits,
-                    RootCallTarget globalVarDeallocs,
-                    RootCallTarget constructorFunctions,
-                    RootCallTarget destructorFunctions) {
-        this.scope = scope;
-        this.mainCallTarget = mainCallTarget;
-        this.globalVarInits = globalVarInits;
-        this.globalVarDeallocs = globalVarDeallocs;
-        this.constructorFunctions = constructorFunctions;
-        this.destructorFunctions = destructorFunctions;
+    LLVMParserResult(LLVMParserRuntime runtime,
+                    List<FunctionSymbol> externalFunctions,
+                    List<GlobalVariable> definedGlobals,
+                    List<GlobalVariable> externalGlobals,
+                    List<String> importedFunctions,
+                    List<String> importedGlobals) {
+        this.runtime = runtime;
+        this.externalFunctions = externalFunctions;
+        this.definedGlobals = definedGlobals;
+        this.externalGlobals = externalGlobals;
+        this.importedFunctions = importedFunctions;
+        this.importedGlobals = importedGlobals;
     }
 
-    public LLVMScope getScope() {
-        return scope;
+    public LLVMParserRuntime getRuntime() {
+        return runtime;
     }
 
-    public RootCallTarget getMainCallTarget() {
-        return mainCallTarget;
+    public List<FunctionSymbol> getExternalFunctions() {
+        return externalFunctions;
     }
 
-    public RootCallTarget getGlobalVarInit() {
-        return globalVarInits;
+    public List<GlobalVariable> getDefinedGlobals() {
+        return definedGlobals;
     }
 
-    public RootCallTarget getGlobalVarDealloc() {
-        return globalVarDeallocs;
+    public List<GlobalVariable> getExternalGlobals() {
+        return externalGlobals;
     }
 
-    public RootCallTarget getConstructorFunction() {
-        return constructorFunctions;
+    public List<String> getImportedFunctions() {
+        return importedFunctions;
     }
 
-    public RootCallTarget getDestructorFunction() {
-        return destructorFunctions;
+    public List<String> getImportedGlobals() {
+        return importedGlobals;
     }
 }

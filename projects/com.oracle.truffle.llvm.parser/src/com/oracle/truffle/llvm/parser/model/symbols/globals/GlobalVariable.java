@@ -34,12 +34,15 @@ import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class GlobalVariable extends GlobalValueSymbol {
 
-    private GlobalVariable(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
+    private final boolean isReadOnly;
+
+    private GlobalVariable(boolean isReadOnly, PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
         super(type, align, linkage, visibility, symbolTable, value);
+        this.isReadOnly = isReadOnly;
     }
 
     @Override
@@ -52,7 +55,11 @@ public final class GlobalVariable extends GlobalValueSymbol {
         visitor.visit(this);
     }
 
-    public static GlobalVariable create(Type type, int align, long linkage, long visibility, SymbolTable symbolTable, int value) {
-        return new GlobalVariable(type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value);
+    public boolean isReadOnly() {
+        return isReadOnly;
+    }
+
+    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, long linkage, long visibility, SymbolTable symbolTable, int value) {
+        return new GlobalVariable(isReadOnly, type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value);
     }
 }

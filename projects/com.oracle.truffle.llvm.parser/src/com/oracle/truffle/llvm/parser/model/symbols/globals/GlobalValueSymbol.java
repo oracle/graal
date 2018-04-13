@@ -41,12 +41,12 @@ import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachmentHolder {
 
-    private final Type type;
+    private final PointerType type;
 
     private final int align;
 
@@ -62,7 +62,7 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
 
     private LLVMSourceSymbol sourceSymbol;
 
-    GlobalValueSymbol(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
+    GlobalValueSymbol(PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
         this.type = type;
         this.align = align;
         this.linkage = linkage;
@@ -86,18 +86,18 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         return isInitialized() ? 1 : 0;
     }
 
+    public Linkage getLinkage() {
+        return linkage;
+    }
+
     @Override
     public String getName() {
         return name;
     }
 
     @Override
-    public Type getType() {
+    public PointerType getType() {
         return type;
-    }
-
-    public Linkage getLinkage() {
-        return linkage;
     }
 
     public SymbolImpl getValue() {
@@ -146,7 +146,11 @@ public abstract class GlobalValueSymbol implements ValueSymbol, MetadataAttachme
         }
     }
 
+    public boolean isExported() {
+        return Linkage.isExported(linkage, visibility);
+    }
+
     public boolean isExternal() {
-        return getInitialiser() == 0 && Linkage.isExtern(getLinkage());
+        return getInitialiser() == 0 && isExported();
     }
 }

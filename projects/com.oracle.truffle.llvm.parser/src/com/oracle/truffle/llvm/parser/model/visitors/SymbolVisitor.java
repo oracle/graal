@@ -54,7 +54,6 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.X86F
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.BinaryOperationInstruction;
@@ -301,10 +300,6 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
 
     default void visit(FunctionParameter param) {
         defaultAction(param);
-    }
-
-    default void visit(GlobalConstant global) {
-        defaultAction(global);
     }
 
     default void visit(GlobalVariable global) {

@@ -46,8 +46,8 @@ public class LLVMStaticInitsBlockNode extends RootNode {
 
     public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMExpressionNode[] nodes, FrameDescriptor descriptor) {
         super(language, descriptor);
+        assert nodes.length > 0;
         this.nodes = nodes;
-
     }
 
     @CompilationFinal private FrameSlot stackPointerSlot;
@@ -73,6 +73,6 @@ public class LLVMStaticInitsBlockNode extends RootNode {
 
     @Override
     public String toString() {
-        return "static inits (" + nodes.length + ")";
+        return "staticInits[" + nodes.length + "]";
     }
 }

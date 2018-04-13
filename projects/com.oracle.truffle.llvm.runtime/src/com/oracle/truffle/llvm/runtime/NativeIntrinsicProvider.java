@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public interface NativeIntrinsicProvider {
@@ -40,4 +41,6 @@ public interface NativeIntrinsicProvider {
     boolean forceInline(String name);
 
     boolean forceSplit(String name);
+
+    ExternalLibrary getLibrary();
 }

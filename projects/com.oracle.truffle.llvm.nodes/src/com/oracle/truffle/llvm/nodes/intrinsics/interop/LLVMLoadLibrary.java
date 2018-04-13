@@ -50,7 +50,7 @@ public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("createReadString()") LLVMReadStringNode readId) {
         String name = readId.executeWithTarget(value);
-        context.get().addExternalLibrary(name);
+        context.get().addExternalLibrary(name, true, false);
         return null;
     }
 }

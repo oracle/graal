@@ -484,7 +484,6 @@ gcc-5.2.0/gcc/testsuite/g++.dg/lto/20101010-2_0.C
 gcc-5.2.0/gcc/testsuite/g++.dg/lto/20101014-1_0.C
 gcc-5.2.0/gcc/testsuite/g++.dg/lto/20110311-1_0.C
 gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr45983_0.C
-gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr47333.C
 gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr48207-2_0.C
 gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr48207-3_0.C
 gcc-5.2.0/gcc/testsuite/g++.dg/lto/pr48207_0.C

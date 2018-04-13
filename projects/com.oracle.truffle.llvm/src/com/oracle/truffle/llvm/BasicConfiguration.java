@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.options.OptionDescriptor;
@@ -65,7 +65,13 @@ public final class BasicConfiguration implements Configuration {
 
     @Override
     public List<ContextExtension> createContextExtensions(com.oracle.truffle.api.TruffleLanguage.Env env, TruffleLanguage<?> language) {
-        return Arrays.asList(new ContextExtension[]{new NFIContextExtension(env), new NFIIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory()), new BasicSystemContextExtension()});
+        List<ContextExtension> result = new ArrayList<>();
+        result.add(new NFIIntrinsicsProvider(language).collectIntrinsics(new BasicNodeFactory()));
+        result.add(new BasicSystemContextExtension());
+        if (env.getOptions().get(SulongEngineOption.ENABLE_NFI)) {
+            result.add(new NFIContextExtension(env));
+        }
+        return result;
     }
 
     @Override

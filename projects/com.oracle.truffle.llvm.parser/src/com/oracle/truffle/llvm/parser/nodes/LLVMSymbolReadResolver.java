@@ -29,8 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.nodes;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
@@ -38,7 +43,6 @@ import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMLogicalInstructionKind;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.enums.Flag;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -60,14 +64,13 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.X86F
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
@@ -82,10 +85,6 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
-
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
 
 public final class LLVMSymbolReadResolver {
 
@@ -377,35 +376,26 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(FunctionDeclaration toResolve) {
-            final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
-            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibrary(), toResolve.getName(), toResolve.getType(),
-                            i);
-            final Object value = runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), global, generator);
+            LLVMFunctionDescriptor value = runtime.lookupFunction(toResolve.getName(), toResolve.isExported());
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, toResolve.getType());
         }
 
         @Override
         public void visit(FunctionDefinition toResolve) {
-            final boolean global = !Linkage.isFileLocal(toResolve.getLinkage());
-            final LLVMContext.FunctionFactory generator = i -> LLVMFunctionDescriptor.createDescriptor(runtime.getContext(), runtime.getLibrary(), toResolve.getName(), toResolve.getType(),
-                            i);
-            final Object value = runtime.getScope().lookupOrCreateFunction(runtime.getContext(), toResolve.getName(), global, generator);
+            LLVMFunctionDescriptor value = runtime.lookupFunction(toResolve.getName(), toResolve.isExported());
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, toResolve.getType());
         }
 
         @Override
         public void visit(GlobalAlias alias) {
-            resolvedNode = runtime.getGlobalAddress(LLVMSymbolReadResolver.this, alias);
+            SymbolImpl value = LLVMParser.getAliasValue(alias);
+            resolvedNode = resolve(value);
         }
 
         @Override
-        public void visit(GlobalConstant constant) {
-            resolvedNode = runtime.getGlobalAddress(LLVMSymbolReadResolver.this, constant);
-        }
-
-        @Override
-        public void visit(GlobalVariable variable) {
-            resolvedNode = runtime.getGlobalAddress(LLVMSymbolReadResolver.this, variable);
+        public void visit(GlobalVariable global) {
+            LLVMGlobal value = runtime.lookupGlobal(global.getName(), global.isExported());
+            resolvedNode = runtime.getNodeFactory().createLiteral(runtime, value, new PointerType(global.getType()));
         }
 
         @Override

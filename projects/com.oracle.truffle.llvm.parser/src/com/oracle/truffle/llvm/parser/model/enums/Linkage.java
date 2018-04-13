@@ -76,26 +76,54 @@ public enum Linkage {
         return irString;
     }
 
-    public static boolean isFileLocal(Linkage linkage) {
-        return linkage == Linkage.INTERNAL || linkage == Linkage.PRIVATE;
-    }
-
-    public static boolean isExtern(Linkage linkage) {
-        return linkage == Linkage.EXTERNAL || linkage == Linkage.EXTERN_WEAK;
-    }
-
-    public static boolean isWeak(Linkage linkage) {
+    public static boolean isExported(Linkage linkage, Visibility visibility) {
         switch (linkage) {
-            case WEAK:
-            case WEAK_ODR:
-            case EXTERN_WEAK:
-            case LINKONCE:
-            case LINK_ONCE_ODR:
-            case LINK_ONCE_ODR_AUTO_HIDE:
             case AVAILABLE_EXTERNALLY:
+            case DLL_IMPORT:
                 return true;
-            default:
+            case EXTERNAL:
+            case DLL_EXPORT:
+            case WEAK:
+            case APPENDING:
+            case LINKONCE:
+            case EXTERN_WEAK:
+            case COMMON:
+            case WEAK_ODR:
+            case LINK_ONCE_ODR:
+                return visibility == Visibility.DEFAULT;
+            case INTERNAL:
+            case PRIVATE:
+            case LINKER_PRIVATE:
+            case LINKER_PRIVATE_WEAK:
+            case LINK_ONCE_ODR_AUTO_HIDE:
                 return false;
+            default:
+                throw new IllegalStateException("Unknown linkage: " + linkage);
+        }
+    }
+
+    public static boolean isExternal(Linkage linkage) {
+        switch (linkage) {
+            case AVAILABLE_EXTERNALLY:
+            case DLL_IMPORT:
+                return true;
+            case EXTERNAL:
+            case EXTERN_WEAK:
+            case WEAK:
+            case APPENDING:
+            case LINKONCE:
+            case DLL_EXPORT:
+            case COMMON:
+            case WEAK_ODR:
+            case LINK_ONCE_ODR:
+            case INTERNAL:
+            case PRIVATE:
+            case LINKER_PRIVATE:
+            case LINKER_PRIVATE_WEAK:
+            case LINK_ONCE_ODR_AUTO_HIDE:
+                return false;
+            default:
+                throw new IllegalStateException("Unknown linkage: " + linkage);
         }
     }
 }
