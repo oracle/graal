@@ -197,6 +197,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             # Add Polyglot library
             lib_polyglot_project = get_lib_polyglot_project()
             if lib_polyglot_project:
+                # Note that `jre/lib/polyglot` is synchronized with `org.graalvm.polyglot.install_name_id` in `get_lib_polyglot_project`
                 _add(layout, "<jdk_base>/jre/lib/polyglot/" + lib_polyglot_project.native_image_name, "dependency:" + lib_polyglot_project.name)
                 _add(layout, "<jdk_base>/jre/lib/polyglot/", "dependency:" + lib_polyglot_project.name + "/*.h")
 
@@ -1110,6 +1111,7 @@ def get_lib_polyglot_project():
                     build_args=[
                         "--language:all",
                         "-Dgraalvm.libpolyglot=true",
+                        "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>"
                     ] + polyglot_lib_build_args,
                 )
                 _lib_polyglot_project = GraalVmLibrary(_suite, GraalVmNativeImage.project_name(lib_polyglot_config), [], None, lib_polyglot_config)

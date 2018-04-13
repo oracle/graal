@@ -137,6 +137,7 @@ builds += [
       [mx, --dynamicimports, "$SUITES", build]
       [mx, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
     ]
+    timelimit: "45:00"
     name: gate-vm-build-linux-amd64
   },
 ]
