@@ -1323,13 +1323,12 @@ public abstract class AArch64Assembler extends Assembler {
 
     /**
      * Address of page: sign extends 21-bit offset, shifts if left by 12 and adds it to the value of
-     * the PC with its bottom 12-bits cleared, writing the result to dst.
-     * No offset is emiited; the instruction will be patched later.
-     *
+     * the PC with its bottom 12-bits cleared, writing the result to dst. No offset is emiited; the
+     * instruction will be patched later.     *
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
      */
     public void adrp(Register dst) {
-        emitInt(ADRP.encoding | PcRelImmOp | rd(dst) );
+        emitInt(ADRP.encoding | PcRelImmOp | rd(dst));
     }
 
     /**

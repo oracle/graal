@@ -28,7 +28,6 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.vm.ci.aarch64.AArch64.r8;
-import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 
@@ -205,8 +204,8 @@ public class AArch64Call {
                 masm.bl(0);
             } else {
                 /*
-                 * Offset might not fit into a 28-bit immediate, generate an indirect call with a 64-bit
-                 * immediate address which is fixed up by HotSpot.
+                 * Offset might not fit into a 28-bit immediate, generate an indirect call with a
+                 * 64-bit immediate address which is fixed up by HotSpot.
                  */
                 masm.movNativeAddress(scratch, 0L);
                 masm.blr(scratch);

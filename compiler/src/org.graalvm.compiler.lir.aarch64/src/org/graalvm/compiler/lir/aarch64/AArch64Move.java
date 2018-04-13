@@ -22,7 +22,6 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.meta.JavaKind.Int;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -200,7 +199,7 @@ public class AArch64Move {
     public static class MembarOp extends AArch64LIRInstruction {
         public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
-        @SuppressWarnings("unused") private final int barriers;
+        private final int barriers;
 
         public MembarOp(int barriers) {
             super(TYPE);
@@ -399,7 +398,7 @@ public class AArch64Move {
         }
     }
 
-    private static void emitStore(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Kind kind, AArch64Address dst, Value src) {
+    private static void emitStore(CompilationResultBuilder crb, AArch64MacroAssembler masm, AArch64Kind kind, AArch64Address dst, Value src) {
         int destSize = kind.getSizeInBytes() * Byte.SIZE;
         if (kind.isInteger()) {
             masm.str(destSize, asRegister(src), dst);
@@ -455,7 +454,7 @@ public class AArch64Move {
         }
     }
 
-    private static void reg2reg(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
+    private static void reg2reg(CompilationResultBuilder crb, AArch64MacroAssembler masm, AllocatableValue result, AllocatableValue input) {
         Register dst = asRegister(result);
         Register src = asRegister(input);
         if (src.equals(dst)) {

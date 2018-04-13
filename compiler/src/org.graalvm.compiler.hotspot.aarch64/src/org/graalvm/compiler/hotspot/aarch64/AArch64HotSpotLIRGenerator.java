@@ -205,7 +205,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         append(new AArch64RestoreRegistersOp(save.getSlots().clone(), save));
     }
 
-
     @Override
     public VirtualStackSlot getLockSlot(int lockDepth) {
         return getLockStack().makeLockSlot(lockDepth);

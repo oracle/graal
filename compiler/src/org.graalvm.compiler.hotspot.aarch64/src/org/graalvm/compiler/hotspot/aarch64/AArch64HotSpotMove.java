@@ -54,8 +54,7 @@ public class AArch64HotSpotMove {
         public static final LIRInstructionClass<LoadHotSpotObjectConstantInline> TYPE = LIRInstructionClass.create(LoadHotSpotObjectConstantInline.class);
 
         private HotSpotConstant constant;
-        @Def({REG, STACK})
-        AllocatableValue result;
+        @Def({REG, STACK}) AllocatableValue result;
 
         public LoadHotSpotObjectConstantInline(HotSpotConstant constant, AllocatableValue result) {
             super(TYPE);
@@ -88,8 +87,7 @@ public class AArch64HotSpotMove {
     public static final class BaseMove extends AArch64LIRInstruction {
         public static final LIRInstructionClass<BaseMove> TYPE = LIRInstructionClass.create(BaseMove.class);
 
-        @LIRInstruction.Def({REG, HINT})
-        protected AllocatableValue result;
+        @LIRInstruction.Def({REG, HINT}) protected AllocatableValue result;
         private final GraalHotSpotVMConfig config;
 
         public BaseMove(AllocatableValue result, GraalHotSpotVMConfig config) {
