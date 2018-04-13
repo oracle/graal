@@ -725,7 +725,7 @@ final class Target_com_oracle_truffle_api_vm_PolyglotContextImpl {
      * recompute a single static field to a new SingleContextState instance.
      */
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.api.vm.PolyglotContextImpl$SingleContextState", isFinal = true) //
-    static Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState SINGLE_CONTEXT_STATE;
+    static Target_com_oracle_truffle_api_vm_PolyglotContextImpl_SingleContextState singleContextState;
 }
 
 @TargetClass(className = "com.oracle.truffle.api.vm.PolyglotContextImpl$SingleContextState", onlyWith = TruffleFeature.IsEnabled.class)

@@ -621,6 +621,12 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 getCancelHandler().waitForClosing(localContexts);
             }
 
+            if (!boundEngine) {
+                for (PolyglotContextImpl context : localContexts) {
+                    PolyglotContextImpl.disposeStaticContext(context);
+                }
+            }
+
             contexts.clear();
             for (Instrument instrument : idToPublicInstrument.values()) {
                 PolyglotInstrument instrumentImpl = (PolyglotInstrument) getAPIAccess().getImpl(instrument);
