@@ -180,8 +180,7 @@ public class SLTckTest extends TruffleTCK {
                     "function valueWithSource() {\n" +
                     "  return numberValue;\n" +
                     "}\n"
-                        ).name("SL TCK").mimeType(SLLanguage.MIME_TYPE
-            ).build()
+                        ).name("SL TCK").language(SLLanguage.ID).mimeType(SLLanguage.MIME_TYPE).build()
         );
         // @formatter:on
         return vm;
