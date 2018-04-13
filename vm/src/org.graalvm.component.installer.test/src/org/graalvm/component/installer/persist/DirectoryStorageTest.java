@@ -172,6 +172,20 @@ public class DirectoryStorageTest extends TestBase {
     }
 
     /**
+     * Test of loadComponentMetadata method, of class RegistryStorage.
+     */
+    @Test
+    public void testLoadComponentMetadata2() throws Exception {
+        copyDir("list1", registryPath);
+        ComponentInfo info = storage.loadComponentMetadata("fastr-2");
+        assertEquals("org.graalvm.fastr", info.getId());
+        
+        assertTrue(info.isPolyglotRebuild());
+        assertTrue(info.getWorkingDirectories().contains("jre/languages/test/scrap"));
+        assertTrue(info.getWorkingDirectories().contains("jre/lib/test/scrapdir"));
+    }
+
+    /**
      * Should strip whitespaces around
      * 
      * @throws Exception
@@ -355,6 +369,30 @@ public class DirectoryStorageTest extends TestBase {
     }
 
     @Test
+    public void saveComponentOptionalTags() throws Exception {
+        ComponentInfo info = new ComponentInfo("x", "y", "2.0");
+        info.setPolyglotRebuild(true);
+        info.addWorkingDirectories(Arrays.asList(
+                "jre/languages/test/scrap",
+                "jre/lib/test/scrapdir"
+        ));
+
+        Path p = registryPath.resolve("x.component");
+        assertFalse(Files.exists(p));
+        storage.saveComponent(info);
+        assertTrue(Files.exists(p));
+
+        List<String> lines = Files.readAllLines(p).stream()
+                        .filter((l) -> !l.startsWith("#"))
+                        .collect(Collectors.toList());
+        List<String> golden = Files.readAllLines(dataFile("golden-save-optional.properties")).stream()
+                        .filter((l) -> !l.startsWith("#"))
+                        .collect(Collectors.toList());
+        
+        assertEquals(golden, lines);
+
+    }
+    @Test
     public void saveComponentFiles() throws Exception {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
         info.addPaths(Arrays.asList("SecondPath/file", "FirstPath/directory/"));
@@ -373,4 +411,5 @@ public class DirectoryStorageTest extends TestBase {
 
         assertEquals(golden, lines);
     }
+    
 }

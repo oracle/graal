@@ -26,11 +26,13 @@ package org.graalvm.component.installer.commands;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -168,6 +170,139 @@ public class InstallerTest extends TestBase {
 
         ComponentInfo savedInfo = installer.getComponentInfo();
 
+        // now uninstall, create a new installer.
+        Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
+        uninstaller.setInstallPath(targetPath);
+        uninstaller.uninstallContent();
+
+        assertFalse("All files should be removed after uninstall",
+                        Files.list(targetPath).findAny().isPresent());
+    }
+    
+    /**
+     * Test of uninstall method, of class Installer.
+     */
+    @Test
+    public void testUninstallFailsOnExtraFile() throws Exception {
+        setupComponentInstall("truffleruby2.jar");
+        installer.setPermissions(loader.loadPermissions());
+        installer.setSymlinks(loader.loadSymlinks());
+        // install
+        installer.install();
+
+        ComponentInfo savedInfo = installer.getComponentInfo();
+
+        Path langPath = targetPath.resolve("jre/languages/ruby");
+        Path roPath = langPath.resolve("doc/user");
+        // and add a new file to that dir:
+        Path uf = roPath.resolve("userFile.txt");
+        Files.write(uf, Arrays.asList("This file", "Should vanish"));
+
+        exception.expect(DirectoryNotEmptyException.class);
+        exception.expectMessage("jre/languages/ruby/doc/user");
+        // now uninstall, create a new installer.
+        Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
+        uninstaller.setInstallPath(targetPath);
+        uninstaller.uninstallContent();
+
+        fail("Shouldn't be reached");
+    }
+    
+
+    @Test
+    public void testRecursiveDelete() throws Exception {
+        // install just to get the component structure
+        setupComponentInstall("truffleruby2.jar");
+        installer.setPermissions(loader.loadPermissions());
+        installer.setSymlinks(loader.loadSymlinks());
+        // install
+        installer.install();
+        ComponentInfo savedInfo = installer.getComponentInfo();
+        Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
+        Path langPath = targetPath.resolve("jre/languages/ruby");
+        uninstaller.deleteContentsRecursively(langPath);
+        
+        // the root dir still exists
+        assertTrue(Files.exists(langPath));
+        // but is empty:
+
+        assertFalse("All files should be removed by recursive delete",
+                        Files.list(langPath).findAny().isPresent());
+    }
+    
+    @Test
+    public void testRecursiveDeleteWithReadonlyFiles() throws Exception {
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return;
+        }
+
+        // install just to get the component structure
+        setupComponentInstall("truffleruby2.jar");
+        installer.setPermissions(loader.loadPermissions());
+        installer.setSymlinks(loader.loadSymlinks());
+        // install
+        installer.install();
+        ComponentInfo savedInfo = installer.getComponentInfo();
+        Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
+        Path langPath = targetPath.resolve("jre/languages/ruby");
+        
+        Path roPath = langPath.resolve("doc/legal");
+        Files.setPosixFilePermissions(roPath, PosixFilePermissions.fromString("r-xr-xr-x"));
+        
+        uninstaller.deleteContentsRecursively(langPath);
+        // the root dir still exists
+        assertTrue(Files.exists(langPath));
+        // but is empty:
+
+        assertFalse("All files should be removed by recursive delete",
+                        Files.list(langPath).findAny().isPresent());
+    }
+
+    @Test
+    public void testUninstallComponentWithROFiles() throws Exception {
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return;
+        }
+        setupComponentInstall("trufflerubyRO.jar");
+        installer.setPermissions(loader.loadPermissions());
+        installer.setSymlinks(loader.loadSymlinks());
+        // install
+        installer.install();
+
+        ComponentInfo savedInfo = installer.getComponentInfo();
+
+        // now uninstall, create a new installer.
+        Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
+        uninstaller.setInstallPath(targetPath);
+        uninstaller.uninstallContent();
+
+        assertFalse("All files should be removed after uninstall",
+                        Files.list(targetPath).findAny().isPresent());
+    }
+
+    @Test
+    public void testUninstallComponentWithUserROFiles() throws Exception {
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return;
+        }
+        setupComponentInstall("trufflerubyWork.jar");
+        installer.setPermissions(loader.loadPermissions());
+        installer.setSymlinks(loader.loadSymlinks());
+        // install
+        installer.install();
+
+        ComponentInfo savedInfo = installer.getComponentInfo();
+
+        Path langPath = targetPath.resolve("jre/languages/ruby");
+        Path roPath = langPath.resolve("doc/user");
+
+        // and add a new file to that dir:
+        Path uf = roPath.resolve("userFile.txt");
+        Files.write(uf, Arrays.asList("This file", "Should vanish"));
+        Files.setPosixFilePermissions(uf, PosixFilePermissions.fromString("r--r-----"));
+        Files.setPosixFilePermissions(roPath, PosixFilePermissions.fromString("r-xr-xr-x"));
+        
+        
         // now uninstall, create a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);

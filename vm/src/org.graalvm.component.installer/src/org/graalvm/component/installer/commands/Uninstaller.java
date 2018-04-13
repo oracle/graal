@@ -6,14 +6,21 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -51,6 +58,75 @@ public class Uninstaller {
     public boolean isRebuildPolyglot() {
         return rebuildPolyglot;
     }
+    
+    void deleteContentsRecursively(Path rootPath) throws IOException {
+        if (dryRun) {
+            return;
+        }
+        try (Stream<Path> paths = Files.walk(rootPath)) {
+            paths.sorted(Comparator.reverseOrder()).
+                forEach((p) -> {
+                try {
+                    deleteOneFile(p, rootPath);
+                } catch (IOException ex) {
+                    if (ignoreFailedDeletions) {
+                        if (Files.isDirectory(p)) {
+                            feedback.error("INSTALL_FailedToDeleteDirectory", ex, p, ex.getMessage());
+                        } else {
+                            feedback.error("INSTALL_FailedToDeleteFile", ex, p, ex.getMessage());
+                        }
+                        return;
+                    }
+                    throw new UncheckedIOException(ex);
+                }
+        });
+        } catch (UncheckedIOException ex) {
+            throw (IOException)ex.getCause();
+        }
+    }
+    
+    private static final Set<PosixFilePermission> ALL_WRITE_PERMS = PosixFilePermissions.fromString("rwxrwxrwx");
+    
+    private void deleteOneFile(Path p, Path rootPath) throws IOException {
+        try {
+            if (p.equals(rootPath)) {
+                return;
+            }
+            Files.deleteIfExists(p);
+        } catch (AccessDeniedException ex) {
+            // try again to adjust permissions for the file AND the containing
+            // directory AND try again:
+            PosixFileAttributeView attrs = Files.getFileAttributeView(
+                    p, PosixFileAttributeView.class);
+            Set<PosixFilePermission> restoreDirPermissions = null;
+            if (attrs != null) {
+                Files.setPosixFilePermissions(p, ALL_WRITE_PERMS);
+                Path d = p.getParent();
+                // set the parent directory's permissions, but do not
+                // alter permissions outside the to-be-deleted tree:
+                if (d.startsWith(rootPath) && !d.equals(rootPath)) {
+                    restoreDirPermissions = Files.getPosixFilePermissions(d);
+                    Files.setPosixFilePermissions(d, ALL_WRITE_PERMS);
+                }
+                try {
+                    // 2nd try
+                    Files.deleteIfExists(p);
+                } catch (IOException ex2) {
+                    // report the original access denied
+                    throw ex;
+                } finally {
+                    if (restoreDirPermissions != null) {
+                        try {
+                            Files.setPosixFilePermissions(d, restoreDirPermissions);
+                        } catch (IOException ex2) {
+                            // do not obscure the result with this exception
+                            feedback.error("UNINSTALL_ErrorRestoringPermissions", ex2, p, ex2.getLocalizedMessage());
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     void uninstallContent() throws IOException {
         // remove all the files occupied by the component
@@ -74,8 +150,8 @@ public class Uninstaller {
             feedback.verboseOutput("UNINSTALL_DeletingFile", p);
             if (!dryRun) {
                 try {
-                    // ignore missing files
-                    Files.deleteIfExists(toDelete);
+                    // ignore missing files, handle permissions
+                    deleteOneFile(toDelete, installPath);
                 } catch (IOException ex) {
                     if (ignoreFailedDeletions) {
                         feedback.error("INSTALL_FailedToDeleteFile", ex, toDelete, ex.getMessage());
@@ -86,6 +162,13 @@ public class Uninstaller {
             }
         }
         List<String> dirNames = new ArrayList<>(directoriesToDelete);
+        for (String s : componentInfo.getWorkingDirectories()) {
+            Path p = installPath.resolve(s);
+            feedback.verboseOutput("UNINSTALL_DeletingDirectoryRecursively", p);
+            if (componentInfo.getWorkingDirectories().contains(s)) {
+                deleteContentsRecursively(p);
+            }
+        }
         Collections.sort(dirNames);
         Collections.reverse(dirNames);
         for (String s : dirNames) {

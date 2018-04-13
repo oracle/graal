@@ -46,6 +46,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
@@ -208,8 +209,16 @@ public class DirectoryStorage implements ComponentStorage {
             }
         }
         ci.setPolyglotRebuild(
-            Boolean.TRUE.equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))
+            Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))
         );
+        List<String> ll = new ArrayList<>();
+        for (String s : loaded.getProperty(BundleConstants.BUNDLE_WORKDIRS, "").split(":")) {
+            String p = s.trim();
+            if (!p.isEmpty()) {
+                ll.add(p);
+            }
+        }
+        ci.addWorkingDirectories(ll);
         return ci;
     }
 
@@ -358,6 +367,10 @@ public class DirectoryStorage implements ComponentStorage {
         }
         if (info.isPolyglotRebuild()) {
             p.setProperty(BundleConstants.BUNDLE_POLYGLOT_PART, Boolean.TRUE.toString());
+        }
+        if (!info.getWorkingDirectories().isEmpty()) {
+            p.setProperty(BundleConstants.BUNDLE_WORKDIRS, info.getWorkingDirectories().stream().sequential().
+                    collect(Collectors.joining(":")));
         }
         return p;
     }

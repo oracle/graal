@@ -26,10 +26,13 @@ package org.graalvm.component.installer.model;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Information about an installable Component.
@@ -66,6 +69,8 @@ public final class ComponentInfo {
     private final Map<String, String> requiredGraalValues = new HashMap<>();
 
     private final List<String> paths = new ArrayList<>();
+    
+    private final Set<String> workingDirectories = new LinkedHashSet<>();
     
     private URL remoteURL;
     
@@ -158,5 +163,13 @@ public final class ComponentInfo {
 
     public void setPolyglotRebuild(boolean polyglotRebuild) {
         this.polyglotRebuild = polyglotRebuild;
+    }
+
+    public Set<String> getWorkingDirectories() {
+        return workingDirectories;
+    }
+    
+    public void addWorkingDirectories(Collection<String> dirs) {
+        workingDirectories.addAll(dirs);
     }
 }

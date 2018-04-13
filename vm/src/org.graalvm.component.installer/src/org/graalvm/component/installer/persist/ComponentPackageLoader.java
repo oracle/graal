@@ -42,6 +42,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -187,6 +188,18 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     public List<InstallerStopException> getErrors() {
         return errors;
     }
+    
+    private void loadWorkingDirectories() {
+        String val = parseHeader(BundleConstants.BUNDLE_WORKDIRS, null).getContents("");
+        Set<String> workDirs = new LinkedHashSet<>();
+        for (String s : val.split(":")) { // NOI18N
+            String p = s.trim();
+            if (!p.isEmpty()) {
+                workDirs.add(p);
+            }
+        }
+        info.addWorkingDirectories(workDirs);
+    }
 
     public ComponentInfo createComponentInfo() {
         parse(
@@ -197,7 +210,9 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                             info = new ComponentInfo(id, name, version);
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
                         },
-                        () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE))
+                        () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
+                        () -> loadWorkingDirectories()
+                        
         );
         return info;
     }
