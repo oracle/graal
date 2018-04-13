@@ -23,7 +23,11 @@
 package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.unimplemented;
 
+import com.oracle.svm.core.config.ConfigurationValues;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -71,10 +75,11 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
 
         if (baseConstant instanceof SubstrateObjectConstant) { // always compressed (if enabled)
             assert !requireCompressed || ReferenceAccess.singleton().haveCompressedReferences();
-
-            Object baseObject = ((SubstrateObjectConstant) baseConstant).getObject();
+            Object baseObject = SubstrateObjectConstant.asObject(baseConstant);
             assert baseObject != null : "SubstrateObjectConstant does not wrap null value";
-
+            SubstrateMetaAccess metaAccess = SubstrateMetaAccess.singleton();
+            ResolvedJavaType baseObjectType = metaAccess.lookupJavaType(baseObject.getClass());
+            checkRead(JavaKind.Object, displacement, baseObjectType, baseObject);
             Object rawValue = BarrieredAccess.readObject(baseObject, offset);
             return SubstrateObjectConstant.forObject(rawValue, requireCompressed);
         }
@@ -94,6 +99,37 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             return SubstrateObjectConstant.forObject(rawValue, false);
         }
         return null;
+    }
+
+    private static void checkRead(JavaKind kind, long displacement, ResolvedJavaType type, Object object) {
+        if (kind != JavaKind.Object) {
+            throw unimplemented();
+        }
+
+        if (type.isArray()) {
+            ResolvedJavaType componentType = type.getComponentType();
+            JavaKind componentKind = componentType.getJavaKind();
+            final int headerSize = ConfigurationValues.getObjectLayout().getArrayBaseOffset(componentKind);
+            int sizeOfElement = ConfigurationValues.getObjectLayout().getArrayIndexScale(componentKind);
+            int length = BarrieredAccess.readInt(object, ConfigurationValues.getObjectLayout().getArrayLengthOffset());
+            long arrayEnd = ConfigurationValues.getObjectLayout().getArraySize(componentKind, length);
+            if (displacement < 0 || displacement > (arrayEnd - sizeOfElement)) {
+                int index = (int) ((displacement - headerSize) / sizeOfElement);
+                throw new IllegalArgumentException("Unsafe array access: reading element of kind " + kind +
+                                " at offset " + displacement + " (index ~ " + index + ") in " +
+                                type.toJavaName() + " object of length " + length);
+            }
+        } else {
+            ResolvedJavaField field = type.findInstanceFieldWithOffset(displacement, JavaKind.Object);
+            if (field == null) {
+                throw new IllegalArgumentException("Unsafe object access: field not found for read of kind Object" +
+                                " at offset " + displacement + " in " + type.toJavaName() + " object");
+            }
+            if (field.getJavaKind() != JavaKind.Object) {
+                throw new IllegalArgumentException("Unsafe object access: field " + field.format("%H.%n:%T") + " not of expected kind Object" +
+                                " at offset " + displacement + " in " + type.toJavaName() + " object");
+            }
+        }
     }
 
     @Override
