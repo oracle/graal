@@ -42,7 +42,7 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     @Before
     public void setup() {
         // the static context tests rely on a fresh host VM
-        // this method resets the host vm leven assumption to its initial state
+        // this method resets the host vm level assumption to its initial state
         // independent which tests ran before.
         resetSingleContextState();
     }
