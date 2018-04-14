@@ -44,5 +44,11 @@ public class PolyglotAPIHeader implements Header {
     public void writePreamble(PrintWriter writer) {
         writer.println("#include <polyglot_types.h>");
         writer.println("#include <polyglot_isolate.h>");
+        writer.println("/**");
+        writer.println(" * Polyglot Native API is in experimental phase of development and should not be used in production environments.");
+        writer.println(" *");
+        writer.println(" * Future versions will introduce modifications to the API in backward incompatible ways. Feel free to use the API");
+        writer.println(" * for examples and experiments and keep us posted about the features that you need or you feel are awkward.");
+        writer.println(" */");
     }
 }

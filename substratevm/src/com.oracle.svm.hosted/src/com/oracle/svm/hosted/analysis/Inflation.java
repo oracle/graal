@@ -84,7 +84,7 @@ public class Inflation extends BigBang {
     public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executor) {
         super(options, universe, providers, hostVM, executor, new SubstrateUnsupportedFeatures());
 
-        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm"};
+        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
         targetCallersPattern = buildPrefixMatchPattern(targetCallers);
 
         String[] illegalCallees = new String[]{"java\\.util\\.stream", "java\\.util\\.Collection\\.stream", "java\\.util\\.Arrays\\.stream"};

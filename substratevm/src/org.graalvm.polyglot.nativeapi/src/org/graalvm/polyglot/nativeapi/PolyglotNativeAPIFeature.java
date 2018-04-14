@@ -22,6 +22,7 @@
  */
 package org.graalvm.polyglot.nativeapi;
 
+import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 import java.io.IOException;
@@ -33,9 +34,19 @@ import java.util.Collection;
 
 import org.graalvm.nativeimage.Feature;
 
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
+import com.oracle.svm.hosted.NativeImageOptions;
 
 public class PolyglotNativeAPIFeature implements Feature {
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (!NativeImageOptions.getCStandard().compatibleWith(C11)) {
+            throw UserError.abort("Polyglot native API supports only the C11 standard. Pass -H:CStandard=C11 on the command line to make the build work.");
+        }
+    }
+
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
         Collection<String> headerFiles = Arrays.asList("polyglot_types.h", "polyglot_isolate.h");

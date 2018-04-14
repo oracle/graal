@@ -91,8 +91,8 @@ extern int graal_tear_down_isolate(graal_isolate_t* isolate);
 
 #include <polyglot_types.h>
 
-poly_status poly_create_isolate(graal_create_isolate_params_t params, graal_isolate_t** isolate) {
-  if (graal_create_isolate(&params, isolate)) {
+poly_status poly_create_isolate(graal_create_isolate_params_t* params, graal_isolate_t** isolate) {
+  if (graal_create_isolate(params, isolate)) {
     return poly_generic_failure;
   } else {
     return poly_ok;

@@ -77,10 +77,10 @@ import com.oracle.svm.core.graal.posix.PosixIsolates;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.NativeImageOptions.CStandards;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CSourceCodeWriter;
+import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
@@ -148,12 +148,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
         writer.appendln("#define " + imageHeaderGuard);
 
         writer.appendln();
-        if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C89)) {
-            writer.appendln("#include <stdbool.h>");
-        }
-        if (NativeImageOptions.getCStandard().compatibleWith(CStandards.C11)) {
-            writer.appendln("#include <stdint.h>");
-        }
+
+        QueryCodeWriter.writeCStandardHeaders(writer);
+
         List<String> dependencies = header.dependsOn().stream()
                         .map(NativeBootImage::instantiateCHeader)
                         .map(depHeader -> "<" + depHeader.name() + dynamicSuffix + ">").collect(Collectors.toList());
