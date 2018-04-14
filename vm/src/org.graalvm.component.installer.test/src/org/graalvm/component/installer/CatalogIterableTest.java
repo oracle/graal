@@ -178,7 +178,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
     @Test
     public void testMetaAccessesDirectURL() throws Exception {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
-        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this);
+        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
         
         URL remoteU = rparam.createMetaLoader().getComponentInfo().getRemoteURL();
@@ -190,7 +190,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
     @Test
     public void testDirectURLAccessedJustOnce() throws Exception {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
-        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this);
+        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
         
         URL remoteU = rparam.createMetaLoader().getComponentInfo().getRemoteURL();
@@ -208,7 +208,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
     @Test
     public void testDirectURLJarClosedAfterMeta() throws Exception {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
-        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this);
+        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
         
         URL remoteU = rparam.createMetaLoader().getComponentInfo().getRemoteURL();
@@ -225,7 +225,7 @@ public class CatalogIterableTest extends CommandTestBase implements Supplier<Com
     @Test
     public void testDirectURLJarClosedAfterJar() throws Exception {
         addRemoteComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip", false);
-        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this);
+        rparam = new RemoteComponentParam(url, rparam.getDisplayName(), rparam.getSpecification(), this, false);
         components.add(param);
         JarFile jf = rparam.getJarFile();
         assertNotNull(jf.getEntry("META-INF"));

@@ -66,6 +66,7 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Before
     public void setUp() throws Exception {
         delegateFeedback(new FA());
+        System.setProperty("org.graalvm.component.installer.minDownloadFeedback", "10");
     }
     
     @Test

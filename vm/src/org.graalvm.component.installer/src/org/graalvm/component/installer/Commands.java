@@ -71,6 +71,11 @@ public interface Commands {
     /**
      * Verifies JAR integrity
      */
+    String OPTION_NO_DOWNLOAD_PROGRESS = "n";
+
+    /**
+     * Verifies JAR integrity
+     */
     String OPTION_VERIFY_JARS = "s";
 
     /**

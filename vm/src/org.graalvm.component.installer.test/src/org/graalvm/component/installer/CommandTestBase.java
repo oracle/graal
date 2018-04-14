@@ -85,7 +85,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
         // unknown in catalog metadata
         info.setLicensePath(null);
         info.setRemoteURL(url);
-        param = rparam = new CatalogIterable.RemoteComponentParam(info, disp, spec, this);
+        param = rparam = new CatalogIterable.RemoteComponentParam(info, disp, spec, this, false);
     }
     
     protected void initURLComponent(String relativeJar, String spec) throws IOException {
@@ -100,7 +100,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
         // unknown in catalog metadata
         info.setLicensePath(null);
         info.setRemoteURL(url);
-        param = rparam = new CatalogIterable.RemoteComponentParam(url, spec, spec, this);
+        param = rparam = new CatalogIterable.RemoteComponentParam(url, spec, spec, this, false);
     }
     
     @Override

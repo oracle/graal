@@ -69,7 +69,8 @@ public class DownloadURLIterable implements ComponentIterable {
             } catch (MalformedURLException ex) {
                 throw feedback.failure("URL_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
             }
-            RemoteComponentParam p = new RemoteComponentParam(u, s, s, feedback);
+            boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
+            RemoteComponentParam p = new RemoteComponentParam(u, s, s, feedback, progress);
             p.setVerifyJars(verifyJars);
             return p;
         }

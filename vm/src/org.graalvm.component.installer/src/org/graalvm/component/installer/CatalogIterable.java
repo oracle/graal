@@ -96,11 +96,12 @@ public class CatalogIterable implements ComponentIterable {
             if (info == null) {
                 throw feedback.failure("REMOTE_UnknownComponentId", null, s);
             }
+            boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
             RemoteComponentParam param = new RemoteComponentParam(
                     info,
                     feedback.l10n("REMOTE_ComponentFileLabel", s), 
                     s,
-                    feedback
+                    feedback, progress
             );
             param.setVerifyJars(verifyJars);
             return param;
@@ -113,27 +114,29 @@ public class CatalogIterable implements ComponentIterable {
         private final String spec;
         private final Feedback feedback;
         private final ComponentInfo catalogInfo;
+        private final boolean progress;
         
         private boolean verifyJars;
         private JarFile file;
         private MetadataLoader fileLoader;
         private boolean complete;
 
-        public RemoteComponentParam(ComponentInfo _catalogInfo, String _dispName, String _spec, Feedback _feedback) {
+        public RemoteComponentParam(ComponentInfo _catalogInfo, String _dispName, String _spec, Feedback _feedback, boolean _progress) {
             this.catalogInfo = _catalogInfo;
             this.dispName = _dispName;
             this.spec = _spec;
             this.feedback = _feedback;
-            
+            this.progress = _progress;
             this.remoteURL = _catalogInfo.getRemoteURL();
         }
         
-        public RemoteComponentParam(URL _remoteURL, String _dispName, String _spec, Feedback _feedback) {
+        public RemoteComponentParam(URL _remoteURL, String _dispName, String _spec, Feedback _feedback, boolean _progress) {
             this.catalogInfo = null;
             this.dispName = _dispName;
             this.spec = _spec;
             this.feedback = _feedback;
             this.remoteURL = _remoteURL;
+            this.progress = _progress;
         }
         
         @Override
@@ -191,6 +194,7 @@ public class CatalogIterable implements ComponentIterable {
             if (catalogInfo != null) {
                 dn.setShaDigest(catalogInfo.getShaDigest());
             }
+            dn.setDisplayProgress(progress);
             try {
                 dn.download();
                 file = new JarFile(dn.getLocalFile(), verifyJars);

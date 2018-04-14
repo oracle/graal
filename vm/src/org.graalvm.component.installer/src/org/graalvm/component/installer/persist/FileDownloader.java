@@ -164,18 +164,15 @@ public class FileDownloader {
             signCount = next;
             
             if (!first) {
-                feedback.verbatimPart(backspaceString, true);
+                feedback.verbatimPart(backspaceString, false);
             }
-            feedback.verbatimPart(progressString.toString(), true);
+            feedback.verbatimPart(progressString.toString(), false);
         }
     }
     
     void stopProgress() {
-        if (!verbose) {
-            return;
-        }
         if (displayProgress) {
-            feedback.verbatimPart(backspaceString, true);
+            feedback.verbatimPart(backspaceString, false);
         }
         feedback.verboseOutput("MSG_DownloadingDone");
     }
@@ -313,7 +310,8 @@ public class FileDownloader {
         URLConnection conn = openConnectionWithProxies(sourceURL);
         size = conn.getContentLengthLong();
         verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
-        displayProgress |= verbose && size >= MIN_PROGRESS_THRESHOLD;
+        displayProgress |= verbose;
+        displayProgress &= size >= MIN_PROGRESS_THRESHOLD;
 
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
@@ -330,7 +328,7 @@ public class FileDownloader {
             int read;
             while ((read = rbc.read(bb)) >= 0) {
                 if (first) {
-                    feedback.verbatimPart(progressString.toString(), true);
+                    feedback.verbatimPart(progressString.toString(), false);
                 }
                 bb.flip();
                 while (bb.hasRemaining()) {

@@ -87,6 +87,7 @@ public class ComponentInstaller {
         globalOptions.put(Commands.OPTION_CATALOG, "");
         globalOptions.put(Commands.OPTION_FOREIGN_CATALOG, "s");
         globalOptions.put(Commands.OPTION_URLS, "");
+        globalOptions.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
