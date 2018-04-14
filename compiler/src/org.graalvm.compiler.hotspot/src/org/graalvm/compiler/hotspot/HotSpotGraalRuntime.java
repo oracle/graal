@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
@@ -112,7 +113,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final GraalHotSpotVMConfig config;
 
     /**
-     * The options can be {@linkplain #setOptionValues(String[], Object[]) updated} by external
+     * The options can be {@linkplain #setOptionValues(String[], String[]) updated} by external
      * interfaces such as JMX. This comes with the risk that inconsistencies can arise as an
      * {@link OptionValues} object can be cached by various parts of Graal instead of always
      * obtaining them from this object. However, concurrent updates are never lost.
@@ -394,41 +395,52 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     /**
      * Sets or updates this object's {@linkplain #getOptions() options} from {@code names} and
-     * {@code values}. Enum option values can be passed as the {@link Enum#name()} of the value. A
-     * value of {@code "null"} will be converted to {@code null} for other options.
+     * {@code values}.
      *
+     * @param values the values to set. The empty string represents {@code null} which resets an
+     *            option to its default value. For string type options, a non-empty value must be
+     *            enclosed in double quotes.
      * @return an array of Strings where the element at index i is {@code names[i]} if setting the
-     *         denoted option succeeded otherwise an error message describing the failure to set the
-     *         option
+     *         denoted option succeeded, {@code null} if the option is unknown otherwise an error
+     *         message describing the failure to set the option
      */
-    public String[] setOptionValues(String[] names, Object[] values) {
+    public String[] setOptionValues(String[] names, String[] values) {
         EconomicMap<String, OptionDescriptor> optionDescriptors = getOptionDescriptors();
         EconomicMap<OptionKey<?>, Object> newValues = EconomicMap.create(names.length);
+        EconomicSet<OptionKey<?>> resetValues = EconomicSet.create(names.length);
         String[] result = new String[names.length];
         for (int i = 0; i < names.length; i++) {
             String name = names[i];
             OptionDescriptor option = optionDescriptors.get(name);
             if (option != null) {
-                Object value = values[i];
+                String svalue = values[i];
                 Class<?> optionValueType = option.getOptionValueType();
                 OptionKey<?> optionKey = option.getOptionKey();
-                if (optionKey instanceof EnumOptionKey && value instanceof String) {
-                    EnumOptionKey<?> enumOptionKey = (EnumOptionKey<?>) optionKey;
+                if (svalue == null || svalue.isEmpty() && !(optionKey instanceof EnumOptionKey)) {
+                    resetValues.add(optionKey);
+                    result[i] = name;
+                } else {
+                    String valueToParse;
+                    if (optionValueType == String.class) {
+                        if (svalue.length() < 2 || svalue.charAt(0) != '"' || svalue.charAt(svalue.length() - 1) != '"') {
+                            result[i] = "Invalid value for String option '" + name + "': must be the empty string or be enclosed in double quotes: " + svalue;
+                            continue;
+                        } else {
+                            valueToParse = svalue.substring(1, svalue.length() - 1);
+                        }
+                    } else {
+                        valueToParse = svalue;
+                    }
                     try {
-                        value = enumOptionKey.valueOf((String) value);
+                        OptionsParser.parseOption(name, valueToParse, newValues, OptionsParser.getOptionsLoader());
+                        result[i] = name;
                     } catch (IllegalArgumentException e) {
                         result[i] = e.getMessage();
                         continue;
                     }
                 }
-                if (value == null || optionValueType.isAssignableFrom(value.getClass())) {
-                    newValues.put(optionKey, value);
-                    result[i] = name;
-                } else {
-                    result[i] = "Invalid type of option '" + name + "': required " + optionValueType.getSimpleName() + ", got " + (value == null ? "null" : value.getClass().getName());
-                }
             } else {
-                result[i] = "Unknown option: " + name;
+                result[i] = null;
             }
         }
 
@@ -436,40 +448,49 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         OptionValues newOptions;
         do {
             currentOptions = optionsRef.get();
-            newOptions = new OptionValues(currentOptions, newValues);
+            UnmodifiableMapCursor<OptionKey<?>, Object> cursor = currentOptions.getMap().getEntries();
+            while (cursor.advance()) {
+                OptionKey<?> key = cursor.getKey();
+                if (!resetValues.contains(key) && !newValues.containsKey(key)) {
+                    newValues.put(key, OptionValues.decodeNull(cursor.getValue()));
+                }
+            }
+            newOptions = new OptionValues(newValues);
         } while (!optionsRef.compareAndSet(currentOptions, newOptions));
 
         return result;
-
     }
 
     /**
-     * Gets the values for the options corresponding to {@code names}. Enum option values are
-     * returned as strings. All other options return {@code "null"} if they have a {@code null}
-     * value.
+     * Gets the values for the options corresponding to {@code names} encoded as strings. The empty
+     * string represents {@code null}. For string type options, non-{@code null} values will be
+     * enclosed in double quotes.
      *
      * @param names a list of option names
      * @return the values for each named option. If an element in {@code names} does not denote an
-     *         existing option, the corresponding element in the returned array will be the array
-     *         itself (i.e. the array is the sentinel meaning no option exists).
+     *         existing option, the corresponding element in the returned array will be
+     *         {@code null}.
      */
-    public Object[] getOptionValues(String... names) {
-        Object[] values = new Object[names.length];
+    public String[] getOptionValues(String... names) {
+        String[] values = new String[names.length];
         EconomicMap<String, OptionDescriptor> optionDescriptors = getOptionDescriptors();
         for (int i = 0; i < names.length; i++) {
             OptionDescriptor option = optionDescriptors.get(names[i]);
             if (option != null) {
                 OptionKey<?> optionKey = option.getOptionKey();
                 Object value = optionKey.getValue(getOptions());
-                if (optionKey instanceof EnumOptionKey) {
-                    value = String.valueOf(value);
+                String svalue;
+                if (option.getOptionValueType() == String.class && value != null) {
+                    svalue = "\"" + value + "\"";
                 } else if (value == null) {
-                    value = "null";
+                    svalue = "";
+                } else {
+                    svalue = String.valueOf(value);
                 }
-                values[i] = value;
+                values[i] = svalue;
             } else {
-                // Self reference to `values` denotes the option does not exist
-                values[i] = values;
+                // null denotes the option does not exist
+                values[i] = null;
             }
         }
         return values;
