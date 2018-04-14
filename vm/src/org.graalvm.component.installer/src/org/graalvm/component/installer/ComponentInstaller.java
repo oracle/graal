@@ -51,6 +51,7 @@ import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STO
 import org.graalvm.component.installer.commands.InfoCommand;
 import org.graalvm.component.installer.commands.InstallCommand;
 import org.graalvm.component.installer.commands.ListInstalledCommand;
+import org.graalvm.component.installer.commands.RebuildImageCommand;
 import org.graalvm.component.installer.commands.UninstallCommand;
 import org.graalvm.component.installer.persist.DirectoryStorage;
 import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
@@ -78,6 +79,7 @@ public class ComponentInstaller {
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
         commands.put("info", new InfoCommand()); // NOI18N
+        commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
 
         globalOptions.put(Commands.OPTION_VERBOSE, "");
         globalOptions.put(Commands.OPTION_DEBUG, "");

@@ -27,6 +27,7 @@ package org.graalvm.component.installer;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
 
 /**
  *
@@ -93,6 +94,11 @@ public class SimpleGetopt {
                         if ("X".equals(cOpts.get(s))) {
                             err("ERROR_UnsupportedOption", s, command); // NOI18N
                         }
+                    }
+                    if (cOpts.containsKey(DO_NOT_PROCESS_OPTIONS)) { // NOI18N
+                        // terminate all processing, the rest are positional params
+                        positionalParameters.addAll(parameters);
+                        break;
                     }
                 } else {
                     positionalParameters.add(parameters.poll());

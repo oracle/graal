@@ -224,10 +224,6 @@ public class FileDownloader {
     }
     
     private URLConnection openConnectionWithProxies(URL url) throws IOException {
-        if (envHttpProxy == null && envHttpsProxy == null) {
-            URLConnection c = url.openConnection();
-            return c;
-        }
         final URLConnection[] conn = { null };
         final CountDownLatch connected = new CountDownLatch(1);
         ExecutorService connectors = Executors.newFixedThreadPool(3);
