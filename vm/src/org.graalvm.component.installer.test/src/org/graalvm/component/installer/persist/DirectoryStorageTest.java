@@ -149,7 +149,7 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list1", registryPath);
         List<String> components = new ArrayList<>(storage.listComponentIDs());
         Collections.sort(components);
-        assertEquals(Arrays.asList("fastr", "ruby", "sulong"), components);
+        assertEquals(Arrays.asList("fastr", "fastr-2", "ruby", "sulong"), components);
     }
 
     @Test

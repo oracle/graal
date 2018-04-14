@@ -81,7 +81,7 @@ public class Uninstaller {
                 }
         });
         } catch (UncheckedIOException ex) {
-            throw (IOException)ex.getCause();
+            throw  ex.getCause();
         }
     }
     
