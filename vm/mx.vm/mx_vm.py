@@ -68,10 +68,11 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmComponent(
 class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
     __metaclass__ = ABCMeta
 
-    def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution, base_dir=None, layout=None, path=None, **kw_args):
+    def __init__(self, suite, name, deps, components, is_graalvm, exclLibs, platformDependent, theLicense, testDistribution, add_jdk_base=False, base_dir=None, layout=None, path=None, **kw_args):
         self.components = components
         base_dir = base_dir or '.'
         _src_jdk_base, _jdk_dir = _get_jdk_dir()
+        _src_jdk_base = _src_jdk_base if add_jdk_base else '.'
         if base_dir != '.':
             self.jdk_base = '/'.join([base_dir, _src_jdk_base]) if _src_jdk_base and _src_jdk_base != '.' else base_dir
         else:
@@ -307,6 +308,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             platformDependent=True,
             theLicense=theLicense,
             testDistribution=False,
+            add_jdk_base=True,
             base_dir='graalvm-{}'.format(_suite.release_version()),
             layout=layout,
             path=None,

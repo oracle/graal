@@ -853,7 +853,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
                 "-H:-ParseRuntimeOptions",
             ]
         )
-    ]
+    ],
 ), suite)
 
 

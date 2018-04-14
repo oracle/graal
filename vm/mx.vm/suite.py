@@ -17,7 +17,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "e7df42440e2952bd64cf64d78a46b9525c57cc9b",
+                "version": "1851eb4cc86802ec0a398ad48318ac7dd5592cfe",
                 "urls" : [
                     {"url" : "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -27,7 +27,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "e7df42440e2952bd64cf64d78a46b9525c57cc9b",
+                "version": "1851eb4cc86802ec0a398ad48318ac7dd5592cfe",
                 "urls": [
                     {"url": "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -35,7 +35,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "3bc527e1a1b716051737d81746a01d24fd1b09e1",
+                "version": "ad6a610562362d37d3ae3d1e01117dc05500aa4e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -94,50 +94,6 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
-            # {
-            #     "name": "tools",
-            #     "subdir": True,
-            #     "dynamic": True,
-            #     "urls": [
-            #         {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-            #     ],
-            # },
-            # {
-            #     "name": "compiler",
-            #     "subdir": True,
-            #     "dynamic": True,
-            #     "urls": [
-            #         {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-            #     ],
-            # },
-            # {
-            #     "name": "substratevm",
-            #     "subdir": True,
-            #     "dynamic": True,
-            #     "urls": [
-            #         {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-            #     ],
-            #     "os_arch": {
-            #         "linux": {
-            #             "sparcv9": {
-            #                 "ignore": True
-            #             },
-            #             "<others>": {
-            #                 "ignore": False
-            #             }
-            #         },
-            #         "darwin": {
-            #             "<others>": {
-            #                 "ignore": False
-            #             }
-            #         },
-            #         "<others>": {
-            #             "<others>": {
-            #                 "ignore": True
-            #             }
-            #         }
-            #     }
-            # },
         ]
     },
 

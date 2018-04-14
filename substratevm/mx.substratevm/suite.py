@@ -596,6 +596,7 @@ suite = {
             "description" : "SubstrateVM support distribution for the GraalVM",
             "layout" : {
                 "./" : "dependency:substratevm:LIBRARY_SUPPORT",
+                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
                 "builder/" : [
                     "dependency:substratevm:SVM",
                     "dependency:substratevm:OBJECTFILE",

@@ -260,8 +260,8 @@ def register_graalvm_component(component, suite):
         :type kept: GraalVmComponent
         :type ignored: GraalVmComponent
         """
-        mx.log('Suites \'{}\' and \'{}\' are registering a component with the same short name (\'{}\'), with priority \'{}\' and \'{}\' respectively.'.format(kept.__suite.name, ignored.__suite.name, kept.short_name, kept.priority, ignored.priority))
-        mx.log('Ignoring the one from suite \'{}\'.'.format(ignored.__suite.name))
+        mx.logv('Suites \'{}\' and \'{}\' are registering a component with the same short name (\'{}\'), with priority \'{}\' and \'{}\' respectively.'.format(kept.__suite.name, ignored.__suite.name, kept.short_name, kept.priority, ignored.priority))
+        mx.logv('Ignoring the one from suite \'{}\'.'.format(ignored.__suite.name))
 
     component.__suite = suite
     _prev = _graalvm_components.get(component.short_name, None)
