@@ -114,7 +114,7 @@ public class GenerateCatalog {
             byte[] hash = computeHash(f);
             try (JarFile jf = new JarFile(f)) {
                 Attributes atts = jf.getManifest().getMainAttributes();
-                String bid = atts.getValue(BundleConstants.BUNDLE_ID);
+                String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase();
                 String bl = atts.getValue(BundleConstants.BUNDLE_NAME);
                 
                 if (bid == null) {
@@ -128,14 +128,14 @@ public class GenerateCatalog {
                     "Component.{0}.{1}={2}\n", graalVersionPrefix, bid, url
                 ));
                 catalogS.append(MessageFormat.format(
-                    "Component.{0}.{1}.hash={2}\n", graalVersionPrefix, bid, digest2String(hash)
+                    "Component.{0}.{1}-hash={2}\n", graalVersionPrefix, bid, digest2String(hash)
                 ));
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
                     
                     catalogS.append(MessageFormat.format(
-                        "Component.{0}.{1}.{2}={3}\n", graalVersionPrefix, bid, key, val
+                        "Component.{0}.{1}-{2}={3}\n", graalVersionPrefix, bid, key, val
                     ));
                 }
             }

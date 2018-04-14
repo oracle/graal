@@ -69,9 +69,9 @@ public class RemoteStorage implements ComponentStorage {
                 continue;
             }
             String rest = s.substring(flavourPrefix.length());
-            if (rest.indexOf('.') == -1) {
+            if (rest.indexOf('-') == -1) {
                 // got a component ID
-                ret.add(rest);
+                ret.add(rest.toLowerCase());
             }
         }
         return ret;
@@ -144,7 +144,7 @@ public class RemoteStorage implements ComponentStorage {
 //        } catch (MalformedURLException ex) {
 //            throw feedback.failure("REMOTE_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
 //        }
-        String prefix = flavourPrefix + id.toLowerCase() + "."; // NOI18N
+        String prefix = flavourPrefix + id.toLowerCase() + "-"; // NOI18N
         String hashS = catalogProperties.getProperty(prefix + PROPERTY_HASH);
         byte[] hash = hashS == null ? null : toHashBytes(id, hashS);
         
