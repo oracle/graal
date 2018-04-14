@@ -468,8 +468,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
      *
      * @param names a list of option names
      * @return the values for each named option. If an element in {@code names} does not denote an
-     *         existing option, the corresponding element in the returned array will be
-     *         {@code null}.
+     *         existing option, the corresponding element in the returned array will be {@code null}
      */
     public String[] getOptionValues(String... names) {
         String[] values = new String[names.length];
