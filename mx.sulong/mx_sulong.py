@@ -606,7 +606,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     short_name='slg',
     dir_name='llvm',
     documentation_files=['extracted-dependency:sulong:SULONG_GRAALVM_DOCS/README_SULONG.md'],
-    license_files=['link:<support>/LICENSE_SULONG'],
+    license_files=[],
     third_party_license_files=[],
     truffle_jars=['dependency:sulong:SULONG'],
     support_distributions=[

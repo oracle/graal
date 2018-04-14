@@ -462,7 +462,6 @@ suite = {
       "layout" : {
         "./" : "file:mx.sulong/native-image.properties",
         "README_SULONG.md" : "file:README.md",
-        "LICENSE_SULONG" : "file:LICENSE",
       },
     },
   }
