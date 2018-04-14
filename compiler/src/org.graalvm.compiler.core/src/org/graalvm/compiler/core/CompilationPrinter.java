@@ -59,9 +59,6 @@ public final class CompilationPrinter {
      */
     public static CompilationPrinter begin(OptionValues options, CompilationIdentifier id, JavaMethod method, int entryBCI) {
         if (PrintCompilation.getValue(options) && !TTY.isSuppressed()) {
-            if (!isThreadAllocatedMemorySupported()) {
-                throw new IllegalArgumentException("PrintCompilation option requires thread allocated memory query support");
-            }
             return new CompilationPrinter(id, method, entryBCI);
         }
         return DISABLED;
@@ -83,7 +80,7 @@ public final class CompilationPrinter {
         this.entryBCI = entryBCI;
 
         start = System.nanoTime();
-        allocatedBytesBefore = getCurrentThreadAllocatedBytes();
+        allocatedBytesBefore = isThreadAllocatedMemorySupported() ? getCurrentThreadAllocatedBytes() : -1;
     }
 
     private String getMethodDescription() {
@@ -103,10 +100,13 @@ public final class CompilationPrinter {
             final long duration = (stop - start) / 1000000;
             final int targetCodeSize = result != null ? result.getTargetCodeSize() : -1;
             final int bytecodeSize = result != null ? result.getBytecodeSize() : 0;
-            final long allocatedBytesAfter = getCurrentThreadAllocatedBytes();
-            final long allocatedKBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
-
-            TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dB %5dkB", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
+            if (allocatedBytesBefore == -1) {
+                TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dB", duration, bytecodeSize, targetCodeSize));
+            } else {
+                final long allocatedBytesAfter = getCurrentThreadAllocatedBytes();
+                final long allocatedKBytes = (allocatedBytesAfter - allocatedBytesBefore) / 1024;
+                TTY.println(getMethodDescription() + String.format(" | %4dms %5dB %5dB %5dkB", duration, bytecodeSize, targetCodeSize, allocatedKBytes));
+            }
         }
     }
 }
