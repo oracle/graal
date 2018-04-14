@@ -26,6 +26,8 @@ import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -38,29 +40,30 @@ public final class WeakClassLoaderSet {
     /**
      * Copy-on-write set of loaders.
      */
-    private volatile EconomicSet<Reference<ClassLoader>> loaders = EconomicSet.create(RefEquivalence.INSTANCE);
+    private volatile AtomicReference<EconomicSet<Reference<ClassLoader>>> loaders = new AtomicReference<>(EconomicSet.create(RefEquivalence.INSTANCE));
 
     public WeakClassLoaderSet(ClassLoader... initialEntries) {
         for (ClassLoader loader : initialEntries) {
-            loaders.add(new WeakReference<>(loader));
+            loaders.get().add(new WeakReference<>(loader));
         }
     }
 
     /**
      * Adds {@code loader} to this set.
-     *
-     * @return {@code true} if this set did not already contain {@code loader}.
      */
-    public boolean add(ClassLoader loader) {
+    public void add(ClassLoader loader) {
         Reference<ClassLoader> addNewRef = new WeakReference<>(loader);
-        EconomicSet<Reference<ClassLoader>> currentLoaders = loaders;
+        EconomicSet<Reference<ClassLoader>> currentLoaders = loaders.get();
         if (!currentLoaders.contains(addNewRef)) {
-            EconomicSet<Reference<ClassLoader>> newLoaders = EconomicSet.create(RefEquivalence.INSTANCE, currentLoaders);
-            newLoaders.add(addNewRef);
-            this.loaders = newLoaders;
-            return true;
+            this.loaders.getAndUpdate(new UnaryOperator<EconomicSet<Reference<ClassLoader>>>() {
+                @Override
+                public EconomicSet<Reference<ClassLoader>> apply(EconomicSet<Reference<ClassLoader>> t) {
+                    EconomicSet<Reference<ClassLoader>> newLoaders = EconomicSet.create(RefEquivalence.INSTANCE, t);
+                    newLoaders.add(addNewRef);
+                    return newLoaders;
+                }
+            });
         }
-        return false;
     }
 
     /**
@@ -72,7 +75,7 @@ public final class WeakClassLoaderSet {
      */
     public EconomicSet<Class<?>> resolve(String className, EconomicSet<ClassNotFoundException> resolutionFailures) {
         EconomicSet<Class<?>> found = EconomicSet.create();
-        Iterator<Reference<ClassLoader>> it = loaders.iterator();
+        Iterator<Reference<ClassLoader>> it = loaders.get().iterator();
         while (it.hasNext()) {
             Reference<ClassLoader> ref = it.next();
             ClassLoader loader = ref.get();
