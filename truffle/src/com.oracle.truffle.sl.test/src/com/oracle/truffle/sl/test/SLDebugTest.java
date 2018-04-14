@@ -151,11 +151,12 @@ public class SLDebugTest {
 
     private static void checkDebugValues(String msg, DebugScope scope, String... expected) {
         Map<String, DebugValue> valMap = new HashMap<>();
-        while (scope != null) {
-            for (DebugValue value : scope.getDeclaredValues()) {
+        DebugScope currentScope = scope;
+        while (currentScope != null) {
+            for (DebugValue value : currentScope.getDeclaredValues()) {
                 valMap.put(value.getName(), value);
             }
-            scope = scope.getParent();
+            currentScope = currentScope.getParent();
         }
         checkDebugValues(msg, valMap, expected);
     }
