@@ -1055,8 +1055,9 @@ public final class PolyglotNativeAPI {
     }
 
     @CEntryPoint(name = "poly_value_as_string_utf8", documentation = {
-                    "Fills the `buffer` with with a string encoded in UTF-8 and stores the number of written bytes to `result`. If the ",
-                    "the buffer is `NULL` writes the required size to `result`.",
+                    "Converts a string value to a C string by filling the <code>buffer</code> with with a string encoded in UTF-8 and ",
+                    "storing the number of written bytes to <code>result</code>. If the the buffer is <code>NULL</code> writes the required",
+                    "size to <code>result</code>.",
                     "",
                     " @return poly_ok if all works, poly_generic_failure if a guest language error occurred during execution ",
                     "         poly_string_expected if the value is not a string.",
@@ -1070,6 +1071,22 @@ public final class PolyglotNativeAPI {
             } else {
                 throw reportError("Expected type String but got " + jValue.getMetaObject().toString(), PolyglotStatus.poly_string_expected);
             }
+        });
+    }
+
+    @CEntryPoint(name = "poly_value_to_string_utf8", documentation = {
+                    "Returns a <code>toString</code> representation of a <code>poly_value</code> by filling the <code>buffer</code> with with a string encoded ",
+                    "in UTF-8 and stores the number of written bytes to <code>result</code>. If the the buffer is <code>NULL</code> writes the ",
+                    "required size to <code>result</code>.",
+                    "",
+                    " @return poly_ok if all works, poly_generic_failure if a guest language error occurred during execution ",
+                    "         poly_string_expected if the value is not a string.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_value_to_string_utf8(PolyglotIsolateThread thread, PolyglotValue value, CCharPointer buffer, UnsignedWord buffer_size, SizeTPointer result) {
+        return withHandledErrors(() -> {
+            Value jValue = fetchHandle(value);
+            writeString(jValue.toString(), buffer, buffer_size, result, UTF8_CHARSET);
         });
     }
 
