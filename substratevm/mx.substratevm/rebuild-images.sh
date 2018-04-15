@@ -101,7 +101,7 @@ function common() {
 }
 
 function polyglot_common() {
-    common $1
+    common
 
     for language in "${supported_languages[@]}"; do
         if [[ -d "${graalvm_home}/jre/languages/${language}" ]]; then
@@ -115,23 +115,24 @@ function launcher_common() {
 }
 
 function polyglot() {
-    polyglot_common $1
-    launcher_common $1
+    polyglot_common
+    launcher_common
     cmd_line+=(
         "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature"
         "-Dorg.graalvm.launcher.relative.home=jre/bin/polyglot"
         "-H:Name=polyglot"
     )
-    set_path cmd_line "${graalvm_home}/jre/bin"
+    set_path "${graalvm_home}/jre/bin"
     cmd_line+=(
         "org.graalvm.launcher.PolyglotLauncher"
     )
 }
 
 function libpolyglot() {
-    polyglot_common $1
+    polyglot_common
     cmd_line+=(
-        "-cp ${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar:${graalvm_home}/jre/languages/js/trufflenode.jar"
+        "-cp"
+        "${graalvm_home}/jre/lib/polyglot/polyglot-native-api.jar:${graalvm_home}/jre/languages/js/trufflenode.jar"
         "-Dgraalvm.libpolyglot=true"
         "-H:JNIConfigurationResources=svmnodejs.jniconfig"
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature"
@@ -141,15 +142,15 @@ function libpolyglot() {
         "-H:Name=libpolyglot"
         "-H:Kind=SHARED_LIBRARY"
     )
-    set_path cmd_line "${graalvm_home}/jre/lib/polyglot"
+    set_path "${graalvm_home}/jre/lib/polyglot"
 }
 
 function language() {
-    common $1
-    launcher_common $1
-    local lang="$2"
-    local relative_path="$3"
-    local launcher_class="$4"
+    common
+    launcher_common
+    local lang="$1"
+    local relative_path="$2"
+    local launcher_class="$3"
     if [[ "${lang}" = "ruby" || "${lang}" = "python" ]]; then
         cmd_line+=("--language:llvm")
     fi
@@ -159,36 +160,36 @@ function language() {
         "-Dorg.graalvm.launcher.standalone=false"
         "-H:Name=$(basename ${relative_path})"
     )
-    set_path $1 "${graalvm_home}/jre/languages/$(dirname ${relative_path})"
+    set_path "${graalvm_home}/jre/languages/${lang}/$(dirname ${relative_path})"
     cmd_line+=(
         "${launcher_class}"
     )
 }
 
 function set_path() {
-    cmd_line+=("-H:Path=$2")
+    cmd_line+=("-H:Path=$1")
 }
 
 for binary in "${to_build[@]}"; do
     cmd_line=()
     case "${binary}" in
         polyglot)
-            polyglot cmd_line
+            polyglot
             ;;
         libpolyglot)
-            libpolyglot cmd_line
+            libpolyglot
             ;;
         js)
-            language cmd_line js "js/bin/js" "com.oracle.truffle.js.shell.JSLauncher"
+            language js "bin/js" "com.oracle.truffle.js.shell.JSLauncher"
             ;;
         llvm)
-            language cmd_line llvm "llvm/bin/lli" "com.oracle.truffle.llvm.launcher.LLVMLauncher"
+            language llvm "bin/lli" "com.oracle.truffle.llvm.launcher.LLVMLauncher"
             ;;
         python)
-            language cmd_line python "python/bin/graalpython" "com.oracle.graal.python.shell.GraalPythonMain"
+            language python "bin/graalpython" "com.oracle.graal.python.shell.GraalPythonMain"
             ;;
         ruby)
-            language cmd_line ruby "ruby/bin/ruby" "org.truffleruby.launcher.RubyLauncher"
+            language ruby "bin/ruby" "org.truffleruby.launcher.RubyLauncher"
             ;;
         *)
             echo "shouldNotReachHere()"

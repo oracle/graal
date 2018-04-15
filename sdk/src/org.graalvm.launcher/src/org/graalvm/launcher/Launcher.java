@@ -1398,15 +1398,47 @@ public abstract class Launcher {
             assert bin.getFileName().toString().equals("bin");
             Path jreOrJdk = bin.getParent();
             Path home;
-            if (jreOrJdk.getFileName().toString().equals("jre")) {
+            if (jreOrJdk != null && jreOrJdk.getFileName().toString().equals("jre")) {
                 home = jreOrJdk.getParent();
+            } else if (jreOrJdk != null ) {
+                if (isJdkHome(jreOrJdk)) {
+                    home = jreOrJdk;
+                } else {
+                    // maybe we are in the language home?
+                    Path languages = jreOrJdk.getParent();
+                    if (languages != null && languages.getFileName().toString().equals("languages")) {
+                        Path jre = languages.getParent();
+                        if (jre != null && jre.getFileName().toString().equals("jre")) {
+                            home = jre.getParent();
+                        } else {
+                            home = null;
+                        }
+                    } else {
+                        home = null;
+                    }
+                }
             } else {
-                home = jreOrJdk;
+                home = null;
+            }
+            if (home != null && !isJreHome(home)) {
+                System.err.println(String.format("WARNING: %s was found as GraalVM home but it does not contain `bin/java`", home));
+            } else if (home == null) {
+                System.err.println("WARNING: Could not figure out the GraalVM home");
             }
             if (verbose) {
                 System.out.println(String.format("Resolving GraalVM home with fallback: executable=%s -> home=%s", executable, home));
             }
             return home;
+        }
+
+        private boolean isJdkHome(Path path) {
+            Path javac = path.resolve(Paths.get("bin", "javac"));
+            return isJreHome(path) && Files.isRegularFile(javac) && Files.isExecutable(javac);
+        }
+
+        private boolean isJreHome(Path path) {
+            Path java = path.resolve(Paths.get("bin", "java"));
+            return Files.isRegularFile(java) && Files.isExecutable(java);
         }
 
         private void exec(Path executable, List<String> command) {

@@ -13,7 +13,7 @@ done
 bin_dir="$( cd -P "$( dirname "$source" )" && pwd )"
 installer_jar="${bin_dir}/../installer.jar"
 root_dir="${bin_dir}/../../../.."
-java_exe=${root_dir}/bin/java
+java_exe="${root_dir}/bin/java"
 
 JAVA_ARGS=()
 PROGRAM_ARGS=()
@@ -21,7 +21,7 @@ for opt in "${@:1}"
 do
     case $opt in
         -J:*|--jvm*)
-            opt=${opt:3}
+            opt="${opt:3}"
             JAVA_ARGS+=("$opt") ;;
         *)
             PROGRAM_ARGS+=("$opt") ;;
@@ -29,4 +29,4 @@ do
 done
 
 
-exec ${java_exe} "${JAVA_ARGS[@]}" -DGRAAL_HOME="${root_dir}" -jar "${installer_jar}" "${PROGRAM_ARGS[@]}"
+exec "${java_exe}" "${JAVA_ARGS[@]}" "-DGRAAL_HOME=${root_dir}" -jar "${installer_jar}" "${PROGRAM_ARGS[@]}"
