@@ -36,8 +36,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionFactory.ReadCacheNodeGen;
-import com.oracle.truffle.regex.util.TruffleNull;
-import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 
 @MessageResolution(receiverType = RegexObject.class)
 public class RegexObjectMessageResolution {
@@ -75,11 +73,7 @@ public class RegexObjectMessageResolution {
 
         @Override
         Object execute(RegexObject receiver) {
-            if (receiver.getNamedCaptureGroups() != null) {
-                return new TruffleReadOnlyMap(receiver.getNamedCaptureGroups());
-            } else {
-                return TruffleNull.INSTANCE;
-            }
+            return receiver.getNamedCaptureGroups();
         }
     }
 

@@ -31,6 +31,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
+import com.oracle.truffle.regex.util.TruffleNull;
+import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 import java.util.Map;
 
 /**
@@ -62,7 +64,7 @@ public class RegexObject implements RegexLanguageObject {
 
     private final RegexCompiler compiler;
     private final RegexSource source;
-    private final Map<String, Integer> namedCaptureGroups;
+    private final TruffleObject namedCaptureGroups;
     private TruffleObject compiledRegexObject;
     private final RegexObjectExecMethod execMethod;
     private RegexProfile regexProfile;
@@ -70,7 +72,7 @@ public class RegexObject implements RegexLanguageObject {
     public RegexObject(RegexCompiler compiler, RegexSource source, Map<String, Integer> namedCaptureGroups) {
         this.compiler = compiler;
         this.source = source;
-        this.namedCaptureGroups = namedCaptureGroups;
+        this.namedCaptureGroups = namedCaptureGroups != null ? new TruffleReadOnlyMap(namedCaptureGroups) : TruffleNull.INSTANCE;
         execMethod = new RegexObjectExecMethod(this);
     }
 
@@ -78,7 +80,7 @@ public class RegexObject implements RegexLanguageObject {
         return source;
     }
 
-    public Map<String, Integer> getNamedCaptureGroups() {
+    public TruffleObject getNamedCaptureGroups() {
         return namedCaptureGroups;
     }
 
