@@ -26,7 +26,10 @@ package org.graalvm.compiler.hotspot.aarch64;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.common.InitTimer.timer;
 
-import jdk.vm.ci.code.*;
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;

@@ -23,7 +23,6 @@
 package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.*;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
