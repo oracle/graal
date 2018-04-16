@@ -100,4 +100,18 @@ public interface VirtualMemoryProvider {
      * @return true on success, or false otherwise.
      */
     boolean freeVirtualMemoryAligned(PointerBase start, UnsignedWord size, UnsignedWord alignment);
+
+    /**
+     * Called by the garbage collector before a collection is started, as an opportunity to perform
+     * lazy operations, sanity checks or clean-ups.
+     */
+    void beforeGarbageCollection();
+
+    /**
+     * Called by the garbage collector after a collection has ended, as an opportunity to perform
+     * lazy operations, sanity checks or clean-ups.
+     *
+     * @param completeCollection Whether the garbage collector has performed a full collection.
+     */
+    void afterGarbageCollection(boolean completeCollection);
 }
