@@ -14,6 +14,7 @@ builds += [
   ${gateTest}          ${oraclejdk9}     ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-9-linux-amd64", targets : [weekly]} {capabilities: ${gateLinuxAMD64.capabilities} ["!x4150"]}
   ${gateTest}          ${oraclejdk10}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-test-10-linux-amd64", targets : [weekly]} {capabilities: ${gateLinuxAMD64.capabilities} ["!x4150"]}
   ${gateTest}          ${oraclejdk11}    ${gateLinuxAMD64}   {name: "gate-compiler-test-11-linux-amd64"} {capabilities: ${gateLinuxAMD64.capabilities} ["!x4150"]}
+  ${gateJavaBaseTest}  ${oraclejdk11}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-javabasetest-11-linux-amd64", targets : [weekly]} {capabilities: ${gateLinuxAMD64.capabilities} ["!x4150"]}
   ${gateTestCTW}       ${labsjdk8}       ${gateLinuxAMD64}   {name: "gate-compiler-ctw-8-linux-amd64"}
   ${gateTestCTW}       ${oraclejdk9}     ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-9-linux-amd64", targets : [weekly]}
   ${gateTestCTW}       ${oraclejdk10}    ${gateLinuxAMD64}   {name: "weekly-test-compiler-ctw-10-linux-amd64", targets : [weekly]}

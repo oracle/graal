@@ -480,8 +480,8 @@ def jvmci_ci_version_gate_runner(tasks):
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
     if jdk.javaCompliance >= '9':
-        with Task('JDK_java_base_test', tasks, tags=GraalTags.test) as t:
-            if t: java_base_unittest(_remove_empty_entries(extraVMarguments))
+        with Task('JDK_java_base_test', tasks, tags=['javabasetest']) as t:
+            if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
@@ -934,7 +934,7 @@ def sl(args):
     mx_truffle.sl(args)
 
 def java_base_unittest(args):
-    """tests whether graal compiler runs on JDK9 with limited set of modules"""
+    """tests whether graal compiler runs on a JDK with a minimal set of modules"""
     jlink = mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))
     if not exists(jlink):
         raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
@@ -1114,7 +1114,7 @@ mx.update_commands(_suite, {
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
-    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)'],
+    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
