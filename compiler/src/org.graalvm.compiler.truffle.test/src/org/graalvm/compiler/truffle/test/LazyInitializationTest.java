@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 import static org.graalvm.compiler.test.SubprocessUtil.getVMCommandLine;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
@@ -60,8 +61,6 @@ public class LazyInitializationTest {
     private final Class<?> hotSpotGraalCompilerFactoryOptions;
     private final Class<?> hotSpotGraalJVMCIServiceLocatorShared;
     private final Class<?> jvmciVersionCheck;
-
-    private static boolean Java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
     public LazyInitializationTest() {
         hotSpotVMEventListener = forNameOrNull("jdk.vm.ci.hotspot.services.HotSpotVMEventListener");
