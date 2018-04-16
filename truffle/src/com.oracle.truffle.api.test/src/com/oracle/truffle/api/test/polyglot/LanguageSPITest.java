@@ -902,6 +902,23 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testNullContext() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(TruffleLanguage.Env env) {
+                return null;
+            }
+        });
+        try (Engine engine = Engine.create()) {
+            for (int i = 0; i < 2; i++) {
+                try (Context context = Context.newBuilder(ProxyLanguage.ID).engine(engine).build()) {
+                    context.initialize(ProxyLanguage.ID);
+                }
+            }
+        }
+    }
+
+    @Test
     public void testExceptionGetSourceLocation() {
         try (Context context = Context.create(LanguageSPITestLanguage.ID)) {
             final String text = "0123456789";
