@@ -615,6 +615,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
     /**
      * dst = src + immediate.
+     *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or zero-register.
      * @param src general purpose register. May not be null or zero-register.
