@@ -43,7 +43,9 @@ public class SourceSectionProvider extends TruffleInstrument {
     }
 
     public void remove(String langId, String name) {
-        this.loadedSources.get(langId).remove(name);
+        if (this.loadedSources.containsKey(langId) && this.loadedSources.get(langId).containsKey(name)) {
+            this.loadedSources.get(langId).remove(name);
+        }
     }
 
     public boolean containsKey(Object key) {

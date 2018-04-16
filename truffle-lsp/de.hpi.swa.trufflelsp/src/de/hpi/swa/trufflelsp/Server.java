@@ -74,15 +74,16 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
-        capabilities.setDefinitionProvider(false);
+        capabilities.setDefinitionProvider(true);
         capabilities.setDocumentHighlightProvider(false);
         capabilities.setCodeLensProvider(new CodeLensOptions(false));
         CompletionOptions completionOptions = new CompletionOptions();
         completionOptions.setResolveProvider(false);
         completionOptions.setTriggerCharacters(triggerCharacters);
         capabilities.setCompletionProvider(completionOptions);
+        capabilities.setCodeActionProvider(true);
         // capabilities.setSignatureHelpProvider(signatureHelpOptions);
-        capabilities.setHoverProvider(false);
+        capabilities.setHoverProvider(true);
 
         capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList("harvest_types")));
 
@@ -155,8 +156,8 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 
     @Override
     public CompletableFuture<Hover> hover(TextDocumentPositionParams position) {
-        // TODO Auto-generated method stub
-        return null;
+        Hover hover = this.truffle.getHover(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.completedFuture(hover);
     }
 
     @Override
@@ -171,7 +172,8 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         // som.getDefinitions(position.getTextDocument().getUri(),
         // position.getPosition().getLine(), position.getPosition().getCharacter());
         // return CompletableFuture.completedFuture(result);
-        return CompletableFuture.supplyAsync(() -> new ArrayList<>());
+        List<? extends Location> result = this.truffle.getDefinitions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        return CompletableFuture.completedFuture(result);
     }
 
     @Override
@@ -195,8 +197,15 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 
     @Override
     public CompletableFuture<List<? extends Command>> codeAction(CodeActionParams params) {
-        // TODO Auto-generated method stub
-        return null;
+        List<Diagnostic> diagnostics = params.getContext().getDiagnostics();
+        List<Command> commands = new ArrayList<>();
+        if (diagnostics.stream().anyMatch(diag -> TruffleAdapter.NO_TYPES_HARVESTED.equals(diag.getCode()))) {
+            Command command = new Command("Harvest types (exec this code)", "harvest_types");
+            command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
+            commands.add(command);
+        }
+
+        return CompletableFuture.completedFuture(commands);
     }
 
     @Override
