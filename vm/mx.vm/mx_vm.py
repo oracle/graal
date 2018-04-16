@@ -289,7 +289,7 @@ GRAALVM_VERSION={version}""".format(
                                                             theLicense, exclLibs, path_substitutions=path_substitutions,
                                                             string_substitutions=string_substitutions,
                                                             testDistribution=testDistribution, **kw_args)
-
+        self.reset_user_group = True
         mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
 
 

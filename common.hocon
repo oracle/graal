@@ -19,7 +19,7 @@ jdks: {
 # Overlay placeholder for pinning mx to a specific revision
 mx : {
   packages: {
-    mx: f4c82e3010427f2772e3eef2a8786d815f870906
+    mx: f6753580898f0b69c3f341a013d866f0431589ec
   }
 }
 
