@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
@@ -41,10 +40,6 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
     @CompilationFinal private LLVMMemory llvmMemory;
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
     @Child private LLVMForeignReadNode foreignReadNode;
-
-    private Assumption getNoDerefHandleAssumption() {
-        return getLLVMMemoryCached().getNoDerefHandleAssumption();
-    }
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
@@ -63,7 +58,7 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
     }
 
     protected boolean isAutoDerefHandle(LLVMAddress addr) {
-        return !getNoDerefHandleAssumption().isValid() && LLVMMemory.isDerefMemory(addr);
+        return getLLVMMemoryCached().isDerefMemory(addr);
     }
 
     LLVMForeignReadNode createForeignRead() {

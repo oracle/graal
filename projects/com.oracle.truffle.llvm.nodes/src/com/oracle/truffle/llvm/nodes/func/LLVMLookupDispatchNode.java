@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
@@ -207,12 +206,8 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         return llvmMemory;
     }
 
-    private Assumption getNoDerefHandleAssumption() {
-        return getLLVMMemoryCached().getNoDerefHandleAssumption();
-    }
-
     protected boolean isAutoDerefHandle(LLVMAddress addr) {
-        return !getNoDerefHandleAssumption().isValid() && LLVMMemory.isDerefMemory(addr);
+        return getLLVMMemoryCached().isDerefMemory(addr);
     }
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {

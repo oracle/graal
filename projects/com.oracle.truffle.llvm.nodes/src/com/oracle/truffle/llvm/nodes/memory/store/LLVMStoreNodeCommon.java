@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.nodes.memory.store;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
@@ -59,10 +58,6 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         return source;
     }
 
-    private Assumption getNoDerefHandleAssumption() {
-        return getLLVMMemoryCached().getNoDerefHandleAssumption();
-    }
-
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -80,7 +75,7 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
     }
 
     protected boolean isAutoDerefHandle(LLVMAddress addr) {
-        return !getNoDerefHandleAssumption().isValid() && LLVMMemory.isDerefMemory(addr);
+        return getLLVMMemoryCached().isDerefMemory(addr);
     }
 
     protected LLVMMemory getLLVMMemoryCached() {

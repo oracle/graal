@@ -895,8 +895,8 @@ public final class LLVMMemory {
         return noDerefHandleAssumption;
     }
 
-    public static boolean isDerefMemory(LLVMAddress addr) {
-        return addr.getVal() > DEREF_HANDLE_SPACE_END;
+    public boolean isDerefMemory(LLVMAddress addr) {
+        return !noDerefHandleAssumption.isValid() && addr.getVal() > DEREF_HANDLE_SPACE_END;
     }
 
     public static long getDerefHandleObjectMask() {
