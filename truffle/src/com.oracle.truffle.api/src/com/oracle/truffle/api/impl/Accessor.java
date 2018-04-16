@@ -71,6 +71,10 @@ public abstract class Accessor {
         return TruffleLocator.loaders();
     }
 
+    protected void initializeNativeImageTruffleLocator() {
+        TruffleLocator.initializeNativeImageTruffleLocator();
+    }
+
     public abstract static class Nodes {
 
         public abstract boolean isInstrumentable(RootNode rootNode);

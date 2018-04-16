@@ -58,6 +58,11 @@ class VMAccessor extends Accessor {
     }
 
     @Override
+    protected void initializeNativeImageTruffleLocator() {
+        super.initializeNativeImageTruffleLocator();
+    }
+
+    @Override
     protected OptionDescriptors getCompilerOptions() {
         return super.getCompilerOptions();
     }
