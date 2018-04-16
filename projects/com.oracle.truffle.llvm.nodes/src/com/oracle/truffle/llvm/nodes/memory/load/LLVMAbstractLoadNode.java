@@ -61,9 +61,7 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
         return getLLVMMemoryCached().isDerefMemory(addr);
     }
 
-    LLVMForeignReadNode createForeignRead() {
-        throw new AssertionError("should not reach here");
-    }
+    abstract LLVMForeignReadNode createForeignRead();
 
     protected LLVMMemory getLLVMMemoryCached() {
         if (llvmMemory == null) {

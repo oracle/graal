@@ -61,6 +61,11 @@ public abstract class LLVMLoadVectorNode extends LLVMAbstractLoadNode {
         return result;
     }
 
+    @Override
+    LLVMForeignReadNode createForeignRead() {
+        throw new AssertionError("should not reach here");
+    }
+
     public abstract static class LLVMLoadI1VectorNode extends LLVMLoadVectorNode {
         @Specialization(guards = "!isAutoDerefHandle(addr)")
         protected LLVMI1Vector doI1Vector(LLVMAddress addr) {

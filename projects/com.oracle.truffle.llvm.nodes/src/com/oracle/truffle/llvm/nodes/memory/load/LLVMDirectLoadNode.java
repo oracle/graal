@@ -252,5 +252,10 @@ public abstract class LLVMDirectLoadNode {
         protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject addr) {
             return addr; // we do not actually load the struct into a virtual register
         }
+
+        @Override
+        LLVMForeignReadNode createForeignRead() {
+            throw new AssertionError("should not reach here");
+        }
     }
 }
