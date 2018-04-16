@@ -74,6 +74,13 @@ suite = {
       "sha1" : "59b64c974662b5cf9dbd3cf9045d293853dd7a51",
     },
 
+    "DACAPO_D3S" : {
+      "urls" : [
+        "http://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
+      ],
+      "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
+    },
+
     "JAVA_ALLOCATION_INSTRUMENTER" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/java-allocation-instrumenter/java-allocation-instrumenter-8f0db117e64e.jar"],
       "sha1" : "476d9a44cd19d6b55f81571077dfa972a4f8a083",
@@ -120,6 +127,11 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/asm-tree-5.0.4.jar"],
       "dependencies" : ["ASM5"],
     },
+
+    "UBENCH_AGENT_DIST" : {
+      "urls" : ["https://github.com/D-iii-S/java-ubench-agent/archive/2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
+      "sha1" : "19087a34b80be8845e9a3e7f927ceb592de83762",
+    }
   },
 
   "projects" : {
