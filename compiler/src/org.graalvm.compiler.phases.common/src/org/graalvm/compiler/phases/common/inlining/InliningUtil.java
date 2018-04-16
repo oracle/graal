@@ -60,6 +60,7 @@ import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
+import org.graalvm.compiler.nodes.AbstractFixedGuardNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -70,6 +71,7 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -715,6 +717,12 @@ public class InliningUtil extends ValueMergeUtil {
                         posMap.put(pos, callerPos);
                     }
                     value.setNodeSourcePosition(callerPos);
+                    if (value instanceof AbstractFixedGuardNode) {
+                        ((AbstractFixedGuardNode) value).addCallerToNoDeoptSuccessorPosition(invokePos);
+                    }
+                    if (value instanceof GuardNode) {
+                        ((GuardNode) value).addCallerToNoDeoptSuccessorPosition(invokePos);
+                    }
                 } else {
                     if (isSubstitution) {
                         /*

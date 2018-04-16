@@ -3300,9 +3300,12 @@ public class BytecodeParser implements GraphBuilderContext {
                 condition = genUnique(condition);
             }
 
+            NodeSourcePosition currentPosition = graph.currentNodeSourcePosition();
             if (isNeverExecutedCode(probability)) {
                 if (!graph.isOSR() || getParent() != null || graph.getEntryBCI() != trueBlock.startBci) {
-                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true));
+                    NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition() ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci)
+                                : null;
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true, survivingSuccessorPosition));
                     if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
                         profilingPlugin.profileGoto(this, method, bci(), falseBlock.startBci, stateBefore);
                     }
@@ -3311,7 +3314,9 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
             } else if (isNeverExecutedCode(1 - probability)) {
                 if (!graph.isOSR() || getParent() != null || graph.getEntryBCI() != falseBlock.startBci) {
-                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false));
+ 	            NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition() ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci)
+                                : null;
+                    append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false, survivingSuccessorPosition));
                     if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
                         profilingPlugin.profileGoto(this, method, bci(), trueBlock.startBci, stateBefore);
                     }
