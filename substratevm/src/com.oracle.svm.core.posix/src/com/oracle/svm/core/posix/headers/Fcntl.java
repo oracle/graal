@@ -27,6 +27,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -509,4 +510,9 @@ public class Fcntl {
     // @CFunction
     // public static native int open_by_handle_at (int mountdirfd, struct file_handle *__handle, int
     // flags);
+
+    public static class NoTransitions {
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int open(CCharPointer pathname, int flags, int mode);
+    }
 }

@@ -73,7 +73,7 @@ import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
-import com.oracle.svm.core.graal.posix.PosixIsolates;
+import com.oracle.svm.core.posix.PosixIsolates;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -371,9 +371,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 heapSection = objectFile.newProgbitsSection(heapSectionName, objectFile.getPageSize(), writable, false, heapSectionImpl);
 
                 heap.setReadOnlySection(heapSection.getName(), 0);
-                heap.setWritableSection(heapSection.getName(), heap.getReadOnlySectionSize());
+                long writableSectionOffset = heap.getReadOnlySectionSize();
+                heap.setWritableSection(heapSection.getName(), writableSectionOffset);
                 defineDataSymbol(PosixIsolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
                 defineDataSymbol(PosixIsolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapSize);
+                defineDataSymbol(PosixIsolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, writableSectionOffset);
+                defineDataSymbol(PosixIsolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, writableSectionOffset + heap.getWritableSectionSize());
 
                 final long relocatableOffset = heap.getReadOnlyRelocatablePartitionOffset();
                 final long relocatableSize = heap.getReadOnlyRelocatablePartitionSize();
@@ -396,9 +399,14 @@ public abstract class NativeBootImage extends AbstractBootImage {
             defineDataSymbol(CGlobalDataInfo.CGLOBALDATA_BASE_SYMBOL_NAME, rwDataSection, RWDATA_CGLOBALS_PARTITION_OFFSET);
 
             // - Write the heap, either to its own section, or to the ro and rw data sections.
-            if (heapSectionBuffer != null) {
+            if (SubstrateOptions.UseHeapBaseRegister.getValue()) {
                 heap.writeHeap(debug, heapSectionBuffer, heapSectionBuffer);
+
+                long firstRelocOffset = heap.getFirstRelocatablePointerOffsetInSection();
+                defineDataSymbol(PosixIsolates.IMAGE_HEAP_RELOCATABLE_FIRST_RELOC_POINTER_NAME, heapSection, firstRelocOffset);
+                assert ((ByteBuffer) heapSectionBuffer.getBuffer().asReadOnlyBuffer().position(0)).getLong((int) firstRelocOffset) == 0;
             } else {
+                assert heapSectionBuffer == null;
                 heap.writeHeap(debug, roDataBuffer, rwDataBuffer);
             }
 
