@@ -380,6 +380,8 @@ public abstract class Accessor {
 
         public abstract void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options);
 
+        public abstract void finalizeInstrument(Object instrumentationHandler, Object key);
+
         public abstract void disposeInstrument(Object instrumentationHandler, Object key, boolean cleanupRequired);
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object key, Class<T> type);
