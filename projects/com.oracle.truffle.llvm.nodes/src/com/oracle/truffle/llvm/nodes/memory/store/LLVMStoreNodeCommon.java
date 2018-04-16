@@ -66,7 +66,7 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create(LLVMMemory.getObjectMask()));
+            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create(LLVMMemory.getDerefHandleObjectMask()));
         }
         return derefHandleGetReceiverNode;
     }

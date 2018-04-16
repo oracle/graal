@@ -899,7 +899,7 @@ public final class LLVMMemory {
         return addr.getVal() > DEREF_HANDLE_SPACE_END;
     }
 
-    public static long getObjectMask() {
+    public static long getDerefHandleObjectMask() {
         return DEREF_HANDLE_OBJECT_SIZE - 1;
     }
 
