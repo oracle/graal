@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,19 +40,20 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI32Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 
-public abstract class LLVMI32LoadNode extends LLVMLoadNode {
+public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
 
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
-    @Specialization
-    protected int doI32(LLVMAddress addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        int val = memory.getI32(addr);
-        return profile.profile(val);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected int doI32(LLVMAddress addr) {
+        return profile.profile(getLLVMMemoryCached().getI32(addr));
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected int doI32DerefHandle(LLVMAddress addr) {
+        return doI32Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
     @Specialization
@@ -67,27 +68,25 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
         return profile.profile(globalAccess.execute(addr));
     }
 
-    static LLVMForeignReadNode createForeignRead() {
+    @Override
+    LLVMForeignReadNode createForeignRead() {
         return new LLVMForeignReadNode(ForeignToLLVMType.I32);
     }
 
     @Specialization(guards = "addr.isNative()")
-    protected int doI32(LLVMTruffleObject addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doI32(addr.asNative(), memory);
+    protected int doI32Native(LLVMTruffleObject addr) {
+        return doI32(addr.asNative());
     }
 
     @Specialization(guards = "addr.isManaged()")
-    protected int doI32(LLVMTruffleObject addr,
-                    @Cached("createForeignRead()") LLVMForeignReadNode foreignRead) {
-        return (int) foreignRead.execute(addr);
+    protected int doI32Managed(LLVMTruffleObject addr) {
+        return (int) getForeignReadNode().execute(addr);
     }
 
     @Specialization
-    protected int doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected int doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr) {
         if (addr.getValue() instanceof Long) {
-            return memory.getI32((long) addr.getValue());
+            return getLLVMMemory().getI32((long) addr.getValue());
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + addr.getValue());

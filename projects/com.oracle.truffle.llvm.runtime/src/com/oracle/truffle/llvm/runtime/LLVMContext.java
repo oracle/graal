@@ -504,6 +504,17 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
+    public LLVMAddress getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+        synchronized (handlesLock) {
+            return toNative.computeIfAbsent(object, (k) -> {
+                LLVMAddress allocatedMemory = memory.allocateDerefMemory();
+                toManaged.put(allocatedMemory, object);
+                return allocatedMemory;
+            });
+        }
+    }
+
+    @TruffleBoundary
     public void registerNativeCall(LLVMFunctionDescriptor descriptor) {
         if (nativeCallStatistics != null) {
             String name = descriptor.getName() + " " + descriptor.getType();

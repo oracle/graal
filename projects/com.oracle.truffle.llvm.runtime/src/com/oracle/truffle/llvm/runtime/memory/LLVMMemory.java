@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,9 +43,11 @@ import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -66,8 +68,32 @@ import sun.misc.Unsafe;
 
 @SuppressWarnings("static-method")
 public final class LLVMMemory {
+    /* must be a power of 2 */
+    private static final long DEREF_HANDLE_OBJECT_SIZE = 1L << 20;
+    private static final long DEREF_HANDLE_OBJECT_MASK = (1L << 20) - 1L;
+
+    private static final long DEREF_HANDLE_SPACE_START = 0x0FFFFFFFFFFFFFFFL & ~DEREF_HANDLE_OBJECT_MASK;
+    private static final long DEREF_HANDLE_SPACE_END = 0x0FFF800000000000L & ~DEREF_HANDLE_OBJECT_MASK;
 
     private static final Unsafe unsafe = getUnsafe();
+
+    private final Object freeListLock = new Object();
+    private FreeListNode freeList;
+
+    private final Object derefSpaceTopLock = new Object();
+    private long derefSpaceTop = DEREF_HANDLE_SPACE_START;
+
+    private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
+
+    private static final class FreeListNode {
+        protected FreeListNode(long address, FreeListNode next) {
+            this.address = address;
+            this.next = next;
+        }
+
+        private final long address;
+        private final FreeListNode next;
+    }
 
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
@@ -117,12 +143,20 @@ public final class LLVMMemory {
     }
 
     public void free(long address) {
-        try {
-            unsafe.freeMemory(address);
-        } catch (Throwable e) {
-            // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
-            throw e;
+        if (address <= DEREF_HANDLE_SPACE_START && address > DEREF_HANDLE_SPACE_END) {
+            assert isAllocated(address) : "double-free of " + Long.toHexString(address);
+            synchronized (freeListLock) {
+                // We need to mask because we allow creating handles with an offset.
+                freeList = new FreeListNode(address & ~DEREF_HANDLE_OBJECT_MASK, freeList);
+            }
+        } else {
+            try {
+                unsafe.freeMemory(address);
+            } catch (Throwable e) {
+                // this avoids unnecessary exception edges in the compiled code
+                CompilerDirectives.transferToInterpreter();
+                throw e;
+            }
         }
     }
 
@@ -144,6 +178,33 @@ public final class LLVMMemory {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
             throw e;
+        }
+    }
+
+    /**
+     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
+     */
+    public LLVMAddress allocateDerefMemory() {
+        noDerefHandleAssumption.invalidate();
+
+        // preferably consume from free list
+        synchronized (freeListLock) {
+            if (freeList != null) {
+                FreeListNode n = freeList;
+                freeList = n.next;
+                return LLVMAddress.fromLong(n.address);
+            }
+        }
+
+        synchronized (derefSpaceTopLock) {
+            LLVMAddress addr = LLVMAddress.fromLong(derefSpaceTop);
+            assert derefSpaceTop > 0L;
+            derefSpaceTop -= DEREF_HANDLE_OBJECT_SIZE;
+            if (derefSpaceTop < DEREF_HANDLE_SPACE_END) {
+                CompilerDirectives.transferToInterpreter();
+                throw new OutOfMemoryError();
+            }
+            return addr;
         }
     }
 
@@ -829,4 +890,34 @@ public final class LLVMMemory {
     public void fullFence() {
         unsafe.fullFence();
     }
+
+    public Assumption getNoDerefHandleAssumption() {
+        return noDerefHandleAssumption;
+    }
+
+    public boolean isDerefMemory(LLVMAddress addr) {
+        return !noDerefHandleAssumption.isValid() && addr.getVal() > DEREF_HANDLE_SPACE_END;
+    }
+
+    public static long getDerefHandleObjectMask() {
+        return DEREF_HANDLE_OBJECT_SIZE - 1;
+    }
+
+    private boolean isAllocated(long address) {
+        synchronized (derefSpaceTopLock) {
+            if (address <= derefSpaceTop) {
+                return false;
+            }
+        }
+
+        synchronized (freeListLock) {
+            for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
+                if (cur.address == address) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 
 public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
@@ -49,12 +48,16 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
         super(sourceLocation);
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putFunctionPointer(address, toNative.executeWithTarget(value).getVal());
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected Object doOp(LLVMAddress addr, Object value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        getLLVMMemoryCached().putFunctionPointer(addr, toNative.executeWithTarget(value).getVal());
         return null;
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected Object doOpDerefHandle(LLVMAddress addr, Object value) {
+        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization
@@ -65,16 +68,14 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "address.isNative()")
-    protected Object doOp(LLVMTruffleObject address, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doOp(address.asNative(), value, toNative, memory);
+    protected Object doOpNative(LLVMTruffleObject address, Object value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        return doOp(address.asNative(), value, toNative);
     }
 
     @Specialization(guards = "address.isManaged()")
-    protected Object doOp(LLVMTruffleObject address, Object value,
-                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(address, value);
+    protected Object doOpManaged(LLVMTruffleObject address, Object value) {
+        getForeignWriteNode().execute(address, value);
         return null;
     }
 }

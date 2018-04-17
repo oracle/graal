@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteFloatNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 
 public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
@@ -59,11 +58,15 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, float value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putFloat(address, value);
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected Object doOp(LLVMAddress addr, float value) {
+        getLLVMMemoryCached().putFloat(addr, value);
         return null;
+    }
+
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected Object doOpDerefHandle(LLVMAddress addr, float value) {
+        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization
@@ -74,23 +77,20 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "address.isNative()")
-    protected Object doOp(LLVMTruffleObject address, float value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doOp(address.asNative(), value, memory);
+    protected Object doOpNative(LLVMTruffleObject address, float value) {
+        return doOp(address.asNative(), value);
     }
 
     @Specialization(guards = "address.isManaged()")
-    protected Object doOp(LLVMTruffleObject address, float value,
-                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(address, value);
+    protected Object doOpManaged(LLVMTruffleObject address, float value) {
+        getForeignWriteNode().execute(address, value);
         return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, float value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected Object doOp(LLVMBoxedPrimitive address, float value) {
         if (address.getValue() instanceof Long) {
-            memory.putFloat((long) address.getValue(), value);
+            getLLVMMemoryCached().putFloat((long) address.getValue(), value);
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();

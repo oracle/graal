@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,24 +62,26 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected Object doOp(LLVMAddress address, long value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, value);
+    protected Object doOp(LLVMAddress address, long value) {
+        getLLVMMemoryCached().putI64(address, value);
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, LLVMTruffleObject value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, toAddress.executeWithTarget(value).getVal());
+    @Specialization(guards = "!isAutoDerefHandle(addr)")
+    protected Object doOp(LLVMAddress addr, LLVMTruffleObject value,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
+        getLLVMMemoryCached().putI64(addr, toAddress.executeWithTarget(value).getVal());
         return null;
     }
 
+    @Specialization(guards = "isAutoDerefHandle(addr)")
+    protected Object doOpDerefHandle(LLVMAddress addr, Object value) {
+        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    }
+
     @Specialization
-    protected Object doOp(LLVMAddress address, LLVMAddress value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, value.getVal());
+    protected Object doOp(LLVMAddress address, LLVMAddress value) {
+        getLLVMMemoryCached().putI64(address, value.getVal());
         return null;
     }
 
@@ -93,9 +95,8 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
 
     @Specialization
     protected Object doOp(LLVMAddress address, LLVMGlobal value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, globalAccess.executeWithTarget(value).getVal());
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
+        getLLVMMemoryCached().putI64(address, globalAccess.executeWithTarget(value).getVal());
         return null;
     }
 
@@ -107,7 +108,7 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "address.isNative()")
-    protected Object doOp(LLVMTruffleObject address, Object value,
+    protected Object doOpNative(LLVMTruffleObject address, Object value,
                     @Cached("createRecursive()") LLVMI64StoreNode recursive) {
         return recursive.executeWithTarget(address.asNative(), value);
     }
@@ -117,17 +118,15 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "address.isManaged()")
-    protected Object doOp(LLVMTruffleObject address, Object value,
-                    @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        foreignWrite.execute(address, value);
+    protected Object doOpManaged(LLVMTruffleObject address, Object value) {
+        getForeignWriteNode().execute(address, value);
         return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, long value,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+    protected Object doOp(LLVMBoxedPrimitive address, long value) {
         if (address.getValue() instanceof Long) {
-            memory.putI64((long) address.getValue(), value);
+            getLLVMMemoryCached().putI64((long) address.getValue(), value);
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();

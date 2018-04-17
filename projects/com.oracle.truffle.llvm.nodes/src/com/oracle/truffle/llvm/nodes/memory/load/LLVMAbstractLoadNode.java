@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.memory.store;
+package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 
-public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
+abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
 
-    private final LLVMSourceLocation source;
     @CompilationFinal private LLVMMemory llvmMemory;
-    @Child private LLVMForeignWriteNode foreignWriteNode;
-
     @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-
-    public LLVMStoreNodeCommon(LLVMSourceLocation source) {
-        this.source = source;
-    }
-
-    protected LLVMForeignWriteNode createForeignWrite() {
-        return LLVMForeignWriteNodeGen.create();
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
-    }
+    @Child private LLVMForeignReadNode foreignReadNode;
 
     protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
         if (derefHandleGetReceiverNode == null) {
@@ -66,17 +49,19 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         return derefHandleGetReceiverNode;
     }
 
-    protected LLVMForeignWriteNode getForeignWriteNode() {
-        if (foreignWriteNode == null) {
+    protected LLVMForeignReadNode getForeignReadNode() {
+        if (foreignReadNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            foreignWriteNode = insert(createForeignWrite());
+            foreignReadNode = insert(createForeignRead());
         }
-        return foreignWriteNode;
+        return foreignReadNode;
     }
 
     protected boolean isAutoDerefHandle(LLVMAddress addr) {
         return getLLVMMemoryCached().isDerefMemory(addr);
     }
+
+    abstract LLVMForeignReadNode createForeignRead();
 
     protected LLVMMemory getLLVMMemoryCached() {
         if (llvmMemory == null) {
@@ -85,4 +70,5 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         }
         return llvmMemory;
     }
+
 }

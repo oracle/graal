@@ -36,13 +36,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetFrame;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetNativePointer;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetSlot;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.IsNative;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.Native;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteI16NodeGen;
@@ -89,8 +89,8 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
     public static void slowPrimitiveWrite(LLVMContext context, LLVMMemory memory, PrimitiveType primitiveType, LLVMGlobal global, Object value) {
         MaterializedFrame frame = context.getGlobalFrame();
         FrameSlot slot = global.getSlot();
-        boolean isNative = frame.getValue(slot) instanceof Native;
-        long address = isNative ? ((Native) frame.getValue(slot)).getPointer() : 0;
+        boolean isNative = frame.getValue(slot) instanceof LLVMAddress;
+        long address = isNative ? ((LLVMAddress) frame.getValue(slot)).getVal() : 0;
         switch (primitiveType.getPrimitiveKind()) {
             case I1:
                 if (isNative) {
@@ -157,7 +157,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
         protected Object doFrame(LLVMGlobal global, Object value,
                         @Cached("create()") GetFrame getFrame,
                         @Cached("create()") GetSlot getSlot) {
-            getFrame.execute(getContext()).setObject(getSlot.execute(global), value);
+            getFrame.execute(getContext()).setObject(getSlot.execute(global), LLVMGlobal.toManagedStore(value));
             return value;
         }
 

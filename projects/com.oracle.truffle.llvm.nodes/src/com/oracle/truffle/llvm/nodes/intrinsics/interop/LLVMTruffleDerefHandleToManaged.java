@@ -27,35 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.global;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-public final class LLVMGlobalVariableDebugAccess {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
 
-    public static boolean isInitialized(LLVMContext context, LLVMGlobal global) {
-        return context.getGlobalFrame().getValue(global.getSlot()) != null;
-    }
-
-    public static boolean isInNative(LLVMContext context, LLVMGlobal global) {
-        return context.getGlobalFrame().getValue(global.getSlot()) instanceof LLVMAddress;
-    }
-
-    public static LLVMAddress getNativeLocation(LLVMContext context, LLVMGlobal global) {
-        if (!isInNative(context, global)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Global is not in native memory!");
+    @Specialization
+    protected LLVMAddress doIntrinsic(LLVMTruffleObject value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        LLVMAddress handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());
+        if (value.getOffset() != 0) {
+            return handle.increment(value.getOffset());
         }
-        return (LLVMAddress) context.getGlobalFrame().getValue(global.getSlot());
-    }
-
-    public static Object getManagedValue(LLVMContext context, LLVMGlobal global) {
-        if (isInNative(context, global)) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Global is not managed!");
-        }
-        return LLVMGlobal.fromManagedStore(context.getGlobalFrame().getValue(global.getSlot()));
+        return handle;
     }
 }

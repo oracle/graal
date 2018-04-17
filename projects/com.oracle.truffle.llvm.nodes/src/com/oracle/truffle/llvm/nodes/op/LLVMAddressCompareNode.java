@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -338,12 +339,32 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
             return f1 == f2;
         }
 
+        @Specialization
+        protected boolean doForeign(LLVMGlobal g1, LLVMTruffleObject obj2,
+                        @Cached("create()") LLVMManagedEqualsNode recursive,
+                        @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readGlobalNode) {
+            Object value = readGlobalNode.execute(g1);
+            return recursive.execute(value, obj2);
+        }
+
+        @Specialization
+        protected boolean doForeign(LLVMTruffleObject obj1, LLVMGlobal g2,
+                        @Cached("create()") LLVMManagedEqualsNode recursive,
+                        @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readGlobalNode) {
+            Object value = readGlobalNode.execute(g2);
+            return recursive.execute(obj1, value);
+        }
+
         @Specialization(guards = "val1.getClass() != val2.getClass()")
         @SuppressWarnings("unused")
         protected boolean doDifferentType(Object val1, Object val2) {
             // different type, and at least one of them is managed, and not a pointer
             // these objects can not have the same address
             return false;
+        }
+
+        public static LLVMManagedEqualsNode create() {
+            return LLVMManagedEqualsNodeGen.create();
         }
     }
 
@@ -365,12 +386,8 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         @Specialization(guards = "!lib1.isPointer(val1) || !lib2.isPointer(val2)")
         protected boolean doOther(Object val1, @SuppressWarnings("unused") LLVMObjectNativeLibrary lib1,
                         Object val2, @SuppressWarnings("unused") LLVMObjectNativeLibrary lib2,
-                        @Cached("createManagedEquals()") LLVMManagedEqualsNode managedEquals) {
+                        @Cached("create()") LLVMManagedEqualsNode managedEquals) {
             return managedEquals.execute(val1, val2);
-        }
-
-        static LLVMManagedEqualsNode createManagedEquals() {
-            return LLVMManagedEqualsNodeGen.create();
         }
     }
 
