@@ -27,6 +27,7 @@ import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION
 
 import java.io.PrintStream;
 
+import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -117,7 +118,7 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
         if (isGraalPredicate != null) {
             isGraalPredicate.onCompilerConfigurationFactorySelection(factory);
         }
-        HotSpotGraalCompiler compiler = createCompiler(runtime, options, factory);
+        HotSpotGraalCompiler compiler = createCompiler("VM", runtime, options, factory);
         // Only the HotSpotGraalRuntime associated with the compiler created via
         // jdk.vm.ci.runtime.JVMCIRuntime.getCompiler() is registered for receiving
         // VM events.
@@ -129,14 +130,17 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
      * Creates a new {@link HotSpotGraalRuntime} object and a new {@link HotSpotGraalCompiler} and
      * returns the latter.
      *
+     * @param runtimeNameQualifier a qualifier to be added to the {@linkplain GraalRuntime#getName()
+     *            name} of the {@linkplain HotSpotGraalCompiler#getGraalRuntime() runtime} created
+     *            by this method
      * @param runtime the JVMCI runtime on which the {@link HotSpotGraalRuntime} is built
      * @param compilerConfigurationFactory factory for the {@link CompilerConfiguration}
      */
     @SuppressWarnings("try")
-    public static HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory) {
+    public static HotSpotGraalCompiler createCompiler(String runtimeNameQualifier, JVMCIRuntime runtime, OptionValues options, CompilerConfigurationFactory compilerConfigurationFactory) {
         HotSpotJVMCIRuntime jvmciRuntime = (HotSpotJVMCIRuntime) runtime;
         try (InitTimer t = timer("HotSpotGraalRuntime.<init>")) {
-            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(jvmciRuntime, compilerConfigurationFactory, options);
+            HotSpotGraalRuntime graalRuntime = new HotSpotGraalRuntime(runtimeNameQualifier, jvmciRuntime, compilerConfigurationFactory, options);
             return new HotSpotGraalCompiler(jvmciRuntime, graalRuntime, graalRuntime.getOptions());
         }
     }

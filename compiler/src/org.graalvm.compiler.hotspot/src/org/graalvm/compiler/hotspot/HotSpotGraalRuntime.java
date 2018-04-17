@@ -104,6 +104,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return true;
     }
 
+    private final String runtimeName;
     private final HotSpotBackend hostBackend;
     private final GlobalMetrics metricValues = new GlobalMetrics();
     private final List<SnippetCounter.Group> snippetCounterGroups;
@@ -126,11 +127,13 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final Map<ExceptionAction, Integer> compilationProblemsPerAction;
 
     /**
+     * @param nameQualifier a qualifier to be added to this runtime's {@linkplain #getName() name}
      * @param compilerConfigurationFactory factory for the compiler configuration
      *            {@link CompilerConfigurationFactory#selectFactory(String, OptionValues)}
      */
     @SuppressWarnings("try")
-    HotSpotGraalRuntime(HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions) {
+    HotSpotGraalRuntime(String nameQualifier, HotSpotJVMCIRuntime jvmciRuntime, CompilerConfigurationFactory compilerConfigurationFactory, OptionValues initialOptions) {
+        this.runtimeName = getClass().getSimpleName() + ":" + nameQualifier;
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = GeneratePIC.getValue(initialOptions) ? new AOTGraalHotSpotVMConfig(store) : new GraalHotSpotVMConfig(store);
 
@@ -223,22 +226,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return config;
     }
 
-    /**
-     * Polling the management interface to see if any JMX clients are connected can be expensive
-     * (current implementation calls a synchronized method) so only do it at most once a second
-     * second.
-     */
-    private static final int MANAGEMENT_POLL_INTERVAL_MS = 1000;
-
-    /**
-     * Time management was last polled or {@link Long#MIN_VALUE} if the last poll detected that JMX
-     * is activated.
-     */
-    private long lastManagementPollTime;
-
     @Override
     public DebugContext openDebugContext(OptionValues compilationOptions, CompilationIdentifier compilationId, Object compilable, Iterable<DebugHandlersFactory> factories) {
-        if (management != null && pollManagement()) {
+        if (management != null && management.poll(false) != null) {
             if (compilable instanceof HotSpotResolvedJavaMethod) {
                 HotSpotResolvedObjectType type = ((HotSpotResolvedJavaMethod) compilable).getDeclaringClass();
                 if (type instanceof HotSpotResolvedJavaType) {
@@ -258,31 +248,15 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return DebugContext.create(compilationOptions, description, metricValues, DEFAULT_LOG_STREAM, factories);
     }
 
-    private boolean pollManagement() {
-        if (lastManagementPollTime == Long.MIN_VALUE) {
-            return true;
-        }
-        long now = System.currentTimeMillis();
-        if (now - lastManagementPollTime > MANAGEMENT_POLL_INTERVAL_MS) {
-            Object objectName = management.poll();
-            if (objectName != null) {
-                lastManagementPollTime = Long.MIN_VALUE;
-                return true;
-            }
-            lastManagementPollTime = now;
-        }
-        return false;
-    }
-
     @Override
     public OptionValues getOptions() {
         return optionsRef.get();
     }
 
     @Override
-    public Group createSnippetCounterGroup(String name) {
+    public Group createSnippetCounterGroup(String groupName) {
         if (snippetCounterGroups != null) {
-            Group group = new Group(name);
+            Group group = new Group(groupName);
             snippetCounterGroups.add(group);
             return group;
         }
@@ -291,7 +265,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     @Override
     public String getName() {
-        return getClass().getSimpleName();
+        return runtimeName;
     }
 
     @SuppressWarnings("unchecked")
@@ -386,6 +360,13 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     // ------- Management interface ---------
 
     private final HotSpotGraalManagementRegistration management;
+
+    /**
+     * @returns the management object for this runtime or {@code null}
+     */
+    public HotSpotGraalManagementRegistration getManagement() {
+        return management;
+    }
 
     /**
      * Set of weak references to {@link ClassLoader}s available for resolving class names present in

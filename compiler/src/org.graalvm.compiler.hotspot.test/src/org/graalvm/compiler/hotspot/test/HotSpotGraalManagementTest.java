@@ -61,7 +61,6 @@ import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
 import org.junit.Test;
@@ -81,16 +80,15 @@ public class HotSpotGraalManagementTest {
     @Test
     public void registration() throws Exception {
         HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) Graal.getRuntime();
-        HotSpotGraalManagementRegistration management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
+        HotSpotGraalManagementRegistration management = runtime.getManagement();
         if (management == null) {
             return;
         }
-        management.initialize(runtime);
 
         MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
         ObjectName name;
-        assertNotNull("Now the bean thinks it is registered", name = (ObjectName) management.poll());
+        assertNotNull("Now the bean thinks it is registered", name = (ObjectName) management.poll(true));
 
         assertNotNull("And the bean is found", server.getObjectInstance(name));
     }
@@ -101,13 +99,13 @@ public class HotSpotGraalManagementTest {
         assertNotNull("Server is started", ManagementFactory.getPlatformMBeanServer());
 
         HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) Graal.getRuntime();
-        HotSpotGraalManagementRegistration management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
+        HotSpotGraalManagementRegistration management = runtime.getManagement();
         if (management == null) {
             return;
         }
-        management.initialize(runtime);
+
         ObjectName mbeanName;
-        assertNotNull("Bean is registered", mbeanName = (ObjectName) management.poll());
+        assertNotNull("Bean is registered", mbeanName = (ObjectName) management.poll(true));
         final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
         ObjectInstance bean = server.getObjectInstance(mbeanName);
@@ -158,6 +156,7 @@ public class HotSpotGraalManagementTest {
      * </pre>
      */
     static class JunitShield {
+
         /**
          * Tests changing the value of {@code option} via the management interface to a) a new legal
          * value and b) an illegal value.
@@ -332,14 +331,13 @@ public class HotSpotGraalManagementTest {
         assertNotNull("Server is started", ManagementFactory.getPlatformMBeanServer());
 
         HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) Graal.getRuntime();
-        HotSpotGraalManagementRegistration management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
+        HotSpotGraalManagementRegistration management = runtime.getManagement();
         if (management == null) {
             return;
         }
-        management.initialize(runtime);
 
         ObjectName mbeanName;
-        assertNotNull("Bean is registered", mbeanName = (ObjectName) management.poll());
+        assertNotNull("Bean is registered", mbeanName = (ObjectName) management.poll(true));
         final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
 
         ObjectInstance bean = server.getObjectInstance(mbeanName);
