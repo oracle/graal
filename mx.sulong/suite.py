@@ -370,6 +370,9 @@ suite = {
         "truffle:TRUFFLE_NFI",
         "SULONG_LIBS",
       ],
+      "javaProperties" : {
+        "llvm.home": "<path:SULONG_LIBS>",
+      },
       "license" : "BSD-new",
     },
 

@@ -201,7 +201,7 @@ public final class LLVMContext {
         }
     }
 
-    public LLVMContext(Env env, List<ContextExtension> contextExtensions, InteropNodeFactory interopNodeFactory) {
+    public LLVMContext(Env env, List<ContextExtension> contextExtensions, InteropNodeFactory interopNodeFactory, String languageHome) {
         this.env = env;
         this.contextExtensions = contextExtensions;
         this.initialized = false;
@@ -231,6 +231,9 @@ public final class LLVMContext {
         this.interopNodeFactory = interopNodeFactory;
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
+        if (languageHome != null) {
+            addLibraryPath(languageHome);
+        }
     }
 
     private LLVMScope createGlobalScope() {
