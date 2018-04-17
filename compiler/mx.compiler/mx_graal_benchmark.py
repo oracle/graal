@@ -800,7 +800,7 @@ class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-
         return "DACAPO_D3S"
 
     def successPatterns(self):
-        return ['']
+        return []
 
     def resultFilter(self, values, iteration, endOfWarmupIndex):
         """Count iterations, convert iteration time to milliseconds."""
