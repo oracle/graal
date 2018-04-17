@@ -93,7 +93,8 @@ public final class SuspendableLocationFinder {
         // All SourceSections of the Source are loaded already when the source was parsed
         env.getInstrumenter().attachLoadSourceSectionListener(
                         SourceSectionFilter.newBuilder().sourceIs(source).build(),
-                        sectionsCollector, true).dispose();
+                        sectionsCollector, true).dispose(); // TODO(ds) this is depending on an underlying weak list and atm it works, because we actively hold
+                                                            // the nodes in SourceSectionProvider. Is this good?
 
         InstrumentableNode contextNode = sectionsCollector.getContainsNode();
         if (contextNode == null) {

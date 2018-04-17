@@ -379,7 +379,11 @@ public class TruffleAdapter {
         if (languageInfo != null) {
             Object metaObject = env.findMetaObject(languageInfo, obj);
             if (metaObject instanceof TruffleObject) {
-
+                // TODO(ds)
+// System.out.println("metaObject: " + metaObject);
+// ObjectStructures.asList(new ObjectStructures.MessageNodes(), ((TruffleObject) metaObject));
+// ObjectStructures.asMap(new ObjectStructures.MessageNodes(), ((TruffleObject) metaObject));
+                metaInfo = metaObject.toString();
             } else if (metaObject instanceof String) {
                 metaInfo = metaObject.toString();
             }
