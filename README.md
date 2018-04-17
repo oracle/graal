@@ -21,7 +21,7 @@ implemented using the instrumentation framework.
 compilation of Java applications under closed-world assumption into executable
 images or shared objects.
 
-* [TRegex](../regex) is an implementation of regular expressions which leverages Graal and Truffle for efficient compilation of automata.
+* [TRegex](/regex/) is an implementation of regular expressions which leverages Graal and Truffle for efficient compilation of automata.
 
 ## Downloads
 GraalVM is available as Community Edition (CE) and Enterprise Edition (EE).
@@ -105,6 +105,6 @@ Each GraalVM component is licensed:
 [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under
 the [GPL 2 with Classpath exception](truffle/LICENSE.GPL.md)
 [Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md)
-[TRegex](../regex) project is licensed under the [GPL 2 with Classpath exception](../regex/LICENSE.GPL.md).
+[TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
 The [Graal compiler](/compiler/) is licensed under the [GPL 2](compiler/LICENSE.md)
 [Substrate VM](/substratevm/) is licensed under the [GPL 2](substratevm/LICENSE.md)
