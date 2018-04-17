@@ -72,6 +72,7 @@ public class TruffleAdapter {
     public static final String SOURCE_SECTION_ID_RUBY = "TruffleLSPTestSectionRuby";
     public static final String SOURCE_SECTION_DUMMY = "TruffleLSPDummySection";
     public static final URI RUBY_DUMMY_URI = URI.create("truffle:rubytestABC.rb");
+    private static final boolean enableNodeCopyIfCaretBehindNode = false;
 
     private LanguageClient client;
     private Server server;
@@ -300,7 +301,7 @@ public class TruffleAdapter {
                 Node node = LocationFinderHelper.findNearest(source,
                                 SourceElement.values(), line + 1, character, env);
                 Node nodeForLocalScoping = node;
-                if (node != null) {
+                if (enableNodeCopyIfCaretBehindNode && node != null) {
                     int offset = source.getLineStartOffset(line + 1); // TODO(ds) this +1 causes line out of bounds at
                                                                       // com.oracle.truffle.api.source.TextMap.lineStartOffset(TextMap.java:204)
                     if (character > 0) {
@@ -313,7 +314,7 @@ public class TruffleAdapter {
 
                         // TODO(ds) we need to duplicate a node, in case that it is the last node in a scope and would
                         // otherwise report no variables if the user moves the caret behind the last node in the scope and
-                        // asks for completion. -> But this is not working correctly, when cannot detect, if the cursor is
+                        // asks for completion. -> But this is not working correctly, we cannot detect, if the cursor is
                         // behind the last statement or still in it (before a semicolon).
                         // Assumption: we are behind!
                         Node parentCopy = node.getParent().copy();
@@ -353,7 +354,7 @@ public class TruffleAdapter {
                                         continue;
                                     }
 
-                                    System.out.println(node.getClass().getSimpleName() + (isCaretBehindNode ? "\t-copy-"
+                                    System.out.println(node.getClass().getSimpleName() + "\tin " + scope.getName() + (isCaretBehindNode ? "\t-copy-"
                                                     : "\t") + "\t" + ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys) + " " +
                                                     node.getSourceSection().getCharacters());
                                     for (Object obj : ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys)) {
