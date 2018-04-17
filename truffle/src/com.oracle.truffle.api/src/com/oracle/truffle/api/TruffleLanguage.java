@@ -31,6 +31,8 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.URI;
+import java.nio.file.FileSystemNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -44,6 +46,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -62,9 +65,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
-import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -90,7 +90,7 @@ import org.graalvm.polyglot.io.FileSystem;
  * that is created using the {@linkplain org.graalvm.polyglot.Engine.Builder#build() engine builder}
  * . If a {@linkplain org.graalvm.polyglot.Context context} is created without a
  * {@linkplain org.graalvm.polyglot.Engine engine} then the language implementation instance is
- * created for each context implicitely.
+ * created for each context implicitly.
  * <p>
  * Global state can be shared between multiple language context instances by saving them as in a
  * field of the {@link TruffleLanguage} subclass. The implementation needs to ensure data isolation
@@ -317,12 +317,15 @@ public abstract class TruffleLanguage<C> {
      * {@link Env#parse(com.oracle.truffle.api.source.Source, java.lang.String...) calls into other
      * languages} and assuming your language is already initialized and others can see it would be
      * wrong - until you return from this method, the initialization isn't over. The same is true
-     * for instrumentation, the instruments can not receive any meta data about code executed during
+     * for instrumentation, the instruments cannot receive any meta data about code executed during
      * context creation. Should there be a need to perform complex initialization, do it by
      * overriding the {@link #initializeContext(java.lang.Object)} method.
+     * <p>
+     * May return {@code null} if the language does not need any per-{@linkplain Context context}
+     * state. Otherwise it should return a new object instance every time it is called.
      *
      * @param env the environment the language is supposed to operate in
-     * @return internal data of the language in given environment
+     * @return internal data of the language in given environment or {@code null}
      * @since 0.8 or earlier
      */
     protected abstract C createContext(Env env);
@@ -1307,7 +1310,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Explicitely imports a symbol from the polyglot bindings. The behavior of this method is
+         * Explicitly imports a symbol from the polyglot bindings. The behavior of this method is
          * equivalent to sending a READ message to the {@link #getPolyglotBindings() polyglot
          * bindings} object. Reading a symbol that does not exist will return <code>null</code>.
          * <p>
@@ -1327,7 +1330,7 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Explicitely exports a symbol to the polyglot bindings object. The behavior of this method
+         * Explicitly exports a symbol to the polyglot bindings object. The behavior of this method
          * is equivalent to sending a WRITE message to the {@link #getPolyglotBindings() polyglot
          * bindings} object. Exporting a symbol with a <code>null</code> value will remove the
          * symbol from the polyglot object.
