@@ -76,6 +76,7 @@ suite = {
 
     "DACAPO_D3S" : {
       "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-d3s.jar",
         "http://d3s.mff.cuni.cz/software/benchmarking/files/dacapo-9.12-d3s.jar",
       ],
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
