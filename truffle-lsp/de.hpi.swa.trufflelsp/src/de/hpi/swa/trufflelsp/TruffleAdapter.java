@@ -599,7 +599,7 @@ public class TruffleAdapter {
                 if (sourceLocation != null && sourceLocation.isAvailable()) {
                     range = sourceSectionToRange(sourceLocation);
                 }
-                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Error, "Truffle"));
+                diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Warning, "Truffle Type Harvester"));
             } finally {
                 listener.dispose();
                 this.reportDiagnostics(diagnostics, uri);
