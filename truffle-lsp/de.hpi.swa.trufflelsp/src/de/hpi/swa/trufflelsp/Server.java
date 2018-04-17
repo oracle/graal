@@ -34,12 +34,12 @@ import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RenameParams;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.SignatureHelp;
-import org.eclipse.lsp4j.SignatureHelpOptions;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentPositionParams;
@@ -96,19 +96,19 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         return CompletableFuture.supplyAsync(() -> res);
     }
 
-    private void loadWorkspace(final InitializeParams params) {
-        // try {
-        // som.loadWorkspace(params.getRootUri());
-        // } catch (URISyntaxException e) {
-        // MessageParams msg = new MessageParams();
-        // msg.setType(MessageType.Error);
-        // msg.setMessage("Workspace root URI invalid: " + params.getRootUri());
-        //
-        // client.logMessage(msg);
-        //
-        // ServerLauncher.logErr(msg.getMessage());
-        // }
-    }
+// private void loadWorkspace(final InitializeParams params) {
+// try {
+// som.loadWorkspace(params.getRootUri());
+// } catch (URISyntaxException e) {
+// MessageParams msg = new MessageParams();
+// msg.setType(MessageType.Error);
+// msg.setMessage("Workspace root URI invalid: " + params.getRootUri());
+//
+// client.logMessage(msg);
+//
+// ServerLauncher.logErr(msg.getMessage());
+// }
+// }
 
     public CompletableFuture<Object> shutdown() {
         shutdown = 0; // regular shutdown
@@ -130,11 +130,16 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     @Override
     public void connect(@SuppressWarnings("hiding") LanguageClient client) {
         this.client = client;
-        this.truffle.connect(client, this);
+        this.truffle.connect(this);
     }
 
-    public LanguageClient getClient() {
-        return this.client;
+    public void reportDiagnostics(final List<Diagnostic> diagnostics, final String documentUri) {
+        if (diagnostics != null) {
+            PublishDiagnosticsParams result = new PublishDiagnosticsParams();
+            result.setDiagnostics(diagnostics);
+            result.setUri(documentUri);
+            this.client.publishDiagnostics(result);
+        }
     }
 
     @Override
@@ -290,7 +295,7 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         }
 
         List<Diagnostic> diagnostics = truffle.parse(text, langId, documentUri);
-        truffle.reportDiagnostics(diagnostics, documentUri);
+        this.reportDiagnostics(diagnostics, documentUri);
     }
 
     @Override

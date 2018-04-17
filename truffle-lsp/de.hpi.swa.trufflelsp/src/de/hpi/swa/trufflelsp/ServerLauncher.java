@@ -48,8 +48,8 @@ public class ServerLauncher {
 		Thread.setDefaultUncaughtExceptionHandler((final Thread t, final Throwable e) -> e.printStackTrace(err));
 	}
 
-	public static void logErr(final String msg) {
-		err.println(msg);
+	public static void logErr(final String text) {
+		err.println(text);
 	}
 
 	public static void logMsg(final String text) {

@@ -1,16 +1,12 @@
 package de.hpi.swa.trufflelsp;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
@@ -22,20 +18,15 @@ import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.MarkedString;
 import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.debug.LocationFinderHelper;
@@ -56,10 +47,8 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeAccessHelper;
-import com.oracle.truffle.api.nodes.NodeVisitor;
-import com.oracle.truffle.api.nodes.RootNode;
-
-import de.hpi.swa.trufflelsp.helper.Pair;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 public class TruffleAdapter {
     public static final String NO_TYPES_HARVESTED = "NO_TYPES_HARVESTED";
@@ -68,20 +57,15 @@ public class TruffleAdapter {
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
 
-    public static final String SOURCE_SECTION_ID = "TruffleLSPTestSection";
-    public static final String SOURCE_SECTION_ID_RUBY = "TruffleLSPTestSectionRuby";
-    public static final String SOURCE_SECTION_DUMMY = "TruffleLSPDummySection";
-    public static final URI RUBY_DUMMY_URI = URI.create("truffle:rubytestABC.rb");
     private static final boolean enableNodeCopyIfCaretBehindNode = false;
 
-    private LanguageClient client;
     private Server server;
     private Context context;
     private Map<String, String> uri2LangId = new HashMap<>();
     private Map<String, String> uri2Text = new HashMap<>();
     private Map<String, Boolean> uri2HarvestedTypes = new HashMap<>();
-    protected Map<com.oracle.truffle.api.source.SourceSection, com.oracle.truffle.api.source.SourceSection> section2definition = new HashMap<>();
-    protected Map<com.oracle.truffle.api.source.SourceSection, MaterializedFrame> section2frame = new HashMap<>();
+    protected Map<SourceSection, SourceSection> section2definition = new HashMap<>();
+    protected Map<SourceSection, MaterializedFrame> section2frame = new HashMap<>();
 
     protected Context getContext() {
         if (this.context == null) {
@@ -90,25 +74,27 @@ public class TruffleAdapter {
         return this.context;
     }
 
-    public void connect(final LanguageClient client, final Server server) {
-        this.client = client;
+    public void connect(@SuppressWarnings("hiding") final Server server) {
         this.server = server;
     }
 
-    public void reportDiagnostics(final List<Diagnostic> diagnostics, final String documentUri) {
-        if (diagnostics != null) {
-            PublishDiagnosticsParams result = new PublishDiagnosticsParams();
-            result.setDiagnostics(diagnostics);
-            result.setUri(documentUri);
-            client.publishDiagnostics(result);
-        }
+    private Env getEnv() {
+        Instrument envInstrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
+        EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
+        Env env = envProvider.getEnv();
+        return env;
+    }
+
+    private SourceSectionProvider getSourceSectionProvider() {
+        Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
+        SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
+        return ssProvider;
     }
 
     public synchronized List<Diagnostic> parse(String text, String langId, String uri) {
         List<Diagnostic> diagnostics = new ArrayList<>();
 
-        Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
-        SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
+        SourceSectionProvider ssProvider = getSourceSectionProvider();
 
         this.getContext().enter();
         try {
@@ -125,7 +111,7 @@ public class TruffleAdapter {
 
             ssProvider.remove(langId, uri);
 
-            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(text).name(uri).language(langId).build();
+            Source source = Source.newBuilder(text).name(uri).language(langId).build();
             CallTarget target = env.parse(source);
 
 // System.out.println(target);
@@ -136,7 +122,7 @@ public class TruffleAdapter {
             if (e instanceof TruffleException) {
                 TruffleException te = (TruffleException) e;
                 Range range = new Range(new Position(), new Position());
-                com.oracle.truffle.api.source.SourceSection sourceLocation = te.getSourceLocation() != null ? te.getSourceLocation()
+                SourceSection sourceLocation = te.getSourceLocation() != null ? te.getSourceLocation()
                                 : (te.getLocation() != null ? te.getLocation().getEncapsulatingSourceSection() : null);
                 if (sourceLocation != null && sourceLocation.isAvailable()) {
                     range = sourceSectionToRange(sourceLocation);
@@ -159,39 +145,11 @@ public class TruffleAdapter {
         return diagnostics;
     }
 
-    public static Range extractRange(String message) {
-        Range range = new Range(new Position(), new Position());
-
-        Pattern pattern = Pattern.compile(", line: (\\d+), index: (\\d+),");
-        Matcher matcher = pattern.matcher(message);
-        if (matcher.find() && matcher.groupCount() == 2) {
-            String lineText = matcher.group(1);
-            lineText = matcher.group(1);
-            String indexText = matcher.group(2);
-            int line = Integer.parseInt(lineText);
-            int index = Integer.parseInt(indexText);
-            range = new Range(
-                            new Position(line - 1, index),
-                            new Position(line - 1, index));
-        }
-
-        return range;
-    }
-
-    public static String docUriToNormalizedPath(final String documentUri) throws URISyntaxException {
-        URI uri = new URI(documentUri).normalize();
-        return uri.getPath();
-    }
-
     public synchronized List<? extends SymbolInformation> getSymbolInfo(String uri) {
         List<SymbolInformation> symbolInformation = new ArrayList<>();
 
-        Instrument instrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
-        EnvironmentProvider envProvider = instrument.lookup(EnvironmentProvider.class);
-        Env env = envProvider.getEnv();
-
-        Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
-        SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
+        Env env = getEnv();
+        SourceSectionProvider ssProvider = getSourceSectionProvider();
 
         this.getContext().enter();
         try {
@@ -232,7 +190,7 @@ public class TruffleAdapter {
                     if (entry.getValue() instanceof TruffleObject) {
                         TruffleObject truffleObjVal = (TruffleObject) entry.getValue();
 
-                        com.oracle.truffle.api.source.SourceSection sourceLocation = this.findSourceLocation(truffleObjVal);
+                        SourceSection sourceLocation = this.findSourceLocation(truffleObjVal);
                         if (sourceLocation != null && uri.equals(sourceLocation.getSource().getName())) {
                             Range range = sourceSectionToRange(sourceLocation);
 
@@ -283,12 +241,9 @@ public class TruffleAdapter {
 
     public synchronized CompletionList getCompletions(String uri, int line, int character) {
         this.getContext().enter();
-        Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
-        SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
+        SourceSectionProvider ssProvider = getSourceSectionProvider();
         try {
-            Instrument envInstrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
-            EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
-            Env env = envProvider.getEnv();
+            Env env = getEnv();
 
             CompletionList completions = new CompletionList();
             completions.setIsIncomplete(false);
@@ -297,7 +252,7 @@ public class TruffleAdapter {
             boolean isCaretBehindNode = false;
             if (ssProvider.getLoadedSource(langId, uri) != null) {
                 SourceWrapper wrapper = ssProvider.getLoadedSource(langId, uri);
-                com.oracle.truffle.api.source.Source source = wrapper.getSource();
+                Source source = wrapper.getSource();
                 Node node = LocationFinderHelper.findNearest(source,
                                 SourceElement.values(), line + 1, character, env);
                 Node nodeForLocalScoping = node;
@@ -488,72 +443,24 @@ public class TruffleAdapter {
         return highlights;
     }
 
+    private static Range sourceSectionToRange(org.graalvm.polyglot.SourceSection section) {
+        return new Range(
+                        new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
+                        new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
+    }
+
     private static Range sourceSectionToRange(SourceSection section) {
         return new Range(
                         new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
                         new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
     }
 
-    private static Range sourceSectionToRange(com.oracle.truffle.api.source.SourceSection section) {
-        return new Range(
-                        new Position(section.getStartLine() - 1, section.getStartColumn() - 1),
-                        new Position(section.getEndLine() - 1, section.getEndColumn() /* -1 */));
-    }
-
-    private static Pair<Node, Node> findNodeAt(List<Node> loadedNodes, int line, int character) {
-        Node bestMatchedNode = null;
-        Node nodeBeforeCaret = null;
-        for (Node node : loadedNodes) {
-            com.oracle.truffle.api.source.SourceSection sourceSection = node.getSourceSection();
-            if (sourceSection == null || !sourceSection.isAvailable()) {
-                continue;
-            }
-            if (sourceSection.getStartLine() == line && line == sourceSection.getEndLine() && sourceSection.getStartColumn() <= character && character <= sourceSection.getEndColumn()) {
-                if (bestMatchedNode == null || sourceSection.getCharLength() < bestMatchedNode.getSourceSection().getCharLength()) {
-                    bestMatchedNode = node;
-                }
-            }
-            if (sourceSection.getEndLine() <= line) {
-                if (nodeBeforeCaret == null ||
-                                nodeBeforeCaret.getSourceSection().getEndLine() < sourceSection.getEndLine() ||
-                                (nodeBeforeCaret.getSourceSection().getEndLine() == sourceSection.getEndLine() && nodeBeforeCaret.getSourceSection().getEndColumn() < sourceSection.getEndColumn())) {
-                    nodeBeforeCaret = node;
-                }
-            }
-        }
-        return new Pair<>(bestMatchedNode, nodeBeforeCaret);
-    }
-
-    private static CharSequence findTokenAt(RootNode rootNode, int line, int character) {
-        com.oracle.truffle.api.source.SourceSection[] bestMatchedSection = {null};
-        rootNode.accept(new NodeVisitor() {
-
-            public boolean visit(Node node) {
-                com.oracle.truffle.api.source.SourceSection sourceSection = node.getEncapsulatingSourceSection();
-                if (sourceSection.getStartLine() == line && line == sourceSection.getEndLine() && sourceSection.getStartColumn() <= character && character <= sourceSection.getEndColumn()) {
-                    if (bestMatchedSection[0] == null || sourceSection.getCharLength() < bestMatchedSection[0].getCharLength()) {
-                        bestMatchedSection[0] = sourceSection;
-                    }
-                }
-                return true;
-            }
-        });
-
-        return bestMatchedSection[0] == null ? null : bestMatchedSection[0].getCharacters();
-    }
-
     public void exec(String uri) {
         try {
-            Instrument envInstrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
-            EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
-
-            Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
-            SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
-
-            final Env env = envProvider.getEnv();
+            final Env env = getEnv();
             EventBinding<ExecutionEventListener> listener = env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().sourceIs(new SourcePredicate() {
 
-                public boolean test(com.oracle.truffle.api.source.Source source) {
+                public boolean test(Source source) {
                     return uri.equals(source.getName());
                 }
             }).build(), new ExecutionEventListener() {
@@ -562,7 +469,7 @@ public class TruffleAdapter {
                     System.out.println(((result instanceof TruffleObject) ? ">>> " : "") + "onReturnValue " + context.getInstrumentedNode().getClass().getSimpleName() + " " + result + " " +
                                     context.getInstrumentedSourceSection());
                     if (result instanceof TruffleObject) {
-                        com.oracle.truffle.api.source.SourceSection sourceLocation = TruffleAdapter.this.findSourceLocation((TruffleObject) result);
+                        SourceSection sourceLocation = TruffleAdapter.this.findSourceLocation((TruffleObject) result);
                         if (sourceLocation != null && context.getInstrumentedSourceSection() != null && context.getInstrumentedSourceSection().isAvailable()) {
                             TruffleAdapter.this.section2definition.put(context.getInstrumentedSourceSection(), sourceLocation);
                         }
@@ -590,20 +497,20 @@ public class TruffleAdapter {
             try {
 // ssProvider.remove(this.uri2LangId.get(uri), uri);
 
-                Source source = Source.newBuilder(this.uri2LangId.get(uri), this.uri2Text.get(uri), uri).build();
+                org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(this.uri2LangId.get(uri), this.uri2Text.get(uri), uri).build();
                 this.getContext().eval(source);
 
                 this.uri2HarvestedTypes.put(uri, true);
             } catch (PolyglotException e) {
                 Range range = new Range(new Position(), new Position());
-                SourceSection sourceLocation = e.getSourceLocation();
+                org.graalvm.polyglot.SourceSection sourceLocation = e.getSourceLocation();
                 if (sourceLocation != null && sourceLocation.isAvailable()) {
                     range = sourceSectionToRange(sourceLocation);
                 }
                 diagnostics.add(new Diagnostic(range, e.getMessage(), DiagnosticSeverity.Warning, "Truffle Type Harvester"));
             } finally {
                 listener.dispose();
-                this.reportDiagnostics(diagnostics, uri);
+                this.server.reportDiagnostics(diagnostics, uri);
             }
         } catch (IOException e) {
             e.printStackTrace(ServerLauncher.errWriter());
@@ -611,22 +518,18 @@ public class TruffleAdapter {
     }
 
     public List<? extends Location> getDefinitions(String uri, int line, int character) {
-        Instrument envInstrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
-        EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
-        Env env = envProvider.getEnv();
-
-        Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
-        SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
+        Env env = getEnv();
+        SourceSectionProvider ssProvider = getSourceSectionProvider();
 
         List<Location> locations = new ArrayList<>();
 
         String langId = this.uri2LangId.get(uri);
         if (ssProvider.getLoadedSource(langId, uri) != null) {
             SourceWrapper wrapper = ssProvider.getLoadedSource(langId, uri);
-            com.oracle.truffle.api.source.Source source = wrapper.getSource();
+            Source source = wrapper.getSource();
             Node node = LocationFinderHelper.findNearest(source,
                             SourceElement.values(), line + 1, character, env);
-            com.oracle.truffle.api.source.SourceSection definition = this.section2definition.get(node.getSourceSection());
+            SourceSection definition = this.section2definition.get(node.getSourceSection());
             if (definition != null) {
                 locations.add(new Location(uri, sourceSectionToRange(definition)));
             }
@@ -634,11 +537,8 @@ public class TruffleAdapter {
         return locations;
     }
 
-    protected com.oracle.truffle.api.source.SourceSection findSourceLocation(TruffleObject obj) {
-        Instrument envInstrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
-        EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
-        Env env = envProvider.getEnv();
-
+    protected SourceSection findSourceLocation(TruffleObject obj) {
+        Env env = getEnv();
         LanguageInfo lang = env.findLanguage(obj);
 
         if (lang != null) {
@@ -651,20 +551,16 @@ public class TruffleAdapter {
     public synchronized Hover getHover(String uri, int line, int character) {
         List<Either<String, MarkedString>> contents = new ArrayList<>();
 
-        Instrument envInstrument = this.getContext().getEngine().getInstruments().get(EnvironmentProvider.ID);
-        EnvironmentProvider envProvider = envInstrument.lookup(EnvironmentProvider.class);
-        Env env = envProvider.getEnv();
-
-        Instrument ssInstrument = this.getContext().getEngine().getInstruments().get(SourceSectionProvider.ID);
-        SourceSectionProvider ssProvider = ssInstrument.lookup(SourceSectionProvider.class);
+        Env env = getEnv();
+        SourceSectionProvider ssProvider = getSourceSectionProvider();
 
         String langId = this.uri2LangId.get(uri);
         if (ssProvider.getLoadedSource(langId, uri) != null) {
             SourceWrapper wrapper = ssProvider.getLoadedSource(langId, uri);
-            com.oracle.truffle.api.source.Source source = wrapper.getSource();
+            Source source = wrapper.getSource();
             Node node = LocationFinderHelper.findNearest(source,
                             SourceElement.values(), line + 1, character, env);
-            com.oracle.truffle.api.source.SourceSection definition = this.section2definition.get(node.getSourceSection());
+            SourceSection definition = this.section2definition.get(node.getSourceSection());
             if (definition != null) {
                 MarkedString markedString = new MarkedString(this.uri2LangId.get(uri), definition.getCharacters().toString());
                 contents.add(Either.forRight(markedString));
