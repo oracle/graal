@@ -22,9 +22,6 @@
  */
 package com.oracle.svm.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
-
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +30,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -47,6 +43,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.Replaced;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeCloneable;
@@ -198,7 +195,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public void initialize() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
@@ -296,7 +293,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     @Override
     public ResolvedJavaType getArrayClass() {
         if (hub.getArrayHub() == null) {
-            throw shouldNotReachHere("no array class for " + hub.getName() + " available");
+            throw VMError.shouldNotReachHere("no array class for " + hub.getName() + " available");
         }
         return SubstrateMetaAccess.singleton().lookupJavaTypeFromHub(hub.getArrayHub());
     }
@@ -314,7 +311,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
              * The type was created at run time from the Class, so we do not have field information.
              * If we need the fields for a type, the type has to be created during image generation.
              */
-            throw shouldNotReachHere("no instance fields for " + hub.getName() + " available");
+            throw VMError.shouldNotReachHere("no instance fields for " + hub.getName() + " available");
         }
 
         if (includeSuperclasses && getSuperclass() != null) {
@@ -330,7 +327,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public ResolvedJavaField[] getStaticFields() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
@@ -395,12 +392,12 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public boolean isLocal() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
     public boolean isMember() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
@@ -414,22 +411,22 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
     public ResolvedJavaMethod getClassInitializer() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
     public boolean isLinked() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
@@ -439,7 +436,7 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public ResolvedJavaType getHostClass() {
-        throw unimplemented();
+        throw VMError.unimplemented();
     }
 
     @Override
@@ -723,7 +720,7 @@ class SubstrateNodeFieldIterator implements Iterator<SubstrateField> {
     }
 
     static RuntimeException noFieldsError(SubstrateType type) {
-        throw shouldNotReachHere("no instance fields for " + type.getHub().getName() + " available");
+        throw VMError.shouldNotReachHere("no instance fields for " + type.getHub().getName() + " available");
     }
 }
 
