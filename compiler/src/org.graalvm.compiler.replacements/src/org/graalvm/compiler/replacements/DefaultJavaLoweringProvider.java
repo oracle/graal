@@ -687,85 +687,87 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
             int valuePos = 0;
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int entryCount = virtual.entryCount();
-                AbstractNewObjectNode newObject;
-                try (DebugCloseable nsp = virtual.withNodeSourcePosition()) {
+                try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
+                    int entryCount = virtual.entryCount();
+                    AbstractNewObjectNode newObject;
                     if (virtual instanceof VirtualInstanceNode) {
                         newObject = graph.add(createNewInstanceFromVirtual(virtual));
                     } else {
                         newObject = graph.add(createNewArrayFromVirtual(virtual, ConstantNode.forInt(entryCount, graph)));
                     }
-                }
-                recursiveLowerings.add(newObject);
-                graph.addBeforeFixed(commit, newObject);
-                allocations[objIndex] = newObject;
-                for (int i = 0; i < entryCount; i++) {
-                    ValueNode value = commit.getValues().get(valuePos);
-                    if (value instanceof VirtualObjectNode) {
-                        value = allocations[commit.getVirtualObjects().indexOf(value)];
-                    }
-                    if (value == null) {
-                        omittedValues.set(valuePos);
-                    } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
-                        // Constant.illegal is always the defaultForKind, so it is skipped
-                        JavaKind valueKind = value.getStackKind();
-                        JavaKind entryKind = virtual.entryKind(i);
 
-                        // Truffle requires some leniency in terms of what can be put where:
-                        assert valueKind.getStackKind() == entryKind.getStackKind() ||
-                                        (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode));
-                        AddressNode address = null;
-                        BarrierType barrierType = null;
-                        if (virtual instanceof VirtualInstanceNode) {
-                            ResolvedJavaField field = ((VirtualInstanceNode) virtual).field(i);
-                            long offset = fieldOffset(field);
-                            if (offset >= 0) {
-                                address = createOffsetAddress(graph, newObject, offset);
-                                barrierType = fieldInitializationBarrier(entryKind);
+                    recursiveLowerings.add(newObject);
+                    graph.addBeforeFixed(commit, newObject);
+                    allocations[objIndex] = newObject;
+                    for (int i = 0; i < entryCount; i++) {
+                        ValueNode value = commit.getValues().get(valuePos);
+                        if (value instanceof VirtualObjectNode) {
+                            value = allocations[commit.getVirtualObjects().indexOf(value)];
+                        }
+                        if (value == null) {
+                            omittedValues.set(valuePos);
+                        } else if (!(value.isConstant() && value.asConstant().isDefaultForKind())) {
+                            // Constant.illegal is always the defaultForKind, so it is skipped
+                            JavaKind valueKind = value.getStackKind();
+                            JavaKind entryKind = virtual.entryKind(i);
+
+                            // Truffle requires some leniency in terms of what can be put where:
+                            assert valueKind.getStackKind() == entryKind.getStackKind() ||
+                                            (valueKind == JavaKind.Long || valueKind == JavaKind.Double || (valueKind == JavaKind.Int && virtual instanceof VirtualArrayNode));
+                            AddressNode address = null;
+                            BarrierType barrierType = null;
+                            if (virtual instanceof VirtualInstanceNode) {
+                                ResolvedJavaField field = ((VirtualInstanceNode) virtual).field(i);
+                                long offset = fieldOffset(field);
+                                if (offset >= 0) {
+                                    address = createOffsetAddress(graph, newObject, offset);
+                                    barrierType = fieldInitializationBarrier(entryKind);
+                                }
+                            } else {
+                                address = createOffsetAddress(graph, newObject, arrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind));
+                                barrierType = arrayInitializationBarrier(entryKind);
                             }
-                        } else {
-                            address = createOffsetAddress(graph, newObject, arrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind));
-                            barrierType = arrayInitializationBarrier(entryKind);
+                            if (address != null) {
+                                WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, entryKind, value), barrierType);
+                                graph.addAfterFixed(newObject, graph.add(write));
+                            }
                         }
-                        if (address != null) {
-                            WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, entryKind, value), barrierType);
-                            graph.addAfterFixed(newObject, graph.add(write));
-                        }
+                        valuePos++;
                     }
-                    valuePos++;
-
                 }
             }
             valuePos = 0;
 
             for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
                 VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
-                int entryCount = virtual.entryCount();
-                ValueNode newObject = allocations[objIndex];
-                for (int i = 0; i < entryCount; i++) {
-                    if (omittedValues.get(valuePos)) {
-                        ValueNode value = commit.getValues().get(valuePos);
-                        assert value instanceof VirtualObjectNode;
-                        ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
-                        if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
-                            assert virtual.entryKind(i) == JavaKind.Object && allocValue.getStackKind() == JavaKind.Object;
-                            AddressNode address;
-                            BarrierType barrierType;
-                            if (virtual instanceof VirtualInstanceNode) {
-                                VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
-                                address = createFieldAddress(graph, newObject, virtualInstance.field(i));
-                                barrierType = BarrierType.IMPRECISE;
-                            } else {
-                                address = createArrayAddress(graph, newObject, virtual.entryKind(i), ConstantNode.forInt(i, graph));
-                                barrierType = BarrierType.PRECISE;
-                            }
-                            if (address != null) {
-                                WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
-                                graph.addBeforeFixed(commit, graph.add(write));
+                try (DebugCloseable nsp = graph.withNodeSourcePosition(virtual)) {
+                    int entryCount = virtual.entryCount();
+                    ValueNode newObject = allocations[objIndex];
+                    for (int i = 0; i < entryCount; i++) {
+                        if (omittedValues.get(valuePos)) {
+                            ValueNode value = commit.getValues().get(valuePos);
+                            assert value instanceof VirtualObjectNode;
+                            ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
+                            if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
+                                assert virtual.entryKind(i) == JavaKind.Object && allocValue.getStackKind() == JavaKind.Object;
+                                AddressNode address;
+                                BarrierType barrierType;
+                                if (virtual instanceof VirtualInstanceNode) {
+                                    VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
+                                    address = createFieldAddress(graph, newObject, virtualInstance.field(i));
+                                    barrierType = BarrierType.IMPRECISE;
+                                } else {
+                                    address = createArrayAddress(graph, newObject, virtual.entryKind(i), ConstantNode.forInt(i, graph));
+                                    barrierType = BarrierType.PRECISE;
+                                }
+                                if (address != null) {
+                                    WriteNode write = new WriteNode(address, LocationIdentity.init(), implicitStoreConvert(graph, JavaKind.Object, allocValue), barrierType);
+                                    graph.addBeforeFixed(commit, graph.add(write));
+                                }
                             }
                         }
+                        valuePos++;
                     }
-                    valuePos++;
                 }
             }
 
@@ -776,6 +778,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 recursiveLowering.lower(tool);
             }
         }
+
     }
 
     public NewInstanceNode createNewInstanceFromVirtual(VirtualObjectNode virtual) {
