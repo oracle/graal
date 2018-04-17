@@ -51,7 +51,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
-import org.graalvm.compiler.lir.aarch64.AArch64Move.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;

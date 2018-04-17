@@ -674,6 +674,19 @@ suite = {
       "workingSets" : "Graal,LIR,AArch64",
     },
 
+    "org.graalvm.compiler.lir.aarch64.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.lir.aarch64",
+      ],
+      "annotationProcessors" : ["GRAAL_OPTIONS_PROCESSOR"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11",
+      "workingSets" : "Graal,LIR,AArch64",
+      "multiReleaseJarVersion" : "11",
+    },
+
     "org.graalvm.compiler.lir.amd64" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1665,6 +1678,7 @@ suite = {
         "org.graalvm.compiler.hotspot.sparc",
         "org.graalvm.compiler.hotspot",
         "org.graalvm.compiler.hotspot.jdk9",
+        "org.graalvm.compiler.lir.aarch64.jdk11",
         "org.graalvm.compiler.truffle.runtime.hotspot",
         "org.graalvm.compiler.truffle.compiler.hotspot.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot.sparc",
