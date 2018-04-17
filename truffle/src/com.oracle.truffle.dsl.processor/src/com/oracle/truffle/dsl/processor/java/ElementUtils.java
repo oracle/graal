@@ -299,6 +299,10 @@ public class ElementUtils {
         } else if (isObject(to)) {
             return true;
         }
+        if (from.getKind() == TypeKind.NONE || to.getKind() == TypeKind.NONE) {
+            // workaround for eclipse compiler bug: v4.7.3a throws IllegalArgumentException
+            return false;
+        }
         ProcessorContext context = ProcessorContext.getInstance();
         if (!(from instanceof CodeTypeMirror) && !(to instanceof CodeTypeMirror)) {
             return context.getEnvironment().getTypeUtils().isAssignable(context.reloadType(from), context.reloadType(to));
