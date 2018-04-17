@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -308,22 +309,23 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     }
 
     private void getInstanceFields(boolean includeSuperclasses, List<SubstrateField> result) {
-        if (instanceFields == null) {
-            /*
-             * The type was created at run time from the Class, so we do not have field information.
-             * If we need the fields for a type, the type has to be created during image generation.
-             */
-            throw shouldNotReachHere("no instance fields for " + hub.getName() + " available");
-        }
+        /*
+         * If type was created at run time from the Class, we do not have field information. If we
+         * need the fields for a type, the type has to be created during image generation.
+         */
+        VMError.guarantee(includeSuperclasses || instanceFields != null,
+                        "no instance fields for " + hub.getName() + " available");
 
         if (includeSuperclasses && getSuperclass() != null) {
             getSuperclass().getInstanceFields(includeSuperclasses, result);
         }
 
-        if (instanceFields instanceof SubstrateField) {
-            result.add((SubstrateField) instanceFields);
-        } else {
-            result.addAll(Arrays.asList((SubstrateField[]) instanceFields));
+        if (instanceFields != null) {
+            if (instanceFields instanceof SubstrateField) {
+                result.add((SubstrateField) instanceFields);
+            } else {
+                result.addAll(Arrays.asList((SubstrateField[]) instanceFields));
+            }
         }
     }
 
@@ -349,29 +351,28 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
 
     @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
-        if (instanceFields == null) {
-            /*
-             * The type was created at run time from the Class, so we do not have field information.
-             * Returning null is safe and allowed, but we might not perform some optimizations. We
-             * therefore need to make sure we have a type in the image heap if we care about its
-             * fields.
-             */
-            return null;
-        }
-
-        assert offset >= 0;
-        if (instanceFields instanceof SubstrateField) {
-            SubstrateField field = (SubstrateField) instanceFields;
-            if (fieldMatches(field, offset)) {
-                return field;
-            }
-        } else {
-            for (SubstrateField field : (SubstrateField[]) instanceFields) {
+        if (instanceFields != null) {
+            assert offset >= 0;
+            if (instanceFields instanceof SubstrateField) {
+                SubstrateField field = (SubstrateField) instanceFields;
                 if (fieldMatches(field, offset)) {
                     return field;
                 }
+            } else {
+                for (SubstrateField field : (SubstrateField[]) instanceFields) {
+                    if (fieldMatches(field, offset)) {
+                        return field;
+                    }
+                }
             }
+        } else {
+            /*
+             * The type was created at run time from the Class, so we do not have field information.
+             * The types superclass however might not be created at run time thus having fields we
+             * need to look into.
+             */
         }
+
         if (getSuperclass() != null) {
             return getSuperclass().findInstanceFieldWithOffset(offset, expectedKind);
         }
