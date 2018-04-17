@@ -1582,7 +1582,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param r must be in the range 0 to size - 1
      * @param s must be in the range 0 to size - 1
      */
-    protected void bfm(int size, Register dst, Register src, int r, int s) {
+    public void bfm(int size, Register dst, Register src, int r, int s) {
         bitfieldInstruction(BFM, dst, src, r, s, generalFromSize(size));
     }
 
@@ -1595,7 +1595,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param r must be in the range 0 to size - 1
      * @param s must be in the range 0 to size - 1
      */
-    protected void ubfm(int size, Register dst, Register src, int r, int s) {
+    public void ubfm(int size, Register dst, Register src, int r, int s) {
         bitfieldInstruction(UBFM, dst, src, r, s, generalFromSize(size));
     }
 
