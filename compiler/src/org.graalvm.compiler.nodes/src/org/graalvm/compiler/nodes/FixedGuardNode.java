@@ -23,6 +23,7 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.debug.DebugCloseable;
+
 import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;

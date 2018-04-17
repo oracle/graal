@@ -29,6 +29,7 @@ import java.util.List;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -188,7 +189,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                         StructuredGraph graph = ifNode.graph();
                         LogicNode conditionNode = ifNode.condition();
                         boolean negateGuardCondition = current == ifNode.trueSuccessor();
-                        FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition));
+                        NodeSourcePosition survivingSuccessorPosition = negateGuardCondition ? ifNode.falseSuccessor().getNodeSourcePosition() : ifNode.trueSuccessor().getNodeSourcePosition();
+                        FixedGuardNode guard = graph.add(
+                                        new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
 
                         FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
                         AbstractBeginNode survivingSuccessor;

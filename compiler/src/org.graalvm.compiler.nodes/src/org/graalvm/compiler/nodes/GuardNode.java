@@ -163,14 +163,13 @@ public class GuardNode extends FloatingAnchoredNode implements Canonicalizable, 
         this.reason = reason;
     }
 
+    @Override
     public NodeSourcePosition getNoDeoptSuccessorPosition() {
         return noDeoptSuccessorPosition;
     }
 
-    public void addCallerToNoDeoptSuccessorPosition(NodeSourcePosition caller) {
-        if (noDeoptSuccessorPosition == null) {
-            return;
-        }
-        noDeoptSuccessorPosition = noDeoptSuccessorPosition.addCaller(caller);
+    @Override
+    public void setNoDeoptSuccessorPosition(NodeSourcePosition noDeoptSuccessorPosition) {
+        this.noDeoptSuccessorPosition = noDeoptSuccessorPosition;
     }
 }

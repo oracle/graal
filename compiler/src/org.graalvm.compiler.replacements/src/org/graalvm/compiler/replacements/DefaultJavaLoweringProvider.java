@@ -178,57 +178,60 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void lower(Node n, LoweringTool tool) {
         assert n instanceof Lowerable;
         StructuredGraph graph = (StructuredGraph) n.graph();
-        if (n instanceof LoadFieldNode) {
-            lowerLoadFieldNode((LoadFieldNode) n, tool);
-        } else if (n instanceof StoreFieldNode) {
-            lowerStoreFieldNode((StoreFieldNode) n, tool);
-        } else if (n instanceof LoadIndexedNode) {
-            lowerLoadIndexedNode((LoadIndexedNode) n, tool);
-        } else if (n instanceof StoreIndexedNode) {
-            lowerStoreIndexedNode((StoreIndexedNode) n, tool);
-        } else if (n instanceof ArrayLengthNode) {
-            lowerArrayLengthNode((ArrayLengthNode) n, tool);
-        } else if (n instanceof LoadHubNode) {
-            lowerLoadHubNode((LoadHubNode) n, tool);
-        } else if (n instanceof MonitorEnterNode) {
-            lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
-        } else if (n instanceof UnsafeCompareAndSwapNode) {
-            lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
-        } else if (n instanceof AtomicReadAndWriteNode) {
-            lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
-        } else if (n instanceof RawLoadNode) {
-            lowerUnsafeLoadNode((RawLoadNode) n, tool);
-        } else if (n instanceof UnsafeMemoryLoadNode) {
-            lowerUnsafeMemoryLoadNode((UnsafeMemoryLoadNode) n);
-        } else if (n instanceof RawStoreNode) {
-            lowerUnsafeStoreNode((RawStoreNode) n);
-        } else if (n instanceof UnsafeMemoryStoreNode) {
-            lowerUnsafeMemoryStoreNode((UnsafeMemoryStoreNode) n);
-        } else if (n instanceof JavaReadNode) {
-            lowerJavaReadNode((JavaReadNode) n);
-        } else if (n instanceof JavaWriteNode) {
-            lowerJavaWriteNode((JavaWriteNode) n);
-        } else if (n instanceof CommitAllocationNode) {
-            lowerCommitAllocationNode((CommitAllocationNode) n, tool);
-        } else if (n instanceof BoxNode) {
-            boxingSnippets.lower((BoxNode) n, tool);
-        } else if (n instanceof UnboxNode) {
-            boxingSnippets.lower((UnboxNode) n, tool);
-        } else if (n instanceof VerifyHeapNode) {
-            lowerVerifyHeap((VerifyHeapNode) n);
-        } else if (n instanceof UnaryMathIntrinsicNode) {
-            lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
-        } else if (n instanceof BinaryMathIntrinsicNode) {
-            lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
-        } else if (n instanceof StringIndexOfNode) {
-            lowerIndexOf((StringIndexOfNode) n);
-        } else if (n instanceof UnpackEndianHalfNode) {
-            lowerSecondHalf((UnpackEndianHalfNode) n);
-        } else {
-            throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
+        try (DebugCloseable context = n.withNodeSourcePosition()) {
+            if (n instanceof LoadFieldNode) {
+                lowerLoadFieldNode((LoadFieldNode) n, tool);
+            } else if (n instanceof StoreFieldNode) {
+                lowerStoreFieldNode((StoreFieldNode) n, tool);
+            } else if (n instanceof LoadIndexedNode) {
+                lowerLoadIndexedNode((LoadIndexedNode) n, tool);
+            } else if (n instanceof StoreIndexedNode) {
+                lowerStoreIndexedNode((StoreIndexedNode) n, tool);
+            } else if (n instanceof ArrayLengthNode) {
+                lowerArrayLengthNode((ArrayLengthNode) n, tool);
+            } else if (n instanceof LoadHubNode) {
+                lowerLoadHubNode((LoadHubNode) n, tool);
+            } else if (n instanceof MonitorEnterNode) {
+                lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
+            } else if (n instanceof UnsafeCompareAndSwapNode) {
+                lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
+            } else if (n instanceof AtomicReadAndWriteNode) {
+                lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
+            } else if (n instanceof RawLoadNode) {
+                lowerUnsafeLoadNode((RawLoadNode) n, tool);
+            } else if (n instanceof UnsafeMemoryLoadNode) {
+                lowerUnsafeMemoryLoadNode((UnsafeMemoryLoadNode) n);
+            } else if (n instanceof RawStoreNode) {
+                lowerUnsafeStoreNode((RawStoreNode) n);
+            } else if (n instanceof UnsafeMemoryStoreNode) {
+                lowerUnsafeMemoryStoreNode((UnsafeMemoryStoreNode) n);
+            } else if (n instanceof JavaReadNode) {
+                lowerJavaReadNode((JavaReadNode) n);
+            } else if (n instanceof JavaWriteNode) {
+                lowerJavaWriteNode((JavaWriteNode) n);
+            } else if (n instanceof CommitAllocationNode) {
+                lowerCommitAllocationNode((CommitAllocationNode) n, tool);
+            } else if (n instanceof BoxNode) {
+                boxingSnippets.lower((BoxNode) n, tool);
+            } else if (n instanceof UnboxNode) {
+                boxingSnippets.lower((UnboxNode) n, tool);
+            } else if (n instanceof VerifyHeapNode) {
+                lowerVerifyHeap((VerifyHeapNode) n);
+            } else if (n instanceof UnaryMathIntrinsicNode) {
+                lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
+            } else if (n instanceof BinaryMathIntrinsicNode) {
+                lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
+            } else if (n instanceof StringIndexOfNode) {
+                lowerIndexOf((StringIndexOfNode) n);
+            } else if (n instanceof UnpackEndianHalfNode) {
+                lowerSecondHalf((UnpackEndianHalfNode) n);
+            } else {
+                throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
+            }
         }
     }
 
