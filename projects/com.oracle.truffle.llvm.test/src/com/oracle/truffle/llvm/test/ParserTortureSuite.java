@@ -69,12 +69,8 @@ public final class ParserTortureSuite {
                 throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
             }
 
-            try {
-                Context context = Context.create();
+            try (Context context = Context.newBuilder().allowAllAccess(true).build()) {
                 context.eval(org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, candidate.toFile()).build());
-                context.close();
-            } catch (Throwable e) {
-                throw e;
             }
         }
     }
