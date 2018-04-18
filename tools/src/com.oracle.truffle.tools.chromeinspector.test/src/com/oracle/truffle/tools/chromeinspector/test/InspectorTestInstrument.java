@@ -27,14 +27,16 @@ package com.oracle.truffle.tools.chromeinspector.test;
 import java.io.PrintWriter;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleDebugger;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.TruffleProfiler;
 import com.oracle.truffle.tools.chromeinspector.TruffleRuntime;
+import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 
-@TruffleInstrument.Registration(id = InspectorTestInstrument.ID, services = {InspectServerSession.class, Long.class})
+@TruffleInstrument.Registration(id = InspectorTestInstrument.ID, services = {InspectServerSession.class, ConnectionWatcher.class, Long.class})
 public final class InspectorTestInstrument extends TruffleInstrument {
 
     public static final String ID = "InspectorTestInstrument";
@@ -43,11 +45,15 @@ public final class InspectorTestInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env env) {
         TruffleExecutionContext context = TruffleExecutionContext.create("test", env, new PrintWriter(env.err()));
+        ConnectionWatcher connectionWatcher = new ConnectionWatcher();
         TruffleRuntime runtime = new TruffleRuntime(context);
         TruffleDebugger debugger = new TruffleDebugger(context, suspend);
-        TruffleProfiler profiler = new TruffleProfiler(context);
+        TruffleProfiler profiler = new TruffleProfiler(context, connectionWatcher);
         InspectServerSession iss = new InspectServerSession(runtime, debugger, profiler, context);
         env.registerService(iss);
+        env.registerService(connectionWatcher);
         env.registerService(context.getId());
+        // Fake connection open
+        ReflectionUtils.invoke(connectionWatcher, "notifyOpen");
     }
 }
