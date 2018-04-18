@@ -37,7 +37,7 @@ public class BytecodeParserOptions {
     @Option(help = "The trace level for the bytecode parser. A value of 1 enables instruction tracing " +
                    "and any greater value emits a frame state trace just prior to each instruction trace." +
                    "Instruction tracing output from multiple compiler threads will be interleaved so " +
-                   "use of this option make most sense for single threaded compilation." +
+                   "use of this option make most sense for single threaded compilation. " +
                    "The MethodFilter option can be used to refine tracing to selected methods.", type = OptionType.Debug)
     public static final OptionKey<Integer> TraceBytecodeParserLevel = new OptionKey<>(0);
 

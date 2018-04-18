@@ -4,12 +4,14 @@ builds += [
   ${gateBootstrapLite}       ${labsjdk8}    ${gateDarwinAMD64Bootstrap}  {name: "gate-compiler-bootstraplite-8-darwin-amd64"}
   ${gateBootstrapLite}       ${oraclejdk9}  ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-9-darwin-amd64", targets : [weekly]}
   ${gateBootstrapLite}       ${oraclejdk10} ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-10-darwin-amd64", targets : [weekly]}
+  ${gateBootstrapLite}       ${oraclejdk11} ${gateDarwinAMD64Bootstrap}  {name: "weekly-test-compiler-bootstraplite-11-darwin-amd64", targets : [weekly]}
 
   # Linux AMD64
   ${gateBootstrap}           ${labsjdk8}    ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-8-linux-amd64"}
   ${gateBootstrapFullVerify} ${labsjdk8}    ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrapfullverify-8-linux-amd64"}
   ${gateBootstrap}           ${oraclejdk9}  ${gateLinuxAMD64Bootstrap}   {name: "weekly-test-compiler-bootstrap-9-linux-amd64", targets : [weekly]}
-  ${gateBootstrap}           ${oraclejdk10} ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-10-linux-amd64"}
+  ${gateBootstrap}           ${oraclejdk10} ${gateLinuxAMD64Bootstrap}   {name: "weekly-test-compiler-bootstrap-10-linux-amd64", targets : [weekly]}
+  ${gateBootstrap}           ${oraclejdk11} ${gateLinuxAMD64Bootstrap}   {name: "gate-compiler-bootstrap-11-linux-amd64"}
 
   # Solaris SPARC
   ${gateBootstrap}           ${labsjdk8}    ${gateSolarisSPARCBootstrap} {name: "gate-compiler-bootstrap-8-solaris-sparcv9",   timelimit: "1:00:00"}

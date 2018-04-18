@@ -641,7 +641,7 @@ public class NodeParser extends AbstractParser<NodeData> {
             AnnotationMirror nodeChildrenMirror = ElementUtils.findAnnotationMirror(processingEnv, type, NodeChildren.class);
 
             TypeMirror nodeClassType = type.getSuperclass();
-            if (!ElementUtils.isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
+            if (nodeClassType.getKind() == TypeKind.NONE || !ElementUtils.isAssignable(nodeClassType, context.getTruffleTypes().getNode())) {
                 nodeClassType = null;
             }
 
