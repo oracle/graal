@@ -34,6 +34,7 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -72,7 +73,14 @@ public class LLVMTypedForeignObjectMessageResolution {
 
         protected Object access(LLVMTypedForeignObject receiver) {
             try {
-                return ForeignAccess.sendToNative(toNative, receiver.getForeign());
+                Object nativized = ForeignAccess.sendToNative(toNative, receiver.getForeign());
+                if (nativized != receiver.getForeign() && nativized instanceof TruffleObject) {
+                    return LLVMTypedForeignObject.create((TruffleObject) nativized, receiver.getType());
+                } else if (!(nativized instanceof TruffleObject)) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalArgumentException();
+                }
+                return receiver;
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw ex.raise();
