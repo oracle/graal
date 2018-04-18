@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetFrameNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetNativePointerNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetSlotNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsObjectStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
@@ -183,6 +184,44 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
         boolean generic(LLVMContext context, LLVMGlobal global) {
             return getFrame(context).getValue(global.slot) instanceof LLVMAddress;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class IsObjectStore extends Node {
+        public abstract boolean execute(LLVMContext context, LLVMGlobal global);
+
+        public static IsObjectStore create() {
+            return IsObjectStoreNodeGen.create();
+        }
+
+        MaterializedFrame getFrame(LLVMContext context) {
+            return context.getGlobalFrame();
+        }
+
+        Assumption getSingleContextAssumption() {
+            return LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION;
+        }
+
+        @Specialization(assumptions = "getSingleContextAssumption()", guards = {"global == cachedGlobal"})
+        boolean doCachedSingleThread(LLVMContext context, LLVMGlobal global,
+                        @Cached("global") LLVMGlobal cachedGlobal,
+                        @Cached("getFrame(context)") MaterializedFrame frame) {
+            Object value = frame.getValue(cachedGlobal.slot);
+            return !(value instanceof LLVMAddress || value instanceof Managed);
+        }
+
+        @Specialization(assumptions = "getSingleContextAssumption()", replaces = "doCachedSingleThread")
+        boolean doSingleThread(LLVMContext context, LLVMGlobal global,
+                        @Cached("getFrame(context)") MaterializedFrame frame) {
+            Object value = frame.getValue(global.slot);
+            return !(value instanceof LLVMAddress || value instanceof Managed);
+        }
+
+        @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
+        boolean generic(LLVMContext context, LLVMGlobal global) {
+            Object value = getFrame(context).getValue(global.slot);
+            return !(value instanceof LLVMAddress || value instanceof Managed);
         }
     }
 
@@ -345,9 +384,27 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             return (LLVMAddress) value;
         } else if (value instanceof Managed) {
             return transformToNative(memory, context, ((Managed) value).wrapped);
+        } else if (value instanceof TruffleObject) {
+            return transformToNative(context, (TruffleObject) value);
+        } else if (value == null || globalType instanceof PrimitiveType) {
+            return transformToNative(memory, context, value);
         }
 
-        return transformToNative(memory, context, value);
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalStateException("unknown state of global variable");
+    }
+
+    private LLVMAddress transformToNative(LLVMContext context, TruffleObject value) {
+        try {
+            Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), value);
+            if (value != nativized) {
+                context.getGlobalFrame().setObject(slot, nativized);
+            }
+            long toAddr = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativized);
+            return LLVMAddress.fromLong(toAddr);
+        } catch (UnsupportedMessageException e) {
+            throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + value);
+        }
     }
 
     @TruffleBoundary
