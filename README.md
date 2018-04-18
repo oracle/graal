@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/graalvm/home](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/graalvm/home?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-GraalVM is a universal virtual machine for running applications written in JavaScript, Python, Ruby, R, JVM-based languages like Java, Scala, Clojure, Kotlin, and LLVM-based languages such as C and C++.
+GraalVM is a universal virtual machine for running applications written in JavaScript, Python, Ruby, R, JVM-based languages like Java, Scala, Clojure,  Kotlin, and LLVM-based languages such as C and C++.
 
 The project website at [https://www.graalvm.org](https://www.graalvm.org) describes how to [get started](https://www.graalvm.org/docs/getting-started/), how to [stay connected](https://www.graalvm.org/community/), and how to [contribute](https://www.graalvm.org/community/contributors/).
 
