@@ -102,9 +102,9 @@ GraalVM Enterprise Edition is available from the Oracle Technology Network
 under an evaluation license.
 It provides improved performance and security for production deployments.
 Each GraalVM component is licensed:
-[Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under
-the [GPL 2 with Classpath exception](truffle/LICENSE.GPL.md)
-[Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md)
-[TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
-The [Graal compiler](/compiler/) is licensed under the [GPL 2](compiler/LICENSE.md)
-[Substrate VM](/substratevm/) is licensed under the [GPL 2](substratevm/LICENSE.md)
+* [Truffle](/truffle/) and its dependency [Graal SDK](/sdk/) are licensed under
+the [GPL 2 with Classpath exception](truffle/LICENSE.GPL.md).
+* [Tools](/tools/) project is licensed under the [GPL 2 with Classpath exception](tools/LICENSE.GPL.md).
+* [TRegex](/regex/) project is licensed under the [GPL 2 with Classpath exception](regex/LICENSE.GPL.md).
+* The [Graal compiler](/compiler/) is licensed under the [GPL 2](compiler/LICENSE.md).
+* [Substrate VM](/substratevm/) is licensed under the [GPL 2](substratevm/LICENSE.md).
