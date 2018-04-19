@@ -1114,7 +1114,7 @@ def get_lib_polyglot_project():
                         "--language:all",
                         "-Dgraalvm.libpolyglot=true",
                         "-Dorg.graalvm.polyglot.install_name_id=@rpath/jre/lib/polyglot/<lib:polyglot>"
-                    ] + polyglot_lib_build_args,
+                    ] + GraalVmLanguageLauncher.default_tool_options() + polyglot_lib_build_args,
                 )
                 _lib_polyglot_project = GraalVmLibrary(_suite, GraalVmNativeImage.project_name(lib_polyglot_config), [], None, lib_polyglot_config)
 
