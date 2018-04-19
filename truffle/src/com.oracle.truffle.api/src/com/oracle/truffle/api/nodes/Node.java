@@ -86,9 +86,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     protected Node() {
         CompilerAsserts.neverPartOfCompilation("do not create a Node from compiled code");
         assert NodeClass.get(getClass()) != null; // ensure NodeClass constructor does not throw
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, null, null);
-        }
     }
 
     NodeClass getNodeClass() {
@@ -236,9 +233,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         assert checkSameLanguages(newChild);
         newChild.parent = this;
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newChild, null);
-        }
         NodeUtil.adoptChildrenHelper(newChild);
     }
 
@@ -254,9 +248,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         assert checkSameLanguages(newChild);
         newChild.parent = this;
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newChild, null);
-        }
         return 1 + NodeUtil.adoptChildrenAndCountHelper(newChild);
     }
 
@@ -397,18 +388,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         }
         if (TruffleOptions.TraceRewrites) {
             NodeUtil.traceRewrite(this, newNode, reason);
-        }
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newNode, reason);
-        }
-    }
-
-    private static void dump(Node node, Node newChild, CharSequence reason) {
-        if (ACCESSOR != null) {
-            Accessor.DumpSupport dumpSupport = ACCESSOR.dumpSupport();
-            if (dumpSupport != null) {
-                dumpSupport.dump(node, newChild, reason);
-            }
         }
     }
 
@@ -660,11 +639,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         @Override
         protected LanguageSupport languageSupport() {
             return super.languageSupport();
-        }
-
-        @Override
-        protected DumpSupport dumpSupport() {
-            return super.dumpSupport();
         }
 
         @Override

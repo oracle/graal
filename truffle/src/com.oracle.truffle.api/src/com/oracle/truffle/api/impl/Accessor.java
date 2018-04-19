@@ -38,6 +38,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -49,7 +50,6 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -59,7 +59,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import org.graalvm.polyglot.io.FileSystem;
 
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
@@ -106,10 +105,6 @@ public abstract class Accessor {
         public void reportPolymorphicSpecialize(Node node) {
             SUPPORT.reportPolymorphicSpecialize(node);
         }
-    }
-
-    public abstract static class DumpSupport {
-        public abstract void dump(Node newNode, Node newChild, CharSequence reason);
     }
 
     public abstract static class InteropSupport {
@@ -458,7 +453,6 @@ public abstract class Accessor {
     @CompilationFinal private static Accessor.EngineSupport SPI;
     private static Accessor.Nodes NODES;
     private static Accessor.InstrumentSupport INSTRUMENTHANDLER;
-    private static Accessor.DumpSupport DUMP;
     private static Accessor.InteropSupport INTEROP;
     private static Accessor.JavaInteropSupport JAVAINTEROP;
     private static Accessor.Frames FRAMES;
@@ -486,13 +480,6 @@ public abstract class Accessor {
         conditionallyInitInterop();
         conditionallyInitJavaInterop();
         conditionallyInitInstrumentation();
-        if (TruffleOptions.TraceASTJSON) {
-            try {
-                Class.forName("com.oracle.truffle.api.utilities.JSONHelper", true, Accessor.class.getClassLoader());
-            } catch (ClassNotFoundException ex) {
-                throw new IllegalStateException(ex);
-            }
-        }
     }
 
     @SuppressWarnings("all")
@@ -573,8 +560,6 @@ public abstract class Accessor {
             FRAMES = this.framesSupport();
         } else if (this.getClass().getSimpleName().endsWith("SourceAccessor")) {
             SOURCE = this;
-        } else if (this.getClass().getSimpleName().endsWith("DumpAccessor")) {
-            DUMP = this.dumpSupport();
         } else if (this.getClass().getSimpleName().endsWith("JavaInteropAccessor")) {
             JAVAINTEROP = this.javaInteropSupport();
         } else if (this.getClass().getSimpleName().endsWith("InteropAccessor")) {
@@ -599,10 +584,6 @@ public abstract class Accessor {
 
     protected LanguageSupport languageSupport() {
         return API;
-    }
-
-    protected DumpSupport dumpSupport() {
-        return DUMP;
     }
 
     protected EngineSupport engineSupport() {
