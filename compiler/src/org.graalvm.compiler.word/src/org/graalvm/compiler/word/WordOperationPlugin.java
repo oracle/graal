@@ -175,14 +175,14 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     }
 
     protected LoadIndexedNode createLoadIndexedNode(ValueNode array, ValueNode index) {
-        return new LoadIndexedNode(null, array, index, wordTypes.getWordKind());
+        return new LoadIndexedNode(null, array, index, wordKind);
     }
 
     @Override
     public boolean handleStoreField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field, ValueNode value) {
         if (field.getJavaKind() == JavaKind.Object) {
             boolean isWordField = wordTypes.isWord(field.getType());
-            boolean isWordValue = value.getStackKind() == wordTypes.getWordKind();
+            boolean isWordValue = value.getStackKind() == wordKind;
 
             if (isWordField && !isWordValue) {
                 throw bailout(b, "Cannot store a non-word value into a word field: " + field.format("%H.%n"));
@@ -205,20 +205,20 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         ResolvedJavaType arrayType = StampTool.typeOrNull(array);
         if (arrayType != null && wordTypes.isWord(arrayType.getComponentType())) {
             assert elementKind == JavaKind.Object;
-            if (value.getStackKind() != wordTypes.getWordKind()) {
+            if (value.getStackKind() != wordKind) {
                 throw bailout(b, "Cannot store a non-word value into a word array: " + arrayType.toJavaName(true));
             }
             b.add(createStoreIndexedNode(array, index, value));
             return true;
         }
-        if (elementKind == JavaKind.Object && value.getStackKind() == wordTypes.getWordKind()) {
+        if (elementKind == JavaKind.Object && value.getStackKind() == wordKind) {
             throw bailout(b, "Cannot store a word value into a non-word array: " + arrayType.toJavaName(true));
         }
         return false;
     }
 
     protected StoreIndexedNode createStoreIndexedNode(ValueNode array, ValueNode index, ValueNode value) {
-        return new StoreIndexedNode(array, index, wordTypes.getWordKind(), value);
+        return new StoreIndexedNode(array, index, wordKind, value);
     }
 
     @Override
@@ -230,7 +230,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
             return false;
         }
 
-        if (object.getStackKind() != wordTypes.getWordKind()) {
+        if (object.getStackKind() != wordKind) {
             throw bailout(b, "Cannot cast a non-word value to a word type: " + type.toJavaName(true));
         }
         b.push(JavaKind.Object, object);
@@ -508,10 +508,6 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 return b.add(new SignExtendNode(value, 64));
             }
         }
-    }
-
-    public WordTypes getWordTypes() {
-        return wordTypes;
     }
 
     private static BailoutException bailout(GraphBuilderContext b, String msg) {

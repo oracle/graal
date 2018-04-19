@@ -46,6 +46,7 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Source;
 
 public class BreakpointTest extends AbstractDebugTest {
@@ -1046,6 +1047,51 @@ public class BreakpointTest extends AbstractDebugTest {
             });
             expectDone();
         }
+    }
+
+    @Test
+    public void testMisplacedLineBreakpoints() throws Exception {
+        final String source = "ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    R3_STATEMENT,\n" +
+                        "    EXPRESSION,\n" +
+                        "    DEFINE(fooinner,\n" +
+                        "      VARIABLE(n, 10),\n" +
+                        "      \n" +
+                        "      R6-9_STATEMENT\n" +
+                        "    ),\n" +
+                        "    R4-5_R10-12_STATEMENT(EXPRESSION),\n" +
+                        "    CALL(fooinner)\n" +
+                        "  ),\n" +
+                        "  \n" +
+                        "  R1-2_R13-16_STATEMENT,\n" +
+                        "  CALL(foo)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
+    public void testMisplacedBreakpointPositions() throws Exception {
+        String source = " B1_{} R1-2_{S B2_}B3_\n" +
+                        "R3_[SFB ]\n" +
+                        "{F{B\n" +
+                        "  B4_{I B5_ } R4-5_[SFIB B6_ R6-7_{S}B7_] B8_\n" +
+                        "  {}\n" +
+                        "  R8-11_{S}\n" +
+                        "B9_}B10_}B11_\n";
+        assertColumnPositionsTest(source);
+    }
+
+    private void assertColumnPositionsTest(String source) throws Exception {
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+        tester.close();
+        // Different materialization changes the order of nodes that are processed during search for
+        // the nearest suspendable location of a breakpoint.
+        tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "1"));
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+        tester.close();
+        tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "2"));
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
     }
 
     @Test

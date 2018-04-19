@@ -74,7 +74,7 @@ public class PolyglotNativeAPITypes {
         public native int getCValue();
     }
 
-    @CStruct("poly_extended_error_info")
+    @CStruct(value = "poly_extended_error_info")
     public interface PolyglotExtendedErrorInfo extends PointerBase {
 
         @CField("error_code")
@@ -86,7 +86,7 @@ public class PolyglotNativeAPITypes {
     }
 
     @CPointerTo(value = PolyglotExtendedErrorInfo.class)
-    public interface ExtendedErrorInfoPointer extends PointerBase {
+    public interface PolyglotExtendedErrorInfoPointer extends PointerBase {
 
         void write(PolyglotExtendedErrorInfo value);
 
@@ -131,9 +131,34 @@ public class PolyglotNativeAPITypes {
 
     }
 
+    @CPointerTo(nameOfCType = "poly_context_builder")
+    @CTypedef(name = "poly_context_builder")
+    public interface PolyglotContextBuilder extends PointerBase, ObjectHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_context_builder")
+    public interface PolyglotContextBuilderPointer extends PointerBase, ObjectHandle {
+
+        void write(ObjectHandle value);
+
+    }
+
     @CPointerTo(nameOfCType = "poly_value")
     @CTypedef(name = "poly_value")
     public interface PolyglotValue extends PointerBase, ObjectHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_language")
+    @CTypedef(name = "poly_language")
+    public interface PolyglotLanguage extends PointerBase, ObjectHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_language")
+    public interface PolyglotLanguagePointer extends PointerBase, ObjectHandle {
+
+        void write(ObjectHandle value);
+
+        void write(int i, ObjectHandle value);
     }
 
     @CPointerTo(nameOfCType = "poly_value")

@@ -21,6 +21,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [addToHostClassPath](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPolyglotBindings--) method that can be used to allow guest language users to add to the host class path.
 * Added new permission TruffleLanguage.Env#isNativeAccessAllowed to control access to the Truffle NFI.
 * Changed default permissions in language launchers to full access. The embedding API still defaults to restricted access.
+* Added [TruffleInstrument.onFinalize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html#onFinalize-com.oracle.truffle.api.instrumentation.TruffleInstrument.Env-) that can be overridden to be notified about closing of Engine, while still having access to other instruments.
 
 ## Version 0.33
 

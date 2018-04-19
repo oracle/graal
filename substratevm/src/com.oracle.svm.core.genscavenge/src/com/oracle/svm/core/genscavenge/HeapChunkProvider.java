@@ -33,12 +33,12 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.HeapChunk.Header;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.AtomicUnsigned;
 
@@ -129,7 +129,7 @@ class HeapChunkProvider {
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
             noteFirstAllocationTime();
-            result = (AlignedHeader) ConfigurationValues.getOSInterface().allocateVirtualMemoryAligned(chunkSize, HeapPolicy.getAlignedHeapChunkAlignment());
+            result = (AlignedHeader) VirtualMemoryProvider.get().allocateVirtualMemoryAligned(chunkSize, HeapPolicy.getAlignedHeapChunkAlignment());
             if (result.isNull()) {
                 throw AllocatorOutOfMemoryError.throwError("No virtual memory for aligned chunk");
             }
@@ -161,7 +161,7 @@ class HeapChunkProvider {
             pushUnusedAlignedChunk(chunk);
         } else {
             log().string("  release memory to the OS").newline();
-            ConfigurationValues.getOSInterface().freeVirtualMemoryAligned(chunk, HeapPolicy.getAlignedHeapChunkSize(), HeapPolicy.getAlignedHeapChunkAlignment());
+            VirtualMemoryProvider.get().freeVirtualMemoryAligned(chunk, HeapPolicy.getAlignedHeapChunkSize(), HeapPolicy.getAlignedHeapChunkAlignment());
         }
         log().string("  ]").newline();
     }
@@ -274,7 +274,7 @@ class HeapChunkProvider {
         log().string("[HeapChunkProvider.produceUnalignedChunk  objectSize: ").unsigned(objectSize).string("  chunkSize: ").hex(chunkSize).newline();
 
         noteFirstAllocationTime();
-        UnalignedHeader result = (UnalignedHeader) ConfigurationValues.getOSInterface().allocateVirtualMemory(chunkSize, false);
+        UnalignedHeader result = (UnalignedHeader) VirtualMemoryProvider.get().allocateVirtualMemory(chunkSize, false);
         if (result.isNull()) {
             throw AllocatorOutOfMemoryError.throwError("No virtual memory for unaligned chunk");
         }
@@ -301,7 +301,7 @@ class HeapChunkProvider {
         final UnsignedWord chunkSize = chunk.getEnd().subtract(HeapChunk.asPointer(chunk));
         log().string("[HeapChunkProvider.consumeUnalignedChunk  chunk: ").hex(chunk).string("  chunkSize: ").hex(chunkSize).newline();
 
-        ConfigurationValues.getOSInterface().freeVirtualMemory(chunk, chunkSize);
+        VirtualMemoryProvider.get().freeVirtualMemory(chunk, chunkSize);
 
         log().string(" ]").newline();
     }

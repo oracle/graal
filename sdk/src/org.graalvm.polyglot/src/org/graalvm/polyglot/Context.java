@@ -239,7 +239,7 @@ import org.graalvm.polyglot.io.FileSystem;
  * instance may be used from multiple threads at the same time depends on if all initialized
  * languages support it. If only languages are initialized that support multi-threading then the
  * context instance may be used from multiple threads at the same time. If a context is used from
- * multiple threads and the language does not it then an {@link IllegalStateException} is thrown by
+ * multiple threads and the language does not fit then an {@link IllegalStateException} is thrown by
  * the accessing method.
  * <p>
  * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
@@ -629,8 +629,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a context with default configuration.
      *
-     * @param permittedLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param permittedLanguages names of languages permitted in this context, if no languages are
+     *            provided then all the use of languages will be permitted.
      * @return a new context
      * @since 1.0
      */
@@ -641,8 +641,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a builder for constructing a context with custom configuration.
      *
-     * @param permittedLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param permittedLanguages names of languages permitted in this context, if no languages are
+     *            provided then the use of all languages will be permitted.
      * @return a builder that can create a context
      * @since 1.0
      */

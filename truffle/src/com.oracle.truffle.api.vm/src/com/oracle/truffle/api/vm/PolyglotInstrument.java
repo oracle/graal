@@ -39,6 +39,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     InstrumentInfo info;
     final InstrumentCache cache;
     final PolyglotEngineImpl engine;
+    private final Object instrumentLock = new Object();
 
     private volatile OptionDescriptors options;
     private volatile OptionValuesImpl optionValues;
@@ -60,7 +61,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     OptionValuesImpl getOptionValues() {
         if (optionValues == null) {
-            synchronized (engine) {
+            synchronized (instrumentLock) {
                 if (optionValues == null) {
                     optionValues = new OptionValuesImpl(engine, getOptions());
                 }
@@ -76,7 +77,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     void ensureInitialized() {
         if (!initialized) {
-            synchronized (engine) {
+            synchronized (instrumentLock) {
                 if (!initialized) {
                     try {
                         Class<?> loadedInstrument = cache.getInstrumentationClass();
@@ -93,7 +94,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     void ensureCreated() {
         if (!created) {
-            synchronized (engine) {
+            synchronized (instrumentLock) {
                 if (!created) {
                     if (!initialized) {
                         ensureInitialized();
@@ -109,16 +110,28 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         }
     }
 
+    void notifyClosing() {
+        if (created) {
+            synchronized (instrumentLock) {
+                if (created) {
+                    INSTRUMENT.finalizeInstrument(engine.instrumentationHandler, this);
+                }
+            }
+        }
+    }
+
     void ensureClosed() {
         assert Thread.holdsLock(engine);
         if (created) {
-            if (created) {
-                INSTRUMENT.disposeInstrument(engine.instrumentationHandler, this, false);
+            synchronized (instrumentLock) {
+                if (created) {
+                    INSTRUMENT.disposeInstrument(engine.instrumentationHandler, this, false);
+                }
+                created = false;
+                initialized = false;
+                options = null;
+                optionValues = null;
             }
-            created = false;
-            initialized = false;
-            options = null;
-            optionValues = null;
         }
     }
 

@@ -310,6 +310,14 @@ final class InstrumentationHandler {
         instrumenter.create(expectedServices);
     }
 
+    void finalizeInstrumenter(Object key) {
+        AbstractInstrumenter finalisingInstrumenter = instrumenterMap.get(key);
+        if (finalisingInstrumenter == null) {
+            throw new AssertionError("Instrumenter already disposed.");
+        }
+        finalisingInstrumenter.doFinalize();
+    }
+
     void disposeInstrumenter(Object key, boolean cleanupRequired) {
         AbstractInstrumenter disposedInstrumenter = instrumenterMap.remove(key);
         if (disposedInstrumenter == null) {
@@ -821,8 +829,7 @@ final class InstrumentationHandler {
     }
 
     @SuppressWarnings({"unchecked", "deprecation"})
-    private void insertWrapperImpl(Node originalNode, SourceSection sourceSection) {
-        Node node = originalNode;
+    private void insertWrapperImpl(Node node, SourceSection sourceSection) {
         Node parent = node.getParent();
         if (parent instanceof com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode) {
             // already wrapped, need to invalidate the wrapper something changed
@@ -835,11 +842,11 @@ final class InstrumentationHandler {
             if (node instanceof InstrumentableNode) {
                 wrapper = ((InstrumentableNode) node).createWrapper(probe);
                 if (wrapper == null) {
-                    throw new IllegalStateException("No wrapper returned for " + originalNode);
+                    throw new IllegalStateException("No wrapper returned for " + node + " of class " + node.getClass().getName());
                 }
             } else {
                 Class<?> factory = null;
-                Class<?> currentClass = originalNode.getClass();
+                Class<?> currentClass = node.getClass();
                 while (currentClass != null) {
                     Instrumentable instrumentable = currentClass.getAnnotation(Instrumentable.class);
                     if (instrumentable != null) {
@@ -860,25 +867,25 @@ final class InstrumentationHandler {
                 if (TRACE) {
                     trace("Insert wrapper for %s, section %s%n", node, sourceSection);
                 }
-                wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(originalNode, probe);
+                wrapper = ((InstrumentableFactory<Node>) factory.newInstance()).createWrapper(node, probe);
             }
 
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to create wrapper node. ", e);
+            throw new IllegalStateException("Failed to create wrapper of " + node, e);
         }
 
         if (!(wrapper instanceof Node)) {
             throw new IllegalStateException(String.format("Implementation of %s must be a subclass of %s.",
-                            com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode.class.getSimpleName(), Node.class.getSimpleName()));
+                            wrapper.getClass().getName(), Node.class.getSimpleName()));
         }
 
         final Node wrapperNode = (Node) wrapper;
         if (wrapperNode.getParent() != null) {
-            throw new IllegalStateException(String.format("Instance of provided %s is already adopted by another parent.",
-                            com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode.class.getSimpleName()));
+            throw new IllegalStateException(String.format("Instance of provided wrapper %s is already adopted by another parent: %s",
+                            wrapper.getClass().getName(), wrapperNode.getParent().getClass().getName()));
         }
         if (parent == null) {
-            throw new IllegalStateException(String.format("Instance of instrumentable %s is not adopted by a parent.", Node.class.getSimpleName()));
+            throw new IllegalStateException(String.format("Instance of instrumentable node %s is not adopted by a parent.", node.getClass().getName()));
         }
 
         if (!NodeUtil.isReplacementSafe(parent, node, wrapperNode)) {
@@ -886,7 +893,7 @@ final class InstrumentationHandler {
                             String.format("WrapperNode implementation %s cannot be safely replaced in parent node class %s.", wrapperNode.getClass().getName(), parent.getClass().getName()));
         }
 
-        originalNode.replace(wrapperNode, "Insert instrumentation wrapper node.");
+        node.replace(wrapperNode, "Insert instrumentation wrapper node.");
 
         assert probe.getContext().validEventContext();
     }
@@ -1523,6 +1530,11 @@ final class InstrumentationHandler {
         }
 
         @Override
+        void doFinalize() {
+            instrument.onFinalize(env);
+        }
+
+        @Override
         void dispose() {
             instrument.onDispose(env);
         }
@@ -1546,6 +1558,10 @@ final class InstrumentationHandler {
      * implementations}.
      */
     final class EngineInstrumenter extends AbstractInstrumenter {
+
+        @Override
+        void doFinalize() {
+        }
 
         @Override
         void dispose() {
@@ -1662,6 +1678,11 @@ final class InstrumentationHandler {
         }
 
         @Override
+        void doFinalize() {
+            // nothing to do
+        }
+
+        @Override
         void dispose() {
             // nothing to do
         }
@@ -1678,6 +1699,8 @@ final class InstrumentationHandler {
      * privileges may vary.
      */
     abstract class AbstractInstrumenter extends Instrumenter {
+
+        abstract void doFinalize();
 
         abstract void dispose();
 
@@ -2061,6 +2084,11 @@ final class InstrumentationHandler {
                     }
                 }
                 return descriptors;
+            }
+
+            @Override
+            public void finalizeInstrument(Object instrumentationHandler, Object key) {
+                ((InstrumentationHandler) instrumentationHandler).finalizeInstrumenter(key);
             }
 
             @Override

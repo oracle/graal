@@ -59,22 +59,23 @@ import com.oracle.truffle.api.source.Source;
 @SuppressWarnings("unused")
 public abstract class SLEvalBuiltin extends SLBuiltinNode {
 
-    @Specialization(guards = {"stringsEqual(cachedMimeType, mimeType)", "stringsEqual(cachedCode, code)"})
-    public Object evalCached(String mimeType, String code,
-                    @Cached("mimeType") String cachedMimeType,
+    @Specialization(guards = {"stringsEqual(cachedId, id)", "stringsEqual(cachedCode, code)"})
+    public Object evalCached(String id, String code,
+                    @Cached("id") String cachedId,
                     @Cached("code") String cachedCode,
-                    @Cached("create(parse(mimeType, code))") DirectCallNode callNode) {
+                    @Cached("create(parse(id, code))") DirectCallNode callNode) {
         return callNode.call(new Object[]{});
     }
 
     @TruffleBoundary
     @Specialization(replaces = "evalCached")
-    public Object evalUncached(String mimeType, String code) {
-        return parse(mimeType, code).call();
+    public Object evalUncached(String id, String code) {
+        return parse(id, code).call();
     }
 
-    protected CallTarget parse(String mimeType, String code) {
-        final Source source = Source.newBuilder(code).name("(eval)").mimeType(mimeType).build();
+    protected CallTarget parse(String id, String code) {
+        // mimetype needs to be set for compatibility reasons with the old TCK.
+        final Source source = Source.newBuilder(code).name("(eval)").language(id).mimeType(id).build();
         return getContext().parse(source);
     }
 

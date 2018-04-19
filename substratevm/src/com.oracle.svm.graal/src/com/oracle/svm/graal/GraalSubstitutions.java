@@ -212,7 +212,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext {
 @TargetClass(value = TimeSource.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_TimeSource {
     @Alias @RecomputeFieldValue(kind = FromAlias)//
-    private static final boolean USING_BEAN = false;
+    private static final boolean USING_THREAD_CPU_TIME = false;
 }
 
 @TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = GraalFeature.IsEnabled.class)

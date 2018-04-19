@@ -22,11 +22,10 @@
  * questions.
  */
 
-package org.graalvm.compiler.replacements.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
 import jdk.vm.ci.aarch64.AArch64Kind;
-import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
-import org.graalvm.compiler.core.aarch64.AArch64LIRGenerator;
+
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;

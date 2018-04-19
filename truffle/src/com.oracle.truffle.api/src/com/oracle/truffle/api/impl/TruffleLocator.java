@@ -29,7 +29,10 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
+import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Locator that allows the users of the Truffle API to find implementations of languages to be
@@ -39,6 +42,10 @@ import com.oracle.truffle.api.TruffleRuntime;
  * @since 0.18
  */
 public abstract class TruffleLocator {
+
+    private static TruffleLocator nativeImageLocator;   // effectively final after native image
+                                                        // compilation
+    private static final AtomicBoolean NATIVE_IMAGE_LOCATOR_INITIALIZED = new AtomicBoolean();
 
     /**
      * Creates the set of classloaders to be used by the system.
@@ -84,6 +91,15 @@ public abstract class TruffleLocator {
         return null;
     }
 
+    static void initializeNativeImageTruffleLocator() {
+        assert TruffleOptions.AOT : "Only supported in AOT mode.";
+        if (nativeImageLocator != null) {
+            if (NATIVE_IMAGE_LOCATOR_INITIALIZED.compareAndSet(false, true)) {
+                nativeImageLocator.locate(new Response(new HashSet<>()));
+            }
+        }
+    }
+
     /**
      * Called to locate languages and other parts of the system.
      *
@@ -117,4 +133,15 @@ public abstract class TruffleLocator {
 
     }
 
+    @SuppressWarnings("unused")
+    private static void initializeNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        nativeImageLocator = Truffle.getRuntime().getCapability(TruffleLocator.class);
+    }
+
+    @SuppressWarnings("unused")
+    private static void resetNativeImageState() {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        nativeImageLocator = null;
+    }
 }

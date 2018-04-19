@@ -59,7 +59,7 @@ public abstract class SLDefineFunctionBuiltin extends SLBuiltinNode {
         // @formatter:off
         Source source = Source.newBuilder(code).
             name("[defineFunction]").
-            mimeType(SLLanguage.MIME_TYPE).
+            language(SLLanguage.ID).
             build();
         // @formatter:on
         /* The same parsing code as for parsing the initial source. */

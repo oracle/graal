@@ -65,6 +65,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -74,6 +75,10 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
+import java.util.Map;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 @TargetClass(java.lang.Object.class)
 final class Target_java_lang_Object {
@@ -552,11 +557,9 @@ final class Target_java_lang_StrictMath {
 
 /**
  * We do not have dynamic class loading (and therefore no class unloading), so it is not necessary
- * to keep the complicated code that the JDK uses. However, our simple substitutions have two
- * drawbacks (but they are not a problem for now):
+ * to keep the complicated code that the JDK uses. However, our simple substitutions have a drawback
+ * (not a problem for now):
  * <ul>
- * <li>We do not persist values put into the ClassValue during image generation, i.e., we always
- * start with an empty ClassValue at run time.
  * <li>We do not implement the complicated state machine semantics for concurrent calls to
  * {@link #get} and {@link #remove} that are explained in {@link ClassValue#remove}.
  * </ul>
@@ -565,7 +568,7 @@ final class Target_java_lang_StrictMath {
 @Substitute
 final class Target_java_lang_ClassValue {
 
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JavaLangSubstitutions.ClassValueInitializer.class)//
     private final ConcurrentMap<Class<?>, Object> values;
 
     @Substitute
@@ -634,17 +637,12 @@ final class Target_java_lang_ApplicationShutdownHooks {
 @TargetClass(className = "java.lang.Shutdown")
 final class Target_java_lang_Shutdown {
 
-    // { Allow all upper-case name: Checkstyle: stop
-    @Alias//
-    static int MAX_SYSTEM_HOOKS;
-    // } Checkstyle: resume
-
     /**
      * Re-initialize the map of registered hooks, because any hooks registered during native image
      * construction can not survive into the running image.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static Runnable[] hooks = new Runnable[MAX_SYSTEM_HOOKS];
+    static Runnable[] hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
 
     @Substitute
     static void halt0(@SuppressWarnings("unused") int status) {
@@ -656,6 +654,22 @@ final class Target_java_lang_Shutdown {
     static void runAllFinalizers() {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
     }
+
+    @Alias
+    static native void shutdown();
+
+    @Alias
+    static native void add(int slot, boolean registerShutdownInProgress, Runnable hook);
+}
+
+/** Utility methods for Target_java_lang_Shutdown. */
+final class Util_java_lang_Shutdown {
+
+    /**
+     * Value *copied* from {@code java.lang.Shutdown.MAX_SYSTEM_HOOKS} so that the value can be used
+     * during image generation (@Alias values are only visible at run time).
+     */
+    static final int MAX_SYSTEM_HOOKS = 10;
 }
 
 @TargetClass(java.lang.Package.class)
@@ -692,4 +706,23 @@ final class Target_java_lang_Package {
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    public static final class ClassValueSupport {
+        final Map<ClassValue<?>, Map<Class<?>, Object>> values;
+
+        public ClassValueSupport(Map<ClassValue<?>, Map<Class<?>, Object>> map) {
+            values = map;
+        }
+    }
+
+    static class ClassValueInitializer implements CustomFieldValueComputer {
+        @Override
+        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
+            ClassValue<?> v = (ClassValue<?>) receiver;
+            Map<Class<?>, Object> map = support.values.get(v);
+            assert map != null;
+            return map;
+        }
+    }
 }

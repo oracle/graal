@@ -137,6 +137,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                     long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine) {
         ensureInitialized();
+        if (TruffleOptions.AOT) {
+            VMAccessor.SPI.initializeNativeImageTruffleLocator();
+        }
         OutputStream resolvedOut = out == null ? System.out : out;
         OutputStream resolvedErr = err == null ? System.err : err;
         InputStream resolvedIn = in == null ? System.in : in;

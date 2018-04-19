@@ -99,7 +99,7 @@ public class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 }
             }
             CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(Options.TruffleCompilerConfiguration.getValue(options), options);
-            return HotSpotGraalCompilerFactory.createCompiler(JVMCI.getRuntime(), options, compilerConfigurationFactory);
+            return HotSpotGraalCompilerFactory.createCompiler("Truffle", JVMCI.getRuntime(), options, compilerConfigurationFactory);
         }
     }
 }

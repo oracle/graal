@@ -100,12 +100,7 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
         writer.includeFiles(Arrays.asList("<stdio.h>", "<stddef.h>"));
 
-        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            writer.includeFiles(Collections.singletonList("<stdbool.h>"));
-        }
-        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
-            writer.includeFiles(Collections.singletonList("<stdint.h>"));
-        }
+        writeCStandardHeaders(writer);
 
         /* Write general macro definitions. */
         writer.appendln();
@@ -123,6 +118,15 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.indents().appendln("return 0;");
         writer.outdent();
         writer.appendln("}");
+    }
+
+    public static void writeCStandardHeaders(CSourceCodeWriter writer) {
+        if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
+            writer.includeFiles(Collections.singletonList("<stdbool.h>"));
+        }
+        if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
+            writer.includeFiles(Collections.singletonList("<stdint.h>"));
+        }
     }
 
     @Override

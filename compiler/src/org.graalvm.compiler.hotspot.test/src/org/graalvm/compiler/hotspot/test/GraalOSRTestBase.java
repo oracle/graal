@@ -29,8 +29,8 @@ import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
+import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
@@ -97,7 +97,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
      * Returns the target BCI of the first bytecode backedge. This is where HotSpot triggers
      * on-stack-replacement in case the backedge counter overflows.
      */
-    private static int getBackedgeBCI(DebugContext debug, ResolvedJavaMethod method) {
+    static int getBackedgeBCI(DebugContext debug, ResolvedJavaMethod method) {
         Bytecode code = new ResolvedJavaMethodBytecode(method);
         BytecodeStream stream = new BytecodeStream(code.getCode());
         OptionValues options = debug.getOptions();
@@ -105,7 +105,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
 
         for (BciBlock block : bciBlockMapping.getBlocks()) {
             if (block.getStartBci() != -1) {
-                int bci = block.getStartBci();
+                int bci = block.getEndBci();
                 for (BciBlock succ : block.getSuccessors()) {
                     if (succ.getStartBci() != -1) {
                         int succBci = succ.getStartBci();
@@ -122,14 +122,14 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         return -1;
     }
 
-    private static void checkResult(Result result) {
+    protected static void checkResult(Result result) {
         Assert.assertNull("Unexpected exception", result.exception);
         Assert.assertNotNull(result.returnValue);
         Assert.assertTrue(result.returnValue instanceof ReturnValue);
         Assert.assertEquals(ReturnValue.SUCCESS, result.returnValue);
     }
 
-    private void compileOSR(OptionValues options, ResolvedJavaMethod method) {
+    protected void compileOSR(OptionValues options, ResolvedJavaMethod method) {
         OptionValues goptions = options;
         // Silence diagnostics for permanent bailout errors as they
         // are expected for some OSR tests.

@@ -578,8 +578,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                     if (uri == null) {
                         throw new IOException("No URI for " + loc);
                     }
+                    String l = findLocationLanguage(loc);
+                    if (l == null) {
+                        continue;
+                    }
                     writePoolObject(uri.toString());
-                    writeString(findLocationLanguage(loc));
+                    writeString(l);
                     writeInt(findLocationLine(loc));
                     writeInt(findLocationStart(loc));
                     writeInt(findLocationEnd(loc));

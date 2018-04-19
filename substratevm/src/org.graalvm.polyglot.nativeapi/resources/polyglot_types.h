@@ -23,6 +23,8 @@
 #ifndef POLYGLOT_TYPES_H
 #define POLYGLOT_TYPES_H
 
+#define POLY_AUTO_LENGTH SIZE_MAX
+
 typedef enum {
   poly_ok,
   poly_invalid_arg,
@@ -54,7 +56,11 @@ typedef poly_handle poly_engine;
 
 typedef poly_handle poly_context;
 
+typedef poly_handle poly_context_builder;
+
 typedef poly_handle poly_callback_info;
+
+typedef poly_handle poly_language;
 
 typedef graal_create_isolate_params_t poly_isolate_params;
 

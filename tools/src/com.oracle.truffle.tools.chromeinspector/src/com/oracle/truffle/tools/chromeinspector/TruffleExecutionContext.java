@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -56,7 +55,7 @@ public final class TruffleExecutionContext {
     private final PrintWriter err;
     private final List<Listener> listeners = Collections.synchronizedList(new ArrayList<>(3));
     private final long id = LAST_ID.incrementAndGet();
-    private final Semaphore runPermission = new Semaphore(1);
+    private final boolean[] runPermission = new boolean[]{false};
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
@@ -70,7 +69,6 @@ public final class TruffleExecutionContext {
         this.name = name;
         this.env = env;
         this.err = err;
-        runPermission.drainPermits();
     }
 
     public static TruffleExecutionContext create(String name, TruffleInstrument.Env env, PrintWriter err) {
@@ -91,7 +89,10 @@ public final class TruffleExecutionContext {
 
     public void doRunIfWaitingForDebugger() {
         fireContextCreated();
-        runPermission.release();
+        synchronized (runPermission) {
+            runPermission[0] = true;
+            runPermission.notifyAll();
+        }
     }
 
     public ScriptsHandler getScriptsHandler() {
@@ -129,7 +130,11 @@ public final class TruffleExecutionContext {
     }
 
     public void waitForRunPermission() throws InterruptedException {
-        runPermission.acquire();
+        synchronized (runPermission) {
+            while (!runPermission[0]) {
+                runPermission.wait();
+            }
+        }
     }
 
     synchronized RemoteObjectsHandler getRemoteObjectsHandler() {

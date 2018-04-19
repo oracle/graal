@@ -126,7 +126,7 @@ public class OptionValues {
     /**
      * Decodes a value that may be the sentinel value for {@code null} in a map.
      */
-    protected static Object decodeNull(Object value) {
+    public static Object decodeNull(Object value) {
         return value == NULL ? null : value;
     }
 

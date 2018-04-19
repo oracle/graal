@@ -108,8 +108,10 @@ public final class CGlobalDataFactory {
      * name for the allocated word.
      */
     public static <T extends PointerBase> CGlobalData<T> createWord(WordBase initialValue, String symbolName) {
-        assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
-        Supplier<byte[]> supplier = () -> ByteBuffer.allocate(Long.BYTES).order(ByteOrder.nativeOrder()).putLong(initialValue.rawValue()).array();
+        Supplier<byte[]> supplier = () -> {
+            assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
+            return ByteBuffer.allocate(Long.BYTES).order(ByteOrder.nativeOrder()).putLong(initialValue.rawValue()).array();
+        };
         return new CGlobalDataImpl<>(symbolName, supplier);
     }
 
