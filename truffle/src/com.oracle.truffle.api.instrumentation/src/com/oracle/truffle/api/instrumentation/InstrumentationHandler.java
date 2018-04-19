@@ -1467,14 +1467,9 @@ final class InstrumentationHandler {
             if (TRACE) {
                 trace("Create instrument %s class %s %n", instrument, instrumentClass);
             }
-            try {
-                services = env.onCreate(instrument);
-                if (expectedServices != null && !TruffleOptions.AOT) {
-                    checkServices(expectedServices);
-                }
-            } catch (Throwable e) {
-                failInstrumentInitialization(env, String.format("Failed calling onCreate of instrument class %s", instrumentClass.getName()), e);
-                return;
+            services = env.onCreate(instrument);
+            if (expectedServices != null && !TruffleOptions.AOT) {
+                checkServices(expectedServices);
             }
             if (TRACE) {
                 trace("Created instrument %s class %s %n", instrument, instrumentClass);

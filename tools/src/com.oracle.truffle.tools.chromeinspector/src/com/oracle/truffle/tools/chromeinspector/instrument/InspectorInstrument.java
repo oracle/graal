@@ -103,12 +103,13 @@ public final class InspectorInstrument extends TruffleInstrument {
         OptionValues options = env.getOptions();
         if (options.hasSetOptions()) {
             Server server = new Server(env);
+            HostAndPort hostAndPort = options.get(Inspect);
             connectionWatcher = new ConnectionWatcher();
             try {
-                InetSocketAddress socketAddress = options.get(Inspect).createSocket(options.get(Remote));
+                InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
                 server.start("Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path), connectionWatcher);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
         }
     }
@@ -165,6 +166,20 @@ public final class InspectorInstrument extends TruffleInstrument {
                     throw new IllegalArgumentException(ex.getLocalizedMessage(), ex);
                 }
             }
+        }
+
+        String getHostPort(boolean remote) {
+            String hostName = host;
+            if (hostName == null || hostName.isEmpty()) {
+                if (inetAddress != null) {
+                    hostName = inetAddress.toString();
+                } else if (remote) {
+                    hostName = "localhost";
+                } else {
+                    hostName = InetAddress.getLoopbackAddress().toString();
+                }
+            }
+            return hostName + ":" + port;
         }
 
         InetSocketAddress createSocket(boolean remote) throws UnknownHostException {
