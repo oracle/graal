@@ -390,37 +390,52 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         if (id == null) {
             addPoolEntry(object);
         } else {
-            int type = findPoolType(object);
+            int type = findPoolType(object, null);
             writeByte(type);
             writeShort(id.charValue());
         }
     }
 
-    private int findPoolType(Object object) throws IOException {
+    private int findPoolType(Object obj, Object[] found) throws IOException {
+        Object object = obj;
         if (object == null) {
             return POOL_NULL;
         }
-        if (findJavaField(object) != null) {
+        if (isFound(findJavaField(object), found)) {
             return POOL_FIELD;
-        } else if (findSignature(object) != null) {
+        } else if (isFound(findSignature(object), found)) {
             return POOL_SIGNATURE;
-        } else if (versionMajor >= 4 && findNodeSourcePosition(object) != null) {
+        } else if (versionMajor >= 4 && isFound(findNodeSourcePosition(object), found)) {
             return POOL_NODE_SOURCE_POSITION;
         } else {
             final Node node = findNode(object);
             if (versionMajor == 4 && node != null) {
                 object = classForNode(node);
             }
-            if (findNodeClass(object) != null) {
+            if (isFound(findNodeClass(object), found)) {
                 return POOL_NODE_CLASS;
-            } else if (versionMajor >= 5 && node != null) {
+            } else if (versionMajor >= 5 && isFound(node, found)) {
                 return POOL_NODE;
-            } else if (findMethod(object) != null) {
+            } else if (isFound(findMethod(object), found)) {
                 return POOL_METHOD;
+            } else if (object instanceof Enum<?>) {
+                if (found != null) {
+                    found[0] = ((Enum<?>) object).ordinal();
+                }
+                return POOL_ENUM;
             } else {
-                if (object instanceof Enum<?> || findEnumOrdinal(object) >= 0) {
+                int val = findEnumOrdinal(object);
+                if (val >= 0) {
+                    if (found != null) {
+                        found[0] = val;
+                    }
                     return POOL_ENUM;
-                } else if (object instanceof Class<?> || findJavaTypeName(object) != null) {
+                } else if (object instanceof Class<?>) {
+                    if (found != null) {
+                        found[0] = ((Class<?>) object).getName();
+                    }
+                    return POOL_CLASS;
+                } else if (isFound(findJavaTypeName(object), found)) {
                     return POOL_CLASS;
                 } else {
                     return POOL_STRING;
@@ -543,20 +558,21 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         }
     }
 
-    @SuppressWarnings("all")
+    @SuppressWarnings("unchecked")
     private void addPoolEntry(Object obj) throws IOException {
         Object object = obj;
         char index = constantPool.add(object);
         writeByte(POOL_NEW);
         writeShort(index);
 
-        int type = findPoolType(object);
+        Object[] found = {null};
+        int type = findPoolType(object, found);
         writeByte(type);
         switch (type) {
             default:
                 throw new IllegalStateException();
             case POOL_FIELD: {
-                ResolvedJavaField field = findJavaField(object);
+                ResolvedJavaField field = (ResolvedJavaField) found[0];
                 Objects.nonNull(field);
                 writePoolObject(findFieldDeclaringClass(field));
                 writePoolObject(findFieldName(field));
@@ -565,8 +581,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 break;
             }
             case POOL_SIGNATURE: {
-                Signature signature = findSignature(object);
-                Objects.nonNull(signature);
+                Signature signature = (Signature) found[0];
                 int args = findSignatureParameterCount(signature);
                 writeShort((char) args);
                 for (int i = 0; i < args; i++) {
@@ -576,7 +591,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 break;
             }
             case POOL_NODE_SOURCE_POSITION: {
-                NodeSourcePosition pos = findNodeSourcePosition(object);
+                NodeSourcePosition pos = (NodeSourcePosition) found[0];
                 Objects.nonNull(pos);
                 ResolvedJavaMethod method = findNodeSourcePositionMethod(pos);
                 writePoolObject(method);
@@ -620,17 +635,14 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 break;
             }
             case POOL_NODE: {
-                Node node = findNode(object);
+                Node node = (Node) found[0];
                 Objects.nonNull(node);
                 writeInt(findNodeId(node));
                 writePoolObject(classForNode(node));
                 break;
             }
             case POOL_NODE_CLASS: {
-                if (versionMajor == 4) {
-                    object = classForNode(findNode(object));
-                }
-                NodeClass nodeClass = findNodeClass(object);
+                NodeClass nodeClass = (NodeClass) found[0];
                 final Object clazz = findJavaClass(nodeClass);
                 if (versionMajor >= 3) {
                     writePoolObject(clazz);
@@ -645,7 +657,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 break;
             }
             case POOL_CLASS: {
-                String typeName = findJavaTypeName(object);
+                String typeName = (String) found[0];
                 Objects.nonNull(typeName);
                 writeString(typeName);
                 String[] enumValueNames = findEnumTypeValues(object);
@@ -661,7 +673,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 break;
             }
             case POOL_METHOD: {
-                ResolvedJavaMethod method = findMethod(object);
+                ResolvedJavaMethod method = (ResolvedJavaMethod) found[0];
                 Objects.nonNull(method);
                 writePoolObject(findMethodDeclaringClass(method));
                 writePoolObject(findMethodName(method));
@@ -675,7 +687,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 break;
             }
             case POOL_ENUM: {
-                int enumOrdinal = findEnumOrdinal(object);
+                int enumOrdinal = (int) found[0];
                 writePoolObject(findEnumClass(object));
                 writeInt(enumOrdinal);
                 break;
@@ -760,6 +772,16 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         if (size != cnt) {
             throw new IOException("Expecting " + size + " properties, but found only " + cnt);
         }
+    }
+
+    private static boolean isFound(Object obj, Object[] found) {
+        if (obj == null) {
+            return false;
+        }
+        if (found != null) {
+            found[0] = obj;
+        }
+        return true;
     }
 
     private static final class ConstantPool extends LinkedHashMap<Object, Character> {
