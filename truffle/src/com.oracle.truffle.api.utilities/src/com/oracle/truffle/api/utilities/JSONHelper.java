@@ -29,9 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Helper function that allows to dump the AST during creation to a JSON format.
@@ -47,53 +45,28 @@ public class JSONHelper {
     public JSONHelper() {
     }
 
-    private static StringBuilder AstJsonDumpBuilder = new StringBuilder();
-
     /** @since 0.8 or earlier */
     @Deprecated
+    @SuppressWarnings("unused")
     public static void dumpNewChild(Node parentNode, Node childNode) {
-        if (AstJsonDumpBuilder != null) {
-            AstJsonDumpBuilder.append("{ \"action\": \"insertNode\", \"parentId\": \"" + getID(parentNode) + "\", \"newId\": \"" + getID(childNode) + "\" },\n");
-        }
     }
 
     /** @since 0.8 or earlier */
     @Deprecated
+    @SuppressWarnings("unused")
     public static void dumpReplaceChild(Node oldNode, Node newNode, CharSequence reason) {
-        if (AstJsonDumpBuilder != null) {
-            AstJsonDumpBuilder.append("{ \"action\": \"replaceNode\", \"oldId\": \"" + getID(oldNode) + "\", \"newId\": \"" + getID(newNode) + "\", \"reason\": " + quote(reason) + " },\n");
-        }
     }
 
     /** @since 0.8 or earlier */
     @Deprecated
+    @SuppressWarnings("unused")
     public static void dumpNewNode(Node newNode) {
-        if (AstJsonDumpBuilder != null) {
-            String language = "";
-            RootNode root = newNode.getRootNode();
-            if (root != null) {
-                TruffleLanguage<?> clazz = root.getLanguage(TruffleLanguage.class);
-                if (clazz != null) {
-                    language = clazz.getClass().getName();
-                }
-            }
-            AstJsonDumpBuilder.append("{ \"action\": \"createNode\", \"newId\": \"" + getID(newNode) + "\", \"type\": \"" + getType(newNode) + "\", \"description\": \"" + newNode.getDescription() +
-                            "\", \"language\": \"" + language + "\"" + " },\n");
-        }
     }
 
     /** @since 0.8 or earlier */
     @Deprecated
     public static String getResult() {
-        return AstJsonDumpBuilder.toString();
-    }
-
-    private static String getID(Node newChild) {
-        return String.valueOf(newChild.hashCode());
-    }
-
-    private static String getType(Node node) {
-        return node.getClass().getSimpleName();
+        return "";
     }
 
     private static String quote(CharSequence value) {
@@ -141,7 +114,6 @@ public class JSONHelper {
     /** @since 0.8 or earlier */
     @Deprecated
     public static void restart() {
-        AstJsonDumpBuilder = new StringBuilder();
     }
 
     /** @since 0.8 or earlier */
