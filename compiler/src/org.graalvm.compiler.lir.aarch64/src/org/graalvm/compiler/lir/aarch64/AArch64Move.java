@@ -200,8 +200,7 @@ public class AArch64Move {
         public static final LIRInstructionClass<MembarOp> TYPE = LIRInstructionClass.create(MembarOp.class);
 
         // For future use.
-        @SuppressWarnings("unused")
-        private final int barriers;
+        @SuppressWarnings("unused") private final int barriers;
 
         public MembarOp(int barriers) {
             super(TYPE);
