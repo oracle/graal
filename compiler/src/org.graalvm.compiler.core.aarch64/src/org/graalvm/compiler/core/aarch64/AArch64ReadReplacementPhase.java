@@ -22,7 +22,7 @@
  * questions.
  */
 
-package org.graalvm.compiler.replacements.aarch64;
+package org.graalvm.compiler.core.aarch64;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
