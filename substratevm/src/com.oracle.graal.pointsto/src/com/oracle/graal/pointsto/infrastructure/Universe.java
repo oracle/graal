@@ -59,4 +59,6 @@ public interface Universe {
     WrappedConstantPool lookup(ConstantPool constantPool, WrappedJavaType defaultAccessingClass);
 
     JavaConstant lookup(JavaConstant constant);
+
+    ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method);
 }
