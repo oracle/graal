@@ -78,7 +78,7 @@ public class DerefHandleTest extends InteropTestBase {
     public class TestCallDerefHandleNode extends SulongTestNode {
 
         public TestCallDerefHandleNode() {
-            super(testLibrary, "test_call_deref_handle", 1);
+            super(testLibrary, "test_call_deref_handle", 3);
         }
     }
 
@@ -92,7 +92,7 @@ public class DerefHandleTest extends InteropTestBase {
     public class TestCallDerefHandlemMemberNode extends SulongTestNode {
 
         public TestCallDerefHandlemMemberNode() {
-            super(testLibrary, "test_call_deref_handle_member", 2);
+            super(testLibrary, "test_call_deref_handle_member", 3);
         }
     }
 
@@ -117,13 +117,13 @@ public class DerefHandleTest extends InteropTestBase {
 
     @Test
     public void testCallDerefHandle(@Inject(TestCallDerefHandleNode.class) CallTarget callDerefHandle) {
-        TestCallback callback = new TestCallback(1, x -> x[0]);
-        long actual = (long) callDerefHandle.call(callback, 42L);
+        TestCallback callback = new TestCallback(2, DerefHandleTest::add);
+        long actual = (long) callDerefHandle.call(callback, 13L, 29L);
         Assert.assertEquals(42L, actual);
     }
 
     @Test
-    public void testlDerefHandlePointerArith(@Inject(TestDerefHandlePointerArithNode.class) CallTarget derefHandlePointerArith) {
+    public void testDerefHandlePointerArith(@Inject(TestDerefHandlePointerArithNode.class) CallTarget derefHandlePointerArith) {
         Map<String, Object> members = makePointObject();
         int y = (int) members.get("y");
         Object actual = derefHandlePointerArith.call(new StructObject(members));
@@ -132,16 +132,23 @@ public class DerefHandleTest extends InteropTestBase {
 
     @Test
     public void testCallDerefHandleMember(@Inject(TestCallDerefHandlemMemberNode.class) CallTarget callDerefHandleMember) {
-        Object actual = callDerefHandleMember.call(new StructObject(makePointObject()), 42L);
-        Assert.assertEquals(42L, actual);
+        Object actual = callDerefHandleMember.call(new StructObject(makePointObject()), 3L, 7L);
+        Assert.assertEquals(10L, actual);
     }
 
     private static Map<String, Object> makePointObject() {
         HashMap<String, Object> values = new HashMap<>();
         values.put("x", 3);
         values.put("y", 4);
-        values.put("identity", new TestCallback(1, x -> x[0]));
+        values.put("identity", new TestCallback(2, DerefHandleTest::add));
         return values;
+    }
+
+    private static Object add(Object... args) {
+        if (args.length == 2 && args[0] instanceof Number && args[1] instanceof Number) {
+            return ((long) args[0]) + ((long) args[1]);
+        }
+        throw new IllegalArgumentException("expected long arguments");
     }
 
 }
