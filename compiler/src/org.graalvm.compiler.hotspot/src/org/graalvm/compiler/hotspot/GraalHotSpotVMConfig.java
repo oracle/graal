@@ -305,9 +305,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final int javaThreadAnchorOffset = getFieldOffset("JavaThread::_anchor", Integer.class, "JavaFrameAnchor");
     public final int threadObjectOffset = getFieldOffset("JavaThread::_threadObj", Integer.class, "oop");
     public final int osThreadOffset = getFieldOffset("JavaThread::_osthread", Integer.class, "OSThread*");
-    public final int javaThreadDirtyCardQueueOffset = getFieldOffset("JavaThread::_dirty_card_queue", Integer.class, "DirtyCardQueue");
     public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
-    public final int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
     public final int javaThreadReservedStackActivationOffset = versioned.javaThreadReservedStackActivationOffset;
@@ -491,25 +489,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigBase {
     public final byte dirtyCardValue = versioned.dirtyCardValue;
     public final byte g1YoungCardValue = versioned.g1YoungCardValue;
 
-    public int g1CardQueueIndexOffset() {
-        return javaThreadDirtyCardQueueOffset + versioned.dirtyCardQueueIndexOffset;
-    }
-
-    public int g1CardQueueBufferOffset() {
-        return javaThreadDirtyCardQueueOffset + versioned.dirtyCardQueueBufferOffset;
-    }
-
-    public int g1SATBQueueMarkingOffset() {
-        return javaThreadSatbMarkQueueOffset + versioned.satbMarkQueueActiveOffset;
-    }
-
-    public int g1SATBQueueIndexOffset() {
-        return javaThreadSatbMarkQueueOffset + versioned.satbMarkQueueIndexOffset;
-    }
-
-    public int g1SATBQueueBufferOffset() {
-        return javaThreadSatbMarkQueueOffset + versioned.satbMarkQueueBufferOffset;
-    }
+    public final int g1SATBQueueMarkingOffset = versioned.g1SATBQueueMarkingOffset;
+    public final int g1SATBQueueIndexOffset = versioned.g1SATBQueueIndexOffset;
+    public final int g1SATBQueueBufferOffset = versioned.g1SATBQueueBufferOffset;
+    public final int g1CardQueueIndexOffset = versioned.g1CardQueueIndexOffset;
+    public final int g1CardQueueBufferOffset = versioned.g1CardQueueBufferOffset;
 
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");

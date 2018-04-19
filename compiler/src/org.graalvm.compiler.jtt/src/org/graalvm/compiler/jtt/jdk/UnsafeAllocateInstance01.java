@@ -69,7 +69,7 @@ public class UnsafeAllocateInstance01 extends JTTTest {
 
     @Test
     public void run1() throws Throwable {
-        runTest("testClassForException", UnsafeAllocateInstance01[].class);
+        runTest("testClassForException", UnsafeAllocateInstance01.class);
     }
 
     @Test
