@@ -461,28 +461,28 @@ void *polyglot_from_string_n(const char *string, uint64_t size, const char *char
  *
  * @see POLYGLOT_DECLARE_STRUCT
  */
-void *__polyglot_as_typed(void *ptr, void *typeid);
+void *__polyglot_as_typed(void *ptr, void *typeId);
 
 /**
  * Internal function. Do not use directly.
  *
  * @see POLYGLOT_DECLARE_STRUCT
  */
-void *__polyglot_as_typed_array(void *ptr, void *typeid);
+void *__polyglot_as_typed_array(void *ptr, void *typeId);
 
 /**
  * Internal function. Do not use directly.
  *
  * @see POLYGLOT_DECLARE_STRUCT
  */
-void *__polyglot_from_typed(void *p, void *typeid);
+void *__polyglot_from_typed(void *p, void *typeId);
 
 /**
  * Internal function. Do not use directly.
  *
  * @see POLYGLOT_DECLARE_STRUCT
  */
-void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeid);
+void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeId);
 
 /**
  * Declare polyglot conversion functions for a user-defined struct type.
