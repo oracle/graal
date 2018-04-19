@@ -89,7 +89,7 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
                 continue;
             }
             for (NFAStateTransition t : s.getNext()) {
-                assert this.transitions[t.getId()] == null;
+                assert this.transitions[t.getId()] == null || (s == dummyInitialState && this.transitions[t.getId()] == t);
                 this.transitions[t.getId()] = t;
             }
             if (s == dummyInitialState) {
@@ -181,6 +181,9 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
     }
 
     public void setInitialLoopBack(boolean enable) {
+        if (getUnAnchoredInitialState().getNext().isEmpty()) {
+            return;
+        }
         NFAStateTransition lastInitTransition = getUnAnchoredInitialState().getNext().get(getUnAnchoredInitialState().getNext().size() - 1);
         if (enable) {
             if (lastInitTransition != initialLoopBack) {

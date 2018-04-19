@@ -77,21 +77,26 @@ public final class NFAGenerator {
         anchoredReverseEntry = createTransition(anchoredFinalState, dummyInitialState);
         unAnchoredReverseEntry = createTransition(finalState, dummyInitialState);
         int nEntries = ast.getWrappedPrefixLength() + 1;
-        anchoredInitialStates = new NFAState[nEntries];
         initialStates = new NFAState[nEntries];
-        anchoredEntries = new NFAStateTransition[nEntries];
         unAnchoredEntries = new NFAStateTransition[nEntries];
-        for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
-            NFAState anchoredInitialState = createFinalState(new ASTNodeSet<>(ast, ast.getNFAAnchoredInitialState(i)));
-            anchoredInitialState.setReverseAnchoredFinalState(true);
-            anchoredInitialStates[i] = anchoredInitialState;
-            anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialState);
-        }
         for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
             NFAState initialState = createFinalState(new ASTNodeSet<>(ast, ast.getNFAUnAnchoredInitialState(i)));
             initialState.setReverseUnAnchoredFinalState(true);
             initialStates[i] = initialState;
             unAnchoredEntries[i] = createTransition(dummyInitialState, initialState);
+        }
+        if (ast.getReachableCarets().isEmpty()) {
+            anchoredInitialStates = initialStates;
+            anchoredEntries = unAnchoredEntries;
+        } else {
+            anchoredInitialStates = new NFAState[nEntries];
+            anchoredEntries = new NFAStateTransition[nEntries];
+            for (int i = 0; i <= ast.getWrappedPrefixLength(); i++) {
+                NFAState anchoredInitialState = createFinalState(new ASTNodeSet<>(ast, ast.getNFAAnchoredInitialState(i)));
+                anchoredInitialState.setReverseAnchoredFinalState(true);
+                anchoredInitialStates[i] = anchoredInitialState;
+                anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialState);
+            }
         }
         ArrayList<NFAStateTransition> dummyInitNext = new ArrayList<>(nEntries * 2);
         Collections.addAll(dummyInitNext, anchoredEntries);
@@ -109,7 +114,9 @@ public final class NFAGenerator {
 
     private NFA doCreateNFA() {
         Collections.addAll(expansionQueue, initialStates);
-        Collections.addAll(expansionQueue, anchoredInitialStates);
+        if (!ast.getReachableCarets().isEmpty()) {
+            Collections.addAll(expansionQueue, anchoredInitialStates);
+        }
         while (!expansionQueue.isEmpty()) {
             expandNFAState(expansionQueue.pop());
         }
