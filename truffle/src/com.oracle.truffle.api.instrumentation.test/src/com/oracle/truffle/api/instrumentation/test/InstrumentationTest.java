@@ -928,7 +928,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                                         "DEFINE(foo2, ROOT(EXPRESSION, CALL(foo1), STATEMENT, STATEMENT(EXPRESSION))))");
         tester.set(StandardTags.StatementTag.class, (offset, node) -> {
             int pos = node.getSourceSection().getCharIndex();
-            if (offset <= 33) {
+            if (offset <= 31) {
                 return pos == 23;
             } else if (offset <= 75) {
                 return pos == 51;

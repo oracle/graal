@@ -35,6 +35,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -124,11 +125,11 @@ final class SuspendableLocationFinder {
         private SourceSection exactLineMatch;
         private SourceSection exactIndexMatch;
         private SourceSection containsMatch;
-        private InstrumentableNode containsNode;
+        private LinkedNodes containsNode;
         private SourceSection previousMatch;
-        private InstrumentableNode previousNode;
+        private LinkedNodes previousNode;
         private SourceSection nextMatch;
-        private InstrumentableNode nextNode;
+        private LinkedNodes nextNode;
 
         NearestSections(Set<Class<? extends Tag>> elementTags, int line, int offset, SuspendAnchor anchor) {
             this.elementTags = elementTags;
@@ -219,7 +220,9 @@ final class SuspendableLocationFinder {
                 // Exact match. There can be more of these, find the smallest one:
                 if (containsMatch == null || containsMatch.getCharLength() > sourceSection.getCharLength()) {
                     containsMatch = sourceSection;
-                    containsNode = node;
+                    containsNode = new LinkedNodes(node);
+                } else if (containsMatch.getCharLength() == sourceSection.getCharLength()) {
+                    containsNode.append(new LinkedNodes(node));
                 }
             } else if (o2 < offset) {
                 // Previous match. Find the nearest one (with the largest end index):
@@ -227,7 +230,9 @@ final class SuspendableLocationFinder {
                                 // when equal end, find the largest one
                                 previousMatch.getCharEndIndex() == sourceSection.getCharEndIndex() && previousMatch.getCharLength() < sourceSection.getCharLength()) {
                     previousMatch = sourceSection;
-                    previousNode = node;
+                    previousNode = new LinkedNodes(node);
+                } else if (previousMatch.getCharEndIndex() == sourceSection.getCharEndIndex() && previousMatch.getCharLength() == sourceSection.getCharLength()) {
+                    previousNode.append(new LinkedNodes(node));
                 }
             } else {
                 assert offset < o1;
@@ -236,7 +241,9 @@ final class SuspendableLocationFinder {
                                 // when equal start, find the largest one
                                 nextMatch.getCharIndex() == sourceSection.getCharIndex() && nextMatch.getCharLength() < sourceSection.getCharLength()) {
                     nextMatch = sourceSection;
-                    nextNode = node;
+                    nextNode = new LinkedNodes(node);
+                } else if (nextMatch.getCharIndex() == sourceSection.getCharIndex() && nextMatch.getCharLength() == sourceSection.getCharLength()) {
+                    nextNode.append(new LinkedNodes(node));
                 }
             }
         }
@@ -261,16 +268,135 @@ final class SuspendableLocationFinder {
         }
 
         InstrumentableNode getContainsNode() {
-            return containsNode;
+            if (containsNode == null) {
+                return null;
+            }
+            if (line > 0) {
+                if (anchor == SuspendAnchor.BEFORE && line == containsMatch.getStartLine() || anchor == SuspendAnchor.AFTER && line == containsMatch.getEndLine()) {
+                    return (InstrumentableNode) containsNode.getOuter(containsMatch.getCharLength());
+                }
+            } else {
+                if (anchor == SuspendAnchor.BEFORE && offset == containsMatch.getCharIndex() || anchor == SuspendAnchor.AFTER && offset == containsMatch.getCharEndIndex() - 1) {
+                    return (InstrumentableNode) containsNode.getOuter(containsMatch.getCharLength());
+                }
+            }
+            return (InstrumentableNode) containsNode.getInner(containsMatch.getCharLength());
         }
 
         InstrumentableNode getPreviousNode() {
-            return previousNode;
+            if (previousNode == null) {
+                return null;
+            }
+            return (InstrumentableNode) previousNode.getOuter(previousMatch.getCharLength());
         }
 
         InstrumentableNode getNextNode() {
-            return nextNode;
+            if (nextNode == null) {
+                return null;
+            }
+            return (InstrumentableNode) nextNode.getOuter(nextMatch.getCharLength());
         }
     }
 
+    /**
+     * Linked list of nodes that have the same source sections.
+     */
+    private static final class LinkedNodes {
+        final Node node;
+        private LinkedNodes next;
+
+        LinkedNodes(InstrumentableNode node) {
+            this.node = (Node) node;
+        }
+
+        void append(LinkedNodes lns) {
+            LinkedNodes tail = this;
+            while (tail.next != null) {
+                tail = tail.next;
+            }
+            tail.next = lns;
+        }
+
+        Node getInner(int sectionLength) {
+            if (next == null) {
+                return node;
+            }
+            Node o1 = node;
+            Node o2 = next.getInner(sectionLength);
+            if (isParentOf(o1, o2)) {
+                return o1;
+            }
+            if (isParentOf(o2, o1)) {
+                return o2;
+            }
+            // They are in different functions, find out which encloses the other
+            if (hasLargerParent(o2, sectionLength)) {
+                return o1;
+            } else {
+                return o2;
+            }
+        }
+
+        Node getOuter(int sectionLength) {
+            if (next == null) {
+                return node;
+            }
+            Node o1 = node;
+            Node o2 = next.getOuter(sectionLength);
+            if (isParentOf(o1, o2)) {
+                return o2;
+            }
+            if (isParentOf(o2, o1)) {
+                return o1;
+            }
+            // They are in different functions, find out which encloses the other
+            if (hasLargerParent(o2, sectionLength)) {
+                return o2;
+            } else {
+                return o1;
+            }
+        }
+
+        @Override
+        public String toString() {
+            if (next == null) {
+                return node.toString();
+            }
+            StringBuilder sb = new StringBuilder("[");
+            LinkedNodes ln = this;
+            while (ln != null) {
+                sb.append(ln.node);
+                sb.append(", ");
+                ln = ln.next;
+            }
+            sb.delete(sb.length() - 2, sb.length());
+            sb.append("]");
+            return sb.toString();
+        }
+
+        private static boolean isParentOf(Node ch, Node p) {
+            Node parent = ch.getParent();
+            while (parent != null) {
+                if (parent == p) {
+                    return true;
+                }
+                parent = parent.getParent();
+            }
+            return false;
+        }
+
+        private static boolean hasLargerParent(Node ch, int sectionLength) {
+            Node parent = ch.getParent();
+            while (parent != null) {
+                if (parent instanceof InstrumentableNode && ((InstrumentableNode) parent).isInstrumentable() || parent instanceof RootNode) {
+                    SourceSection pss = parent.getSourceSection();
+                    if (pss != null && pss.getCharLength() > sectionLength) {
+                        return true;
+                    }
+                }
+                parent = parent.getParent();
+            }
+            return false;
+        }
+    }
 }

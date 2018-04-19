@@ -57,7 +57,7 @@ import org.graalvm.polyglot.Source;
  */
 public abstract class AbstractDebugTest {
 
-    private DebuggerTester tester;
+    protected DebuggerTester tester;
     private final ArrayDeque<DebuggerTester> sessionStack = new ArrayDeque<>();
 
     AbstractDebugTest() {

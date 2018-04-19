@@ -30,9 +30,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
@@ -57,25 +59,35 @@ final class SuspendableLocationFinder {
     private SuspendableLocationFinder() {
     }
 
-    static Iterable<SourceSection> findSuspendableLocations(SourceSection range, boolean restrictToSingleFunction, TruffleInstrument.Env env) {
+    static Iterable<SourceSection> findSuspendableLocations(SourceSection range, boolean restrictToSingleFunction, DebuggerSession session, TruffleInstrument.Env env) {
         Source source = range.getSource();
         int startIndex = range.getCharIndex();
         int endIndex = range.getCharEndIndex();
         SectionsCollector sectionsCollector = collectSuspendableLocations(source, startIndex, endIndex, restrictToSingleFunction, env);
         List<SourceSection> sections = sectionsCollector.getSections();
         if (sections.isEmpty()) {
-            SourceSectionFilter filter = SourceSectionFilter.newBuilder().sourceIs(source).indexIn(IndexRange.between(startIndex, endIndex)).build();
-            ContainerNodeCollector nodeCollector = new ContainerNodeCollector(startIndex);
-            EventBinding<ContainerNodeCollector> binding = env.getInstrumenter().attachLoadSourceSectionListener(filter, nodeCollector, true);
-            binding.dispose();
-            if (nodeCollector.getContainerNode() != null) {
-                Node suspendableNode = nodeCollector.getContainerNode().findNearestNodeAt(startIndex, SUSPENDABLE_TAGS_SET);
-                if (suspendableNode != null) {
-                    startIndex = Math.min(startIndex, suspendableNode.getSourceSection().getCharIndex());
-                    endIndex = Math.max(endIndex, suspendableNode.getSourceSection().getCharEndIndex());
-                    sectionsCollector = collectSuspendableLocations(source, startIndex, endIndex, restrictToSingleFunction, env);
-                    sections = sectionsCollector.getSections();
-                }
+            AtomicReference<SourceSection> nearestSection = new AtomicReference<>();
+            // Submit a test breakpoint that will be moved to the nerest suspendable location:
+            Breakpoint breakpoint = Breakpoint.newBuilder(source).ignoreCount(Integer.MAX_VALUE).lineIs(range.getStartLine()).columnIs(range.getStartColumn()).resolveListener(
+                            new Breakpoint.ResolveListener() {
+                                @Override
+                                public void breakpointResolved(Breakpoint b, SourceSection section) {
+                                    nearestSection.set(section);
+                                }
+                            }).build();
+            try {
+                session.install(breakpoint);
+            } finally {
+                // Dispose the test breakpoint, a real breakpoint is likely to be submitted at that
+                // location by the inspector client.
+                breakpoint.dispose();
+            }
+            SourceSection suspendableSection = nearestSection.get();
+            if (suspendableSection != null) {
+                startIndex = suspendableSection.getCharIndex();
+                endIndex = suspendableSection.getCharEndIndex();
+                sectionsCollector = collectSuspendableLocations(source, startIndex, endIndex, restrictToSingleFunction, env);
+                sections = sectionsCollector.getSections();
             }
         }
         return sections;
@@ -167,35 +179,6 @@ final class SuspendableLocationFinder {
                     return findRoot(parent);
                 }
             }
-        }
-    }
-
-    private static final class ContainerNodeCollector implements LoadSourceSectionListener {
-
-        protected final int startIndex;
-        protected InstrumentableNode containerNode;
-
-        private ContainerNodeCollector(int startIndex) {
-            this.startIndex = startIndex;
-        }
-
-        @Override
-        public void onLoad(LoadSourceSectionEvent event) {
-            Node eventNode = event.getNode();
-            if (!(eventNode instanceof InstrumentableNode && ((InstrumentableNode) eventNode).isInstrumentable())) {
-                return;
-            }
-            InstrumentableNode node = (InstrumentableNode) eventNode;
-            SourceSection section = event.getSourceSection();
-            if (section.getCharIndex() < startIndex) {
-                if (containerNode == null || ((Node) containerNode).getSourceSection().getCharIndex() < section.getCharIndex()) {
-                    containerNode = node;
-                }
-            }
-        }
-
-        InstrumentableNode getContainerNode() {
-            return containerNode;
         }
     }
 
