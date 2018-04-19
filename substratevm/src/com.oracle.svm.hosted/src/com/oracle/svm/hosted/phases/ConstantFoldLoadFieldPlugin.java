@@ -68,7 +68,12 @@ public final class ConstantFoldLoadFieldPlugin implements NodePlugin {
                 } else {
                     /* Map the constant value to the root field of it's receiver. */
                     root = sReceiver.getRoot();
-                    assert root != null : receiver.toValueString() + " : " + field + " : " + b.getGraph();
+
+                    /*
+                     * String constants are directly embedded in the bytecode without being loaded
+                     * from a field, so we do not have a root.
+                     */
+                    assert root != null || SubstrateObjectConstant.asObject(receiver) instanceof String : receiver.toValueString() + " : " + field + " : " + b.getGraph();
                 }
                 sValue.setRoot(root);
             }

@@ -488,8 +488,8 @@ final class JNIFunctions {
 
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
-    static void ReleaseStringChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer chars) {
-        Support.unpinString(hstr);
+    static void ReleaseStringChars(JNIEnvironment env, JNIObjectHandle hstr, CShortPointer chars) {
+        Support.unpinString(chars);
     }
 
     /*
@@ -533,7 +533,7 @@ final class JNIFunctions {
     @CEntryPoint
     @CEntryPointOptions(prologue = JNIEnvironmentEnterPrologue.class, exceptionHandler = JNIExceptionHandlerVoid.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void ReleaseStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CShortPointer carray) {
-        Support.unpinString(hstr);
+        Support.unpinString(carray);
     }
 
     /*
@@ -1015,18 +1015,20 @@ final class JNIFunctions {
                 return WordFactory.nullPointer();
             }
             if (isCopy.isNonNull()) {
-                isCopy.write((byte) 0);
+                isCopy.write((byte) 1);
             }
-            char[] chars = SubstrateUtil.getRawStringChars(str);
+            /*
+             * With compressed strings (introduced in JDK 9), a Java String can have different
+             * encodings. So we always request a copy as a char[] array. For a JDK 8 String, or for
+             * a JDK 9 UTF16 encoded String, we could avoid the copying. But it would require us to
+             * know internals of the String implementation, so we do not do it for now.
+             */
+            char[] chars = str.toCharArray();
             return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(chars);
         }
 
-        static void unpinString(JNIObjectHandle hstr) {
-            String str = JNIObjectHandles.getObject(hstr);
-            if (str != null) {
-                char[] chars = SubstrateUtil.getRawStringChars(str);
-                JNIThreadLocalPinnedObjects.unpinObject(chars);
-            }
+        static void unpinString(CShortPointer cstr) {
+            JNIThreadLocalPinnedObjects.unpinArrayByAddress(cstr);
         }
 
         static void handleException(Throwable t) {
