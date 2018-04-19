@@ -612,6 +612,7 @@ class NativeImage {
     }
 
     void addImageBuilderArg(String arg) {
+        imageBuilderArgs.remove(arg);
         imageBuilderArgs.add(arg);
     }
 
@@ -628,7 +629,7 @@ class NativeImage {
     }
 
     void addCustomImageBuilderArgs(String arg) {
-        imageBuilderArgs.add(arg);
+        addImageBuilderArg(arg);
         customImageBuilderArgs.add(arg);
     }
 

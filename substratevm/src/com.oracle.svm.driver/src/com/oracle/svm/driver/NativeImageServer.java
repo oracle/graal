@@ -363,7 +363,7 @@ final class NativeImageServer extends NativeImage {
         withFileChannel(getMachineDir().resolve("create-server.lock"), lockFileChannel -> {
             try (FileLock lock = lockFileChannel(lockFileChannel)) {
                 /* Ensure that all dead server entries are gone before we start */
-                cleanupServers(false, false, true);
+                cleanupServers(false, true, true);
 
                 /* Determine how many ports are allowed to get used for build-servers */
                 String maxPortsStr = loadProperties(getMachineDir().resolve(machineProperties)).get(pKeyMaxPorts);
