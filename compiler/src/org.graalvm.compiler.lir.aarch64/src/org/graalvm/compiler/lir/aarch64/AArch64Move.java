@@ -208,7 +208,7 @@ public class AArch64Move {
         }
 
         @Override
-        public void emitCode(@SuppressWarnings("unused") CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        public void emitCode(@SuppressWarnings("all") CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             // As I understand it load acquire/store release have the same semantics as on IA64
             // and allow us to handle LoadStore, LoadLoad and StoreStore without an explicit
             // barrier.
