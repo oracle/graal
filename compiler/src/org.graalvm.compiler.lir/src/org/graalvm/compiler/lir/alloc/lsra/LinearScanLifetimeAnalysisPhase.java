@@ -160,14 +160,14 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
         intervalInLoop = new BitMap2D(allocator.operandSize(), allocator.numLoops());
 
         try {
-            final BitSet liveGen = new BitSet(liveSize);
-            final BitSet liveKill = new BitSet(liveSize);
+            final BitSet liveGenScratch = new BitSet(liveSize);
+            final BitSet liveKillScratch = new BitSet(liveSize);
             // iterate all blocks
             for (final AbstractBlockBase<?> block : allocator.sortedBlocks()) {
                 try (Indent indent = debug.logAndIndent("compute local live sets for block %s", block)) {
 
-                    liveGen.clear();
-                    liveKill.clear();
+                    liveGenScratch.clear();
+                    liveKillScratch.clear();
 
                     ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);
                     int numInst = instructions.size();
@@ -175,8 +175,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     ValueConsumer useConsumer = (operand, mode, flags) -> {
                         if (isVariable(operand)) {
                             int operandNum = allocator.operandNumber(operand);
-                            if (!liveKill.get(operandNum)) {
-                                liveGen.set(operandNum);
+                            if (!liveKillScratch.get(operandNum)) {
+                                liveGenScratch.set(operandNum);
                                 if (debug.isLogEnabled()) {
                                     debug.log("liveGen for operand %d(%s)", operandNum, operand);
                                 }
@@ -187,14 +187,14 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                         }
 
                         if (allocator.detailedAsserts) {
-                            verifyInput(block, liveKill, operand);
+                            verifyInput(block, liveKillScratch, operand);
                         }
                     };
                     ValueConsumer stateConsumer = (operand, mode, flags) -> {
                         if (LinearScan.isVariableOrRegister(operand)) {
                             int operandNum = allocator.operandNumber(operand);
-                            if (!liveKill.get(operandNum)) {
-                                liveGen.set(operandNum);
+                            if (!liveKillScratch.get(operandNum)) {
+                                liveGenScratch.set(operandNum);
                                 if (debug.isLogEnabled()) {
                                     debug.log("liveGen in state for operand %d(%s)", operandNum, operand);
                                 }
@@ -204,7 +204,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     ValueConsumer defConsumer = (operand, mode, flags) -> {
                         if (isVariable(operand)) {
                             int varNum = allocator.operandNumber(operand);
-                            liveKill.set(varNum);
+                            liveKillScratch.set(varNum);
                             if (debug.isLogEnabled()) {
                                 debug.log("liveKill for operand %d(%s)", varNum, operand);
                             }
@@ -219,7 +219,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                              * be processed in live sets. Process them only in debug mode so that
                              * this can be checked
                              */
-                            verifyTemp(liveKill, operand);
+                            verifyTemp(liveKillScratch, operand);
                         }
                     };
 
@@ -241,8 +241,8 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                     } // end of instruction iteration
 
                     BlockData blockSets = allocator.getBlockData(block);
-                    blockSets.liveGen = trimClone(liveGen);
-                    blockSets.liveKill = trimClone(liveKill);
+                    blockSets.liveGen = trimClone(liveGenScratch);
+                    blockSets.liveKill = trimClone(liveKillScratch);
                     // sticky size, will get non-sticky in computeGlobalLiveSets
                     blockSets.liveIn = new BitSet(0);
                     blockSets.liveOut = new BitSet(0);
