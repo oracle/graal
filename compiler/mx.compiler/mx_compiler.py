@@ -26,6 +26,7 @@
 
 import os
 from os.path import join, exists, getmtime, basename, isdir
+from collections import namedtuple
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
 import stat
@@ -1108,6 +1109,112 @@ def makegraaljdk(args):
     else:
         mx.abort('Can only make GraalJDK for JDK 8 currently')
 
+def _find_version_base_project(versioned_project):
+    extended_packages = versioned_project.extended_java_packages()
+    if not extended_packages:
+        mx.abort('Project with a multiReleaseJarVersion attribute must have sources in a package defined by project without multiReleaseJarVersion attribute', context=versioned_project)
+    base_project = None
+    base_package = None
+    for extended_package in extended_packages:
+        for p in mx.projects():
+            if versioned_project != p and p.isJavaProject() and not hasattr(p, 'multiReleaseJarVersion'):
+                if extended_package in p.defined_java_packages():
+                    if base_project is None:
+                        base_project = p
+                        base_package = extended_package
+                    else:
+                        if base_project != p:
+                            mx.abort('Multi-release jar versioned project {} must extend packages from exactly one project but extends {} from {} and {} from {}'.format(versioned_project, extended_package, p, base_project, base_package))
+    if not base_project:
+        mx.abort('Multi-release jar versioned project {} must extend package(s) from another project'.format(versioned_project))
+    return base_project
+
+SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
+GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
+
+def updategraalinopenjdk(args):
+    """updates the Graal sources in OpenJDK"""
+    parser = ArgumentParser(prog='mx updategraalinopenjdk')
+    parser.add_argument('jdkrepo', help='path to the local OpenJDK repo')
+    parser.add_argument('version', type=int, help='Java version of the OpenJDK repo')
+
+    args = parser.parse_args(args)
+
+    if jdk.javaCompliance.value < args.version:
+        mx.abort('JAVA_HOME/--java-home must be Java version {} or greater: {}'.format(args.version, jdk))
+
+    graal_modules = [
+        GraalJDKModule('jdk.internal.vm.compiler',
+            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management']),
+             SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
+        GraalJDKModule('jdk.internal.vm.compiler.management',
+            [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
+    ]
+
+    package_renamings = {
+        'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
+        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word'
+    }
+
+    jdkrepo = args.jdkrepo
+
+    for m in graal_modules:
+        m_src_dir = join(jdkrepo, 'src', m.name)
+        if not exists(m_src_dir):
+            mx.abort(jdkrepo + ' does not look like a JDK repo - ' + m_src_dir + ' does not exist')
+
+    out = mx.OutputCapture()
+    mx.run(['hg', 'status'], cwd=jdkrepo, out=out, err=out)
+    if out.data:
+        mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out.data[:min(200, len(out.data))] + '...')
+
+    for m in graal_modules:
+        classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
+        for info in m.suites:
+            mx.log('Processing ' + m.name + ':' + info.name)
+            for e in os.listdir(classes_dir):
+                if any(inc in e for inc in info.includes) and not any(ex in e for ex in info.excludes):
+                    project_dir = join(classes_dir, e)
+                    shutil.rmtree(project_dir)
+                    mx.log('  removed ' + project_dir)
+            suite = mx.suite(info.name)
+            for p in [e for e in suite.projects if e.isJavaProject()]:
+                if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
+                    assert len(p.source_dirs()) == 1, p
+                    source_dir = p.source_dirs()[0]
+                    target_dir = join(classes_dir, p.name, 'src')
+                    if hasattr(p, 'multiReleaseJarVersion'):
+                        version = int(getattr(p, 'multiReleaseJarVersion'))
+                        if version <= args.version:
+                            base_project = _find_version_base_project(p)
+                            target_dir = join(classes_dir, base_project.name, 'src')
+                    mx.log('  copying: ' + source_dir)
+                    mx.log('       to: ' + target_dir)
+                    for dirpath, _, filenames in os.walk(source_dir):
+                        for filename in filenames:
+                            src_file = join(dirpath, filename)
+                            dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
+                            with open(src_file) as fp:
+                                contents = fp.read()
+                            if filename.endswith('.java'):
+                                for old_name, new_name in package_renamings.iteritems():
+                                    old_name_as_dir = old_name.replace('.', os.sep)
+                                    if old_name_as_dir in src_file:
+                                        new_name_as_dir = new_name.replace('.', os.sep)
+                                        dst = src_file.replace(old_name_as_dir, new_name_as_dir)
+                                        dst_file = join(target_dir, os.path.relpath(dst, source_dir))
+                                    contents = contents.replace(old_name, new_name)
+                            dst_dir = os.path.dirname(dst_file)
+                            if not exists(dst_dir):
+                                os.makedirs(dst_dir)
+                            with open(dst_file, 'w') as fp:
+                                fp.write(contents)
+    mx.log('Adding new files to HG...')
+    mx.run(['hg', 'add', '.'], cwd=jdkrepo)
+    mx.log('Removing old files from HG...')
+    mx.run(['hg', 'status', '-dn'], cwd=jdkrepo, out=out)
+    mx.run(['hg', 'rm'] + out.data.split(), cwd=jdkrepo)
+
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
     'vm': [run_vm, '[-options] class [args...]'],
@@ -1115,6 +1222,7 @@ mx.update_commands(_suite, {
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
+    'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],
