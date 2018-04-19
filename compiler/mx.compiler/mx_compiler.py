@@ -1135,6 +1135,7 @@ GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
 def updategraalinopenjdk(args):
     """updates the Graal sources in OpenJDK"""
     parser = ArgumentParser(prog='mx updategraalinopenjdk')
+    parser.add_argument('--pretty', help='value for --pretty when logging the changes since the last JDK* tag')
     parser.add_argument('jdkrepo', help='path to the local OpenJDK repo')
     parser.add_argument('version', type=int, help='Java version of the OpenJDK repo')
 
@@ -1168,6 +1169,7 @@ def updategraalinopenjdk(args):
     if out.data:
         mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out.data[:min(200, len(out.data))] + '...')
 
+    copied_source_dirs = []
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
         for info in m.suites:
@@ -1183,6 +1185,7 @@ def updategraalinopenjdk(args):
                     assert len(p.source_dirs()) == 1, p
                     source_dir = p.source_dirs()[0]
                     target_dir = join(classes_dir, p.name, 'src')
+                    copied_source_dirs.append(source_dir)
                     if hasattr(p, 'multiReleaseJarVersion'):
                         version = int(getattr(p, 'multiReleaseJarVersion'))
                         if version <= args.version:
@@ -1214,6 +1217,19 @@ def updategraalinopenjdk(args):
     mx.log('Removing old files from HG...')
     mx.run(['hg', 'status', '-dn'], cwd=jdkrepo, out=out)
     mx.run(['hg', 'rm'] + out.data.split(), cwd=jdkrepo)
+
+    out.data = ''
+    mx.run(['git', 'tag', '-l', 'JDK*'], cwd=_suite.vc_dir, out=out)
+    last_jdk_tag = sorted(out.data.split())[0]
+
+    out.data = ''
+    pretty = args.pretty or 'format:%h %ad %>(20) %an %s'
+    mx.run(['git', '--no-pager', 'log', '--merges', '--abbrev-commit', '--pretty=' + pretty, '--first-parent', '-r', last_jdk_tag + '..HEAD'] +
+            copied_source_dirs, cwd=_suite.vc_dir, out=out)
+    changes_file = 'changes-since-{}.txt'.format(last_jdk_tag)
+    with open(changes_file, 'w') as fp:
+        fp.write(out.data)
+    mx.log('Saved changes since {} to {}'.format(last_jdk_tag, changes_file))
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
