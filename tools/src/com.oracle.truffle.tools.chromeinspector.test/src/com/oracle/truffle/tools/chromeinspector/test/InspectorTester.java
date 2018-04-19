@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,10 +32,12 @@ import static org.junit.Assert.assertEquals;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
@@ -74,6 +76,10 @@ public final class InspectorTester {
         RemoteObject.resetIDs();
         TruffleExecutionContext.resetIDs();
         return exec.error;
+    }
+
+    public boolean shouldWaitForClose() {
+        return exec.connectionWatcher.shouldWaitForClose();
     }
 
     public long getContextId() {
@@ -139,6 +145,7 @@ public final class InspectorTester {
         private final boolean suspend;
         private Context context;
         private InspectServerSession inspect;
+        private ConnectionWatcher connectionWatcher;
         private long contextId;
         private Source evalSource;
         private CompletableFuture<Value> evalValue;
@@ -157,9 +164,11 @@ public final class InspectorTester {
         public void run() {
             Engine engine = Engine.create();
             InspectorTestInstrument.suspend = suspend;
-            inspect = engine.getInstruments().get(InspectorTestInstrument.ID).lookup(InspectServerSession.class);
+            Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
+            inspect = testInstrument.lookup(InspectServerSession.class);
             try {
-                contextId = engine.getInstruments().get(InspectorTestInstrument.ID).lookup(Long.class);
+                connectionWatcher = testInstrument.lookup(ConnectionWatcher.class);
+                contextId = testInstrument.lookup(Long.class);
                 inspect.setMessageListener(this);
                 context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();

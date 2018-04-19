@@ -134,6 +134,11 @@ def add_jvmci_classpath_entry(entry):
     """
     _jvmci_classpath.append(entry)
 
+if jdk.javaCompliance != '9' and jdk.javaCompliance != '10':
+    # The jdk.internal.vm.compiler.management module is
+    # not available in 9 nor upgradeable in 10
+    add_jvmci_classpath_entry(JVMCIClasspathEntry('GRAAL_MANAGEMENT'))
+
 _bootclasspath_appends = []
 
 def add_bootclasspath_append(dep):
@@ -475,8 +480,8 @@ def jvmci_ci_version_gate_runner(tasks):
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None):
     if jdk.javaCompliance >= '9':
-        with Task('JDK9_java_base_test', tasks, tags=GraalTags.test) as t:
-            if t: java_base_unittest(_remove_empty_entries(extraVMarguments))
+        with Task('JDK_java_base_test', tasks, tags=['javabasetest']) as t:
+            if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
     # Run unit tests in hosted mode
     for r in unit_test_runs:
@@ -866,26 +871,37 @@ def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None
     return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 class GraalArchiveParticipant:
+
+    providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')
     def __init__(self, dist, isTest=False):
         self.dist = dist
         self.isTest = isTest
 
     def __opened__(self, arc, srcArc, services):
         self.services = services
+        self.versionedServices = {}
         self.arc = arc
 
     def __add__(self, arcname, contents):
-        if arcname.startswith('META-INF/providers/'):
+        m = GraalArchiveParticipant.providersRE.match(arcname)
+        if m:
             if self.isTest:
                 # The test distributions must not have their @ServiceProvider
                 # generated providers converted to real services otherwise
                 # bad things can happen such as InvocationPlugins being registered twice.
                 pass
             else:
-                provider = arcname[len('META-INF/providers/'):]
+                provider = m.group(2)
                 for service in contents.strip().split(os.linesep):
                     assert service
-                    self.services.setdefault(service, []).append(provider)
+                    version = m.group(1)
+                    if version is None:
+                        # Non-versioned service
+                        self.services.setdefault(service, []).append(provider)
+                    else:
+                        # Versioned service
+                        services = self.versionedServices.setdefault(version, {})
+                        services.setdefault(service, []).append(provider)
             return True
         elif arcname.endswith('_OptionDescriptors.class'):
             if self.isTest:
@@ -902,7 +918,11 @@ class GraalArchiveParticipant:
         return False
 
     def __closing__(self):
-        pass
+        for version, services in self.versionedServices.iteritems():
+            for service, providers in services.iteritems():
+                arcname = 'META-INF/versions/{}/META-INF/services/{}'.format(version, service)
+                # Convert providers to a set before printing to remove duplicates
+                self.arc.zf.writestr(arcname, '\n'.join(frozenset(providers)) + '\n')
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
@@ -914,7 +934,7 @@ def sl(args):
     mx_truffle.sl(args)
 
 def java_base_unittest(args):
-    """tests whether graal compiler runs on JDK9 with limited set of modules"""
+    """tests whether graal compiler runs on a JDK with a minimal set of modules"""
     jlink = mx.exe_suffix(join(jdk.home, 'bin', 'jlink'))
     if not exists(jlink):
         raise mx.JDKConfigException('jlink tool does not exist: ' + jlink)
@@ -936,7 +956,13 @@ def java_base_unittest(args):
 
     basejdk = mx.JDKConfig(basejdk_dir)
     savedJava = jdk.java
+    saved_jvmci_classpath = list(_jvmci_classpath)
     try:
+        # Remove GRAAL_MANAGEMENT from the module path as it
+        # depends on the java.management module which is not in
+        # the limited module set
+        _jvmci_classpath[:] = [e for e in _jvmci_classpath if e._name != 'GRAAL_MANAGEMENT']
+
         jdk.java = basejdk.java
         if mx_gate.Task.verbose:
             extra_args = ['--verbose', '--enable-timing']
@@ -945,6 +971,7 @@ def java_base_unittest(args):
         mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         jdk.java = savedJava
+        _jvmci_classpath[:] = saved_jvmci_classpath
 
 def microbench(*args):
     mx.abort("`mx microbench` is deprecated.\n" +
@@ -1087,7 +1114,7 @@ mx.update_commands(_suite, {
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
-    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK9 java.base "only" module(s)'],
+    'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk, '[options]'],

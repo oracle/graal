@@ -20,6 +20,15 @@ gateTestLenient : {
   ]
 }
 
+gateJavaBaseTest : {
+  environment : {
+    EXTRA_VM_ARGS : ""
+  }
+  run : [
+    ${gateCmd} ["build,javabasetest"]
+  ]
+}
+
 gateTestMaxVS : ${gateTest} {
   environment : {
     EXTRA_VM_ARGS : "-Dgraal.DetailedAsserts=true -XX:MaxVectorSize=16"

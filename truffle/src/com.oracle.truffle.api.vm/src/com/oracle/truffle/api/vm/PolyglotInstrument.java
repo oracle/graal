@@ -110,6 +110,16 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         }
     }
 
+    void notifyClosing() {
+        if (created) {
+            synchronized (instrumentLock) {
+                if (created) {
+                    INSTRUMENT.finalizeInstrument(engine.instrumentationHandler, this);
+                }
+            }
+        }
+    }
+
     void ensureClosed() {
         assert Thread.holdsLock(engine);
         if (created) {

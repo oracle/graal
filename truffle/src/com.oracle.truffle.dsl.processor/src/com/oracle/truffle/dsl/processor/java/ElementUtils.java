@@ -296,6 +296,8 @@ public class ElementUtils {
             return true;
         } else if (isVoid(to)) {
             return true;
+        } else if (isNone(to)) {
+            return false;
         } else if (isObject(to)) {
             return true;
         }
@@ -589,6 +591,10 @@ public class ElementUtils {
             default:
                 throw new RuntimeException("Unknown type specified " + mirror + " mirror: " + mirror);
         }
+    }
+
+    public static boolean isNone(TypeMirror mirror) {
+        return mirror != null && mirror.getKind() == TypeKind.NONE;
     }
 
     public static boolean isVoid(TypeMirror mirror) {

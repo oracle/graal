@@ -15,7 +15,7 @@ toolsGateLite : ${toolsCommon} {
 builds += [
   ${linux-amd64} ${labsjdk8}    ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-8"},
   ${linux-amd64} ${oraclejdk9}  ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-9"},
-  ${linux-amd64} ${oraclejdk10} ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-10"},
+  ${linux-amd64} ${oraclejdk11} ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-11"},
   ${linux-amd64} ${labsjdk8}    ${toolsCommon} {
     run : [
         ["mx", "build"],

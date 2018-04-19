@@ -89,7 +89,7 @@ public class BinaryGraphPrinter implements
     public BinaryGraphPrinter(DebugContext ctx, SnippetReflectionProvider snippetReflection) throws IOException {
         // @formatter:off
         this.output = ctx.buildOutput(GraphOutput.newBuilder(this).
-                        protocolVersion(5, 0).
+                        protocolVersion(6, 0).
                         blocks(this).
                         elementsAndLocations(this, this).
                         types(this)
