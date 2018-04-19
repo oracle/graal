@@ -569,8 +569,6 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         int type = findPoolType(object, found);
         writeByte(type);
         switch (type) {
-            default:
-                throw new IllegalStateException();
             case POOL_FIELD: {
                 ResolvedJavaField field = (ResolvedJavaField) found[0];
                 Objects.nonNull(field);
@@ -696,6 +694,8 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
                 writeString(object.toString());
                 break;
             }
+            default:
+                throw new IllegalStateException();
         }
     }
 
