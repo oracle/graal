@@ -212,9 +212,7 @@ public class AArch64Move {
             // and allow us to handle LoadStore, LoadLoad and StoreStore without an explicit
             // barrier.
             // But Graal support to figure out if a load/store is volatile is non-existant so for
-            // now
-            // just use
-            // memory barriers everywhere.
+            // now just use memory barriers everywhere.
             // if ((barrier & MemoryBarriers.STORE_LOAD) != 0) {
             masm.dmb(AArch64MacroAssembler.BarrierKind.ANY_ANY);
             // }
