@@ -31,6 +31,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.TruffleException;
 
 @SuppressWarnings("deprecation")
 class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -99,11 +100,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
                     if (!initialized) {
                         ensureInitialized();
                     }
-                    try {
-                        INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getOptionValues());
-                    } catch (Exception e) {
-                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
-                    }
+                    INSTRUMENT.createInstrument(engine.instrumentationHandler, this, cache.services(), getOptionValues());
                     created = true;
                 }
             }
@@ -137,9 +134,21 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     @Override
     public <T> T lookup(Class<T> serviceClass) {
+        return lookup(serviceClass, true);
+    }
+
+    <T> T lookup(Class<T> serviceClass, boolean wrapExceptions) {
         engine.checkState();
         if (cache.supportsService(serviceClass)) {
-            ensureCreated();
+            try {
+                ensureCreated();
+            } catch (Throwable t) {
+                if (wrapExceptions) {
+                    throw PolyglotImpl.wrapGuestException(engine, t);
+                } else {
+                    throw t;
+                }
+            }
             return INSTRUMENT.getInstrumentationHandlerService(engine.instrumentationHandler, this, serviceClass);
         } else {
             return null;

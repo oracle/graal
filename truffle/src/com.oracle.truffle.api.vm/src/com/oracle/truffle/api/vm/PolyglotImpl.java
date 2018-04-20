@@ -220,7 +220,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             PolyglotException polyglot = (PolyglotException) e;
             if (context != null) {
                 PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getImpl(polyglot));
-                if (exceptionImpl.context == context.context || exceptionImpl.isHostException()) {
+                if (exceptionImpl.context == context.context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
                     // for values of the same context the TruffleException is allowed to be unboxed
                     // for host exceptions no guest values are bound therefore it can also be
                     // unboxed
@@ -244,10 +244,35 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @TruffleBoundary
+    // Wrapping language exception
     static <T extends Throwable> RuntimeException wrapGuestException(PolyglotLanguageContext context, T e) {
         if (e instanceof PolyglotException) {
             return (PolyglotException) e;
-        } else if (e instanceof EngineException) {
+        } else {
+            doRethrowPolyglotVariants(e);
+        }
+
+        APIAccess access = context.getEngine().impl.getAPIAccess();
+        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(context, e);
+        return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
+    }
+
+    @TruffleBoundary
+    // Wrapping instrument exception
+    static <T extends Throwable> RuntimeException wrapGuestException(PolyglotEngineImpl engine, T e) {
+        if (e instanceof PolyglotException) {
+            return (PolyglotException) e;
+        } else {
+            doRethrowPolyglotVariants(e);
+        }
+
+        APIAccess access = engine.impl.getAPIAccess();
+        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, e);
+        return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
+    }
+
+    private static void doRethrowPolyglotVariants(Throwable e) {
+        if (e instanceof EngineException) {
             throw ((EngineException) e).e;
         } else if (e instanceof PolyglotUnsupportedException) {
             throw (PolyglotUnsupportedException) e;
@@ -261,13 +286,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw (PolyglotIllegalArgumentException) e;
         } else if (e instanceof PolyglotArrayIndexOutOfBoundsException) {
             throw (PolyglotArrayIndexOutOfBoundsException) e;
-        } else {
-            // fallthrough
         }
-
-        APIAccess access = context.getEngine().impl.getAPIAccess();
-        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(context, e);
-        return access.newLanguageException(exceptionImpl.getMessage(), exceptionImpl);
     }
 
     static boolean isGuestInteropValue(Object receiver) {
@@ -366,7 +385,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public <T> T lookup(InstrumentInfo info, Class<T> serviceClass) {
             PolyglotInstrument instrument = (PolyglotInstrument) LANGUAGE.getVMObject(info);
-            return instrument.lookup(serviceClass);
+            return instrument.lookup(serviceClass, false);
         }
 
         @Override

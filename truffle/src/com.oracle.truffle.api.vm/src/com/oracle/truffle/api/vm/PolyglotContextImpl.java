@@ -782,7 +782,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             "Set cancelIfExecuting to true to stop the execution on this thread."));
         }
         if (engine.boundEngine && parent == null) {
-            engine.ensureClosed(cancelIfExecuting, false);
+            try {
+                engine.ensureClosed(cancelIfExecuting, false);
+            } catch (Throwable t) {
+                throw PolyglotImpl.wrapGuestException(engine, t);
+            }
         }
     }
 

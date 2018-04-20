@@ -320,6 +320,8 @@ public final class PolyglotLauncher extends Launcher {
             new PolyglotLauncher().launch(args);
         } catch (AbortException e) {
             handleAbortException(e);
+        } catch (PolyglotException e) {
+            handlePolyglotException(e);
         }
     }
 
