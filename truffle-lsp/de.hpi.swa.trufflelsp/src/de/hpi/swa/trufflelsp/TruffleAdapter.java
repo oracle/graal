@@ -48,7 +48,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeAccessHelper;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -58,8 +57,6 @@ public class TruffleAdapter {
     private static final Node KEYS = Message.KEYS.createNode();
     private static final Node IS_INSTANTIABLE = Message.IS_INSTANTIABLE.createNode();
     private static final Node IS_EXECUTABLE = Message.IS_EXECUTABLE.createNode();
-
-    private static final boolean enableNodeCopyIfCaretBehindNode = false;
 
     private Server server;
     private Context context;
@@ -258,35 +255,11 @@ public class TruffleAdapter {
 
                 if (isLineValid(line, source)) {
                     int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, source);
-                    Node node = LocationFinderHelper.findNearest(source,
-                                    SourceElement.values(), oneBasedLineNumber, character, env);
-                    Node nodeForLocalScoping = node;
-                    if (enableNodeCopyIfCaretBehindNode && node != null) {
-                        int offset = source.getLineStartOffset(oneBasedLineNumber);
-                        if (character > 0) {
-                            offset += character - 1;
-                        }
-                        isCaretBehindNode = node.getSourceSection().getCharEndIndex() <= offset;
-                        if (isCaretBehindNode) {
-                            // This case can only happen, if there is no other sibling behind the caret, i.e. we need to
-                            // duplicate the current node to provide a valid scope.
-
-                            // TODO(ds) we need to duplicate a node, in case that it is the last node in a scope and would
-                            // otherwise report no variables if the user moves the caret behind the last node in the scope and
-                            // asks for completion. -> But this is not working correctly, we cannot detect, if the cursor is
-                            // behind the last statement or still in it (before a semicolon).
-                            // Assumption: we are behind!
-                            Node parentCopy = node.getParent().copy();
-                            Node copy = node.copy();
-                            NodeAccessHelper.insertChild(copy, parentCopy);
-                            nodeForLocalScoping = copy;
-                        }
-                        System.out.println("nearest: " + node.getClass().getSimpleName() + " " + node.getSourceSection());
-                    }
 
                     NearestSections nearestSections = SuspendableLocationFinder.getNearestSections(source, env, oneBasedLineNumber, character);
-
                     SourceSection containsSection = nearestSections.getContainsSourceSection();
+
+                    Node nodeForLocalScoping;
                     String debugDetails = "";
                     if (containsSection == null) {
                         // We are not in a local scope, so only top scope objects possible
