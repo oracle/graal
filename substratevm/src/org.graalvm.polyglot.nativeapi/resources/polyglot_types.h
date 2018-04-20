@@ -54,6 +54,8 @@ typedef poly_handle poly_value;
 
 typedef poly_handle poly_engine;
 
+typedef poly_handle poly_engine_builder;
+
 typedef poly_handle poly_context;
 
 typedef poly_handle poly_context_builder;
