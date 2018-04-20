@@ -11,7 +11,7 @@ jdks: {
   oraclejdk10 : {name : oraclejdk, version : "10+46", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180413-151126", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180420-122544", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
