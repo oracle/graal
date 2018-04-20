@@ -836,6 +836,8 @@ class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-
               "metric.better": "lower",
               "metric.iteration": ("$iteration", int)
             },
+            # Note: this lambda keeps state to count the row in the CSV file,
+            # and it assumes that it will be called only in one traversal of the rows.
             filter_fn=lambda x, counter={'value': 0}: self.resultFilter(x, counter, 0)
           ),
           mx_benchmark.CSVFixedFileRule(
@@ -855,6 +857,8 @@ class DaCapoD3SBenchmarkSuite(DaCapoBenchmarkSuite): # pylint: disable=too-many-
               "metric.better": "lower",
               "metric.iteration": ("$iteration", int)
             },
+            # Note: this lambda keeps state to count the row in the CSV file,
+            # and it assumes that it will be called only in one traversal of the rows.
             filter_fn=lambda x, counter={'value': 0}: self.resultFilter(x, counter, totalIterations)
           ),
         ]
