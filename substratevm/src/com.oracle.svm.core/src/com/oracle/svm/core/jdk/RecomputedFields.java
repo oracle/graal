@@ -110,24 +110,6 @@ final class Target_java_nio_charset_CoderResult_Cache {
     private Map<Integer, WeakReference<CoderResult>> cache;
 }
 
-@TargetClass(java.util.concurrent.atomic.AtomicInteger.class)
-final class Target_java_util_concurrent_atomic_AtomicInteger {
-    @Alias //
-    protected static long valueOffset;
-}
-
-@TargetClass(java.util.concurrent.atomic.AtomicLong.class)
-final class Target_java_util_concurrent_atomic_AtomicLong {
-    @Alias //
-    protected static long valueOffset;
-}
-
-@TargetClass(java.util.concurrent.atomic.AtomicReference.class)
-final class Target_java_util_concurrent_atomic_AtomicReference {
-    @Alias //
-    protected static long valueOffset;
-}
-
 @TargetClass(className = "java.util.concurrent.atomic.AtomicReferenceFieldUpdater$AtomicReferenceFieldUpdaterImpl")
 final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_AtomicReferenceFieldUpdaterImpl {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
