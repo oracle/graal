@@ -40,6 +40,7 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -50,6 +51,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 
 public class TruffleAdapter {
     public static final String NO_TYPES_HARVESTED = "NO_TYPES_HARVESTED";
@@ -297,6 +299,7 @@ public class TruffleAdapter {
                             MaterializedFrame materializedFrame = this.section2frame.get(nodeForLocalScoping.getSourceSection());
                             if (materializedFrame != null) {
                                 frame = materializedFrame;
+                                fillCompletionsWithObjectProperties(completions, frame, nodeForLocalScoping, langId);
                             }
                             Iterable<Scope> localScopes = env.findLocalScopes(nodeForLocalScoping, frame);
                             Map<String, Map<Object, Object>> scopesMap = Collections.emptyMap();
@@ -375,6 +378,23 @@ public class TruffleAdapter {
             return completions;
         } finally {
             this.getContext().leave();
+        }
+    }
+
+    private void fillCompletionsWithObjectProperties(CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId) {
+        if (langId.equals("sl")) {
+            if (nodeForLocalScoping instanceof SLReadLocalVariableNode) {
+                Object object = ((SLReadLocalVariableNode) nodeForLocalScoping).executeGeneric(frame);
+                if (object instanceof TruffleObject) {
+                    Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) object);
+                    for (Entry<Object, Object> entry : map.entrySet()) {
+                        CompletionItem completion = new CompletionItem(nodeForLocalScoping.getSourceSection().getCharacters() + "." + entry.getKey().toString());
+                        completion.setKind(CompletionItemKind.Property);
+                        completion.setDetail(createCompletionDetail(entry.getValue(), this.getEnv(), langId, true));
+                        completions.getItems().add(completion);
+                    }
+                }
+            }
         }
     }
 
