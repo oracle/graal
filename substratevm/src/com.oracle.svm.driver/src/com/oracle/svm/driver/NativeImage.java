@@ -566,10 +566,20 @@ class NativeImage {
 
     Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : workDir.resolve(path);
+        boolean hasWildcard = absolutePath.endsWith("*");
+        if (hasWildcard) {
+            absolutePath = absolutePath.getParent();
+        }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + path.toString() + " is not readable");
+            }
+            if (hasWildcard) {
+                if (!Files.isDirectory(realPath)) {
+                    showError("Path entry with wildcard " + path.toString() + " is not a directory");
+                }
+                realPath = realPath.resolve("*");
             }
             return realPath;
         } catch (IOException e) {
