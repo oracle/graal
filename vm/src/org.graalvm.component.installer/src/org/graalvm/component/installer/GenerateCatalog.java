@@ -41,10 +41,6 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
 
-/**
- *
- * @author sdedic
- */
 public final class GenerateCatalog {
     private List<String> archives;
     private final String graalVersionPrefix;

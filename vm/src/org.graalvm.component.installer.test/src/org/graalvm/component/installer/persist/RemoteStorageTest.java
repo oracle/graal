@@ -46,10 +46,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-/**
- *
- * @author sdedic
- */
 public class RemoteStorageTest extends TestBase {
     private static final String TEST_GRAAL_VERSION = "0.33-dev_linux_amd64";
     private static final String TEST_BASE_URL_DIR = "https://graal.us.oracle.com/";

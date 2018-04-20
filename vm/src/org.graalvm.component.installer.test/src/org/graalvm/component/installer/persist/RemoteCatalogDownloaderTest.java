@@ -41,10 +41,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
-/**
- *
- * @author sdedic
- */
 public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Rule public ExpectedException exception = ExpectedException.none();
 

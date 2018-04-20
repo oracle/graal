@@ -44,10 +44,6 @@ import org.junit.Rule;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
-/**
- *
- * @author sdedic
- */
 public class CommandTestBase extends TestBase implements CommandInput {
     @Rule public ExpectedException exception = ExpectedException.none();
     protected JarFile componentJarFile;

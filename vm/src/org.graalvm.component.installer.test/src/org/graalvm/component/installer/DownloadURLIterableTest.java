@@ -38,10 +38,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Rule;
 import org.junit.Test;
 
-/**
- *
- * @author sdedic
- */
 public class DownloadURLIterableTest extends CommandTestBase {
     @Rule public final ProxyResource proxyResource = new ProxyResource();
 

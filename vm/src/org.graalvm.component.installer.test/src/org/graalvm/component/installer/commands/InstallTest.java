@@ -49,10 +49,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-/**
- *
- * @author sdedic
- */
 public class InstallTest extends CommandTestBase {
     @Rule public final ProxyResource proxyResource = new ProxyResource();
 

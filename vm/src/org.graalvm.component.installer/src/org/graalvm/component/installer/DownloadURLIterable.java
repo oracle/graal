@@ -29,10 +29,6 @@ import java.net.URL;
 import java.util.Iterator;
 import org.graalvm.component.installer.CatalogIterable.RemoteComponentParam;
 
-/**
- *
- * @author sdedic
- */
 public class DownloadURLIterable implements ComponentIterable {
     private final Feedback feedback;
     private final CommandInput input;

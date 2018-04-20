@@ -27,10 +27,6 @@ package org.graalvm.component.installer.persist;
 import org.graalvm.component.installer.persist.test.Handler;
 import org.junit.rules.ExternalResource;
 
-/**
- *
- * @author sdedic
- */
 public class ProxyResource extends ExternalResource {
 
     @Override

@@ -31,10 +31,6 @@ import java.util.jar.JarFile;
 import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.model.ComponentInfo;
 
-/**
- *
- * @author sdedic
- */
 public interface MetadataLoader {
 
     void close() throws IOException;

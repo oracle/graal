@@ -43,10 +43,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import sun.net.ConnectionResetException;
 
-/**
- *
- * @author sdedic
- */
 public class FileDownloaderTest extends NetworkTestBase {
     @Rule public ExpectedException exception = ExpectedException.none();
 

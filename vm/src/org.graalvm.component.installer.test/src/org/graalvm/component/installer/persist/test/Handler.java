@@ -34,10 +34,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/**
- *
- * @author sdedic
- */
 public class Handler extends URLStreamHandler {
     private static Map<String, URL> bindings = Collections.synchronizedMap(new HashMap<>());
     private static Map<String, URLConnection> connections = Collections.synchronizedMap(new HashMap<>());

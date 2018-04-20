@@ -33,10 +33,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.persist.FileDownloaderTest;
 
-/**
- *
- * @author sdedic
- */
 public class ChunkedConnection extends URLConnection {
     public InputStream delegate;
     public volatile long nextChunk;

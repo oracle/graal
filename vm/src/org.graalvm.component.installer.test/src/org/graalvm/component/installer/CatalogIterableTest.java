@@ -52,10 +52,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-/**
- *
- * @author sdedic
- */
 public class CatalogIterableTest extends CommandTestBase implements Supplier<ComponentRegistry> {
     @Rule public final ProxyResource proxyResource = new ProxyResource();
 

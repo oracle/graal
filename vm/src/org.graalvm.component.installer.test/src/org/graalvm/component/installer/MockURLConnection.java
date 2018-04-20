@@ -34,10 +34,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author sdedic
- */
 public class MockURLConnection extends URLConnection {
     private final URLConnection clu;
     private final IOException theException;

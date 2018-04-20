@@ -31,10 +31,6 @@ import java.util.jar.JarFile;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-/**
- *
- * @author sdedic
- */
 public class FileIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
