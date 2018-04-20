@@ -64,9 +64,9 @@ public class UninstallCommand implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput input, Feedback feedback) {
-        this.input = input;
-        this.feedback = feedback;
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        this.input = commandInput;
+        this.feedback = feedBack;
     }
 
     @Override

@@ -102,8 +102,8 @@ public class MockStorage implements ComponentStorage {
     }
 
     @Override
-    public void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException {
-        updatedReplacedFiles = replacedFiles;
+    public void updateReplacedFiles(Map<String, Collection<String>> newReplacedFiles) throws IOException {
+        updatedReplacedFiles = newReplacedFiles;
     }
 
 }

@@ -55,9 +55,9 @@ public class RebuildImageCommand implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput input, Feedback feedback) {
-        this.feedback = feedback;
-        this.input = input;
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        this.feedback = feedBack;
+        this.input = commandInput;
     }
 
     final class OutputRewriter implements Runnable {

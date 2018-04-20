@@ -67,9 +67,9 @@ public class InstallCommand implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput input, Feedback feedback) {
-        this.input = input;
-        this.feedback = feedback;
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        this.input = commandInput;
+        this.feedback = feedBack;
 
         ignoreFailures = this.input.optValue(Commands.OPTION_IGNORE_FAILURES) != null;
         validateBeforeInstall = this.input.optValue(Commands.OPTION_VALIDATE) != null;

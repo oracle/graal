@@ -44,10 +44,10 @@ public interface InstallerCommand {
     /**
      * Executes a command.
      * 
-     * @param input access to parameters, options
-     * @param feedback output interface, use instead of Stderr, Stdout
+     * @param commandInput access to parameters, options
+     * @param feedBack output interface, use instead of Stderr, Stdout
      */
-    void init(CommandInput input, Feedback feedback);
+    void init(CommandInput commandInput, Feedback feedBack);
 
     /**
      * Executes a command.

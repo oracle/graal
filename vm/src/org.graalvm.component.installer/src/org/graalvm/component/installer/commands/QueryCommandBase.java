@@ -97,12 +97,12 @@ public abstract class QueryCommandBase implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput input, Feedback feedback) {
-        this.input = input;
-        this.registry = input.getRegistry();
-        this.feedback = feedback;
-        listFiles = input.optValue(OPTION_LIST_FILES) != null;
-        verbose = input.optValue(Commands.OPTION_VERBOSE) != null;
+    public void init(CommandInput commandInput, Feedback feedBack) {
+        this.input = commandInput;
+        this.registry = commandInput.getRegistry();
+        this.feedback = feedBack;
+        listFiles = commandInput.optValue(OPTION_LIST_FILES) != null;
+        verbose = commandInput.optValue(Commands.OPTION_VERBOSE) != null;
         printTable = !listFiles && !verbose;
     }
 
