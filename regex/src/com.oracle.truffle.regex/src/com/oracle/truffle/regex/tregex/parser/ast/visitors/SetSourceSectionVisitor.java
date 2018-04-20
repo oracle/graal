@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -35,116 +36,54 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
-import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
-/**
- * An AST visitor that produces a deep copy of a given {@link Term} and its subtree, and registers
- * all new nodes in the {@link RegexAST} provided at instantiation. This visitor should be preferred
- * over recursively copying with {@link RegexASTNode#copy(RegexAST, boolean)} whenever possible,
- * since it is non-recursive. Note that this visitor is not thread-safe!
- *
- * @see DepthFirstTraversalRegexASTVisitor
- */
-public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
+public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    private final RegexAST ast;
-    private Term copyRoot;
-    private RegexASTNode curParent;
+    private SourceSection sourceSection;
 
-    public CopyVisitor(RegexAST ast) {
-        this.ast = ast;
-    }
-
-    public Term copy(Term term) {
-        run(term);
-        assert copyRoot != null;
-        Term result = copyRoot;
-        copyRoot = null;
-        return result;
+    public void run(Group root, SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
+        run(root);
     }
 
     @Override
     protected void visit(BackReference backReference) {
-        addToParent(backReference.copy(ast, false));
     }
 
     @Override
     protected void visit(Group group) {
-        Group copy = group.copy(ast, false);
-        addToParent(copy);
-        curParent = copy;
+        group.setSourceSectionBegin(null);
+        group.setSourceSectionEnd(null);
+        group.setSourceSection(sourceSection);
     }
 
     @Override
     protected void leave(Group group) {
-        goToUpperParent();
     }
 
     @Override
     protected void visit(Sequence sequence) {
-        Sequence copy = sequence.copy(ast, false);
-        ((Group) curParent).add(copy);
-        curParent = copy;
-    }
-
-    @Override
-    protected void leave(Sequence sequence) {
-        goToUpperParent();
     }
 
     @Override
     protected void visit(PositionAssertion assertion) {
-        addToParent(assertion.copy(ast, false));
+        assertion.setSourceSection(sourceSection);
     }
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        LookBehindAssertion copy = assertion.copy(ast, false);
-        addToParent(copy);
-        curParent = copy;
-    }
-
-    @Override
-    protected void leave(LookBehindAssertion assertion) {
-        goToUpperParent();
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        LookAheadAssertion copy = assertion.copy(ast, false);
-        addToParent(copy);
-        curParent = copy;
-    }
-
-    @Override
-    protected void leave(LookAheadAssertion assertion) {
-        goToUpperParent();
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        addToParent(characterClass.copy(ast, false));
+        characterClass.setSourceSection(sourceSection);
     }
 
     @Override
     protected void visit(MatchFound matchFound) {
-        throw new IllegalStateException();
-    }
-
-    private void goToUpperParent() {
-        assert curParent != null;
-        curParent = curParent.getParent();
-    }
-
-    private void addToParent(Term copy) {
-        if (curParent == null) {
-            assert copyRoot == null;
-            copyRoot = copy;
-        } else if (curParent instanceof RegexASTSubtreeRootNode) {
-            assert copy instanceof Group;
-            ((RegexASTSubtreeRootNode) curParent).setGroup((Group) copy);
-        } else {
-            ((Sequence) curParent).add(copy);
-        }
     }
 }

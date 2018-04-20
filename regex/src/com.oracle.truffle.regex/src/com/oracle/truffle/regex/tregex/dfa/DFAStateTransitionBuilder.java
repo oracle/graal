@@ -31,6 +31,7 @@ import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -116,11 +117,18 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
+        JsonArray nfaTransitions = Json.array(getTransitionSet().stream().map(t -> Json.val(t.getId())));
+        if (target.getAnchoredFinalStateTransition() != null) {
+            nfaTransitions.append(Json.val(target.getAnchoredFinalStateTransition().getId()));
+        }
+        if (target.getUnAnchoredFinalStateTransition() != null) {
+            nfaTransitions.append(Json.val(target.getUnAnchoredFinalStateTransition().getId()));
+        }
         JsonObject ret = Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
                         Json.prop("matcherBuilder", getMatcherBuilder().toString()),
-                        Json.prop("nfaTransitions", getTransitionSet().stream().map(t -> Json.val(t.getId()))));
+                        Json.prop("nfaTransitions", nfaTransitions));
         if (captureGroupTransition != null) {
             ret.append(Json.prop("captureGroupTransition", captureGroupTransition.toLazyTransition(new CompilationBuffer())));
         }

@@ -24,9 +24,15 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import java.util.Objects;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -75,12 +81,26 @@ public class NFAStateTransition implements JsonConvertible {
     }
 
     @TruffleBoundary
+    private JsonArray sourceSectionsToJson() {
+        if (!groupBoundaries.hasIndexUpdates()) {
+            return Json.array();
+        }
+        return Json.array(groupBoundaries.getUpdateIndices().stream().mapToObj(x -> {
+            Group group = source.getStateSet().getAst().getGroupByBoundaryIndex(x);
+            SourceSection sourceSection = (x & 1) == 0 ? group.getSourceSectionBegin() : group.getSourceSectionEnd();
+            return Json.obj(Json.prop("start", sourceSection.getCharIndex()),
+                            Json.prop("end", sourceSection.getCharEndIndex()));
+        }));
+    }
+
+    @TruffleBoundary
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
-                        Json.prop("groupBoundaries", groupBoundaries));
+                        Json.prop("groupBoundaries", groupBoundaries),
+                        Json.prop("sourceSections", sourceSectionsToJson()));
     }
 
     @TruffleBoundary
@@ -88,6 +108,7 @@ public class NFAStateTransition implements JsonConvertible {
         return Json.obj(Json.prop("id", id),
                         Json.prop("source", getSource(forward).getId()),
                         Json.prop("target", getTarget(forward).getId()),
-                        Json.prop("groupBoundaries", groupBoundaries));
+                        Json.prop("groupBoundaries", groupBoundaries),
+                        Json.prop("sourceSections", sourceSectionsToJson()));
     }
 }

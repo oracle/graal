@@ -52,7 +52,9 @@ public class DFAExport {
         Map<DFAStateNodeBuilder, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
         TreeSet<Short> entryIDs = new TreeSet<>();
         for (DFAStateNodeBuilder s : entryStates) {
-            entryIDs.add(s.getId());
+            if (s != null) {
+                entryIDs.add(s.getId());
+            }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
             writer.write("digraph finite_state_machine {");

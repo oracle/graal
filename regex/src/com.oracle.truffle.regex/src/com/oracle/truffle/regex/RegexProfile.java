@@ -63,7 +63,7 @@ public final class RegexProfile {
      *
      * @param matchLength the length of capture group 0 of the match.
      * @param numberOfCharsTraversed the number of characters that were traversed between the
-     *                               initial index (fromIndex) and the end of the match.
+     *            initial index (fromIndex) and the end of the match.
      * @see com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode
      */
     public void profileCaptureGroupAccess(int matchLength, int numberOfCharsTraversed) {

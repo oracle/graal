@@ -29,6 +29,7 @@ import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -36,6 +37,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -339,10 +341,18 @@ public class NFAState implements IndexedState, JsonConvertible {
     }
 
     @TruffleBoundary
+    private JsonArray sourceSectionsToJson() {
+        return Json.array(getStateSet().stream().map(RegexASTNode::getSourceSection).filter(Objects::nonNull).map(x -> Json.obj(
+                        Json.prop("start", x.getCharIndex()),
+                        Json.prop("end", x.getCharEndIndex()))));
+    }
+
+    @TruffleBoundary
     @Override
     public JsonObject toJson() {
         return Json.obj(Json.prop("id", id),
                         Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("sourceSections", sourceSectionsToJson()),
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("forwardAnchoredFinalState", isForwardAnchoredFinalState()),
                         Json.prop("forwardUnAnchoredFinalState", isForwardUnAnchoredFinalState()),
@@ -356,6 +366,7 @@ public class NFAState implements IndexedState, JsonConvertible {
     public JsonObject toJson(boolean forward) {
         return Json.obj(Json.prop("id", id),
                         Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("sourceSections", sourceSectionsToJson()),
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState(forward)),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState(forward)),

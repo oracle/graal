@@ -38,13 +38,13 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
         setId(InitIDVisitor.REGEX_AST_ROOT_PARENT_ID);
     }
 
-    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast) {
-        super(copy, ast);
+    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast, boolean recursive) {
+        super(copy, ast, recursive);
     }
 
     @Override
-    public RegexASTSubtreeRootNode copy(RegexAST ast) {
-        return new RegexASTRootNode(this, ast);
+    public RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive) {
+        return new RegexASTRootNode(this, ast, recursive);
     }
 
     @Override

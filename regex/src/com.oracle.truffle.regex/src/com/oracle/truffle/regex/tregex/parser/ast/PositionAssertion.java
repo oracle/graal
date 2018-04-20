@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -65,7 +66,7 @@ public class PositionAssertion extends Term {
      * Creates a {@link PositionAssertion} node of the given kind.
      * 
      * @param type the kind of position assertion to create
-     * @see PositionAssertion.Type
+     * @see Type
      */
     PositionAssertion(Type type) {
         this.type = type;
@@ -77,7 +78,7 @@ public class PositionAssertion extends Term {
     }
 
     @Override
-    public PositionAssertion copy(RegexAST ast) {
+    public PositionAssertion copy(RegexAST ast, boolean recursive) {
         return ast.register(new PositionAssertion(this));
     }
 

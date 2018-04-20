@@ -24,8 +24,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -47,6 +49,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     private RegexASTNode parent;
     private byte flags;
     private short minPath = 0;
+    private SourceSection sourceSection;
 
     protected RegexASTNode() {
     }
@@ -54,17 +57,23 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     protected RegexASTNode(RegexASTNode copy) {
         flags = copy.flags;
         minPath = copy.minPath;
+        sourceSection = copy.sourceSection;
     }
 
     /**
-     * Recursively copy this subtree. This method should be used instead of
-     * {@link com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor} if the copying
-     * process is required to be thread-safe.
-     * 
-     * @param ast RegexAST the new subtree should belong to.
-     * @return A deep copy of this subtree.
+     * Copy this node, in one of the following ways:
+     * <ul>
+     * <li>if <code>recursive</code> is <code>true</code>, recursively copy this subtree. This
+     * method should be used instead of {@link CopyVisitor} if the copying process is required to be
+     * thread-safe.</li>
+     * <li>else, copy this node only, without any child nodes.</li>
+     * </ul>
+     * In both cases, the ID and minPath of the copied nodes is left unset.
+     *
+     * @param ast RegexAST the new nodes should belong to.
+     * @return A shallow or deep copy of this node.
      */
-    public abstract RegexASTNode copy(RegexAST ast);
+    public abstract RegexASTNode copy(RegexAST ast, boolean recursive);
 
     public boolean idInitialized() {
         return id >= 0;
@@ -203,6 +212,14 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     public void incMinPath(int n) {
         minPath += n;
+    }
+
+    public void setSourceSection(SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
+    }
+
+    public SourceSection getSourceSection() {
+        return sourceSection;
     }
 
     /**

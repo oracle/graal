@@ -607,7 +607,8 @@ public final class DFAGenerator implements JsonConvertible {
                 transitionList[t.getId()] = t;
             }
         }
-        return Json.obj(Json.prop("nfa", nfa.toJson(forward)),
+        return Json.obj(Json.prop("pattern", nfa.getAst().getSource().toString()),
+                        Json.prop("nfa", nfa.toJson(forward)),
                         Json.prop("dfa", Json.obj(
                                         Json.prop("states", Arrays.stream(stateList)),
                                         Json.prop("transitions", Arrays.stream(transitionList)),

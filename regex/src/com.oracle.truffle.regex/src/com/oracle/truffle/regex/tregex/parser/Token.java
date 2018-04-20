@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -66,9 +67,18 @@ public class Token implements JsonConvertible {
     }
 
     public final Kind kind;
+    private SourceSection sourceSection;
 
     public Token(Kind kind) {
         this.kind = kind;
+    }
+
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
+    public void setSourceSection(SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
     }
 
     @TruffleBoundary
@@ -81,7 +91,7 @@ public class Token implements JsonConvertible {
 
         private final int min;
         private final int max;
-        private boolean greedy;
+        private final boolean greedy;
 
         public Quantifier(int min, int max, boolean greedy) {
             super(Kind.quantifier);
@@ -110,10 +120,6 @@ public class Token implements JsonConvertible {
 
         public boolean isGreedy() {
             return greedy;
-        }
-
-        public void setGreedy(boolean greedy) {
-            this.greedy = greedy;
         }
 
         @TruffleBoundary

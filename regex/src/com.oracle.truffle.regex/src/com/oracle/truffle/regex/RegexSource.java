@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -34,6 +35,7 @@ public final class RegexSource implements JsonConvertible {
 
     private final String pattern;
     private final RegexFlags flags;
+    private Source source;
     private boolean hashComputed = false;
     private int cachedHash;
 
@@ -48,6 +50,14 @@ public final class RegexSource implements JsonConvertible {
 
     public RegexFlags getFlags() {
         return flags;
+    }
+
+    public Source getSource() {
+        if (source == null) {
+            String text = toString();
+            source = Source.newBuilder(text).name(text).mimeType(RegexLanguage.MIME_TYPE).language(RegexLanguage.ID).build();
+        }
+        return source;
     }
 
     @Override

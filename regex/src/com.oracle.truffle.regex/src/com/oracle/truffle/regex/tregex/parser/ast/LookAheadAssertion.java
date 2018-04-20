@@ -51,13 +51,13 @@ public class LookAheadAssertion extends RegexASTSubtreeRootNode {
         setFlag(FLAG_LOOK_AHEAD_NEGATED, negated);
     }
 
-    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast) {
-        super(copy, ast);
+    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast, boolean recursive) {
+        super(copy, ast, recursive);
     }
 
     @Override
-    public LookAheadAssertion copy(RegexAST ast) {
-        return ast.register(new LookAheadAssertion(this, ast));
+    public LookAheadAssertion copy(RegexAST ast, boolean recursive) {
+        return ast.register(new LookAheadAssertion(this, ast, recursive));
     }
 
     /**

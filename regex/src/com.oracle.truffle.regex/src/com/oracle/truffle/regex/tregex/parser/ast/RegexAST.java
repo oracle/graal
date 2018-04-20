@@ -61,6 +61,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      * Possibly wrapped root for NFA generation (see {@link #createPrefix()}).
      */
     private Group wrappedRoot;
+    private Group[] captureGroups;
     private final List<LookBehindAssertion> lookBehinds = new ArrayList<>();
     private final List<MatchFound> endPoints = new ArrayList<>();
     private final List<PositionAssertion> reachableCarets = new ArrayList<>();
@@ -109,6 +110,18 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
+    }
+
+    public Group getGroupByBoundaryIndex(int index) {
+        if (captureGroups == null) {
+            captureGroups = new Group[getNumberOfCaptureGroups()];
+            for (RegexASTNode n : nodes) {
+                if (n instanceof Group && ((Group) n).isCapturing()) {
+                    captureGroups[((Group) n).getGroupNumber()] = (Group) n;
+                }
+            }
+        }
+        return captureGroups[index / 2];
     }
 
     public RegexProperties getProperties() {
@@ -185,10 +198,6 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
 
     public BackReference createBackReference(int groupNumber) {
         return register(new BackReference(groupNumber));
-    }
-
-    public CharacterClass createCharacterClass(CodePointSet codePointSet) {
-        return createCharacterClass(MatcherBuilder.create(codePointSet));
     }
 
     public CharacterClass createCharacterClass(MatcherBuilder matcherBuilder) {
@@ -408,12 +417,6 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         final CharacterClass anyMatcher = createCharacterClass(MatcherBuilder.createFull());
         anyMatcher.setPrefix();
         return anyMatcher;
-    }
-
-    public CharacterClass createLoopBackMatcher() {
-        CharacterClass loopBackCC = new CharacterClass(MatcherBuilder.createFull());
-        initNodeId(loopBackCC, nodes.length - 1);
-        return loopBackCC;
     }
 
     private void addToIndex(RegexASTNode node) {

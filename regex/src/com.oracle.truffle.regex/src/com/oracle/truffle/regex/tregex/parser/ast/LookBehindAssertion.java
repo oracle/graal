@@ -52,13 +52,13 @@ public class LookBehindAssertion extends RegexASTSubtreeRootNode {
     LookBehindAssertion() {
     }
 
-    private LookBehindAssertion(LookBehindAssertion copy, RegexAST ast) {
-        super(copy, ast);
+    private LookBehindAssertion(LookBehindAssertion copy, RegexAST ast, boolean recursive) {
+        super(copy, ast, recursive);
     }
 
     @Override
-    public LookBehindAssertion copy(RegexAST ast) {
-        return ast.register(new LookBehindAssertion(this, ast));
+    public LookBehindAssertion copy(RegexAST ast, boolean recursive) {
+        return ast.register(new LookBehindAssertion(this, ast, recursive));
     }
 
     /**

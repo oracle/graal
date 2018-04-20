@@ -50,7 +50,7 @@ public class BackReference extends Term {
     }
 
     @Override
-    public BackReference copy(RegexAST ast) {
+    public BackReference copy(RegexAST ast, boolean recursive) {
         return ast.register(new BackReference(this));
     }
 

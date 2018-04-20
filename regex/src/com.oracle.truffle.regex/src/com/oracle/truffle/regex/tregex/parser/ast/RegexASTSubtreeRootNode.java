@@ -45,14 +45,16 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     RegexASTSubtreeRootNode() {
     }
 
-    RegexASTSubtreeRootNode(RegexASTSubtreeRootNode copy, RegexAST ast) {
+    RegexASTSubtreeRootNode(RegexASTSubtreeRootNode copy, RegexAST ast, boolean recursive) {
         super(copy);
-        setGroup(copy.group.copy(ast));
+        if (recursive) {
+            setGroup(copy.group.copy(ast, true));
+        }
         ast.createEndPoint(this);
     }
 
     @Override
-    public abstract RegexASTSubtreeRootNode copy(RegexAST ast);
+    public abstract RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive);
 
     /**
      * Returns the {@link Group} that represents the contents of this subtree.

@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -61,6 +62,8 @@ public class Group extends Term implements RegexASTVisitorIterable {
     private byte groupNumber = -1;
     private byte enclosedCaptureGroupsLow;
     private byte enclosedCaptureGroupsHigh;
+    private SourceSection sourceSectionBegin;
+    private SourceSection sourceSectionEnd;
 
     /**
      * Creates an empty non-capturing group.
@@ -77,19 +80,23 @@ public class Group extends Term implements RegexASTVisitorIterable {
         setGroupNumber(groupNumber);
     }
 
-    private Group(Group copy, RegexAST ast) {
+    private Group(Group copy, RegexAST ast, boolean recursive) {
         super(copy);
         groupNumber = copy.groupNumber;
         enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
         enclosedCaptureGroupsHigh = copy.enclosedCaptureGroupsHigh;
-        for (Sequence s : copy.alternatives) {
-            add(s.copy(ast));
+        sourceSectionBegin = copy.sourceSectionBegin;
+        sourceSectionEnd = copy.sourceSectionEnd;
+        if (recursive) {
+            for (Sequence s : copy.alternatives) {
+                add(s.copy(ast, true));
+            }
         }
     }
 
     @Override
-    public Group copy(RegexAST ast) {
-        return ast.register(new Group(this, ast));
+    public Group copy(RegexAST ast, boolean recursive) {
+        return ast.register(new Group(this, ast, recursive));
     }
 
     /**
@@ -245,6 +252,41 @@ public class Group extends Term implements RegexASTVisitorIterable {
      */
     public ArrayList<Sequence> getAlternatives() {
         return alternatives;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        if (super.getSourceSection() == null && sourceSectionBegin != null && sourceSectionEnd != null) {
+            super.setSourceSection(sourceSectionBegin.getSource().createSection(sourceSectionBegin.getCharIndex(),
+                            sourceSectionEnd.getCharEndIndex() - sourceSectionBegin.getCharIndex()));
+        }
+        return super.getSourceSection();
+    }
+
+    public void setSourceSectionBegin(SourceSection sourceSectionBegin) {
+        this.sourceSectionBegin = sourceSectionBegin;
+    }
+
+    public SourceSection getSourceSectionBegin() {
+        return sourceSectionBegin;
+    }
+
+    /**
+     * Returns the {@link SourceSection} corresponding to this group's opening bracket and modifier
+     * symbols (like "?:", "?=", ...), or <code>null</code> if this group has no corresponding
+     * source (this is the case for groups inserted by the parser when expanding quantifiers etc.).
+     */
+    public SourceSection getSourceSectionEnd() {
+        return sourceSectionEnd;
+    }
+
+    /**
+     * Returns the {@link SourceSection} corresponding to this group's closing bracket, or
+     * <code>null</code> if this group has no corresponding source (this is the case for groups
+     * inserted by the parser when expanding quantifiers etc.).
+     */
+    public void setSourceSectionEnd(SourceSection sourceSectionEnd) {
+        this.sourceSectionEnd = sourceSectionEnd;
     }
 
     /**

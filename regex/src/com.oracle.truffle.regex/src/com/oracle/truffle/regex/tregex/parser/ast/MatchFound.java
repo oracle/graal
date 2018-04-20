@@ -53,7 +53,7 @@ public class MatchFound extends Term {
     private RegexASTNode next;
 
     @Override
-    public MatchFound copy(RegexAST ast) {
+    public MatchFound copy(RegexAST ast, boolean recursive) {
         throw new UnsupportedOperationException();
     }
 

@@ -50,16 +50,18 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
     Sequence() {
     }
 
-    private Sequence(Sequence copy, RegexAST ast) {
+    private Sequence(Sequence copy, RegexAST ast, boolean recursive) {
         super(copy);
-        for (Term t : copy.terms) {
-            add(t.copy(ast));
+        if (recursive) {
+            for (Term t : copy.terms) {
+                add(t.copy(ast, true));
+            }
         }
     }
 
     @Override
-    public Sequence copy(RegexAST ast) {
-        return ast.register(new Sequence(this, ast));
+    public Sequence copy(RegexAST ast, boolean recursive) {
+        return ast.register(new Sequence(this, ast, recursive));
     }
 
     @Override

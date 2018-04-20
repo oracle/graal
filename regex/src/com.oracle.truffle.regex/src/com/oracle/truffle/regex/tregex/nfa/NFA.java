@@ -224,7 +224,8 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
             }
         }
         final boolean afsReachable = anchoredFinalStateReachable;
-        return Json.obj(Json.prop("states", Arrays.stream(states).map(x -> x == null || x == dummyInitialState || (x.isAnchoredFinalState(forward) && !afsReachable) ? Json.nullValue() : x.toJson(forward))),
+        return Json.obj(Json.prop("states",
+                        Arrays.stream(states).map(x -> x == null || x == dummyInitialState || (x.isAnchoredFinalState(forward) && !afsReachable) ? Json.nullValue() : x.toJson(forward))),
                         Json.prop("transitions", Arrays.stream(transitions).map(x -> x == null || !bitSet.get(x.getId()) ? Json.nullValue() : x.toJson(forward))),
                         Json.prop("anchoredEntry", forward ? fwdEntryToJson(anchoredEntry) : revEntryToJson(reverseAnchoredEntry)),
                         Json.prop("unAnchoredEntry", forward ? fwdEntryToJson(unAnchoredEntry) : revEntryToJson(reverseUnAnchoredEntry)),

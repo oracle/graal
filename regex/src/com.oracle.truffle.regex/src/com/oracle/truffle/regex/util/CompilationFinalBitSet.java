@@ -26,10 +26,17 @@ package com.oracle.truffle.regex.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 import java.util.Arrays;
 import java.util.PrimitiveIterator;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Immutable Bit Set implementation, with a lot of code shamelessly ripped from
@@ -254,8 +261,19 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         }
     }
 
+    @TruffleBoundary
     @Override
-    @CompilerDirectives.TruffleBoundary
+    public Spliterator.OfInt spliterator() {
+        return Spliterators.spliteratorUnknownSize(iterator(), Spliterator.DISTINCT | Spliterator.ORDERED | Spliterator.SORTED | Spliterator.NONNULL);
+    }
+
+    @TruffleBoundary
+    public IntStream stream() {
+        return StreamSupport.intStream(spliterator(), false);
+    }
+
+    @TruffleBoundary
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("[ ");
         int b = 0;
