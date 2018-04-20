@@ -414,7 +414,7 @@ class GraalVmNativeProperties(mx.Project):
                 else:
                     deps.append(support_dist)
         self.components = components
-        super(GraalVmNativeProperties, self).__init__(_suite, GraalVmNativeProperties.project_name(components[0].dir_name), subDir=None, srcDirs=[], deps=deps, workingSets=[], d=_suite.dir, theLicense=None, **kw_args)
+        super(GraalVmNativeProperties, self).__init__(_suite, GraalVmNativeProperties.project_name(components[0].dir_name), subDir=None, srcDirs=[], deps=deps, workingSets=None, d=_suite.dir, theLicense=None, **kw_args)
 
     @staticmethod
     def project_name(dir_name):
