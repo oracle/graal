@@ -106,6 +106,7 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
             ],
+            "checkstyleVersion" : "8.8",
             "javaCompliance": "1.8",
             "license": "GPLv2-CPE",
         },
