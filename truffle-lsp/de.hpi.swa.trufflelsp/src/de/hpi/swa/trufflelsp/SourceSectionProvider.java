@@ -6,6 +6,7 @@ import java.util.Map;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicate;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.source.Source;
@@ -20,16 +21,24 @@ public class SourceSectionProvider extends TruffleInstrument {
     public SourceWrapper getLoadedSource(String langId, String name) {
         return this.loadedSources.get(langId).get(name);
     }
+    
+    class SourceUriFilter implements SourcePredicate {
+
+        public boolean test(Source source) {
+            return source.getName().startsWith("file://");
+        }
+        
+    }
 
     @Override
     protected void onCreate(Env env) {
         env.registerService(this);
 
-        env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
+        env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().sourceIs(new SourceUriFilter()).build(), new LoadSourceSectionListener() {
 
             public void onLoad(LoadSourceSectionEvent event) {
                 String langId = event.getNode().getRootNode().getLanguageInfo().getId();
-                System.out.println(event.getNode().getClass().getSimpleName() + " " + event.getSourceSection());
+                System.out.println("\t" + event.getNode().getClass().getSimpleName() + " " + event.getSourceSection());
                 SourceSection sourceSection = event.getSourceSection();
                 Source source = sourceSection.getSource();
                 String name = source.getName();

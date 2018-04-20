@@ -110,6 +110,7 @@ public class TruffleAdapter {
 
             ssProvider.remove(langId, uri);
 
+            System.out.println("\nParsing " + langId + " " + uri);
             Source source = Source.newBuilder(text).name(uri).language(langId).build();
             CallTarget target = env.parse(source);
 
