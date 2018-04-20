@@ -1172,6 +1172,20 @@ def updategraalinopenjdk(args):
         if out.data:
             mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out.data[:min(200, len(out.data))] + '...')
 
+    for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
+        for filename in filenames:
+            if filename.endswith('.gmk'):
+                filepath = join(dirpath, filename)
+                with open(filepath) as fp:
+                    contents = fp.read()
+                new_contents = contents
+                for old_name, new_name in package_renamings.iteritems():
+                    new_contents = new_contents.replace(old_name, new_name)
+                if new_contents != contents:
+                    with open(filepath, 'w') as fp:
+                        fp.write(new_contents)
+                        mx.log('  updated ' + filepath)
+
     copied_source_dirs = []
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
@@ -1188,17 +1202,24 @@ def updategraalinopenjdk(args):
             for p in [e for e in suite.projects if e.isJavaProject()]:
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
-                    source_dir = p.source_dirs()[0]
-                    target_dir = join(classes_dir, p.name, 'src')
-                    copied_source_dirs.append(source_dir)
                     version = 0
+                    new_project_name = p.name
                     if hasattr(p, 'multiReleaseJarVersion'):
                         version = int(getattr(p, 'multiReleaseJarVersion'))
                         if version <= args.version:
                             base_project = _find_version_base_project(p)
-                            target_dir = join(classes_dir, base_project.name, 'src')
+                            new_project_name = base_project.name
                         else:
                             continue
+
+                    for old_name, new_name in package_renamings.iteritems():
+                        if new_project_name.startswith(old_name):
+                            new_project_name = new_project_name.replace(old_name, new_name)
+
+                    source_dir = p.source_dirs()[0]
+                    target_dir = join(classes_dir, new_project_name, 'src')
+                    copied_source_dirs.append(source_dir)
+
                     workitem = (version, p, source_dir, target_dir)
                     worklist.append(workitem)
 
