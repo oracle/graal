@@ -106,7 +106,7 @@ public final class ComponentInstaller {
         System.err.println(BUNDLE.getString("INFO_Usage")); // NOI18N
     }
 
-    static void err(String messageKey, Object... args) {
+    static RuntimeException err(String messageKey, Object... args) {
         String s;
 
         if (args == null || args.length == 0) {
@@ -117,6 +117,7 @@ public final class ComponentInstaller {
         System.err.println(s);
         printHelp();
         System.exit(1);
+        throw new RuntimeException("should not reach here");
     }
 
     private Environment env;

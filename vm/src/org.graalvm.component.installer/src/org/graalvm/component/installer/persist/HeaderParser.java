@@ -353,6 +353,7 @@ public class HeaderParser {
             if (paramOrDirectiveName.isEmpty()) {
                 throw metaEx("ERROR_InvalidParameterName");
             }
+            directiveOrParameterName = paramOrDirectiveName;
 
             char c = ch();
             boolean dcolon = c == ':'; // NOI18N

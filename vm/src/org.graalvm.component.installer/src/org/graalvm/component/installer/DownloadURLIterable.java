@@ -41,6 +41,7 @@ public class DownloadURLIterable implements ComponentIterable {
     public DownloadURLIterable(Feedback feedback, CommandInput input) {
         this.feedback = feedback;
         this.input = input;
+        this.verifyJars = false;
     }
 
     @Override

@@ -50,17 +50,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.component.installer.Feedback;
 
-/**
- *
- * @author sdedic
- */
 public class FileDownloader {
     String envHttpProxy = System.getenv("http_proxy"); // NOI18N
     String envHttpsProxy = System.getenv("https_proxy"); // NOI18N
 
     private static final int TRANSFER_LENGTH = 2048;
-    private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);   // 1
-                                                                                                                                           // MByte
+    private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);
     private final String fileDescription;
     private final URL sourceURL;
     private final Feedback feedback;
@@ -69,7 +64,7 @@ public class FileDownloader {
     private long size;
     private static boolean deleteTemporary = !Boolean.FALSE.toString().equals(System.getProperty("org.graalvm.component.installer.deleteTemporary"));
     private boolean verbose;
-    private static File tempDir;
+    private static volatile File tempDir;
     private boolean displayProgress;
     private byte[] shaDigest;
 
@@ -83,7 +78,7 @@ public class FileDownloader {
         this.shaDigest = shaDigest;
     }
 
-    public void setDeleteTemporary(boolean deleteTemporary) {
+    public static void setDeleteTemporary(boolean deleteTemporary) {
         FileDownloader.deleteTemporary = deleteTemporary;
     }
 
@@ -95,10 +90,10 @@ public class FileDownloader {
         this.displayProgress = displayProgress;
     }
 
-    public static File createTempDir() throws IOException {
+    public static synchronized File createTempDir() throws IOException {
         if (tempDir == null) {
             Path p = Files.createTempDirectory("graalvm_install"); // NOI18N
-            tempDir = deleteOnExit(p.toFile());
+            tempDir = p.toFile();
             tempDir.deleteOnExit();
         }
         return tempDir;
@@ -288,16 +283,19 @@ public class FileDownloader {
             }
         });
         try {
-            connected.await(5, TimeUnit.SECONDS);
-        } catch (InterruptedException ex) {
-        }
-        if (conn[0] == null) {
-            if (ex3.get() != null) {
-                throw ex3.get();
-            } else if (ex2.get() != null) {
-                throw ex2.get();
+            if (!connected.await(5, TimeUnit.SECONDS)) {
+                throw new ConnectException("Timeout while connecting to " + url);
             }
-            throw new ConnectException("Cannot connect to " + url);
+            if (conn[0] == null) {
+                if (ex3.get() != null) {
+                    throw ex3.get();
+                } else if (ex2.get() != null) {
+                    throw ex2.get();
+                }
+                throw new ConnectException("Cannot connect to " + url);
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
         }
         return conn[0];
     }
@@ -311,13 +309,16 @@ public class FileDownloader {
         URLConnection conn = openConnectionWithProxies(sourceURL);
         size = conn.getContentLengthLong();
         verbose = feedback.verbosePart("MSG_DownloadReceivingBytes", toKB(size));
-        displayProgress |= verbose;
-        displayProgress &= size >= MIN_PROGRESS_THRESHOLD;
+        if (verbose) {
+            displayProgress = true;
+        }
+        if (size < MIN_PROGRESS_THRESHOLD) {
+            displayProgress = false;
+        }
 
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
-        localFile = deleteOnExit(
-                        File.createTempFile("download", "", createTempDir())); // NOI18N
+        localFile = deleteOnExit(File.createTempFile("download", "", createTempDir())); // NOI18N
         if (fileDescription != null) {
             feedback.bindFilename(localFile.toPath(), fileDescription);
         }

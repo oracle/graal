@@ -35,10 +35,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-/**
- *
- * @author sdedic
- */
 public class SimpleGetoptTest extends TestBase {
     SimpleGetopt getopt;
     String errorKey;
@@ -50,7 +46,7 @@ public class SimpleGetoptTest extends TestBase {
     public void setUp() {
         getopt = new SimpleGetopt(ComponentInstaller.globalOptions) {
             @Override
-            void err(String messageKey, Object... args) {
+            RuntimeException err(String messageKey, Object... args) {
                 errorKey = messageKey;
                 errorParams = args;
                 throw new FailedOperationException(messageKey);
