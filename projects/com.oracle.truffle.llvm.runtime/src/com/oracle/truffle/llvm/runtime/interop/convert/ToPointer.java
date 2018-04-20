@@ -157,18 +157,7 @@ abstract class ToPointer extends ForeignToLLVM {
         return new LLVMTruffleObject(object);
     }
 
-    @Specialization(guards = {"checkIsPointer(obj)", "notLLVM(obj)"})
-    protected LLVMAddress fromNativePointer(TruffleObject obj, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        try {
-            long raw = ForeignAccess.sendAsPointer(asPointer, obj);
-            return LLVMAddress.fromLong(raw);
-        } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Foreign value is not a pointer!", ex);
-        }
-    }
-
-    @Specialization(guards = {"!checkIsPointer(obj)", "notLLVM(obj)"})
+    @Specialization(guards = {"notLLVM(obj)"})
     protected LLVMTruffleObject fromTruffleObject(TruffleObject obj, LLVMInteropType.Structured type) {
         return new LLVMTruffleObject(LLVMTypedForeignObject.create(obj, type));
     }
