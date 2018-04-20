@@ -293,7 +293,7 @@ GRAALVM_VERSION={version}""".format(
         mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
 
 
-class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):
+class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
     def __init__(self, base_name, base_layout, theLicense=None, **kw_args):
         components = mx_sdk.graalvm_components()
         name = base_name + "_" + '_'.join(sorted((component.short_name.upper() for component in components)))
@@ -1017,7 +1017,7 @@ x-GraalVM-Polyglot-Part: {polyglot}""".format(
         super(InstallableComponentArchiver, self).__exit__(exc_type, exc_value, traceback)
 
 
-class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDistribution):
+class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDistribution):  # pylint: disable=R0901
     def __init__(self, component, **kw_args):
         """
         :type component: mx_sdk.GraalVmLanguage
@@ -1167,7 +1167,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         lib_polyglot_project = get_lib_polyglot_project()
         if lib_polyglot_project:
             register_project(lib_polyglot_project)
-        for identifier, components in id_to_component.items():
+        for components in id_to_component.values():
             truffle_components = [component for component in components if isinstance(component, mx_sdk.GraalVmTruffleComponent)]
             if truffle_components:
                 register_project(GraalVmNativeProperties(truffle_components))
