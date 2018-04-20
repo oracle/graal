@@ -105,8 +105,10 @@ final class TestContext implements Closeable {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
             this.context = Context.newBuilder().out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE).allowAllAccess(true).build();
-            this.inlineVerifier = context.getEngine().getInstruments().get(InlineVerifier.ID).lookup(InlineVerifier.class);
-            Assert.assertNotNull(this.inlineVerifier);
+            if (!isTruffleCompileImmediately()) {
+                this.inlineVerifier = context.getEngine().getInstruments().get(InlineVerifier.ID).lookup(InlineVerifier.class);
+                Assert.assertNotNull(this.inlineVerifier);
+            }
         }
         return context;
     }
@@ -238,7 +240,13 @@ final class TestContext implements Closeable {
     }
 
     void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
-        inlineVerifier.setInlineSnippet(languageId, inlineSnippet, verifier);
+        if (inlineVerifier != null) {
+            inlineVerifier.setInlineSnippet(languageId, inlineSnippet, verifier);
+        }
+    }
+
+    private static boolean isTruffleCompileImmediately() {
+        return Boolean.getBoolean("graal.TruffleCompileImmediately");
     }
 
     private enum State {

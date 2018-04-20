@@ -107,6 +107,11 @@ public final class ProbeNode extends Node {
     // returned from chain nodes whose bindings ignore the unwind
     private static final Object UNWIND_ACTION_IGNORED = new Object();
 
+    // when the property 'truffle.instrumentation.propagateExceptions' is set to 'true' the
+    // exceptions thrown by an instrument
+    // are propagated rather than logged into err.
+    private static final boolean PROPAGATE_INSTRUMENT_EXCEPTIONS = Boolean.getBoolean("truffle.instrumentation.propagateExceptions");
+
     private final InstrumentationHandler handler;
     @CompilationFinal private volatile EventContext context;
 
@@ -559,6 +564,9 @@ public final class ProbeNode extends Node {
             // Terminates guest language execution immediately
             throw (ThreadDeath) t;
         }
+        if (PROPAGATE_INSTRUMENT_EXCEPTIONS) {
+            sthrow(RuntimeException.class, t);
+        }
         // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
         Class<?> instrumentClass = instrumenter.getInstrumentClass();
@@ -618,6 +626,11 @@ public final class ProbeNode extends Node {
             return UNWIND_ACTION_REENTER;
         }
         return r1; // The first one wins
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> void sthrow(Class<T> type, Throwable t) throws T {
+        throw (T) t;
     }
 
     private static class InputChildContextLookup extends InstrumentableChildVisitor {
