@@ -42,7 +42,7 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
     }
 
     @Override
-    public final int[] execute(VirtualFrame frame) {
+    public final Void execute(VirtualFrame frame) {
         final Object[] args = frame.getArguments();
         assert args.length == 3;
         final LazyCaptureGroupsResult receiver = (LazyCaptureGroupsResult) args[0];
@@ -60,7 +60,7 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
             profile.addMatchedPortionOfSearchSpace((double) (result[1] - result[0]) / (result[1] - (receiver.getFromIndex() + 1)));
         }
         receiver.setResult(result);
-        return result;
+        return null;
     }
 
     @Override
