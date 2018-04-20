@@ -40,7 +40,7 @@ public class AArch64HotSpotCRuntimeCallEpilogueOp extends AArch64LIRInstruction 
     private final int threadLastJavaSpOffset;
     private final int threadLastJavaPcOffset;
     private final Register thread;
-    private final Label label;
+    @SuppressWarnings("unused") private final Label label;
 
     public AArch64HotSpotCRuntimeCallEpilogueOp(int threadLastJavaSpOffset, int threadLastJavaPcOffset, Register thread, Label label) {
         super(TYPE);
