@@ -48,12 +48,12 @@ public final class ComponentRegistry {
     private final Feedback env;
 
     /**
-     * All components have been loaded
+     * All components have been loaded.
      */
     private boolean allLoaded;
 
     /**
-     * Indexes files path -> component(s)
+     * Indexes files path -> component(s).
      */
     private Map<String, Collection<String>> fileIndex;
     private Map<String, ComponentInfo> components = new HashMap<>();

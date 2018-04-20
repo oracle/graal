@@ -53,28 +53,28 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentInfo;
 
 /**
- * Directory-based implementation of component storage
+ * Directory-based implementation of component storage.
  */
 public class DirectoryStorage implements ComponentStorage {
     public static final String META_LICENSE_FILE = "LICENSE_PATH"; // NOI18N
 
     /**
-     * Relative path for the "release" Graalvm metadata
+     * Relative path for the "release" Graalvm metadata.
      */
     private static final String PATH_RELEASE_FILE = "release";
 
     /**
-     * Suffix for the component metadata files, including comma
+     * Suffix for the component metadata files, including comma.
      */
     private static final String COMPONENT_FILE_SUFFIX = ".component"; // NOI18N
 
     /**
-     * Suffix for the filelist metadata files
+     * Suffix for the filelist metadata files.
      */
     private static final String LIST_FILE_SUFFIX = ".filelist"; // NOI18N
 
     /**
-     * The "replaced files" metadata path relative to the registry
+     * The "replaced files" metadata path relative to the registry.
      */
     private static final String PATH_REPLACED_FILES = "replaced-files.properties"; // NOI18N
 
@@ -84,17 +84,17 @@ public class DirectoryStorage implements ComponentStorage {
     private static final String BUNDLE_REQUIRED_PREFIX = BundleConstants.BUNDLE_REQUIRED + "-"; // NOI18N
 
     /**
-     * Root of the storage path
+     * Root of the storage path.
      */
     private final Path registryPath;
 
     /**
-     * GralVM installation home
+     * GralVM installation home.
      */
     private final Path graalHomePath;
 
     /**
-     * The environment for reporting errors etc
+     * The environment for reporting errors etc.
      */
     private final Feedback feedback;
 
@@ -134,11 +134,11 @@ public class DirectoryStorage implements ComponentStorage {
         for (String key : Collections.list((Enumeration<String>) props.propertyNames())) {
             String val = props.getProperty(key, ""); // MOI18N
 
-            key = key.toLowerCase();
+            String lowerKey = key.toLowerCase();
             if (val.charAt(0) == '"' && val.length() > 1 && val.charAt(val.length() - 1) == '"') { // MOI18N
                 val = val.substring(1, val.length() - 1).trim();
             }
-            if (GRAALVM_SOURCE.equals(key)) {
+            if (GRAALVM_SOURCE.equals(lowerKey)) {
                 Matcher m = SOURCE_REVISION.matcher(val);
                 while (m.find()) {
                     if (m.group(1) == null || m.group(2) == null || m.group(1).isEmpty() || m.group(2).isEmpty()) {
@@ -147,7 +147,7 @@ public class DirectoryStorage implements ComponentStorage {
                     graalAttributes.put(REVISION_PREFIX + m.group(1), m.group(2));
                 }
             } else {
-                graalAttributes.put(key, val);
+                graalAttributes.put(lowerKey, val);
             }
         }
         for (String a : REQUIRED_ATTRIBUTES) {
@@ -159,7 +159,7 @@ public class DirectoryStorage implements ComponentStorage {
     }
 
     /**
-     * Loads list of components
+     * Loads list of components.
      * 
      * @return component IDs
      * @throws IOException
@@ -319,7 +319,7 @@ public class DirectoryStorage implements ComponentStorage {
     }
 
     /**
-     * Deletes component's files
+     * Deletes component's files.
      * 
      * @param id component id
      * @throws IOException
@@ -333,7 +333,7 @@ public class DirectoryStorage implements ComponentStorage {
     }
 
     /**
-     * Will persist component's metadata
+     * Will persist component's metadata.
      * 
      * @param info
      * @throws IOException on failure

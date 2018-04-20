@@ -45,8 +45,8 @@ import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY
  *
  * @author sdedic
  */
-public class GenerateCatalog {
-    private List<String> archives = new ArrayList<>();
+public final class GenerateCatalog {
+    private List<String> archives;
     private final String graalVersionPrefix;
     private final String urlPrefix;
     private final String label;

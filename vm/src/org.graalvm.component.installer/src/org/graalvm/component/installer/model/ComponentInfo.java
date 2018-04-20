@@ -39,32 +39,32 @@ import java.util.Set;
  */
 public final class ComponentInfo {
     /**
-     * Component ID
+     * Component ID.
      */
     private final String id;
 
     /**
-     * Version of the component
+     * Version of the component.
      */
     private final String versionString;
 
     /**
-     * Human-readable name of the component
+     * Human-readable name of the component.
      */
     private final String name;
 
     /**
-     * During (un)installation only: the path for the .component info file
+     * During (un)installation only: the path for the .component info file.
      */
     private String infoPath;
 
     /**
-     * Versioned license file path
+     * Versioned license file path.
      */
     private String licensePath;
 
     /**
-     * Assertions on graalVM installation
+     * Assertions on graalVM installation.
      */
     private final Map<String, String> requiredGraalValues = new HashMap<>();
 

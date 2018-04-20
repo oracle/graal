@@ -42,7 +42,7 @@ import org.graalvm.component.installer.model.Verifier;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
- * Command to query component bundles
+ * Command to query component bundles.
  */
 public class InfoCommand extends QueryCommandBase {
     private static final Map<String, String> OPTIONS = new HashMap<>();

@@ -68,12 +68,12 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     private final JarFile jarFile;
     private final Manifest manifest;
     /**
-     * Default value producer
+     * Default value producer.
      */
     private final Function<String, String> valueSupplier;
 
     /**
-     * Do not throw exceptions eagerly
+     * Do not throw exceptions eagerly.
      */
     private boolean infoOnly;
 
@@ -85,24 +85,26 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     private final List<String> fileList = new ArrayList<>();
 
     /**
-     * Component ID; temporary
+     * Component ID; temporary.
      */
     private String id;
     private String version;
     private String name;
 
     /**
-     * Path for the LICENSE file; adjusted with version etc
+     * Path for the LICENSE file; adjusted with version etc.
      */
     private String licensePath;
 
     /**
-     * The produced component info
+     * The produced component info.
      */
     private ComponentInfo info;
 
     /**
-     * If true, will not verify symbolic links. Default false = verify on
+     * If true, will not verify symbolic links.
+     *
+     * Default false = verify on.
      */
     private boolean noVerifySymlinks;
 

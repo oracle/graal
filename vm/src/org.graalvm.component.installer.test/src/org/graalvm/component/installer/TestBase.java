@@ -24,6 +24,8 @@
  */
 package org.graalvm.component.installer;
 
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,15 +43,13 @@ import java.util.Collections;
 import java.util.ResourceBundle;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+
 import org.junit.AfterClass;
-import static org.junit.Assert.*;
 import org.junit.ClassRule;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * Boilerplate for tests
- * 
- * @author sdedic
+ * Boilerplate for tests.
  */
 public class TestBase implements Feedback {
     protected ResourceBundle defaultBundle = ResourceBundle.getBundle("org.graalvm.component.installer.Bundle"); // NOI18N
@@ -393,7 +393,7 @@ public class TestBase implements Feedback {
             return TestBase.this.verbatimOut(msg, beVerbose);
         }
 
-        public <X> WB(Class<X> clazz) {
+        <X> WB(Class<X> clazz) {
             String s = clazz.getName();
             s = s.substring(0, s.lastIndexOf('.'));
             this.localBundle = ResourceBundle.getBundle(s + ".Bundle"); // NOI18N

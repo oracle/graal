@@ -39,10 +39,6 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
 
-/**
- *
- * @author sdedic
- */
 public class RemoteStorage implements ComponentStorage {
     private final Properties catalogProperties;
     private final String flavourPrefix;
@@ -161,7 +157,7 @@ public class RemoteStorage implements ComponentStorage {
         private final String compPrefix;
         private final Properties props;
 
-        public PrefixedPropertyReader(String compPrefix, Properties props) {
+        PrefixedPropertyReader(String compPrefix, Properties props) {
             this.compPrefix = compPrefix;
             this.props = props;
         }

@@ -24,10 +24,6 @@
  */
 package org.graalvm.component.installer;
 
-/**
- *
- * @author sdedic
- */
 public interface ComponentIterable extends Iterable<ComponentParam> {
-    public void setVerifyJars(boolean verify);
+    void setVerifyJars(boolean verify);
 }

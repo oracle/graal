@@ -41,7 +41,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 
 /**
- * List command
+ * List command.
  */
 public abstract class QueryCommandBase implements InstallerCommand {
     protected static final Map<String, String> BASE_OPTIONS = new HashMap<>();
@@ -97,12 +97,12 @@ public abstract class QueryCommandBase implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput _input, Feedback _feedback) {
-        this.input = _input;
-        this.registry = _input.getRegistry();
-        this.feedback = _feedback;
-        listFiles = _input.optValue(OPTION_LIST_FILES) != null;
-        verbose = _input.optValue(Commands.OPTION_VERBOSE) != null;
+    public void init(CommandInput input, Feedback feedback) {
+        this.input = input;
+        this.registry = input.getRegistry();
+        this.feedback = feedback;
+        listFiles = input.optValue(OPTION_LIST_FILES) != null;
+        verbose = input.optValue(Commands.OPTION_VERBOSE) != null;
         printTable = !listFiles && !verbose;
     }
 

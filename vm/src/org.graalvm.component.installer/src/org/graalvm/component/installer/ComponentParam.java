@@ -29,27 +29,23 @@ import java.io.IOException;
 import java.util.jar.JarFile;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-/**
- *
- * @author sdedic
- */
 public interface ComponentParam extends Closeable {
-    public String getSpecification();
+    String getSpecification();
 
-    public String getDisplayName();
+    String getDisplayName();
 
-    public MetadataLoader createMetaLoader() throws IOException;
+    MetadataLoader createMetaLoader() throws IOException;
 
-    public MetadataLoader createFileLoader() throws IOException;
+    MetadataLoader createFileLoader() throws IOException;
 
-    public JarFile getFile() throws IOException;
+    JarFile getFile() throws IOException;
 
-    public boolean isComplete();
+    boolean isComplete();
 
     @Override
-    public void close() throws IOException;
+    void close() throws IOException;
 
-    public String getFullPath();
+    String getFullPath();
 
-    public String getShortName();
+    String getShortName();
 }

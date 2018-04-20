@@ -39,10 +39,6 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
 
-/**
- *
- * @author sdedic
- */
 public class RebuildImageCommand implements InstallerCommand {
     private static final Map<String, String> OPTIONS = new HashMap<>();
 
@@ -59,9 +55,9 @@ public class RebuildImageCommand implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput _input, Feedback _feedback) {
-        this.feedback = _feedback;
-        this.input = _input;
+    public void init(CommandInput input, Feedback feedback) {
+        this.feedback = feedback;
+        this.input = input;
     }
 
     final class OutputRewriter implements Runnable {
@@ -70,10 +66,10 @@ public class RebuildImageCommand implements InstallerCommand {
         private final InputStream output;
         private volatile IOException terminated;
 
-        public OutputRewriter(InputStream _output, String _processName, String _substProcessName) {
-            this.output = _output;
-            this.processName = _processName;
-            this.substProcessName = _substProcessName;
+        OutputRewriter(InputStream output, String processName, String substProcessName) {
+            this.output = output;
+            this.processName = processName;
+            this.substProcessName = substProcessName;
         }
 
         @Override

@@ -25,7 +25,7 @@
 package org.graalvm.component.installer;
 
 /**
- * Constants which do not fit elsewhere
+ * Constants which do not fit elsewhere.
  */
 public class CommonConstants {
     /**
@@ -38,7 +38,7 @@ public class CommonConstants {
     public static final String CAP_OS_NAME = "os_name";
 
     /**
-     * Relative path for the component storage
+     * Relative path for the component storage.
      */
     public static final String PATH_COMPONENT_STORAGE = "jre/lib/installer/components"; // NOI18N
     // the trailing backspace is important !

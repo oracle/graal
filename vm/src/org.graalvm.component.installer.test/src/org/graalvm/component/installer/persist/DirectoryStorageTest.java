@@ -24,6 +24,11 @@
  */
 package org.graalvm.component.installer.persist;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -41,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.stream.Collectors;
+
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
@@ -49,9 +55,8 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.junit.Assert.*;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestName;
@@ -186,7 +191,7 @@ public class DirectoryStorageTest extends TestBase {
     }
 
     /**
-     * Should strip whitespaces around
+     * Should strip whitespaces around.
      * 
      * @throws Exception
      */
@@ -201,7 +206,7 @@ public class DirectoryStorageTest extends TestBase {
     }
 
     /**
-     * Should strip whitespaces around
+     * Should strip whitespaces around.
      * 
      * @throws Exception
      */

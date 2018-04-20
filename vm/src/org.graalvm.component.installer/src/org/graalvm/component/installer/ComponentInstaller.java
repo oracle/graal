@@ -59,7 +59,7 @@ import org.graalvm.component.installer.persist.RemoteCatalogDownloader;
 /**
  * The launcher.
  */
-public class ComponentInstaller {
+public final class ComponentInstaller {
     private static final String GRAAL_DEFAULT_RELATIVE_PATH = "../../..";
 
     private String[] mainArguments;

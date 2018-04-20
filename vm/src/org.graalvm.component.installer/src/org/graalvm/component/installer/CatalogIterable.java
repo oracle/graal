@@ -39,10 +39,6 @@ import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.graalvm.component.installer.persist.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-/**
- *
- * @author sdedic
- */
 public class CatalogIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
@@ -120,22 +116,22 @@ public class CatalogIterable implements ComponentIterable {
         private MetadataLoader fileLoader;
         private boolean complete;
 
-        public RemoteComponentParam(ComponentInfo _catalogInfo, String _dispName, String _spec, Feedback _feedback, boolean _progress) {
-            this.catalogInfo = _catalogInfo;
-            this.dispName = _dispName;
-            this.spec = _spec;
-            this.feedback = _feedback;
-            this.progress = _progress;
-            this.remoteURL = _catalogInfo.getRemoteURL();
+        RemoteComponentParam(ComponentInfo catalogInfo, String dispName, String spec, Feedback feedback, boolean progress) {
+            this.catalogInfo = catalogInfo;
+            this.dispName = dispName;
+            this.spec = spec;
+            this.feedback = feedback;
+            this.progress = progress;
+            this.remoteURL = catalogInfo.getRemoteURL();
         }
 
-        public RemoteComponentParam(URL _remoteURL, String _dispName, String _spec, Feedback _feedback, boolean _progress) {
+        RemoteComponentParam(URL remoteURL, String dispName, String spec, Feedback feedback, boolean progress) {
             this.catalogInfo = null;
-            this.dispName = _dispName;
-            this.spec = _spec;
-            this.feedback = _feedback;
-            this.remoteURL = _remoteURL;
-            this.progress = _progress;
+            this.dispName = dispName;
+            this.spec = spec;
+            this.feedback = feedback;
+            this.remoteURL = remoteURL;
+            this.progress = progress;
         }
 
         @Override

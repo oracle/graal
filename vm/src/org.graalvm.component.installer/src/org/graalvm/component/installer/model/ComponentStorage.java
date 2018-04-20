@@ -30,12 +30,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Serialization of {@link ComponentRegistry}
+ * Serialization of {@link ComponentRegistry}.
  */
 public interface ComponentStorage {
 
     /**
-     * Deletes component's files
+     * Deletes component's files.
      * 
      * @param id component ID
      * @throws IOException on load error
@@ -43,7 +43,7 @@ public interface ComponentStorage {
     void deleteComponent(String id) throws IOException;
 
     /**
-     * Loads list of components
+     * Loads list of components.
      * 
      * @return set of component IDs
      * @throws IOException when I/O fails

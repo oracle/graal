@@ -25,11 +25,11 @@
 package org.graalvm.component.installer;
 
 /**
- * Constants related to individual commands. Options, default values, ...
+ * Constants related to individual commands. Options, default values, etc.
  */
 public interface Commands {
     /**
-     * Dry run - do not change anything on the disk
+     * Dry run - do not change anything on the disk.
      */
     String OPTION_DRY_RUN = "0";   // NOI18N
 
@@ -39,87 +39,87 @@ public interface Commands {
     String OPTION_REPLACE_COMPONENTS = "r"; // NOI18N
 
     /**
-     * Force - imples all replace + ignore options
+     * Force - implies all replace + ignore options.
      */
-    String OPTION_FORCE = "f";// NOI18N
+    String OPTION_FORCE = "f"; // NOI18N
 
     /**
-     * Replace different files
+     * Replace different files.
      */
     String OPTION_REPLACE_DIFFERENT_FILES = "o"; // NOI18N
 
     /**
-     * Do not terminate uninstall on failed file deletions
+     * Do not terminate uninstall on failed file deletions.
      */
     String OPTION_IGNORE_FAILURES = "x"; // NOI18N
 
     /**
-     * List files
+     * List files.
      */
     String OPTION_LIST_FILES = "l";
 
     /**
-     * Display full paths in lists
+     * Display full paths in lists.
      */
     String OPTION_FULL_PATHS = "p";
 
     /**
-     * Ignore open errors, but report
+     * Ignore open errors, but report.
      */
     String OPTION_IGNORE_OPEN_ERRORS = "r";
 
     /**
-     * Verifies JAR integrity
+     * Hide download progress bar.
      */
     String OPTION_NO_DOWNLOAD_PROGRESS = "n";
 
     /**
-     * Verifies JAR integrity
+     * Verifies JAR integrity.
      */
     String OPTION_VERIFY_JARS = "s";
 
     /**
-     * Do not use tabular list
+     * Do not use tabular list.
      */
     String OPTION_SUPPRESS_TABLE = "t";
 
     /**
-     * Verbose option, prints more messages
+     * Verbose option, prints more messages.
      */
     String OPTION_VERBOSE = "v";   // NOI18N
 
     /**
-     * Validate only
+     * Validate only.
      */
     String OPTION_VALIDATE = "y";
 
     /**
-     * Full validation, may require download of components
+     * Full validation, may require download of components.
      */
     String OPTION_VALIDATE_DOWNLOAD = "Y";
 
     /**
-     * Print error stacktraces
+     * Print error stack traces.
      */
     String OPTION_DEBUG = "e";     // NOI18N
 
     /**
-     * Help
+     * Help.
      */
     String OPTION_HELP = "h";
 
     /**
-     * Interpret paramters as remote component IDs
+     * Interpret parameters as remote component IDs.
      */
     String OPTION_CATALOG = "c";
 
     /**
-     * Interpret paramters as remote component IDs
+     * Interpret parameters as remote component IDs.
      */
     String OPTION_FOREIGN_CATALOG = "C";
 
     /**
-     * Interpret paramters as URLs
+     * Interpret parameters as URLs.
      */
     String OPTION_URLS = "u";
 

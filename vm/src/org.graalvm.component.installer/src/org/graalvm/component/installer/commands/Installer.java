@@ -57,7 +57,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.Verifier;
 
 /**
- * The working internals of the 'install' command
+ * The working internals of the 'install' command.
  */
 public class Installer implements Closeable {
     private static final Logger LOG = Logger.getLogger(Installer.class.getName());
@@ -93,7 +93,7 @@ public class Installer implements Closeable {
     private boolean rebuildPolyglot;
 
     /**
-     * Paths tracked by the component system
+     * Paths tracked by the component system.
      */
     private Set<String> trackedPaths = new HashSet<>();
     private Set<Path> visitedPaths = new HashSet<>();
@@ -334,8 +334,6 @@ public class Installer implements Closeable {
             if (b) {
                 feedback.verboseOutput("INSTALL_SkipIdenticalFile", eName);
                 return targetPath;
-            } else {
-
             }
             return installOneFile(targetPath, entry);
         }

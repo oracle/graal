@@ -24,6 +24,12 @@
  */
 package org.graalvm.component.installer.commands;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
@@ -37,21 +43,21 @@ import java.util.List;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
+
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.DependencyException;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.ComponentPackageLoader;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.junit.Assert.*;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
@@ -122,7 +128,7 @@ public class InstallerTest extends TestBase {
     }
 
     /**
-     * Checks that the component will be uninstalled before installing a new one
+     * Checks that the component will be uninstalled before installing a new one.
      */
     @Test
     public void testSetReplaceComponents() throws IOException {
@@ -355,7 +361,7 @@ public class InstallerTest extends TestBase {
     }
 
     /**
-     * Checks that requirements are properly validated
+     * Checks that requirements are properly validated.
      */
     @Test
     public void testValidateRequirementsSuccess() throws Exception {
@@ -386,7 +392,7 @@ public class InstallerTest extends TestBase {
     }
 
     /**
-     * Checks that the component is installed despite the requirements
+     * Checks that the component is installed despite the requirements.
      */
     @Test
     public void testSetIgnoreRequirements() throws Exception {
@@ -456,7 +462,7 @@ public class InstallerTest extends TestBase {
     }
 
     /**
-     * Check that if the same file is found and skipped, it will not revert on installation abort
+     * Check that if the same file is found and skipped, it will not revert on installation abort.
      */
     @Test
     public void testInstallExistingFileWillNotRevert() throws Exception {
@@ -486,7 +492,7 @@ public class InstallerTest extends TestBase {
     }
 
     /**
-     * Check that if the same file is found and skipped, it will not revert on installation abort
+     * Check that if the same file is found and skipped, it will not revert on installation abort.
      */
     @Test
     public void testInstallOverwrittemFileWillNotRevert() throws Exception {
@@ -533,7 +539,7 @@ public class InstallerTest extends TestBase {
     }
 
     /**
-     * Checks that an empty directory is installed
+     * Checks that an empty directory is installed.
      */
     @Test
     public void testInstallOneDirectory() throws Exception {

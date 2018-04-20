@@ -41,20 +41,16 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.ComponentStorage;
 
-/**
- *
- * @author sdedic
- */
 public class RemoteCatalogDownloader implements Supplier<ComponentRegistry> {
     private final Feedback feedback;
     private final URL catalogURL;
     private final ComponentRegistry local;
     private ComponentRegistry catalog;
 
-    public RemoteCatalogDownloader(Feedback feedback, ComponentRegistry _local, URL catalogURL) {
+    public RemoteCatalogDownloader(Feedback feedback, ComponentRegistry local, URL catalogURL) {
         this.feedback = feedback;
         this.catalogURL = catalogURL;
-        this.local = _local;
+        this.local = local;
     }
 
     @Override

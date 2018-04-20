@@ -1400,7 +1400,7 @@ public abstract class Launcher {
             Path home;
             if (jreOrJdk != null && jreOrJdk.getFileName().toString().equals("jre")) {
                 home = jreOrJdk.getParent();
-            } else if (jreOrJdk != null ) {
+            } else if (jreOrJdk != null) {
                 if (isJdkHome(jreOrJdk)) {
                     home = jreOrJdk;
                 } else {

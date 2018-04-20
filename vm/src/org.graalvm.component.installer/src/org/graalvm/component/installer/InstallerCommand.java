@@ -39,7 +39,7 @@ public interface InstallerCommand {
      * 
      * @return supported options
      */
-    public Map<String, String> supportedOptions();
+    Map<String, String> supportedOptions();
 
     /**
      * Executes a command.
@@ -47,12 +47,12 @@ public interface InstallerCommand {
      * @param input access to parameters, options
      * @param feedback output interface, use instead of Stderr, Stdout
      */
-    public void init(CommandInput input, Feedback feedback);
+    void init(CommandInput input, Feedback feedback);
 
     /**
      * Executes a command.
      * 
      * @throws IOException if file-level operation fails.
      */
-    public int execute() throws IOException;
+    int execute() throws IOException;
 }

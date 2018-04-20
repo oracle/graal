@@ -43,7 +43,7 @@ import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
 /**
- * Implementation of 'install' command
+ * Implementation of 'install' command.
  */
 public class InstallCommand implements InstallerCommand {
     private static final Map<String, String> OPTIONS = new HashMap<>();
@@ -67,13 +67,13 @@ public class InstallCommand implements InstallerCommand {
     }
 
     @Override
-    public void init(CommandInput _input, Feedback _feedback) {
-        this.input = _input;
-        this.feedback = _feedback;
+    public void init(CommandInput input, Feedback feedback) {
+        this.input = input;
+        this.feedback = feedback;
 
-        ignoreFailures = input.optValue(Commands.OPTION_IGNORE_FAILURES) != null;
-        validateBeforeInstall = input.optValue(Commands.OPTION_VALIDATE) != null;
-        validateDownload = input.optValue(Commands.OPTION_VALIDATE_DOWNLOAD) != null;
+        ignoreFailures = this.input.optValue(Commands.OPTION_IGNORE_FAILURES) != null;
+        validateBeforeInstall = this.input.optValue(Commands.OPTION_VALIDATE) != null;
+        validateDownload = this.input.optValue(Commands.OPTION_VALIDATE_DOWNLOAD) != null;
     }
 
     @Override
@@ -192,7 +192,7 @@ public class InstallCommand implements InstallerCommand {
     }
 
     private interface Step {
-        public void execute() throws IOException;
+        void execute() throws IOException;
     }
 
     void doInstallation() throws IOException {

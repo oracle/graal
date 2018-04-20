@@ -33,7 +33,7 @@ import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
 
 /**
- * Parses OSGI-like metadata in JAR component bundles
+ * Parses OSGI-like metadata in JAR component bundles.
  */
 public class HeaderParser {
     private static final String DIRECTIVE_FILTER = "filter"; // NOI18N
@@ -118,7 +118,7 @@ public class HeaderParser {
 
     private void addFilterAttribute(String attrName, String value) {
         if (filterValue.put(attrName, value) != null) {
-            metaErr("ERROR_DuplicateFilterAttribute");
+            throw metaErr("ERROR_DuplicateFilterAttribute");
         }
     }
 
@@ -266,14 +266,14 @@ public class HeaderParser {
     }
 
     /**
-     * Parses version at the current position
+     * Parses version at the current position.
      */
     public String version() throws MetadataException {
         int versionStart = -1;
         int partCount = 0;
         boolean partContents = false;
         if (isEmpty()) {
-            metaErr("ERROR_InvalidVersion");
+            throw metaErr("ERROR_InvalidVersion");
         }
         boolean dash = false;
         while (!isEmpty()) {
@@ -293,7 +293,7 @@ public class HeaderParser {
             advance();
             if (c == '.') {
                 if (++partCount > 3 || !partContents) {
-                    metaErr("ERROR_InvalidVersion");
+                    throw metaErr("ERROR_InvalidVersion");
                 }
                 partContents = false;
                 dash = false;
@@ -309,7 +309,7 @@ public class HeaderParser {
                 }
             } else {
                 if (partCount < 1) {
-                    metaErr("ERROR_InvalidVersion");
+                    throw metaErr("ERROR_InvalidVersion");
                 }
                 boolean err = false;
                 if (partCount >= 3 || dash) {
@@ -318,7 +318,7 @@ public class HeaderParser {
                     err = true;
                 }
                 if (err) {
-                    metaErr("ERROR_InvalidVersion");
+                    throw metaErr("ERROR_InvalidVersion");
                 }
             }
             partContents = true;
@@ -326,7 +326,7 @@ public class HeaderParser {
         String v = cut();
         skipWhitespaces();
         if (!isEmpty() || !partContents) {
-            metaErr("ERROR_InvalidVersion");
+            throw metaErr("ERROR_InvalidVersion");
         }
 
         return v;
@@ -372,12 +372,12 @@ public class HeaderParser {
         this.pos = 0;
     }
 
-    private void metaErr(String key, Object... args) throws MetadataException {
+    private MetadataException metaErr(String key, Object... args) throws MetadataException {
         throw metaEx(key, args);
     }
 
-    private void filterError() throws MetadataException {
-        metaErr("ERROR_InvalidFilterSpecification");
+    private MetadataException filterError() throws MetadataException {
+        throw metaErr("ERROR_InvalidFilterSpecification");
     }
 
     private void parseFilterConjunction() {
@@ -388,7 +388,7 @@ public class HeaderParser {
             c = next();
         }
         if (c != ')') {
-            filterError();
+            throw filterError();
         }
     }
 
@@ -419,11 +419,11 @@ public class HeaderParser {
         String attributeName = returnCut();
         char c = next();
         if (c != '=') {
-            metaErr("ERROR_UnsupportedFilterOperation");
+            throw metaErr("ERROR_UnsupportedFilterOperation");
         }
         c = ch();
         if (c == '*') {
-            metaErr("ERROR_UnsupportedFilterOperation");
+            throw metaErr("ERROR_UnsupportedFilterOperation");
         }
         markContent();
         while (!isEmpty()) {
@@ -438,20 +438,20 @@ public class HeaderParser {
                 case '\\':
                     c = next();
                     if (c == 0) {
-                        filterError();
+                        throw filterError();
                     }
                     break;
                 case '*':
-                    metaErr("ERROR_UnsupportedFilterOperation");
+                    throw metaErr("ERROR_UnsupportedFilterOperation");
                 case '(':
                 case '<':
                 case '>':
                 case '~':
                 case '=':
-                    filterError();
+                    throw filterError();
             }
         }
-        filterError();
+        throw filterError();
     }
 
     private void parseFilterContent() {
@@ -463,28 +463,30 @@ public class HeaderParser {
         } else if (isExtended(o)) {
             parseFilterClause();
         } else {
-            metaErr("ERROR_InvalidFilterSpecification");
+            throw metaErr("ERROR_InvalidFilterSpecification");
         }
     }
 
     private void parseFilterSpecification() {
         skipWhitespaces();
         if (isEmpty()) {
-            filterError();
+            throw filterError();
         }
         char c = next();
         if (c == '(') {
             parseFilterContent();
             skipWhitespaces();
             if (!isEmpty()) {
-                metaErr("ERROR_InvalidFilterSpecification");
+                throw metaErr("ERROR_InvalidFilterSpecification");
             }
         } else {
-            filterError();
+            throw filterError();
         }
     }
 
     /**
+     * Parses required capabilities string.
+     *
      * org.graalvm; filter:="(&(graalvm_version=0.32)(os_name=linux)(os_arch=amd64))"
      * 
      * @return graal capabilities
@@ -495,7 +497,7 @@ public class HeaderParser {
 
         char c = next();
         if (c != ';' && c != 0) {
-            metaErr("ERROR_InvalidFilterSpecification");
+            throw metaErr("ERROR_InvalidFilterSpecification");
         }
 
         if (!BundleConstants.GRAALVM_CAPABILITY.equals(namespace)) {
@@ -505,14 +507,14 @@ public class HeaderParser {
         parseParameters();
 
         if (!parameters.isEmpty()) {
-            metaErr("ERROR_UnsupportedParameters");
+            throw metaErr("ERROR_UnsupportedParameters");
         }
         versionFilter = directives.remove(DIRECTIVE_FILTER);
         if (!directives.isEmpty()) {
-            metaErr("ERROR_UnsupportedDirectives");
+            throw metaErr("ERROR_UnsupportedDirectives");
         }
         if (versionFilter == null) {
-            metaErr("ERROR_MissingVersionFilter");
+            throw metaErr("ERROR_MissingVersionFilter");
         }
 
         // replace the input text, the rest of header will be ignored

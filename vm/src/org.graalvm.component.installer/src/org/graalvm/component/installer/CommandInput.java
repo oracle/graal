@@ -28,7 +28,7 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import java.nio.file.Path;
 
 /**
- * Provides access to command line parameters and useful variables
+ * Provides access to command line parameters and useful variables.
  */
 public interface CommandInput {
     /**
@@ -37,7 +37,7 @@ public interface CommandInput {
      * @return next file from commandline
      * @throws FailedOperationException if the named file does not exist.
      */
-    public Iterable<ComponentParam> existingFiles() throws FailedOperationException;
+    Iterable<ComponentParam> existingFiles() throws FailedOperationException;
 
     /**
      * Retrieves the next required parameter.
@@ -45,19 +45,19 @@ public interface CommandInput {
      * @return parameter text
      * @throws FailedOperationException if the parameter is missing.
      */
-    public String requiredParameter() throws FailedOperationException;
+    String requiredParameter() throws FailedOperationException;
 
     /**
      * Returns the next parameter or {@code null} if all parameters were read.
      * 
      * @return parametr text or {@code null}
      */
-    public String nextParameter();
+    String nextParameter();
 
     /**
      * Has some parameters ?
      */
-    public boolean hasParameter();
+    boolean hasParameter();
 
     /**
      * Path to the GraalVM installation. The value is already sanity-checked and represents a
@@ -65,17 +65,17 @@ public interface CommandInput {
      * 
      * @return Path to GraalVM installation.
      */
-    public Path getGraalHomePath();
+    Path getGraalHomePath();
 
     /**
      * @return Registry of available components.
      */
-    public ComponentRegistry getRegistry();
+    ComponentRegistry getRegistry();
 
     /**
      * @return Registry of local components.
      */
-    public ComponentRegistry getLocalRegistry();
+    ComponentRegistry getLocalRegistry();
 
     /**
      * Access to option parameters. Empty (non-{@code null} String} is returned for parameter-less
@@ -84,5 +84,5 @@ public interface CommandInput {
      * @param option value of the option.
      * @return option value; {@code null}, if the option is not present
      */
-    public String optValue(String option);
+    String optValue(String option);
 }

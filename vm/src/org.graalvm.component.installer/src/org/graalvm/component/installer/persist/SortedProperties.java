@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Provides sorted properties, for deterministic saves
+ * Provides sorted properties, for deterministic saves.
  */
 public final class SortedProperties extends Properties {
 

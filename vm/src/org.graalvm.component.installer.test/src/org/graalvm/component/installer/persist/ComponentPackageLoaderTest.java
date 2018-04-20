@@ -103,7 +103,7 @@ public class ComponentPackageLoaderTest extends TestBase {
     }
 
     /**
-     * Checks that the parser rejects components, if they have some keys required
+     * Checks that the parser rejects components, if they have some keys required.
      * 
      * @throws Exception
      */

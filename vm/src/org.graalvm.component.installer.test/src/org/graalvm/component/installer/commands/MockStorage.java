@@ -24,6 +24,10 @@
  */
 package org.graalvm.component.installer.commands;
 
+import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
+import static org.graalvm.component.installer.CommonConstants.CAP_OS_ARCH;
+import static org.graalvm.component.installer.CommonConstants.CAP_OS_NAME;
+
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
@@ -34,12 +38,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import static org.graalvm.component.installer.CommonConstants.*;
-import org.graalvm.component.installer.model.ComponentStorage;
+
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentStorage;
 
 /**
- * Mock implementation of component storage to avoid mess with disk files
+ * Mock implementation of component storage to avoid mess with disk files.
  */
 public class MockStorage implements ComponentStorage {
     public static final Map<String, String> DEFAULT_GRAAL_INFO = new HashMap<>();
@@ -98,8 +102,8 @@ public class MockStorage implements ComponentStorage {
     }
 
     @Override
-    public void updateReplacedFiles(Map<String, Collection<String>> _replacedFiles) throws IOException {
-        updatedReplacedFiles = _replacedFiles;
+    public void updateReplacedFiles(Map<String, Collection<String>> replacedFiles) throws IOException {
+        updatedReplacedFiles = replacedFiles;
     }
 
 }

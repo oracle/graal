@@ -40,8 +40,8 @@ public class FileIterable implements ComponentIterable {
     private final Feedback feedback;
     private boolean verifyJars;
 
-    public FileIterable(CommandInput _input, Feedback fb) {
-        this.input = _input;
+    public FileIterable(CommandInput input, Feedback fb) {
+        this.input = input;
         this.feedback = fb;
     }
 

@@ -29,10 +29,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
 
-/**
- *
- * @author sdedic
- */
 public class SimpleGetopt {
     private LinkedList<String> parameters;
     private final Map<String, String> globalOptions;
@@ -131,8 +127,8 @@ public class SimpleGetopt {
         }
     }
 
-    private String processOptSpec(String o, int optCharIndex, String _param, boolean nextParam) {
-        String param = _param;
+    private String processOptSpec(String o, int optCharIndex, String inParam, boolean nextParam) {
+        String param = inParam;
         String optSpec = null;
         if (command != null) {
             Map<String, String> cmdSpec = commandOptions.get(command);

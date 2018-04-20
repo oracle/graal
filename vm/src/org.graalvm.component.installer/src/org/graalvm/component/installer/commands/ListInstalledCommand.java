@@ -36,7 +36,7 @@ import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.MetadataException;
 
 /**
- * Command to lists installed components
+ * Command to lists installed components.
  */
 public class ListInstalledCommand extends QueryCommandBase {
     private List<String> expressions;

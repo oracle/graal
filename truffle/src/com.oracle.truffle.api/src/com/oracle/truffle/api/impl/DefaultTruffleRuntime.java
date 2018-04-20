@@ -234,7 +234,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
                 } catch (Exception e) {
                     throw new InternalError(e);
                 }
-            } else{
+            } else {
                 return ServiceLoader.load(service);
             }
         }

@@ -36,7 +36,7 @@ import java.util.ResourceBundle;
 import java.util.function.Supplier;
 
 /**
- * Implementation of feedback and input for commands
+ * Implementation of feedback and input for commands.
  */
 final class Environment implements Feedback, CommandInput {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
@@ -57,7 +57,7 @@ final class Environment implements Feedback, CommandInput {
 
     private Path graalHome;
 
-    public Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
+    Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
         this.commandName = commandName;
         this.parameters = new LinkedList<>(parameters);
         this.options = options;
@@ -95,8 +95,8 @@ final class Environment implements Feedback, CommandInput {
         }
     }
 
-    public void setComponentRegistry(Supplier<ComponentRegistry> _registrySupplier) {
-        this.registrySupplier = _registrySupplier;
+    public void setComponentRegistry(Supplier<ComponentRegistry> registrySupplier) {
+        this.registrySupplier = registrySupplier;
     }
 
     public void setGraalHome(Path f) {
