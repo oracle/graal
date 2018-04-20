@@ -188,7 +188,6 @@ public class JNIFunctionTablesFeature implements Feature {
         int index = 0;
         int[] offsets = new int[methods.length];
         CFunctionPointer[] pointers = new CFunctionPointer[offsets.length];
-        access.registerAsImmutable(pointers);
         for (HostedMethod method : methods) {
             StructFieldInfo field = findFieldFor(invokeInterfaceMetadata, method.getName());
             offsets[index] = field.getOffsetInfo().getProperty();
@@ -196,7 +195,10 @@ public class JNIFunctionTablesFeature implements Feature {
             index++;
         }
         VMError.guarantee(index == offsets.length && index == pointers.length);
-        return new JNIStructFunctionsInitializer<>(JNIInvokeInterface.class, offsets, pointers, unimplemented);
+        JNIStructFunctionsInitializer<JNIInvokeInterface> initializer = new JNIStructFunctionsInitializer<>(JNIInvokeInterface.class, offsets, pointers, unimplemented);
+        access.registerAsImmutable(pointers);
+        access.registerAsImmutable(initializer);
+        return initializer;
     }
 
     private JNIStructFunctionsInitializer<JNINativeInterface> buildFunctionsInitializer(CompilationAccessImpl access, CFunctionPointer unimplemented) {
@@ -251,7 +253,10 @@ public class JNIFunctionTablesFeature implements Feature {
             index++;
         }
         VMError.guarantee(index == offsets.length && index == pointers.length);
-        return new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);
+        JNIStructFunctionsInitializer<JNINativeInterface> initializer = new JNIStructFunctionsInitializer<>(JNINativeInterface.class, offsets, pointers, unimplemented);
+        access.registerAsImmutable(pointers);
+        access.registerAsImmutable(initializer);
+        return initializer;
     }
 
     private static StructFieldInfo findFieldFor(StructInfo info, String name) {

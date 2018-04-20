@@ -248,4 +248,9 @@ public class HostedUniverse implements Universe {
     public Set<AnalysisMethod> getMethodsWithStackValues() {
         return Collections.unmodifiableSet(methodsWithStackValues.getElements());
     }
+
+    @Override
+    public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
+        return method;
+    }
 }

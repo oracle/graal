@@ -66,6 +66,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
@@ -483,7 +484,7 @@ public class InstalledCodeBuilder {
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
         trace.string("  executable: ").bool(executable);
-        final Pointer result = ConfigurationValues.getOSInterface().allocateVirtualMemory(size, executable);
+        final Pointer result = VirtualMemoryProvider.get().allocateVirtualMemory(size, executable);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
         return result;
@@ -495,7 +496,7 @@ public class InstalledCodeBuilder {
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);
         trace.string("  size: ").unsigned(size);
-        ConfigurationValues.getOSInterface().freeVirtualMemory(start, size);
+        VirtualMemoryProvider.get().freeVirtualMemory(start, size);
         trace.string("]").newline();
     }
 }

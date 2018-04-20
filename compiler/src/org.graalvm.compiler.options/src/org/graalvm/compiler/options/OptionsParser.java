@@ -116,7 +116,7 @@ public class OptionsParser {
      * @param loader source of the available {@link OptionDescriptors}
      * @throws IllegalArgumentException if there's a problem parsing {@code option}
      */
-    static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
+    public static void parseOption(String name, Object uncheckedValue, EconomicMap<OptionKey<?>, Object> values, Iterable<OptionDescriptors> loader) {
 
         OptionDescriptor desc = lookup(loader, name);
         if (desc == null) {

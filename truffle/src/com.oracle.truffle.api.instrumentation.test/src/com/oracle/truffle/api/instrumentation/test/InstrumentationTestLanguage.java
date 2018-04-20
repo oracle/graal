@@ -908,9 +908,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             String code = source.getCharacters().toString();
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
-            while (Character.isWhitespace(code.charAt(index))) {
-                index++;
-            }
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
             this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
         }

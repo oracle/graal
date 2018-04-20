@@ -51,6 +51,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import jdk.vm.ci.code.MemoryBarriers;
 import sun.misc.Cleaner;
 import sun.misc.JavaAWTAccess;
+import sun.misc.JavaLangAccess;
 import sun.misc.Unsafe;
 
 @TargetClass(sun.misc.Unsafe.class)
@@ -241,6 +242,9 @@ final class Target_sun_misc_SharedSecrets {
     private static JavaAWTAccess getJavaAWTAccess() {
         return null;
     }
+
+    @Alias
+    static native JavaLangAccess getJavaLangAccess();
 }
 
 @TargetClass(value = sun.misc.URLClassPath.class, innerClass = "JarLoader")

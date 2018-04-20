@@ -66,8 +66,9 @@ public final class WebSocketServer extends NanoWSD {
 
     private final String path;
     private final PrintStream log;
+    private final ConnectionWatcher connectionWatcher;
 
-    private WebSocketServer(InetSocketAddress isa, String path, PrintStream log) {
+    private WebSocketServer(InetSocketAddress isa, String path, PrintStream log, ConnectionWatcher connectionWatcher) {
         super(isa.getHostName(), isa.getPort());
         this.path = path;
         this.log = log;
@@ -75,10 +76,11 @@ public final class WebSocketServer extends NanoWSD {
             log.println("New WebSocketServer at " + isa);
             log.flush();
         }
+        this.connectionWatcher = connectionWatcher;
     }
 
     public static WebSocketServer get(InetSocketAddress isa, String path,
-                    TruffleExecutionContext context, boolean debugBrk) throws IOException {
+                    TruffleExecutionContext context, boolean debugBrk, ConnectionWatcher connectionWatcher) throws IOException {
         synchronized (SESSIONS) {
             SESSIONS.put(path, context);
             DEBUG_BRK.put(path, debugBrk);
@@ -100,7 +102,7 @@ public final class WebSocketServer extends NanoWSD {
                         }
                     }
                 }
-                wss = new WebSocketServer(isa, path, traceLog);
+                wss = new WebSocketServer(isa, path, traceLog, connectionWatcher);
                 wss.start(Integer.MAX_VALUE);
             }
         }
@@ -158,7 +160,7 @@ public final class WebSocketServer extends NanoWSD {
             boolean debugBreak = DEBUG_BRK.get(descriptor);
             RuntimeDomain runtime = new TruffleRuntime(context);
             DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
-            ProfilerDomain profiler = new TruffleProfiler(context);
+            ProfilerDomain profiler = new TruffleProfiler(context, connectionWatcher);
             InspectServerSession iss = new InspectServerSession(runtime, debugger, profiler, context);
             return new InspectWebSocket(handshake, iss, log);
         } else {
@@ -212,6 +214,7 @@ public final class WebSocketServer extends NanoWSD {
                 log.println("CLIENT web socket connection opened.");
                 log.flush();
             }
+            connectionWatcher.notifyOpen();
             iss.setMessageListener(new InspectServerSession.MessageListener() {
                 @Override
                 public void sendMessage(String message) {
@@ -237,6 +240,7 @@ public final class WebSocketServer extends NanoWSD {
                 log.println("CLIENT web socket connection closed.");
                 log.flush();
             }
+            connectionWatcher.notifyClosing();
             iss.dispose();
         }
 

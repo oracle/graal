@@ -131,6 +131,11 @@ public final class RuntimeSupport {
         throw new IllegalArgumentException("Could not find SVM command with the name " + cmd);
     }
 
+    @SuppressWarnings("static-method")
+    public void shutdown() {
+        Target_java_lang_Shutdown.shutdown();
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     void sortCommandPlugins() {
         commandPlugins.sort(PluginComparator);

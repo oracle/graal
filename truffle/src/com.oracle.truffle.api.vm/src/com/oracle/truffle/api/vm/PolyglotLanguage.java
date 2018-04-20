@@ -142,8 +142,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     ContextProfile requireProfile() {
         if (profile == null) {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(
-                            "No language context is active on this thread.");
+            throw new AssertionError("No language context is active on this thread.");
         }
         return profile;
     }
@@ -245,8 +244,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             Env env = context.contexts[language.index].env;
             if (env == null) {
                 CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(
-                                "The language context is not yet initialized or already disposed. ");
+                throw new IllegalStateException("The language context is not yet initialized or already disposed.");
             }
             return LANGUAGE.getContext(env);
         }
@@ -254,7 +252,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         void notifyContextCreate(Env env) {
             if (singleContext.isValid()) {
                 Object cachedSingle = this.cachedSingleContext;
-                assert cachedSingle != LANGUAGE.getContext(env);
+                assert cachedSingle != LANGUAGE.getContext(env) || cachedSingle == null : "Non-null context objects should be distinct";
                 if (cachedSingle == UNSET_CONTEXT) {
                     if (singleContext.isValid()) {
                         cachedSingleContext = LANGUAGE.getContext(env);

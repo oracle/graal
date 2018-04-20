@@ -59,7 +59,7 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.lir.RedundantMoveElimination;
-import org.graalvm.compiler.lir.alloc.lsra.LinearScanPhase;
+import org.graalvm.compiler.lir.alloc.RegisterAllocationPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -983,7 +983,7 @@ public class CompileQueue {
 
     private static void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
         lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class).remove();
-        lirSuites.getAllocationStage().findPhaseInstance(LinearScanPhase.class).setNeverSpillConstants(true);
+        lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
     }
 
     private static boolean verifyDeoptTarget(HostedMethod method, CompilationResult result) {

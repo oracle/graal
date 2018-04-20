@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
@@ -56,6 +57,7 @@ import com.oracle.svm.hosted.c.NativeCodeContext;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
+import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -624,8 +626,19 @@ public class InfoTreeBuilder {
         enumInfo.adoptChild(constantInfo);
     }
 
+    private static ResolvedJavaMethod originalMethod(ResolvedJavaMethod method) {
+        assert method instanceof AnalysisMethod;
+        AnalysisMethod analysisMethod = (AnalysisMethod) method;
+        assert analysisMethod.getWrapped() instanceof CEnumCallWrapperMethod;
+        CEnumCallWrapperMethod wrapperMethod = (CEnumCallWrapperMethod) analysisMethod.getWrapped();
+        return wrapperMethod.getOriginal();
+    }
+
     private void createEnumValueInfo(EnumInfo enumInfo, ResolvedJavaMethod method) {
-        if (!Modifier.isNative(method.getModifiers()) || Modifier.isStatic(method.getModifiers())) {
+
+        /* Check the modifiers of the original method. The synthetic method is not native. */
+        ResolvedJavaMethod originalMethod = originalMethod(method);
+        if (!Modifier.isNative(originalMethod.getModifiers()) || Modifier.isStatic(originalMethod.getModifiers())) {
             nativeLibs.addError("Method annotated with @" + CEnumValue.class.getSimpleName() + " must be a non-static native method", method);
             return;
         }
@@ -645,8 +658,11 @@ public class InfoTreeBuilder {
     }
 
     private void createEnumLookupInfo(EnumInfo enumInfo, ResolvedJavaMethod method) {
-        if (!Modifier.isNative(method.getModifiers()) || !Modifier.isStatic(method.getModifiers())) {
-            nativeLibs.addError("Method annotated with @" + CEnumValue.class.getSimpleName() + " must be a static native method", method);
+
+        /* Check the modifiers of the original method. The synthetic method is not native. */
+        ResolvedJavaMethod originalMethod = originalMethod(method);
+        if (!Modifier.isNative(originalMethod.getModifiers()) || !Modifier.isStatic(originalMethod.getModifiers())) {
+            nativeLibs.addError("Method annotated with @" + CEnumLookup.class.getSimpleName() + " must be a static native method", method);
             return;
         }
         if (method.getSignature().getParameterCount(false) != 1 || elementKind((ResolvedJavaType) method.getSignature().getParameterType(0, method.getDeclaringClass())) != ElementKind.INTEGER) {

@@ -180,6 +180,9 @@ public class VirtualizedFileSystemTest {
     public void setUp() {
         Optional.ofNullable(this.cfg.getBeforeAction()).ifPresent(Runnable::run);
         resetLanguageHomes();
+        // JUnit mixes test executions from different classes. There are still tests using the
+        // deprecated PolyglotEngine. For tests executed by Parametrized runner
+        // creating Context as a test parameter we need to ensure that correct SPI is used.
         Engine.create().close();
     }
 

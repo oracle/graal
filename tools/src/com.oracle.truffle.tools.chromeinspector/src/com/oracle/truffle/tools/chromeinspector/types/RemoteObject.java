@@ -184,7 +184,7 @@ public final class RemoteObject {
         DebugValue metaObject;
         try {
             metaObject = debugValue.getMetaObject();
-            if (originalLanguage != null) {
+            if (originalLanguage != null && metaObject != null) {
                 metaObject = metaObject.asInLanguage(originalLanguage);
             }
         } catch (Exception ex) {

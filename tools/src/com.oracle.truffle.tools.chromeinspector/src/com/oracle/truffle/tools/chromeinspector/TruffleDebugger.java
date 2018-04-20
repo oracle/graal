@@ -215,7 +215,7 @@ public final class TruffleDebugger extends DebuggerDomain {
             }
         }
         SourceSection range = source.createSection(o1, o2 - o1);
-        Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, context.getEnv());
+        Iterable<SourceSection> locations = SuspendableLocationFinder.findSuspendableLocations(range, restrictToFunction, ds, context.getEnv());
         JSONObject json = new JSONObject();
         JSONArray arr = new JSONArray();
         for (SourceSection ss : locations) {

@@ -22,20 +22,8 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import static com.oracle.svm.core.posix.headers.Mman.MAP_32BIT;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_ANON;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_PRIVATE;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_EXEC;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
-import static com.oracle.svm.core.posix.headers.Mman.mmap;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.os.OSInterface;
 import com.oracle.svm.core.posix.PosixOSInterface;
@@ -54,31 +42,5 @@ public class LinuxOSInterface extends PosixOSInterface {
     @Platforms(Platform.HOSTED_ONLY.class)
     public LinuxOSInterface() {
         super();
-    }
-
-    @Override
-    public Pointer allocateVirtualMemory(UnsignedWord size, boolean executable) {
-        trackVirtualMemory(size);
-        int protect = PROT_READ() | PROT_WRITE();
-        int flags = MAP_ANON() | MAP_PRIVATE();
-        if (executable) {
-            protect |= PROT_EXEC();
-
-            /*
-             * First try to allocate executable memory in the 32 bit address space (which is not
-             * done by default on linux!). This is to get 32-bit displacements for calls in runtime
-             * compiled code to image compiled code.
-             */
-            final Pointer result = mmap(WordFactory.nullPointer(), size, protect, flags | MAP_32BIT(), -1, 0);
-            if (!result.equal(MAP_FAILED())) {
-                return result;
-            }
-        }
-        final Pointer result = mmap(WordFactory.nullPointer(), size, protect, flags, -1, 0);
-        if (result.equal(MAP_FAILED())) {
-            // Turn the mmap failure into a null Pointer.
-            return WordFactory.nullPointer();
-        }
-        return result;
     }
 }

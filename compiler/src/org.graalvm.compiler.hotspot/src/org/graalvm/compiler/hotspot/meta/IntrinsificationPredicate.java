@@ -60,7 +60,12 @@ public final class IntrinsificationPredicate {
     }
 
     public boolean apply(Class<?> declaringClass) {
-        ClassLoader cl = declaringClass.getClassLoader();
-        return cl == null || trustedLoaders.contains(cl);
+        try {
+            ClassLoader cl = declaringClass.getClassLoader();
+            return cl == null || trustedLoaders.contains(cl);
+        } catch (SecurityException e) {
+            // This is definitely not a JVMCI or Graal class
+            return false;
+        }
     }
 }

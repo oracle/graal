@@ -68,6 +68,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<sys/times.h>",
                     "<sys/uio.h>",
                     "<sys/wait.h>",
+                    "<termios.h>",
                     "<time.h>",
                     "<unistd.h>",
                     "<zlib.h>"
@@ -85,7 +86,8 @@ public class PosixDirectives implements CContext.Directives {
                     "<arpa/inet.h>",
                     "<sys/epoll.h>",
                     "<sys/sendfile.h>",
-                    "<mntent.h>"
+                    "<mntent.h>",
+                    "<link.h>",
     };
 
     @Override

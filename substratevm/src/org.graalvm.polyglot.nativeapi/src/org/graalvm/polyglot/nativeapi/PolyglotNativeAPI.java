@@ -130,6 +130,25 @@ public final class PolyglotNativeAPI {
         });
     }
 
+    @CEntryPoint(name = "poly_engine_close", documentation = {
+                    "Closes this engine and frees up allocated native resources. If there are still open context",
+                    "instances that were created using this engine and they are currently not being executed then",
+                    "they will be closed automatically. If an attempt to close an engine was successful then",
+                    "consecutive calls to close have no effect. If a context is cancelled then the currently",
+                    "executing thread will throw a {@link PolyglotException}.",
+                    "",
+                    " @param engine to be closed.",
+                    " @param cancel_if_executing if <code>true</code> then currently executing contexts will be cancelled.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_engine_close(PolyglotIsolateThread thread, PolyglotEngine engine, boolean cancel_if_executing) {
+        return withHandledErrors(() -> {
+            Engine jEngine = fetchHandle(engine);
+            jEngine.close(cancel_if_executing);
+        });
+    }
+
     @CEntryPoint(name = "poly_engine_get_languages", documentation = {
                     "Returns an array of size returned by {@link poly_engine_get_languages_size} where each element is a <code>poly_language<code> handle.",
                     "",
@@ -311,6 +330,32 @@ public final class PolyglotNativeAPI {
                 c = Context.create(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
             }
             result.write(createHandle(c));
+        });
+    }
+
+    @CEntryPoint(name = "poly_context_close", documentation = {
+                    "Closes this context and frees up potentially allocated native resources. A ",
+                    "context cannot free all native resources allocated automatically. For this reason",
+                    "it is necessary to close contexts after use. If a context is canceled then the",
+                    "currently executing thread will throw a {@link PolyglotException}. Please note ",
+                    "that canceling a single context can negatively affect the performance of other ",
+                    "executing contexts constructed with the same engine.",
+                    "<p>",
+                    "If internal errors occur during closing of the language then they are printed to the ",
+                    "configured {@link Builder#err(OutputStream) error output stream}. If a context was ",
+                    "closed then all its methods will throw an {@link IllegalStateException} when invoked. ",
+                    "If an attempt to close a context was successful then consecutive calls to close have ",
+                    "no effect.",
+                    "",
+                    " @param context to be closed.",
+                    " @param cancel_if_executing if <code>true</code> then currently executing context will be cancelled.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.0",
+    })
+    public static PolyglotStatus poly_context_close(PolyglotIsolateThread thread, PolyglotContext context, boolean cancel_if_executing) {
+        return withHandledErrors(() -> {
+            Context jContext = fetchHandle(context);
+            jContext.close(cancel_if_executing);
         });
     }
 

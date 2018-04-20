@@ -221,7 +221,7 @@ public class VMThreadMTFeature implements GraalFeature {
 
     private boolean handleCompareAndSet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect, ValueNode update) {
         VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
-        b.addPush(targetMethod.getSignature().getReturnKind(), new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update, BarrierType.NONE));
+        b.addPush(targetMethod.getSignature().getReturnKind(), new CompareAndSetVMThreadLocalNode(threadLocalInfo, threadNode, expect, update));
         return true;
     }
 
@@ -257,8 +257,7 @@ public class VMThreadMTFeature implements GraalFeature {
             assert nextOffset % Math.min(8, info.sizeInBytes) == 0 : "alignment mismatch: " + info.sizeInBytes + ", " + nextOffset;
 
             if (info.isObject) {
-                final boolean isCompressed = false;
-                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes, isCompressed);
+                referenceMap.markReferenceAtIndex(nextOffset / info.sizeInBytes);
             }
             info.offset = nextOffset;
             nextOffset += info.sizeInBytes;
