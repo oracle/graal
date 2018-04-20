@@ -59,17 +59,27 @@ public final class SuspendableLocationFinder {
     }
 
     public static Node findNearest(Source source, SourceElement[] sourceElements, int line, int column, TruffleInstrument.Env env) {
-        int boundLine = line;
+        int boundLine = fixLine(source, line);
+        int boundColumn = fixColumn(source, column, boundLine);
+        return findNearestBound(source, getElementTags(sourceElements), boundLine, boundColumn, env);
+    }
+
+    private static int fixColumn(Source source, int column, int boundLine) {
         int boundColumn = column;
-        int maxLine = source.getLineCount();
-        if (boundLine > maxLine) {
-            boundLine = maxLine;
-        }
         int maxColumn = source.getLineLength(boundLine) + 1;
         if (boundColumn > maxColumn) {
             boundColumn = maxColumn;
         }
-        return findNearestBound(source, getElementTags(sourceElements), boundLine, boundColumn, env);
+        return boundColumn;
+    }
+
+    private static int fixLine(Source source, int line) {
+        int boundLine = line;
+        int maxLine = source.getLineCount();
+        if (boundLine > maxLine) {
+            boundLine = maxLine;
+        }
+        return boundLine;
     }
 
     private static Set<Class<? extends Tag>> getElementTags(SourceElement[] sourceElements) {
@@ -85,16 +95,8 @@ public final class SuspendableLocationFinder {
 
     private static Node findNearestBound(Source source, Set<Class<? extends Tag>> elementTags,
                     int line, int column, TruffleInstrument.Env env) {
-        int offset = source.getLineStartOffset(line);
-        if (column > 0) {
-            offset += column - 1;
-        }
-        NearestSections sectionsCollector = new NearestSections(offset);
-        // All SourceSections of the Source are loaded already when the source was parsed
-        env.getInstrumenter().attachLoadSourceSectionListener(
-                        SourceSectionFilter.newBuilder().sourceIs(source).build(),
-                        sectionsCollector, true).dispose(); // TODO(ds) this is depending on an underlying weak list and atm it works, because we actively hold
-                                                            // the nodes in SourceSectionProvider. Is this good?
+        int offset = convertLineAndColumnToOffset(source, line, column);
+        NearestSections sectionsCollector = getNearestSections(source, env, offset);
 
         InstrumentableNode contextNode = sectionsCollector.getContainsNode();
         if (contextNode == null) {
@@ -113,7 +115,31 @@ public final class SuspendableLocationFinder {
         return node;
     }
 
-    private static class NearestSections implements LoadSourceSectionListener {
+    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
+        int boundLine = fixLine(source, line);
+        int boundColumn = fixColumn(source, column, boundLine);
+        return getNearestSections(source, env, convertLineAndColumnToOffset(source, boundLine, boundColumn));
+    }
+
+    public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int offset) {
+        NearestSections sectionsCollector = new NearestSections(offset);
+        // All SourceSections of the Source are loaded already when the source was parsed
+        env.getInstrumenter().attachLoadSourceSectionListener(
+                        SourceSectionFilter.newBuilder().sourceIs(source).build(),
+                        sectionsCollector, true).dispose(); // TODO(ds) this is depending on an underlying weak list and atm it works, because we actively hold
+                                                            // the nodes in SourceSectionProvider. Is this good?
+        return sectionsCollector;
+    }
+
+    public static int convertLineAndColumnToOffset(Source source, int line, int column) {
+        int offset = source.getLineStartOffset(line);
+        if (column > 0) {
+            offset += column - 1;
+        }
+        return offset;
+    }
+
+    public static class NearestSections implements LoadSourceSectionListener {
 
         private final int offset;
         private SourceSection containsMatch;
@@ -174,16 +200,28 @@ public final class SuspendableLocationFinder {
             }
         }
 
-        InstrumentableNode getContainsNode() {
+        public InstrumentableNode getContainsNode() {
             return containsNode;
         }
 
-        InstrumentableNode getPreviousNode() {
+        public InstrumentableNode getPreviousNode() {
             return previousNode;
         }
 
-        InstrumentableNode getNextNode() {
+        public InstrumentableNode getNextNode() {
             return nextNode;
+        }
+
+        public SourceSection getContainsSourceSection() {
+            return containsNode instanceof Node ? ((Node) containsNode).getSourceSection() : null;
+        }
+
+        public SourceSection getPreviousSourceSection() {
+            return previousNode instanceof Node ? ((Node) previousNode).getSourceSection() : null;
+        }
+
+        public SourceSection getNextSourceSection() {
+            return nextNode instanceof Node ? ((Node) nextNode).getSourceSection() : null;
         }
     }
 

@@ -31,6 +31,8 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.debug.LocationFinderHelper;
 import com.oracle.truffle.api.debug.SourceElement;
+import com.oracle.truffle.api.debug.SuspendableLocationFinder;
+import com.oracle.truffle.api.debug.SuspendableLocationFinder.NearestSections;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -253,91 +255,123 @@ public class TruffleAdapter {
             if (ssProvider.getLoadedSource(langId, uri) != null) {
                 SourceWrapper wrapper = ssProvider.getLoadedSource(langId, uri);
                 Source source = wrapper.getSource();
-                Node node = LocationFinderHelper.findNearest(source,
-                                SourceElement.values(), line + 1, character, env);
-                Node nodeForLocalScoping = node;
-                if (enableNodeCopyIfCaretBehindNode && node != null) {
-                    int offset = source.getLineStartOffset(line + 1); // TODO(ds) this +1 causes line out of bounds at
-                                                                      // com.oracle.truffle.api.source.TextMap.lineStartOffset(TextMap.java:204)
-                    if (character > 0) {
-                        offset += character - 1;
-                    }
-                    isCaretBehindNode = node.getSourceSection().getCharEndIndex() <= offset;
-                    if (isCaretBehindNode) {
-                        // This case can only happen, if there is no other sibling behind the caret, i.e. we need to
-                        // duplicate the current node to provide a valid scope.
 
-                        // TODO(ds) we need to duplicate a node, in case that it is the last node in a scope and would
-                        // otherwise report no variables if the user moves the caret behind the last node in the scope and
-                        // asks for completion. -> But this is not working correctly, we cannot detect, if the cursor is
-                        // behind the last statement or still in it (before a semicolon).
-                        // Assumption: we are behind!
-                        Node parentCopy = node.getParent().copy();
-                        Node copy = node.copy();
-                        NodeAccessHelper.insertChild(copy, parentCopy);
-                        nodeForLocalScoping = copy;
-                    }
-                    System.out.println("nearest: " + node.getClass().getSimpleName() + " " + node.getSourceSection());
-                }
+                if (isLineValid(line, source)) {
+                    int oneBasedLineNumber = zeroBasedLineToOneBasedLine(line, source);
+                    Node node = LocationFinderHelper.findNearest(source,
+                                    SourceElement.values(), oneBasedLineNumber, character, env);
+                    Node nodeForLocalScoping = node;
+                    if (enableNodeCopyIfCaretBehindNode && node != null) {
+                        int offset = source.getLineStartOffset(oneBasedLineNumber);
+                        if (character > 0) {
+                            offset += character - 1;
+                        }
+                        isCaretBehindNode = node.getSourceSection().getCharEndIndex() <= offset;
+                        if (isCaretBehindNode) {
+                            // This case can only happen, if there is no other sibling behind the caret, i.e. we need to
+                            // duplicate the current node to provide a valid scope.
 
-                if (node instanceof InstrumentableNode) {
-                    InstrumentableNode instrumentableNode = (InstrumentableNode) node;
-                    if (instrumentableNode.isInstrumentable()) {
+                            // TODO(ds) we need to duplicate a node, in case that it is the last node in a scope and would
+                            // otherwise report no variables if the user moves the caret behind the last node in the scope and
+                            // asks for completion. -> But this is not working correctly, we cannot detect, if the cursor is
+                            // behind the last statement or still in it (before a semicolon).
+                            // Assumption: we are behind!
+                            Node parentCopy = node.getParent().copy();
+                            Node copy = node.copy();
+                            NodeAccessHelper.insertChild(copy, parentCopy);
+                            nodeForLocalScoping = copy;
+                        }
+                        System.out.println("nearest: " + node.getClass().getSimpleName() + " " + node.getSourceSection());
+                    }
+
+                    NearestSections nearestSections = SuspendableLocationFinder.getNearestSections(source, env, oneBasedLineNumber, character);
+
+                    SourceSection containsSection = nearestSections.getContainsSourceSection();
+                    String debugDetails = "";
+                    if (containsSection == null) {
+                        // We are not in a local scope, so only top scope objects possible
+                        nodeForLocalScoping = null;
+                    } else if (isEndOfSectionMatchingCaretPosition(oneBasedLineNumber, character, containsSection)) {
+                        // Our caret is directly behind the containing section, so we can simply use that one to find local
+                        // scope objects
+                        nodeForLocalScoping = (Node) nearestSections.getContainsNode();
+                        debugDetails += "-containsEnd-";
+                    } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
+                        // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the same scope as
+                        // we are and we can use it to get local scope objects
+                        nodeForLocalScoping = (Node) nearestSections.getNextNode();
+                        debugDetails += "-next-";
+                    } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getPreviousNode(), (Node) nearestSections.getContainsNode())) {
+                        // In this case we want call findLocalScopes() with BEHIND-flag, i.e. give me the local scope
+                        // objects which are valid behind that node
+                        nodeForLocalScoping = (Node) nearestSections.getPreviousNode();
+                        debugDetails += "-prev-";
+                    } else {
+                        // No next or previous node is in the same scope like us, so we can only take our containing node to
+                        // get local scope objects
+                        nodeForLocalScoping = (Node) nearestSections.getContainsNode();
+                        debugDetails += "-contains-";
+                    }
+
+                    if (nodeForLocalScoping instanceof InstrumentableNode) {
+                        InstrumentableNode instrumentableNode = (InstrumentableNode) nodeForLocalScoping;
+                        if (instrumentableNode.isInstrumentable()) {
 // VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[0], new
 // FrameDescriptor());
-                        VirtualFrame frame = null;
+                            VirtualFrame frame = null;
 // Here we do not use the original node, but the (potential) copy
-                        MaterializedFrame materializedFrame = this.section2frame.get(nodeForLocalScoping.getSourceSection());
-                        if (materializedFrame != null) {
-                            frame = materializedFrame;
-                        }
-                        Iterable<Scope> localScopes = env.findLocalScopes(nodeForLocalScoping, frame);
-                        Map<String, Map<Object, Object>> scopesMap = Collections.emptyMap();
-                        if (materializedFrame != null) {
-                            scopesMap = scopesToObjectMap(localScopes);
-                            System.out.println(scopesMap);
-                        }
-                        for (Scope scope : localScopes) {
-                            Object variables = scope.getVariables();
-                            if (variables instanceof TruffleObject) {
-                                TruffleObject truffleObj = (TruffleObject) variables;
-                                try {
-                                    TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
-                                    boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
-                                    if (!hasSize) {
-                                        System.out.println("No size!!!");
-                                        continue;
-                                    }
-
-                                    System.out.println(node.getClass().getSimpleName() + "\tin " + scope.getName() + (isCaretBehindNode ? "\t-copy-"
-                                                    : "\t") + "\t" + ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys) + " " +
-                                                    node.getSourceSection().getCharacters());
-                                    for (Object obj : ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys)) {
-                                        // TODO(ds) check obj type
-                                        CompletionItem completion = new CompletionItem(obj.toString());
-                                        completion.setKind(CompletionItemKind.Variable);
-// completion.setDetail(obj.toString());
-                                        String documentation = "in " + scope.getName();
-                                        if (scopesMap.containsKey(scope.getName())) {
-                                            Map<Object, Object> map = scopesMap.get(scope.getName());
-                                            if (map.containsKey(obj)) {
-// documentation += "\nHarvested type: " + map.get(obj).getClass().getName();
-                                                completion.setDetail(createCompletionDetail(map.get(obj), env, langId, true));
-                                            }
+                            MaterializedFrame materializedFrame = this.section2frame.get(nodeForLocalScoping.getSourceSection());
+                            if (materializedFrame != null) {
+                                frame = materializedFrame;
+                            }
+                            Iterable<Scope> localScopes = env.findLocalScopes(nodeForLocalScoping, frame);
+                            Map<String, Map<Object, Object>> scopesMap = Collections.emptyMap();
+                            if (materializedFrame != null) {
+                                scopesMap = scopesToObjectMap(localScopes);
+                                System.out.println(scopesMap);
+                            }
+                            for (Scope scope : localScopes) {
+                                Object variables = scope.getVariables();
+                                if (variables instanceof TruffleObject) {
+                                    TruffleObject truffleObj = (TruffleObject) variables;
+                                    try {
+                                        TruffleObject keys = ForeignAccess.sendKeys(KEYS, truffleObj, true);
+                                        boolean hasSize = ForeignAccess.sendHasSize(HAS_SIZE, keys);
+                                        if (!hasSize) {
+                                            System.out.println("No size!!!");
+                                            continue;
                                         }
-                                        completion.setDocumentation(documentation);
-                                        completions.getItems().add(completion);
+
+                                        System.out.println(nodeForLocalScoping.getClass().getSimpleName() + "\tin scope " + scope.getName() + (isCaretBehindNode ? "-copy-"
+                                                        : "") + "\t" + ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys) + " \"" +
+                                                        nodeForLocalScoping.getSourceSection().getCharacters() + "\"\t" + debugDetails);
+                                        for (Object obj : ObjectStructures.asList(new ObjectStructures.MessageNodes(), keys)) {
+                                            // TODO(ds) check obj type
+                                            CompletionItem completion = new CompletionItem(obj.toString());
+                                            completion.setKind(CompletionItemKind.Variable);
+// completion.setDetail(obj.toString());
+                                            String documentation = "in " + scope.getName();
+                                            if (scopesMap.containsKey(scope.getName())) {
+                                                Map<Object, Object> map = scopesMap.get(scope.getName());
+                                                if (map.containsKey(obj)) {
+// documentation += "\nHarvested type: " + map.get(obj).getClass().getName();
+                                                    completion.setDetail(createCompletionDetail(map.get(obj), env, langId, true));
+                                                }
+                                            }
+                                            completion.setDocumentation(documentation);
+                                            completions.getItems().add(completion);
+                                        }
+                                    } catch (UnsupportedMessageException e) {
+                                        throw new RuntimeException(e);
                                     }
-                                } catch (UnsupportedMessageException e) {
-                                    throw new RuntimeException(e);
                                 }
                             }
                         }
                     }
-                }
-
+                } // isLineValid
             } else {
-                System.out.println("!!! No parsed Node found for URI: " + uri);
+                // TODO(ds) remove that when solved
+                System.out.println("!!! Cannot lookup Source for local scoping. No parsed Node found for URI: " + uri);
             }
 
             Iterable<Scope> topScopes = env.findTopScopes(this.uri2LangId.get(uri));
@@ -368,6 +402,43 @@ public class TruffleAdapter {
         } finally {
             this.getContext().leave();
         }
+    }
+
+    private static boolean isLineValid(int line, Source source) {
+        // line is zero-based, source line is one-based
+        return line >= 0 && line < source.getLineCount();
+    }
+
+    private static int zeroBasedLineToOneBasedLine(int line, Source source) {
+        if (line + 1 <= source.getLineCount()) {
+            return line + 1;
+        }
+
+        String text = source.getCharacters().toString();
+        boolean isNewlineEnd = text.charAt(text.length() - 1) == '\n';
+        if (isNewlineEnd) {
+            return line;
+        }
+
+        throw new IllegalStateException("Mismatch in line numbers. Source line count (one-based): " + source.getLineCount() + ", zero-based line count: " + line);
+    }
+
+    private static boolean nodeIsInChildHirarchyOf(Node node, Node potentialParent) {
+        if (node == null) {
+            return false;
+        }
+        Node parent = node.getParent();
+        while (parent != null) {
+            if (parent.equals(potentialParent)) {
+                return true;
+            }
+            parent = parent.getParent();
+        }
+        return false;
+    }
+
+    private static boolean isEndOfSectionMatchingCaretPosition(int line, int character, SourceSection section) {
+        return section.getEndLine() == line && section.getEndColumn() == character;
     }
 
     private static String createCompletionDetail(Object obj, Env env, String langId, boolean includeClass) {
@@ -532,7 +603,7 @@ public class TruffleAdapter {
             SourceWrapper wrapper = ssProvider.getLoadedSource(langId, uri);
             Source source = wrapper.getSource();
             Node node = LocationFinderHelper.findNearest(source,
-                            SourceElement.values(), line + 1, character, env);
+                            SourceElement.values(), zeroBasedLineToOneBasedLine(line, source), character, env);
             SourceSection definition = this.section2definition.get(node.getSourceSection());
             if (definition != null) {
                 locations.add(new Location(uri, sourceSectionToRange(definition)));
@@ -563,7 +634,7 @@ public class TruffleAdapter {
             SourceWrapper wrapper = ssProvider.getLoadedSource(langId, uri);
             Source source = wrapper.getSource();
             Node node = LocationFinderHelper.findNearest(source,
-                            SourceElement.values(), line + 1, character, env);
+                            SourceElement.values(), zeroBasedLineToOneBasedLine(line, source), character, env);
             SourceSection definition = this.section2definition.get(node.getSourceSection());
             if (definition != null) {
                 MarkedString markedString = new MarkedString(this.uri2LangId.get(uri), definition.getCharacters().toString());
