@@ -14,6 +14,10 @@ class VmGateTasks:
     graal_js = 'graal-js'
 
 
+_openjdk_version_regex = re.compile(r'openjdk version \"[0-9_.]+\"\nOpenJDK Runtime Environment \(build [0-9a-z_\-.]+\)\nGraalVM (?P<graalvm_version>[0-9a-z_\-.]+) \(build [0-9a-z\-.]+, mixed mode\)')
+_anyjdk_version_regex = re.compile(r'(openjdk|java) version \"[0-9_.]+\"\n(OpenJDK|Java\(TM\) SE) Runtime Environment \(build [0-9a-z_\-.]+\)\nGraalVM (?P<graalvm_version>[0-9a-z_\-.]+) \(build [0-9a-z\-.]+, mixed mode\)')
+
+
 def gate(args, tasks):
     with Task('Vm: Basic GraalVM Tests', tasks, tags=[VmGateTasks.graal]) as t:
         if t:
@@ -27,12 +31,18 @@ def gate(args, tasks):
             _out = subprocess.check_output([_java, '-version'], stderr=subprocess.STDOUT)
             if args.strict_mode:
                 # A full open-source build should be built with an open-source JDK
-                _version_regex = r'openjdk version \"[0-9_.]+\"\nOpenJDK Runtime Environment \(build [0-9_\-.a-z]+\)\nGraalVM {} \(build [0-9\-.a-z]+, mixed mode\)'.format(_suite.release_version())
+                _version_regex = _openjdk_version_regex
             else:
                 # Allow Oracle JDK in non-strict mode as it is common on developer machines
-                _version_regex = r'(openjdk|java) version \"[0-9_.]+\"\n(OpenJDK|Java\(TM\) SE) Runtime Environment \(build [0-9_\-.a-z]+\)\nGraalVM {} \(build [0-9\-.a-z]+, mixed mode\)'.format(_suite.release_version())
-            if re.match(_version_regex, _out, re.MULTILINE) is None:
-                mx.abort('Unexpected version string:\n{}Does not match:\n{}'.format(_out, _version_regex))
+                _version_regex = _anyjdk_version_regex
+            match = _version_regex.match(_out)
+            if match is None:
+                if args.strict_mode and _anyjdk_version_regex.match(_out):
+                    mx.abort("In --strict-mode, GraalVM must be built with OpenJDK")
+                else:
+                    mx.abort('Unexpected version string:\n{}Does not match:\n{}'.format(_out, _version_regex.pattern))
+            elif match.group('graalvm_version') != _suite.release_version():
+                mx.abort("Wrong GraalVM version in -version string: got '{}', expected '{}'".format(match.group('graalvm_version'), _suite.release_version()))
 
     if mx_vm.has_component('js'):
         with Task('Vm: Graal.js tests', tasks, tags=[VmGateTasks.graal_js]) as t:
