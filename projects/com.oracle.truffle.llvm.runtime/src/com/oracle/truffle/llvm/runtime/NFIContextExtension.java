@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapper;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
@@ -111,7 +112,7 @@ public final class NFIContextExtension implements ContextExtension {
             String signature = getNativeSignature(descriptor.getType(), 0);
             TruffleObject createNativeWrapper = getNativeFunction(descriptor.getContext(), "@createNativeWrapper", String.format("(env, %s):object", signature));
             try {
-                wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(1).createNode(), createNativeWrapper, descriptor);
+                wrapper = (TruffleObject) ForeignAccess.sendExecute(Message.createExecute(1).createNode(), createNativeWrapper, new LLVMNativeWrapper(descriptor));
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }
