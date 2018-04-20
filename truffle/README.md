@@ -47,8 +47,8 @@ SimpleLanguage is well documented and designed to demonstrate most of the Truffl
 * Start with a new subclass of [TruffleInstrument](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html) for your own instrumentation/tool.
 * Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use most Truffle features.
 * Get inspired by looking at code of one of existing open source Truffle language implementations and experiments [here](./docs/Languages.md).
-* Embed Truffle languages in Java host applications using the [Polyglot API](../../sdk/docs/PolyglotEmbedding.md).
-* Read The Graal/Truffle [publications](../../docs/Publications.md)
+* Embed Truffle languages in Java host applications using the [Polyglot API](../sdk/docs/PolyglotEmbedding.md).
+* Read The Graal/Truffle [publications](../docs/Publications.md)
 * Verify that your language is a valid polyglot citizen using the [Polyglot TCK](./docs/TCK.md).
 
 ## Compatibility
