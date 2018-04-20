@@ -130,7 +130,7 @@ suite = {
     },
 
     "UBENCH_AGENT_DIST" : {
-      "urls" : ["https://github.com/D-iii-S/java-ubench-agent/archive/2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
       "sha1" : "19087a34b80be8845e9a3e7f927ceb592de83762",
     }
   },
