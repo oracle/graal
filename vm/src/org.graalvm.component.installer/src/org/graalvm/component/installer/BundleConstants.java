@@ -34,10 +34,10 @@ public class BundleConstants {
     public static final String BUNDLE_REQUIRED = "Bundle-RequireCapability"; // NOI18N
     public static final String GRAALVM_CAPABILITY = "org.graalvm"; // NOI18N
     public static final String BUNDLE_POLYGLOT_PART = "x-GraalVM-Polyglot-Part"; // NOI18N
-    
+
     /**
-     * Extended optional attribute; marks directories, which should be removed completely
-     * without checking for emptiness.
+     * Extended optional attribute; marks directories, which should be removed completely without
+     * checking for emptiness.
      */
     public static final String BUNDLE_WORKDIRS = "x-GraalVM-Working-Directories"; // NOI18N
 

@@ -69,7 +69,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
     URL url;
     URL clu;
     ComponentInfo info;
-    
+
     public CommandTestBase() {
     }
 
@@ -77,7 +77,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
         clu = getClass().getResource(relativeJar);
         url = new URL(u);
         Handler.bind(url.toString(), clu);
-        
+
         File f = dataFile(relativeJar).toFile();
         JarFile jf = new JarFile(f, false);
         ComponentPackageLoader cpl = new ComponentPackageLoader(jf, this);
@@ -87,12 +87,12 @@ public class CommandTestBase extends TestBase implements CommandInput {
         info.setRemoteURL(url);
         param = rparam = new CatalogIterable.RemoteComponentParam(info, disp, spec, this, false);
     }
-    
+
     protected void initURLComponent(String relativeJar, String spec) throws IOException {
         clu = getClass().getResource(relativeJar);
         url = new URL(spec);
         Handler.bind(url.toString(), clu);
-        
+
         File f = dataFile(relativeJar).toFile();
         JarFile jf = new JarFile(f, false);
         ComponentPackageLoader cpl = new ComponentPackageLoader(jf, this);
@@ -102,7 +102,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
         info.setRemoteURL(url);
         param = rparam = new CatalogIterable.RemoteComponentParam(url, spec, spec, this, false);
     }
-    
+
     @Override
     public Iterable<ComponentParam> existingFiles() throws FailedOperationException {
         return new Iterable<ComponentParam>() {
@@ -111,7 +111,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
                 return new Iterator<ComponentParam>() {
                     private Iterator<ComponentParam> fit = new FileIterable(CommandTestBase.this, CommandTestBase.this).iterator();
                     private Iterator<ComponentParam> pit = components.iterator();
-                    
+
                     @Override
                     public boolean hasNext() {
                         return fit.hasNext() || pit.hasNext();
@@ -120,7 +120,7 @@ public class CommandTestBase extends TestBase implements CommandInput {
                     @Override
                     public ComponentParam next() {
                         ComponentParam p = null;
-                        
+
                         if (pit.hasNext()) {
                             p = pit.next();
                             // discard one parameter from files:
@@ -131,13 +131,13 @@ public class CommandTestBase extends TestBase implements CommandInput {
                         }
                         return fit.next();
                     }
-                    
+
                 };
             }
-            
+
         };
     }
-    
+
     @Override
     public String requiredParameter() throws FailedOperationException {
         if (!textParams.isEmpty()) {

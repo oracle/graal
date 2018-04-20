@@ -95,7 +95,7 @@ public class UninstallCommand implements InstallerCommand {
             }
             toUninstall.put(compId, info);
         }
-        
+
         try {
             for (ComponentInfo info : toUninstall.values()) {
                 try {
@@ -112,7 +112,7 @@ public class UninstallCommand implements InstallerCommand {
             }
         } finally {
             if (rebuildPolyglot) {
-                Path p = Paths.get(CommonConstants.PATH_JRE_BIN);                
+                Path p = Paths.get(CommonConstants.PATH_JRE_BIN);
                 feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p));
             }
         }

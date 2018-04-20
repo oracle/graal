@@ -49,64 +49,66 @@ import sun.net.ConnectionResetException;
  */
 public class FileDownloaderTest extends NetworkTestBase {
     @Rule public ExpectedException exception = ExpectedException.none();
-    
+
     class FA extends FeedbackAdapter {
 
         @Override
         public String l10n(String key, Object... params) {
             switch (key) {
-                case "MSG_DownloadProgress": return "[                    ]";
-                case "MSG_DownloadProgressSignChar": return "#";
+                case "MSG_DownloadProgress":
+                    return "[                    ]";
+                case "MSG_DownloadProgressSignChar":
+                    return "#";
             }
             return key;
         }
-        
+
     }
-    
+
     @Before
     public void setUp() throws Exception {
         delegateFeedback(new FA());
         System.setProperty("org.graalvm.component.installer.minDownloadFeedback", "10");
     }
-    
+
     @Test
     public void testDownloadExistingFile() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
         Handler.bind("test://graal.us.oracle.com/download/truffleruby.zip",
-                clu);
-        
+                        clu);
+
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
-        FileDownloader dn = new FileDownloader("test", 
-                u, this);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
         dn.download();
-        
+
         File local = dn.getLocalFile();
         assertTrue(local.exists());
         assertTrue(local.isFile());
-        
+
         URLConnection c = clu.openConnection();
         assertEquals(c.getContentLengthLong(), local.length());
     }
-    
+
     @Test
     public void testDownloadComputeDigest() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
         Handler.bind("test://graal.us.oracle.com/download/truffleruby.zip",
-                clu);
-        
+                        clu);
+
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
-        FileDownloader dn = new FileDownloader("test", 
-                u, this);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
         dn.setShaDigest(new byte[0]);
         dn.download();
-        
+
         byte[] check = RemoteStorage.toHashBytes(null, "b649fe3b9309d1b3ae4d2dbae70eebd4d2978af32cd1ce7d262ebf7e0f0f53fa", this);
         assertArrayEquals(check, dn.getDigest());
     }
-    
+
     class Check extends FA {
         int state;
-        
+
         int cnt = 0;
         StringBuilder bar = new StringBuilder("[                    ]");
         String bcksp = "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
@@ -134,7 +136,7 @@ public class FileDownloaderTest extends NetworkTestBase {
             }
             return super.verboseOutput(bundleKey, params);
         }
-        
+
         @Override
         public boolean verbatimPart(String msg, boolean beVerbose) {
             switch (state) {
@@ -170,29 +172,29 @@ public class FileDownloaderTest extends NetworkTestBase {
     public void testDownloadVerboseMessages() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
         Handler.bind("test://graal.us.oracle.com/download/truffleruby.zip",
-                clu);
-        
+                        clu);
+
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
         Check check = new Check();
         delegateFeedback(check);
-        FileDownloader dn = new FileDownloader("test", 
-                u, this);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
         verbose = true;
         dn.download();
-        
+
         assertEquals(6, check.state);
     }
-    
+
     @Test
     public void testDownloadFailedProxy() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
 
         ChunkedConnection conn = new ChunkedConnection(
-            u,
-            clu.openConnection()) {
+                        u,
+                        clu.openConnection()) {
             @Override
             public void connect() throws IOException {
                 try {
@@ -201,47 +203,47 @@ public class FileDownloaderTest extends NetworkTestBase {
                 }
                 super.connect();
             }
-                
+
         };
         Handler.bind(u.toString(), conn);
         Check check = new Check();
         delegateFeedback(check);
-        FileDownloader dn = new FileDownloader("test", 
-                u, this);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
-        
+
         dn.envHttpProxy = "http://localhost:11111";
         dn.envHttpsProxy = "http://localhost:11111";
-        
+
         synchronized (conn) {
             conn.nextChunk = 130 * 1024;
             conn.readException = new FileNotFoundException();
         }
-        
+
         exception.expect(FileNotFoundException.class);
         dn.download();
     }
-    
+
     @Test
     public void testDownloadFailure() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
 
         ChunkedConnection conn = new ChunkedConnection(
-            u,
-            clu.openConnection());
+                        u,
+                        clu.openConnection());
         Handler.bind(u.toString(), conn);
         Check check = new Check();
         delegateFeedback(check);
-        FileDownloader dn = new FileDownloader("test", 
-                u, this);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
         synchronized (conn) {
             conn.nextChunk = 130 * 1024;
         }
-        
+
         AtomicReference<Throwable> exc = new AtomicReference<>();
         Thread t = new Thread() {
             @Override
@@ -253,15 +255,15 @@ public class FileDownloaderTest extends NetworkTestBase {
                 }
             }
         };
-        
+
         t.start();
-        
+
         assertTrue(conn.reachedSem.tryAcquire(1, TimeUnit.SECONDS));
-//        conn.reachedSem.acquire();
+        // conn.reachedSem.acquire();
         conn.readException = new ConnectionResetException();
         conn.nextSem.release();
         t.join(1000);
-//        t.join();
+        // t.join();
         assertFalse(t.isAlive());
         assertTrue(exc.get() instanceof IOException);
     }

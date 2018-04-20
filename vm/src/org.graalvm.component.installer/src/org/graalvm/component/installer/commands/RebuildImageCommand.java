@@ -45,14 +45,14 @@ import static org.graalvm.component.installer.Commands.DO_NOT_PROCESS_OPTIONS;
  */
 public class RebuildImageCommand implements InstallerCommand {
     private static final Map<String, String> OPTIONS = new HashMap<>();
-    
+
     private Feedback feedback;
     private CommandInput input;
-    
+
     static {
         OPTIONS.put(DO_NOT_PROCESS_OPTIONS, "");
     }
-    
+
     @Override
     public Map<String, String> supportedOptions() {
         return OPTIONS;
@@ -63,13 +63,13 @@ public class RebuildImageCommand implements InstallerCommand {
         this.feedback = _feedback;
         this.input = _input;
     }
-    
+
     final class OutputRewriter implements Runnable {
         private final String processName;
         private final String substProcessName;
         private final InputStream output;
         private volatile IOException terminated;
-        
+
         public OutputRewriter(InputStream _output, String _processName, String _substProcessName) {
             this.output = _output;
             this.processName = _processName;
@@ -83,8 +83,8 @@ public class RebuildImageCommand implements InstallerCommand {
                 while ((line = bre.readLine()) != null) {
                     int i = line.indexOf(processName);
                     if (i != -1) {
-                        line = line.substring(0, i) + substProcessName + 
-                                line.substring(i + processName.length());
+                        line = line.substring(0, i) + substProcessName +
+                                        line.substring(i + processName.length());
                     }
                     System.out.println(line);
                     System.out.flush();
@@ -105,7 +105,7 @@ public class RebuildImageCommand implements InstallerCommand {
         while (input.hasParameter()) {
             commandLine.add(input.nextParameter());
         }
-        
+
         pb.command(commandLine);
         pb.directory(input.getGraalHomePath().toFile());
         pb.redirectInput(Redirect.INHERIT);
@@ -114,8 +114,8 @@ public class RebuildImageCommand implements InstallerCommand {
             int exitCode;
             Process p = pb.start();
 
-            OutputRewriter rw = new OutputRewriter(p.getInputStream(), procName, 
-                    feedback.l10n("REBUILD_RewriteRebuildToolName")); // NOI18N
+            OutputRewriter rw = new OutputRewriter(p.getInputStream(), procName,
+                            feedback.l10n("REBUILD_RewriteRebuildToolName")); // NOI18N
             Thread rwThread = new Thread(rw);
             rwThread.start();
             exitCode = p.waitFor();
@@ -129,5 +129,5 @@ public class RebuildImageCommand implements InstallerCommand {
             return 1;
         }
     }
-    
+
 }

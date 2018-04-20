@@ -82,17 +82,6 @@ public class InstallerTest extends TestBase {
         installer.setLicenseRelativePath(Paths.get(loader.getLicensePath()));
     }
 
-/*    
-    private void setupRemoteComponentInstall(String realRelativePath) throws Exception {
-        componentJarFile = new JarFile(realRelativePath);
-        ComponentPackageLoader ldr = new ComponentPackageLoader(componentJarFile, this);
-
-        componentInfo = ldr.getComponentInfo();
-        installer = new Installer(fb(), componentInfo, registry);
-        installer.setInstallPath(targetPath);
-    }
-*/
-
     private Feedback fb() {
         return withBundle(Installer.class);
     }
@@ -178,7 +167,7 @@ public class InstallerTest extends TestBase {
         assertFalse("All files should be removed after uninstall",
                         Files.list(targetPath).findAny().isPresent());
     }
-    
+
     /**
      * Test of uninstall method, of class Installer.
      */
@@ -207,7 +196,6 @@ public class InstallerTest extends TestBase {
 
         fail("Shouldn't be reached");
     }
-    
 
     @Test
     public void testRecursiveDelete() throws Exception {
@@ -221,7 +209,7 @@ public class InstallerTest extends TestBase {
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         Path langPath = targetPath.resolve("jre/languages/ruby");
         uninstaller.deleteContentsRecursively(langPath);
-        
+
         // the root dir still exists
         assertTrue(Files.exists(langPath));
         // but is empty:
@@ -229,7 +217,7 @@ public class InstallerTest extends TestBase {
         assertFalse("All files should be removed by recursive delete",
                         Files.list(langPath).findAny().isPresent());
     }
-    
+
     @Test
     public void testRecursiveDeleteWithReadonlyFiles() throws Exception {
         if (System.getProperty("os.name").toLowerCase().contains("windows")) {
@@ -245,10 +233,10 @@ public class InstallerTest extends TestBase {
         ComponentInfo savedInfo = installer.getComponentInfo();
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         Path langPath = targetPath.resolve("jre/languages/ruby");
-        
+
         Path roPath = langPath.resolve("doc/legal");
         Files.setPosixFilePermissions(roPath, PosixFilePermissions.fromString("r-xr-xr-x"));
-        
+
         uninstaller.deleteContentsRecursively(langPath);
         // the root dir still exists
         assertTrue(Files.exists(langPath));
@@ -301,8 +289,7 @@ public class InstallerTest extends TestBase {
         Files.write(uf, Arrays.asList("This file", "Should vanish"));
         Files.setPosixFilePermissions(uf, PosixFilePermissions.fromString("r--r-----"));
         Files.setPosixFilePermissions(roPath, PosixFilePermissions.fromString("r-xr-xr-x"));
-        
-        
+
         // now uninstall, create a new installer.
         Uninstaller uninstaller = new Uninstaller(fb(), savedInfo, registry);
         uninstaller.setInstallPath(targetPath);
@@ -894,11 +881,11 @@ public class InstallerTest extends TestBase {
         installer.setReplaceDiferentFiles(true);
         installer.validateSymlinks();
     }
-    
+
     public void testVerifyCatalogMatchingComponent() throws Exception {
         fail("TBD");
     }
-    
+
     public void testVerifyCatalogInvalidComponent() throws Exception {
         fail("TBD");
     }

@@ -44,15 +44,15 @@ import org.graalvm.component.installer.model.ComponentStorage;
  * @author sdedic
  */
 public class RemoteStorage implements ComponentStorage {
-    private final Properties  catalogProperties;
+    private final Properties catalogProperties;
     private final String flavourPrefix;
     private final ComponentRegistry localRegistry;
     private final Feedback feedback;
-    private final URL   baseURL;
-    
+    private final URL baseURL;
+
     private static final String PROPERTY_HASH = "hash"; // NOI18N
     private static final String FORMAT_FLAVOUR = "Component.{0}."; // NOI18N
-    
+
     public RemoteStorage(Feedback fb, ComponentRegistry localReg, Properties catalogProperties, String graalVersion, URL baseURL) {
         this.catalogProperties = catalogProperties;
         this.localRegistry = localReg;
@@ -60,7 +60,7 @@ public class RemoteStorage implements ComponentStorage {
         this.baseURL = baseURL;
         flavourPrefix = MessageFormat.format(FORMAT_FLAVOUR, graalVersion);
     }
-    
+
     @Override
     public Set<String> listComponentIDs() throws IOException {
         Set<String> ret = new HashSet<>();
@@ -87,11 +87,11 @@ public class RemoteStorage implements ComponentStorage {
         // files are not supported, yet
         return ci;
     }
-    
+
     private byte[] toHashBytes(String comp, String hashS) {
         return toHashBytes(comp, hashS, feedback);
     }
-    
+
     public static byte[] toHashBytes(String comp, String hashS, Feedback fb) {
         String val = hashS.trim();
         if (val.length() < 4) {
@@ -101,7 +101,7 @@ public class RemoteStorage implements ComponentStorage {
         boolean divided = !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); // NOI18N
         boolean lenOK;
         int s;
-        
+
         if (divided) {
             lenOK = (val.length() + 1) % 3 == 0;
             s = (val.length() + 1) / 3;
@@ -114,7 +114,7 @@ public class RemoteStorage implements ComponentStorage {
         }
         byte[] digest = new byte[s];
         int dI = 0;
-        for (int i = 0; i + 1< val.length(); i += 2) {
+        for (int i = 0; i + 1 < val.length(); i += 2) {
             int b;
             try {
                 b = Integer.parseInt(val.substring(i, i + 2), 16);
@@ -124,7 +124,7 @@ public class RemoteStorage implements ComponentStorage {
             if (b < 0) {
                 throw new MetadataException(null, fb.l10n("REMOTE_InvalidHash", comp, val));
             }
-            digest[dI++] = (byte)b;
+            digest[dI++] = (byte) b;
             if (divided) {
                 i++;
             }
@@ -139,18 +139,18 @@ public class RemoteStorage implements ComponentStorage {
         if (s == null) {
             throw feedback.failure("REMOTE_UnknownComponentId", null, id);
         }
-//        try {
-            downloadURL = new URL(baseURL, s);
-//        } catch (MalformedURLException ex) {
-//            throw feedback.failure("REMOTE_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
-//        }
+        // try {
+        downloadURL = new URL(baseURL, s);
+        // } catch (MalformedURLException ex) {
+        // throw feedback.failure("REMOTE_InvalidDownloadURL", ex, s, ex.getLocalizedMessage());
+        // }
         String prefix = flavourPrefix + id.toLowerCase() + "-"; // NOI18N
         String hashS = catalogProperties.getProperty(prefix + PROPERTY_HASH);
         byte[] hash = hashS == null ? null : toHashBytes(id, hashS);
-        
+
         ComponentPackageLoader ldr = new ComponentPackageLoader(
-                new PrefixedPropertyReader(prefix, catalogProperties),
-                feedback);
+                        new PrefixedPropertyReader(prefix, catalogProperties),
+                        feedback);
         ComponentInfo info = ldr.createComponentInfo();
         info.setRemoteURL(downloadURL);
         info.setShaDigest(hash);
@@ -165,7 +165,7 @@ public class RemoteStorage implements ComponentStorage {
             this.compPrefix = compPrefix;
             this.props = props;
         }
-        
+
         @Override
         public String apply(String t) {
             return props.getProperty(compPrefix + t);

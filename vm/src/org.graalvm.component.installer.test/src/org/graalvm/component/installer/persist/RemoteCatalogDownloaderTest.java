@@ -52,9 +52,9 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     Path targetPath;
     ComponentRegistry localRegistry;
     MockStorage storage;
-    
+
     ComponentRegistry registry;
-    
+
     @Before
     public void setUp() throws Exception {
         targetPath = folder.newFolder("inst").toPath();
@@ -67,71 +67,71 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
         URL clu = getClass().getResource("catalog");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
         Handler.bind(u.toString(),
-                clu);
+                        clu);
 
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_UnsupportedGraalVersion");
         d.openCatalog();
     }
-    
+
     @Test
     public void testDownloadCatalogCorrupted() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
         Handler.bind(u.toString(),
-                clu);
+                        clu);
 
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_CorruptedCatalogFile");
         d.openCatalog();
     }
-    
+
     private void loadRegistry() throws Exception {
         URL clu = getClass().getResource("catalog");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
         Handler.bind(u.toString(),
-                clu);
+                        clu);
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
         registry = d.openCatalog();
     }
-    
+
     @Test
     public void testDownloadCatalogGood() throws Exception {
         loadRegistry();
         assertNotNull(registry);
     }
-    
+
     @Test
     public void testRemoteComponents() throws Exception {
         loadRegistry();
         assertEquals(2, registry.getComponentIDs().size());
-        
+
         assertNotNull(registry.findComponent("r"));
         assertNotNull(registry.findComponent("ruby"));
     }
-    
+
     @Test
     public void testDownloadCorruptedCatalog() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
         Handler.bind(u.toString(),
-                clu);
+                        clu);
 
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
         exception.expect(FailedOperationException.class);
         exception.expectMessage("REMOTE_CorruptedCatalogFile");
         d.openCatalog();
     }
-    
+
     @Test
     public void testCannotConnectCatalog() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted");
         URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
         Handler.bind(u.toString(),
-                new MockURLConnection(clu.openConnection(), u, new ConnectException()));
+                        new MockURLConnection(clu.openConnection(), u, new ConnectException()));
 
         RemoteCatalogDownloader d = new RemoteCatalogDownloader(this, localRegistry, u);
         exception.expect(FailedOperationException.class);

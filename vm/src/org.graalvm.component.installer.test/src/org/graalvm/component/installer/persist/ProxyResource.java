@@ -36,7 +36,7 @@ public class ProxyResource extends ExternalResource {
     @Override
     protected void after() {
         Handler.clear();
-        
+
         if (proxyHost != null) {
             System.setProperty("http.proxyHost", proxyHost);
         } else {
@@ -47,7 +47,7 @@ public class ProxyResource extends ExternalResource {
         } else {
             System.clearProperty("http.proxyPort");
         }
-        super.after(); //To change body of generated methods, choose Tools | Templates.
+        super.after(); // To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
@@ -56,21 +56,20 @@ public class ProxyResource extends ExternalResource {
         final String key = "java.protocol.handler.pkgs";
 
         String newValue = HANDLER_PACKAGE;
-        if ( System.getProperty( key ) != null )
-        {
-            final String previousValue = System.getProperty( key );
+        if (System.getProperty(key) != null) {
+            final String previousValue = System.getProperty(key);
             if (!previousValue.contains(newValue)) {
                 newValue += "|" + previousValue;
             }
-        }   
+        }
         System.setProperty(key, newValue);
-        
+
         proxyHost = System.getProperty("http.proxyHost");
         proxyPort = System.getProperty("http.proxyPort");
     }
-    
+
     private static final String HANDLER_PACKAGE = "org.graalvm.component.installer.persist";
-    
+
     private String proxyHost;
     private String proxyPort;
 }

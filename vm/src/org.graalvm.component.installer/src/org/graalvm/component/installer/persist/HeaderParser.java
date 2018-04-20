@@ -89,7 +89,7 @@ public class HeaderParser {
     private static boolean isExtended(char c) {
         return isToken(c) || c == '.';
     }
-    
+
     public boolean getBoolean(Boolean defValue) {
         if (pos >= header.length()) {
             if (defValue == null) {

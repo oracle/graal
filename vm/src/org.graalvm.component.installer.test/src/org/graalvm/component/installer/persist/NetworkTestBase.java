@@ -32,7 +32,7 @@ import org.junit.Rule;
  * @author sdedic
  */
 public class NetworkTestBase extends TestBase {
-    
+
     @Rule public ProxyResource proxyResource = new ProxyResource();
-    
+
 }

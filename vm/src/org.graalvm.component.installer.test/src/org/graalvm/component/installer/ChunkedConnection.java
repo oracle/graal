@@ -83,5 +83,5 @@ public class ChunkedConnection extends URLConnection {
     public int getContentLength() {
         return original.getContentLength();
     }
-    
+
 }

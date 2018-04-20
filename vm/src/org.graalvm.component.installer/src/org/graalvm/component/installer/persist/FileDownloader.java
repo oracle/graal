@@ -57,18 +57,19 @@ import org.graalvm.component.installer.Feedback;
 public class FileDownloader {
     String envHttpProxy = System.getenv("http_proxy"); // NOI18N
     String envHttpsProxy = System.getenv("https_proxy"); // NOI18N
-    
+
     private static final int TRANSFER_LENGTH = 2048;
-    private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);   // 1 MByte
+    private static final long MIN_PROGRESS_THRESHOLD = Long.getLong("org.graalvm.component.installer.minDownloadFeedback", 1024 * 1024);   // 1
+                                                                                                                                           // MByte
     private final String fileDescription;
     private final URL sourceURL;
-    private final Feedback  feedback;
+    private final Feedback feedback;
 
-    private File  localFile;
+    private File localFile;
     private long size;
     private static boolean deleteTemporary = !Boolean.FALSE.toString().equals(System.getProperty("org.graalvm.component.installer.deleteTemporary"));
     private boolean verbose;
-    private static File tempDir; 
+    private static File tempDir;
     private boolean displayProgress;
     private byte[] shaDigest;
 
@@ -93,16 +94,16 @@ public class FileDownloader {
     public void setDisplayProgress(boolean displayProgress) {
         this.displayProgress = displayProgress;
     }
-    
+
     public static File createTempDir() throws IOException {
         if (tempDir == null) {
             Path p = Files.createTempDirectory("graalvm_install"); // NOI18N
             tempDir = deleteOnExit(p.toFile());
-                tempDir.deleteOnExit();
+            tempDir.deleteOnExit();
         }
         return tempDir;
     }
-    
+
     private static File deleteOnExit(File f) {
         if (deleteTemporary) {
             f.deleteOnExit();
@@ -117,11 +118,11 @@ public class FileDownloader {
     public URL getSourceURL() {
         return sourceURL;
     }
-    
+
     private static int toKB(long size) {
-        return (int)(size + 1023) / 1024;
+        return (int) (size + 1023) / 1024;
     }
-    
+
     StringBuilder progressString;
     String backspaceString;
     int startPos;
@@ -129,11 +130,11 @@ public class FileDownloader {
     long received;
     char signChar;
     MessageDigest fileDigest;
-    
+
     public File getLocalFile() {
         return localFile;
     }
-    
+
     void setupProgress() {
         if (!displayProgress) {
             return;
@@ -147,11 +148,11 @@ public class FileDownloader {
         }
         backspaceString = bs.toString();
     }
-    
+
     int cnt(long rcvd) {
-        return (int)((rcvd * 20 + (rcvd / 2)) / size);
+        return (int) ((rcvd * 20 + (rcvd / 2)) / size);
     }
-    
+
     void makeProgress(boolean first, int chunk) {
         if (!displayProgress) {
             return;
@@ -162,21 +163,21 @@ public class FileDownloader {
         if (now < next) {
             progressString.setCharAt(next + startPos - 1, signChar);
             signCount = next;
-            
+
             if (!first) {
                 feedback.verbatimPart(backspaceString, false);
             }
             feedback.verbatimPart(progressString.toString(), false);
         }
     }
-    
+
     void stopProgress() {
         if (displayProgress) {
             feedback.verbatimPart(backspaceString, false);
         }
         feedback.verboseOutput("MSG_DownloadingDone");
     }
-    
+
     void updateFileDigest(ByteBuffer input) throws IOException {
         if (shaDigest == null) {
             return;
@@ -186,13 +187,13 @@ public class FileDownloader {
                 fileDigest = MessageDigest.getInstance("SHA-256"); // NOI18N
             } catch (NoSuchAlgorithmException ex) {
                 throw new IOException(
-                        feedback.l10n("ERR_ComputeDigest", ex.getLocalizedMessage()), 
-                        ex);
+                                feedback.l10n("ERR_ComputeDigest", ex.getLocalizedMessage()),
+                                ex);
             }
         }
         fileDigest.update(input);
     }
-    
+
     String fingerPrint(byte[] digest) {
         StringBuilder sb = new StringBuilder(digest.length * 3);
         for (int i = 0; i < digest.length; i++) {
@@ -203,11 +204,11 @@ public class FileDownloader {
         }
         return sb.toString();
     }
-    
+
     byte[] getDigest() {
         return fileDigest.digest();
     }
-    
+
     void verifyDigest() throws IOException {
         if (shaDigest == null || /* for testing */ shaDigest.length == 0) {
             return;
@@ -216,19 +217,19 @@ public class FileDownloader {
         if (Arrays.equals(computed, shaDigest)) {
             return;
         }
-        throw new IOException(feedback.l10n("ERR_FileDigestError", 
-                fingerPrint(shaDigest), fingerPrint(computed)));
+        throw new IOException(feedback.l10n("ERR_FileDigestError",
+                        fingerPrint(shaDigest), fingerPrint(computed)));
     }
-    
+
     private URLConnection openConnectionWithProxies(URL url) throws IOException {
-        final URLConnection[] conn = { null };
+        final URLConnection[] conn = {null};
         final CountDownLatch connected = new CountDownLatch(1);
         ExecutorService connectors = Executors.newFixedThreadPool(3);
         AtomicReference<IOException> ex3 = new AtomicReference<>();
         AtomicReference<IOException> ex2 = new AtomicReference<>();
         String httpProxy;
         String httpsProxy;
-        
+
         synchronized (this) {
             httpProxy = envHttpProxy;
             httpsProxy = envHttpsProxy;
@@ -236,7 +237,7 @@ public class FileDownloader {
         connectors.submit(new Runnable() {
             @Override
             public void run() {
-                
+
                 if (httpProxy != null) {
                     try {
                         URI uri = new URI(httpProxy);
@@ -283,7 +284,7 @@ public class FileDownloader {
                 } catch (IOException ex) {
                     ex2.set(ex);
                 }
-            
+
             }
         });
         try {
@@ -300,7 +301,7 @@ public class FileDownloader {
         }
         return conn[0];
     }
-    
+
     public void download() throws IOException {
         if (fileDescription != null) {
             feedback.output("MSG_Downloading", getFileDescription());
@@ -316,15 +317,15 @@ public class FileDownloader {
         setupProgress();
         ByteBuffer bb = ByteBuffer.allocate(TRANSFER_LENGTH);
         localFile = deleteOnExit(
-                File.createTempFile("download", "", createTempDir())); // NOI18N
+                        File.createTempFile("download", "", createTempDir())); // NOI18N
         if (fileDescription != null) {
             feedback.bindFilename(localFile.toPath(), fileDescription);
         }
         boolean first = displayProgress;
         try (
-            ReadableByteChannel rbc = Channels.newChannel(conn.getInputStream());
-            WritableByteChannel wbc = Files.newByteChannel(localFile.toPath(), 
-                    StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                        ReadableByteChannel rbc = Channels.newChannel(conn.getInputStream());
+                        WritableByteChannel wbc = Files.newByteChannel(localFile.toPath(),
+                                        StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
             int read;
             while ((read = rbc.read(bb)) >= 0) {
                 if (first) {
@@ -341,7 +342,7 @@ public class FileDownloader {
                 first = false;
             }
         } catch (IOException ex) {
-//            f.delete();
+            // f.delete();
             throw ex;
         }
         stopProgress();

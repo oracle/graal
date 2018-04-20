@@ -134,7 +134,7 @@ public class ComponentInstaller {
         }
         Map<String, String> optValues = go.getOptValues();
         parameters = go.getPositionalParameters();
-        
+
         try {
             env = new Environment(command, null, parameters, optValues);
             finddGraalHome();
@@ -145,10 +145,9 @@ public class ComponentInstaller {
             catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
             if (catalogURL != null || optValues.containsKey(Commands.OPTION_CATALOG)) {
                 RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
-                           env, 
-                           env.getLocalRegistry(), 
-                           getCatalogURL(env)
-                );
+                                env,
+                                env.getLocalRegistry(),
+                                getCatalogURL(env));
                 env.setComponentRegistry(downloader);
                 env.setFileIterable(new CatalogIterable(env, env, downloader));
                 if (optValues.containsKey(Commands.OPTION_URLS)) {
@@ -210,7 +209,8 @@ public class ComponentInstaller {
             } catch (URISyntaxException ex) {
                 Logger.getLogger(ComponentInstaller.class.getName()).log(Level.SEVERE, null, ex);
             }
-        }        if (graalPath == null) {
+        }
+        if (graalPath == null) {
             throw env.failure("ERROR_NoGraalVMDirectory", null);
         }
         if (!Files.isDirectory(graalPath) || !Files.exists(graalPath.resolve("release"))) {
@@ -240,10 +240,9 @@ public class ComponentInstaller {
         }
 
     }
-    
+
     private URL getCatalogURL(Feedback f) {
-        String def = catalogURL != null ? catalogURL :
-                f.l10n("Installer_BuiltingCatalogURL");
+        String def = catalogURL != null ? catalogURL : f.l10n("Installer_BuiltingCatalogURL");
         String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);
         try {
             return new URL(s);

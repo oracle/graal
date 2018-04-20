@@ -130,12 +130,12 @@ public class ComponentPackageLoaderTest extends TestBase {
             }
         }
     }
-    
+
     @Test
     public void testWorkingDirectories() throws Exception {
         // first try to parse OK to capture possibel bugs
         info = info();
-        
+
         assertTrue(info.getWorkingDirectories().contains("jre/languages/test/scrap"));
         assertTrue(info.getWorkingDirectories().contains("jre/lib/test/scrapdir"));
     }

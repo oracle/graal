@@ -46,17 +46,18 @@ public interface Feedback {
      * @param params optional positional arguments for the message
      */
     public void output(String bundleKey, Object... params);
-    
+
     /**
      * Formats a message on stdout; will not print a newline.
+     * 
      * @param bundleKey key into the bundle
      * @param params optional positional arguments for the message
      */
     public void outputPart(String bundleKey, Object... params);
 
     /**
-     * Formats a verbosePart-level message on stderr. Returns a flag indicating the verbosePart level is on
- - use to bypass verbosePart messages.
+     * Formats a verbosePart-level message on stderr. Returns a flag indicating the verbosePart
+     * level is on - use to bypass verbosePart messages.
      * 
      * @param bundleKey key into the bundle
      * @param params optional positional arguments for the message
@@ -65,8 +66,8 @@ public interface Feedback {
     public boolean verbosePart(String bundleKey, Object... params);
 
     /**
-     * Formats a verbosePart-level message on stdout. Returns a flag indicating the verbosePart level is on
- - use to bypass verbosePart messages.
+     * Formats a verbosePart-level message on stdout. Returns a flag indicating the verbosePart
+     * level is on - use to bypass verbosePart messages.
      * 
      * @param bundleKey key into the bundle
      * @param params optional positional arguments for the message
@@ -119,12 +120,12 @@ public interface Feedback {
      * @param verbose true, if this is only verbosePart
      */
     public boolean verbatimOut(String msg, boolean verbose);
-    
+
     public boolean verbatimPart(String msg, boolean verbose);
-    
+
     public boolean backspace(int chars, boolean beVerbose);
-    
+
     public String translateFilename(Path f);
-    
+
     public void bindFilename(Path file, String label);
 }

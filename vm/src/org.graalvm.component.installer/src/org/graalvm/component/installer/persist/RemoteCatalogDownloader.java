@@ -77,7 +77,7 @@ public class RemoteCatalogDownloader implements Supplier<ComponentRegistry> {
         } catch (IOException ex) {
             throw feedback.failure("REMOTE_ErrorDownloadCatalog", ex, catalogURL, ex.getLocalizedMessage());
         }
-        
+
         StringBuilder sb = new StringBuilder();
         Map<String, String> graalCaps = local.getGraalCapabilities();
         sb.append(graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase());
@@ -85,7 +85,7 @@ public class RemoteCatalogDownloader implements Supplier<ComponentRegistry> {
         sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
         sb.append("_");
         sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase());
-        
+
         Properties props = new Properties();
         try (FileInputStream fis = new FileInputStream(dn.getLocalFile())) {
             props.load(fis);
@@ -95,7 +95,7 @@ public class RemoteCatalogDownloader implements Supplier<ComponentRegistry> {
         if (props.getProperty(BundleConstants.GRAAL_COMPONENT_ID + "." + sb.toString()) == null) {
             boolean graalPrefixFound = false;
             boolean componentFound = false;
-            for (String s : Collections.list((Enumeration<String>)props.propertyNames())) {
+            for (String s : Collections.list((Enumeration<String>) props.propertyNames())) {
                 if (s.startsWith(BundleConstants.GRAAL_COMPONENT_ID)) {
                     graalPrefixFound = true;
                 }
@@ -106,10 +106,10 @@ public class RemoteCatalogDownloader implements Supplier<ComponentRegistry> {
             if (!(graalPrefixFound && componentFound)) {
                 throw feedback.failure("REMOTE_CorruptedCatalogFile", null, catalogURL);
             } else {
-                throw feedback.failure("REMOTE_UnsupportedGraalVersion", null, 
-                        graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION),
-                        graalCaps.get(CommonConstants.CAP_OS_NAME),
-                        graalCaps.get(CommonConstants.CAP_OS_ARCH));
+                throw feedback.failure("REMOTE_UnsupportedGraalVersion", null,
+                                graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION),
+                                graalCaps.get(CommonConstants.CAP_OS_NAME),
+                                graalCaps.get(CommonConstants.CAP_OS_ARCH));
             }
         }
         ComponentStorage storage = new RemoteStorage(feedback, local, props, sb.toString(), catalogURL);

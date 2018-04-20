@@ -53,53 +53,53 @@ public class DownloadURLIterableTest extends CommandTestBase {
         assertFalse(param.isComplete());
         assertFalse(Handler.isVisited(url));
     }
-    
+
     @Test
     public void testURLParameter() throws Exception {
         initURLComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip");
         this.textParams.add("test://graal.us.oracle.com/download/truffleruby.zip");
-        
+
         DownloadURLIterable iterable = new DownloadURLIterable(this, this);
         Iterator<ComponentParam> it = iterable.iterator();
         assertTrue(it.hasNext());
-        
+
         ComponentParam p = it.next();
-        
+
         assertEquals("test://graal.us.oracle.com/download/truffleruby.zip", p.getSpecification());
         MetadataLoader ldr = p.createMetaLoader();
         assertFalse(p.isComplete());
-        
+
         ComponentInfo ci = ldr.getComponentInfo();
         assertTrue(p.isComplete());
-        
+
         assertEquals("ruby", ci.getId());
         assertEquals("0.33-dev", ci.getVersionString());
-        
+
         JarFile jf = ldr.getJarFile();
         JarEntry je = jf.getJarEntry("META-INF/MANIFEST.MF");
         assertNotNull(je);
         jf.close();
     }
-    
+
     @Test
     public void testMalformedURL() throws Exception {
         this.textParams.add("testx://graal.us.oracle.com/download/truffleruby.zip");
-        
+
         DownloadURLIterable iterable = new DownloadURLIterable(this, this);
         Iterator<ComponentParam> it = iterable.iterator();
         assertTrue(it.hasNext());
-        
+
         exception.expect(FailedOperationException.class);
         exception.expectMessage("URL_InvalidDownloadURL");
-        
+
         it.next();
     }
 
     @Test
     public void testInstallFromURL() throws Exception {
         initURLComponent("persist/data/truffleruby2.jar", "test://graal.us.oracle.com/download/truffleruby.zip");
-        
+
         components.add(rparam);
-        
+
     }
 }

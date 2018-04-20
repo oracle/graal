@@ -69,13 +69,13 @@ public final class ComponentInfo {
     private final Map<String, String> requiredGraalValues = new HashMap<>();
 
     private final List<String> paths = new ArrayList<>();
-    
+
     private final Set<String> workingDirectories = new LinkedHashSet<>();
-    
+
     private URL remoteURL;
-    
+
     private boolean polyglotRebuild;
-    
+
     private byte[] shaDigest;
 
     public ComponentInfo(String id, String name, String versionString) {
@@ -168,7 +168,7 @@ public final class ComponentInfo {
     public Set<String> getWorkingDirectories() {
         return workingDirectories;
     }
-    
+
     public void addWorkingDirectories(Collection<String> dirs) {
         workingDirectories.addAll(dirs);
     }

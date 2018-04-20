@@ -21,6 +21,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentInfo;
@@ -58,14 +59,13 @@ public class Uninstaller {
     public boolean isRebuildPolyglot() {
         return rebuildPolyglot;
     }
-    
+
     void deleteContentsRecursively(Path rootPath) throws IOException {
         if (dryRun) {
             return;
         }
         try (Stream<Path> paths = Files.walk(rootPath)) {
-            paths.sorted(Comparator.reverseOrder()).
-                forEach((p) -> {
+            paths.sorted(Comparator.reverseOrder()).forEach((p) -> {
                 try {
                     deleteOneFile(p, rootPath);
                 } catch (IOException ex) {
@@ -79,14 +79,14 @@ public class Uninstaller {
                     }
                     throw new UncheckedIOException(ex);
                 }
-        });
+            });
         } catch (UncheckedIOException ex) {
-            throw  ex.getCause();
+            throw ex.getCause();
         }
     }
-    
+
     private static final Set<PosixFilePermission> ALL_WRITE_PERMS = PosixFilePermissions.fromString("rwxrwxrwx");
-    
+
     private void deleteOneFile(Path p, Path rootPath) throws IOException {
         try {
             if (p.equals(rootPath)) {
@@ -97,7 +97,7 @@ public class Uninstaller {
             // try again to adjust permissions for the file AND the containing
             // directory AND try again:
             PosixFileAttributeView attrs = Files.getFileAttributeView(
-                    p, PosixFileAttributeView.class);
+                            p, PosixFileAttributeView.class);
             Set<PosixFilePermission> restoreDirPermissions = null;
             if (attrs != null) {
                 Files.setPosixFilePermissions(p, ALL_WRITE_PERMS);
@@ -186,16 +186,12 @@ public class Uninstaller {
                 }
             }
         }
-        
+
         rebuildPolyglot = componentInfo.isPolyglotRebuild() ||
-                    componentInfo.getPaths().stream()
-                        .filter(
-                            (p) -> 
-                                !p.endsWith("/") &&
-                                p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
-                        .findAny()
-                        .isPresent();
-        
+                        componentInfo.getPaths().stream().filter(p -> !p.endsWith("/") && p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
+                                        .findAny()
+                                        .isPresent();
+
     }
 
     public boolean isIgnoreFailedDeletions() {

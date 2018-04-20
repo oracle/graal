@@ -56,8 +56,6 @@ public class ListInstalledCommand extends QueryCommandBase {
         m.put(Commands.OPTION_URLS, "X"); // mask out
         return m;
     }
-    
-    
 
     private void makeRegularExpression() {
         StringBuilder sb = new StringBuilder();

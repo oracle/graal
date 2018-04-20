@@ -209,8 +209,7 @@ public class DirectoryStorage implements ComponentStorage {
             }
         }
         ci.setPolyglotRebuild(
-            Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, ""))
-        );
+                        Boolean.TRUE.toString().equals(loaded.getProperty(BundleConstants.BUNDLE_POLYGLOT_PART, "")));
         List<String> ll = new ArrayList<>();
         for (String s : loaded.getProperty(BundleConstants.BUNDLE_WORKDIRS, "").split(":")) {
             String p = s.trim();
@@ -369,8 +368,7 @@ public class DirectoryStorage implements ComponentStorage {
             p.setProperty(BundleConstants.BUNDLE_POLYGLOT_PART, Boolean.TRUE.toString());
         }
         if (!info.getWorkingDirectories().isEmpty()) {
-            p.setProperty(BundleConstants.BUNDLE_WORKDIRS, info.getWorkingDirectories().stream().sequential().
-                    collect(Collectors.joining(":")));
+            p.setProperty(BundleConstants.BUNDLE_WORKDIRS, info.getWorkingDirectories().stream().sequential().collect(Collectors.joining(":")));
         }
         return p;
     }

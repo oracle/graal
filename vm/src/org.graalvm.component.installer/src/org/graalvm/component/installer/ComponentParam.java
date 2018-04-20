@@ -35,13 +35,21 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  */
 public interface ComponentParam extends Closeable {
     public String getSpecification();
+
     public String getDisplayName();
+
     public MetadataLoader createMetaLoader() throws IOException;
+
     public MetadataLoader createFileLoader() throws IOException;
+
     public JarFile getFile() throws IOException;
+
     public boolean isComplete();
+
     @Override
     public void close() throws IOException;
+
     public String getFullPath();
+
     public String getShortName();
 }

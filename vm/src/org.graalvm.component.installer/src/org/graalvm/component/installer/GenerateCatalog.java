@@ -51,8 +51,8 @@ public class GenerateCatalog {
     private final String urlPrefix;
     private final String label;
     private final StringBuilder catalogS = new StringBuilder();
-    
-    public static void main(String[] args) throws IOException{
+
+    public static void main(String[] args) throws IOException {
         if (args.length < 4) {
             System.err.println("Invalid arguments");
             System.err.println("Usage: GenerateCatalog <version prefix> <label> <url prefix> file [ file...]");
@@ -60,14 +60,14 @@ public class GenerateCatalog {
         }
         new GenerateCatalog(args).run();
     }
-    
+
     private GenerateCatalog(String[] args) {
         graalVersionPrefix = args[0];
         label = args[1];
         urlPrefix = args[2].trim();
         this.archives = Arrays.asList(args).subList(3, args.length);
     }
-    
+
     private static byte[] computeHash(File f) throws IOException {
         MessageDigest fileDigest;
         try {
@@ -77,8 +77,8 @@ public class GenerateCatalog {
         }
         ByteBuffer bb = ByteBuffer.allocate(2048);
         try (
-            InputStream is = new FileInputStream(f);
-            ReadableByteChannel bch = Channels.newChannel(is)) {
+                        InputStream is = new FileInputStream(f);
+                        ReadableByteChannel bch = Channels.newChannel(is)) {
             int read;
             while (true) {
                 read = bch.read(bb);
@@ -90,7 +90,7 @@ public class GenerateCatalog {
                 bb.clear();
             }
         }
-        
+
         return fileDigest.digest();
     }
 
@@ -104,8 +104,7 @@ public class GenerateCatalog {
 
     public void run() throws IOException {
         catalogS.append(MessageFormat.format(
-            "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY
-        ));
+                        "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY));
         for (String spec : archives) {
             File f = new File(spec);
             if (!f.exists()) {
@@ -116,7 +115,7 @@ public class GenerateCatalog {
                 Attributes atts = jf.getManifest().getMainAttributes();
                 String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase();
                 String bl = atts.getValue(BundleConstants.BUNDLE_NAME);
-                
+
                 if (bid == null) {
                     throw new IOException("Missing bundle id in " + spec);
                 }
@@ -125,22 +124,18 @@ public class GenerateCatalog {
                 }
                 String url = (urlPrefix.isEmpty()) ? f.getName() : urlPrefix + "/" + f.getName();
                 catalogS.append(MessageFormat.format(
-                    "Component.{0}.{1}={2}\n", graalVersionPrefix, bid, url
-                ));
+                                "Component.{0}.{1}={2}\n", graalVersionPrefix, bid, url));
                 catalogS.append(MessageFormat.format(
-                    "Component.{0}.{1}-hash={2}\n", graalVersionPrefix, bid, digest2String(hash)
-                ));
+                                "Component.{0}.{1}-hash={2}\n", graalVersionPrefix, bid, digest2String(hash)));
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
-                    
+
                     catalogS.append(MessageFormat.format(
-                        "Component.{0}.{1}-{2}={3}\n", graalVersionPrefix, bid, key, val
-                    ));
+                                    "Component.{0}.{1}-{2}={3}\n", graalVersionPrefix, bid, key, val));
                 }
             }
         }
         System.out.println(catalogS);
     }
 }
-        

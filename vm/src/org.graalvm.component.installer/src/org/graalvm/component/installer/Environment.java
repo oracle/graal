@@ -52,9 +52,9 @@ final class Environment implements Feedback, CommandInput {
     private Supplier<ComponentRegistry> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
-    private Iterable<ComponentParam>    fileIterable;
-    private Map<Path, String>   fileMap = new HashMap<>();
-    
+    private Iterable<ComponentParam> fileIterable;
+    private Map<Path, String> fileMap = new HashMap<>();
+
     private Path graalHome;
 
     public Environment(String commandName, InstallerCommand cmdInstance, List<String> parameters, Map<String, String> options) {
@@ -70,7 +70,7 @@ final class Environment implements Feedback, CommandInput {
         } else {
             bundle = BUNDLE;
         }
-        
+
         this.fileIterable = new FileIterable(this, this);
     }
 
@@ -98,7 +98,7 @@ final class Environment implements Feedback, CommandInput {
     public void setComponentRegistry(Supplier<ComponentRegistry> _registrySupplier) {
         this.registrySupplier = _registrySupplier;
     }
-    
+
     public void setGraalHome(Path f) {
         this.graalHome = f;
 
@@ -153,7 +153,7 @@ final class Environment implements Feedback, CommandInput {
     public void outputPart(String bundleKey, Object... args) {
         print(false, false, bundle, out, bundleKey, args);
     }
-    
+
     @Override
     public boolean verboseOutput(String bundleKey, Object... args) {
         print(true, bundle, out, bundleKey, args);
@@ -304,7 +304,7 @@ final class Environment implements Feedback, CommandInput {
         }
         print(beVerbose, true, msgBundle, stm, bundleKey, args);
     }
-    
+
     private void print(boolean beVerbose, boolean addNewline, ResourceBundle msgBundle, PrintStream stm, String bundleKey, Object... args) {
         if (beVerbose && !this.verbose) {
             return;

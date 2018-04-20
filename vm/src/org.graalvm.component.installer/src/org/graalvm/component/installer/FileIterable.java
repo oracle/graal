@@ -39,7 +39,7 @@ public class FileIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
     private boolean verifyJars;
-            
+
     public FileIterable(CommandInput _input, Feedback fb) {
         this.input = _input;
         this.feedback = fb;
@@ -53,7 +53,7 @@ public class FileIterable implements ComponentIterable {
     public void setVerifyJars(boolean verifyJars) {
         this.verifyJars = verifyJars;
     }
-    
+
     private File getFile(String pathSpec) {
         File f = new File(pathSpec);
         if (f.exists()) {
@@ -76,9 +76,9 @@ public class FileIterable implements ComponentIterable {
             }
         };
     }
-    
+
     public static class FileComponent implements ComponentParam {
-        private final File  localFile;
+        private final File localFile;
         private ComponentPackageLoader loader;
         private JarFile jf;
         private final boolean verifyJars;
@@ -96,7 +96,7 @@ public class FileIterable implements ComponentIterable {
                 if (jf == null) {
                     jf = new JarFile(localFile, verifyJars);
                 }
-                loader =  new ComponentPackageLoader(jf, feedback);
+                loader = new ComponentPackageLoader(jf, feedback);
             }
             return loader;
         }
@@ -114,7 +114,7 @@ public class FileIterable implements ComponentIterable {
         public MetadataLoader createFileLoader() throws IOException {
             return createMetaLoader();
         }
-        
+
         @Override
         public JarFile getFile() throws IOException {
             if (loader != null) {
@@ -149,6 +149,6 @@ public class FileIterable implements ComponentIterable {
         public String getShortName() {
             return localFile.getName();
         }
-    
+
     }
 }

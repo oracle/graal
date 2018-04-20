@@ -271,11 +271,9 @@ public class Installer implements Closeable {
         // replace paths with the really tracked ones
         componentInfo.setPaths(ll);
         rebuildPolyglot = componentInfo.isPolyglotRebuild() ||
-                    ll.stream()
-                        .filter(
-                            (p) -> p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
-                        .findAny()
-                        .isPresent();
+                        ll.stream().filter(p -> p.startsWith(CommonConstants.PATH_POLYGLOT_REGISTRY))
+                                        .findAny()
+                                        .isPresent();
     }
 
     void installFinish() throws IOException {

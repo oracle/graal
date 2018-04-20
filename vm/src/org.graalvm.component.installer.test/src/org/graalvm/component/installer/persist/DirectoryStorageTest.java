@@ -179,7 +179,7 @@ public class DirectoryStorageTest extends TestBase {
         copyDir("list1", registryPath);
         ComponentInfo info = storage.loadComponentMetadata("fastr-2");
         assertEquals("org.graalvm.fastr", info.getId());
-        
+
         assertTrue(info.isPolyglotRebuild());
         assertTrue(info.getWorkingDirectories().contains("jre/languages/test/scrap"));
         assertTrue(info.getWorkingDirectories().contains("jre/lib/test/scrapdir"));
@@ -373,9 +373,8 @@ public class DirectoryStorageTest extends TestBase {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
         info.setPolyglotRebuild(true);
         info.addWorkingDirectories(Arrays.asList(
-                "jre/languages/test/scrap",
-                "jre/lib/test/scrapdir"
-        ));
+                        "jre/languages/test/scrap",
+                        "jre/lib/test/scrapdir"));
 
         Path p = registryPath.resolve("x.component");
         assertFalse(Files.exists(p));
@@ -388,10 +387,11 @@ public class DirectoryStorageTest extends TestBase {
         List<String> golden = Files.readAllLines(dataFile("golden-save-optional.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
                         .collect(Collectors.toList());
-        
+
         assertEquals(golden, lines);
 
     }
+
     @Test
     public void saveComponentFiles() throws Exception {
         ComponentInfo info = new ComponentInfo("x", "y", "2.0");
@@ -411,5 +411,5 @@ public class DirectoryStorageTest extends TestBase {
 
         assertEquals(golden, lines);
     }
-    
+
 }

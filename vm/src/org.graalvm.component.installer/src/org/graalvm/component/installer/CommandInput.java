@@ -71,7 +71,7 @@ public interface CommandInput {
      * @return Registry of available components.
      */
     public ComponentRegistry getRegistry();
-    
+
     /**
      * @return Registry of local components.
      */

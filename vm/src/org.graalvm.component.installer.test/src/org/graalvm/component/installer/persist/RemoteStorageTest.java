@@ -58,34 +58,34 @@ public class RemoteStorageTest extends TestBase {
     private MockStorage storage;
     private ComponentRegistry localRegistry;
     private Properties catalogProps = new Properties();
-    
+
     @Rule public ExpectedException exception = ExpectedException.none();
 
     @Before
     public void setUp() throws Exception {
         storage = new MockStorage();
         localRegistry = new ComponentRegistry(this, storage);
-        remStorage = new RemoteStorage(this, localRegistry, catalogProps, TEST_GRAAL_VERSION, 
-                new URL(TEST_BASE_URL));
+        remStorage = new RemoteStorage(this, localRegistry, catalogProps, TEST_GRAAL_VERSION,
+                        new URL(TEST_BASE_URL));
         try (InputStream is = getClass().getResourceAsStream("catalog")) {
             catalogProps.load(is);
         }
     }
-    
+
     private void loadCatalog(String s) throws IOException {
         catalogProps.clear();
         try (InputStream is = getClass().getResourceAsStream(s)) {
             catalogProps.load(is);
         }
     }
-    
+
     @Test
     public void testListIDs() throws Exception {
         Set<String> ids = remStorage.listComponentIDs();
-        
+
         List<String> l = new ArrayList<>(ids);
         Collections.sort(l);
-        
+
         assertEquals(Arrays.asList("r", "ruby"), l);
     }
 
@@ -95,7 +95,7 @@ public class RemoteStorageTest extends TestBase {
         assertEquals("FastR 0.33-dev", rInfo.getName());
         assertEquals("R", rInfo.getId());
     }
-    
+
     @Test
     public void testRelativeRemoteURL() throws Exception {
         ComponentInfo rInfo = remStorage.loadComponentMetadata("r");
@@ -108,7 +108,7 @@ public class RemoteStorageTest extends TestBase {
         // load good compoennt:
         ComponentInfo rInfo = remStorage.loadComponentMetadata("ruby");
         assertEquals("ruby", rInfo.getId());
-        
+
         // and now bad component
         exception.expect(MalformedURLException.class);
         rInfo = remStorage.loadComponentMetadata("r");
@@ -120,7 +120,7 @@ public class RemoteStorageTest extends TestBase {
         // load good compoennt:
         ComponentInfo rInfo = remStorage.loadComponentMetadata("r");
         assertEquals("R", rInfo.getId());
-        
+
         // and now bad component
         exception.expect(MetadataException.class);
         exception.expectMessage("ERROR_InvalidVersion");
@@ -128,53 +128,53 @@ public class RemoteStorageTest extends TestBase {
     }
 
     static byte[] truffleruby2Hash = {
-        (byte)0xae,
-        (byte)0xd6,
-        0x7c,
-        0x4d, 
-        0x3c,
-        0x04,
-        0x01,
-        0x15,
-        0x13,
-        (byte)0xf8,
-        (byte)0x94,
-        0x0b,
-        (byte)0xf6,
-        (byte)0xe6,
-        (byte)0xea,
-        0x22,
-        0x5d,
-        0x34,
-        0x5c,
-        0x27,
-        (byte)0xa1,
-        (byte)0xa3,
-        (byte)0xcd,
-        (byte)0xe4,
-        (byte)0xdd,
-        0x0c,
-        0x46,
-        0x36,
-        0x45,
-        0x3f,
-        0x42,
-        (byte)0xba
+                    (byte) 0xae,
+                    (byte) 0xd6,
+                    0x7c,
+                    0x4d,
+                    0x3c,
+                    0x04,
+                    0x01,
+                    0x15,
+                    0x13,
+                    (byte) 0xf8,
+                    (byte) 0x94,
+                    0x0b,
+                    (byte) 0xf6,
+                    (byte) 0xe6,
+                    (byte) 0xea,
+                    0x22,
+                    0x5d,
+                    0x34,
+                    0x5c,
+                    0x27,
+                    (byte) 0xa1,
+                    (byte) 0xa3,
+                    (byte) 0xcd,
+                    (byte) 0xe4,
+                    (byte) 0xdd,
+                    0x0c,
+                    0x46,
+                    0x36,
+                    0x45,
+                    0x3f,
+                    0x42,
+                    (byte) 0xba
     };
-    
+
     static String truffleruby2HashString = "aed67c4d3c04011513f8940bf6e6ea225d345c27a1a3cde4dd0c4636453f42ba";
     static String truffleruby2HashString2 = "ae:d6:7c:4d:3c:04:01:15:13:f8:94:0b:f6:e6:ea:22:5d:34:5c:27:a1:a3:cd:e4:dd:0c:46:36:45:3f:42:ba";
-    
+
     @Test
     public void testHashString() throws Exception {
         byte[] bytes = RemoteStorage.toHashBytes("test", truffleruby2HashString, this);
         assertArrayEquals(truffleruby2Hash, bytes);
     }
-    
+
     @Test
     public void testHashStringDivided() throws Exception {
         byte[] bytes = RemoteStorage.toHashBytes("test", truffleruby2HashString2, this);
         assertArrayEquals(truffleruby2Hash, bytes);
     }
-    
+
 }

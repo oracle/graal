@@ -188,7 +188,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
     public List<InstallerStopException> getErrors() {
         return errors;
     }
-    
+
     private void loadWorkingDirectories() {
         String val = parseHeader(BundleConstants.BUNDLE_WORKDIRS, null).getContents("");
         Set<String> workDirs = new LinkedHashSet<>();
@@ -212,7 +212,7 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                         },
                         () -> info.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
                         () -> loadWorkingDirectories()
-                        
+
         );
         return info;
     }

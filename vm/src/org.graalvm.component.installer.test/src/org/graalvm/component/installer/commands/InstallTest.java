@@ -116,10 +116,10 @@ public class InstallTest extends CommandTestBase {
         }
         assertFalse(Files.list(targetPath).findFirst().isPresent());
     }
-    
+
     private String errorKey;
     private String msg;
-    
+
     @Test
     public void testIgnoreFailedInstall() throws IOException {
         options.put(Commands.OPTION_VALIDATE, "");
@@ -127,23 +127,23 @@ public class InstallTest extends CommandTestBase {
         files.add(dataFile("truffleruby-i386.zip").toFile());
         inst = new InstallCommand();
         inst.init(this, withBundle(InstallCommand.class));
-        
+
         inst.setIgnoreFailures(true);
-        
+
         delegateFeedback(new FeedbackAdapter() {
             @Override
             public void error(String key, Throwable t, Object... params) {
                 errorKey = key;
                 msg = t.getMessage();
             }
-            
+
         });
-        
+
         inst.execute();
         assertFalse(Files.list(targetPath).findFirst().isPresent());
         assertEquals("VERIFY_Dependency_Failed", msg);
         assertEquals("INSTALL_IgnoreFailedInstallation2", errorKey);
-        
+
     }
 
     @Test
@@ -183,7 +183,7 @@ public class InstallTest extends CommandTestBase {
         exception.expectMessage("VERIFY_ComponentExists");
         inst.execute();
     }
-    
+
     Iterable<ComponentParam> componentIterable;
 
     @Override
@@ -191,24 +191,23 @@ public class InstallTest extends CommandTestBase {
         if (componentIterable != null) {
             return componentIterable;
         }
-        return super.existingFiles(); 
+        return super.existingFiles();
     }
-    
+
     @Test
     public void testFailOnExistingFromCatalog() throws Exception {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
-        
+
         URL u = new URL("test://graal.us.oracle.com/download/catalog");
         URL u2 = new URL(u, "graalvm-ruby.zip");
-        
+
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         componentIterable = new CatalogIterable(this, this,
-                   new RemoteCatalogDownloader(
-                           this, 
-                           this.getLocalRegistry(), 
-                           u
-                   ));
+                        new RemoteCatalogDownloader(
+                                        this,
+                                        this.getLocalRegistry(),
+                                        u));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
         textParams.add("ruby");
         files.clear();
@@ -220,7 +219,7 @@ public class InstallTest extends CommandTestBase {
         } catch (DependencyException.Conflict ex) {
             assertEquals("VERIFY_ComponentExists", ex.getMessage());
         }
-        
+
         assertFalse(Handler.isVisited(u2));
     }
 

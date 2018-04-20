@@ -41,13 +41,13 @@ import java.util.logging.Logger;
 public class MockURLConnection extends URLConnection {
     private final URLConnection clu;
     private final IOException theException;
-    
+
     public MockURLConnection(URLConnection clu, URL url, IOException theException) {
         super(url);
         this.clu = clu;
         this.theException = theException != null ? theException : new FileNotFoundException();
     }
-    
+
     @Override
     public InputStream getInputStream() throws IOException {
         connect();

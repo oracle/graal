@@ -299,9 +299,9 @@ public class TestBase implements Feedback {
             sb.append('\b');
         }
         if (beVerbose) {
-            verbosePart((ResourceBundle)null, sb.toString());
+            verbosePart((ResourceBundle) null, sb.toString());
         } else {
-            output((ResourceBundle)null, sb.toString());
+            output((ResourceBundle) null, sb.toString());
         }
         return verbose;
     }
@@ -345,7 +345,7 @@ public class TestBase implements Feedback {
 
     @Override
     public void bindFilename(Path file, String label) {
-        
+
     }
 
     class WB implements Feedback {
@@ -406,7 +406,7 @@ public class TestBase implements Feedback {
 
         @Override
         public void outputPart(String bundleKey, Object... params) {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            throw new UnsupportedOperationException("Not supported yet.");
         }
 
         @Override
@@ -495,7 +495,7 @@ public class TestBase implements Feedback {
         @Override
         public void bindFilename(Path file, String label) {
         }
-        
+
     }
 
 }

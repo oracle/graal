@@ -50,9 +50,9 @@ public class DownloadURLIterable implements ComponentIterable {
 
     @Override
     public void setVerifyJars(boolean verify) {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        throw new UnsupportedOperationException("Not supported yet.");
     }
-    
+
     class It implements Iterator<ComponentParam> {
 
         @Override
@@ -75,5 +75,5 @@ public class DownloadURLIterable implements ComponentIterable {
             return p;
         }
     }
-    
+
 }

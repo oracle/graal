@@ -120,17 +120,18 @@ public class InfoCommand extends QueryCommandBase {
             for (ComponentParam cp : input.existingFiles()) {
                 try {
                     // verifyjar set to false, as Verifier is not supported in SVM
-//                    components.add(ldr = new ComponentPackageLoader(new JarFile(f, false), feedback));
+                    // components.add(ldr = new ComponentPackageLoader(new JarFile(f, false),
+                    // feedback));
                     MetadataLoader ldr = cp.createMetaLoader();
-                    
-                    components.add(cp); 
+
+                    components.add(cp);
                     loadComponentDetails(cp, ldr);
-//                    registerFile(f, ldr.getComponentInfo(), ldr);
+                    // registerFile(f, ldr.getComponentInfo(), ldr);
                     addComponent(cp, ldr.getComponentInfo());
                 } catch (ZipException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_ErrorOpeningBundle", ex,
-//                                        feedback.translateFilename(f.toPath()),
+                                        // feedback.translateFilename(f.toPath()),
                                         cp.getDisplayName(),
                                         ex.getLocalizedMessage());
                     } else {
@@ -139,7 +140,7 @@ public class InfoCommand extends QueryCommandBase {
                 } catch (MetadataException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_CorruptedBundleMetadata", ex,
-//                                        feedback.translateFilename(f.toPath()),
+                                        // feedback.translateFilename(f.toPath()),
                                         cp.getDisplayName(),
                                         ex.getOffendingHeader(),
                                         ex.getLocalizedMessage());
@@ -149,7 +150,7 @@ public class InfoCommand extends QueryCommandBase {
                 } catch (IOException ex) {
                     if (ignoreOpenErrors) {
                         feedback.error("INFO_ErrorReadingBundle", ex,
-//                                        feedback.translateFilename(f.toPath()),
+                                        // feedback.translateFilename(f.toPath()),
                                         cp.getDisplayName(),
                                         ex.getLocalizedMessage());
                     } else {
@@ -242,8 +243,7 @@ public class InfoCommand extends QueryCommandBase {
                 }
             }
 
-            Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), info)
-                            .collect(true);
+            Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), info).collect(true);
             if (vfy.validateRequirements().hasErrors()) {
                 feedback.message("INFO_ComponentWillNotInstall", info.getId());
                 for (DependencyException ex : vfy.getErrors()) {

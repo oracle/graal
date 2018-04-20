@@ -37,10 +37,10 @@ public class SimpleGetopt {
     private LinkedList<String> parameters;
     private final Map<String, String> globalOptions;
     private final Map<String, Map<String, String>> commandOptions = new HashMap<>();
-    
+
     private final Map<String, String> optValues = new HashMap<>();
     private final LinkedList<String> positionalParameters = new LinkedList<>();
-    
+
     private String command;
 
     public SimpleGetopt(Map<String, String> globalOptions) {
@@ -50,12 +50,12 @@ public class SimpleGetopt {
     public void setParameters(LinkedList<String> parameters) {
         this.parameters = parameters;
     }
-    
+
     // overridable by tests
     void err(String messageKey, Object... args) {
         ComponentInstaller.err(messageKey, args);
     }
-    
+
     private String findCommand(String cmdString) {
         String cmd = cmdString;
         if (cmd.isEmpty()) {
@@ -130,7 +130,7 @@ public class SimpleGetopt {
             }
         }
     }
-    
+
     private String processOptSpec(String o, int optCharIndex, String _param, boolean nextParam) {
         String param = _param;
         String optSpec = null;
@@ -184,7 +184,7 @@ public class SimpleGetopt {
     public String getCommand() {
         return command;
     }
-    
+
     public void addCommandOptions(String commandName, Map<String, String> optSpec) {
         commandOptions.put(commandName, optSpec);
     }

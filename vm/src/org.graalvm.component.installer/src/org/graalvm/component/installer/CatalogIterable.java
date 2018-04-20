@@ -46,7 +46,7 @@ import org.graalvm.component.installer.persist.MetadataLoader;
 public class CatalogIterable implements ComponentIterable {
     private final CommandInput input;
     private final Feedback feedback;
-    private final Supplier<ComponentRegistry>   registrySupplier;
+    private final Supplier<ComponentRegistry> registrySupplier;
     private ComponentRegistry remoteRegistry;
     private boolean verifyJars;
 
@@ -69,14 +69,14 @@ public class CatalogIterable implements ComponentIterable {
     public Iterator<ComponentParam> iterator() {
         return new It();
     }
-    
+
     ComponentRegistry getRegistry() {
         if (remoteRegistry == null) {
             remoteRegistry = registrySupplier.get();
         }
         return remoteRegistry;
     }
-    
+
     private class It implements Iterator<ComponentParam> {
 
         @Override
@@ -87,27 +87,26 @@ public class CatalogIterable implements ComponentIterable {
         @Override
         public ComponentParam next() {
             String s = input.nextParameter();
-            
+
             if (!getRegistry().getComponentIDs().contains(s.toLowerCase())) {
                 throw feedback.failure("REMOTE_UnknownComponentId", null, s);
             }
-            
+
             ComponentInfo info = getRegistry().loadSingleComponent(s, false);
             if (info == null) {
                 throw feedback.failure("REMOTE_UnknownComponentId", null, s);
             }
             boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
             RemoteComponentParam param = new RemoteComponentParam(
-                    info,
-                    feedback.l10n("REMOTE_ComponentFileLabel", s), 
-                    s,
-                    feedback, progress
-            );
+                            info,
+                            feedback.l10n("REMOTE_ComponentFileLabel", s),
+                            s,
+                            feedback, progress);
             param.setVerifyJars(verifyJars);
             return param;
         }
     }
-    
+
     static class RemoteComponentParam implements ComponentParam, MetadataLoader {
         private final URL remoteURL;
         private final String dispName;
@@ -115,7 +114,7 @@ public class CatalogIterable implements ComponentIterable {
         private final Feedback feedback;
         private final ComponentInfo catalogInfo;
         private final boolean progress;
-        
+
         private boolean verifyJars;
         private JarFile file;
         private MetadataLoader fileLoader;
@@ -129,7 +128,7 @@ public class CatalogIterable implements ComponentIterable {
             this.progress = _progress;
             this.remoteURL = _catalogInfo.getRemoteURL();
         }
-        
+
         public RemoteComponentParam(URL _remoteURL, String _dispName, String _spec, Feedback _feedback, boolean _progress) {
             this.catalogInfo = null;
             this.dispName = _dispName;
@@ -138,7 +137,7 @@ public class CatalogIterable implements ComponentIterable {
             this.remoteURL = _remoteURL;
             this.progress = _progress;
         }
-        
+
         @Override
         public String getSpecification() {
             return spec;
@@ -152,7 +151,7 @@ public class CatalogIterable implements ComponentIterable {
         @Override
         public MetadataLoader createMetaLoader() throws IOException {
             if (catalogInfo != null) {
-                return this;    
+                return this;
             } else {
                 return createFileLoader();
             }
@@ -167,7 +166,7 @@ public class CatalogIterable implements ComponentIterable {
             if (fileLoader != null) {
                 return fileLoader;
             }
-            
+
             JarFile f = getFile();
             fileLoader = new ComponentPackageLoader(f, feedback) {
                 @Override
@@ -177,7 +176,7 @@ public class CatalogIterable implements ComponentIterable {
                     complete = true;
                     return i;
                 }
-                
+
             };
             this.file = f;
             return fileLoader;
@@ -189,8 +188,8 @@ public class CatalogIterable implements ComponentIterable {
                 return file;
             }
             FileDownloader dn = new FileDownloader(
-                    feedback.l10n("REMOTE_ComponentFileLabel", spec), 
-                    remoteURL, feedback);
+                            feedback.l10n("REMOTE_ComponentFileLabel", spec),
+                            remoteURL, feedback);
             if (catalogInfo != null) {
                 dn.setShaDigest(catalogInfo.getShaDigest());
             }

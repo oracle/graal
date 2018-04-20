@@ -92,7 +92,7 @@ public interface Commands {
      * Validate only
      */
     String OPTION_VALIDATE = "y";
-    
+
     /**
      * Full validation, may require download of components
      */
@@ -122,10 +122,10 @@ public interface Commands {
      * Interpret paramters as URLs
      */
     String OPTION_URLS = "u";
-    
+
     /**
-     * When present on a command, will terminate option processing and all parameters
-     * will be passed on as positionals.
+     * When present on a command, will terminate option processing and all parameters will be passed
+     * on as positionals.
      */
     String DO_NOT_PROCESS_OPTIONS = "*";
 }

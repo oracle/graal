@@ -83,12 +83,12 @@ public class InstallCommand implements InstallerCommand {
 
     public InstallCommand() {
     }
-    
-    List<ComponentParam>    components = new ArrayList<>();
+
+    List<ComponentParam> components = new ArrayList<>();
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
-    
+
     private String current;
-    
+
     @Override
     public int execute() throws IOException {
         if (input.optValue(Commands.OPTION_HELP) != null) {
@@ -105,14 +105,14 @@ public class InstallCommand implements InstallerCommand {
         }
         return 0;
     }
-    
+
     void prepareInstallation() throws IOException {
         for (ComponentParam p : input.existingFiles()) {
 
             feedback.output("INSTALL_VerboseProcessingArchive", /* feedback.translateFilename( */p.getDisplayName());
             current = p.getSpecification();
-            Installer inst = createInstaller(p, 
-                    validateDownload ? p.createFileLoader() : p.createMetaLoader());
+            Installer inst = createInstaller(p,
+                            validateDownload ? p.createFileLoader() : p.createMetaLoader());
             installers.add(inst);
             if (p.isComplete()) {
                 realInstallers.put(p, inst);
@@ -149,7 +149,7 @@ public class InstallCommand implements InstallerCommand {
     public void setValidateDownload(boolean validateDownload) {
         this.validateDownload = validateDownload;
     }
-    
+
     void executeStep(Step s, boolean close) throws IOException {
         boolean ok = false;
         try {
@@ -190,11 +190,11 @@ public class InstallCommand implements InstallerCommand {
             }
         }
     }
-    
+
     private interface Step {
         public void execute() throws IOException;
     }
-    
+
     void doInstallation() throws IOException {
         // now create real installers for parameters which were omitted
         for (ComponentParam p : new ArrayList<>(realInstallers.keySet())) {
@@ -202,7 +202,7 @@ public class InstallCommand implements InstallerCommand {
             if (i == null) {
                 i = createInstaller(p, p.createFileLoader());
                 installers.add(i);
-                
+
                 if (validateBeforeInstall) {
                     current = i.getComponentInfo().getName();
                     i.validateAll();
@@ -266,44 +266,32 @@ public class InstallCommand implements InstallerCommand {
             inst.setDryRun(true);
         }
     }
-    
+
     Map<String, String> permissions;
     Map<String, String> symlinks;
-    ComponentInfo   fullInfo;
+    ComponentInfo fullInfo;
 
     Installer createInstaller(ComponentParam p, MetadataLoader ldr) throws IOException {
         ComponentInfo partialInfo;
-        try {
-            partialInfo = p.createMetaLoader().getComponentInfo();
-            feedback.verboseOutput("INSTALL_PrepareToInstall", 
-                    /* feedback.translateFilename(*/ p.getDisplayName(), 
-                    partialInfo.getId(), 
-                    partialInfo.getVersionString(),
-                            partialInfo.getName());
-            ldr.loadPaths();
-            Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry());
-            String path = ldr.getLicensePath();
-            if (path != null) {
-                inst.setLicenseRelativePath(Paths.get(ldr.getLicensePath()));
-            }
-            inst.setPermissions(ldr.loadPermissions());
-            inst.setSymlinks(ldr.loadSymlinks());
-            if (p.isComplete()) {
-                inst.setJarFile(p.getFile());
-            }
-            configureInstaller(inst);
-            return inst;
-        } finally {
-            /*
-            if (!ok) {
-                try {
-                    jf.close();
-                } catch (IOException ex) {
-                    feedback.error("INSTALL_ErrorClosingFile", ex, feedback.translateFilename(file.toPath()), ex.getMessage());
-                }
-            }
-            */
+        partialInfo = p.createMetaLoader().getComponentInfo();
+        feedback.verboseOutput("INSTALL_PrepareToInstall",
+                        /* feedback.translateFilename( */ p.getDisplayName(),
+                        partialInfo.getId(),
+                        partialInfo.getVersionString(),
+                        partialInfo.getName());
+        ldr.loadPaths();
+        Installer inst = new Installer(feedback, partialInfo, input.getLocalRegistry());
+        String path = ldr.getLicensePath();
+        if (path != null) {
+            inst.setLicenseRelativePath(Paths.get(ldr.getLicensePath()));
         }
+        inst.setPermissions(ldr.loadPermissions());
+        inst.setSymlinks(ldr.loadSymlinks());
+        if (p.isComplete()) {
+            inst.setJarFile(p.getFile());
+        }
+        configureInstaller(inst);
+        return inst;
 
     }
 }
