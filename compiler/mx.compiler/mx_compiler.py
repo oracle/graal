@@ -1164,13 +1164,17 @@ def updategraalinopenjdk(args):
         if not exists(m_src_dir):
             mx.abort(jdkrepo + ' does not look like a JDK repo - ' + m_src_dir + ' does not exist')
 
-    out = mx.OutputCapture()
+    def run_output(args, cwd=None):
+        out = mx.OutputCapture()
+        mx.run(args, cwd=cwd, out=out, err=out)
+        return out.data
+
     for m in graal_modules:
         m_src_dir = join('src', m.name)
         mx.log('Checking ' + m_src_dir)
-        mx.run(['hg', 'status', m_src_dir], cwd=jdkrepo, out=out, err=out)
-        if out.data:
-            mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out.data[:min(200, len(out.data))] + '...')
+        out = run_output(['hg', 'status', m_src_dir], cwd=jdkrepo)
+        if out:
+            mx.abort(jdkrepo + ' is not "hg clean":' + '\n' + out[:min(200, len(out))] + '...')
 
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
@@ -1250,27 +1254,36 @@ def updategraalinopenjdk(args):
                         with open(dst_file, 'w') as fp:
                             fp.write(contents)
     mx.log('Adding new files to HG...')
+    overwritten = ''
     for m in graal_modules:
         m_src_dir = join('src', m.name)
+        out = run_output(['hg', 'log', '-r', 'last(keyword("Update Graal"))', '--template', '{rev}', m_src_dir], cwd=jdkrepo)
+        last_graal_update = out.strip()
+        if last_graal_update:
+            overwritten += run_output(['hg', 'diff', '-r', last_graal_update, '-r', 'tip', m_src_dir], cwd=jdkrepo)
         mx.run(['hg', 'add', m_src_dir], cwd=jdkrepo)
     mx.log('Removing old files from HG...')
     for m in graal_modules:
         m_src_dir = join('src', m.name)
-        mx.run(['hg', 'status', '-dn', m_src_dir], cwd=jdkrepo, out=out)
-        mx.run(['hg', 'rm'] + out.data.split(), cwd=jdkrepo)
+        out = run_output(['hg', 'status', '-dn', m_src_dir], cwd=jdkrepo)
+        if out:
+            mx.run(['hg', 'rm'] + out.split(), cwd=jdkrepo)
 
-    out.data = ''
-    mx.run(['git', 'tag', '-l', 'JDK*'], cwd=_suite.vc_dir, out=out)
-    last_jdk_tag = sorted(out.data.split())[0]
+    out = run_output(['git', 'tag', '-l', 'JDK*'], cwd=_suite.vc_dir)
+    last_jdk_tag = sorted(out.split())[0]
 
-    out.data = ''
     pretty = args.pretty or 'format:%h %ad %>(20) %an %s'
-    mx.run(['git', '--no-pager', 'log', '--merges', '--abbrev-commit', '--pretty=' + pretty, '--first-parent', '-r', last_jdk_tag + '..HEAD'] +
-            copied_source_dirs, cwd=_suite.vc_dir, out=out)
+    out = run_output(['git', '--no-pager', 'log', '--merges', '--abbrev-commit', '--pretty=' + pretty, '--first-parent', '-r', last_jdk_tag + '..HEAD'] +
+            copied_source_dirs, cwd=_suite.vc_dir)
     changes_file = 'changes-since-{}.txt'.format(last_jdk_tag)
     with open(changes_file, 'w') as fp:
-        fp.write(out.data)
-    mx.log('Saved changes since {} to {}'.format(last_jdk_tag, changes_file))
+        fp.write(out)
+    mx.log('Saved changes since {} to {}'.format(last_jdk_tag, os.path.abspath(changes_file)))
+    if overwritten:
+        overwritten_file = 'overwritten-diffs.txt'
+        with open(overwritten_file, 'w') as fp:
+            fp.write(overwritten)
+        mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
