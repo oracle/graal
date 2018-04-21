@@ -22,9 +22,10 @@ export PATH=$PWD/mx:$PATH
 ```
 
 Graal depends on a JDK that supports JVMCI ([JVM Compiler Interface](https://bugs.openjdk.java.net/browse/JDK-8062493)).
-Graal works with build 181 or later of [JDK9](https://jdk9.java.net/download/).
-JVMCI-enabled builds of JDK8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
-If you are not on one of these platforms (e.g., Windows), see [Building JVMCI JDK8](#building-jvmci-jdk8) below.
+Graal should work out of the box with JDK 9 or later.
+JVMCI-enabled builds of JDK 8 for selected platforms are available via [OTN](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+If you are not on one of these platforms (e.g., Windows), see [Building JVMCI JDK 8](#building-jvmci-jdk8) below.
+Note that these other platforms are not regularly tested so your mileage may vary.
 
 Once you have installed (or built) a JVMCI-enabled JDK, ensure `JAVA_HOME` is pointing at the JDK home directory (or at `<jdk_home>/Contents/Home` on Mac OS X if the JDK has this layout).
 
@@ -80,9 +81,9 @@ Further information can be found on the [Debugging](docs/Debugging.md) page.
 
 For video tutorials, presentations and publications on Graal visit the [Publications](../docs/Publications.md) page.
 
-## Building JVMCI JDK8
+## Building JVMCI JDK 8
 
-To create a JVMCI enabled JDK8 on other platforms (e.g., Windows):
+To create a JVMCI enabled JDK 8 on other platforms (e.g., Windows):
 
 ```
 git clone https://github.com/graalvm/graal-jvmci-8
