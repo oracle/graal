@@ -143,6 +143,18 @@ public class PolyglotNativeAPITypes {
 
     }
 
+    @CPointerTo(nameOfCType = "poly_engine_builder")
+    @CTypedef(name = "poly_engine_builder")
+    public interface PolyglotEngineBuilder extends PointerBase, ObjectHandle {
+    }
+
+    @CPointerTo(nameOfCType = "poly_engine_builder")
+    public interface PolyglotEngineBuilderPointer extends PointerBase, ObjectHandle {
+
+        void write(ObjectHandle value);
+
+    }
+
     @CPointerTo(nameOfCType = "poly_value")
     @CTypedef(name = "poly_value")
     public interface PolyglotValue extends PointerBase, ObjectHandle {

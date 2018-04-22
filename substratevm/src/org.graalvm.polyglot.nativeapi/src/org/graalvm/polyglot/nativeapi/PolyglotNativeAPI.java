@@ -70,6 +70,8 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotConte
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContextBuilderPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotContextPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngine;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngineBuilder;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEngineBuilderPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotEnginePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfoPointer;
@@ -113,6 +115,51 @@ public final class PolyglotNativeAPI {
             this.info = info;
             this.messageHolder = messageHolder;
         }
+    }
+
+    @CEntryPoint(name = "poly_create_engine_builder", documentation = {
+                    "Creates a new context builder that allows to configure an engine instance.",
+                    "",
+                    " @since 1.1",
+    })
+    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilderPointer result) {
+        return withHandledErrors(() -> {
+            ObjectHandle handle = createHandle(Engine.newBuilder());
+            result.write(handle);
+        });
+    }
+
+    @CEntryPoint(name = "poly_engine_builder_option", documentation = {
+                    "Sets an option for an <code>poly_engine_builder</code> that will apply to constructed engines.",
+                    "<p>",
+                    "",
+                    " @param engine_builder that is assigned an option.",
+                    " @param key_utf8 0 terminated and UTF-8 encoded key for the option.",
+                    " @param value_utf8 0 terminated and UTF-8 encoded value for the option.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.1",
+    })
+    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, @CConst CCharPointer key_utf8, @CConst CCharPointer value_utf8) {
+        return withHandledErrors(() -> {
+            Engine.Builder eb = fetchHandle(engine_builder);
+            eb.option(CTypeConversion.toJavaString(key_utf8), CTypeConversion.toJavaString(value_utf8));
+        });
+    }
+
+    @CEntryPoint(name = "poly_engine_builder_build", documentation = {
+                    "Builds an <code>engine</code> from an <code>engine_builder</code>. The same builder can be used to ",
+                    "produce multiple <code>poly_engine</code> instances.",
+                    "",
+                    " @param engine_builder that is used to build.",
+                    " @param result the created engine.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 1.1",
+    })
+    public static PolyglotStatus poly_engine_builder_build(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, PolyglotEnginePointer result) {
+        return withHandledErrors(() -> {
+            Engine.Builder engineBuilder = fetchHandle(engine_builder);
+            result.write(createHandle(engineBuilder.build()));
+        });
     }
 
     @CEntryPoint(name = "poly_create_engine", documentation = {
@@ -292,7 +339,7 @@ public final class PolyglotNativeAPI {
                     "Builds a <code>context</code> from a <code>context_builder</code>. The same builder can be used to ",
                     "produce multiple <code>poly_context</code> instances.",
                     "",
-                    " @param context_builder that is allowed all access.",
+                    " @param context_builder that is used to construct a new context.",
                     " @param result the created context.",
                     " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @since 1.0",
@@ -1423,7 +1470,8 @@ public final class PolyglotNativeAPI {
     @CEntryPoint(name = "poly_destroy_handle", documentation = {
                     "Destroys a poly_handle. After this point, the handle must not be used anymore. ",
                     "",
-                    "Handles are: poly_engine, poly_context, poly_context_builder, poly_language, poly_value, and poly_callback_info.",
+                    "Handles are: poly_engine, poly_engine_builder, poly_context, poly_context_builder, poly_language, poly_value, ",
+                    "and poly_callback_info.",
                     " @since 1.0",
     })
     public static PolyglotStatus poly_destroy_handle(PolyglotIsolateThread thread, PolyglotHandle handle) {
