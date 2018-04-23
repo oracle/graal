@@ -194,9 +194,6 @@ final class TextMap {
      * @throws IllegalArgumentException if there is no such line in the text.
      */
     public int lineStartOffset(int line) throws IllegalArgumentException {
-        if (textLength == 0) {
-            return 0;
-        }
         if (lineOutOfRange(line)) {
             throw new IllegalArgumentException("line out of bounds");
         }
@@ -210,9 +207,6 @@ final class TextMap {
      * @throws IllegalArgumentException if there is no such line in the text.
      */
     public int lineLength(int line) throws IllegalArgumentException {
-        if (textLength == 0) {
-            return 0;
-        }
         if (lineOutOfRange(line)) {
             throw new IllegalArgumentException("line out of bounds");
         }

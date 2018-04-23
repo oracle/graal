@@ -60,8 +60,6 @@ public class SourceTextTest {
         assertTrue(emptySource.getURI().toString().endsWith("emptySource"));
     }
 
-    // Temp disable of empty text tests
-
     @Test
     public void emptyTextTest1() {
         assertEquals(1, emptySource.getLineNumber(0));
@@ -77,8 +75,7 @@ public class SourceTextTest {
         emptySource.getLineNumber(-1);
     }
 
-    // @Test(expected = IllegalArgumentException.class)
-    @Test()
+    @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest4() {
         emptySource.getLineStartOffset(0);
     }
@@ -91,6 +88,26 @@ public class SourceTextTest {
     @Test
     public void emptyTextTest6() {
         assertEquals(0, emptySource.getLineLength(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest7() {
+        assertEquals(0, emptySource.getLineStartOffset(2));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest8() {
+        assertEquals(0, emptySource.getLineLength(2));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest9() {
+        assertEquals(0, emptySource.getLineStartOffset(0));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest10() {
+        assertEquals(0, emptySource.getLineLength(0));
     }
 
     @Test
