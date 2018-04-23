@@ -172,6 +172,15 @@ public abstract class VMThreads {
         private static final FastThreadLocalInt statusTL = FastThreadLocalFactory.createInt();
 
         /**
+         * Boolean flag whether safepoints are disabled. This is a separate thread local in addition
+         * to the {@link #statusTL} because we need the disabled flag to be "sticky": once
+         * safepoints are disabled, they must never be enabled again. Either the thread is getting
+         * detached, or a fatal error occurred and we are printing diagnostics before killing the
+         * VM.
+         */
+        private static final FastThreadLocalInt safepointsDisabledTL = FastThreadLocalFactory.createInt();
+
+        /**
          * {@link IsolateThread} memory has been allocated for the thread, but the thread is not on
          * the VMThreads list yet.
          */
@@ -182,25 +191,17 @@ public abstract class VMThreads {
         private static final int STATUS_IN_SAFEPOINT = STATUS_IN_JAVA + 1;
         /** The thread is running in native code. */
         private static final int STATUS_IN_NATIVE = STATUS_IN_SAFEPOINT + 1;
-        /** The thread has exited its run method. */
-        private static final int STATUS_IGNORE_SAFEPOINTS = STATUS_IN_NATIVE + 1;
-        /** The thread has exited its run method. */
-        private static final int STATUS_EXITED = STATUS_IGNORE_SAFEPOINTS + 1;
 
-        private static String statusToString(int status) {
+        private static String statusToString(int status, boolean safepointsDisabled) {
             switch (status) {
                 case STATUS_CREATED:
-                    return "STATUS_CREATED";
+                    return safepointsDisabled ? "STATUS_CREATED (safepoints disabled)" : "STATUS_CREATED";
                 case STATUS_IN_JAVA:
-                    return "STATUS_IN_JAVA";
+                    return safepointsDisabled ? "STATUS_IN_JAVA (safepoints disabled)" : "STATUS_IN_JAVA";
                 case STATUS_IN_SAFEPOINT:
-                    return "STATUS_IN_SAFEPOINT";
+                    return safepointsDisabled ? "STATUS_IN_SAFEPOINT (safepoints disabled)" : "STATUS_IN_SAFEPOINT";
                 case STATUS_IN_NATIVE:
-                    return "STATUS_IN_NATIVE";
-                case STATUS_EXITED:
-                    return "STATUS_EXITED";
-                case STATUS_IGNORE_SAFEPOINTS:
-                    return "STATUS_IGNORE_SAFEPOINTS";
+                    return safepointsDisabled ? "STATUS_IN_NATIVE (safepoints disabled)" : "STATUS_IN_NATIVE";
                 default:
                     return "STATUS error";
             }
@@ -210,7 +211,7 @@ public abstract class VMThreads {
 
         /** For debugging. */
         public static String getStatusString(IsolateThread vmThread) {
-            return statusToString(statusTL.getVolatile(vmThread));
+            return statusToString(statusTL.getVolatile(vmThread), isStatusIgnoreSafepoints(vmThread));
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -261,29 +262,17 @@ public abstract class VMThreads {
 
         @Uninterruptible(reason = "Called from uninterruptible code.")
         public static boolean isStatusIgnoreSafepoints(IsolateThread vmThread) {
-            return (statusTL.getVolatile(vmThread) == STATUS_IGNORE_SAFEPOINTS);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        public static boolean isStatusExited(IsolateThread vmThread) {
-            return (statusTL.getVolatile(vmThread) == STATUS_EXITED);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.")
-        public static void setStatusExited() {
-            statusTL.setVolatile(STATUS_EXITED);
+            return safepointsDisabledTL.getVolatile(vmThread) == 1;
         }
 
         /**
          * Make myself immune to safepoints. Set the thread status to ensure that the safepoint
-         * mechanism ignores me, and clear any pending safepoint requests, since I will not honor
-         * them. Use with care. It causes code to run slower in case of safepoint-requests (due to
-         * subsequent slow-path code execution).
+         * mechanism ignores me. It is not necessary to clear a pending safepoint request (i.e., to
+         * reset the safepoint counter) because the safepoint slow path is going to do that in case.
          */
         @Uninterruptible(reason = "Called from uninterruptible code.")
         public static void setStatusIgnoreSafepoints() {
-            statusTL.setVolatile(STATUS_IGNORE_SAFEPOINTS);
-            Safepoint.setSafepointRequested(Safepoint.SafepointRequestValues.RESET);
+            safepointsDisabledTL.setVolatile(1);
         }
     }
 }
