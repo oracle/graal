@@ -157,7 +157,7 @@ abstract class ToJavaNode extends Node {
             } else if (targetType.isArray()) {
                 return primitive.hasKeys(tValue);
             } else {
-                if (TruffleOptions.AOT) {
+                if (!TruffleOptions.AOT) {
                     if (JavaInterop.isJavaFunctionInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
                         return true;
                     } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
@@ -166,7 +166,7 @@ abstract class ToJavaNode extends Node {
                         return false;
                     }
                 } else {
-                    // support Function also without AOT
+                    // support Function also with AOT
                     if (targetType == Function.class) {
                         return isExecutable(tValue) || isInstantiable(tValue);
                     } else {
