@@ -25,6 +25,7 @@
 package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
+import static com.oracle.truffle.api.vm.VMAccessor.JAVAINTEROP;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
 
@@ -565,7 +566,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            return context.context.getHostContext().lookupGuest(symbolName);
+            HostContext hostContext = ((PolyglotLanguageContext) vmObject).context.getHostContextImpl();
+            Class<?> clazz = hostContext.findClass(symbolName);
+            if (clazz == null) {
+                return null;
+            }
+            return VMAccessor.JAVAINTEROP.asStaticClassObject(clazz, context);
         }
 
         @Override
@@ -652,6 +658,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 languageContext = valueImpl.languageContext;
             }
             return languageContext.toGuestValue(obj);
+        }
+
+        @Override
+        public Object boxGuestValue(Object guestObject, Object vmObject) {
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
+            return JAVAINTEROP.boxGuestObject(guestObject, languageContext);
         }
 
         @Override
@@ -894,7 +906,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         @Override
         public void addToHostClassPath(Object vmObject, TruffleFile entry) {
-            HostContext hostContext = (HostContext) ((PolyglotLanguageContext) vmObject).context.getHostContext().getContextImpl();
+            HostContext hostContext = ((PolyglotLanguageContext) vmObject).context.getHostContextImpl();
             hostContext.addToHostClasspath(entry);
         }
 

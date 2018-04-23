@@ -26,8 +26,10 @@ package com.oracle.truffle.api.interop.java;
 
 import java.lang.reflect.Type;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("deprecation")
@@ -80,6 +82,18 @@ final class JavaInteropAccessor extends Accessor {
             @Override
             public Object toGuestObject(Object obj, Object languageContext) {
                 return JavaInterop.asTruffleObject(obj, languageContext);
+            }
+
+            @Override
+            public Object boxGuestObject(Object hostObject, Object languageContext) {
+                if (isGuestPrimitive(hostObject)) {
+                    return JavaObject.forObject(hostObject, languageContext);
+                } else if (hostObject instanceof TruffleObject) {
+                    return hostObject;
+                } else {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new IllegalArgumentException("Provided value not an interop value.");
+                }
             }
 
             @Override

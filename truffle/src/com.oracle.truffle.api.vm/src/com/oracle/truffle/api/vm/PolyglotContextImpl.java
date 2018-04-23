@@ -62,6 +62,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 
 @SuppressWarnings("deprecation")
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -600,6 +601,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     PolyglotLanguageContext getHostContext() {
         return contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
+    }
+
+    HostContext getHostContextImpl() {
+        return (HostContext) getHostContext().getContextImpl();
     }
 
     PolyglotLanguageContext findLanguageContext(String languageId, String mimeType, boolean failIfNotFound) {
