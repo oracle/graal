@@ -308,7 +308,10 @@ public final class Safepoint {
             Safepoint.setSafepointRequested(Safepoint.SafepointRequestValues.RESET);
             return;
         }
-        VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Attempting to do a safepoint check when not in Java mode");
+
+        // GR-9505
+        // VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Attempting to do a safepoint
+        // check when not in Java mode");
 
         try {
             /*
@@ -360,10 +363,12 @@ public final class Safepoint {
     @SubstrateForeignCallTarget
     @Uninterruptible(reason = "Must not contain safepoint checks")
     private static void enterSlowPathNativeToJava() {
-        VMError.guarantee(!VMThreads.StatusSupport.isStatusJava(),
-                        "Attempting to do a Native-to-Java transition when already in Java mode");
-        VMError.guarantee(!VMThreads.StatusSupport.isStatusIgnoreSafepoints(CEntryPointContext.getCurrentIsolateThread()),
-                        "When safepoints are disabled, the thread can only be in Native mode, so the fast path transition must succeed and this slow path must not be called");
+        // GR-9505
+        // VMError.guarantee(!VMThreads.StatusSupport.isStatusJava(),
+        // "Attempting to do a Native-to-Java transition when already in Java mode");
+        // VMError.guarantee(!VMThreads.StatusSupport.isStatusIgnoreSafepoints(CEntryPointContext.getCurrentIsolateThread()),
+        // "When safepoints are disabled, the thread can only be in Native mode, so the fast path
+        // transition must succeed and this slow path must not be called");
 
         Statistics.incSlowPathFrozen();
         try {
