@@ -227,6 +227,40 @@ public class SourceSectionTest {
     }
 
     @Test
+    public void testEOF1() {
+        SourceSection section = shortSource.createSection(shortSource.getLength(), 0);
+        assertNotNull(section);
+        assertEquals(section.getCharIndex(), shortSource.getLength());
+        assertEquals(section.getCharLength(), 0);
+        assertEquals(section.getStartLine(), 1);
+        assertEquals(section.getEndLine(), 1);
+        assertEquals(section.getStartColumn(), 3);
+        assertEquals(section.getEndColumn(), 3);
+        assertEquals("", section.getCharacters());
+
+        SourceSection other = shortSource.createSection(shortSource.getLength(), 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
+    public void testEOF2() {
+        SourceSection section = longSource.createSection(longSource.getLength(), 0);
+        assertNotNull(section);
+        assertEquals(section.getCharIndex(), longSource.getLength());
+        assertEquals(section.getCharLength(), 0);
+        assertEquals(section.getStartLine(), 4);
+        assertEquals(section.getEndLine(), 4);
+        assertEquals(section.getStartColumn(), 1);
+        assertEquals(section.getEndColumn(), 1);
+        assertEquals("", section.getCharacters());
+
+        SourceSection other = longSource.createSection(longSource.getLength(), 0);
+        assertTrue(section.equals(other));
+        assertEquals(other.hashCode(), section.hashCode());
+    }
+
+    @Test
     public void onceObtainedAlwaysTheSame() throws Exception {
         File sample = File.createTempFile("hello", ".txt");
         sample.deleteOnExit();

@@ -130,10 +130,7 @@ final class TextMap {
      * @throws IllegalArgumentException if the offset is outside the string.
      */
     public int offsetToLine(int offset) throws IllegalArgumentException {
-        if (offset < 0 || offset >= textLength) {
-            if (offset == 0 && textLength == 0) {
-                return 1;
-            }
+        if (offset < 0 || offset > textLength) {
             throw new IllegalArgumentException("offset out of bounds");
         }
         return binarySearchLine(nlOffsets, offset) + 1;
