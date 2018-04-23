@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 1.0.0 RC2
 
  * Added notification when [multiple language contexts](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#initializeMultiContext--) were created for a language instance. Allows languages to invalidate assumptions only valid with a single context. Returning true also allows to enable caching of ASTs per language and not only per context.
+ * Added [boxGuestvalue](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#boxGuestvalue-java.lang.Object-) method that allows to expose host members for primitive interop values.
 
 ## Version 1.0.0 RC1
 
@@ -22,7 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [DebugStackTraceElement](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackTraceElement.html) as a representation of exception stack trace.
 * Added [Breakpoint.Kind](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Kind.html) to distinguish different breakpoint kinds.
 * Added [ResultVerifier.getDefaultResultVerifier](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/tck/ResultVerifier.html#getDefaultResultVerifier--).
-* Added [addToHostClassPath](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPolyglotBindings--) method that can be used to allow guest language users to add to the host class path.
+* Added [addToHostClassPath](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#addToHostClassPath-com.oracle.truffle.api.TruffleFile-) method that can be used to allow guest language users to add to the host class path.
 * Added new permission TruffleLanguage.Env#isNativeAccessAllowed to control access to the Truffle NFI.
 * Changed default permissions in language launchers to full access. The embedding API still defaults to restricted access.
 * Added [TruffleInstrument.onFinalize](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.html#onFinalize-com.oracle.truffle.api.instrumentation.TruffleInstrument.Env-) that can be overridden to be notified about closing of Engine, while still having access to other instruments.
