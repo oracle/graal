@@ -1261,7 +1261,7 @@ def updategraalinopenjdk(args):
             mx.run(['hg', 'rm'] + out.split(), cwd=jdkrepo)
 
     out = run_output(['git', 'tag', '-l', 'JDK*'], cwd=_suite.vc_dir)
-    last_jdk_tag = sorted(out.split())[0]
+    last_jdk_tag = sorted(out.split(), reverse=True)[0]
 
     pretty = args.pretty or 'format:%h %ad %>(20) %an %s'
     out = run_output(['git', '--no-pager', 'log', '--merges', '--abbrev-commit', '--pretty=' + pretty, '--first-parent', '-r', last_jdk_tag + '..HEAD'] +
