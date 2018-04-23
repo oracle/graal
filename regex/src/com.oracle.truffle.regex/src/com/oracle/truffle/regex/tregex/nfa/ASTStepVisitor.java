@@ -40,7 +40,6 @@ import org.graalvm.collections.EconomicMap;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
@@ -119,7 +118,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
         }
         stepCur = stepRoot;
         Term root = (Term) stepRoot.getRoot();
-        setTraversableLookBehindAssertions(expandState instanceof NFAState ? expandState.getFinishedLookBehinds() : Collections.emptySet());
+        setTraversableLookBehindAssertions(expandState.getFinishedLookBehinds());
         setCanTraverseCaret(root instanceof PositionAssertion && ast.getNfaAnchoredInitialStates().contains(root));
         run(root);
         curLookAheads.clear();

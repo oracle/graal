@@ -32,17 +32,14 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 
 public final class SetSourceSectionVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private SourceSection sourceSection;
 
-    public void run(Group root, SourceSection sourceSection) {
-        this.sourceSection = sourceSection;
+    public void run(Group root, SourceSection srcSection) {
+        this.sourceSection = srcSection;
         run(root);
     }
 

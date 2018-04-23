@@ -551,7 +551,7 @@ public final class DFAGenerator implements JsonConvertible {
         captureGroupTransitions.add(cgTransition);
     }
 
-    private DFACaptureGroupPartialTransitionNode createCGFinalTransition(NFAStateTransition transition) {
+    private static DFACaptureGroupPartialTransitionNode createCGFinalTransition(NFAStateTransition transition) {
         if (transition == null) {
             return null;
         }

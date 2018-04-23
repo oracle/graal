@@ -131,10 +131,6 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         setFlag(FLAG_LEADS_TO_FINAL_STATE);
     }
 
-    private boolean leadsToFinalState() {
-        return isFlagSet(FLAG_LEADS_TO_FINAL_STATE);
-    }
-
     private void setHashComputed() {
         setFlag(FLAG_HASH_COMPUTED);
     }

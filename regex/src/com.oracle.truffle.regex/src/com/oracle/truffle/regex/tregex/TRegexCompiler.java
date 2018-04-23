@@ -50,7 +50,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
 
-import static com.oracle.truffle.api.CompilerDirectives.*;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class TRegexCompiler extends RegexCompiler {
 

@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

@@ -55,7 +55,7 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.NFAExport;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 
-import static com.oracle.truffle.api.CompilerDirectives.*;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class TRegexCompilationRequest {
 
@@ -187,8 +187,8 @@ final class TRegexCompilationRequest {
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfa, boolean forward, boolean searching, boolean trackCaptureGroups) {
-        DFAGenerator dfa = new DFAGenerator(nfa, createExecutorProperties(nfa, forward, searching, trackCaptureGroups), compilationBuffer);
+    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
+        DFAGenerator dfa = new DFAGenerator(nfaArg, createExecutorProperties(nfaArg, forward, searching, trackCaptureGroups), compilationBuffer);
         phaseStart(dfa.getDebugDumpName() + " DFA");
         dfa.calcDFA();
         TRegexDFAExecutorNode executorNode = dfa.createDFAExecutor();
@@ -305,7 +305,7 @@ final class TRegexCompilationRequest {
                         Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
     }
 
-    private String compilerResultToString(CompiledRegex result) {
+    private static String compilerResultToString(CompiledRegex result) {
         if (result instanceof TRegexExecRootNode) {
             return "tregex";
         } else if (result instanceof LiteralRegexExecRootNode) {
