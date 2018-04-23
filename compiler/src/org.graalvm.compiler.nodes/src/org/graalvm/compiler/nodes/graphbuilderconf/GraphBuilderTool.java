@@ -76,4 +76,9 @@ public interface GraphBuilderTool {
      * by an intrinsic.
      */
     boolean parsingIntrinsic();
+
+    default boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
+        // By default generated plugins must be completely processed during parsing.
+        return false;
+    }
 }
