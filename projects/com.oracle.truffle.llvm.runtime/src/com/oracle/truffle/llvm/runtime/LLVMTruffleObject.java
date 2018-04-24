@@ -38,7 +38,6 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMTruffleObjectMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
@@ -103,7 +102,7 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return LLVMTruffleObjectMessageResolutionForeign.ACCESS;
+        throw new IllegalStateException("unsupported");
     }
 
     public static boolean isInstance(TruffleObject obj) {

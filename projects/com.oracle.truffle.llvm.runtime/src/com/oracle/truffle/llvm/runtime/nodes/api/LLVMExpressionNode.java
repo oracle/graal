@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -53,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * An expression node is a node that returns a result, e.g., a local variable read, or an addition
  * operation.
  */
-@TypeSystemReference(LLVMTypes.class)
 public abstract class LLVMExpressionNode extends LLVMNode implements InstrumentableNode {
 
     @Override

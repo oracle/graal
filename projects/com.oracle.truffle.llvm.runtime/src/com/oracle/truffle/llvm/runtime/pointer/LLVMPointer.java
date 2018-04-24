@@ -29,9 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 
-public interface LLVMPointer {
+public interface LLVMPointer extends TruffleObject {
 
     boolean isNull();
 

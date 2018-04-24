@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @ValueType
@@ -131,6 +132,11 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
         } else {
             return String.format("%s:0x%x", getObject().getClass().getSimpleName(), getOffset());
         }
+    }
+
+    @Override
+    public ForeignAccess getForeignAccess() {
+        return LLVMPointerMessageResolutionForeign.ACCESS;
     }
 
     @Override
