@@ -46,6 +46,12 @@ public class StringBuilderLog extends RealLog {
         return this;
     }
 
+    @Override
+    public Log flush() {
+        // noop
+        return this;
+    }
+
     public String getResult() {
         return stringBuilder.toString();
     }
