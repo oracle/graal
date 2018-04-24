@@ -267,7 +267,7 @@ public abstract class LLVMDataEscapeNode extends Node {
             LLVMGlobal global = (LLVMGlobal) value;
             Object globalValue = ctx.getGlobalFrame().getValue(global.getSlot());
             if (LLVMGlobal.isObjectStore(global.getType(), globalValue)) {
-                return globalValue;
+                return slowConvert(globalValue);
             }
             return new LLVMSharedGlobalVariable((LLVMGlobal) value);
         } else if (value == null) {
