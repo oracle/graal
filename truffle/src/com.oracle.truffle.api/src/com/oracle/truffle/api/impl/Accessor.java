@@ -64,6 +64,7 @@ import org.graalvm.polyglot.io.FileSystem;
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
  */
+@SuppressWarnings("deprecation")
 public abstract class Accessor {
 
     @SuppressWarnings("all")
@@ -149,7 +150,6 @@ public abstract class Accessor {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
 
-        @SuppressWarnings("deprecation")
         public abstract <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
 
         @SuppressWarnings("rawtypes")
@@ -678,7 +678,6 @@ public abstract class Accessor {
         return SUPPORT.callProfiled(target, args);
     }
 
-    @SuppressWarnings("deprecation")
     protected void onLoopCount(Node source, int iterations) {
         if (SUPPORT != null) {
             SUPPORT.onLoopCount(source, iterations);
