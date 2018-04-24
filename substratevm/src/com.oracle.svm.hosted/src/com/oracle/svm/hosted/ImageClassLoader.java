@@ -255,9 +255,6 @@ public final class ImageClassLoader {
                 if (excludes.contains(file.getParent())) {
                     return FileVisitResult.SKIP_SIBLINGS;
                 }
-                if (!excludes.isEmpty()) {
-                    System.out.println("initAllClasses: " + file);
-                }
                 executor.execute(() -> {
                     String fileName = root.relativize(file).toString().replace('/', '.');
                     if (fileName.endsWith(".class")) {
