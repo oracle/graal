@@ -32,7 +32,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 
 /**
  * Class containing general Truffle options.
- * 
+ *
  * @since 0.8 or earlier
  */
 public final class TruffleOptions {
@@ -43,7 +43,7 @@ public final class TruffleOptions {
      * Enables/disables the rewriting of traces in the Truffle runtime to stdout.
      * <p>
      * Can be set with {@code -Dtruffle.TraceRewrites=true}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final boolean TraceRewrites;
@@ -53,7 +53,7 @@ public final class TruffleOptions {
      * for rewriting nodes.
      * <p>
      * Can be set with {@code -Dtruffle.DetailedRewriteReasons=true}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final boolean DetailedRewriteReasons;
@@ -63,7 +63,7 @@ public final class TruffleOptions {
      * target class hierarchy.
      * <p>
      * Can be set with {@code -Dtruffle.TraceRewritesFilterClass=name}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final String TraceRewritesFilterClass;
@@ -74,7 +74,7 @@ public final class TruffleOptions {
      * <p>
      * Can be set with
      * {@code -Dtruffle.TraceRewritesFilterFromCost=NONE|MONOMORPHIC|POLYMORPHIC|MEGAMORPHIC}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final NodeCost TraceRewritesFilterFromCost;
@@ -85,7 +85,7 @@ public final class TruffleOptions {
      * <p>
      * Can be set with
      * {@code -Dtruffle.TraceRewritesFilterToKind=UNINITIALIZED|SPECIALIZED|POLYMORPHIC|GENERIC}.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final NodeCost TraceRewritesFilterToCost;
@@ -94,14 +94,15 @@ public final class TruffleOptions {
      * Enables the dumping of Node creations and AST rewrites in JSON format.
      * <p>
      * Can be set with {@code -Dtruffle.TraceASTJSON=true}.
-     * 
+     *
      * @since 0.8 or earlier
+     * @deprecated to be removed without replacement
      */
-    public static final boolean TraceASTJSON;
+    @Deprecated public static final boolean TraceASTJSON;
 
     /**
      * Forces ahead-of-time initialization.
-     * 
+     *
      * @since 0.8 or earlier
      */
     public static final boolean AOT;
