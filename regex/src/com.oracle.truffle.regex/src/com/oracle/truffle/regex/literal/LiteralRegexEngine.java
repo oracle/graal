@@ -34,20 +34,18 @@ public final class LiteralRegexEngine {
 
     public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
         RegexProperties p = ast.getProperties();
-        if (p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || p.hasLoops()) {
-            return null;
-        }
-        PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
         final boolean caret = ast.getRoot().startsWithCaret();
         final boolean dollar = ast.getRoot().endsWithDollar();
-        if ((caret || dollar) && ast.getSource().getFlags().isMultiline()) {
+        if ((p.hasAlternations() || p.hasCharClasses() || p.hasLookAroundAssertions() || p.hasLoops()) ||
+                        ((caret || dollar) && ast.getSource().getFlags().isMultiline())) {
             return null;
         }
-        return createLiteralNode(language, ast, caret, dollar, preCalcResultVisitor);
+        return createLiteralNode(language, ast, caret, dollar);
     }
 
-    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar, PreCalcResultVisitor preCalcResultVisitor) {
+    private static LiteralRegexExecRootNode createLiteralNode(RegexLanguage language, RegexAST ast, boolean caret, boolean dollar) {
         RegexSource source = ast.getSource();
+        PreCalcResultVisitor preCalcResultVisitor = PreCalcResultVisitor.run(ast, true);
         if (preCalcResultVisitor.getLiteral().length() == 0) {
             if (caret) {
                 if (dollar) {

@@ -48,14 +48,14 @@ public final class NFAExport {
     private NFAExport(NFA nfa, BufferedWriter writer, boolean forward, boolean fullLabels) {
         this.nfa = nfa;
         this.writer = writer;
-        this.forward = !forward;
+        this.forward = forward;
         this.fullLabels = fullLabels;
     }
 
     @CompilerDirectives.TruffleBoundary
     public static void exportDot(NFA nfa, String path, boolean fullLabels) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, false, fullLabels).exportDot();
+            new NFAExport(nfa, writer, true, fullLabels).exportDot();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -64,7 +64,7 @@ public final class NFAExport {
     @CompilerDirectives.TruffleBoundary
     public static void exportDotReverse(NFA nfa, String path, boolean fullLabels) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, true, fullLabels).exportDotReverse();
+            new NFAExport(nfa, writer, false, fullLabels).exportDotReverse();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -73,7 +73,7 @@ public final class NFAExport {
     @CompilerDirectives.TruffleBoundary
     public static void exportLaTex(NFA nfa, String path, boolean fullLabels) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, false, fullLabels).exportLaTex();
+            new NFAExport(nfa, writer, true, fullLabels).exportLaTex();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
