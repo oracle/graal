@@ -32,12 +32,10 @@ package com.oracle.truffle.llvm.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class LLVMNativeFunctions {
@@ -59,16 +57,6 @@ public final class LLVMNativeFunctions {
         return new NullPointerNode(nullPointerFunction);
     }
 
-    public DynamicCastNode createDynamicCast(LLVMContext context) {
-        TruffleObject dynamicCastFunction = getNativeFunction(context, "@__dynamic_cast", "(POINTER,POINTER,POINTER,UINT64):POINTER");
-        return new DynamicCastNode(dynamicCastFunction);
-    }
-
-    public SulongFreeExceptionNode createFreeException(LLVMContext context) {
-        TruffleObject freeFunction = getNativeFunction(context, "@__cxa_free_exception", "(POINTER):VOID");
-        return new SulongFreeExceptionNode(freeFunction);
-    }
-
     protected abstract static class HeapFunctionNode extends Node {
 
         private final TruffleObject function;
@@ -84,34 +72,6 @@ public final class LLVMNativeFunctions {
                 return ForeignAccess.sendExecute(nativeExecute, function, args);
             } catch (InteropException e) {
                 throw new AssertionError(e);
-            }
-        }
-    }
-
-    public static final class SulongFreeExceptionNode extends HeapFunctionNode {
-        private SulongFreeExceptionNode(TruffleObject function) {
-            super(function, 1);
-        }
-
-        public void free(LLVMAddress ptr) {
-            execute(ptr.getVal());
-        }
-    }
-
-    public static final class DynamicCastNode extends HeapFunctionNode {
-
-        @Child private Node asPointer = Message.AS_POINTER.createNode();
-
-        private DynamicCastNode(TruffleObject function) {
-            super(function, 4);
-        }
-
-        public LLVMAddress execute(LLVMAddress object, LLVMAddress type1, LLVMAddress type2, long value) {
-            try {
-                return LLVMAddress.fromLong(ForeignAccess.sendAsPointer(asPointer, (TruffleObject) execute(object.getVal(), type1.getVal(), type2.getVal(), value)));
-            } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
             }
         }
     }

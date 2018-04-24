@@ -90,18 +90,6 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
         return LLVMAddress.fromLong((long) toLong.executeWithTarget(from.getValue()));
     }
 
-    protected static boolean checkIsPointer(Node isPointer, LLVMTruffleObject object) {
-        return ForeignAccess.sendIsPointer(isPointer, object.getObject());
-    }
-
-    protected static Node createIsPointer() {
-        return Message.IS_POINTER.createNode();
-    }
-
-    protected static Node createAsPointer() {
-        return Message.AS_POINTER.createNode();
-    }
-
     @Specialization
     protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject from) {
         return from;
