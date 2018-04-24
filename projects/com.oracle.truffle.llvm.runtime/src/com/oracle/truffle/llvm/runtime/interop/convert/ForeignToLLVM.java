@@ -273,7 +273,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         public Object convert(LLVMMemory memory, ForeignToLLVMType type, Object value) {
             switch (type) {
                 case ANY:
-                    return ToAnyLLVM.slowPathPrimitiveConvert(this, value);
+                    return ToAnyLLVM.slowPathPrimitiveConvert(value);
                 case DOUBLE:
                     return ToDouble.slowPathPrimitiveConvert(memory, this, value);
                 case FLOAT:
@@ -289,7 +289,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
                 case I8:
                     return ToI8.slowPathPrimitiveConvert(memory, this, value);
                 case POINTER:
-                    return ToPointer.slowPathPrimitiveConvert(this, value);
+                    return ToPointer.slowPathPrimitiveConvert(value);
                 default:
                     throw new IllegalStateException(type.toString());
 

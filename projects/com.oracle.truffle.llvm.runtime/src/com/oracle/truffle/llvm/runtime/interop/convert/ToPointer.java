@@ -29,16 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.convert;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
@@ -163,7 +159,7 @@ abstract class ToPointer extends ForeignToLLVM {
     }
 
     @TruffleBoundary
-    static Object slowPathPrimitiveConvert(ForeignToLLVM thiz, Object value) {
+    static Object slowPathPrimitiveConvert(Object value) {
         if (value instanceof Number) {
             return new LLVMBoxedPrimitive(value);
         } else if (value instanceof Boolean) {
@@ -182,15 +178,7 @@ abstract class ToPointer extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
             return new LLVMTruffleObject((LLVMInternalTruffleObject) value);
-        } else if (value instanceof TruffleObject && thiz.checkIsPointer((TruffleObject) value) && notLLVM((TruffleObject) value)) {
-            try {
-                long raw = ForeignAccess.sendAsPointer(thiz.asPointer, (TruffleObject) value);
-                return LLVMAddress.fromLong(raw);
-            } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Foreign value is not a pointer!", ex);
-            }
-        } else if (value instanceof TruffleObject && !thiz.checkIsPointer((TruffleObject) value) && notLLVM((TruffleObject) value)) {
+        } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
             LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown((TruffleObject) value);
             return new LLVMTruffleObject(typed);
         } else {
