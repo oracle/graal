@@ -31,13 +31,17 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
@@ -57,6 +61,8 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * node ensures that.
  */
 public abstract class LLVMDataEscapeNode extends Node {
+
+    @Child private LLVMGlobal.IsObjectStore isObjectStoreNode;
 
     public static LLVMDataEscapeNode create() {
         return LLVMDataEscapeNodeGen.create();
@@ -209,9 +215,30 @@ public abstract class LLVMDataEscapeNode extends Node {
         return new LLVMVirtualAllocationAddressTruffleObject(address.copy());
     }
 
-    @Specialization
-    protected LLVMSharedGlobalVariable escapingGlobal(LLVMGlobal escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    @Specialization(guards = "!isObjectStore(contextRef, escapingValue)")
+    protected Object escapingGlobal(LLVMGlobal escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type,
+                    @SuppressWarnings("unused") @Cached("getContextRef()") ContextReference<LLVMContext> contextRef) {
         return new LLVMSharedGlobalVariable(escapingValue);
+    }
+
+    @Specialization(guards = "isObjectStore(contextRef, escapingValue)")
+    protected Object escapingGlobalObjectStore(LLVMGlobal escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type,
+                    @Cached("getContextRef()") ContextReference<LLVMContext> contextRef,
+                    @Cached("create()") LLVMDataEscapeNode recursive,
+                    @Cached("create()") LLVMGlobal.GetGlobalValueNode getGlobalValueNode) {
+        return recursive.executeWithTarget(getGlobalValueNode.execute(contextRef.get(), escapingValue));
+    }
+
+    protected static ContextReference<LLVMContext> getContextRef() {
+        return LLVMLanguage.getLLVMContextReference();
+    }
+
+    protected boolean isObjectStore(ContextReference<LLVMContext> contextRef, LLVMGlobal global) {
+        if (isObjectStoreNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isObjectStoreNode = insert(LLVMGlobal.IsObjectStore.create());
+        }
+        return isObjectStoreNode.execute(contextRef.get(), global);
     }
 
     @Specialization(guards = "escapingValue == null")
@@ -236,6 +263,12 @@ public abstract class LLVMDataEscapeNode extends Node {
         } else if (value instanceof LLVMVirtualAllocationAddress) {
             return new LLVMVirtualAllocationAddressTruffleObject(((LLVMVirtualAllocationAddress) value).copy());
         } else if (value instanceof LLVMGlobal) {
+            LLVMContext ctx = getContextRef().get();
+            LLVMGlobal global = (LLVMGlobal) value;
+            Object globalValue = ctx.getGlobalFrame().getValue(global.getSlot());
+            if (LLVMGlobal.isObjectStore(global.getType(), globalValue)) {
+                return slowConvert(globalValue);
+            }
             return new LLVMSharedGlobalVariable((LLVMGlobal) value);
         } else if (value == null) {
             return LLVMTruffleObject.createNullPointer();

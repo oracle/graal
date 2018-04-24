@@ -53,9 +53,11 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetFrameNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetGlobalValueNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetNativePointerNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.GetSlotNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsObjectStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
@@ -151,12 +153,12 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
-    @SuppressWarnings("unused")
-    public abstract static class IsNative extends Node {
+    abstract static class TestGlobalStateNode extends Node {
         public abstract boolean execute(LLVMContext context, LLVMGlobal global);
 
-        public static IsNative create() {
-            return IsNativeNodeGen.create();
+        @SuppressWarnings("unused")
+        boolean doCheck(LLVMGlobal global, Object value) {
+            throw new AssertionError("should not reach here");
         }
 
         MaterializedFrame getFrame(LLVMContext context) {
@@ -168,21 +170,44 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
 
         @Specialization(assumptions = "getSingleContextAssumption()", guards = {"global == cachedGlobal"})
-        boolean doCachedSingleThread(LLVMContext context, LLVMGlobal global,
+        boolean doCachedSingleThread(@SuppressWarnings("unused") LLVMContext context, @SuppressWarnings("unused") LLVMGlobal global,
                         @Cached("global") LLVMGlobal cachedGlobal,
                         @Cached("getFrame(context)") MaterializedFrame frame) {
-            return frame.getValue(cachedGlobal.slot) instanceof LLVMAddress;
+            return doCheck(cachedGlobal, frame.getValue(cachedGlobal.slot));
         }
 
         @Specialization(assumptions = "getSingleContextAssumption()", replaces = "doCachedSingleThread")
-        boolean doSingleThread(LLVMContext context, LLVMGlobal global,
+        boolean doSingleThread(@SuppressWarnings("unused") LLVMContext context, LLVMGlobal global,
                         @Cached("getFrame(context)") MaterializedFrame frame) {
-            return frame.getValue(global.slot) instanceof LLVMAddress;
+            return doCheck(global, frame.getValue(global.slot));
         }
 
         @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
         boolean generic(LLVMContext context, LLVMGlobal global) {
-            return getFrame(context).getValue(global.slot) instanceof LLVMAddress;
+            return doCheck(global, getFrame(context).getValue(global.slot));
+        }
+
+    }
+
+    public abstract static class IsNative extends TestGlobalStateNode {
+        @Override
+        boolean doCheck(LLVMGlobal global, Object value) {
+            return value instanceof LLVMAddress;
+        }
+
+        public static IsNative create() {
+            return IsNativeNodeGen.create();
+        }
+    }
+
+    public abstract static class IsObjectStore extends TestGlobalStateNode {
+        @Override
+        boolean doCheck(LLVMGlobal global, Object value) {
+            return LLVMGlobal.isObjectStore(global.globalType, value);
+        }
+
+        public static IsObjectStore create() {
+            return IsObjectStoreNodeGen.create();
         }
     }
 
@@ -207,7 +232,9 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
 
         @Specialization(assumptions = "getSingleContextAsssumption()", guards = {"global == cachedGlobal"})
-        long doCachedSingleThread(LLVMContext context, LLVMGlobal global, @Cached("global") LLVMGlobal cachedGlobal, @Cached("getValue(context, global)") long nativeValue) {
+        long doCachedSingleThread(LLVMContext context, LLVMGlobal global,
+                        @Cached("global") LLVMGlobal cachedGlobal,
+                        @Cached("getValue(context, global)") long nativeValue) {
             return nativeValue;
         }
 
@@ -219,6 +246,34 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
         long generic(LLVMContext context, LLVMGlobal global) {
             return ((LLVMAddress) getFrame(context).getValue(global.slot)).getVal();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class GetGlobalValueNode extends Node {
+        public abstract Object execute(LLVMContext context, LLVMGlobal global);
+
+        public static GetGlobalValueNode create() {
+            return GetGlobalValueNodeGen.create();
+        }
+
+        MaterializedFrame getFrame(LLVMContext context) {
+            return context.getGlobalFrame();
+        }
+
+        Assumption getSingleContextAsssumption() {
+            return LLVMLanguage.SINGLE_CONTEXT_ASSUMPTION;
+        }
+
+        @Specialization(assumptions = "getSingleContextAsssumption()")
+        Object doSingleThread(LLVMContext context, LLVMGlobal global,
+                        @Cached("getFrame(context)") MaterializedFrame frame) {
+            return frame.getValue(global.slot);
+        }
+
+        @Specialization(replaces = "doSingleThread")
+        Object generic(LLVMContext context, LLVMGlobal global) {
+            return getFrame(context).getValue(global.slot);
         }
     }
 
@@ -345,9 +400,28 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             return (LLVMAddress) value;
         } else if (value instanceof Managed) {
             return transformToNative(memory, context, ((Managed) value).wrapped);
+        } else if (value instanceof TruffleObject) {
+            return transformToNative(context, (TruffleObject) value);
+        } else if (value == null || globalType instanceof PrimitiveType) {
+            return transformToNative(memory, context, value);
         }
 
-        return transformToNative(memory, context, value);
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalStateException("unknown state of global variable");
+    }
+
+    @TruffleBoundary
+    private LLVMAddress transformToNative(LLVMContext context, TruffleObject value) {
+        try {
+            Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), value);
+            if (value != nativized) {
+                context.getGlobalFrame().setObject(slot, nativized);
+            }
+            long toAddr = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativized);
+            return LLVMAddress.fromLong(toAddr);
+        } catch (UnsupportedMessageException e) {
+            throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + value);
+        }
     }
 
     @TruffleBoundary
@@ -423,4 +497,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return globalType;
     }
 
+    public static boolean isObjectStore(Type globalType, Object value) {
+        return !(globalType instanceof PrimitiveType || value instanceof LLVMAddress || value instanceof Managed);
+    }
 }
