@@ -23,8 +23,6 @@
 package com.oracle.svm.hosted.c;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.hosted.c.CAnnotationProcessorCache.get;
-import static com.oracle.svm.hosted.c.CAnnotationProcessorCache.put;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,14 +60,16 @@ public class CAnnotationProcessor extends CCompilerInvoker {
         this.posixHeaders = new PosixDirectives().getHeaderFiles();
     }
 
-    public NativeCodeInfo process() {
+    public NativeCodeInfo process(CAnnotationProcessorCache cache) {
         InfoTreeBuilder constructor = new InfoTreeBuilder(nativeLibs, codeCtx);
         codeInfo = constructor.construct();
         if (nativeLibs.getErrors().size() > 0) {
             return codeInfo;
         }
-        // If using a CAP cache and have hit, short cut the whole building/compile/execute query
-        if (!(CAnnotationProcessorCache.Options.UseCAPCache.getValue() && get(nativeLibs, codeInfo))) {
+        if (CAnnotationProcessorCache.Options.UseCAPCache.getValue()) {
+            /* If using a CAP cache, short cut the whole building/compile/execute query. */
+            cache.get(nativeLibs, codeInfo);
+        } else {
             /*
              * Generate C source file (the "Query") that will produce the information needed (e.g.,
              * size of struct/union and offsets to their fields, value of enum/macros etc.).
@@ -86,7 +86,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
                 return codeInfo;
             }
 
-            makeQuery(binary.toString());
+            makeQuery(cache, binary.toString());
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
             }
@@ -97,7 +97,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
         return codeInfo;
     }
 
-    private void makeQuery(String binaryName) {
+    private void makeQuery(CAnnotationProcessorCache cache, String binaryName) {
         List<String> command = new ArrayList<>();
         command.add(binaryName);
         Process printingProcess = null;
@@ -107,7 +107,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
             List<String> lines = QueryResultParser.parse(nativeLibs, codeInfo, is);
             is.close();
             if (CAnnotationProcessorCache.Options.NewCAPCache.getValue()) {
-                put(codeInfo, lines);
+                cache.put(codeInfo, lines);
             }
             printingProcess.waitFor();
         } catch (IOException ex) {
