@@ -27,6 +27,7 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -45,6 +46,7 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
@@ -133,6 +135,16 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
             }
         }
 
+        /**
+         * {@link Fold} and {@link NodeIntrinsic} can be deferred during parsing/decoding. Only by
+         * the end of {@linkplain SnippetTemplate#instantiate Snippet instantiation} do they need to
+         * have been processed.
+         *
+         * This is how SVM handles snippets. They are parsed with plugins disabled and then encoded
+         * and stored in the image. When the snippet is needed at runtime the graph is decoded and
+         * the plugins are run during the decoding process. If they aren't handled at this point
+         * then they will never be handled.
+         */
         @Override
         public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
             return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
