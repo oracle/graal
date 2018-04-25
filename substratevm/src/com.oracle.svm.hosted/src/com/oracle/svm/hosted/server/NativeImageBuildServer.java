@@ -79,6 +79,7 @@ import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
 public final class NativeImageBuildServer {
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String PORT_LOG_MESSAGE_PREFIX = "Started image build server on port: ";
     private static final String TASK_PREFIX = "-task=";
     static final String PORT_PREFIX = "-port=";
     private static final String LOG_PREFIX = "-logFile=";
@@ -86,6 +87,7 @@ public final class NativeImageBuildServer {
     private static final String SUBSTRATEVM_VERSION_PROPERTY = "substratevm.version";
     private static final int SERVER_THREAD_POOL_SIZE = 4;
     private static final int FAILED_EXIT_STATUS = -1;
+
     private static Set<ImageBuildTask> tasks = Collections.synchronizedSet(new HashSet<>());
 
     private boolean terminated;
@@ -200,14 +202,19 @@ public final class NativeImageBuildServer {
     @SuppressWarnings("InfiniteLoopStatement")
     private void serve() {
         threadPoolExecutor.purge();
-        log((port == 0 ? "Server selects port" : "Try binding server to port " + port) + "...");
+        if (port == 0) {
+            log("Server selects ephemeral port\n");
+        } else {
+            log("Try binding server to port " + port + "...\n");
+        }
         try (ServerSocket serverSocket = new ServerSocket()) {
             serverSocket.setReuseAddress(true);
             serverSocket.setSoTimeout((int) TimeUnit.MINUTES.toMillis(TIMEOUT_MINUTES));
             serverSocket.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
 
-            /* NOTE: the following command lines are parsed externally */
-            log(" Started image build server on port:\n%d\nAccepting requests...\n", serverSocket.getLocalPort());
+            /* NOTE: the following command line gets parsed externally */
+            log(PORT_LOG_MESSAGE_PREFIX + serverSocket.getLocalPort());
+
             while (true) {
                 Socket socket = serverSocket.accept();
 
