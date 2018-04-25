@@ -900,5 +900,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public String getLanguageHome(Object engineObject) {
             return ((PolyglotLanguage) engineObject).cache.getLanguageHome();
         }
+
+        @Override
+        public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
+            return getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+        }
     }
 }
