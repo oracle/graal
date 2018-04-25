@@ -608,6 +608,7 @@ final class NativeImageServer extends NativeImage {
                     }
                 } catch (ServerInstanceError e) {
                     showVerboseMessage(verboseServer, "Server instance is unusable");
+                    /* Build without server */
                     return null;
                 } catch (Exception e) {
                     /* It might take a few moments before server becomes visible */
@@ -620,6 +621,7 @@ final class NativeImageServer extends NativeImage {
                 }
             }
         }
+        /* Build without server */
         return null;
     }
 
