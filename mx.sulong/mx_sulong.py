@@ -602,26 +602,26 @@ class SulongDocsProject(ArchiveProject):
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
     name='Sulong',
     short_name='slg',
     dir_name='llvm',
-    documentation_files=['extracted-dependency:sulong:SULONG_GRAALVM_DOCS/README_SULONG.md'],
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['dependency:sulong:SULONG'],
+    truffle_jars=['sulong:SULONG'],
     support_distributions=[
-        'extracted-dependency:sulong:SULONG_LIBS',
-        'extracted-dependency:sulong:SULONG_GRAALVM_DOCS',
+        'sulong:SULONG_LIBS',
+        'sulong:SULONG_GRAALVM_DOCS',
     ],
     launcher_configs=[
         mx_sdk.LanguageLauncherConfig(
             destination='bin/<exe:lli>',
-            jar_distributions=['dependency:sulong:SULONG_LAUNCHER'],
+            jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
             build_args=['--language:llvm']
         )
     ],
-), _suite)
+))
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],

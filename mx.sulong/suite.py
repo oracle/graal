@@ -460,8 +460,10 @@ suite = {
       "platformDependent" : True,
       "description" : "Sulong documentation files for the GraalVM",
       "layout" : {
-        "./" : "file:mx.sulong/native-image.properties",
-        "README_SULONG.md" : "file:README.md",
+        "./" : [
+          "file:mx.sulong/native-image.properties",
+          "file:README.md",
+        ],
       },
     },
   }
