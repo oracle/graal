@@ -51,6 +51,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -151,7 +152,7 @@ public final class TruffleTypes {
     }
 
     private static TypeElement getOptional(ProcessorContext context, String name) {
-        return context.getEnvironment().getElementUtils().getTypeElement(name);
+        return ElementUtils.getTypeElement(context.getEnvironment(), name);
     }
 
     public TypeMirror getInvalidAssumption() {
