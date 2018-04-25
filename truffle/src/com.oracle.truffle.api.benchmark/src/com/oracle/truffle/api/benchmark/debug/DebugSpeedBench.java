@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.api.benchmark.debug;
 
-import java.io.IOException;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -74,7 +72,7 @@ public class DebugSpeedBench implements SuspendedCallback {
     private volatile ACTION action;
 
     @Setup
-    public void beforeTesting() throws IOException {
+    public void beforeTesting() {
         source = Source.newBuilder("instrumentation-test-language", CODE_STEP, "StepTest.instr").build();
         context = Context.create();
         Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);

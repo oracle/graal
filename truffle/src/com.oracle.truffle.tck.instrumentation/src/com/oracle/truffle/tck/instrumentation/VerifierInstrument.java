@@ -95,7 +95,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
 
         InlineScriptFactory(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
             CharSequence code = inlineSnippet.getCode();
-            snippet = Source.newBuilder(code).language(languageId).name("inline_source").build();
+            snippet = Source.newBuilder(languageId, code, "inline_source").build();
             predicate = inlineSnippet.getLocationPredicate();
             resultVerifier = verifier;
         }

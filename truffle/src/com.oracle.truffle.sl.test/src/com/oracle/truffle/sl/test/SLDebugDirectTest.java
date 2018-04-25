@@ -123,7 +123,7 @@ public class SLDebugDirectTest {
                         "  nMinusOne = n - 1;\n" +
                         "  nMOFact = fac(nMinusOne);\n" +
                         "  res = n * nMOFact;\n" +
-                        "  return res;\n" + "}\n", "factorial.sl").buildLiteral();
+                        "  return res;\n" + "}\n", "factorial.sl").build();
     }
 
     private static Source createFactorialWithDebugger() {
@@ -141,7 +141,7 @@ public class SLDebugDirectTest {
                         "  debugger;\n" +
                         "  res = n * nMOFact;\n" +
                         "  return res;\n" +
-                        "}\n", "factorial.sl").buildLiteral();
+                        "}\n", "factorial.sl").build();
     }
 
     private static Source createInteropComputation() {
@@ -153,7 +153,7 @@ public class SLDebugDirectTest {
                         "    executing = notifyHandler.isExecuting;\n" +
                         "  }\n" +
                         "  return executing;\n" +
-                        "}\n", "interopComputation.sl").buildLiteral();
+                        "}\n", "interopComputation.sl").build();
     }
 
     protected final String getOut() {
@@ -317,7 +317,7 @@ public class SLDebugDirectTest {
                         "  return res;\n" +
                         "}\n" +
                         "function doNull() {\n" +
-                        "}\n", "nullTest.sl").buildLiteral();
+                        "}\n", "nullTest.sl").build();
     }
 
     @Test

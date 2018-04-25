@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -56,9 +57,14 @@ import java.io.PrintStream;
 @SuppressWarnings("deprecation")
 final class LanguageCache implements Comparable<LanguageCache> {
     private static final Map<String, LanguageCache> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
+    private static final Map<String, LanguageCache> nativeImageMimes = TruffleOptions.AOT ? new HashMap<>() : null;
     private static volatile Map<String, LanguageCache> runtimeCache;
+    private static volatile Map<String, LanguageCache> runtimeMimes;
     private final String className;
     private final Set<String> mimeTypes;
+    private final Set<String> characterMimeTypes;
+    private final Set<String> byteMimeTypes;
+    private final String defaultMimeType;
     private final Set<String> dependentLanguages;
     private final String id;
     private final String name;
@@ -84,7 +90,23 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.name = info.getProperty(prefix + "name");
         this.implementationName = info.getProperty(prefix + "implementationName");
         this.version = info.getProperty(prefix + "version");
-        this.mimeTypes = parseList(info, prefix + "mimeType");
+        TreeSet<String> characterMimes = parseList(info, prefix + "characterMimeType");
+        if (characterMimes.isEmpty()) {
+            characterMimes = parseList(info, prefix + "mimeType");
+        }
+        this.characterMimeTypes = characterMimes;
+        this.byteMimeTypes = parseList(info, prefix + "byteMimeType");
+        this.mimeTypes = new TreeSet<>();
+        this.mimeTypes.addAll(characterMimes);
+        this.mimeTypes.addAll(byteMimeTypes);
+
+        String defaultMime = info.getProperty(prefix + "defaultMimeType");
+        if (mimeTypes.size() == 1 && defaultMime == null) {
+            this.defaultMimeType = mimeTypes.iterator().next();
+        } else {
+            this.defaultMimeType = defaultMime;
+        }
+
         this.dependentLanguages = parseList(info, prefix + "dependentLanguage");
         this.id = id;
         this.interactive = Boolean.valueOf(info.getProperty(prefix + "interactive"));
@@ -111,11 +133,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     @SuppressWarnings("unchecked")
-    LanguageCache(String id, Set<String> mimeTypes, String name, String implementationName, String version, boolean interactive, boolean internal,
+    LanguageCache(String id, String name, String implementationName, String version, boolean interactive, boolean internal,
                     TruffleLanguage<?> instance) {
         this.id = id;
         this.className = instance.getClass().getName();
-        this.mimeTypes = mimeTypes;
+        this.mimeTypes = Collections.emptySet();
+        this.characterMimeTypes = Collections.emptySet();
+        this.byteMimeTypes = Collections.emptySet();
+        this.defaultMimeType = null;
         this.implementationName = implementationName;
         this.name = name;
         this.version = version;
@@ -129,18 +154,46 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.globalInstance = instance;
     }
 
+    static Map<String, LanguageCache> languageMimes() {
+        if (TruffleOptions.AOT) {
+            return nativeImageMimes;
+        }
+        Map<String, LanguageCache> cache = runtimeMimes;
+        if (cache == null) {
+            synchronized (LanguageCache.class) {
+                cache = runtimeMimes;
+                if (cache == null) {
+                    runtimeMimes = cache = createMimes();
+                }
+            }
+        }
+        return cache;
+    }
+
+    private static Map<String, LanguageCache> createMimes() {
+        Map<String, LanguageCache> mimes = new LinkedHashMap<>();
+        for (LanguageCache cache : languages().values()) {
+            for (String mime : cache.getMimeTypes()) {
+                mimes.put(mime, cache);
+            }
+        }
+        return mimes;
+    }
+
     static Map<String, LanguageCache> languages() {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
         }
-        if (runtimeCache == null) {
+        Map<String, LanguageCache> cache = runtimeCache;
+        if (cache == null) {
             synchronized (LanguageCache.class) {
-                if (runtimeCache == null) {
-                    runtimeCache = createLanguages(null);
+                cache = runtimeCache;
+                if (cache == null) {
+                    runtimeCache = cache = createLanguages(null);
                 }
             }
         }
-        return runtimeCache;
+        return cache;
     }
 
     private static Map<String, LanguageCache> createLanguages(ClassLoader additionalLoader) {
@@ -151,13 +204,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         if (additionalLoader != null) {
             collectLanguages(additionalLoader, caches);
         }
-        Map<String, LanguageCache> cacheToMimeType = new HashMap<>();
+        Map<String, LanguageCache> cacheToId = new HashMap<>();
         for (LanguageCache languageCache : caches) {
-            for (String mimeType : languageCache.getMimeTypes()) {
-                cacheToMimeType.put(mimeType, languageCache);
-            }
+            cacheToId.put(languageCache.getId(), languageCache);
         }
-        return cacheToMimeType;
+        return cacheToId;
     }
 
     private static void collectLanguages(ClassLoader loader, List<LanguageCache> list) {
@@ -237,6 +288,18 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     Set<String> getMimeTypes() {
         return mimeTypes;
+    }
+
+    String getDefaultMimeType() {
+        return defaultMimeType;
+    }
+
+    boolean isCharacterMimeType(String mimeType) {
+        return characterMimeTypes.contains(mimeType);
+    }
+
+    boolean isByteMimeType(String mimeType) {
+        return characterMimeTypes.contains(mimeType);
     }
 
     String getName() {
@@ -363,6 +426,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
         nativeImageCache.putAll(createLanguages(imageClassLoader));
+        nativeImageMimes.putAll(createMimes());
     }
 
     /**
@@ -374,6 +438,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private static void resetNativeImageState() {
         assert TruffleOptions.AOT : "Only supported during image generation";
         nativeImageCache.clear();
+        nativeImageMimes.clear();
     }
 
     /**
@@ -382,10 +447,17 @@ final class LanguageCache implements Comparable<LanguageCache> {
      * NOTE: this method is called reflectively by downstream projects.
      */
     @SuppressWarnings("unused")
-    private static void removeLanguageFromNativeImage(String languageMime) {
+    private static void removeLanguageFromNativeImage(String languageId) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        assert nativeImageCache.containsKey(languageMime);
-        nativeImageCache.remove(languageMime);
+        assert nativeImageCache.containsKey(languageId);
+        LanguageCache cache = nativeImageCache.remove(languageId);
+        if (cache != null) {
+            for (String mime : cache.getMimeTypes()) {
+                if (nativeImageCache.get(mime) == cache) {
+                    nativeImageMimes.remove(mime);
+                }
+            }
+        }
     }
 
     /**

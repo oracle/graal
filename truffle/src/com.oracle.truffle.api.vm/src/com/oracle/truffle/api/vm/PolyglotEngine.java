@@ -1481,6 +1481,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public boolean isCharacterBasedSource(String language, String mimeType) {
+            return true;
+        }
+
+        @Override
         public Thread createThread(Object vmObject, Runnable runnable, Object context) {
             throw new IllegalStateException("createThread is not supported.");
         }
@@ -1533,6 +1538,20 @@ public class PolyglotEngine {
         @Override
         public Map<String, Level> getLogLevels(Object context) {
             return Collections.emptyMap();
+        }
+
+        @Override
+        public Set<String> getValidMimeTypes(String language) {
+            if (language == null) {
+                return LanguageCache.languageMimes().keySet();
+            } else {
+                LanguageCache lang = LanguageCache.languages().get(language);
+                if (lang != null) {
+                    return lang.getMimeTypes();
+                } else {
+                    return Collections.emptySet();
+                }
+            }
         }
     }
 }

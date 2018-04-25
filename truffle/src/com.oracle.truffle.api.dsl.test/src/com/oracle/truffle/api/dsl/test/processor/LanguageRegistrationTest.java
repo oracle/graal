@@ -28,26 +28,28 @@ import java.io.IOException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class LanguageRegistrationTest {
 
     @ExpectError("Registered language class must be public")
-    @TruffleLanguage.Registration(name = "myLang", version = "0", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(id = "myLang", name = "", version = "0")
     private static final class MyLang {
     }
 
     @ExpectError("Registered language inner-class must be static")
-    @TruffleLanguage.Registration(name = "myLangNonStatic", version = "0", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(id = "myLangNonStatic", name = "", version = "0")
     public final class MyLangNonStatic {
     }
 
     @ExpectError("Registered language class must subclass TruffleLanguage")
-    @TruffleLanguage.Registration(name = "myLang", version = "0", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(id = "myLang", name = "", version = "0")
     public static final class MyLangNoSubclass {
     }
 
-    @TruffleLanguage.Registration(name = "myLangNoCnstr", version = "0", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(id = "myLangNoCnstr", name = "", version = "0")
     @ExpectError("A TruffleLanguage subclass must have a public no argument constructor.")
     public static final class MyLangWrongConstr extends TruffleLanguage<Object> {
 
@@ -71,7 +73,7 @@ public class LanguageRegistrationTest {
 
     }
 
-    @TruffleLanguage.Registration(name = "myLangNoField", version = "0", mimeType = "text/x-my")
+    @TruffleLanguage.Registration(id = "myLangNoField", name = "myLangNoField", version = "0")
     public static final class MyLangGood extends TruffleLanguage<Object> {
 
         public MyLangGood() {
@@ -92,6 +94,31 @@ public class LanguageRegistrationTest {
             throw new UnsupportedOperationException();
         }
 
+    }
+
+    @ExpectError("The attribute id is mandatory.")
+    @Registration(name = "")
+    public static class InvalidIDError1 extends ProxyLanguage {
+    }
+
+    @ExpectError("The attribute id is mandatory.")
+    @Registration(id = "", name = "")
+    public static class InvalidIDError2 extends ProxyLanguage {
+    }
+
+    @ExpectError("Id 'graal' is reserved for other use and must not be used as id.")
+    @Registration(id = "graal", name = "")
+    public static class InvalidIDError3 extends ProxyLanguage {
+    }
+
+    @ExpectError("Id 'engine' is reserved for other use and must not be used as id.")
+    @Registration(id = "engine", name = "")
+    public static class InvalidIDError4 extends ProxyLanguage {
+    }
+
+    @ExpectError("Id 'compiler' is reserved for other use and must not be used as id.")
+    @Registration(id = "compiler", name = "")
+    public static class InvalidIDError5 extends ProxyLanguage {
     }
 
 }

@@ -29,7 +29,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@TruffleLanguage.Registration(id = ContextAPITestInternalLanguage.ID, name = ContextAPITestInternalLanguage.ID, version = "1.0", mimeType = ContextAPITestInternalLanguage.ID, internal = true)
+@TruffleLanguage.Registration(id = ContextAPITestInternalLanguage.ID, name = ContextAPITestInternalLanguage.ID, version = "1.0", internal = true)
 public class ContextAPITestInternalLanguage extends TruffleLanguage<Object> {
 
     static final String ID = "ContextAPITestInternalLanguage";

@@ -43,7 +43,7 @@ public class TimeBoxingTest {
     @Test
     public void testTimeBoxing() throws Exception {
         final Context context = Context.create();
-        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(LOOP(infinity,STATEMENT))", "NotEnoughTime").buildLiteral();
+        Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(LOOP(infinity,STATEMENT))", "NotEnoughTime").build();
 
         new Timer().schedule(new TimerTask() {
             @Override

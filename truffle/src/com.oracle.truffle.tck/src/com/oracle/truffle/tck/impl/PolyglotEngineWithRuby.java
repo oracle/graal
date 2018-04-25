@@ -72,7 +72,7 @@ public class PolyglotEngineWithRuby {
             "proc { |a, b|\n" +
             "  a * b" +
             "}",
-            "mul.rb").buildLiteral();
+            "mul.rb").build();
 
         // Evaluate Ruby function definition
         Value rbFunction = context.eval(src);

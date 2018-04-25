@@ -190,7 +190,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * variables.
  * </ul>
  */
-@TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", mimeType = SLLanguage.MIME_TYPE, contextPolicy = ContextPolicy.SHARED)
+@TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", defaultMimeType = SLLanguage.MIME_TYPE, characterMimeTypes = SLLanguage.MIME_TYPE, contextPolicy = ContextPolicy.SHARED)
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static volatile int counter;
@@ -231,10 +231,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             sb.append(request.getSource().getCharacters());
             sb.append(";}");
             String language = requestedSource.getLanguage() == null ? ID : requestedSource.getLanguage();
-            String mimeType = requestedSource.getMimeType() == null ? MIME_TYPE : requestedSource.getMimeType();
-
-            Source decoratedSource = Source.newBuilder(sb.toString()).language(language).mimeType(mimeType).name(
-                            request.getSource().getName()).build();
+            Source decoratedSource = Source.newBuilder(language, sb.toString(), request.getSource().getName()).build();
             functions = SimpleLanguageParser.parseSL(this, decoratedSource);
         }
 

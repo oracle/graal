@@ -65,7 +65,7 @@ public class PolyglotEngineWithR {
     }
 
     public void callRFunctionFromJava() {
-        Source src = Source.newBuilder("R", "qbinom", "qbinom.R").buildLiteral();
+        Source src = Source.newBuilder("R", "qbinom", "qbinom.R").build();
         BinomQuantile func = engine.eval(src).as(BinomQuantile.class);
         assertEquals(4, func.qbinom(0.37, 10, 0.5));
     }

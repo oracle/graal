@@ -602,11 +602,10 @@ public class AllocationReporterTest {
      * <li>{ &lt;command&gt; ... } allocations nested under the previous command</li>
      * </ul>
      */
-    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter Language", version = "1.0")
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter Language", version = "1.0")
     public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
 
         public static final String ID = "truffle-allocation-reporter-language";
-        public static final String MIME_TYPE = "application/x-truffle-allocation-reporter-language";
         public static final String PROP_SIZE_CALLS = "sizeCalls";
 
         @Override

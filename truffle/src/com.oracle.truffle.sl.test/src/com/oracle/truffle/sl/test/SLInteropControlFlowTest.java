@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.IOException;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -64,7 +62,7 @@ public class SLInteropControlFlowTest {
     }
 
     @Test
-    public void testWhile() throws IOException {
+    public void testWhile() {
         final Source src = Source.newBuilder("sl", "function testWhile(a) {while(a) {break;}} function main() {return testWhile;}", "testWhile.sl").build();
         final Value fnc = context.eval(src);
         Assert.assertTrue(fnc.canExecute());
@@ -72,7 +70,7 @@ public class SLInteropControlFlowTest {
     }
 
     @Test
-    public void testIf() throws IOException {
+    public void testIf() {
         final Source src = Source.newBuilder("sl", "function testIf(a) {if(a) {return 1;} else {return 0;}} function main() {return testIf;}", "testIf.sl").build();
         final Value fnc = context.eval(src);
         fnc.execute(false);

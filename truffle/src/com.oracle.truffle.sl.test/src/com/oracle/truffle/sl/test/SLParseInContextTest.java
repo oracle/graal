@@ -78,7 +78,7 @@ public class SLParseInContextTest {
         assertEquals(42, value.asInt());
     }
 
-    @TruffleLanguage.Registration(id = "x-test-eval", mimeType = "application/x-test-eval", name = "EvalLang", version = "1.0")
+    @TruffleLanguage.Registration(id = "x-test-eval", name = "EvalLang", version = "1.0")
     public static final class EvalLang extends TruffleLanguage<Env> {
 
         @Override
@@ -101,7 +101,7 @@ public class SLParseInContextTest {
 
                 @TruffleBoundary
                 private Object parseAndEval() {
-                    Source aPlusB = Source.newBuilder("a + b").mimeType("application/x-sl").name("plus.sl").build();
+                    Source aPlusB = Source.newBuilder("sl", "a + b", "plus.sl").build();
                     return getContextReference().get().parse(aPlusB, "a", "b").call(30, 12);
                 }
             });

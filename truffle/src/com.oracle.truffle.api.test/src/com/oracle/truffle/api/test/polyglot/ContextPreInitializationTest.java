@@ -1082,7 +1082,7 @@ public class ContextPreInitializationTest {
         }
 
         protected void useLanguage(CountingContext context, String id) {
-            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("").language(id).name("").build();
+            com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(id, "", "").build();
             context.environment().parse(source);
         }
 
@@ -1097,7 +1097,7 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", mimeType = FIRST, dependentLanguages = INTERNAL)
+    @TruffleLanguage.Registration(id = FIRST, name = FIRST, version = "1.0", dependentLanguages = INTERNAL)
     public static final class ContextPreInitializationTestFirstLanguage extends BaseLanguage {
         @Option(category = OptionCategory.USER, help = "Option 1") public static final OptionKey<Boolean> Option1 = new OptionKey<>(false);
         @Option(category = OptionCategory.USER, help = "Option 2") public static final OptionKey<Boolean> Option2 = new OptionKey<>(false);
@@ -1137,7 +1137,7 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = SECOND, name = SECOND, version = "1.0", mimeType = SECOND, dependentLanguages = FIRST)
+    @TruffleLanguage.Registration(id = SECOND, name = SECOND, version = "1.0", dependentLanguages = FIRST)
     public static final class ContextPreInitializationTestSecondLanguage extends BaseLanguage {
         private static boolean callDependentLanguage;
 
@@ -1150,7 +1150,7 @@ public class ContextPreInitializationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = INTERNAL, name = INTERNAL, version = "1.0", mimeType = INTERNAL, internal = true)
+    @TruffleLanguage.Registration(id = INTERNAL, name = INTERNAL, version = "1.0", internal = true)
     public static final class ContextPreInitializationTestInternalLanguage extends BaseLanguage {
     }
 

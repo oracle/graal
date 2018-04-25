@@ -71,7 +71,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.index = index;
         this.host = host;
         this.profile = new ContextProfile(this);
-        this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
+        this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
     }
 
     boolean isInitialized() {
@@ -234,6 +234,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return optionValues;
     }
 
+    @Override
+    public String getDefaultMimeType() {
+        return cache.getDefaultMimeType();
+    }
+
     void clearOptionValues() {
         optionValues = null;
     }
@@ -251,6 +256,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     @Override
     public boolean isInteractive() {
         return cache.isInteractive();
+    }
+
+    @Override
+    public Set<String> getMimeTypes() {
+        return cache.getMimeTypes();
     }
 
     @Override

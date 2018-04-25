@@ -43,6 +43,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.LiteralBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.NoSuspendedThreadException;
@@ -101,10 +102,11 @@ public final class TruffleRuntime extends RuntimeDomain {
         String language = context.getLastLanguage();
         String mimeType = context.getLastMimeType();
         String name = (sourceURL != null) ? sourceURL : "eval";
-        Source.Builder<RuntimeException, RuntimeException, RuntimeException> builder = Source.newBuilder(expression).name(name).mimeType(mimeType);
-        if (language != null) {
-            builder.language(language);
+        if (language == null) {
+            // legacy support where language may be null
+            language = Source.findLanguage(mimeType);
         }
+        LiteralBuilder builder = Source.newBuilder(language, expression, name).name(name).mimeType(mimeType);
         if (sourceURL != null && !sourceURL.isEmpty()) {
             URI ownUri = null;
             try {

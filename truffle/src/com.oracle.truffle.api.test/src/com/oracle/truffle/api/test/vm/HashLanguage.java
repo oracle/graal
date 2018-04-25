@@ -33,7 +33,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(name = "HashLanguage", mimeType = "application/x-test-hash", version = "1.0")
+@TruffleLanguage.Registration(id = "HashLanguage", name = "HashLanguage", characterMimeTypes = "application/x-test-hash", version = "1.0")
 public class HashLanguage extends TruffleLanguage<Env> {
 
     @Override
@@ -73,7 +73,7 @@ public class HashLanguage extends TruffleLanguage<Env> {
         }
     }
 
-    @TruffleLanguage.Registration(name = "AltHash", mimeType = "application/x-test-hash-alt", version = "1.0")
+    @TruffleLanguage.Registration(id = "SubLang", name = "AltHash", characterMimeTypes = "application/x-test-hash-alt", version = "1.0")
     public static final class SubLang extends HashLanguage {
     }
 }

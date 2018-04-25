@@ -204,12 +204,11 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertEquals("Timeline length and self hit count to not match!", payload.getSelfHitCount(), payload.getSelfHitTimes().size());
     }
 
-    @TruffleLanguage.Registration(id = RecreateShadowStackTestLanguage.ID, mimeType = RecreateShadowStackTestLanguage.MIME_TYPE, name = "RecreateShadowStackTestLanguage", version = "0.1")
+    @TruffleLanguage.Registration(id = RecreateShadowStackTestLanguage.ID, name = "RecreateShadowStackTestLanguage", version = "0.1")
     @ProvidedTags({StandardTags.StatementTag.class, StandardTags.RootTag.class})
     public static class RecreateShadowStackTestLanguage extends TruffleLanguage<Integer> {
 
         public static final String ID = "RecreateShadowStackTestLanguage";
-        public static final String MIME_TYPE = "RecreateShadowStackTestLanguageMime";
 
         @Override
         protected Integer createContext(Env env) {
@@ -408,7 +407,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCorrectInitShadowStackStatements() {
         sampler.setMode(CPUSampler.Mode.STATEMENTS);
         sampler.setFilter(NO_INTERNAL_STATEMENT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").buildLiteral();
+        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").build();
         context.eval(test);
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 
@@ -436,7 +435,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     public void testCorrectInitShadowStackRoots() {
         sampler.setMode(CPUSampler.Mode.ROOTS);
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").buildLiteral();
+        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").build();
         context.eval(test);
         Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
 

@@ -443,7 +443,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @param language the source language
      * @since 0.33
      */
-    public void assertLineBreakpointsResolution(String sourceWithMarks, String resolvedMarkName, String language) throws IOException {
+    public void assertLineBreakpointsResolution(String sourceWithMarks, String resolvedMarkName, String language) {
         Pattern br = Pattern.compile("(" + resolvedMarkName + "\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
         Map<Integer, Integer> bps = new HashMap<>();
         String sourceString = sourceWithMarks;
@@ -549,7 +549,7 @@ public final class DebuggerTester implements AutoCloseable {
      * @param language the source language
      * @since 0.33
      */
-    public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language) throws IOException {
+    public void assertColumnBreakpointsResolution(String sourceWithMarks, String breakpointMarkName, String resolvedMarkName, String language) {
         Pattern br = Pattern.compile("([" + breakpointMarkName + resolvedMarkName + "]\\d+_|" + resolvedMarkName + "\\d+-\\d+_)");
         Map<Integer, int[]> bps = new HashMap<>();
         String sourceString = sourceWithMarks;

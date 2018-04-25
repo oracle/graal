@@ -32,7 +32,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(name = "IsMimeTypeSupportedTestLanguage", mimeType = "application/x-test-mime-type-supported", version = "1.0")
+@TruffleLanguage.Registration(id = "application/x-test-mime-type-supported", name = "IsMimeTypeSupportedTestLanguage", characterMimeTypes = "application/x-test-mime-type-supported", version = "1.0")
 public class IsMimeTypeSupportedTestLanguage extends TruffleLanguage<Env> {
 
     @Override

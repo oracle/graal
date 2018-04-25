@@ -32,7 +32,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.SourceAPITestLanguage.LanguageContext;
 
-@TruffleLanguage.Registration(id = SourceAPITestLanguage.ID, name = SourceAPITestLanguage.ID, version = "1.0", mimeType = SourceAPITestLanguage.ID)
+@TruffleLanguage.Registration(id = SourceAPITestLanguage.ID, name = SourceAPITestLanguage.ID, version = "1.0")
 public class SourceAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     static final String ID = "SourceAPITestLanguage";

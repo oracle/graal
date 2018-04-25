@@ -180,11 +180,10 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
         return n * (n - 1) / 2;
     }
 
-    @TruffleLanguage.Registration(mimeType = AllocationReporterLanguage.MIME_TYPE, name = "Allocation Reporter PE Test Language", id = AllocationReporterLanguage.ID, version = "1.0")
+    @TruffleLanguage.Registration(id = AllocationReporterLanguage.ID, name = "Allocation Reporter PE Test Language")
     public static class AllocationReporterLanguage extends TruffleLanguage<AllocationReporter> {
 
         static final String ID = "truffle-allocation-reporter-pe-test-language";
-        static final String MIME_TYPE = "application/x-truffle-allocation-reporter-pe-test-language";
 
         @Override
         protected AllocationReporter createContext(TruffleLanguage.Env env) {

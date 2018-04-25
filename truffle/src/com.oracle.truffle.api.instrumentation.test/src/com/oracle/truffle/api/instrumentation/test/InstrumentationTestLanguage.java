@@ -128,7 +128,7 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * </p>
  */
-@Registration(id = InstrumentationTestLanguage.ID, mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
+@Registration(id = InstrumentationTestLanguage.ID, name = "", version = "2.0")
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
                 StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class,
                 StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
@@ -136,7 +136,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 implements SpecialService {
 
     public static final String ID = "instrumentation-test-language";
-    public static final String MIME_TYPE = "application/x-truffle-instrumentation-test-language";
     public static final String FILENAME_EXTENSION = ".titl";
 
     @Identifier("DEFINE")
@@ -246,7 +245,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     public static RootNode parse(String code) {
         InstrumentationTestLanguage testLanguage = getCurrentLanguage(InstrumentationTestLanguage.class);
-        Source source = Source.newBuilder(code).language(ID).name("test").build();
+        Source source = Source.newBuilder(ID, code, "test").build();
         SourceSection outer = source.createSection(0, source.getLength());
         BaseNode base = testLanguage.parse(source);
         return new InstrumentationTestRootNode(testLanguage, "", outer, base);
@@ -1298,7 +1297,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public SourceSection getSourceSection() {
-            return Source.newBuilder("UnexpectedResultException(" + value + ")").name("unexpected").mimeType(MIME_TYPE).build().createSection(1);
+            return Source.newBuilder(ID, "UnexpectedResultException(" + value + ")", "unexpected").build().createSection(1);
         }
     }
 
@@ -1639,13 +1638,13 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected SourceSection findSourceLocation(InstrumentContext context, Object obj) {
         if (obj instanceof Integer || obj instanceof Long) {
-            return Source.newBuilder("source integer").name("integer").mimeType(MIME_TYPE).build().createSection(1);
+            return Source.newBuilder(ID, "source integer", "integer").build().createSection(1);
         }
         if (obj instanceof Boolean) {
-            return Source.newBuilder("source boolean").name("boolean").mimeType(MIME_TYPE).build().createSection(1);
+            return Source.newBuilder(ID, "source boolean", "boolean").build().createSection(1);
         }
         if (obj != null && obj.equals(Double.POSITIVE_INFINITY)) {
-            return Source.newBuilder("source infinity").name("double").mimeType(MIME_TYPE).build().createSection(1);
+            return Source.newBuilder(ID, "source infinity", "double").build().createSection(1);
         }
         return null;
     }

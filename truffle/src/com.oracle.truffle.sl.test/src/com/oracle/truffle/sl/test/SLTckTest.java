@@ -64,6 +64,10 @@ public class SLTckTest extends TruffleTCK {
     }
 
     @Override
+    public void testEvaluateSource() throws Exception {
+    }
+
+    @Override
     protected PolyglotEngine prepareVM(PolyglotEngine.Builder builder) throws Exception {
         PolyglotEngine vm = builder.build();
         // @formatter:off

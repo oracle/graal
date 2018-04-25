@@ -85,8 +85,7 @@ import org.graalvm.options.OptionKey;
  * }
  * </code>
  */
-@TruffleLanguage.Registration(id = InstrumentablePositionsTestLanguage.ID, mimeType = "application/x-" +
-                InstrumentablePositionsTestLanguage.ID, name = "InstrumentablePositionsTestLang", version = "1.0")
+@TruffleLanguage.Registration(id = InstrumentablePositionsTestLanguage.ID, name = "", version = "1.0")
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.ExpressionTag.class, StandardTags.RootTag.class, StandardTags.StatementTag.class})
 public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context> {
 

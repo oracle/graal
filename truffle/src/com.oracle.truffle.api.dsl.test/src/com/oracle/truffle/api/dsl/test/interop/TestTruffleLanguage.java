@@ -27,7 +27,7 @@ package com.oracle.truffle.api.dsl.test.interop;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 
-@TruffleLanguage.Registration(mimeType = "application/x-test", name = "InteropProcessorTest", version = "1.0")
+@TruffleLanguage.Registration(id = "InteropProcessorTest", name = "", version = "1.0")
 public final class TestTruffleLanguage extends TruffleLanguage<Object> {
 
     public TestTruffleLanguage() {

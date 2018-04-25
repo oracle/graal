@@ -83,7 +83,7 @@ public class UnboxToIntObject implements TruffleObject {
         return UnboxToIntObjectForeign.ACCESS;
     }
 
-    @TruffleLanguage.Registration(mimeType = "application/x-unbox", name = "Unboxing lang", version = "0.1")
+    @TruffleLanguage.Registration(id = "application/x-unbox", characterMimeTypes = "application/x-unbox", name = "Unboxing lang", version = "0.1")
     public static class MyLang extends TruffleLanguage<Object> {
 
         @Override

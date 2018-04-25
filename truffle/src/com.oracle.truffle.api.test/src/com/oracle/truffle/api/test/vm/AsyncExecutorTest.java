@@ -95,7 +95,7 @@ public class AsyncExecutorTest {
 
     }
 
-    @TruffleLanguage.Registration(name = "Async", mimeType = "application/x-test-async", version = "1.0")
+    @TruffleLanguage.Registration(id = "Async", name = "Async", characterMimeTypes = "application/x-test-async", version = "1.0")
     public static class AsyncLanguage extends TruffleLanguage<AsyncContext> {
 
         public AsyncLanguage() {

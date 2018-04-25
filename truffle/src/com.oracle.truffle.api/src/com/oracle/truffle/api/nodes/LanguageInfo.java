@@ -27,6 +27,7 @@ package com.oracle.truffle.api.nodes;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Represents public information about a language.
@@ -40,14 +41,16 @@ public final class LanguageInfo {
     private final String version;
     private final Set<String> mimeTypes;
     private final Object engineObject;
+    private final String defaultMimeType;
     private final boolean internal;
     private final boolean interactive;
 
-    LanguageInfo(Object engineObject, String id, String name, String version, Set<String> mimeTypes, boolean internal, boolean interactive) {
+    LanguageInfo(Object engineObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
         this.engineObject = engineObject;
         this.id = id;
         this.name = name;
         this.version = version;
+        this.defaultMimeType = defaultMimeType;
         this.mimeTypes = mimeTypes;
         this.internal = internal;
         this.interactive = interactive;
@@ -81,6 +84,19 @@ public final class LanguageInfo {
      */
     public String getVersion() {
         return version;
+    }
+
+    /**
+     * Returns the default MIME type of a language or <code>null</code> if no default mime-type is
+     * set. The default MIME type specifies whether a source is loaded as character or binary based
+     * source by default. If no default MIME type is set all sources evaluated with that language
+     * will be interpreted as {@link Source#hasCharacters() character based} sources. This set is
+     * equivalent to the set provided by {@link Registration#defaultMimeType()}.
+     *
+     * @since 1.0
+     */
+    public String getDefaultMimeType() {
+        return defaultMimeType;
     }
 
     /**

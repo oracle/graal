@@ -361,7 +361,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         (accessingLanguage != null && accessingLanguage.dependsOn(language));
 
         if (!accessPermitted) {
-            throw new PolyglotIllegalStateException(String.format("Access to language '%s' is not permitted. ", language.getId()));
+            throw new PolyglotIllegalArgumentException(String.format("Access to language '%s' is not permitted. ", language.getId()));
         }
         RuntimeException initError = language.initError;
         if (initError != null) {

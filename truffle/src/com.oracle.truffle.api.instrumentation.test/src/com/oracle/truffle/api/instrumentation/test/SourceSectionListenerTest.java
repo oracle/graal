@@ -123,7 +123,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         assertEvents(impl.onlyExpressions, sourceSections3[2], sourceSections3[3], sourceSections3[4]);
     }
 
-    private SourceSection[] sections(String code, String... match) throws IOException {
+    private SourceSection[] sections(String code, String... match) {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "sourceSectionTest").build();
 
         List<SourceSection> sections = new ArrayList<>();

@@ -700,11 +700,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
             CallTarget target = languageContext.parseCached(null, source, null);
             Object result = target.call(PolyglotImpl.EMPTY_ARGS);
-
+            Value hostValue;
+            try {
+                hostValue = languageContext.toHostValue(result);
+            } catch (NullPointerException | ClassCastException e) {
+                throw new AssertionError(String.format("Language %s returned an invalid return value %s. Must be an interop value.", languageId, result), e);
+            }
             if (source.isInteractive()) {
                 printResult(languageContext, result);
             }
-            return languageContext.toHostValue(result);
+            return hostValue;
         } catch (Throwable e) {
             throw PolyglotImpl.wrapGuestException(languageContext, e);
         } finally {

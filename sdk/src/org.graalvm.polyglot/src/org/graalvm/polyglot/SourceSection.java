@@ -165,24 +165,22 @@ public final class SourceSection {
     }
 
     /**
+     * @since 1.0
+     * @deprecated use {@link #getCharacters()} instead.
+     */
+    @Deprecated
+    public CharSequence getCode() {
+        return IMPL.getCode(impl);
+    }
+
+    /**
      * Returns the source code fragment described by this section. Returns an empty string for out
-     * of bounds or {@link #isAvailable() unavailable} source sections. Note that calling this
-     * method causes the {@link Source#getCharacters() code} of the {@link #getSource() source} to
-     * be loaded if it was not yet loaded.
+     * of bounds or {@link #isAvailable() unavailable} source sections.
      *
      * @return the code as a string.
      * @since 1.0
      */
     public CharSequence getCharacters() {
-        return IMPL.getCode(impl);
-    }
-
-    /**
-     * @since 1.0
-     * @deprecated use {@link #getCharacters()}
-     */
-    @Deprecated
-    public CharSequence getCode() {
         return IMPL.getCode(impl);
     }
 

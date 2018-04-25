@@ -284,7 +284,7 @@ public class ImplicitExplicitExportTest {
     static final String L2 = "application/x-test-import-export-2";
     static final String L3 = "application/x-test-import-export-3";
 
-    @TruffleLanguage.Registration(mimeType = {L1, L1_ALT}, name = "ImportExport1", version = "0")
+    @TruffleLanguage.Registration(id = L1, characterMimeTypes = {L1, L1_ALT}, defaultMimeType = L1, name = "ImportExport1", version = "0")
     public static final class ExportImportLanguage1 extends AbstractExportImportLanguage {
 
         public ExportImportLanguage1() {
@@ -304,7 +304,7 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = L2, name = "ImportExport2", version = "0")
+    @TruffleLanguage.Registration(id = L2, characterMimeTypes = L2, name = "ImportExport2", version = "0")
     public static final class ExportImportLanguage2 extends AbstractExportImportLanguage {
 
         public ExportImportLanguage2() {
@@ -324,7 +324,7 @@ public class ImplicitExplicitExportTest {
         }
     }
 
-    @TruffleLanguage.Registration(mimeType = {L3, L3 + "alt"}, name = "ImportExport3", version = "0")
+    @TruffleLanguage.Registration(id = L3, characterMimeTypes = {L3, L3 + "alt"}, defaultMimeType = L3, name = "ImportExport3", version = "0")
     public static final class ExportImportLanguage3 extends AbstractExportImportLanguage {
 
         public ExportImportLanguage3() {

@@ -57,7 +57,7 @@ public class SourceSectionTest {
     @Theory
     public void testSourceSections(int value0, int value1, int value2) {
         TestRootNode<MutableSourceSectionNode> root = createRoot(SourceSectionTestFactory.MutableSourceSectionNodeFactory.getInstance());
-        SourceSection section = Source.newBuilder("").name("a").mimeType("").build().createUnavailableSection();
+        SourceSection section = Source.newBuilder("", "", "a").build().createUnavailableSection();
         root.getNode().changeSourceSection(section);
         expectSourceSection(root.getNode(), section);
         assertThat((int) executeWith(root, value0), is(value0));
@@ -120,7 +120,7 @@ public class SourceSectionTest {
 
     @Test
     public void testCreateCast() {
-        SourceSection section = Source.newBuilder("").name("a").mimeType("").build().createUnavailableSection();
+        SourceSection section = Source.newBuilder("", "", "a").build().createUnavailableSection();
         TestRootNode<NodeWithFixedSourceSection> root = createRootPrefix(SourceSectionTestFactory.NodeWithFixedSourceSectionFactory.getInstance(), true, section);
         expectSourceSection(root.getNode(), section);
         assertThat((int) executeWith(root, 1), is(1));

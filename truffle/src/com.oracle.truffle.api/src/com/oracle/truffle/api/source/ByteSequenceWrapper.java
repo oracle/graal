@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,49 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.instrumentation.test;
+package com.oracle.truffle.api.source;
 
-import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FILENAME_EXTENSION;
-import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.MIME_TYPE;
+import org.graalvm.polyglot.io.ByteSequence;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.spi.FileTypeDetector;
+/**
+ * Wrapper to enforce ByteSequence contract is not violated by any language.
+ */
+class ByteSequenceWrapper implements ByteSequence {
 
-public final class InstrumentationTestLanguageFileDetector extends FileTypeDetector {
+    private final ByteSequence delegate;
+
+    ByteSequenceWrapper(ByteSequence delegate) {
+        this.delegate = delegate;
+    }
+
+    public int length() {
+        return delegate.length();
+    }
+
+    public byte byteAt(int index) {
+        return delegate.byteAt(index);
+    }
+
+    public ByteSequence subSequence(int start, int end) {
+        return delegate.subSequence(start, end);
+    }
+
     @Override
-    public String probeContentType(Path path) throws IOException {
-        if (path.getFileName().toString().endsWith(FILENAME_EXTENSION)) {
-            return MIME_TYPE;
+    public boolean equals(Object obj) {
+        if (obj instanceof ByteSequenceWrapper) {
+            return delegate.equals(((ByteSequenceWrapper) obj).delegate);
+        } else {
+            return delegate.equals(obj);
         }
-        return null;
+    }
+
+    @Override
+    public int hashCode() {
+        return delegate.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return delegate.toString();
     }
 }

@@ -516,7 +516,7 @@ public class EngineTest {
 
     }
 
-    @TruffleLanguage.Registration(mimeType = CachingLanguage.MIME_TYPE, version = "", name = "")
+    @TruffleLanguage.Registration(id = "CachingLanguage", characterMimeTypes = CachingLanguage.MIME_TYPE, version = "", name = "")
     public static final class CachingLanguage extends TruffleLanguage<CachingLanguageChannel> {
 
         static final String MIME_TYPE = "application/x-test-caching";
@@ -789,7 +789,7 @@ public class EngineTest {
 
     }
 
-    @TruffleLanguage.Registration(mimeType = ForkingLanguage.MIME_TYPE, version = "version", name = "forkinglanguage")
+    @TruffleLanguage.Registration(id = "ForkingLanguage", characterMimeTypes = ForkingLanguage.MIME_TYPE, version = "version", name = "forkinglanguage")
     public static final class ForkingLanguage extends TruffleLanguage<ForkingLanguageChannel> implements SecretInterfaceType {
 
         static final String MIME_TYPE = "application/x-test-forking";

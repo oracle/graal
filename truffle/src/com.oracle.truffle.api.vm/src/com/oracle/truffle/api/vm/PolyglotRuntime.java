@@ -197,7 +197,7 @@ public final class PolyglotRuntime {
             assert engineProfile != null;
             this.cache = cache;
             this.languageId = languageId;
-            this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
+            this.language = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
         }
 
         com.oracle.truffle.api.vm.PolyglotEngine.Language currentLanguage() {

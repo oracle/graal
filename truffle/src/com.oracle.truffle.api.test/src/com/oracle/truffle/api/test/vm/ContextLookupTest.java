@@ -217,7 +217,7 @@ public class ContextLookupTest {
 
     }
 
-    @TruffleLanguage.Registration(mimeType = LanguageLookup.MIME_TYPE, version = "", name = "")
+    @TruffleLanguage.Registration(id = "LanguageLookup", characterMimeTypes = LanguageLookup.MIME_TYPE, version = "", name = "")
     public static final class LanguageLookup extends TruffleLanguage<LanguageLookupContext> {
 
         static final String MIME_TYPE = "application/x-test-language-lookup";

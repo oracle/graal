@@ -78,7 +78,7 @@ public class PolyglotEngineWithJavaScript {
             "(function (a, b) {\n" +
             "  return a * b;\n" +
             "})\n",
-            "mul.js").buildLiteral();
+            "mul.js").build();
 
         // Evaluate JavaScript function definition
         Value jsFunction = context.eval(src);
@@ -120,7 +120,7 @@ public class PolyglotEngineWithJavaScript {
              "    'timeInSeconds': time\n" +
              "  }\n" +
              "})\n",
-            "CountSeconds.js").buildLiteral();
+            "CountSeconds.js").build();
 
         // Evaluate JavaScript function definition
         Value jsFunction = context.eval(src);
@@ -168,7 +168,7 @@ public class PolyglotEngineWithJavaScript {
             "(function(t) {\n" +
             "  return 3600 * t.hours + 60 * t.minutes + t.seconds;\n" +
             "})\n",
-            "MomentToSeconds.js").buildLiteral();
+            "MomentToSeconds.js").build();
 
         final Moment javaMoment = new Moment(6, 30, 10);
 
@@ -197,7 +197,7 @@ public class PolyglotEngineWithJavaScript {
             "(function(t) {\n" +
             "  return 3600 * t.hours + 60 * t.minutes + t.seconds;\n" +
             "})\n",
-            "MomentToSeconds.js").buildLiteral();
+            "MomentToSeconds.js").build();
 
         final Moment javaMoment = new Moment(6, 30, 10);
 
@@ -233,7 +233,7 @@ public class PolyglotEngineWithJavaScript {
             "     return new Moment(h, m, s);\n" +
             "  };\n" +
             "})\n",
-            "ConstructMoment.js").buildLiteral();
+            "ConstructMoment.js").build();
 
         // Evaluate the JavaScript function definition
         final Value jsFunction = context.eval(src);
@@ -282,7 +282,7 @@ public class PolyglotEngineWithJavaScript {
             "    return new JSIncrementor(init);\n" +
             "  }\n" +
             "})\n",
-            "Incrementor.js").buildLiteral();
+            "Incrementor.js").build();
 
         // Evaluate JavaScript function definition
         Value jsFunction = context.eval(src);
@@ -334,7 +334,7 @@ public class PolyglotEngineWithJavaScript {
             "  }\n" +
             "  return [ new Point(30, 15), new Point(5, 7) ];\n" +
             "})\n",
-            "ArrayOfPoints.js").buildLiteral();
+            "ArrayOfPoints.js").build();
 
         // Evaluate the JavaScript function definition
         Value jsFunction = context.eval(src);
@@ -408,7 +408,7 @@ public class PolyglotEngineWithJavaScript {
             "    ]\n" +
             "  };\n" +
             "})\n",
-            "github-api-value.js").buildLiteral();
+            "github-api-value.js").build();
 
         // Evaluate the JavaScript function definition
         Value jsFunction = context.eval(src);

@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.net.URL;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
@@ -62,6 +63,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -98,7 +100,7 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
 
-        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, Set<String> mimeTypes, boolean internal, boolean interactive);
+        public abstract LanguageInfo createLanguage(Object vmObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive);
 
         public abstract Object getSourceVM(RootNode rootNode);
 
@@ -122,6 +124,14 @@ public abstract class Accessor {
         public abstract void setPolyglotSource(Source source, org.graalvm.polyglot.Source polyglotSource);
 
         public abstract org.graalvm.polyglot.Source getPolyglotSource(Source source);
+
+        public abstract String findMimeType(File file) throws IOException;
+
+        public abstract String findMimeType(URL url) throws IOException;
+
+        public abstract boolean isLegacySource(Source soure);
+
+        public abstract SourceBuilder newBuilder(String language, File origin);
 
     }
 
@@ -335,6 +345,10 @@ public abstract class Accessor {
 
         public abstract Env getLanguageEnv(Object languageContextVMObject, LanguageInfo otherLanguage);
 
+        public abstract boolean isCharacterBasedSource(String language, String mimeType);
+
+        public abstract Set<String> getValidMimeTypes(String language);
+
     }
 
     public abstract static class LanguageSupport {
@@ -426,6 +440,8 @@ public abstract class Accessor {
         public abstract void configureLoggers(Object polyglotContext, Map<String, Level> logLevels);
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
+
+        public abstract File asFile(TruffleFile file);
 
     }
 

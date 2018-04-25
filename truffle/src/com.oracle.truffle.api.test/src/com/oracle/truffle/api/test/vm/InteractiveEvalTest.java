@@ -148,7 +148,7 @@ public class InteractiveEvalTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "DefaultInteractive", mimeType = "application/x-test-definteract", version = "1.0")
+    @TruffleLanguage.Registration(id = "application/x-test-definteract", name = "DefaultInteractive", characterMimeTypes = "application/x-test-definteract", version = "1.0")
     public static class DefaultInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
 
         @Override
@@ -173,7 +173,7 @@ public class InteractiveEvalTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "SpecialInteractive", mimeType = "application/x-test-specinteract", version = "1.0", interactive = false)
+    @TruffleLanguage.Registration(id = "application/x-test-specinteract", name = "SpecialInteractive", characterMimeTypes = "application/x-test-specinteract", version = "1.0", interactive = false)
     public static class SpecialInteractiveLanguage extends TruffleLanguage<InteractiveContext> {
 
         @Override

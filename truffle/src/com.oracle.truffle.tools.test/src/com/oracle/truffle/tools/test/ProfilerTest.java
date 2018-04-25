@@ -39,9 +39,8 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.tools.*;
+import com.oracle.truffle.tools.Profiler;
 
 @SuppressWarnings("deprecation")
 public class ProfilerTest extends AbstractInstrumentationTest {
@@ -346,7 +345,6 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         Assert.assertTrue(profiler.hasData());
 
         profiler.clearData();
-        profiler.setMimeTypes(new String[]{InstrumentationTestLanguage.MIME_TYPE});
 
         Assert.assertFalse(profiler.hasData());
 
@@ -355,7 +353,6 @@ public class ProfilerTest extends AbstractInstrumentationTest {
         Assert.assertTrue(profiler.hasData());
 
         profiler.clearData();
-        profiler.setMimeTypes(new String[]{"foo", InstrumentationTestLanguage.MIME_TYPE});
 
         Assert.assertFalse(profiler.hasData());
 

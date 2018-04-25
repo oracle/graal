@@ -40,12 +40,9 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.IOException;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -66,7 +63,7 @@ public class SLInteropObjectTest {
     }
 
     @Test
-    public void testObject() throws IOException {
+    public void testObject() {
         final Source src = Source.newBuilder("sl", "function main() {o = new(); o.a = 10; o.b = \"B\"; return o;}", "testObject.sl").build();
         final Value obj = context.eval(src);
         Assert.assertTrue(obj.hasMembers());

@@ -50,6 +50,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 
@@ -269,15 +270,65 @@ public abstract class TruffleLanguage<C> {
         String version() default "inherit";
 
         /**
-         * List of MIME types associated with your language.
+         * @since 0.8 or earlier
+         * @deprecated split up MIME types into {@link #characterMimeTypes() character} and
+         *             {@link #byteMimeTypes() byte} based MIME types.
+         */
+        @Deprecated
+        String[] mimeType() default {};
+
+        /**
+         * Returns the default MIME type of this language. The default MIME type allows embedders
+         * and other language or instruments to find out how content is interpreted if no MIME type
+         * was specified. The default MIME type must be specified in the list of supported
+         * {@link #characterMimeTypes() character} or {@link #byteMimeTypes() byte} based MIME
+         * types.
+         * <p>
+         * The default MIME type is mandatory if more than one supported MIME type was specified. If
+         * no default MIME type and no supported MIME types were specified then all sources for this
+         * language will be interpreted as {@link Source#hasCharacters() character} based sources.
          *
-         * Users will use them when {@link org.graalvm.polyglot.Source#findLanguage(String)} is used
-         * by the embedder to lookup a language id} for a mime type.
+         * @see LanguageInfo#getDefaultMimeType()
+         * @see Language#getDefaultMimeType()
+         * @see #characterMimeTypes()
+         * @see #byteMimeTypes()
+         * @since 1.0
+         */
+        String defaultMimeType() default "";
+
+        /**
+         * List of MIME types supported by this language which sources should be interpreted as
+         * {@link Source#hasCharacters() character} based sources. Languages may use MIME types to
+         * differentiate supported source kinds. If a MIME type is declared as supported then the
+         * language needs to be able to {@link TruffleLanguage#parse(ParsingRequest) parse} sources
+         * of this kind. If only one supported MIME type was specified by a language then it will be
+         * used as {@link #defaultMimeType() default} MIME type. If no supported character and byte
+         * based MIME types are specified then all sources will be interpreted as
+         * {@link Source#hasCharacters() character} based.
          *
          * @return array of MIME types assigned to your language files
-         * @since 0.8 or earlier
+         * @see #defaultMimeType()
+         * @see #byteMimeTypes()
+         * @since 1.0
          */
-        String[] mimeType();
+        String[] characterMimeTypes() default {};
+
+        /**
+         * List of MIME types supported by this language which sources should be interpreted as
+         * {@link Source#hasBytes() byte} based sources. Languages may use MIME types to
+         * differentiate supported source kinds. If a MIME type is declared as supported then the
+         * language needs to be able to {@link TruffleLanguage#parse(ParsingRequest) parse} sources
+         * of this kind. If only one supported MIME type was specified by a language then it will be
+         * used as {@link #defaultMimeType() default} MIME type. If no supported character and byte
+         * based MIME types are specified then all sources will be interpreted as
+         * {@link Source#hasCharacters() character} based.
+         *
+         * @return array of MIME types assigned to your language files
+         * @see #defaultMimeType()
+         * @see #characterMimeTypes()
+         * @since 1.0
+         */
+        String[] byteMimeTypes() default {};
 
         /**
          * Specifies if the language is suitable for interactive evaluation of {@link Source
@@ -1888,17 +1939,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Builds new {@link Source source} from a {@link TruffleFile}. Once the source is built the
-         * {@link Source#getName() name} will become {@link TruffleFile#getName()} and the
-         * {@link Source#getCharacters()} will be loaded from the {@link TruffleFile file}, unless
-         * {@link com.oracle.truffle.api.source.Source.Builder#content(java.lang.String) redefined}
-         * on the builder.
-         *
-         * @param file the {@link TruffleFile} to create {@link Source} for
-         * @return new builder to configure additional properties
          * @since 1.0
+         * @deprecated use {@link Source#newBuilder(String, TruffleFile)} instead.
          */
-        @SuppressWarnings("static-method")
+        @SuppressWarnings({"static-method", "deprecation"})
+        @Deprecated
         public Source.Builder<IOException, RuntimeException, RuntimeException> newSourceBuilder(final TruffleFile file) {
             Objects.requireNonNull(file, "File must be non null");
             return Source.newBuilder(new TruffleFile.FileAdapter(file));
@@ -2484,6 +2529,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public File asFile(TruffleFile file) {
+            return new FileAdapter(file);
+        }
+
+        @Override
         public void configureLoggers(Object polyglotContext, Map<String, Level> logLevels) {
             if (logLevels == null) {
                 TruffleLogger.LoggerCache.getInstance().removeLogLevelsForContext(polyglotContext);
@@ -2563,11 +2613,9 @@ class TruffleLanguageSnippets {
         protected void initializeContext(Context context) throws IOException {
             // called "later" to finish the initialization
             // for example call into another language
-            Source source =
-                Source.newBuilder("function mul(x, y) { return x * y }").
-                name("mul.js").
-                mimeType("text/javascript").
-                build();
+            Source source = Source.newBuilder("js",
+                                "function(x, y) x * y",
+                                "mul.js").build();
             context.mul = context.env.parse(source);
         }
     }
@@ -2637,10 +2685,9 @@ class TruffleLanguageSnippets {
 
     // BEGIN: TruffleLanguageSnippets#parseWithParams
     public void parseWithParams(Env env) {
-        Source multiply = Source.newBuilder("a * b").
-            mimeType("text/javascript").
-            name("mul.js").
-            build();
+        Source multiply = Source.newBuilder("js",
+                        "a * b",
+                        "mul.js").build();
         CallTarget method = env.parse(multiply, "a", "b");
         Number fortyTwo = (Number) method.call(6, 7);
         assert 42 == fortyTwo.intValue();

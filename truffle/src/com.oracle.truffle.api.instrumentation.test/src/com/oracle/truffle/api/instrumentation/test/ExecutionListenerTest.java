@@ -541,8 +541,8 @@ public class ExecutionListenerTest extends AbstractPolyglotTest {
         ExecutionEvent event;
         setupListener(ExecutionListener.newBuilder().onEnter(this::add).expressions(true).sourceFilter((s) -> s.getName().equals("test1")));
 
-        Source source0 = Source.newBuilder(InstrumentationTestLanguage.ID, "EXPRESSION", "test0").buildLiteral();
-        Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "EXPRESSION", "test1").buildLiteral();
+        Source source0 = Source.newBuilder(InstrumentationTestLanguage.ID, "EXPRESSION", "test0").build();
+        Source source1 = Source.newBuilder(InstrumentationTestLanguage.ID, "EXPRESSION", "test1").build();
 
         context.eval(source0);
         context.eval(source1);

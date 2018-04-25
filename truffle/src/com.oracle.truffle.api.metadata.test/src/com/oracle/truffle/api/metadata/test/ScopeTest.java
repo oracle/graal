@@ -179,7 +179,7 @@ public class ScopeTest extends AbstractInstrumentationTest {
         TestScopeInstrument.INSTANCE.checkForFailure();
     }
 
-    @TruffleLanguage.Registration(id = "test-custom-scope-language", name = "", version = "", mimeType = "x-testCustomScope")
+    @TruffleLanguage.Registration(id = "test-custom-scope-language", name = "", version = "")
     @ProvidedTags({StandardTags.StatementTag.class})
     public static class CustomScopeLanguage extends TruffleLanguage<Object> implements com.oracle.truffle.api.metadata.ScopeProvider<Object> {
 

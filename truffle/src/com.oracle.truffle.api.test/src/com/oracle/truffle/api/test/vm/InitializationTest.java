@@ -132,7 +132,7 @@ public class InitializationTest {
     private abstract static class AbstractLanguage extends TruffleLanguage<MyEnv> {
     }
 
-    @TruffleLanguage.Registration(mimeType = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
+    @TruffleLanguage.Registration(id = "application/x-abstrlang", characterMimeTypes = "application/x-abstrlang", name = "AbstrLang", version = "0.1")
     public static final class TestLanguage extends AbstractLanguage {
 
         @Override

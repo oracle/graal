@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.sl.SLLanguage;
 
 /**
  * Builtin function to evaluate source code in any supported language.
@@ -74,8 +75,7 @@ public abstract class SLEvalBuiltin extends SLBuiltinNode {
     }
 
     protected CallTarget parse(String id, String code) {
-        // mimetype needs to be set for compatibility reasons with the old TCK.
-        final Source source = Source.newBuilder(code).name("(eval)").language(id).mimeType(id).build();
+        final Source source = Source.newBuilder(id, code, "(eval)").build();
         return getContext().parse(source);
     }
 

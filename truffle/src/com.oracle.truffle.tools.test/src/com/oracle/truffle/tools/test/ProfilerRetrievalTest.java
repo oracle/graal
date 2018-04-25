@@ -68,11 +68,10 @@ public class ProfilerRetrievalTest {
         Assert.assertTrue(InstrumentThatNeedsProfiler.haveProfiler);
     }
 
-    @TruffleLanguage.Registration(id = LanguageThatNeedsProfiler.ID, mimeType = LanguageThatNeedsProfiler.MIME_TYPE, name = "Language That Needs Profiler", version = "1.0")
+    @TruffleLanguage.Registration(id = LanguageThatNeedsProfiler.ID, name = "Language That Needs Profiler", version = "1.0")
     public static class LanguageThatNeedsProfiler extends TruffleLanguage<Profiler> {
 
         static final String ID = "language-that-needs-profiler";
-        static final String MIME_TYPE = "application/x-language-that-needs-profiler";
 
         @Override
         protected Profiler createContext(TruffleLanguage.Env env) {

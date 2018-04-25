@@ -839,7 +839,8 @@ public class SLInspectDebugTest {
         file.createNewFile();
         file.deleteOnExit();
 
-        com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder(file).language("sl").mimeType("application/x-sl").build();
+        String s = new String(Files.readAllBytes(file.toPath()));
+        com.oracle.truffle.api.source.Source source = com.oracle.truffle.api.source.Source.newBuilder("sl", s, file.getName()).build();
 
         // Test name of a file
         assertTrue(TruffleDebugger.sourceMatchesBlackboxPatterns(source, new Pattern[] {Pattern.compile("BlackboxTest.sl")}));
