@@ -23,6 +23,7 @@
 package org.graalvm.compiler.replacements.verifier;
 
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
 import java.util.Set;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -52,6 +53,8 @@ public abstract class GeneratedPlugin {
         this.pluginName = intrinsicMethod.getEnclosingElement().getSimpleName() + "_" + intrinsicMethod.getSimpleName();
     }
 
+    protected abstract Class<? extends Annotation> getAnnotationClass();
+
     public String getPluginName() {
         return pluginName;
     }
@@ -69,6 +72,10 @@ public abstract class GeneratedPlugin {
         out.printf("        @Override\n");
         out.printf("        public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {\n");
         InjectedDependencies deps = createExecute(env, out);
+        out.printf("        }\n");
+        out.printf("        @Override\n");
+        out.printf("        public Class<? extends Annotation> getSource() {\n");
+        out.printf("            return %s.class;\n", getAnnotationClass().getName().replace('$', '.'));
         out.printf("        }\n");
 
         createPrivateMembers(out, deps);
@@ -239,6 +246,7 @@ public abstract class GeneratedPlugin {
             }
         }
         out.printf("            } else {\n");
+        out.printf("                assert b.canDeferPlugin(this) : b.getClass().toString();\n");
         out.printf("                return false;\n");
         out.printf("            }\n");
     }

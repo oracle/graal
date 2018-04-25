@@ -23,6 +23,7 @@
 package org.graalvm.compiler.replacements.verifier;
 
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Set;
 
@@ -47,6 +48,11 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     public GeneratedNodeIntrinsicPlugin(ExecutableElement intrinsicMethod, TypeMirror[] signature) {
         super(intrinsicMethod);
         this.signature = signature;
+    }
+
+    @Override
+    protected Class<? extends Annotation> getAnnotationClass() {
+        return NodeIntrinsic.class;
     }
 
     private static TypeMirror valueNodeType(ProcessingEnvironment env) {
