@@ -596,7 +596,8 @@ public abstract class Launcher {
                 } catch (IllegalArgumentException e) {
                     throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
                 }
-                options.put(key, value);
+                // use the full name of the found descriptor
+                options.put(descriptor.getName(), value);
                 return true;
         }
     }
