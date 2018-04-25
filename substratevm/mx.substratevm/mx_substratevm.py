@@ -859,33 +859,33 @@ def fetch_languages(args, early_exit=True):
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
     name='SubstrateVM',
     short_name='svm',
-    documentation_files=[],
     license_files=[],
     third_party_license_files=[],
-    jre_lib_files=['extracted-dependency:substratevm:SVM_GRAALVM_SUPPORT'],
+    support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],  # TODO needs support? or could be jars?
     launcher_configs=[
         mx_sdk.LauncherConfig(
             destination="bin/native-image",
-            jar_distributions=["dependency:substratevm:SVM_DRIVER"],
+            jar_distributions=["substratevm:SVM_DRIVER"],
             main_class="com.oracle.svm.driver.NativeImage",
             build_args=[
                 "-H:-ParseRuntimeOptions",
             ]
         )
     ],
-), suite)
+))
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
+    suite=suite,
     name='Polyglot.Native',
     short_name='polynative',
     dir_name='polyglot',
-    documentation_files=[],
     license_files=[],
     third_party_license_files=[],
-    jre_lib_files=['extracted-dependency:substratevm:POLYGLOT_NATIVE_API_SUPPORT'],
+    support_distributions=['substratevm:POLYGLOT_NATIVE_API_SUPPORT'],  # TODO only support? or could be jars?
     polyglot_lib_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",
@@ -893,13 +893,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
         "-H:CStandard=C11",
     ],
     polyglot_lib_jar_dependencies=[
-        "dependency:substratevm:POLYGLOT_NATIVE_API",
+        "substratevm:POLYGLOT_NATIVE_API",
     ],
     polyglot_lib_build_dependencies=[
-        "dependency:substratevm:POLYGLOT_NATIVE_API_SUPPORT",
+        "substratevm:POLYGLOT_NATIVE_API_SUPPORT",
     ],
     has_polyglot_lib_entrypoints=True,
-), suite)
+))
 
 mx.update_commands(suite, {
     'build': [build, ''],

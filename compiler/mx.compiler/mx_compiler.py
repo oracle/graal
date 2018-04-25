@@ -1105,15 +1105,15 @@ def makegraaljdk(args):
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
+    suite=_suite,
     name='Graal compiler',
     short_name='cmp',
     dir_name='graal',
-    documentation_files=[],
     license_files=[],
     third_party_license_files=[],
-    jvmci_jars=['dependency:compiler:GRAAL'],
+    jvmci_jars=['compiler:GRAAL'],
     graal_compiler='graal',
-), _suite)
+))
 
 
 mx.update_commands(_suite, {

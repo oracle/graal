@@ -137,7 +137,7 @@ suite = {
                     "--language:all"
                 ],
                 "jar_distributions": [
-                    "dependency:sdk:LAUNCHER_COMMON",
+                    "sdk:LAUNCHER_COMMON",
                 ],
                 "main_class": "org.graalvm.launcher.PolyglotLauncher",
                 "destination": "polyglot",
@@ -153,12 +153,12 @@ suite = {
             ],
         },
         "INSTALLER": {
-            "subDir" : "src",
-            "mainClass" : "org.graalvm.component.installer.ComponentInstaller",
+            "subDir": "src",
+            "mainClass": "org.graalvm.component.installer.ComponentInstaller",
             "dependencies": ["org.graalvm.component.installer"],
         },
         "INSTALLER_TESTS": {
-            "subDir" : "src",
+            "subDir": "src",
             "dependencies": ["org.graalvm.component.installer.test"],
             "exclude": [
                 "mx:HAMCREST",
@@ -168,21 +168,21 @@ suite = {
                 "INSTALLER",
             ],
         },
-        "INSTALLER_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "GraalVM Installer support distribution for the GraalVM",
-            "layout" : {
-                "./" : "dependency:vm:INSTALLER",
-                "bin/" : "file:mx.vm/gu",
+        "INSTALLER_GRAALVM_SUPPORT": {
+            "native": True,
+            "platformDependent": True,
+            "description": "GraalVM Installer support distribution for the GraalVM",
+            "layout": {
+                "./": "dependency:vm:INSTALLER",
+                "bin/": "file:mx.vm/gu",
                 "components/polyglot/.registry" : "string:",
             },
         },
-        "VM_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "description" : "VM support distribution for the GraalVM",
-            "layout" : {
-                "./" : [
+        "VM_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "VM support distribution for the GraalVM",
+            "layout": {
+                "./": [
                     "file:GraalCE_license_3rd_party_license.txt",
                 ],
             },
