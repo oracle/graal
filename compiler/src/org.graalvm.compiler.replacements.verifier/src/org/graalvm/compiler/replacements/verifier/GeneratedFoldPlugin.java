@@ -23,6 +23,7 @@
 package org.graalvm.compiler.replacements.verifier;
 
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -46,6 +47,11 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
 
     public GeneratedFoldPlugin(ExecutableElement intrinsicMethod) {
         super(intrinsicMethod);
+    }
+
+    @Override
+    protected Class<? extends Annotation> getAnnotationClass() {
+        return Fold.class;
     }
 
     private static TypeMirror stringType(ProcessingEnvironment env) {

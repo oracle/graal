@@ -53,6 +53,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
@@ -126,7 +127,7 @@ public final class ImageClassLoader {
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
-        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(t -> toRealPath(t)));
+        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
         final boolean debugGR8964 = Boolean.valueOf(System.getProperty("debug_gr_8964", "false"));
         if (debugGR8964) {
             System.err.print("[ImageClassLoader.initAllClasses");
@@ -134,39 +135,40 @@ public final class ImageClassLoader {
             for (String classPathEntry : classpath) {
                 System.err.println();
                 System.err.println("  [classPathEntry: " + classPathEntry);
-                final Path path = Paths.get(classPathEntry);
-                pathList.add(path);
-                final Path absolutePath;
-                System.err.println("             path: " + path.toString());
-                if (!path.isAbsolute()) {
-                    absolutePath = path.toAbsolutePath();
-                    System.err.println("     absolutePath: " + path.toString());
-                } else {
-                    absolutePath = path;
-                }
-                System.err.print("                 ");
-                System.err.print(path.isAbsolute() ? "  absolute" : "");
-                final boolean exists = Files.exists(absolutePath);
-                System.err.print(exists ? "  exists" : "");
-                if (exists) {
-                    System.err.print(Files.isDirectory(absolutePath) ? "  directory" : "");
-                    System.err.print(Files.isRegularFile(absolutePath, LinkOption.NOFOLLOW_LINKS) ? "  file" : "");
-                    System.err.print(Files.isSymbolicLink(absolutePath) ? "  symlink" : "");
-                    System.err.print(Files.isReadable(absolutePath) ? "  readable" : "");
-                    try {
-                        System.err.print("  " + Files.getLastModifiedTime(absolutePath).toString());
-                    } catch (IOException ioe) {
-                        System.err.print("  n/a");
+                toClassPathEntries(classPathEntry).forEach(path -> {
+                    pathList.add(path);
+                    final Path absolutePath;
+                    System.err.println("             path: " + path.toString());
+                    if (!path.isAbsolute()) {
+                        absolutePath = path.toAbsolutePath();
+                        System.err.println("     absolutePath: " + path.toString());
+                    } else {
+                        absolutePath = path;
                     }
-                }
-                System.err.print("]");
+                    System.err.print("                 ");
+                    System.err.print(path.isAbsolute() ? "  absolute" : "");
+                    final boolean exists = Files.exists(absolutePath);
+                    System.err.print(exists ? "  exists" : "");
+                    if (exists) {
+                        System.err.print(Files.isDirectory(absolutePath) ? "  directory" : "");
+                        System.err.print(Files.isRegularFile(absolutePath, LinkOption.NOFOLLOW_LINKS) ? "  file" : "");
+                        System.err.print(Files.isSymbolicLink(absolutePath) ? "  symlink" : "");
+                        System.err.print(Files.isReadable(absolutePath) ? "  readable" : "");
+                        try {
+                            System.err.print("  " + Files.getLastModifiedTime(absolutePath).toString());
+                        } catch (IOException ioe) {
+                            System.err.print("  n/a");
+                        }
+                    }
+                    System.err.print("]");
+                });
             }
             System.err.println("]");
             uniquePaths.addAll(pathList);
         } else {
             uniquePaths.addAll(
                             Arrays.stream(classpath)
-                                            .map(Paths::get)
+                                            .flatMap(ImageClassLoader::toClassPathEntries)
                                             .collect(Collectors.toList()));
         }
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
@@ -174,12 +176,28 @@ public final class ImageClassLoader {
         executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
     }
 
+    static Stream<Path> toClassPathEntries(String classPathEntry) {
+        Path entry = Paths.get(classPathEntry);
+        if (entry.endsWith("*")) {
+            return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
+        }
+        return Stream.of(entry);
+    }
+
+    private static Set<Path> excludeDirectories = getExcludeDirectories();
+
+    private static Set<Path> getExcludeDirectories() {
+        Path root = Paths.get("/");
+        return Arrays.asList("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
+                        .stream().map(root::resolve).collect(Collectors.toSet());
+    }
+
     private void loadClassesFromPath(ForkJoinPool executor, Path path) {
         if (Files.exists(path)) {
-            if (path.getFileName().toString().endsWith(".jar")) {
+            if (path.getNameCount() > 0 && path.getFileName().toString().endsWith(".jar")) {
                 try {
                     try (FileSystem jarFileSystem = FileSystems.newFileSystem(URI.create("jar:file:" + path), Collections.emptyMap())) {
-                        initAllClasses(jarFileSystem.getPath("/"), executor);
+                        initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
                     }
                 } catch (ClosedByInterruptException ignored) {
                     throw new InterruptImageBuilding();
@@ -187,7 +205,7 @@ public final class ImageClassLoader {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                initAllClasses(path, executor);
+                initAllClasses(path, excludeDirectories, executor);
             }
         }
     }
@@ -222,10 +240,21 @@ public final class ImageClassLoader {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
-    private void initAllClasses(final Path root, ForkJoinPool executor) {
+    private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
         FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
             @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (excludes.contains(dir)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return super.preVisitDirectory(dir, attrs);
+            }
+
+            @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (excludes.contains(file.getParent())) {
+                    return FileVisitResult.SKIP_SIBLINGS;
+                }
                 executor.execute(() -> {
                     String fileName = root.relativize(file).toString().replace('/', '.');
                     if (fileName.endsWith(".class")) {

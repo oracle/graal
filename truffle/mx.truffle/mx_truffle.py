@@ -33,7 +33,6 @@ import zipfile
 from collections import OrderedDict
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import tempfile
-import shutil
 
 import mx
 
@@ -72,8 +71,6 @@ def javadoc(args, vm=None):
     mx.javadoc(['--unified', '--exclude-packages', 'com.oracle.truffle.tck,com.oracle.truffle.tck.impl,com.oracle.truffle.api.interop.java,com.oracle.truffle.api.vm,com.oracle.truffle.api.metadata'] + args)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
-    shutil.move(os.sep.join([javadoc_dir, 'index.html']), os.sep.join([javadoc_dir, 'overview-frames.html']))
-    shutil.copy(os.sep.join([javadoc_dir, 'overview-summary.html']), os.sep.join([javadoc_dir, 'index.html']))
 
 def checkLinks(javadocDir):
     href = re.compile('(?<=href=").*?(?=")')

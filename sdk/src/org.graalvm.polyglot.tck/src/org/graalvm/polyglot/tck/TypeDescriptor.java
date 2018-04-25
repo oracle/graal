@@ -925,14 +925,14 @@ public final class TypeDescriptor {
             } else if (otherClz == UnionImpl.class) {
                 final UnionImpl origUnion = (UnionImpl) origType;
                 final UnionImpl byUnion = (UnionImpl) byType;
-                final Set<TypeDescriptorImpl> copy = new HashSet<>(origUnion.types.size());
-                for (TypeDescriptorImpl type : origUnion.types) {
-                    if (byUnion.types.contains(type)) {
+                final Set<TypeDescriptorImpl> copy = new HashSet<>(byUnion.types.size());
+                for (TypeDescriptorImpl type : byUnion.types) {
+                    if (origUnion.types.contains(type)) {
                         copy.add(type);
                     } else if (type.getClass() == ArrayImpl.class || type.getClass() == ExecutableImpl.class || type.getClass() == IntersectionImpl.class) {
-                        for (TypeDescriptorImpl filteredType : byUnion.types) {
-                            if (type.isAssignable(type, filteredType)) {
-                                copy.add(filteredType);
+                        for (TypeDescriptorImpl filteredType : origUnion.types) {
+                            if (filteredType.isAssignable(filteredType, type)) {
+                                copy.add(type);
                                 break;
                             }
                         }

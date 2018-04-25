@@ -236,11 +236,13 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     private static int detachThreadMT(IsolateThread thread) {
         int result = PosixCEntryPointErrors.NO_ERROR;
         /*
-         * Set thread status to exited. This makes me immune to safepoints (the safepoint mechanism
-         * ignores me). Also clear any pending safepoint requests, since I will not honor them.
+         * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
+         * functions that are not marked as @Uninterruptible during the detach process. We hold the
+         * THREAD_MUTEX, so we know that we are not going to be interrupted by a safepoint. But a
+         * safepoint can already be requested, or our safepoint counter can reach 0 - so it is still
+         * possible that we enter the safepoint slow path.
          */
-        VMThreads.StatusSupport.setStatusExited();
-        Safepoint.setSafepointRequested(Safepoint.SafepointRequestValues.RESET);
+        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
 
         // try-finally because try-with-resources can call interruptible code
         VMThreads.THREAD_MUTEX.lockNoTransition();

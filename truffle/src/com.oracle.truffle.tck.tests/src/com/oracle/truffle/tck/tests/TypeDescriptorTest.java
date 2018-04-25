@@ -405,4 +405,14 @@ public class TypeDescriptorTest {
         final TypeDescriptor numAndStrAndObj = TypeDescriptor.intersection(TypeDescriptor.NUMBER, TypeDescriptor.STRING, TypeDescriptor.OBJECT);
         Assert.assertTrue(numAndStr.isAssignable(TypeDescriptor.union(numAndStrAndBool, numAndStrAndObj)));
     }
+
+    @Test
+    public void testUnionBothExecutables() {
+        Assert.assertTrue(TypeDescriptor.EXECUTABLE_ANY.isAssignable(TypeDescriptor.EXECUTABLE));
+        final TypeDescriptor objOrExecUp = TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.EXECUTABLE_ANY);
+        final TypeDescriptor objOrExecLow = TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.EXECUTABLE);
+        Assert.assertTrue(objOrExecUp.isAssignable(objOrExecLow));
+        final TypeDescriptor objOrExecUpOrExecLow = TypeDescriptor.union(TypeDescriptor.OBJECT, TypeDescriptor.EXECUTABLE_ANY, TypeDescriptor.EXECUTABLE);
+        Assert.assertTrue(objOrExecUp.isAssignable(objOrExecUpOrExecLow));
+    }
 }

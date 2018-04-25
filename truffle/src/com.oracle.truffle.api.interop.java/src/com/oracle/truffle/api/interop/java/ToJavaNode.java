@@ -158,17 +158,17 @@ abstract class ToJavaNode extends Node {
                 return primitive.hasKeys(tValue);
             } else {
                 if (TruffleOptions.AOT) {
-                    if (JavaInterop.isJavaFunctionInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
-                        return true;
-                    } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
-                        return true;
+                    // support Function also with AOT
+                    if (targetType == Function.class) {
+                        return isExecutable(tValue) || isInstantiable(tValue);
                     } else {
                         return false;
                     }
                 } else {
-                    // support Function also without AOT
-                    if (targetType == Function.class) {
-                        return isExecutable(tValue) || isInstantiable(tValue);
+                    if (JavaInterop.isJavaFunctionInterface(targetType) && (isExecutable(tValue) || isInstantiable(tValue))) {
+                        return true;
+                    } else if (targetType.isInterface() && ForeignAccess.sendHasKeys(hasKeysNode, tValue)) {
+                        return true;
                     } else {
                         return false;
                     }

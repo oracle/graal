@@ -243,14 +243,18 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         return true;
     }
 
-    private static void createInstruments(final Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
+    private void createInstruments(final Map<PolyglotInstrument, Map<String, String>> instrumentsOptions) {
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
             instrument.getOptionValues().putAll(instrumentsOptions.get(instrument));
         }
 
-        for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            // we got options for this instrument -> create it.
-            instrument.ensureCreated();
+        try {
+            for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
+                // we got options for this instrument -> create it.
+                instrument.ensureCreated();
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.wrapGuestException(this, e);
         }
     }
 

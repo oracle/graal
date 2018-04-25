@@ -34,7 +34,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
@@ -49,6 +51,7 @@ import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
 public class CAnnotationProcessor extends CCompilerInvoker {
 
     private final NativeCodeContext codeCtx;
+    private final List<String> posixHeaders;
 
     private NativeCodeInfo codeInfo;
     private QueryCodeWriter writer;
@@ -56,6 +59,7 @@ public class CAnnotationProcessor extends CCompilerInvoker {
     public CAnnotationProcessor(NativeLibraries nativeLibs, NativeCodeContext codeCtx, Path tempDirectory) {
         super(nativeLibs, tempDirectory);
         this.codeCtx = codeCtx;
+        this.posixHeaders = new PosixDirectives().getHeaderFiles();
     }
 
     public NativeCodeInfo process() {
@@ -126,8 +130,12 @@ public class CAnnotationProcessor extends CCompilerInvoker {
 
     @Override
     protected void reportCompilerError(Path queryFile, String line) {
+        for (String header : posixHeaders) {
+            if (line.contains(header.substring(1, header.length() - 1) + ": No such file or directory")) {
+                UserError.abort("Basic header file missing (" + header + "). Make sure libc and zlib headers are available on your system.");
+            }
+        }
         List<Object> elements = new ArrayList<>();
-
         int fileNameStart = line.indexOf(queryFile.toString());
         if (fileNameStart != -1) {
             int firstColon = line.indexOf(':', fileNameStart + 1);

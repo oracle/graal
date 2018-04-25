@@ -82,7 +82,6 @@ public final class SLFunctionLiteralNode extends SLExpressionNode {
     @Override
     public SLFunction executeGeneric(VirtualFrame frame) {
         if (cachedFunction == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             /* We are about to change a @CompilationFinal field. */
             CompilerDirectives.transferToInterpreterAndInvalidate();
             /* First execution of the node: lookup the function in the function registry. */

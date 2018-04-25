@@ -38,6 +38,7 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.security.SecureRandomSpi;
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
@@ -389,15 +390,27 @@ final class Target_javax_crypto_JceSecurity {
 final class Target_javax_crypto_JarVerifier {
 
     @Substitute
-    @TargetElement(optional = true)
+    @TargetElement(onlyWith = ContainsVerifyJars.class)
     private String verifySingleJar(URL var1) {
         throw VMError.unimplemented();
     }
 
     @Substitute
-    @TargetElement(optional = true)
+    @TargetElement(onlyWith = ContainsVerifyJars.class)
     private void verifyJars(URL var1, List<String> var2) {
         throw VMError.unimplemented();
+    }
+}
+
+final class ContainsVerifyJars implements Predicate<Class<?>> {
+    @Override
+    public boolean test(Class<?> originalClass) {
+        try {
+            originalClass.getDeclaredMethod("verifyJars", URL.class, List.class);
+            return true;
+        } catch (NoSuchMethodException ex) {
+            return false;
+        }
     }
 }
 

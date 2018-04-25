@@ -326,8 +326,14 @@ public class HotSpotGraalManagementTest {
         return "\"" + s + "\"";
     }
 
+    /**
+     * Tests publicaly visible names and identifiers used by tools developed and distributed on an
+     * independent schedule (like VisualVM). Consider keeping the test passing without any semantic
+     * modifications. The cost of changes is higher than you estimate. Include all available
+     * stakeholders as reviewers to give them a chance to stop you before causing too much damage.
+     */
     @Test
-    public void dumpOperation() throws Exception {
+    public void publicJmxApiOfGraalDumpOperation() throws Exception {
         assertNotNull("Server is started", ManagementFactory.getPlatformMBeanServer());
 
         HotSpotGraalRuntime runtime = (HotSpotGraalRuntime) Graal.getRuntime();
@@ -339,6 +345,9 @@ public class HotSpotGraalManagementTest {
         ObjectName mbeanName;
         assertNotNull("Bean is registered", mbeanName = (ObjectName) management.poll(true));
         final MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+
+        assertEquals("Domain name is used to lookup the beans by VisualVM", "org.graalvm.compiler.hotspot", mbeanName.getDomain());
+        assertEquals("type can be used to identify the Graal bean", "HotSpotGraalRuntime_VM", mbeanName.getKeyProperty("type"));
 
         ObjectInstance bean = server.getObjectInstance(mbeanName);
         assertNotNull("Bean is registered", bean);
@@ -355,7 +364,7 @@ public class HotSpotGraalManagementTest {
                 dumpOp = arr[i];
             }
         }
-        assertNotNull("three args variant found", dumpOp);
+        assertNotNull("three args variant (as used by VisualVM) found", dumpOp);
 
         MBeanAttributeInfo dumpPath = findAttributeInfo("DumpPath", info);
         MBeanAttributeInfo printGraphFile = findAttributeInfo("PrintGraphFile", info);

@@ -62,16 +62,16 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
     final int invocationCounterIncrement = getConstant("InvocationCounter::count_increment", Integer.class);
     final int invocationCounterShift = getConstant("InvocationCounter::count_shift", Integer.class);
 
-    // JDK-8134994
-    final int dirtyCardQueueBufferOffset = getConstant("dirtyCardQueueBufferOffset", Integer.class);
-    final int dirtyCardQueueIndexOffset = getConstant("dirtyCardQueueIndexOffset", Integer.class);
-    final int satbMarkQueueBufferOffset = getConstant("satbMarkQueueBufferOffset", Integer.class);
-    final int satbMarkQueueIndexOffset = getConstant("satbMarkQueueIndexOffset", Integer.class);
-    final int satbMarkQueueActiveOffset = getConstant("satbMarkQueueActiveOffset", Integer.class);
-
     // JDK-8195142
     final byte dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
     final byte g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
+
+    // JDK-8201318
+    final int g1SATBQueueMarkingOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
+    final int g1SATBQueueIndexOffset = getConstant("G1ThreadLocalData::satb_mark_queue_index_offset", Integer.class);
+    final int g1SATBQueueBufferOffset = getConstant("G1ThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
+    final int g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class);
+    final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class);
 
     // JDK-8033552
     final long heapTopAddress = getFieldValue("CompilerToVM::Data::_heap_top_addr", Long.class, "HeapWord* volatile*");

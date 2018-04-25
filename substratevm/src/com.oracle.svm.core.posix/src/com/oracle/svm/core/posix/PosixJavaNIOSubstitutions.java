@@ -117,6 +117,7 @@ import java.net.SocketException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.nativeimage.PinnedObject;
@@ -736,22 +737,13 @@ public final class PosixJavaNIOSubstitutions {
             }
         }
 
-        /*
-         * Java 8 update 60 added another parameter to socket0. On Posix system,
-         * that parameter is ignored, so we can easily support both variants.
-         */
-        @Substitute @TargetElement(optional = true)
-        static int socket0(boolean preferIPv6, boolean stream, boolean reuse, @SuppressWarnings("unused") boolean fastLoopback) throws IOException {
-            return socket0(preferIPv6, stream, reuse);
-        }
-
         // 232 JNIEXPORT int JNICALL
         // 233 Java_sun_nio_ch_Net_socket0(JNIEnv *env, jclass cl, jboolean preferIPv6,
         // 234                             jboolean stream, jboolean reuse)
         // 235 {
         @SuppressWarnings("finally")
-        @Substitute @TargetElement(optional = true)
-        static int socket0(boolean preferIPv6, boolean stream, boolean reuse) throws IOException {
+        @Substitute
+        static int socket0(boolean preferIPv6, boolean stream, boolean reuse, @SuppressWarnings("unused") boolean fastLoopback) throws IOException {
             // 236     int fd;
             int fd;
             // 237     int type = (stream ? SOCK_STREAM : SOCK_DGRAM);
@@ -1378,7 +1370,7 @@ public final class PosixJavaNIOSubstitutions {
         // JNIEXPORT jint JNICALL
         // Java_sun_nio_ch_FileDispatcherImpl_allocate0(JNIEnv *env, jobject this,
         //                                              jobject fdo, jlong size) {
-        @Substitute @TargetElement(optional = true /* Introduced in JDK 8u162. */)
+        @Substitute @TargetElement(onlyWith = ContainsAllocate0.class /* Introduced in JDK 8u162. */)
         private static int allocate0(FileDescriptor fd, long size) throws IOException {
             // #if defined(__linux__)
             if (IsDefined.__linux__()) {
@@ -1402,6 +1394,18 @@ public final class PosixJavaNIOSubstitutions {
             }
         }
         /* } Do not re-format commented out C code: @formatter:on. */
+
+        static class ContainsAllocate0 implements Predicate<Class<?>> {
+            @Override
+            public boolean test(Class<?> originalClass) {
+                try {
+                    originalClass.getDeclaredMethod("allocate0", FileDescriptor.class, long.class);
+                    return true;
+                } catch (NoSuchMethodException ex) {
+                    return false;
+                }
+            }
+        }
 
         @Substitute
         private static int truncate0(FileDescriptor fdo, long size) throws IOException {
@@ -2847,46 +2851,13 @@ public final class PosixJavaNIOSubstitutions {
          */
 
         @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
+        @TargetElement(name = "transferTo0")
         @Platforms(Platform.LINUX.class)
         private long transferTo0Linux(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
-            /*
-             * We cannot call a non-static method here due to Substrate VM substitution
-             * restrictions.
-             */
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0LinuxImpl(fdval(src), position, count, fdval(dst));
-        }
-
-        @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
-        @Platforms(Platform.LINUX.class)
-        private long transferTo0Linux(int srcFD, long position, long count, int dstFD) throws IOException {
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0LinuxImpl(srcFD, position, count, dstFD);
-        }
-
-        @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
-        @Platforms(Platform.DARWIN.class)
-        private long transferTo0Darwin(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0DarwinImpl(fdval(src), position, count, fdval(dst));
-        }
-
-        @Substitute
-        @TargetElement(name = "transferTo0", optional = true)
-        @Platforms(Platform.DARWIN.class)
-        private long transferTo0Darwin(int srcFD, long position, long count, int dstFD) throws IOException {
-            return Util_sun_nio_ch_FileChannelImpl.transferTo0DarwinImpl(srcFD, position, count, dstFD);
-        }
-    }
-
-    static final class Util_sun_nio_ch_FileChannelImpl {
-
-        @Platforms(Platform.LINUX.class)
-        static long transferTo0LinuxImpl(int srcFD, long position, long count, int dstFD) throws IOException {
             CLongPointer offset = StackValue.get(SizeOf.get(CLongPointer.class));
             offset.write(position);
 
-            SignedWord n = sendfile(dstFD, srcFD, offset, WordFactory.unsigned(count));
+            SignedWord n = sendfile(fdval(dst), fdval(src), offset, WordFactory.unsigned(count));
             if (n.lessThan(0)) {
                 if (errno() == EAGAIN()) {
                     return Target_sun_nio_ch_IOStatus.IOS_UNAVAILABLE;
@@ -2902,15 +2873,16 @@ public final class PosixJavaNIOSubstitutions {
             return n.rawValue();
         }
 
+        @Substitute
+        @TargetElement(name = "transferTo0")
         @Platforms(Platform.DARWIN.class)
-        static long transferTo0DarwinImpl(int srcFD, long position, long count, int dstFD) throws IOException {
-
+        private long transferTo0Darwin(FileDescriptor src, long position, long count, FileDescriptor dst) throws IOException {
             CLongPointer numBytes = StackValue.get(SizeOf.get(CLongPointer.class));
             int result;
 
             numBytes.write(count);
 
-            result = sendfile(srcFD, dstFD, position, numBytes, WordFactory.nullPointer(), 0);
+            result = sendfile(fdval(src), fdval(dst), position, numBytes, WordFactory.nullPointer(), 0);
 
             if (numBytes.read() > 0) {
                 return numBytes.rawValue();
