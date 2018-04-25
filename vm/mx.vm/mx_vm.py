@@ -84,7 +84,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
         path_substitutions.register_no_arg('jdk_base', lambda: self.jdk_base)
 
         string_substitutions = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
-        string_substitutions.register_no_arg('version', lambda: _suite.release_version())
+        string_substitutions.register_no_arg('version', _suite.release_version)
 
         _layout_provenance = {}
 
