@@ -188,6 +188,24 @@ public final class CodePointSet {
         return this;
     }
 
+    public boolean contains(int codePoint) {
+        normalize();
+        int low = 0;
+        int high = ranges.size() - 1;
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            CodePointRange midRange = ranges.get(mid);
+            if (codePoint < midRange.lo) {
+                high = mid - 1;
+            } else if (codePoint > midRange.hi) {
+                low = mid + 1;
+            } else { // codePoint >= midRange.lo && codePoint <= midRange.hi
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean matchesNothing() {
         normalize();
         return ranges.isEmpty();
