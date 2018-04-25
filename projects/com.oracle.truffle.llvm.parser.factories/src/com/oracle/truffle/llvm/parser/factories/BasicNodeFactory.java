@@ -77,6 +77,7 @@ import com.oracle.truffle.llvm.nodes.func.LLVMTypeIdForExceptionNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMPowNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgCountNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleGetArgNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMAssumeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMByteSwapFactory.LLVMByteSwapI16NodeGen;
@@ -1605,6 +1606,10 @@ public class BasicNodeFactory implements NodeFactory {
                 // this function accesses the frame directly
                 // it must therefore not be hidden behind a call target
                 return LLVMTruffleGetArgNodeGen.create(args[1], sourceSection);
+            } else if (declaration.getName().equals("@polyglot_get_arg_count")) {
+                // this function accesses the frame directly
+                // it must therefore not be hidden behind a call target
+                return LLVMTruffleGetArgCountNodeGen.create(sourceSection);
             } else if (declaration.getName().equals("@__divsc3")) {
                 // this function allocates the result on the stack
                 return new LLVMComplexDivSC(args[1], args[2], args[3], args[4]);

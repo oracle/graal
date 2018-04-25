@@ -97,6 +97,14 @@ void *polyglot_eval(const char *id, const char *code);
 void *polyglot_get_arg(int i);
 
 /**
+ * Get the number of arguments passed to the current function.
+ *
+ * This function can be used to get the number of passed arguments, regular and
+ * varargs, without using the va_list API.
+ */
+int polyglot_get_arg_count();
+
+/**
  * \defgroup typecheck type checking functions
  * @{
  */
