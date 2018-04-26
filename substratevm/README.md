@@ -24,7 +24,7 @@ $JAVA_HOME/bin/javac HelloWorld.java
 ./native-image --server-shutdown
 ```
 
-To speed up successive image-build requests, native-image launches background image-build servers. The last command ensures that all image-build servers are shut down. (If you build images only with `-no-server`, this step can be omitted.)
+To speed up successive image-build requests, native-image launches background image-build servers. The last command ensures that all image-build servers are shut down. (If you build images only with `--no-server`, this step can be omitted.)
 
 ## Build Script
 
