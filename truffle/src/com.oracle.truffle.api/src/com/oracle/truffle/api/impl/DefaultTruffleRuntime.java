@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Objects;
