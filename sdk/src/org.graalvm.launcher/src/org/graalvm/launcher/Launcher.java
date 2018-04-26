@@ -1322,7 +1322,7 @@ public abstract class Launcher {
             }
             Path graalVMHome = getGraalVMHome(executablePath);
             if (graalVMHome == null) {
-                abort("Can not exec to GraalVM binary: could not find GraalVM home");
+                throw abort("Can not exec to GraalVM binary: could not find GraalVM home");
             }
             Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
             if (Files.exists(jdkBin)) {
