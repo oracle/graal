@@ -43,6 +43,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -65,6 +66,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
@@ -358,11 +360,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
+        public CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
-            PolyglotLanguageContext context = languageContext.context.findLanguageContext(languageId, mimeType, true);
-            context.ensureInitialized(languageContext.language);
-            return context.env;
+            PolyglotLanguageContext context = languageContext.context.findLanguageContext(source.getLanguage(), source.getMimeType(), true);
+            return context.parseCached(languageContext.language, source, argumentNames);
         }
 
         @Override
@@ -718,6 +719,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         public void initializeInternalContext(Object vmObject, Object contextImpl) {
             PolyglotLanguageContext creator = ((PolyglotLanguageContext) vmObject);
             PolyglotContextImpl impl = (PolyglotContextImpl) contextImpl;
+            impl.engine.initializeMultiContext(creator.context);
             impl.notifyContextCreated();
             impl.initializeLanguage(creator.language.getId());
         }
