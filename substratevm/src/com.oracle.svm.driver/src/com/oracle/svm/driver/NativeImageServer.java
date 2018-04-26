@@ -499,6 +499,14 @@ final class NativeImageServer extends NativeImage {
     @SuppressWarnings("try")
     List<Server> cleanupServers(boolean serverShutdown, boolean machineWide, boolean quiet) {
         List<Path> sessionDirs = getSessionDirs(machineWide);
+
+        /* Cleanup nfs-mounted previously deleted sessionDirs */
+        for (Path sessionDir : sessionDirs) {
+            if (isDeletedPath(sessionDir)) {
+                deleteAllFiles(sessionDir);
+            }
+        }
+
         List<Server> aliveServers = new ArrayList<>();
         for (Path sessionDir : sessionDirs) {
             withLockDirFileChannel(sessionDir, lockFileChannel -> {
@@ -519,17 +527,6 @@ final class NativeImageServer extends NativeImage {
                     throw showError("Locking SessionDir " + sessionDir + " failed", e);
                 }
             });
-        }
-
-        /* Cleanup empty SessionDirs - Potentially unsafe code */
-        for (Path sessionDir : sessionDirs) {
-            try {
-                if (Files.list(sessionDir).allMatch(p -> p.getFileName().toString().equals(defaultLockFileName))) {
-                    deleteAllFiles(sessionDir);
-                }
-            } catch (IOException e) {
-                throw showError("Accessing SessionDir " + sessionDir + " failed");
-            }
         }
 
         return aliveServers;
