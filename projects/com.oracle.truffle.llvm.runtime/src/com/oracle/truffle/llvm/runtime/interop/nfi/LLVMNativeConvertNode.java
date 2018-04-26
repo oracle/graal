@@ -42,10 +42,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMNativeFunctions.NullPointerNode;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.AddressToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.FunctionToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.I1FromNativeToLLVMNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.IdNodeGen;
@@ -83,7 +80,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         if (Type.isFunctionOrFunctionPointer(argType)) {
             return FunctionToNativeNodeGen.create();
         } else if (argType instanceof PointerType) {
-            return AddressToNativeNodeGen.create();
+            return new AddressToNative();
         } else if (argType instanceof VoidType) {
             return new VoidToNative();
         }
@@ -108,23 +105,13 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
     }
 
-    protected abstract static class AddressToNative extends LLVMNativeConvertNode {
+    protected static class AddressToNative extends LLVMNativeConvertNode {
 
-        @Specialization
-        protected long addressToNative(LLVMNativePointer address) {
-            return address.asNative();
-        }
+        @Child LLVMToNativeNode toNative = LLVMToNativeNode.createToNativeWithTarget();
 
-        @Specialization
-        protected long addressToNative(LLVMGlobal address,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-            return globalAccess.executeWithTarget(address).asNative();
-        }
-
-        @Specialization
-        protected long doLLVMTruffleObject(LLVMTruffleObject truffleObject,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            return toNative.executeWithTarget(truffleObject).asNative();
+        @Override
+        public Object executeConvert(Object arg) {
+            return toNative.executeWithTarget(arg).asNative();
         }
     }
 

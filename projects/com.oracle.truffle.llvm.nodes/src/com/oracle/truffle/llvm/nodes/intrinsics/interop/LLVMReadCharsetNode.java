@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -56,14 +55,6 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
         return cachedCharset;
     }
 
-    @Specialization(guards = {"foreign.getObject() == cachedForeign.getObject()", "foreign.getOffset() == cachedForeign.getOffset()"})
-    @SuppressWarnings("unused")
-    protected LLVMCharset doCachedForeign(LLVMTruffleObject foreign,
-                    @Cached("foreign") LLVMTruffleObject cachedForeign,
-                    @Cached("doGeneric(cachedForeign)") LLVMCharset cachedCharset) {
-        return cachedCharset;
-    }
-
     @Specialization(guards = "address == cachedAddress")
     @SuppressWarnings("unused")
     protected LLVMCharset doCachedOther(Object address,
@@ -72,7 +63,7 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
         return cachedCharset;
     }
 
-    @Specialization(replaces = {"doCachedPointer", "doCachedForeign", "doCachedOther"})
+    @Specialization(replaces = {"doCachedPointer", "doCachedOther"})
     protected LLVMCharset doGeneric(Object strPtr) {
         String string = readString.executeWithTarget(strPtr);
         return lookup(string);

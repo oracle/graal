@@ -36,10 +36,10 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 abstract class ToAnyLLVM extends ForeignToLLVM {
@@ -110,18 +110,13 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMTruffleObject fromInternal(LLVMTruffleObject object) {
-        return object;
-    }
-
-    @Specialization
-    protected LLVMTruffleObject fromInternal(LLVMInternalTruffleObject object) {
-        return new LLVMTruffleObject(object);
+    protected LLVMManagedPointer fromInternal(LLVMInternalTruffleObject object) {
+        return LLVMManagedPointer.create(object);
     }
 
     @Specialization(guards = {"notLLVM(obj)"})
-    protected LLVMTruffleObject fromTruffleObject(TruffleObject obj) {
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(obj));
+    protected LLVMManagedPointer fromTruffleObject(TruffleObject obj) {
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(obj));
     }
 
     @TruffleBoundary
@@ -142,13 +137,11 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
         } else if (LLVMPointer.isInstance(value)) {
             return value;
-        } else if (value instanceof LLVMTruffleObject) {
-            return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
-            return new LLVMTruffleObject((LLVMInternalTruffleObject) value);
+            return LLVMManagedPointer.create((LLVMInternalTruffleObject) value);
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
             LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown((TruffleObject) value);
-            return new LLVMTruffleObject(typed);
+            return LLVMManagedPointer.create(typed);
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

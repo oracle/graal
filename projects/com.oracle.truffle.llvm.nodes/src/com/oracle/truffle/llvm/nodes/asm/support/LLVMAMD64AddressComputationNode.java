@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -63,11 +62,6 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         @Specialization
         protected long doLong(long base) {
             return base + displacement;
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base) {
-            return base.increment(displacement);
         }
     }
 
@@ -102,16 +96,6 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
 
         @Specialization
         protected LLVMPointer doLLVMPointer(LLVMPointer base, long offset) {
-            return base.increment(displacement + (offset << shift));
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, int offset) {
-            return base.increment(displacement + (offset << shift));
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, long offset) {
             return base.increment(displacement + (offset << shift));
         }
     }

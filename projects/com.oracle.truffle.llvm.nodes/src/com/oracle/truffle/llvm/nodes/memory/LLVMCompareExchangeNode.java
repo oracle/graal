@@ -54,7 +54,6 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.CMPXCHGI16;
@@ -65,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -87,11 +87,6 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     protected Object doOp(VirtualFrame frame, LLVMGlobal address, Object comparisonValue, Object newValue,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         return cmpxch.executeWithTarget(frame, globalAccess.executeWithTarget(address), comparisonValue, newValue);
-    }
-
-    @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, Object comparisonValue, Object newValue) {
-        return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue);
     }
 
     abstract static class LLVMCMPXCHInternalNode extends LLVMNode {
@@ -167,7 +162,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, byte comparisonValue, byte newValue,
+        protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, byte comparisonValue, byte newValue,
                         @Cached("createI8Read()") LLVMI8LoadNode read,
                         @Cached("createI8Write()") LLVMI8StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -185,7 +180,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, short comparisonValue, short newValue,
+        protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, short comparisonValue, short newValue,
                         @Cached("createI16Read()") LLVMI16LoadNode read,
                         @Cached("createI16Write()") LLVMI16StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -203,7 +198,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, int comparisonValue, int newValue,
+        protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, int comparisonValue, int newValue,
                         @Cached("createI32Read()") LLVMI32LoadNode read,
                         @Cached("createI32Write()") LLVMI32StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -221,7 +216,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, long comparisonValue, long newValue,
+        protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, long comparisonValue, long newValue,
                         @Cached("createI64Read()") LLVMI64LoadNode read,
                         @Cached("createI64Write()") LLVMI64StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -239,7 +234,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
+        protected Object doOp(VirtualFrame frame, LLVMManagedPointer address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
                         @Cached("createI64Read()") LLVMI64LoadNode read,
                         @Cached("createI64Write()") LLVMI64StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {

@@ -31,8 +31,8 @@ package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class LLVMAsForeignNode extends LLVMNode {
 
@@ -42,7 +42,7 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
         this.allowNonForeign = allowNonForeign;
     }
 
-    public abstract TruffleObject execute(LLVMTruffleObject object);
+    public abstract TruffleObject execute(LLVMManagedPointer pointer);
 
     public static LLVMAsForeignNode create() {
         return LLVMAsForeignNodeGen.create(false);
@@ -52,18 +52,18 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
         return LLVMAsForeignNodeGen.create(true);
     }
 
-    @Specialization(guards = "isForeign(object)")
-    TruffleObject doForeign(LLVMTruffleObject object) {
-        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) object.getObject();
+    @Specialization(guards = "isForeign(pointer)")
+    TruffleObject doForeign(LLVMManagedPointer pointer) {
+        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) pointer.getObject();
         return foreign.getForeign();
     }
 
-    @Specialization(guards = {"allowNonForeign", "!isForeign(object)"})
-    TruffleObject doOther(@SuppressWarnings("unused") LLVMTruffleObject object) {
+    @Specialization(guards = {"allowNonForeign", "!isForeign(pointer)"})
+    TruffleObject doOther(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
         return null;
     }
 
-    protected static boolean isForeign(LLVMTruffleObject object) {
-        return object.getOffset() == 0 && object.getObject() instanceof LLVMTypedForeignObject;
+    protected static boolean isForeign(LLVMManagedPointer pointer) {
+        return pointer.getOffset() == 0 && pointer.getObject() instanceof LLVMTypedForeignObject;
     }
 }

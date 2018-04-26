@@ -34,12 +34,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI32Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
@@ -47,7 +47,7 @@ public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected int doI32(LLVMNativePointer addr) {
+    protected int doI32Native(LLVMNativePointer addr) {
         return profile.profile(getLLVMMemoryCached().getI32(addr));
     }
 
@@ -73,13 +73,8 @@ public abstract class LLVMI32LoadNode extends LLVMAbstractLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I32);
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected int doI32Native(LLVMTruffleObject addr) {
-        return doI32(addr.asNative());
-    }
-
-    @Specialization(guards = "addr.isManaged()")
-    protected int doI32Managed(LLVMTruffleObject addr) {
+    @Specialization
+    protected int doI32Managed(LLVMManagedPointer addr) {
         return (int) getForeignReadNode().execute(addr);
     }
 

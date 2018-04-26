@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -82,41 +81,6 @@ public abstract class LLVMMemMove {
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
             memMove.executeWithTarget(globalAccess1.executeWithTarget(dest), globalAccess2.executeWithTarget(source), length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMTruffleObject dest, LLVMTruffleObject source, long length, int align, boolean isVolatile) {
-            memMove.executeWithTarget(dest, source, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMTruffleObject dest, LLVMGlobal source, long length, int align, boolean isVolatile) {
-            memMove.executeWithTarget(dest, source, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMGlobal dest, LLVMTruffleObject source, long length, int align, boolean isVolatile) {
-            memMove.executeWithTarget(dest, source, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMTruffleObject dest, LLVMPointer source, long length, int align, boolean isVolatile) {
-            memMove.executeWithTarget(dest, source, length);
-            return null;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization
-        protected Object doVoid(LLVMPointer dest, LLVMTruffleObject source, long length, int align, boolean isVolatile) {
-            memMove.executeWithTarget(dest, source, length);
             return null;
         }
     }

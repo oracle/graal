@@ -34,12 +34,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.ByteValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI8Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
@@ -47,13 +47,13 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
     private final ByteValueProfile profile = ByteValueProfile.createIdentityProfile();
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected byte doI8(LLVMNativePointer addr) {
+    protected byte doI8Native(LLVMNativePointer addr) {
         return profile.profile(getLLVMMemoryCached().getI8(addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected byte doI8DerefHandle(LLVMNativePointer addr) {
-        return doI8Native(getDerefHandleGetReceiverNode().execute(addr));
+        return doI8Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
     @Specialization
@@ -73,13 +73,8 @@ public abstract class LLVMI8LoadNode extends LLVMAbstractLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I8);
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected byte doI8Native(LLVMTruffleObject addr) {
-        return doI8(addr.asNative());
-    }
-
-    @Specialization(guards = "addr.isManaged()")
-    protected byte doI8Managed(LLVMTruffleObject addr) {
+    @Specialization
+    protected byte doI8Managed(LLVMManagedPointer addr) {
         return (byte) getForeignReadNode().execute(addr);
     }
 

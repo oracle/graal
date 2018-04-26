@@ -37,11 +37,11 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI1LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI1LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI1StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI1StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
@@ -71,7 +71,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
@@ -98,7 +98,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
@@ -125,7 +125,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
@@ -152,7 +152,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
@@ -179,7 +179,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
@@ -206,7 +206,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {
@@ -233,7 +233,7 @@ public abstract class LLVMI1RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doOp(LLVMTruffleObject address, boolean value,
+        protected boolean doOp(LLVMManagedPointer address, boolean value,
                         @Cached("createRead()") LLVMI1LoadNode read,
                         @Cached("createWrite()") LLVMI1StoreNode write) {
             synchronized (address.getObject()) {

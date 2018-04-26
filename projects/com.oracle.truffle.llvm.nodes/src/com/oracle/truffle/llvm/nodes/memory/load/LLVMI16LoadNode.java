@@ -33,12 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI16Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
@@ -50,7 +50,7 @@ public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected short doShort(LLVMNativePointer addr) {
+    protected short doShortNative(LLVMNativePointer addr) {
         return getLLVMMemoryCached().getI16(addr);
     }
 
@@ -70,13 +70,8 @@ public abstract class LLVMI16LoadNode extends LLVMAbstractLoadNode {
         return address.getI16(memory);
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected short doShortNative(LLVMTruffleObject addr) {
-        return doShort(addr.asNative());
-    }
-
-    @Specialization(guards = "addr.isManaged()")
-    protected short doShortManaged(LLVMTruffleObject addr) {
+    @Specialization
+    protected short doShortManaged(LLVMManagedPointer addr) {
         return (short) getForeignReadNode().execute(addr);
     }
 

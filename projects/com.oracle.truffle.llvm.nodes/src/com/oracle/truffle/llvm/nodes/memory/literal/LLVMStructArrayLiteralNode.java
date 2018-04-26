@@ -36,11 +36,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
@@ -79,16 +79,16 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
         return addr;
     }
 
-    protected boolean noOffset(LLVMTruffleObject o) {
+    protected boolean noOffset(LLVMManagedPointer o) {
         return o.getOffset() == 0;
     }
 
     @Specialization(guards = {"noOffset(addr)"})
     @ExplodeLoop
-    protected Object doVoid(VirtualFrame frame, LLVMTruffleObject addr) {
-        LLVMTruffleObject currentPtr = addr;
+    protected Object doVoid(VirtualFrame frame, LLVMManagedPointer addr) {
+        LLVMManagedPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
-            LLVMTruffleObject currentValue = (LLVMTruffleObject) values[i].executeGeneric(frame);
+            LLVMManagedPointer currentValue = (LLVMManagedPointer) values[i].executeGeneric(frame);
             memMove.executeWithTarget(currentPtr, currentValue, stride);
             currentPtr = currentPtr.increment(stride);
         }

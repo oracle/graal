@@ -36,12 +36,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
@@ -95,21 +95,11 @@ public abstract class LLVMPointerArrayLiteralNode extends LLVMExpressionNode {
         return writes;
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected LLVMNativePointer writeAddress(VirtualFrame frame, LLVMTruffleObject addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return writeAddress(frame, addr.asNative(), memory);
-    }
-
-    // TODO: work around a DSL bug (GR-6493): remove cached int a and int b
-    @SuppressWarnings("unused")
-    @Specialization(guards = "addr.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWriteRef(VirtualFrame frame, LLVMTruffleObject addr,
-                    @Cached("0") int a,
-                    @Cached("0") int b,
+    protected LLVMManagedPointer foreignWriteRef(VirtualFrame frame, LLVMManagedPointer addr,
                     @Cached("createForeignWrites()") LLVMForeignWriteNode[] foreignWrites) {
-        LLVMTruffleObject currentPtr = addr;
+        LLVMManagedPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             Object currentValue = values[i].execute(frame);
             foreignWrites[i].execute(currentPtr, currentValue);

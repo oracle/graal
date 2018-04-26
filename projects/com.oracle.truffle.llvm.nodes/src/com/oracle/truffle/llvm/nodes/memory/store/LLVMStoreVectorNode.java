@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
@@ -234,21 +234,15 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isNative()")
-    protected Object doOp(LLVMTruffleObject address, Object value,
-                    @Cached("createRecursive()") LLVMStoreVectorNode recursive) {
-        return recursive.executeWithTarget(address.asNative(), value);
-    }
-
     LLVMStoreVectorNode createRecursive() {
         return LLVMStoreVectorNodeGen.create(vectorLength, null, null);
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMI1Vector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMI1Vector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES);
@@ -256,11 +250,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMI8Vector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMI8Vector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
@@ -268,11 +262,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMI16Vector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMI16Vector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES);
@@ -280,11 +274,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMI32Vector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMI32Vector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES);
@@ -292,11 +286,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMFloatVector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMFloatVector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES);
@@ -304,11 +298,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMDoubleVector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMDoubleVector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES);
@@ -316,11 +310,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMI64Vector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMI64Vector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
@@ -328,11 +322,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMPointerVector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMPointerVector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
@@ -340,11 +334,11 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMFunctionVector value) {
+    protected Object writeVector(LLVMManagedPointer address, LLVMFunctionVector value) {
         assert value.getLength() == vectorLength;
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);

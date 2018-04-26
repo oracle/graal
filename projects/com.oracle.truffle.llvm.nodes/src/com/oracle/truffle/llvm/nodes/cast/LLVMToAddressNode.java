@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -86,10 +85,5 @@ public abstract class LLVMToAddressNode extends LLVMExpressionNode {
     @Specialization
     protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
         return LLVMNativePointer.create((long) toLong.executeWithTarget(from.getValue()));
-    }
-
-    @Specialization
-    protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject from) {
-        return from;
     }
 }

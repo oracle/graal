@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
@@ -89,20 +88,6 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
         for (int i = 0; i < length; i++) {
             address.writeI8(memory, value);
         }
-        return address;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doOp(LLVMTruffleObject address, byte value, int length, int align, boolean isVolatile) {
-        memSet.executeWithTarget(address, value, length);
-        return address;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doOp(LLVMTruffleObject address, byte value, long length, int align, boolean isVolatile) {
-        memSet.executeWithTarget(address, value, length);
         return address;
     }
 }

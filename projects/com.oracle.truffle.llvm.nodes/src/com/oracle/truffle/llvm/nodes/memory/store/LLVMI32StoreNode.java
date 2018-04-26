@@ -33,12 +33,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI32Node;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
@@ -76,13 +76,8 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isNative()")
-    protected Object doOpNative(LLVMTruffleObject address, int value) {
-        return doOp(address.asNative(), value);
-    }
-
-    @Specialization(guards = "address.isManaged()")
-    protected Object doOpManaged(LLVMTruffleObject address, int value) {
+    @Specialization
+    protected Object doOpManaged(LLVMManagedPointer address, int value) {
         getForeignWriteNode().execute(address, value);
         return null;
     }

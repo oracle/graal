@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
@@ -61,20 +61,15 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isNative()")
-    protected Object doOpNative(LLVMTruffleObject address, LLVMIVarBit value) {
-        return doOp(address.asNative(), value);
-    }
-
     @Specialization(guards = "isAutoDerefHandle(addr)")
     protected Object doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value) {
         return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
-    @Specialization(guards = "address.isManaged()")
-    protected Object doOpManaged(LLVMTruffleObject address, LLVMIVarBit value) {
+    @Specialization
+    protected Object doOpManaged(LLVMManagedPointer address, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
-        LLVMTruffleObject currentPtr = address;
+        LLVMManagedPointer currentPtr = address;
         for (int i = bytes.length - 1; i >= 0; i--) {
             getForeignWriteNode().execute(currentPtr, bytes[i]);
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);

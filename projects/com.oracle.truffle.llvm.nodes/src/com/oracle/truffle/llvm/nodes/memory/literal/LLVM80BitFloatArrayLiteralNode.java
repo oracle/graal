@@ -38,12 +38,12 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
@@ -84,13 +84,13 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
 
     @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWrite(VirtualFrame frame, LLVMTruffleObject addr,
+    protected LLVMManagedPointer foreignWrite(VirtualFrame frame, LLVMManagedPointer addr,
                     @Cached("create80BitFloatStore()") LLVM80BitFloatStoreNode write) {
-        LLVMTruffleObject currentPtr = addr;
+        LLVMManagedPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);
-                write.executeWithTarget(addr, currentValue);
+                write.executeWithTarget(currentPtr, currentValue);
                 currentPtr = currentPtr.increment(stride);
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

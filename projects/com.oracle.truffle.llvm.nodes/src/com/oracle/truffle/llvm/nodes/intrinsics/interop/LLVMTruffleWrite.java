@@ -44,10 +44,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public final class LLVMTruffleWrite {
 
@@ -82,7 +82,7 @@ public final class LLVMTruffleWrite {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-        protected Object cached(LLVMTruffleObject value, Object id, Object v,
+        protected Object cached(LLVMManagedPointer value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("readStr.executeWithTarget(id)") String cachedId) {
             TruffleObject foreign = asForeign.execute(value);
@@ -91,7 +91,7 @@ public final class LLVMTruffleWrite {
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMTruffleObject value, Object id, Object v,
+        protected Object doIntrinsic(LLVMManagedPointer value, Object id, Object v,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
             TruffleObject foreign = asForeign.execute(value);
             doWrite(foreignWrite, foreign, readStr.executeWithTarget(id), prepareValueForEscape.executeWithTarget(v));
@@ -119,7 +119,7 @@ public final class LLVMTruffleWrite {
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMTruffleObject value, int id, Object v) {
+        protected Object doIntrinsic(LLVMManagedPointer value, int id, Object v) {
             TruffleObject foreign = asForeign.execute(value);
             doWriteIdx(foreignWrite, foreign, id, prepareValueForEscape.executeWithTarget(v));
             return null;

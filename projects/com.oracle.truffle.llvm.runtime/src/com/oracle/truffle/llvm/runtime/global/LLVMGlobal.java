@@ -47,7 +47,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
@@ -61,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -482,11 +482,12 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
             memory.putPointer(address, LLVMNativePointer.cast(managedValue));
         } else if (managedValue instanceof LLVMGlobal) {
             memory.putPointer(address, ((LLVMGlobal) managedValue).getAsNative(memory, context));
-        } else if (managedValue instanceof LLVMTruffleObject) {
+        } else if (LLVMManagedPointer.isInstance(managedValue)) {
+            LLVMManagedPointer pointer = LLVMManagedPointer.cast(managedValue);
             try {
-                Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), ((LLVMTruffleObject) managedValue).getObject());
+                Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), pointer.getObject());
                 long toAddr = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativized);
-                memory.putPointer(address, toAddr + ((LLVMTruffleObject) managedValue).getOffset());
+                memory.putPointer(address, toAddr + pointer.getOffset());
             } catch (UnsupportedMessageException e) {
                 throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + managedValue);
             }

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -53,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
                 LLVMNativePointer.class,
                 LLVMManagedPointer.class,
                 LLVMPointer.class,
-                LLVMTruffleObject.class,
                 LLVM80BitFloat.class,
                 LLVMFunctionDescriptor.class,
                 TruffleObject.class})

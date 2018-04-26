@@ -38,9 +38,8 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperationNode {
     private final IntValueProfile profile = IntValueProfile.createIdentityProfile();
@@ -58,14 +57,7 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
     }
 
     @Specialization
-    protected long doOp(long code, LLVMNativePointer addr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
-        return exec(code, addr, context, store);
-    }
-
-    @Specialization
-    protected long doOp(long code, LLVMTruffleObject addr,
+    protected long doOp(long code, LLVMPointer addr,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("createAddressStoreNode()") LLVMPointerStoreNode store) {
         return exec(code, addr, context, store);

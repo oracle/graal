@@ -38,7 +38,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadObjectNode;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode;
@@ -184,7 +183,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            LLVMTruffleObject convertedValue = (LLVMTruffleObject) toLLVM.executeWithTarget(value);
+            Object convertedValue = toLLVM.executeWithTarget(value);
             globalAccess.execute(cachedReceiver, convertedValue);
             return value;
         }
@@ -197,7 +196,7 @@ abstract class LLVMAddressMessageResolutionNode extends LLVMNode {
                 CompilerDirectives.transferToInterpreter();
                 throw UnknownIdentifierException.raise("Index must be 0 for globals - but was " + index);
             }
-            LLVMTruffleObject convertedValue = (LLVMTruffleObject) toLLVM.executeWithTarget(value);
+            Object convertedValue = toLLVM.executeWithTarget(value);
             globalAccess.execute(receiver.getDescriptor(), convertedValue);
             return value;
         }

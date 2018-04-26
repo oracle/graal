@@ -39,11 +39,11 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
@@ -84,18 +84,11 @@ public abstract class LLVMFunctionArrayLiteralNode extends LLVMExpressionNode {
         return array;
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected LLVMNativePointer handleAddress(VirtualFrame frame, LLVMTruffleObject addr,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return handleAddress(frame, addr.asNative(), toNative, memory);
-    }
-
-    @Specialization(guards = "array.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject handleTruffleObject(VirtualFrame frame, LLVMTruffleObject array,
+    protected LLVMManagedPointer handleTruffleObject(VirtualFrame frame, LLVMManagedPointer array,
                     @Cached("createForeignWrites()") LLVMForeignWriteNode[] foreignWrites) {
-        LLVMTruffleObject currentPtr = array;
+        LLVMManagedPointer currentPtr = array;
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVMFunctionDescriptor currentValue = (LLVMFunctionDescriptor) values[i].executeTruffleObject(frame);

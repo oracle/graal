@@ -53,7 +53,6 @@ import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.ToComparableVa
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
@@ -63,8 +62,12 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
+@NodeChild(type = LLVMExpressionNode.class)
+@NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
 
     public enum Kind {
@@ -179,7 +182,7 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doLLVMTruffleObject(LLVMTypedForeignObject obj) {
+        protected long doForeign(LLVMTypedForeignObject obj) {
             return getHashCode(obj.getForeign());
         }
 
@@ -209,7 +212,7 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected long doLLVMTruffleObject(LLVMTruffleObject address,
+        protected long doManaged(LLVMManagedPointer address,
                         @Cached("create()") ForeignToComparableValue toComparable) {
             return toComparable.execute(address.getObject()) + address.getOffset();
         }
@@ -316,7 +319,7 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         abstract boolean execute(Object val1, Object val2);
 
         @Specialization
-        protected boolean doForeign(LLVMTruffleObject obj1, LLVMTruffleObject obj2,
+        protected boolean doForeign(LLVMManagedPointer obj1, LLVMManagedPointer obj2,
                         @Cached("create()") LLVMForeignEqualsNode equals,
                         @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
             return equals.execute(ctxRef.get().getEnv(), obj1.getObject(), obj2.getObject()) && obj1.getOffset() == obj2.getOffset();
@@ -338,7 +341,7 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doForeign(LLVMGlobal g1, LLVMTruffleObject obj2,
+        protected boolean doForeign(LLVMGlobal g1, LLVMManagedPointer obj2,
                         @Cached("create()") LLVMManagedEqualsNode recursive,
                         @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readGlobalNode) {
             Object value = readGlobalNode.execute(g1);
@@ -346,11 +349,23 @@ public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean doForeign(LLVMTruffleObject obj1, LLVMGlobal g2,
+        protected boolean doForeign(LLVMManagedPointer obj1, LLVMGlobal g2,
                         @Cached("create()") LLVMManagedEqualsNode recursive,
                         @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readGlobalNode) {
             Object value = readGlobalNode.execute(g2);
             return recursive.execute(obj1, value);
+        }
+
+        protected boolean isNative(LLVMPointer p) {
+            return LLVMNativePointer.isInstance(p);
+        }
+
+        @Specialization(guards = "isNative(p1) || isNative(p2)")
+        protected boolean doManagedNative(LLVMPointer p1, LLVMPointer p2) {
+            // the case where both pointers are native is handled earlier, so one has to be managed
+            assert LLVMManagedPointer.isInstance(p1) || LLVMManagedPointer.isInstance(p2);
+            // one of the pointers is native, the other not, so they can't be equal
+            return false;
         }
 
         @Specialization(guards = "val1.getClass() != val2.getClass()")

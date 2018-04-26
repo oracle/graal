@@ -66,6 +66,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
@@ -280,12 +281,12 @@ public final class LLVMContext {
         return environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
     }
 
-    private LLVMTruffleObject toTruffleObjects(String[] values) {
+    private LLVMManagedPointer toTruffleObjects(String[] values) {
         TruffleObject[] result = new TruffleObject[values.length];
         for (int i = 0; i < values.length; i++) {
             result[i] = (TruffleObject) env.asGuestValue(values[i].getBytes());
         }
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown((TruffleObject) env.asGuestValue(result)));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown((TruffleObject) env.asGuestValue(result)));
     }
 
     public void dispose(LLVMMemory memory) {

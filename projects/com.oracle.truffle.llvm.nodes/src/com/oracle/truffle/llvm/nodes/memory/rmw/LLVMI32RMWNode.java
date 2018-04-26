@@ -37,11 +37,11 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
@@ -71,7 +71,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -98,7 +98,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -125,7 +125,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -152,7 +152,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -179,7 +179,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -206,7 +206,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -233,7 +233,7 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {

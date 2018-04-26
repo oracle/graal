@@ -34,11 +34,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class NativeMemSetNode extends LLVMMemSetNode {
@@ -86,14 +86,14 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(guards = {"!isManagedMallocObject(object)"})
-    protected Object memset(LLVMTruffleObject object, byte value, long length, @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+    protected Object memset(LLVMManagedPointer object, byte value, long length, @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return memset(globalAccess.executeWithTarget(object), value, length, memory);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"isManagedMallocObject(object)", "value == 0"})
-    protected Object memset(LLVMTruffleObject object, byte value, long length) {
+    protected Object memset(LLVMManagedPointer object, byte value, long length) {
         assert length % ADDRESS_SIZE_IN_BYTES == 0;
 
         final ManagedMallocObject obj = (ManagedMallocObject) object.getObject();
@@ -104,7 +104,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
         return null;
     }
 
-    protected boolean isManagedMallocObject(LLVMTruffleObject object) {
+    protected boolean isManagedMallocObject(LLVMManagedPointer object) {
         return object.getObject() instanceof ManagedMallocObject;
     }
 

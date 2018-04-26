@@ -36,16 +36,16 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
 
     @Specialization
-    protected LLVMNativePointer doIntrinsic(LLVMTruffleObject value,
+    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         LLVMNativePointer handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());

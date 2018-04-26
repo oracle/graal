@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -140,13 +139,6 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         protected Object doVoid(LLVMNativePointer address,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             memory.free(address);
-            return null;
-        }
-
-        @Specialization(guards = "object.isNative()")
-        protected Object doVoid(LLVMTruffleObject object,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
-            memory.free(object.asNative());
             return null;
         }
     }

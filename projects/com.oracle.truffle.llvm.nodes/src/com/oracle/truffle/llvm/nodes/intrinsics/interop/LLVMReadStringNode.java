@@ -45,8 +45,8 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementP
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class LLVMReadStringNode extends LLVMNode {
 
@@ -60,7 +60,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
     }
 
     @Specialization
-    String readForeign(LLVMTruffleObject foreign,
+    String readForeign(LLVMManagedPointer foreign,
                     @Cached("create()") ForeignReadStringNode read) {
         return read.execute(foreign);
     }
@@ -75,7 +75,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
     abstract static class Dummy extends LLVMNode {
 
-        protected abstract LLVMTruffleObject execute();
+        protected abstract LLVMManagedPointer execute();
     }
 
     @NodeChild(value = "object", type = Dummy.class)
@@ -84,10 +84,10 @@ public abstract class LLVMReadStringNode extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
 
-        protected abstract String execute(LLVMTruffleObject foreign);
+        protected abstract String execute(LLVMManagedPointer foreign);
 
         @Specialization(guards = "isBoxed(foreign)")
-        String readUnbox(@SuppressWarnings("unused") LLVMTruffleObject object, TruffleObject foreign,
+        String readUnbox(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
                         @Cached("createUnbox()") Node unbox) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, foreign);
@@ -98,7 +98,7 @@ public abstract class LLVMReadStringNode extends LLVMNode {
         }
 
         @Specialization(guards = "!isBoxed(foreign)")
-        String readOther(LLVMTruffleObject object, @SuppressWarnings("unused") TruffleObject foreign,
+        String readOther(LLVMManagedPointer object, @SuppressWarnings("unused") TruffleObject foreign,
                         @Cached("create()") PointerReadStringNode read) {
             return read.readPointer(object);
         }

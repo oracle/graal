@@ -41,7 +41,6 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -164,8 +163,6 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
             return VarArgArea.OVERFLOW_AREA;
         } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
             return VarArgArea.FP_AREA;
-        } else if (arg instanceof LLVMTruffleObject) {
-            return VarArgArea.GP_AREA;
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError(arg);
@@ -288,7 +285,7 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
             Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
             memmove.executeWithTarget(currentPtr, obj.getAddr(), obj.getSize());
             return obj.getSize();
-        } else if (LLVMPointer.isInstance(object) || object instanceof LLVMFunctionDescriptor || object instanceof LLVMGlobal || object instanceof LLVMTruffleObject) {
+        } else if (LLVMPointer.isInstance(object) || object instanceof LLVMFunctionDescriptor || object instanceof LLVMGlobal) {
             Object currentPtr = pointerArithmetic.executeWithTarget(ptr, offset);
             storeI64Node.executeWithTarget(currentPtr, object);
             return X86_64BitVarArgs.STACK_STEP;

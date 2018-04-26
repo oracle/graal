@@ -39,15 +39,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
@@ -65,7 +64,7 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMPointer doPointer(LLVMPointer from) {
+    protected LLVMNativePointer doPointer(LLVMNativePointer from) {
         return from;
     }
 
@@ -79,7 +78,7 @@ public abstract class LLVMToFunctionNode extends LLVMExpressionNode {
     @Child private Node isNull = Message.IS_NULL.createNode();
 
     @Specialization
-    protected Object doTruffleObject(LLVMTruffleObject from,
+    protected Object doManaged(LLVMManagedPointer from,
                     @Cached("create()") LLVMAsForeignNode asForeign) {
         TruffleObject foreign = asForeign.execute(from);
         if (ForeignAccess.sendIsNull(isNull, foreign)) {

@@ -36,12 +36,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -74,6 +74,6 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
             ptr += Byte.BYTES;
         }
         TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(bytes);
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(ret));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
     }
 }

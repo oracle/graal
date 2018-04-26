@@ -41,7 +41,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen.LLVMLookupDispatchForeignNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
@@ -49,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -126,17 +126,17 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     @Specialization(guards = "isAutoDerefHandle(handle)")
     protected Object doDerefHandle(LLVMNativePointer handle, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
-        LLVMTruffleObject foreignFunction = getDerefHandleGetReceiverNode().execute(handle);
+        LLVMManagedPointer foreignFunction = getDerefHandleGetReceiverNode().execute(handle);
         return doForeign(foreignFunction, arguments, lookupDispatchForeignNode);
     }
 
     @Specialization(guards = "isForeignFunction(function)")
-    protected Object doForeign(LLVMTruffleObject function, Object[] arguments,
+    protected Object doForeign(LLVMManagedPointer function, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
         return lookupDispatchForeignNode.execute(function, arguments);
     }
 
-    protected static boolean isForeignFunction(LLVMTruffleObject function) {
+    protected static boolean isForeignFunction(LLVMManagedPointer function) {
         return function.getOffset() == 0 && function.getObject() instanceof LLVMTypedForeignObject;
     }
 
@@ -147,10 +147,10 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
             this.type = type;
         }
 
-        abstract Object execute(LLVMTruffleObject function, Object[] arguments);
+        abstract Object execute(LLVMManagedPointer function, Object[] arguments);
 
         @Specialization
-        protected Object doForeign(LLVMTruffleObject function, Object[] arguments,
+        protected Object doForeign(LLVMManagedPointer function, Object[] arguments,
                         @Cached("create()") LLVMAsForeignNode asForeign,
                         @Cached("createCrossLanguageCallNode(arguments)") Node crossLanguageCallNode,
                         @Cached("createLLVMDataEscapeNodes()") LLVMDataEscapeNode[] dataEscapeNodes,

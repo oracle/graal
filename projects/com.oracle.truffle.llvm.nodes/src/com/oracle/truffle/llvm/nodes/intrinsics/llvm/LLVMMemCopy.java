@@ -33,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -176,41 +175,6 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess1,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess2) {
         memMove.executeWithTarget(globalAccess1.executeWithTarget(target), globalAccess2.executeWithTarget(source), length);
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doVoid(LLVMTruffleObject target, LLVMTruffleObject source, Object length, int align, boolean isVolatile) {
-        memMove.executeWithTarget(target, source, length);
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doVoid(LLVMTruffleObject target, LLVMPointer source, Object length, int align, boolean isVolatile) {
-        memMove.executeWithTarget(target, source, length);
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doVoid(LLVMTruffleObject target, LLVMGlobal source, Object length, int align, boolean isVolatile) {
-        memMove.executeWithTarget(target, source, length);
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doVoid(LLVMGlobal target, LLVMTruffleObject source, Object length, int align, boolean isVolatile) {
-        memMove.executeWithTarget(target, source, length);
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doVoid(LLVMPointer target, LLVMTruffleObject source, Object length, int align, boolean isVolatile) {
-        memMove.executeWithTarget(target, source, length);
         return null;
     }
 

@@ -37,7 +37,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -47,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.Dummy;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.InteropTypeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = Dummy.class)
@@ -150,18 +150,13 @@ abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMTruffleObject fromInternal(LLVMTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return object;
-    }
-
-    @Specialization
-    protected LLVMTruffleObject fromInternal(LLVMInternalTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-        return new LLVMTruffleObject(object);
+    protected LLVMManagedPointer fromInternal(LLVMInternalTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return LLVMManagedPointer.create(object);
     }
 
     @Specialization(guards = {"notLLVM(obj)"})
-    protected LLVMTruffleObject fromTruffleObject(TruffleObject obj, LLVMInteropType.Structured type) {
-        return new LLVMTruffleObject(LLVMTypedForeignObject.create(obj, type));
+    protected LLVMManagedPointer fromTruffleObject(TruffleObject obj, LLVMInteropType.Structured type) {
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, type));
     }
 
     @TruffleBoundary
@@ -182,13 +177,11 @@ abstract class ToPointer extends ForeignToLLVM {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
         } else if (LLVMPointer.isInstance(value)) {
             return value;
-        } else if (value instanceof LLVMTruffleObject) {
-            return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
-            return new LLVMTruffleObject((LLVMInternalTruffleObject) value);
+            return LLVMManagedPointer.create((LLVMInternalTruffleObject) value);
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
             LLVMTypedForeignObject typed = LLVMTypedForeignObject.createUnknown((TruffleObject) value);
-            return new LLVMTruffleObject(typed);
+            return LLVMManagedPointer.create(typed);
         } else {
             throw UnsupportedTypeException.raise(new Object[]{value});
         }

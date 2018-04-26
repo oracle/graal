@@ -49,9 +49,9 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementP
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import java.nio.ByteBuffer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
@@ -83,7 +83,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         }
 
         @Specialization
-        ByteBuffer doForeign(LLVMTruffleObject obj, LLVMCharset charset,
+        ByteBuffer doForeign(LLVMManagedPointer obj, LLVMCharset charset,
                         @Cached("create()") LLVMAsForeignNode asForeign,
                         @Cached("create()") BoxedEncodeStringNode encode) {
             return encode.execute(asForeign.execute(obj), charset);

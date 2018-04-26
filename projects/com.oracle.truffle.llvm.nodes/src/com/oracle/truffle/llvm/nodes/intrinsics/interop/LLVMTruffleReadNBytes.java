@@ -44,11 +44,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
@@ -66,11 +66,11 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             ptr += Byte.BYTES;
         }
         TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(bytes);
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(ret));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
     }
 
     @Specialization
-    protected Object interop(LLVMTruffleObject objectWithOffset, int n,
+    protected Object interop(LLVMManagedPointer objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
                     @Cached("createToByteNode()") ForeignToLLVM toLLVM,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
@@ -88,7 +88,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
         }
         TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(chars);
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(ret));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
     }
 
     @Fallback

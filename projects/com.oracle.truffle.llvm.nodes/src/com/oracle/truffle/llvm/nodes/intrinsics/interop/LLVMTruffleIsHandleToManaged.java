@@ -38,7 +38,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -65,12 +64,6 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
         } else {
             return false;
         }
-    }
-
-    @Specialization(guards = "ptr.isNative()")
-    protected boolean doPointer(LLVMTruffleObject ptr,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return context.get().isHandle(ptr.asNative());
     }
 
     @Fallback

@@ -38,13 +38,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -95,18 +95,16 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readObject,
                         @Cached("create()") BranchProfile notNativeBranch) {
+            /*
+             * TODO(rs): avoid TO_NATIVE transformation
+             */
             Object globalObject = readObject.execute(addr);
-            if (globalObject instanceof LLVMTruffleObject) {
+            if (LLVMManagedPointer.isInstance(globalObject)) {
                 notNativeBranch.enter();
-                return ((LLVMTruffleObject) globalObject).increment(incr);
+                return LLVMPointer.cast(globalObject).increment(incr);
             } else {
                 return globalAccess.executeWithTarget(addr).increment(incr);
             }
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject addr, int incr) {
-            return addr.increment(incr);
         }
 
         @Specialization
@@ -121,11 +119,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 
         @Specialization
         protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
-            return addr.increment(incr);
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject addr, long incr) {
             return addr.increment(incr);
         }
 
@@ -145,10 +138,13 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
                         @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readObject,
                         @Cached("create()") BranchProfile zeroIncr,
                         @Cached("create()") BranchProfile notNativeBranch) {
+            /*
+             * TODO(rs): avoid TO_NATIVE transformation
+             */
             Object globalObject = readObject.execute(addr);
-            if (globalObject instanceof LLVMTruffleObject) {
+            if (LLVMManagedPointer.isInstance(globalObject)) {
                 notNativeBranch.enter();
-                return ((LLVMTruffleObject) globalObject).increment(incr);
+                return LLVMManagedPointer.cast(globalObject).increment(incr);
             } else {
                 if (incr == 0) {
                     zeroIncr.enter();
