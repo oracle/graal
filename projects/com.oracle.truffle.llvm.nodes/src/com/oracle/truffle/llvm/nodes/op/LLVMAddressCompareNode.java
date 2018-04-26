@@ -40,7 +40,6 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ForeignToComparableValueNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
 import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEqualsNodeGen;
@@ -172,7 +171,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         this.op = op;
     }
 
-    protected abstract static class ForeignToComparableValue extends Node {
+    protected abstract static class ForeignToComparableValue extends LLVMNode {
 
         abstract LLVMAddress execute(TruffleObject obj);
 
@@ -192,7 +191,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
     }
 
     @ImportStatic(ForeignToLLVMType.class)
-    protected abstract static class ManagedToComparableValue extends Node {
+    protected abstract static class ManagedToComparableValue extends LLVMNode {
 
         abstract LLVMAddress execute(Object obj);
 
@@ -227,7 +226,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
-    protected abstract static class NativeToComparableValue extends Node {
+    protected abstract static class NativeToComparableValue extends LLVMNode {
 
         protected abstract LLVMAddress execute(Object obj, LLVMObjectNativeLibrary lib);
 
@@ -248,7 +247,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
-    protected abstract static class ToComparableValue extends Node {
+    protected abstract static class ToComparableValue extends LLVMNode {
 
         protected abstract LLVMAddress execute(Object obj);
 
@@ -284,7 +283,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         return op.compare(convertVal1.execute(val1), convertVal2.execute(val2));
     }
 
-    abstract static class LLVMForeignEqualsNode extends Node {
+    abstract static class LLVMForeignEqualsNode extends LLVMNode {
 
         abstract boolean execute(Env env, TruffleObject obj1, TruffleObject obj2);
 
@@ -368,7 +367,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
-    abstract static class LLVMNativeEqualsNode extends Node {
+    abstract static class LLVMNativeEqualsNode extends LLVMNode {
 
         abstract boolean execute(Object val1, LLVMObjectNativeLibrary lib1,
                         Object val2, LLVMObjectNativeLibrary lib2);
@@ -391,7 +390,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
-    abstract static class LLVMAddressEqualsNode extends Node {
+    abstract static class LLVMAddressEqualsNode extends LLVMNode {
 
         abstract boolean execute(Object val1, Object val2);
 

@@ -31,13 +31,13 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.factories.LLVMObjectAccessFactory;
 
-public class LLVMForeignReadNode extends Node {
+public class LLVMForeignReadNode extends LLVMNode {
 
     @Child private LLVMObjectReadNode read;
 

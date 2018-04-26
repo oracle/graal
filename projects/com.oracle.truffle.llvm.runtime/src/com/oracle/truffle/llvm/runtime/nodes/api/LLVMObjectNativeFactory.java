@@ -176,7 +176,7 @@ abstract class LLVMObjectNativeFactory {
         }
     }
 
-    abstract static class CachedIsPointerNode extends Node {
+    abstract static class CachedIsPointerNode extends LLVMNode {
 
         static final int TYPE_LIMIT = 8;
 
@@ -195,7 +195,7 @@ abstract class LLVMObjectNativeFactory {
         }
     }
 
-    abstract static class CachedAsPointerNode extends Node {
+    abstract static class CachedAsPointerNode extends LLVMNode {
 
         static final int TYPE_LIMIT = 8;
 
@@ -219,7 +219,7 @@ abstract class LLVMObjectNativeFactory {
         }
     }
 
-    abstract static class CachedToNativeNode extends Node {
+    abstract static class CachedToNativeNode extends LLVMNode {
 
         static final int TYPE_LIMIT = 8;
 

@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import java.nio.ByteBuffer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
@@ -72,7 +73,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         return writeString.execute(frame, result, buffer, buflen, charset.zeroTerminatorLen);
     }
 
-    abstract static class EncodeStringNode extends Node {
+    abstract static class EncodeStringNode extends LLVMNode {
 
         protected abstract ByteBuffer execute(Object str, LLVMCharset charset);
 
@@ -89,7 +90,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         }
     }
 
-    abstract static class BoxedEncodeStringNode extends Node {
+    abstract static class BoxedEncodeStringNode extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
         @Child Node unbox = Message.UNBOX.createNode();
@@ -115,7 +116,7 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         }
     }
 
-    abstract static class WriteStringNode extends Node {
+    abstract static class WriteStringNode extends LLVMNode {
 
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
         @Child private LLVMStoreNode write = LLVMI8StoreNodeGen.create(null, null);

@@ -103,6 +103,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -159,7 +160,7 @@ public final class Runner {
     @MessageResolution(receiverType = SulongLibrary.class)
     abstract static class SulongLibraryMessageResolution {
 
-        abstract static class LookupNode extends Node {
+        abstract static class LookupNode extends LLVMNode {
 
             abstract LLVMFunctionDescriptor execute(SulongLibrary library, String name);
 
@@ -243,7 +244,7 @@ public final class Runner {
             }
         }
 
-        abstract static class ExecuteMainNode extends Node {
+        abstract static class ExecuteMainNode extends LLVMNode {
 
             abstract Object execute(SulongLibrary library, Object[] args);
 

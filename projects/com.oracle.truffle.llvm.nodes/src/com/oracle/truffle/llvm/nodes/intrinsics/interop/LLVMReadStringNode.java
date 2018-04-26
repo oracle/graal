@@ -46,8 +46,9 @@ import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVM
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMReadStringNode extends Node {
+public abstract class LLVMReadStringNode extends LLVMNode {
 
     @Child PointerReadStringNode readOther;
 
@@ -72,14 +73,14 @@ public abstract class LLVMReadStringNode extends Node {
         return readOther.readPointer(address);
     }
 
-    abstract static class Dummy extends Node {
+    abstract static class Dummy extends LLVMNode {
 
         protected abstract LLVMTruffleObject execute();
     }
 
     @NodeChild(value = "object", type = Dummy.class)
     @NodeChild(value = "foreign", type = LLVMAsForeignNode.class, executeWith = "object")
-    abstract static class ForeignReadStringNode extends Node {
+    abstract static class ForeignReadStringNode extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
 
@@ -115,7 +116,7 @@ public abstract class LLVMReadStringNode extends Node {
         }
     }
 
-    static class PointerReadStringNode extends Node {
+    static class PointerReadStringNode extends LLVMNode {
 
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
         @Child private LLVMLoadNode read = LLVMI8LoadNodeGen.create(null);

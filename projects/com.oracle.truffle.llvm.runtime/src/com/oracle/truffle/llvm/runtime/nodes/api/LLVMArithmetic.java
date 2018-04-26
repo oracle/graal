@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.nodes.Node;
 
 public interface LLVMArithmetic {
     LLVMArithmeticOpNode createAddNode();
@@ -45,7 +44,7 @@ public interface LLVMArithmetic {
 
     LLVMArithmeticCompareNode createCmpNode();
 
-    abstract class LLVMArithmeticNode extends Node {
+    abstract class LLVMArithmeticNode extends LLVMNode {
         public abstract boolean canCompute(Object x, Object y);
     }
 

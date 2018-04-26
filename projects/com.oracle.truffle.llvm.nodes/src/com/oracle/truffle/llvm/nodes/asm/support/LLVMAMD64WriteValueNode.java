@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMAMD64WriteValueNode extends Node {
+public abstract class LLVMAMD64WriteValueNode extends LLVMNode {
     @Child protected LLVMExpressionNode data;
     @Child protected LLVMAMD64WriteNode write;
 

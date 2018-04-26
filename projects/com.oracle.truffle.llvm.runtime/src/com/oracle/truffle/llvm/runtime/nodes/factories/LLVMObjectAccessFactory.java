@@ -44,6 +44,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess.LLVMObjectWriteNode;
@@ -270,7 +271,7 @@ public abstract class LLVMObjectAccessFactory {
         }
     }
 
-    abstract static class GetWriteIdentifierNode extends Node {
+    abstract static class GetWriteIdentifierNode extends LLVMNode {
 
         abstract long execute(long offset, Object value);
 

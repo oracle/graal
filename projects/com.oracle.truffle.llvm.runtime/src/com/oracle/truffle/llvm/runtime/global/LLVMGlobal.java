@@ -43,7 +43,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
@@ -61,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsObjectStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -158,7 +158,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
-    abstract static class TestGlobalStateNode extends Node {
+    abstract static class TestGlobalStateNode extends LLVMNode {
         public abstract boolean execute(LLVMContext context, LLVMGlobal global);
 
         @SuppressWarnings("unused")
@@ -217,7 +217,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    abstract static class GetNativePointer extends Node {
+    abstract static class GetNativePointer extends LLVMNode {
         abstract long execute(LLVMContext context, LLVMGlobal global);
 
         public static GetNativePointer create() {
@@ -255,7 +255,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    public abstract static class GetGlobalValueNode extends Node {
+    public abstract static class GetGlobalValueNode extends LLVMNode {
         public abstract Object execute(LLVMContext context, LLVMGlobal global);
 
         public static GetGlobalValueNode create() {
@@ -283,7 +283,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    public abstract static class GetFrame extends Node {
+    public abstract static class GetFrame extends LLVMNode {
         public abstract MaterializedFrame execute(LLVMContext context);
 
         public static GetFrame create() {
@@ -311,7 +311,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    public abstract static class GetSlot extends Node {
+    public abstract static class GetSlot extends LLVMNode {
         public abstract FrameSlot execute(LLVMGlobal global);
 
         public static GetSlot create() {

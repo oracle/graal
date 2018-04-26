@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSiz
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
@@ -59,7 +60,7 @@ public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
         return str.length();
     }
 
-    abstract static class BoxedGetStringSize extends Node {
+    abstract static class BoxedGetStringSize extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
         @Child Node unbox = Message.UNBOX.createNode();

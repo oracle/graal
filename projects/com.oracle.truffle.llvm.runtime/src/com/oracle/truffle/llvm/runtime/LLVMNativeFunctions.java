@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public final class LLVMNativeFunctions {
 
@@ -57,7 +58,7 @@ public final class LLVMNativeFunctions {
         return new NullPointerNode(nullPointerFunction);
     }
 
-    protected abstract static class HeapFunctionNode extends Node {
+    protected abstract static class HeapFunctionNode extends LLVMNode {
 
         private final TruffleObject function;
         @Child private Node nativeExecute;

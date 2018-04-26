@@ -30,12 +30,12 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public final class LLVMBitcodeLibraryFunctions {
 
-    protected abstract static class LibraryFunctionNode extends Node {
+    protected abstract static class LibraryFunctionNode extends LLVMNode {
 
         @Child protected DirectCallNode callNode;
 

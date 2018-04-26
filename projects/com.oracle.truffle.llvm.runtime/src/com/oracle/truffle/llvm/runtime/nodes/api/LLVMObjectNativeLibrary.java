@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.ObjectType;
 
@@ -39,7 +38,7 @@ import com.oracle.truffle.api.object.ObjectType;
  * an object or the {@link ObjectType} of a {@link DynamicObject} implements
  * {@link LLVMObjectNativeLibrary.Provider}, it can be used as a pointer value.
  */
-public abstract class LLVMObjectNativeLibrary extends Node {
+public abstract class LLVMObjectNativeLibrary extends LLVMNode {
 
     public abstract boolean guard(Object obj);
 

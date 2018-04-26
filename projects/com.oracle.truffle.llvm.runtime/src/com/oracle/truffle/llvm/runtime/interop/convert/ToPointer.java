@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
@@ -47,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.Dummy;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.InteropTypeNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @NodeChild(type = Dummy.class)
 @NodeChild(type = InteropTypeNode.class)
@@ -60,12 +60,12 @@ abstract class ToPointer extends ForeignToLLVM {
         return ToPointerNodeGen.create(null, new InteropTypeNode(type));
     }
 
-    abstract static class Dummy extends Node {
+    abstract static class Dummy extends LLVMNode {
 
         protected abstract Object execute();
     }
 
-    static final class InteropTypeNode extends Node {
+    static final class InteropTypeNode extends LLVMNode {
 
         private final LLVMInteropType.Structured type;
 

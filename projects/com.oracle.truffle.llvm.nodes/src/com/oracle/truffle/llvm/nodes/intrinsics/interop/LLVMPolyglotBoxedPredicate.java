@@ -44,11 +44,12 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
 
-    public abstract static class Predicate extends Node {
+    public abstract static class Predicate extends LLVMNode {
 
         abstract boolean execute(Object obj);
     }
@@ -388,7 +389,7 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
         return false;
     }
 
-    abstract static class MatchForeign extends Node {
+    abstract static class MatchForeign extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
         @Child Node unbox = Message.UNBOX.createNode();
