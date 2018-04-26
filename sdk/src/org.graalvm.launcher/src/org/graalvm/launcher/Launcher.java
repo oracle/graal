@@ -1231,14 +1231,19 @@ public abstract class Launcher {
             assert isAOT();
             assert CLASSPATH != null;
             StringBuilder sb = new StringBuilder();
-            Path graalVMHome = getGraalVMHome();
-            for (String entry : CLASSPATH.split(File.pathSeparator)) {
-                Path resolved = graalVMHome.resolve(entry);
-                if (isVerbose() && !Files.exists(resolved)) {
-                    System.err.println(String.format("Warning: %s does not exit", resolved));
+            if (!CLASSPATH.isEmpty()) {
+                Path graalVMHome = getGraalVMHome();
+                if (graalVMHome == null) {
+                    throw abort("Can not resolve classpath: could not get GraalVM home");
                 }
-                sb.append(resolved);
-                sb.append(File.pathSeparatorChar);
+                for (String entry : CLASSPATH.split(File.pathSeparator)) {
+                    Path resolved = graalVMHome.resolve(entry);
+                    if (isVerbose() && !Files.exists(resolved)) {
+                        System.err.println(String.format("Warning: %s does not exit", resolved));
+                    }
+                    sb.append(resolved);
+                    sb.append(File.pathSeparatorChar);
+                }
             }
             String classpathFromArgs = null;
             Iterator<String> iterator = jvmArgs.iterator();
@@ -1316,6 +1321,9 @@ public abstract class Launcher {
                 return siblingBinary;
             }
             Path graalVMHome = getGraalVMHome(executablePath);
+            if (graalVMHome == null) {
+                abort("Can not exec to GraalVM binary: could not find GraalVM home");
+            }
             Path jdkBin = graalVMHome.resolve("bin").resolve(executableName);
             if (Files.exists(jdkBin)) {
                 return jdkBin;
@@ -1384,12 +1392,20 @@ public abstract class Launcher {
             if (FORCE_GRAAL_HOME != null) {
                 return FORCE_GRAAL_HOME;
             }
+            String home = System.getProperty("org.graalvm.home");
+            if (home != null) {
+                return Paths.get(home);
+            }
             return getGraalVMHome(getCurrentExecutablePath());
         }
 
         Path getGraalVMHome(Path executable) {
             if (FORCE_GRAAL_HOME != null) {
                 return FORCE_GRAAL_HOME;
+            }
+            String systemPropertyHome = System.getProperty("org.graalvm.home");
+            if (systemPropertyHome != null) {
+                return Paths.get(systemPropertyHome);
             }
             assert isAOT();
             Path languageHome = getLanguageHome(executable);
@@ -1438,8 +1454,6 @@ public abstract class Launcher {
             }
             if (home != null && !isJreHome(home)) {
                 System.err.println(String.format("WARNING: %s was found as GraalVM home but it does not contain `bin/java`", home));
-            } else if (home == null) {
-                System.err.println("WARNING: Could not figure out the GraalVM home");
             }
             if (verbose) {
                 System.out.println(String.format("Resolving GraalVM home with fallback: executable=%s -> home=%s", executable, home));
