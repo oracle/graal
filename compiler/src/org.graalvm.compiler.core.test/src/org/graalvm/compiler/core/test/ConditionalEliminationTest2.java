@@ -22,14 +22,16 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.tiers.PhaseContext;
 import org.junit.Test;
 
@@ -129,4 +131,28 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
         assertDeepEquals(0, graph.getNodes().filter(GuardNode.class).count());
     }
 
+    public static Object testRedundantInstanceOfSnippet(Object value) {
+        if (value != null && value.getClass() == Object[].class) {
+            return ((Object[]) value)[0];
+        } else {
+            return null;
+        }
+    }
+
+    @Test
+    public void testRedundantInstanceOf() {
+        StructuredGraph graph = parseEager("testRedundantInstanceOfSnippet", AllowAssumptions.YES);
+
+        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        PhaseContext context = new PhaseContext(getProviders());
+
+        canonicalizer.apply(graph, context);
+        new ConditionalEliminationPhase(true).apply(graph, context);
+        getDebugContext().dump(DebugContext.BASIC_LEVEL, graph, "After ConditionalEliminationPhase");
+
+        canonicalizer.apply(graph, context);
+        getDebugContext().dump(DebugContext.BASIC_LEVEL, graph, "After Canonicalization");
+
+        assertDeepEquals(1, graph.getNodes().filter(InstanceOfNode.class).count());
+    }
 }
