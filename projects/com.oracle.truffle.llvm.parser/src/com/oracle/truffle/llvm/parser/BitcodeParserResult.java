@@ -59,7 +59,7 @@ public final class BitcodeParserResult {
     public static BitcodeParserResult getFromSource(Source source, ByteBuffer bytes) throws IOException {
         assert bytes != null;
         if (!LLVMScanner.isSupportedFile(bytes)) {
-            throw new IOException("Unsupported file: " + source.toString());
+            throw new IOException("Unsupported file: " + source.getName());
         }
 
         final ModelModule model = LLVMScanner.parse(source, bytes);

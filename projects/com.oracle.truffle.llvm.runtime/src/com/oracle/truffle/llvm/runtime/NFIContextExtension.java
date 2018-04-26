@@ -317,8 +317,7 @@ public final class NFIContextExtension implements ContextExtension {
 
     private static TruffleObject getNativeDataObject(TruffleObject libraryHandle, String name) {
         try {
-            TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(),
-                            libraryHandle, name);
+            TruffleObject symbol = (TruffleObject) ForeignAccess.sendRead(Message.READ.createNode(), libraryHandle, name);
             if (symbol != null && 0 != ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), symbol)) {
                 return symbol;
             } else {
@@ -335,8 +334,7 @@ public final class NFIContextExtension implements ContextExtension {
     private static TruffleObject bindNativeFunction(TruffleObject symbol, String signature) {
         CompilerAsserts.neverPartOfCompilation();
         try {
-            return (TruffleObject) ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), symbol, "bind",
-                            signature);
+            return (TruffleObject) ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), symbol, "bind", signature);
         } catch (InteropException ex) {
             throw new IllegalStateException(ex);
         }
