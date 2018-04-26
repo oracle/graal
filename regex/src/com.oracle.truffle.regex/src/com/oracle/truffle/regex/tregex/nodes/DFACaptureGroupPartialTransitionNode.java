@@ -81,9 +81,6 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     }
 
     public void apply(DFACaptureGroupTrackingData d, final int currentIndex) {
-        if (DebugUtil.DEBUG_STEP_EXECUTION) {
-            System.out.println("applying " + this);
-        }
         CompilerAsserts.partialEvaluationConstant(this);
         if (newOrder != null) {
             System.arraycopy(d.currentResultOrder, 0, d.swap, 0, newOrder.length);
@@ -95,9 +92,6 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     }
 
     public void applyPreFinalStateTransition(DFACaptureGroupTrackingData d, boolean searching, final int currentIndex) {
-        if (DebugUtil.DEBUG_STEP_EXECUTION) {
-            System.out.println("applying final state transition " + this);
-        }
         CompilerAsserts.partialEvaluationConstant(this);
         if (!searching) {
             apply(d, currentIndex);

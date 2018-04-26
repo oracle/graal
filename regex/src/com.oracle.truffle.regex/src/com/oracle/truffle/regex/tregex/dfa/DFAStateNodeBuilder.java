@@ -40,6 +40,10 @@ import java.util.List;
 
 public final class DFAStateNodeBuilder implements JsonConvertible {
 
+    private static final List<DFACaptureGroupTransitionBuilder> NODE_SPLIT_TAINTED = new ArrayList<>();
+    private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG =
+                    "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
+
     private final short id;
     private NFATransitionSet nfaStateSet;
     private boolean initialState = false;
@@ -60,6 +64,42 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
         this.isBackwardPrefixState = isBackwardPrefixState;
         if (isBackwardPrefixState) {
             this.backwardPrefixState = this.id;
+        }
+    }
+
+    private DFAStateNodeBuilder(DFAStateNodeBuilder copy, short copyID) {
+        id = copyID;
+        nfaStateSet = copy.nfaStateSet;
+        initialState = copy.initialState;
+        overrideFinalState = copy.overrideFinalState;
+        isFinalStateSuccessor = copy.isFinalStateSuccessor;
+        isBackwardPrefixState = copy.isBackwardPrefixState;
+        backwardPrefixState = copy.backwardPrefixState;
+        transitions = new DFAStateTransitionBuilder[copy.transitions.length];
+        for (int i = 0; i < transitions.length; i++) {
+            transitions[i] = copy.transitions[i].createNodeSplitCopy();
+        }
+        precedingTransitions = NODE_SPLIT_TAINTED;
+        anchoredFinalStateTransition = copy.anchoredFinalStateTransition;
+        unAnchoredFinalStateTransition = copy.unAnchoredFinalStateTransition;
+        preCalculatedAnchoredResult = copy.preCalculatedAnchoredResult;
+        preCalculatedUnAnchoredResult = copy.preCalculatedUnAnchoredResult;
+    }
+
+    public DFAStateNodeBuilder createNodeSplitCopy(short copyID) {
+        return new DFAStateNodeBuilder(this, copyID);
+    }
+
+    public void nodeSplitUpdateSuccessors(short[] newSuccessors, DFAStateNodeBuilder[] stateIndexMap) {
+        for (int i = 0; i < transitions.length; i++) {
+            DFAStateNodeBuilder successor = stateIndexMap[newSuccessors[i]];
+            assert successor != null;
+            successor.precedingTransitions = NODE_SPLIT_TAINTED;
+            transitions[i].setTarget(successor);
+        }
+        if (hasBackwardPrefixState()) {
+            assert newSuccessors.length == transitions.length + 1;
+            backwardPrefixState = newSuccessors[newSuccessors.length - 1];
         }
     }
 
@@ -120,6 +160,9 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public void addPrecedingTransition(DFACaptureGroupTransitionBuilder transitionBuilder) {
+        if (precedingTransitions == NODE_SPLIT_TAINTED) {
+            throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
+        }
         if (precedingTransitions == null) {
             precedingTransitions = new ArrayList<>();
         }
@@ -127,6 +170,9 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public List<DFACaptureGroupTransitionBuilder> getPrecedingTransitions() {
+        if (precedingTransitions == NODE_SPLIT_TAINTED) {
+            throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
+        }
         if (precedingTransitions == null) {
             return Collections.emptyList();
         }

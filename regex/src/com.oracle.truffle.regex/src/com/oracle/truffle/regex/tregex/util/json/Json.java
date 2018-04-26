@@ -101,6 +101,9 @@ public final class Json {
 
     @TruffleBoundary
     public static JsonArray arrayUnsigned(byte[] array) {
+        if (array == null) {
+            return new JsonArray();
+        }
         ArrayList<JsonConvertible> list = new ArrayList<>(array.length);
         for (byte b : array) {
             list.add(val(Byte.toUnsignedInt(b)));

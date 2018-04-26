@@ -56,6 +56,10 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         this.matcherBuilder = matcherBuilder;
     }
 
+    public DFAStateTransitionBuilder createNodeSplitCopy() {
+        return new DFAStateTransitionBuilder(matcherBuilder, transitions);
+    }
+
     @Override
     public MatcherBuilder getMatcherBuilder() {
         return matcherBuilder;

@@ -127,14 +127,47 @@ public final class DFAGenerator implements JsonConvertible {
         return stateMap;
     }
 
-    public DFAStateNodeBuilder getState(short stateNodeID) {
+    private DFAStateNodeBuilder[] getStateIndexMap() {
         if (stateIndexMap == null) {
-            stateIndexMap = new DFAStateNodeBuilder[nextID];
-            for (DFAStateNodeBuilder s : stateMap.values()) {
-                stateIndexMap[s.getId()] = s;
-            }
+            createStateIndexMap(nextID);
         }
+        return stateIndexMap;
+    }
+
+    public DFAStateNodeBuilder getState(short stateNodeID) {
+        assert debugMode();
+        getStateIndexMap();
         return stateIndexMap[stateNodeID];
+    }
+
+    private void createStateIndexMap(int size) {
+        assert debugMode();
+        stateIndexMap = new DFAStateNodeBuilder[size];
+        for (DFAStateNodeBuilder s : stateMap.values()) {
+            stateIndexMap[s.getId()] = s;
+        }
+    }
+
+    public void nodeSplitSetNewDFASize(int size) {
+        assert debugMode();
+        assert stateIndexMap == null;
+        createStateIndexMap(size);
+    }
+
+    public void nodeSplitRegisterDuplicateState(short oldID, short newID) {
+        assert debugMode();
+        DFAStateNodeBuilder copy = stateIndexMap[oldID].createNodeSplitCopy(newID);
+        stateIndexMap[newID] = copy;
+        for (DFAStateTransitionBuilder t : copy.getTransitions()) {
+            t.setId(transitionIDCounter.inc());
+            t.setSource(copy);
+        }
+    }
+
+    public void nodeSplitUpdateSuccessors(short stateID, short[] newSuccessors) {
+        assert debugMode();
+        assert stateIndexMap[stateID] != null;
+        stateIndexMap[stateID].nodeSplitUpdateSuccessors(newSuccessors, stateIndexMap);
     }
 
     /**
@@ -567,12 +600,20 @@ public final class DFAGenerator implements JsonConvertible {
         return DFACaptureGroupPartialTransitionNode.create(null, DFACaptureGroupPartialTransitionNode.EMPTY_ARRAY_COPIES, indexUpdates, indexClears);
     }
 
-    private static DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {
+    private DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {
         try {
-            return DFANodeSplit.createReducibleGraph(states);
+            if (debugMode()) {
+                return DFANodeSplit.createReducibleGraphAndUpdateDFAGen(this, states);
+            } else {
+                return DFANodeSplit.createReducibleGraph(states);
+            }
         } catch (DFANodeSplitBailoutException e) {
             return states;
         }
+    }
+
+    private boolean debugMode() {
+        return DebugUtil.DEBUG || DebugUtil.DEBUG_STEP_EXECUTION;
     }
 
     public String getDebugDumpName() {
@@ -599,10 +640,11 @@ public final class DFAGenerator implements JsonConvertible {
     @Override
     public JsonValue toJson() {
         nfa.setInitialLoopBack(forward && executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
-        DFAStateNodeBuilder[] stateList = new DFAStateNodeBuilder[nextID];
         DFAStateTransitionBuilder[] transitionList = new DFAStateTransitionBuilder[transitionIDCounter.getCount()];
-        for (DFAStateNodeBuilder s : stateMap.values()) {
-            stateList[s.getId()] = s;
+        for (DFAStateNodeBuilder s : getStateIndexMap()) {
+            if (s == null) {
+                continue;
+            }
             for (DFAStateTransitionBuilder t : s.getTransitions()) {
                 transitionList[t.getId()] = t;
             }
@@ -610,7 +652,7 @@ public final class DFAGenerator implements JsonConvertible {
         return Json.obj(Json.prop("pattern", nfa.getAst().getSource().toString()),
                         Json.prop("nfa", nfa.toJson(forward)),
                         Json.prop("dfa", Json.obj(
-                                        Json.prop("states", Arrays.stream(stateList)),
+                                        Json.prop("states", Arrays.stream(getStateIndexMap())),
                                         Json.prop("transitions", Arrays.stream(transitionList)),
                                         Json.prop("entryStates", Arrays.stream(entryStates).map(x -> Json.val(x.getId()))))));
     }

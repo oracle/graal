@@ -369,6 +369,6 @@ public class NFAState implements IndexedState, JsonConvertible {
                         Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState(forward)),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState(forward)),
-                        Json.prop("next", getNext(forward).stream().map(x -> Json.val(x.getId()))));
+                        Json.prop("transitions", getNext(forward).stream().map(x -> Json.val(x.getId()))));
     }
 }

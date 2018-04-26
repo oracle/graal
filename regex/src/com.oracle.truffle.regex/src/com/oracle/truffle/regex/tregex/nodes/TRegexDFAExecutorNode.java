@@ -257,12 +257,7 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     public char getChar(VirtualFrame frame) {
-        char c = charAtNode.execute(getInput(frame), getIndex(frame));
-        if (DebugUtil.DEBUG_STEP_EXECUTION) {
-            System.out.println();
-            System.out.println("read char " + c);
-        }
-        return c;
+        return charAtNode.execute(getInput(frame), getIndex(frame));
     }
 
     public void advance(VirtualFrame frame) {

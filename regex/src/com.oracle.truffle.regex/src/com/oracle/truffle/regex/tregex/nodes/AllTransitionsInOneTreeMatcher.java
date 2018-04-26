@@ -28,7 +28,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 
 /**
@@ -82,9 +81,6 @@ public final class AllTransitionsInOneTreeMatcher implements CharMatcher {
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
-        if (DebugUtil.DEBUG_STEP_EXECUTION) {
-            System.out.println("tree check " + DebugUtil.charToString(sortedRanges[mid]));
-        }
         if (c < sortedRanges[mid]) {
             return checkMatchTree1(frame, executor, stateNode, fromIndex, mid - 1, c);
         } else {
@@ -112,9 +108,6 @@ public final class AllTransitionsInOneTreeMatcher implements CharMatcher {
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
-        if (DebugUtil.DEBUG_STEP_EXECUTION) {
-            System.out.println("tree check " + DebugUtil.charToString(sortedRanges[mid]));
-        }
         if (c < sortedRanges[mid]) {
             return checkMatchTree2(frame, executor, stateNode, fromIndex, mid - 1, c);
         } else {
@@ -142,9 +135,6 @@ public final class AllTransitionsInOneTreeMatcher implements CharMatcher {
         }
         final int mid = (fromIndex + toIndex) >>> 1;
         CompilerAsserts.partialEvaluationConstant(mid);
-        if (DebugUtil.DEBUG_STEP_EXECUTION) {
-            System.out.println("tree check " + DebugUtil.charToString(sortedRanges[mid]));
-        }
         if (c < sortedRanges[mid]) {
             return checkMatchTree3(frame, executor, stateNode, fromIndex, mid - 1, c, preLoopIndex);
         } else {

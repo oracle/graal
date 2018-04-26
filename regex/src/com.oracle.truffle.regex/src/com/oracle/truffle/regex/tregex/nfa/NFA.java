@@ -68,9 +68,8 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
         this.reverseAnchoredEntry = reverseAnchoredEntry;
         this.reverseUnAnchoredEntry = reverseUnAnchoredEntry;
         this.preCalculatedResults = preCalculatedResults;
+        this.states = new NFAState[stateIDCounter.getCount()];
         // reserve last slot for loopBack matcher
-        this.states = new NFAState[stateIDCounter.getCount() + 1];
-        // reserve last slots for loopBack matcher
         this.transitions = new NFAStateTransition[transitionIDCounter.getCount() + 1];
         if (isTraceFinderNFA()) {
             this.initialLoopBack = null;
