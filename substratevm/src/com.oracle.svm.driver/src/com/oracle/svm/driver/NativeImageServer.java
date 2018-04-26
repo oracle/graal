@@ -28,9 +28,11 @@ import static com.oracle.svm.core.posix.headers.Signal.SignalEnum.SIGTERM;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -559,33 +561,21 @@ final class NativeImageServer extends NativeImage {
                 showVerboseMessage(verboseServer, "PID of new server: " + serverPID);
                 int selectedPort = serverPort;
                 if (selectedPort == 0) {
-                    showVerboseMessage(verboseServer, "Getting port number from server log ...");
-                    BufferedReader logReader = null;
-                    long timeout = System.currentTimeMillis() + 2_000;
-                    do {
-                        Thread.sleep(200);
-                        if (logReader == null) {
+                    try (BufferedReader serverStdout = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                        String line = serverStdout.readLine();
+                        if (line != null && line.startsWith(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX)) {
+                            String portStr = line.substring(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX.length());
                             try {
-                                logReader = Files.newBufferedReader(logFilePath);
-                            } catch (IOException e) {
-                                showVerboseMessage(verboseServer, "Log file not yet available. Retry ...");
-                            }
-                        } else {
-                            String line = logReader.readLine();
-                            if (line != null && line.startsWith(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX)) {
-                                String portStr = line.substring(NativeImageBuildServer.PORT_LOG_MESSAGE_PREFIX.length());
-                                try {
-                                    selectedPort = Integer.parseInt(portStr);
-                                    if (selectedPort > 0) {
-                                        showVerboseMessage(verboseServer, "Server selected port " + selectedPort);
-                                        break;
-                                    }
-                                } catch (NumberFormatException ex) {
-                                    throw showError("Server log file contains invalid port selection message: " + line);
-                                }
+                                selectedPort = Integer.parseInt(portStr);
+                            } catch (NumberFormatException ex) {
+                                /* Fall through */
                             }
                         }
-                    } while (timeout > System.currentTimeMillis());
+                        if (selectedPort == 0) {
+                            throw showError("Server showed invalid port selection message: " + line);
+                        }
+                        showVerboseMessage(verboseServer, "Server selected port " + selectedPort);
+                    }
                 }
                 writeServerFile(serverDir, selectedPort, serverPID, classpath, bootClasspath, javaArgs);
             } catch (Exception e) {
