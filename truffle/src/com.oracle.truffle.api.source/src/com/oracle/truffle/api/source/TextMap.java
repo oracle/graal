@@ -210,7 +210,7 @@ final class TextMap {
         if (lineOutOfRange(line)) {
             throw new IllegalArgumentException("line out of bounds");
         }
-        if (line == nlOffsets.length - 1 && !finalNL) {
+        if (line == nlOffsets.length - 1) {
             return textLength - nlOffsets[line - 1];
         }
         return (nlOffsets[line] - nlOffsets[line - 1]) - 1;
@@ -220,7 +220,7 @@ final class TextMap {
      * Is the line number out of range.
      */
     private boolean lineOutOfRange(int line) {
-        return line <= 0 || line >= nlOffsets.length || (line == nlOffsets.length - 1 && finalNL);
+        return line <= 0 || line >= nlOffsets.length;
     }
 
 }
