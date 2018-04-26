@@ -92,22 +92,17 @@ public class SourceTextTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest7() {
-        assertEquals(0, emptySource.getLineStartOffset(2));
+        emptySource.getLineStartOffset(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest8() {
-        assertEquals(0, emptySource.getLineLength(2));
+        emptySource.getLineLength(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest9() {
-        assertEquals(0, emptySource.getLineStartOffset(0));
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void emptyTextTest10() {
-        assertEquals(0, emptySource.getLineLength(0));
+        emptySource.getLineLength(0);
     }
 
     @Test
