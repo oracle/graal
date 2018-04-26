@@ -219,24 +219,24 @@ import com.oracle.truffle.llvm.nodes.cast.LLVMToI8NodeGen.LLVMToI8NoZeroExtNodeG
 import com.oracle.truffle.llvm.nodes.func.LLVMArgNodeGen;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMFenceNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMAddressDirectLoadNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.load.LLVMDirectLoadNodeFactory.LLVMPointerDirectLoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnsupportedInlineAssemblerNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode.LLVMWriteAddressNode;
-import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteAddressNodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNode.LLVMWritePointerNode;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI1NodeGen;
 import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWriteI64NodeGen;
+import com.oracle.truffle.llvm.nodes.vars.LLVMWriteNodeFactory.LLVMWritePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.vars.StructLiteralNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -1760,7 +1760,7 @@ class AsmFactory {
                         assert retTypes[arg.getOutIndex()] == arg.getType();
                         if (arg.getType() instanceof PointerType) {
                             valueNodes[arg.getOutIndex()] = LLVMToAddressNodeGen.create(register);
-                            writeNodes[arg.getOutIndex()] = LLVMAddressStoreNodeGen.create(null, null);
+                            writeNodes[arg.getOutIndex()] = LLVMPointerStoreNodeGen.create(null, null);
                         } else {
                             PrimitiveKind primitiveKind = getPrimitiveKind(arg);
                             switch (primitiveKind) {
@@ -1791,7 +1791,7 @@ class AsmFactory {
                     assert arg.isMemory();
                     slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getOutIndex()]);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getOutIndex());
-                    arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot, sourceLocation));
+                    arguments.add(LLVMWritePointerNodeGen.create(argnode, slot, sourceLocation));
                 }
             }
 
@@ -1804,7 +1804,7 @@ class AsmFactory {
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
                     if (argTypes[arg.getInIndex()] instanceof PointerType) {
-                        arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot, null));
+                        arguments.add(LLVMWritePointerNodeGen.create(argnode, slot, null));
                     } else {
                         LLVMExpressionNode node = LLVMToI64NoZeroExtNodeGen.create(argnode);
                         arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
@@ -1816,7 +1816,7 @@ class AsmFactory {
                     LLVMExpressionNode node = LLVMToI64NoZeroExtNodeGen.create(argnode);
                     arguments.add(LLVMWriteI64NodeGen.create(node, slot, null));
                 } else if (arg.getType() instanceof PointerType) {
-                    arguments.add(LLVMWriteAddressNodeGen.create(argnode, slot, null));
+                    arguments.add(LLVMWritePointerNodeGen.create(argnode, slot, null));
                 } else {
                     throw new AsmParseException("invalid operand size: " + arg.getType());
                 }
@@ -1826,7 +1826,7 @@ class AsmFactory {
         if (retType instanceof StructureType) {
             LLVMExpressionNode addrArg = LLVMArgNodeGen.create(1);
             FrameSlot slot = frameDescriptor.addFrameSlot("returnValue", null, FrameSlotKind.Object);
-            LLVMWriteAddressNode writeAddr = LLVMWriteAddressNodeGen.create(addrArg, slot, null);
+            LLVMWritePointerNode writeAddr = LLVMWritePointerNodeGen.create(addrArg, slot, null);
             statements.add(writeAddr);
             LLVMExpressionNode addr = LLVMAddressReadNodeGen.create(slot);
             this.result = StructLiteralNodeGen.create(retOffsets, writeNodes, valueNodes, addr);
@@ -1856,9 +1856,9 @@ class AsmFactory {
         LLVMExpressionNode stackPointer = LLVMArgNodeGen.create(0);
         FrameSlot stackSlot = frameDescriptor.addFrameSlot(LLVMStack.FRAME_ID);
         stackSlot.setKind(FrameSlotKind.Object);
-        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation));
+        arguments.add(LLVMWritePointerNodeGen.create(stackPointer, frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID), sourceLocation));
 
-        arguments.add(LLVMWriteAddressNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));
+        arguments.add(LLVMWritePointerNodeGen.create(stackPointer, getRegisterSlot("rsp"), null));
 
         assert retType instanceof VoidType || retType != null;
     }
@@ -2039,7 +2039,7 @@ class AsmFactory {
             FrameSlot frame = getArgumentSlot(op.getIndex(), type);
             if (info.isMemory()) {
                 if (type instanceof PointerType) {
-                    return LLVMAddressDirectLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
+                    return LLVMPointerDirectLoadNodeGen.create(LLVMAddressReadNodeGen.create(frame));
                 }
                 switch (((PrimitiveType) type).getPrimitiveKind()) {
                     case I8:
@@ -2106,7 +2106,7 @@ class AsmFactory {
                         throw new AsmParseException("unsupported operand type: " + type);
                 }
             } else if (type instanceof PointerType) {
-                return LLVMAddressDirectLoadNodeGen.create(addr);
+                return LLVMPointerDirectLoadNodeGen.create(addr);
             } else {
                 throw new AsmParseException("unsupported operand type: " + type);
             }

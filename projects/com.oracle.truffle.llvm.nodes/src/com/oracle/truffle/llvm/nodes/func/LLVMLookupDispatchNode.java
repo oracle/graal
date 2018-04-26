@@ -40,7 +40,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMLookupDispatchNodeGen.LLVMLookupDispatchForeignNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
@@ -50,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public abstract class LLVMLookupDispatchNode extends LLVMNode {
@@ -81,26 +81,26 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         return dispatchNode.executeDispatch(descriptor, arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"!isAutoDerefHandle(handle)", "cachedFunction != null", "handle.getVal() == cachedHandle.getVal()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"!isAutoDerefHandle(handle)", "cachedFunction != null", "handle.asNative() == cachedHandle.asNative()"})
     @SuppressWarnings("unused")
-    protected static Object doCached(LLVMAddress handle, Object[] arguments,
-                    @Cached("handle") LLVMAddress cachedHandle,
+    protected static Object doCached(LLVMNativePointer handle, Object[] arguments,
+                    @Cached("handle") LLVMNativePointer cachedHandle,
                     @Cached("lookupFunction(handle)") LLVMFunctionDescriptor cachedFunction,
                     @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode) {
         return dispatchNode.executeDispatch(cachedFunction, arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"!isAutoDerefHandle(handle)", "cachedFunction == null", "handle.getVal() == cachedHandle.getVal()"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"!isAutoDerefHandle(handle)", "cachedFunction == null", "handle.asNative() == cachedHandle.asNative()"})
     @SuppressWarnings("unused")
-    protected static Object doCachedNative(LLVMAddress handle, Object[] arguments,
-                    @Cached("handle") LLVMAddress cachedHandle,
+    protected static Object doCachedNative(LLVMNativePointer handle, Object[] arguments,
+                    @Cached("handle") LLVMNativePointer cachedHandle,
                     @Cached("lookupFunction(cachedHandle)") LLVMFunctionDescriptor cachedFunction,
                     @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNode) {
         return dispatchNode.executeDispatch(handle, arguments);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(function)", replaces = {"doCached", "doCachedNative"})
-    protected Object doLookup(LLVMAddress function, Object[] arguments,
+    protected Object doLookup(LLVMNativePointer function, Object[] arguments,
                     @Cached("createCachedDispatch()") LLVMDispatchNode dispatchNode,
                     @Cached("createCachedNativeDispatch()") LLVMNativeDispatchNode dispatchNativeNode) {
         LLVMFunctionDescriptor descriptor = lookupFunction(function);
@@ -111,7 +111,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         }
     }
 
-    protected LLVMFunctionDescriptor lookupFunction(LLVMAddress function) {
+    protected LLVMFunctionDescriptor lookupFunction(LLVMNativePointer function) {
         return getContextReference().get().getFunctionDescriptor(function);
     }
 
@@ -124,7 +124,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(handle)")
-    protected Object doDerefHandle(LLVMAddress handle, Object[] arguments,
+    protected Object doDerefHandle(LLVMNativePointer handle, Object[] arguments,
                     @Cached("create(type)") LLVMLookupDispatchForeignNode lookupDispatchForeignNode) {
         LLVMTruffleObject foreignFunction = getDerefHandleGetReceiverNode().execute(handle);
         return doForeign(foreignFunction, arguments, lookupDispatchForeignNode);
@@ -206,7 +206,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
         return llvmMemory;
     }
 
-    protected boolean isAutoDerefHandle(LLVMAddress addr) {
+    protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
         return getLLVMMemoryCached().isDerefMemory(addr);
     }
 

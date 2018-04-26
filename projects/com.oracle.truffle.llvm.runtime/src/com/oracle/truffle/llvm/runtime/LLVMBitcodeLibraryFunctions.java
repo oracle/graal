@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMBitcodeLibraryFunctions {
 
@@ -55,7 +56,7 @@ public final class LLVMBitcodeLibraryFunctions {
             super(context, "@sulong_eh_canCatch");
         }
 
-        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMAddress catchType) {
+        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
             return (int) execute(stack, unwindHeader, catchType.copy());
         }
     }

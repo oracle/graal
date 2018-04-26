@@ -35,11 +35,11 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -378,37 +378,6 @@ final class LLVMExpressionNodeWrapper extends LLVMExpressionNode implements Wrap
     }
 
     @Override
-    public LLVMAddress executeLLVMAddress(VirtualFrame frame) throws UnexpectedResultException {
-        LLVMAddress returnValue;
-        for (;;) {
-            boolean wasOnReturnExecuted = false;
-            try {
-                probeNode.onEnter(frame);
-                returnValue = delegateNode.executeLLVMAddress(frame);
-                wasOnReturnExecuted = true;
-                probeNode.onReturnValue(frame, returnValue);
-                break;
-            } catch (UnexpectedResultException e) {
-                wasOnReturnExecuted = true;
-                probeNode.onReturnValue(frame, null);
-                throw e;
-            } catch (Throwable t) {
-                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
-                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
-                    continue;
-                } else if (result instanceof LLVMAddress) {
-                    returnValue = (LLVMAddress) result;
-                    break;
-                } else if (result != null) {
-                    throw new UnexpectedResultException(result);
-                }
-                throw t;
-            }
-        }
-        return returnValue;
-    }
-
-    @Override
     public LLVMDoubleVector executeLLVMDoubleVector(VirtualFrame frame) throws UnexpectedResultException {
         LLVMDoubleVector returnValue;
         for (;;) {
@@ -677,6 +646,37 @@ final class LLVMExpressionNodeWrapper extends LLVMExpressionNode implements Wrap
                     continue;
                 } else if (result instanceof LLVMIVarBit) {
                     returnValue = (LLVMIVarBit) result;
+                    break;
+                } else if (result != null) {
+                    throw new UnexpectedResultException(result);
+                }
+                throw t;
+            }
+        }
+        return returnValue;
+    }
+
+    @Override
+    public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
+        LLVMNativePointer returnValue;
+        for (;;) {
+            boolean wasOnReturnExecuted = false;
+            try {
+                probeNode.onEnter(frame);
+                returnValue = delegateNode.executeLLVMNativePointer(frame);
+                wasOnReturnExecuted = true;
+                probeNode.onReturnValue(frame, returnValue);
+                break;
+            } catch (UnexpectedResultException e) {
+                wasOnReturnExecuted = true;
+                probeNode.onReturnValue(frame, null);
+                throw e;
+            } catch (Throwable t) {
+                Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, wasOnReturnExecuted);
+                if (result == ProbeNode.UNWIND_ACTION_REENTER) {
+                    continue;
+                } else if (LLVMNativePointer.isInstance(result)) {
+                    returnValue = LLVMNativePointer.cast(result);
                     break;
                 } else if (result != null) {
                     throw new UnexpectedResultException(result);

@@ -30,11 +30,11 @@
 package com.oracle.truffle.llvm.nodes.literals;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public class LLVMSimpleLiteralNode {
 
@@ -227,22 +227,22 @@ public class LLVMSimpleLiteralNode {
         }
     }
 
-    public static final class LLVMAddressLiteralNode extends LLVMExpressionNode {
+    public static final class LLVMNativePointerLiteralNode extends LLVMExpressionNode {
 
         private final long address;
 
-        public LLVMAddressLiteralNode(LLVMAddress address) {
-            this.address = address.getVal();
+        public LLVMNativePointerLiteralNode(LLVMNativePointer address) {
+            this.address = address.asNative();
         }
 
         @Override
-        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            return LLVMAddress.fromLong(address);
+        public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) {
+            return LLVMNativePointer.create(address);
         }
 
         @Override
         public Object executeGeneric(VirtualFrame frame) {
-            return executeLLVMAddress(frame);
+            return executeLLVMNativePointer(frame);
         }
     }
 }

@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
@@ -63,13 +63,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMDoubleVector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMDoubleVector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMDoubleVector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMDoubleVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -82,13 +82,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMFloatVector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMFloatVector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMFloatVector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMFloatVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -101,13 +101,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMI16Vector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMI16Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMI16Vector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI16Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -120,13 +120,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMI1Vector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMI1Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMI1Vector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI1Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -139,13 +139,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMI32Vector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMI32Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMI32Vector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI32Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -158,13 +158,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMI64Vector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMI64Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMI64Vector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI64Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -177,13 +177,13 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMI8Vector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMI8Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMI8Vector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI8Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -196,33 +196,33 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMAddressVector value) {
+    protected Object writeVector(LLVMNativePointer address, LLVMPointerVector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMAddressVector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMPointerVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMAddressVector value,
+    protected Object writeVector(LLVMGlobal address, LLVMPointerVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
         return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMAddress address, LLVMFunctionVector value,
+    protected Object writeVector(LLVMNativePointer address, LLVMFunctionVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(address, value, vectorLength, globalAccess);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMAddress address, LLVMFunctionVector value) {
+    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMFunctionVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
         return null;
     }
@@ -330,7 +330,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
 
     @Specialization(guards = "address.isManaged()")
     @ExplodeLoop
-    protected Object writeVector(LLVMTruffleObject address, LLVMAddressVector value) {
+    protected Object writeVector(LLVMTruffleObject address, LLVMPointerVector value) {
         assert value.getLength() == vectorLength;
         LLVMTruffleObject currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {

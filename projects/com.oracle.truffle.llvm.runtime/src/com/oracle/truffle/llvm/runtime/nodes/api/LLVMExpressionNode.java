@@ -34,12 +34,12 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -72,8 +72,8 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
         return LLVMTypesGen.expectLLVM80BitFloat(executeGeneric(frame));
     }
 
-    public LLVMAddress executeLLVMAddress(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMAddress(executeGeneric(frame));
+    public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMNativePointer(executeGeneric(frame));
     }
 
     public LLVMTruffleObject executeLLVMTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
@@ -150,10 +150,6 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
 
     public LLVMFunctionDescriptor executeLLVMFunctionDescriptor(VirtualFrame frame) throws UnexpectedResultException {
         return LLVMTypesGen.expectLLVMFunctionDescriptor(executeGeneric(frame));
-    }
-
-    protected boolean isLLVMAddress(Object object) {
-        return object instanceof LLVMAddress;
     }
 
     public String getSourceDescription() {

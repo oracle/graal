@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
@@ -40,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI1Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
 
@@ -56,12 +56,12 @@ public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected boolean doI1(LLVMAddress addr) {
+    protected boolean doI1(LLVMNativePointer addr) {
         return getLLVMMemoryCached().getI1(addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected boolean doI1DerefHandle(LLVMAddress addr) {
+    protected boolean doI1DerefHandle(LLVMNativePointer addr) {
         return doI1Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 

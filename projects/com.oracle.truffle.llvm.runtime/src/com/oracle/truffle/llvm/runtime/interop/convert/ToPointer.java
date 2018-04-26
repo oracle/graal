@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.Dummy;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.InteropTypeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = Dummy.class)
 @NodeChild(type = InteropTypeNode.class)
@@ -144,6 +145,11 @@ abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization
+    protected LLVMPointer fromPointer(LLVMPointer pointer, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return pointer;
+    }
+
+    @Specialization
     protected LLVMTruffleObject fromInternal(LLVMTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return object;
     }
@@ -174,6 +180,8 @@ abstract class ToPointer extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMSharedGlobalVariable) {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
+        } else if (LLVMPointer.isInstance(value)) {
+            return value;
         } else if (value instanceof LLVMTruffleObject) {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {

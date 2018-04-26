@@ -120,7 +120,7 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode impleme
         @Override
         public int branchAddress(VirtualFrame frame) {
             try {
-                return (int) address.executeLLVMAddress(frame).getVal();
+                return (int) address.executeLLVMNativePointer(frame).asNative();
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalStateException("should not reach here", e);

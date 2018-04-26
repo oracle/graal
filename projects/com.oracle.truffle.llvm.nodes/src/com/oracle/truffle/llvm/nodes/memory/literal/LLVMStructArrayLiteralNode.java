@@ -36,12 +36,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
@@ -57,19 +57,19 @@ public abstract class LLVMStructArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        return writeDouble(frame, globalAccess.executeWithTarget(global));
+    protected LLVMNativePointer write(VirtualFrame frame, LLVMGlobal global,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
+        return writeDouble(frame, toNative.executeWithTarget(global));
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeDouble(VirtualFrame frame, LLVMAddress addr) {
-        long currentPtr = addr.getVal();
+    protected LLVMNativePointer writeDouble(VirtualFrame frame, LLVMNativePointer addr) {
+        long currentPtr = addr.asNative();
         for (int i = 0; i < values.length; i++) {
             try {
-                LLVMAddress currentValue = values[i].executeLLVMAddress(frame);
-                memMove.executeWithTarget(LLVMAddress.fromLong(currentPtr), currentValue, stride);
+                LLVMNativePointer currentValue = values[i].executeLLVMNativePointer(frame);
+                memMove.executeWithTarget(LLVMNativePointer.create(currentPtr), currentValue, stride);
                 currentPtr += stride;
             } catch (UnexpectedResultException e) {
                 CompilerDirectives.transferToInterpreter();

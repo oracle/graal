@@ -35,7 +35,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -129,8 +129,8 @@ public class LLVMReadVectorNode {
         protected abstract FrameSlot getSlot();
 
         @Specialization
-        protected LLVMAddressVector readAddressVector(VirtualFrame frame) {
-            return (LLVMAddressVector) FrameUtil.getObjectSafe(frame, getSlot());
+        protected LLVMPointerVector readAddressVector(VirtualFrame frame) {
+            return (LLVMPointerVector) FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 }

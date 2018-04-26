@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nodes.others;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
@@ -189,20 +188,15 @@ public class LLVMUnsupportedInlineAssemblerNode extends LLVMExpressionNode {
         }
     }
 
-    public static class LLVMAddressUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
+    public static class LLVMPointerUnsupportedInlineAssemblerNode extends LLVMUnsupportedInlineAssemblerNode {
 
-        public LLVMAddressUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
+        public LLVMPointerUnsupportedInlineAssemblerNode(LLVMSourceLocation sourceSection, String message) {
             super(sourceSection, message);
         }
 
         @Override
-        public LLVMAddress executeLLVMAddress(VirtualFrame frame) {
-            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
-        }
-
-        @Override
         public Object executeGeneric(VirtualFrame frame) {
-            return executeLLVMAddress(frame);
+            throw new LLVMUnsupportedException(UnsupportedReason.INLINE_ASSEMBLER, message);
         }
     }
 

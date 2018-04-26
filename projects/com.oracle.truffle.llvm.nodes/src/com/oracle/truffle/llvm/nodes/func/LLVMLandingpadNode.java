@@ -35,7 +35,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMException;
@@ -44,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public final class LLVMLandingpadNode extends LLVMExpressionNode {
 
@@ -86,11 +86,10 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
             if (clauseId == 0 && !cleanup) {
                 throw exception;
             } else {
-                LLVMAddress executeLLVMAddress = allocateLandingPadValue.execute(frame);
-                LLVMAddress pair0 = executeLLVMAddress;
-                getMemory().putAddress(pair0, unwindHeaderToNative.executeWithTarget(unwindHeader));
-                getMemory().putI32(executeLLVMAddress.getVal() + LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES, clauseId);
-                return executeLLVMAddress;
+                LLVMNativePointer landingPadValue = allocateLandingPadValue.execute(frame);
+                getMemory().putPointer(landingPadValue, unwindHeaderToNative.executeWithTarget(unwindHeader));
+                getMemory().putI32(landingPadValue.increment(LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES), clauseId);
+                return landingPadValue;
             }
         } catch (FrameSlotTypeException e) {
             CompilerDirectives.transferToInterpreter();
@@ -140,8 +139,8 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
 
         @Override
         public int getIdentifier(VirtualFrame frame, LLVMStack.StackPointer stack, Object unwindHeader) {
-            LLVMAddress catchAddress = catchType.execute(frame);
-            if (catchAddress.getVal() == 0) {
+            LLVMNativePointer catchAddress = catchType.execute(frame);
+            if (catchAddress.asNative() == 0) {
                 /*
                  * If ExcType is null, any exception matches, so the landing pad should always be
                  * entered. catch (...)
@@ -149,7 +148,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
                 return 1;
             }
             if (getCanCatch().canCatch(stack, unwindHeader, catchAddress) != 0) {
-                return (int) catchAddress.getVal();
+                return (int) catchAddress.asNative();
             }
             return 0;
         }
@@ -189,8 +188,8 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
              * types in the list
              */
             for (int i = 0; i < filterTypes.length; i++) {
-                LLVMAddress filterAddress = filterTypes[i].execute(frame);
-                if (filterAddress.getVal() == 0) {
+                LLVMNativePointer filterAddress = filterTypes[i].execute(frame);
+                if (filterAddress.asNative() == 0) {
                     /*
                      * If ExcType is null, any exception matches, so the landing pad should always
                      * be entered. catch (...)

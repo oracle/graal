@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public final class LLVMDebugTypeConstants {
 
@@ -46,7 +46,7 @@ public final class LLVMDebugTypeConstants {
     public static final String INTEGER_NAME = "integer";
     public static final String LONG_NAME = "long";
 
-    public static final int ADDRESS_SIZE = LLVMAddress.WORD_LENGTH_BIT;
+    public static final int ADDRESS_SIZE = LLVMNode.ADDRESS_SIZE_IN_BYTES * Byte.SIZE;
     public static final String ADDRESS_NAME = "address";
 
     public static final int FLOAT_SIZE = Float.SIZE;

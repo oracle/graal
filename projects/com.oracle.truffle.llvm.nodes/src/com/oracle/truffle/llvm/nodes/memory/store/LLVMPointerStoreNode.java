@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
@@ -41,26 +40,27 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMAddressStoreNode extends LLVMStoreNodeCommon {
+public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
 
-    public LLVMAddressStoreNode() {
+    public LLVMPointerStoreNode() {
         this(null);
     }
 
-    public LLVMAddressStoreNode(LLVMSourceLocation sourceLocation) {
+    public LLVMPointerStoreNode(LLVMSourceLocation sourceLocation) {
         super(sourceLocation);
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doAddress(LLVMAddress addr, Object value,
+    protected Object doAddress(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        getLLVMMemoryCached().putAddress(addr, toNative.executeWithTarget(value));
+        getLLVMMemoryCached().putPointer(addr, toNative.executeWithTarget(value));
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMAddress addr, Object value) {
+    protected Object doOpDerefHandle(LLVMNativePointer addr, Object value) {
         return doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
@@ -68,7 +68,7 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNodeCommon {
     protected Object doAddress(LLVMVirtualAllocationAddress address, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
-        address.writeI64(memory, toNative.executeWithTarget(value).getVal());
+        address.writeI64(memory, toNative.executeWithTarget(value).asNative());
         return null;
     }
 
@@ -76,7 +76,7 @@ public abstract class LLVMAddressStoreNode extends LLVMStoreNodeCommon {
     protected Object doBoxed(LLVMBoxedPrimitive address, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         if (address.getValue() instanceof Long) {
-            getLLVMMemoryCached().putAddress((long) address.getValue(), toNative.executeWithTarget(value));
+            getLLVMMemoryCached().putPointer((long) address.getValue(), toNative.executeWithTarget(value));
             return null;
         } else {
             CompilerDirectives.transferToInterpreter();

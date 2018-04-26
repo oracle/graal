@@ -54,7 +54,6 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -66,6 +65,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "address"), @NodeChild(type = LLVMExpressionNode.class, value = "comparisonValue"),
                 @NodeChild(type = LLVMExpressionNode.class, value = "newValue")})
@@ -78,7 +79,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, LLVMAddress address, Object comparisonValue, Object newValue) {
+    protected Object doOp(VirtualFrame frame, LLVMPointer address, Object comparisonValue, Object newValue) {
         return cmpxch.executeWithTarget(frame, address, comparisonValue, newValue);
     }
 
@@ -116,52 +117,52 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         public abstract Object executeWithTarget(VirtualFrame frame, Object address, Object cmpValue, Object newValue);
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMAddress address, byte comparisonValue, byte newValue,
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, byte comparisonValue, byte newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI8 compareAndSwapI8 = memory.compareAndSwapI8(address, comparisonValue, newValue);
-            LLVMAddress allocation = allocateResult(frame, memory);
+            LLVMNativePointer allocation = allocateResult(frame, memory);
             memory.putI8(allocation, compareAndSwapI8.getValue());
-            memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI8.isSwap());
+            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI8.isSwap());
             return allocation;
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMAddress address, short comparisonValue, short newValue,
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, short comparisonValue, short newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI16 compareAndSwapI16 = memory.compareAndSwapI16(address, comparisonValue, newValue);
-            LLVMAddress allocation = allocateResult(frame, memory);
+            LLVMNativePointer allocation = allocateResult(frame, memory);
             memory.putI16(allocation, compareAndSwapI16.getValue());
-            memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI16.isSwap());
+            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI16.isSwap());
             return allocation;
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMAddress address, int comparisonValue, int newValue,
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, int comparisonValue, int newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI32 compareAndSwapI32 = memory.compareAndSwapI32(address, comparisonValue, newValue);
-            LLVMAddress allocation = allocateResult(frame, memory);
+            LLVMNativePointer allocation = allocateResult(frame, memory);
             memory.putI32(allocation, compareAndSwapI32.getValue());
-            memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI32.isSwap());
+            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI32.isSwap());
             return allocation;
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMAddress address, long comparisonValue, long newValue,
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, long comparisonValue, long newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue, newValue);
-            LLVMAddress allocation = allocateResult(frame, memory);
+            LLVMNativePointer allocation = allocateResult(frame, memory);
             memory.putI64(allocation, compareAndSwapI64.getValue());
-            memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
+            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI64.isSwap());
             return allocation;
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMAddress address, LLVMAddress comparisonValue, LLVMAddress newValue,
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue.getVal(), newValue.getVal());
-            LLVMAddress allocation = allocateResult(frame, memory);
+            CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue.asNative(), newValue.asNative());
+            LLVMNativePointer allocation = allocateResult(frame, memory);
             memory.putI64(allocation, compareAndSwapI64.getValue());
-            memory.putI1(allocation.getVal() + secondValueOffset, compareAndSwapI64.isSwap());
+            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI64.isSwap());
             return allocation;
         }
 
@@ -171,14 +172,14 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("createI8Write()") LLVMI8StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
-                LLVMAddress allocation = allocateResult(frame, memory);
+                LLVMNativePointer allocation = allocateResult(frame, memory);
                 byte currentValue = (byte) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
                 memory.putI8(allocation, currentValue);
-                memory.putI1(allocation.getVal() + secondValueOffset, success);
+                memory.putI1(allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -189,14 +190,14 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("createI16Write()") LLVMI16StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
-                LLVMAddress allocation = allocateResult(frame, memory);
+                LLVMNativePointer allocation = allocateResult(frame, memory);
                 short currentValue = (short) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
                 memory.putI16(allocation, currentValue);
-                memory.putI1(allocation.getVal() + secondValueOffset, success);
+                memory.putI1(allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -207,14 +208,14 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("createI32Write()") LLVMI32StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
-                LLVMAddress allocation = allocateResult(frame, memory);
+                LLVMNativePointer allocation = allocateResult(frame, memory);
                 int currentValue = (int) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
                 memory.putI32(allocation, currentValue);
-                memory.putI1(allocation.getVal() + secondValueOffset, success);
+                memory.putI1(allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -225,28 +226,28 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                         @Cached("createI64Write()") LLVMI64StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             synchronized (address.getObject()) {
-                LLVMAddress allocation = allocateResult(frame, memory);
+                LLVMNativePointer allocation = allocateResult(frame, memory);
                 long currentValue = (long) read.executeWithTarget(address);
                 boolean success = currentValue == comparisonValue;
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
                 memory.putI64(allocation, currentValue);
-                memory.putI1(allocation.getVal() + secondValueOffset, success);
+                memory.putI1(allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, LLVMAddress comparisonValue, LLVMAddress newValue,
+        protected Object doOp(VirtualFrame frame, LLVMTruffleObject address, LLVMNativePointer comparisonValue, LLVMNativePointer newValue,
                         @Cached("createI64Read()") LLVMI64LoadNode read,
                         @Cached("createI64Write()") LLVMI64StoreNode write,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            return doOp(frame, address, comparisonValue.getVal(), newValue.getVal(), read, write, memory);
+            return doOp(frame, address, comparisonValue.asNative(), newValue.asNative(), read, write, memory);
         }
 
-        private LLVMAddress allocateResult(VirtualFrame frame, LLVMMemory memory) {
-            LLVMAddress allocation = LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
+        private LLVMNativePointer allocateResult(VirtualFrame frame, LLVMMemory memory) {
+            LLVMNativePointer allocation = LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
             return allocation;
         }
 

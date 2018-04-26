@@ -31,8 +31,8 @@ package com.oracle.truffle.llvm.runtime.vector;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public final class LLVMFunctionVector {
     private final Object[] vector;
@@ -62,9 +62,9 @@ public final class LLVMFunctionVector {
     }
 
     private LLVMFunctionVector(long[] vector) {
-        this.vector = new LLVMAddress[vector.length];
+        this.vector = new LLVMNativePointer[vector.length];
         for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = LLVMAddress.fromLong(vector[i]);
+            this.vector[i] = LLVMNativePointer.create(vector[i]);
         }
     }
 
@@ -87,7 +87,7 @@ public final class LLVMFunctionVector {
         return vector[index];
     }
 
-    public LLVMFunctionVector insert(LLVMAddress element, int index) {
+    public LLVMFunctionVector insert(LLVMNativePointer element, int index) {
         Object[] copyOf = Arrays.copyOf(vector, vector.length);
         copyOf[index] = element;
         return create(copyOf);
@@ -95,7 +95,7 @@ public final class LLVMFunctionVector {
 
     public LLVMFunctionVector insert(long element, int index) {
         Object[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = LLVMAddress.fromLong(element);
+        copyOf[index] = LLVMNativePointer.create(element);
         return create(copyOf);
     }
 

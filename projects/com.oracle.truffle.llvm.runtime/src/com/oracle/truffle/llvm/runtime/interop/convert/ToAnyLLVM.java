@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 abstract class ToAnyLLVM extends ForeignToLLVM {
 
@@ -104,6 +105,11 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
     }
 
     @Specialization
+    protected LLVMPointer fromPointer(LLVMPointer pointer) {
+        return pointer;
+    }
+
+    @Specialization
     protected LLVMTruffleObject fromInternal(LLVMTruffleObject object) {
         return object;
     }
@@ -134,6 +140,8 @@ abstract class ToAnyLLVM extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMSharedGlobalVariable) {
             return ((LLVMSharedGlobalVariable) value).getDescriptor();
+        } else if (LLVMPointer.isInstance(value)) {
+            return value;
         } else if (value instanceof LLVMTruffleObject) {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {

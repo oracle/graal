@@ -38,13 +38,13 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVM80BitFloatStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode {
@@ -58,17 +58,17 @@ public abstract class LLVM80BitFloatArrayLiteralNode extends LLVMExpressionNode 
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+    protected LLVMNativePointer write(VirtualFrame frame, LLVMGlobal global,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return write80BitFloat(frame, globalAccess.executeWithTarget(global), memory);
+        return write80BitFloat(frame, toNative.executeWithTarget(global), memory);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress write80BitFloat(VirtualFrame frame, LLVMAddress addr,
+    protected LLVMNativePointer write80BitFloat(VirtualFrame frame, LLVMNativePointer addr,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        long currentPtr = addr.getVal();
+        long currentPtr = addr.asNative();
         for (int i = 0; i < values.length; i++) {
             try {
                 LLVM80BitFloat currentValue = values[i].executeLLVM80BitFloat(frame);

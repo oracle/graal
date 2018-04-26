@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64SyscallFutexNode extends LLVMSyscallOperationNode {
 
@@ -42,12 +42,12 @@ public abstract class LLVMAMD64SyscallFutexNode extends LLVMSyscallOperationNode
 
     @SuppressWarnings("unused")
     @Specialization
-    protected long doI64(LLVMAddress uaddr, long futexOp, long val, LLVMAddress timeout, LLVMAddress uaddr2, long val3) {
+    protected long doI64(LLVMNativePointer uaddr, long futexOp, long val, LLVMNativePointer timeout, LLVMNativePointer uaddr2, long val3) {
         return -LLVMAMD64Error.ENOSYS;
     }
 
     @Specialization
     protected long doI64(long uaddr, long futexOp, long val, long timeout, long uaddr2, long val3) {
-        return doI64(LLVMAddress.fromLong(uaddr), futexOp, val, LLVMAddress.fromLong(timeout), LLVMAddress.fromLong(uaddr2), val3);
+        return doI64(LLVMNativePointer.create(uaddr), futexOp, val, LLVMNativePointer.create(timeout), LLVMNativePointer.create(uaddr2), val3);
     }
 }

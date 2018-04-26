@@ -36,8 +36,7 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
@@ -46,10 +45,12 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 @NodeField(type = long.class, name = "typeWidth")
-public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
+public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
 
     public abstract long getTypeWidth();
 
@@ -75,7 +76,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         public abstract Object executeWithTarget(Object addr, Object val);
 
         @Specialization
-        protected LLVMAddress doPointee(LLVMAddress addr, int incr) {
+        protected LLVMPointer doPointer(LLVMPointer addr, int incr) {
             return addr.increment(incr);
         }
 
@@ -109,9 +110,9 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int incr) {
+        protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, int incr) {
             if (addr.getValue() instanceof Long) {
-                return LLVMAddress.fromLong((long) addr.getValue() + incr);
+                return LLVMNativePointer.create((long) addr.getValue() + incr);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());
@@ -119,7 +120,7 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doPointee(LLVMAddress addr, long incr) {
+        protected LLVMPointer doPointer(LLVMPointer addr, long incr) {
             return addr.increment(incr);
         }
 
@@ -129,9 +130,9 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long incr) {
+        protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive addr, long incr) {
             if (addr.getValue() instanceof Long) {
-                return LLVMAddress.fromLong((long) addr.getValue() + incr);
+                return LLVMNativePointer.create((long) addr.getValue() + incr);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 throw new IllegalAccessError("Cannot do pointer arithmetic with address: " + addr.getValue());

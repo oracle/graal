@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
 
@@ -56,7 +56,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMAddress addr, LLVM80BitFloat value) {
+    protected Object doOp(LLVMNativePointer addr, LLVM80BitFloat value) {
         getLLVMMemoryCached().put80BitFloat(addr, value);
         return null;
     }
@@ -67,7 +67,7 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMAddress addr, LLVM80BitFloat value) {
+    protected Object doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value) {
         return doForeign(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 

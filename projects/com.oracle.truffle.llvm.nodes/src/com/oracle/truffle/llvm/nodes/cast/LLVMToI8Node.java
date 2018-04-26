@@ -34,7 +34,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
@@ -45,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
@@ -54,13 +54,13 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
     @Specialization
     protected byte doI8(LLVMFunctionDescriptor from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (byte) toNative.executeWithTarget(from).getVal();
+        return (byte) toNative.executeWithTarget(from).asNative();
     }
 
     @Specialization
     protected byte doGlobal(LLVMGlobal from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (byte) access.executeWithTarget(from).getVal();
+        return (byte) access.executeWithTarget(from).asNative();
     }
 
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I8);
@@ -68,7 +68,7 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
     @Specialization
     protected byte doLLVMTruffleObject(LLVMTruffleObject from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (byte) toNative.executeWithTarget(from).getVal();
+        return (byte) toNative.executeWithTarget(from).asNative();
     }
 
     @Specialization
@@ -119,8 +119,8 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected byte doI8(LLVMAddress from) {
-            return (byte) from.getVal();
+        protected byte doI8(LLVMNativePointer from) {
+            return (byte) from.asNative();
         }
 
         @Specialization

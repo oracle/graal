@@ -37,12 +37,12 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
 public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
@@ -58,14 +58,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWXchgNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> b);
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> b);
         }
@@ -85,14 +85,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWAddNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a + b)));
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> ((short) (a + b)));
         }
@@ -112,14 +112,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWSubNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a - b)));
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> ((short) (a - b)));
         }
@@ -139,14 +139,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWAndNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a & b)));
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> ((short) (a & b)));
         }
@@ -166,14 +166,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWNandNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) ~(a & b)));
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> ((short) ~(a & b)));
         }
@@ -193,14 +193,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWOrNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a | b)));
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> ((short) (a | b)));
         }
@@ -220,14 +220,14 @@ public abstract class LLVMI16RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI16RMWXorNode extends LLVMI16RMWNode {
         @Specialization
         protected short doOp(LLVMGlobal address, short value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI16(adr, value, (a, b) -> ((short) (a ^ b)));
         }
 
         @Specialization
-        protected short doOp(LLVMAddress address, short value,
+        protected short doOp(LLVMNativePointer address, short value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI16(address, value, (a, b) -> ((short) (a ^ b)));
         }

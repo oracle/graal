@@ -33,8 +33,8 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeFields({@NodeField(name = "index", type = int.class), @NodeField(name = "fallback", type = Object.class)})
 public abstract class LLVMOptionalArgNode extends LLVMExpressionNode {
@@ -57,16 +57,16 @@ public abstract class LLVMOptionalArgNode extends LLVMExpressionNode {
         this.converter = converter;
     }
 
-    @Specialization(guards = "isAddress(frame)")
-    protected Object doPointee(VirtualFrame frame) {
-        return converter.convert(((LLVMAddress) get(frame)).copy());
+    @Specialization(guards = "isPointer(frame)")
+    protected Object doPointer(VirtualFrame frame) {
+        return converter.convert(LLVMPointer.cast(get(frame)).copy());
     }
 
-    public boolean isAddress(VirtualFrame frame) {
-        return get(frame) instanceof LLVMAddress;
+    public boolean isPointer(VirtualFrame frame) {
+        return LLVMPointer.isInstance(get(frame));
     }
 
-    @Specialization(guards = "!isAddress(frame)")
+    @Specialization(guards = "!isPointer(frame)")
     protected Object doObject(VirtualFrame frame) {
         return converter.convert(get(frame));
     }

@@ -39,6 +39,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @ValueType
 public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider, TruffleObject {
@@ -78,9 +79,9 @@ public final class LLVMTruffleObject implements LLVMObjectNativeLibrary.Provider
         return object == null;
     }
 
-    public LLVMAddress asNative() {
+    public LLVMNativePointer asNative() {
         assert isNative();
-        return LLVMAddress.fromLong(offset);
+        return LLVMNativePointer.create(offset);
     }
 
     public boolean isManaged() {

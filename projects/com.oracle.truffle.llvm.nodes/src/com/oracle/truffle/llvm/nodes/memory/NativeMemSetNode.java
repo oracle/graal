@@ -34,12 +34,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleManagedMalloc.ManagedMallocObject;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class NativeMemSetNode extends LLVMMemSetNode {
 
@@ -48,11 +48,11 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     @CompilationFinal private boolean inJava = true;
 
     @Specialization
-    protected Object memset(LLVMAddress address, byte value, long length,
+    protected Object memset(LLVMNativePointer address, byte value, long length,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
-                long current = address.getVal();
+                long current = address.asNative();
                 long i64ValuesToWrite = length >> 3;
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i64ValuesToWrite > 0)) {
                     long v16 = ((long) value) << 8 | ((long) value & 0xFF);
@@ -81,7 +81,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @SuppressWarnings("deprecation")
-    private static void nativeMemSet(LLVMMemory memory, LLVMAddress address, byte value, long length) {
+    private static void nativeMemSet(LLVMMemory memory, LLVMNativePointer address, byte value, long length) {
         memory.memset(address, length, value);
     }
 
@@ -99,7 +99,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
         final ManagedMallocObject obj = (ManagedMallocObject) object.getObject();
         int arrayOffset = (int) (object.getOffset() / ADDRESS_SIZE_IN_BYTES);
         for (int i = 0; i < length / ADDRESS_SIZE_IN_BYTES; i++) {
-            obj.set(arrayOffset + i, LLVMAddress.nullPointer());
+            obj.set(arrayOffset + i, LLVMNativePointer.createNull());
         }
         return null;
     }

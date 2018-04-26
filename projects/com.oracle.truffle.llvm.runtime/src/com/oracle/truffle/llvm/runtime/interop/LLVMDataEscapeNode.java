@@ -35,8 +35,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -48,6 +46,8 @@ import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress.LLVMVirtualAllocationAddressTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -60,7 +60,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * Values that escape Sulong and flow to other languages must be primitive or TruffleObject. This
  * node ensures that.
  */
-public abstract class LLVMDataEscapeNode extends Node {
+public abstract class LLVMDataEscapeNode extends LLVMNode {
 
     @Child private LLVMGlobal.IsObjectStore isObjectStoreNode;
 
@@ -122,11 +122,6 @@ public abstract class LLVMDataEscapeNode extends Node {
     @Specialization
     protected Object escapingBoxed(LLVMBoxedPrimitive escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         return escapingValue.getValue();
-    }
-
-    @Specialization
-    protected TruffleObject escapingAddress(LLVMAddress escapingValue, LLVMInteropType.Structured type) {
-        return LLVMTruffleObject.createPointer(escapingValue.getVal()).export(type);
     }
 
     @Specialization
@@ -194,6 +189,16 @@ public abstract class LLVMDataEscapeNode extends Node {
         return pointer.getOffset() == 0 && pointer.getObject() instanceof LLVMTypedForeignObject;
     }
 
+    @Specialization(guards = "type != null")
+    TruffleObject escapingPointerOverrideType(LLVMNativePointer escapingValue, LLVMInteropType.Structured type) {
+        return escapingValue.export(type);
+    }
+
+    @Specialization(guards = "type == null")
+    TruffleObject escapingPointer(LLVMNativePointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        return escapingValue;
+    }
+
     @Specialization(guards = "isForeign(address)")
     TruffleObject escapingForeign(LLVMTruffleObject address, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
         LLVMTypedForeignObject typedForeign = (LLVMTypedForeignObject) address.getObject();
@@ -250,8 +255,8 @@ public abstract class LLVMDataEscapeNode extends Node {
     public static Object slowConvert(Object value) {
         if (value instanceof LLVMBoxedPrimitive) {
             return ((LLVMBoxedPrimitive) value).getValue();
-        } else if (value instanceof LLVMAddress) {
-            return LLVMTruffleObject.createPointer(((LLVMAddress) value).getVal());
+        } else if (LLVMNativePointer.isInstance(value)) {
+            return value;
         } else if (value instanceof LLVMTruffleObject) {
             LLVMTruffleObject object = (LLVMTruffleObject) value;
             if (isForeign(object)) {

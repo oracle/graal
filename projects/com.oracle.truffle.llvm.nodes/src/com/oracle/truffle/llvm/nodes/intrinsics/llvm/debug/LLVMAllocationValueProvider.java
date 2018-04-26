@@ -30,37 +30,37 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 import java.math.BigInteger;
 
 final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
 
-    private final LLVMAddress baseAddress;
+    private final LLVMNativePointer basePointer;
     private final LLVMMemory memory;
 
-    LLVMAllocationValueProvider(LLVMMemory memory, LLVMAddress baseAddress) {
+    LLVMAllocationValueProvider(LLVMMemory memory, LLVMNativePointer basePointer) {
         this.memory = memory;
-        this.baseAddress = baseAddress;
+        this.basePointer = basePointer;
     }
 
     @Override
     @TruffleBoundary
     public String describeValue(long bitOffset, int bitSize) {
         if (bitSize <= 0 && bitOffset <= 0) {
-            return baseAddress.toString();
+            return basePointer.toString();
         } else {
-            return String.format("%s (%d bits at offset %d bits)", baseAddress, bitSize, bitOffset);
+            return String.format("%s (%d bits at offset %d bits)", basePointer, bitSize, bitOffset);
         }
     }
 
     @Override
     public boolean canRead(long bitOffset, int bits) {
-        return !LLVMAddress.nullPointer().equals(baseAddress);
+        return !basePointer.isNull();
     }
 
     @Override
@@ -69,7 +69,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
             return unavailable(bitOffset, LLVMDebugTypeConstants.BOOLEAN_SIZE);
 
         } else if (isByteAligned(bitOffset)) {
-            return memory.getI1(baseAddress.increment(bitOffset / Byte.SIZE));
+            return memory.getI1(basePointer.increment(bitOffset / Byte.SIZE));
 
         } else {
             return readUnalignedBoolean(bitOffset);
@@ -85,7 +85,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
     @Override
     public Object readFloat(long bitOffset) {
         if (canRead(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE) && isByteAligned(bitOffset)) {
-            return memory.getFloat(baseAddress.increment(bitOffset / Byte.SIZE));
+            return memory.getFloat(basePointer.increment(bitOffset / Byte.SIZE));
         } else {
             return unavailable(bitOffset, LLVMDebugTypeConstants.FLOAT_SIZE);
         }
@@ -94,7 +94,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
     @Override
     public Object readDouble(long bitOffset) {
         if (canRead(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE) && isByteAligned(bitOffset)) {
-            return memory.getDouble(baseAddress.increment(bitOffset / Byte.SIZE));
+            return memory.getDouble(basePointer.increment(bitOffset / Byte.SIZE));
         } else {
             return unavailable(bitOffset, LLVMDebugTypeConstants.DOUBLE_SIZE);
         }
@@ -103,7 +103,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
     @Override
     public Object read80BitFloat(long bitOffset) {
         if (canRead(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL) && isByteAligned(bitOffset)) {
-            return memory.get80BitFloat(baseAddress.increment(bitOffset / Byte.SIZE));
+            return memory.get80BitFloat(basePointer.increment(bitOffset / Byte.SIZE));
         } else {
             return unavailable(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
         }
@@ -112,7 +112,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
     @Override
     public Object readAddress(long bitOffset) {
         if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE) && isByteAligned(bitOffset)) {
-            return memory.getAddress(baseAddress.increment(bitOffset / Byte.SIZE));
+            return memory.getPointer(basePointer.increment(bitOffset / Byte.SIZE));
         } else {
             return unavailable(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE);
         }
@@ -131,16 +131,16 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
 
     @Override
     public Object computeAddress(long bitOffset) {
-        if (LLVMAddress.nullPointer().equals(baseAddress)) {
-            return baseAddress;
+        if (basePointer.isNull()) {
+            return basePointer;
         } else {
-            return baseAddress.increment(bitOffset / Byte.SIZE);
+            return basePointer.increment(bitOffset / Byte.SIZE);
         }
     }
 
     @Override
     public String toString() {
-        return baseAddress.toString();
+        return basePointer.toString();
     }
 
     @Override
@@ -149,7 +149,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
             return null;
         }
 
-        final LLVMAddress address = memory.getAddress(baseAddress.increment(bitOffset / Byte.SIZE));
+        final LLVMNativePointer address = memory.getPointer(basePointer.increment(bitOffset / Byte.SIZE));
         return new LLVMAllocationValueProvider(memory, address);
     }
 
@@ -173,7 +173,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
         // the most common cases are byte-aligned integers
         if (isByteAligned(bitOffset)) {
             final long byteOffset = bitOffset / Byte.SIZE;
-            final long address = baseAddress.increment(byteOffset).getVal();
+            final long address = basePointer.increment(byteOffset).asNative();
             if (signed) {
                 switch (bitSize) {
                     case LLVMDebugTypeConstants.BYTE_SIZE:
@@ -211,7 +211,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValueProvider {
         }
         totalBitSize += paddingAfter;
 
-        LLVMIVarBit var = memory.getIVarBit(baseAddress.increment(bitOffset / Byte.SIZE), totalBitSize);
+        LLVMIVarBit var = memory.getIVarBit(basePointer.increment(bitOffset / Byte.SIZE), totalBitSize);
 
         if (paddingAfter != 0) {
             var = var.leftShift(LLVMIVarBit.fromInt(Integer.SIZE, paddingAfter));

@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -43,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
@@ -56,11 +56,11 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected Object doIntrinsic(LLVMAddress value,
+    protected Object doIntrinsic(LLVMNativePointer value,
                     @Cached("getLLVMMemory()") LLVMMemory memory,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
         byte c;
-        long ptr = value.getVal();
+        long ptr = value.asNative();
         int count = 0;
         while ((c = memory.getI8(ptr)) != 0) {
             count++;
@@ -68,7 +68,7 @@ public abstract class LLVMTruffleReadBytes extends LLVMIntrinsic {
         }
         byte[] bytes = new byte[count];
         count = 0;
-        ptr = value.getVal();
+        ptr = value.asNative();
         while ((c = memory.getI8(ptr)) != 0) {
             bytes[count++] = c;
             ptr += Byte.BYTES;

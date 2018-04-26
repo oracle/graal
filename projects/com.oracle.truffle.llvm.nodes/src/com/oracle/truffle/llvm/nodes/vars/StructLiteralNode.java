@@ -35,9 +35,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class StructLiteralNode extends LLVMExpressionNode {
@@ -55,9 +55,9 @@ public abstract class StructLiteralNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     @Specialization
-    protected LLVMAddress doLLVMAddress(VirtualFrame frame, LLVMAddress address) {
+    protected LLVMPointer doLLVMPointer(VirtualFrame frame, LLVMPointer address) {
         for (int i = 0; i < offsets.length; i++) {
-            LLVMAddress currentAddr = address.increment(offsets[i]);
+            LLVMPointer currentAddr = address.increment(offsets[i]);
             Object value = values[i] == null ? null : values[i].executeGeneric(frame);
             elementWriteNodes[i].executeWithTarget(currentAddr, value);
         }

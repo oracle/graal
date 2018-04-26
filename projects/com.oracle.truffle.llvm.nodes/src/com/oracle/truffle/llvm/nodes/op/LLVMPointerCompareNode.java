@@ -40,17 +40,16 @@ import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ForeignToComparableValueNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEQNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressEqualsNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMAddressNEQNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMForeignEqualsNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMManagedEqualsNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.LLVMNativeEqualsNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ManagedToComparableValueNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.NativeToComparableValueNodeGen;
-import com.oracle.truffle.llvm.nodes.op.LLVMAddressCompareNodeGen.ToComparableValueNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.ForeignToComparableValueNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMAddressEQNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMAddressEqualsNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMAddressNEQNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMForeignEqualsNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMManagedEqualsNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.LLVMNativeEqualsNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.ManagedToComparableValueNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.NativeToComparableValueNodeGen;
+import com.oracle.truffle.llvm.nodes.op.LLVMPointerCompareNodeGen.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -66,7 +65,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
-public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
+public abstract class LLVMPointerCompareNode extends LLVMExpressionNode {
 
     public enum Kind {
         ULT,
@@ -84,68 +83,68 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
     public static LLVMExpressionNode create(Kind kind, LLVMExpressionNode l, LLVMExpressionNode r) {
         switch (kind) {
             case SLT:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.signedLessThan(val2);
+                    public boolean compare(long val1, long val2) {
+                        return val1 < val2;
                     }
                 }, l, r);
 
             case SGE:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.signedGreaterEquals(val2);
+                    public boolean compare(long val1, long val2) {
+                        return val1 >= val2;
                     }
                 }, l, r);
             case SGT:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.signedGreaterThan(val2);
+                    public boolean compare(long val1, long val2) {
+                        return val1 > val2;
                     }
                 }, l, r);
             case SLE:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.signedLessEquals(val2);
+                    public boolean compare(long val1, long val2) {
+                        return val1 <= val2;
                     }
                 }, l, r);
             case UGE:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.unsignedGreaterEquals(val2);
+                    public boolean compare(long val1, long val2) {
+                        return Long.compareUnsigned(val1, val2) >= 0;
                     }
                 }, l, r);
             case UGT:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.unsignedGreaterThan(val2);
+                    public boolean compare(long val1, long val2) {
+                        return Long.compareUnsigned(val1, val2) > 0;
                     }
                 }, l, r);
             case ULE:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.unsignedLessEquals(val2);
+                    public boolean compare(long val1, long val2) {
+                        return Long.compareUnsigned(val1, val2) <= 0;
                     }
                 }, l, r);
             case ULT:
-                return LLVMAddressCompareNodeGen.create(new AddressCompare() {
+                return LLVMPointerCompareNodeGen.create(new NativePointerCompare() {
 
                     @Override
-                    public boolean compare(LLVMAddress val1, LLVMAddress val2) {
-                        return val1.unsignedLessThan(val2);
+                    public boolean compare(long val1, long val2) {
+                        return Long.compareUnsigned(val1, val2) < 0;
                     }
                 }, l, r);
 
@@ -159,66 +158,66 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
         }
     }
 
-    protected abstract static class AddressCompare {
+    protected abstract static class NativePointerCompare {
 
-        abstract boolean compare(LLVMAddress val1, LLVMAddress val2);
+        abstract boolean compare(long val1, long val2);
 
     }
 
-    private final AddressCompare op;
+    private final NativePointerCompare op;
 
-    public LLVMAddressCompareNode(AddressCompare op) {
+    public LLVMPointerCompareNode(NativePointerCompare op) {
         this.op = op;
     }
 
     protected abstract static class ForeignToComparableValue extends LLVMNode {
 
-        abstract LLVMAddress execute(TruffleObject obj);
+        abstract long execute(TruffleObject obj);
 
         public static ForeignToComparableValue create() {
             return ForeignToComparableValueNodeGen.create();
         }
 
         @Specialization
-        protected LLVMAddress doLLVMTruffleObject(LLVMTypedForeignObject obj) {
-            return LLVMAddress.fromLong(getHashCode(obj.getForeign()));
+        protected long doLLVMTruffleObject(LLVMTypedForeignObject obj) {
+            return getHashCode(obj.getForeign());
         }
 
         @Fallback
-        protected LLVMAddress doOther(TruffleObject obj) {
-            return LLVMAddress.fromLong(getHashCode(obj));
+        protected long doOther(TruffleObject obj) {
+            return getHashCode(obj);
         }
     }
 
     @ImportStatic(ForeignToLLVMType.class)
     protected abstract static class ManagedToComparableValue extends LLVMNode {
 
-        abstract LLVMAddress execute(Object obj);
+        abstract long execute(Object obj);
 
         @Specialization
-        protected LLVMAddress doAddress(long address) {
-            return LLVMAddress.fromLong(address);
+        protected long doAddress(long address) {
+            return address;
         }
 
         @Specialization
-        protected LLVMAddress doManagedMalloc(LLVMVirtualAllocationAddress address) {
+        protected long doManagedMalloc(LLVMVirtualAllocationAddress address) {
             if (address.isNull()) {
-                return LLVMAddress.fromLong(address.getOffset());
+                return address.getOffset();
             } else {
-                return LLVMAddress.fromLong(getHashCode(address.getObject()) + address.getOffset());
+                return getHashCode(address.getObject()) + address.getOffset();
             }
         }
 
         @Specialization
-        protected LLVMAddress doLLVMTruffleObject(LLVMTruffleObject address,
+        protected long doLLVMTruffleObject(LLVMTruffleObject address,
                         @Cached("create()") ForeignToComparableValue toComparable) {
-            return toComparable.execute(address.getObject()).increment(address.getOffset());
+            return toComparable.execute(address.getObject()) + address.getOffset();
         }
 
         @Specialization
-        protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive address,
+        protected long doLLVMBoxedPrimitive(LLVMBoxedPrimitive address,
                         @Cached("create(I64)") ForeignToLLVM toLLVM) {
-            return LLVMAddress.fromLong((long) toLLVM.executeWithTarget(address.getValue()));
+            return (long) toLLVM.executeWithTarget(address.getValue());
         }
 
         public static ManagedToComparableValue create() {
@@ -228,12 +227,12 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
     protected abstract static class NativeToComparableValue extends LLVMNode {
 
-        protected abstract LLVMAddress execute(Object obj, LLVMObjectNativeLibrary lib);
+        protected abstract long execute(Object obj, LLVMObjectNativeLibrary lib);
 
         @Specialization(guards = "lib.isPointer(obj)")
-        protected LLVMAddress doPointer(Object obj, LLVMObjectNativeLibrary lib) {
+        protected long doPointer(Object obj, LLVMObjectNativeLibrary lib) {
             try {
-                return LLVMAddress.fromLong(lib.asPointer(obj));
+                return lib.asPointer(obj);
             } catch (InteropException ex) {
                 throw ex.raise();
             }
@@ -241,7 +240,7 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
         @Specialization(guards = "!lib.isPointer(obj)")
         @SuppressWarnings("unused")
-        protected LLVMAddress doManaged(Object obj, LLVMObjectNativeLibrary lib,
+        protected long doManaged(Object obj, LLVMObjectNativeLibrary lib,
                         @Cached("create()") ManagedToComparableValue toComparable) {
             return toComparable.execute(obj);
         }
@@ -249,17 +248,17 @@ public abstract class LLVMAddressCompareNode extends LLVMExpressionNode {
 
     protected abstract static class ToComparableValue extends LLVMNode {
 
-        protected abstract LLVMAddress execute(Object obj);
+        protected abstract long execute(Object obj);
 
         @Specialization(guards = "lib.guard(obj)")
-        protected LLVMAddress doNativeCached(Object obj,
+        protected long doNativeCached(Object obj,
                         @Cached("createCached(obj)") LLVMObjectNativeLibrary lib,
                         @Cached("createToComparable()") NativeToComparableValue toComparable) {
             return doNative(obj, lib, toComparable);
         }
 
         @Specialization(replaces = "doNativeCached", guards = "lib.guard(obj)")
-        protected LLVMAddress doNative(Object obj,
+        protected long doNative(Object obj,
                         @Cached("createGeneric()") LLVMObjectNativeLibrary lib,
                         @Cached("createToComparable()") NativeToComparableValue toComparable) {
             return toComparable.execute(obj, lib);

@@ -32,12 +32,13 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeField(type = long.class, name = "structSize")
 public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
@@ -64,14 +65,14 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected Object doOp(LLVMAddress addr, LLVMGlobal value,
+    protected Object doOp(LLVMNativePointer addr, LLVMGlobal value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         memMove.executeWithTarget(addr, globalAccess.executeWithTarget(value), getStructSize());
         return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobal address, LLVMAddress value,
+    protected Object doOp(LLVMGlobal address, LLVMNativePointer value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         memMove.executeWithTarget(globalAccess.executeWithTarget(address), value, getStructSize());
         return null;
@@ -85,19 +86,19 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = {"!isAutoDerefHandle(address)", "!isAutoDerefHandle(value)"})
-    protected Object doOp(LLVMAddress address, LLVMAddress value) {
+    protected Object doOp(LLVMNativePointer address, LLVMNativePointer value) {
         memMove.executeWithTarget(address, value, getStructSize());
         return null;
     }
 
     @Specialization(guards = {"isAutoDerefHandle(addr)", "isAutoDerefHandle(value)"})
-    protected Object doOpDerefHandle(LLVMAddress addr, LLVMAddress value) {
+    protected Object doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value) {
         return doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), getDerefHandleGetReceiverNode().execute(value));
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "getStructSize() == 0")
-    protected Object noCopy(LLVMAddress address, Object value) {
+    protected Object noCopy(LLVMPointer address, Object value) {
         return null;
     }
 

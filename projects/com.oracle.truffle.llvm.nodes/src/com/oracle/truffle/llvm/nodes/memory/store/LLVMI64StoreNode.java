@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
@@ -43,6 +42,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI64Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
 
@@ -61,42 +61,42 @@ public abstract class LLVMI64StoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, long value) {
+    @Specialization(guards = "!isAutoDerefHandle(address)")
+    protected Object doOp(LLVMNativePointer address, long value) {
         getLLVMMemoryCached().putI64(address, value);
         return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMAddress addr, LLVMTruffleObject value,
+    protected Object doOp(LLVMNativePointer addr, LLVMTruffleObject value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress) {
-        getLLVMMemoryCached().putI64(addr, toAddress.executeWithTarget(value).getVal());
+        getLLVMMemoryCached().putI64(addr, toAddress.executeWithTarget(value).asNative());
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMAddress addr, Object value) {
+    protected Object doOpDerefHandle(LLVMNativePointer addr, Object value) {
         return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, LLVMAddress value) {
-        getLLVMMemoryCached().putI64(address, value.getVal());
+    @Specialization(guards = "!isAutoDerefHandle(address)")
+    protected Object doOp(LLVMNativePointer address, LLVMNativePointer value) {
+        getLLVMMemoryCached().putI64(address, value.asNative());
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, LLVMFunctionDescriptor value,
+    @Specialization(guards = "!isAutoDerefHandle(address)")
+    protected Object doOp(LLVMNativePointer address, LLVMFunctionDescriptor value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toAddress,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        memory.putI64(address, toAddress.executeWithTarget(value).getVal());
+        memory.putI64(address, toAddress.executeWithTarget(value).asNative());
         return null;
     }
 
-    @Specialization
-    protected Object doOp(LLVMAddress address, LLVMGlobal value,
+    @Specialization(guards = "!isAutoDerefHandle(address)")
+    protected Object doOp(LLVMNativePointer address, LLVMGlobal value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
-        getLLVMMemoryCached().putI64(address, globalAccess.executeWithTarget(value).getVal());
+        getLLVMMemoryCached().putI64(address, globalAccess.executeWithTarget(value).asNative());
         return null;
     }
 

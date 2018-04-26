@@ -33,7 +33,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.DoubleValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
@@ -41,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadDoubleNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMDoubleLoadNode extends LLVMAbstractLoadNode {
 
@@ -59,12 +59,12 @@ public abstract class LLVMDoubleLoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected double doDouble(LLVMAddress addr) {
+    protected double doDouble(LLVMNativePointer addr) {
         return profile.profile(getLLVMMemoryCached().getDouble(addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected double doDoubleDerefHandle(LLVMAddress addr) {
+    protected double doDoubleDerefHandle(LLVMNativePointer addr) {
         return doDoubleManaged(getDerefHandleGetReceiverNode().execute(addr));
     }
 
