@@ -208,6 +208,9 @@ public class AArch64Move {
         }
 
         @Override
+        // The odd-looking @SuppressWarnings("all") is here because of
+        // a compiler bug which warns that crb is unused, and also
+        // warns that @SuppressWarnings("unused") is unnecessary.
         public void emitCode(@SuppressWarnings("all") CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             // As I understand it load acquire/store release have the same semantics as on IA64
             // and allow us to handle LoadStore, LoadLoad and StoreStore without an explicit
