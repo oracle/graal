@@ -755,7 +755,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void registerCondition(LogicNode condition, boolean negated, GuardingNode guard) {
-            if (condition.getUsageCount() > 1) {
+            if (condition.hasMoreThanOneUsage()) {
                 registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology(), guard);
             }
         }
@@ -950,11 +950,11 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (newStamp != null) {
                 ValueNode value = maybeProxiedValue;
                 Stamp stamp = newStamp;
-                ValueNode proxiedValue = null;
-                if (value instanceof PiNode) {
-                    proxiedValue = value;
-                }
                 do {
+                    ValueNode proxiedValue = null;
+                    if (value instanceof PiNode) {
+                        proxiedValue = value;
+                    }
                     counterStampsRegistered.increment(debug);
                     debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
                     assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
@@ -964,6 +964,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         StampInverter stampInverter = (StampInverter) value;
                         value = stampInverter.getValue();
                         stamp = stampInverter.invertStamp(stamp);
+                    } else if (value instanceof PiNode) {
+                        value = ((PiNode) value).getOriginalNode();
                     } else {
                         value = null;
                         stamp = null;
@@ -992,7 +994,7 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
-                return value instanceof ProxyNode;
+                return value instanceof ProxyNode || value instanceof PiNode;
             }
         }
 
