@@ -180,8 +180,8 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             UnaryOpLogicNode unaryY = (UnaryOpLogicNode) forY;
             if (skipThroughPisAndProxies(unaryX.getValue()) == skipThroughPisAndProxies(unaryY.getValue())) {
                 // !X => Y is constant
-                Stamp stamp = unaryX.getSucceedingStampForValue(!isXNegated());
-                TriState fold = unaryY.tryFold(stamp);
+                Stamp succStamp = unaryX.getSucceedingStampForValue(!isXNegated());
+                TriState fold = unaryY.tryFold(succStamp);
                 if (fold.isKnown()) {
                     boolean yResult = fold.toBoolean() ^ isYNegated();
                     return yResult
