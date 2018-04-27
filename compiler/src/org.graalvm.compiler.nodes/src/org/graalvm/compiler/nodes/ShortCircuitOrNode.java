@@ -26,11 +26,15 @@ import static org.graalvm.compiler.nodeinfo.InputType.Condition;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
+
+import jdk.vm.ci.meta.TriState;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class ShortCircuitOrNode extends LogicNode implements IterableNodeType, Canonicalizable.Binary<LogicNode> {
@@ -169,7 +173,40 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 return optimizeShortCircuit(inner, this.yNegated, this.xNegated, false);
             }
         }
+
+        // Check whether !X => Y constant
+        if (forX instanceof UnaryOpLogicNode && forY instanceof UnaryOpLogicNode) {
+            UnaryOpLogicNode unaryX = (UnaryOpLogicNode) forX;
+            UnaryOpLogicNode unaryY = (UnaryOpLogicNode) forY;
+            if (skipThroughPisAndProxies(unaryX.getValue()) == skipThroughPisAndProxies(unaryY.getValue())) {
+                // !X => Y is constant
+                Stamp stamp = unaryX.getSucceedingStampForValue(!isXNegated());
+                TriState fold = unaryY.tryFold(stamp);
+                if (fold.isKnown()) {
+                    boolean yResult = fold.toBoolean() ^ isYNegated();
+                    return yResult
+                                    ? LogicConstantNode.tautology()
+                                    : (isXNegated()
+                                                    ? LogicNegationNode.create(forX)
+                                                    : forX);
+                }
+            }
+        }
+
         return this;
+    }
+
+    private static ValueNode skipThroughPisAndProxies(ValueNode node) {
+        for (ValueNode n = node; n != null;) {
+            if (n instanceof PiNode) {
+                n = ((PiNode) n).getOriginalNode();
+            } else if (n instanceof ValueProxy) {
+                n = ((ValueProxy) n).getOriginalNode();
+            } else {
+                return n;
+            }
+        }
+        return null;
     }
 
     private static LogicNode optimizeShortCircuit(ShortCircuitOrNode inner, boolean innerNegated, boolean matchNegated, boolean matchIsInnerX) {
