@@ -1047,7 +1047,7 @@ public class LLVMInteropTest {
         @Resolve(message = "READ")
         abstract static class ReadNode extends Node {
             int access(ForeignObject object, Object key) {
-                Assert.assertEquals(0L, key);
+                Assert.assertEquals("foo", key);
                 return object.foo;
             }
         }
@@ -1055,7 +1055,7 @@ public class LLVMInteropTest {
         @Resolve(message = "WRITE")
         abstract static class WriteNode extends Node {
             int access(ForeignObject object, Object key, int value) {
-                Assert.assertEquals(0L, key);
+                Assert.assertEquals("foo", key);
                 return object.foo = value * 2;
             }
         }
