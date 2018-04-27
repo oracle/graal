@@ -24,6 +24,7 @@ package com.oracle.svm.driver;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Queue;
 
@@ -60,11 +61,18 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return;
         }
 
-        Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
-        if (Files.isDirectory(builderJarsDirectory)) {
-            NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
+        enabledOption.forEachPropertyValue("ImageBuilderBootClasspath", entry -> nativeImage.addImageBuilderBootClasspath(Paths.get(entry)));
+
+        if (!enabledOption.forEachPropertyValue("ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(Paths.get(entry)))) {
+            Path builderJarsDirectory = imageJarsDirectory.resolve("builder");
+            if (Files.isDirectory(builderJarsDirectory)) {
+                NativeImage.getJars(builderJarsDirectory).forEach(nativeImage::addImageBuilderClasspath);
+            }
         }
-        NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageProvidedClasspath);
+
+        if (!enabledOption.forEachPropertyValue("ImageClasspath", entry -> nativeImage.addImageClasspath(Paths.get(entry)))) {
+            NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageProvidedClasspath);
+        }
 
         String imageName = enabledOption.getProperty("ImageName");
         if (imageName != null) {

@@ -43,8 +43,7 @@ import java.util.stream.Stream;
 final class MacroOption {
     enum MacroOptionKind {
         Language("languages"),
-        Tool("tools"),
-        Builtin("");
+        Tool("tools");
 
         final String subdir;
 
@@ -269,12 +268,6 @@ final class MacroOption {
             }
         }
 
-        MacroOption addBuiltin(String optionName) {
-            MacroOption builtin = new MacroOption(optionName);
-            supported.computeIfAbsent(MacroOptionKind.Builtin, key -> new HashMap<>()).put(optionName, builtin);
-            return builtin;
-        }
-
         Set<String> getAvailableOptions(MacroOptionKind forKind) {
             return supported.get(forKind).keySet();
         }
@@ -305,6 +298,10 @@ final class MacroOption {
                 lineOut.accept(sb.append("options are:").toString());
                 optionsToShow.forEach(lineOut);
             }
+        }
+
+        MacroOption getMacroOption(MacroOptionKind kindPart, String optionName) {
+            return supported.get(kindPart).get(optionName);
         }
 
         boolean enableOption(String optionString, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
@@ -346,7 +343,7 @@ final class MacroOption {
 
             String[] parts = specNameParts.split("=", 2);
             String optionName = parts[0];
-            MacroOption option = supported.get(kindPart).get(optionName);
+            MacroOption option = getMacroOption(kindPart, optionName);
             if (option != null) {
                 String optionArg = parts.length == 2 ? parts[1] : null;
                 enableResolved(option, optionArg, addedCheck, context, enabler);
@@ -369,7 +366,7 @@ final class MacroOption {
                 }
             }
 
-            MacroOption truffleOption = supported.get(MacroOptionKind.Tool).get("truffle");
+            MacroOption truffleOption = getMacroOption(MacroOptionKind.Tool, "truffle");
             if (option.kind.equals(MacroOptionKind.Language) && !addedCheck.contains(truffleOption)) {
                 /*
                  * Every language requires Truffle. If it is not specified explicitly as a
@@ -418,13 +415,6 @@ final class MacroOption {
         this.optionName = optionDirectory.getFileName().toString();
         this.optionDirectory = optionDirectory;
         this.properties = NativeImage.loadProperties(optionDirectory.resolve("native-image.properties"));
-    }
-
-    private MacroOption(String optionName) {
-        this.kind = MacroOptionKind.Builtin;
-        this.optionName = optionName;
-        this.optionDirectory = null;
-        this.properties = Collections.emptyMap();
     }
 
     @Override

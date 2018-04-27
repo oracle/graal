@@ -559,6 +559,10 @@ public final class ProbeNode extends Node {
             // Terminates guest language execution immediately
             throw (ThreadDeath) t;
         }
+        final Object currentVm = AccessorInstrumentHandler.engineAccess().getCurrentVM();
+        if (currentVm != null && AccessorInstrumentHandler.engineAccess().isInstrumentExceptionsAreThrown(currentVm)) {
+            sthrow(RuntimeException.class, t);
+        }
         // Exception is a failure in (non-language) instrumentation code; log and continue
         InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) b.getInstrumenter();
         Class<?> instrumentClass = instrumenter.getInstrumentClass();
@@ -618,6 +622,11 @@ public final class ProbeNode extends Node {
             return UNWIND_ACTION_REENTER;
         }
         return r1; // The first one wins
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> void sthrow(Class<T> type, Throwable t) throws T {
+        throw (T) t;
     }
 
     private static class InputChildContextLookup extends InstrumentableChildVisitor {

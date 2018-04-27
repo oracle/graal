@@ -192,7 +192,6 @@ class NativeImage {
     private boolean dryRun = false;
 
     final Registry optionRegistry;
-    private final MacroOption truffleOption;
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     protected NativeImage() {
@@ -251,7 +250,6 @@ class NativeImage {
 
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
-        truffleOption = optionRegistry.addBuiltin("truffle");
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
@@ -334,10 +332,6 @@ class NativeImage {
             }
         }
 
-        if (!enabledLanguages.isEmpty() || optionRegistry.getEnabledOption(truffleOption) != null) {
-            enableTruffle();
-        }
-
         /* Create a polyglot image if we have more than one LauncherClass. */
         if (getLauncherClasses().limit(2).count() > 1) {
             /* Use polyglot as image name if not defined on command line */
@@ -357,6 +351,8 @@ class NativeImage {
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
+
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
     private Stream<String> getLanguageLauncherClasses() {
@@ -379,19 +375,6 @@ class NativeImage {
 
     private Stream<Path> getAbsoluteLauncherClassPath() {
         return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> getRootDir().resolve(p));
-    }
-
-    private void enableTruffle() {
-        Path truffleDir = getRootDir().resolve(Paths.get("lib", "truffle"));
-        addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
-        addImageBuilderArg(oHFeatures + "com.oracle.svm.truffle.TruffleFeature");
-        addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
-        addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
-
-        // TODO: use a LauncherClassPath property
-        // Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
-        // getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
-        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -871,9 +854,20 @@ class NativeImage {
         return Collections.unmodifiableMap(map);
     }
 
+    private static String deletedFileSuffix = ".deleted";
+
+    protected static boolean isDeletedPath(Path toDelete) {
+        return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
+    }
+
     protected void deleteAllFiles(Path toDelete) {
         try {
-            Files.walk(toDelete).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            Path deletedPath = toDelete;
+            if (!isDeletedPath(deletedPath)) {
+                deletedPath = toDelete.resolveSibling(toDelete.getFileName() + deletedFileSuffix);
+                Files.move(toDelete, deletedPath);
+            }
+            Files.walk(deletedPath).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         } catch (IOException e) {
             if (isVerbose()) {
                 showMessage("Could not recursively delete path: " + toDelete);

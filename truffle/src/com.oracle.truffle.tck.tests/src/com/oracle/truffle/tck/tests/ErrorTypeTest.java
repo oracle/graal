@@ -97,7 +97,7 @@ public class ErrorTypeTest {
                 if (snippetLanguage.equals(parLanguage)) {
                     continue;
                 }
-                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new HashSet<>();
+                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new ArrayList<>();
                 for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
                     valueConstructors.add(new AbstractMap.SimpleImmutableEntry<>(parLanguage, valueConstructor));
                 }
