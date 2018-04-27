@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.vm;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
@@ -119,6 +120,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private PolyglotContextImpl preInitializedContext;
 
     PolyglotLanguage hostLanguage;
+    final Assumption singleContext = Truffle.getRuntime().createAssumption();
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -201,6 +203,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             language.getOptionValues().putAll(languagesOptions.get(language));
         }
 
+        if (!boundEngine) {
+            initializeMultiContext(null);
+        }
+
         ENGINES.put(this, null);
         if (!preInitialization) {
             createInstruments(instrumentsOptions);
@@ -266,6 +272,23 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     Runtime.getRuntime().addShutdownHook(new Thread(new PolyglotShutDownHook()));
                 }
             }
+        }
+    }
+
+    synchronized void initializeMultiContext(PolyglotContextImpl existingContext) {
+        if (singleContext.isValid()) {
+            Collection<PolyglotLanguage> languages = this.idToLanguage.values();
+            for (PolyglotLanguage language : languages) {
+                PolyglotLanguageContext existingLanguageContext = null;
+                if (existingContext != null) {
+                    existingLanguageContext = existingContext.contexts[language.index];
+                    if (existingLanguageContext.env == null) {
+                        existingLanguageContext = null;
+                    }
+                }
+                language.initializeMultiContext(existingLanguageContext);
+            }
+            singleContext.invalidate("More than one context introduced.");
         }
     }
 
