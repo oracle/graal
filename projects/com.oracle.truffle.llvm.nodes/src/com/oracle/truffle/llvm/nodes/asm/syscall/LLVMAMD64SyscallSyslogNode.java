@@ -48,12 +48,12 @@ public abstract class LLVMAMD64SyscallSyslogNode extends LLVMSyscallOperationNod
     }
 
     @Specialization
-    protected long execute(long type, LLVMNativePointer bufp, long len) {
+    protected long op(long type, LLVMNativePointer bufp, long len) {
         return (int) syslog.execute((int) type, bufp.asNative(), (int) len);
     }
 
     @Specialization
-    protected long execute(long type, long bufp, long len) {
-        return execute(type, LLVMNativePointer.create(bufp), len);
+    protected long op(long type, long bufp, long len) {
+        return op(type, LLVMNativePointer.create(bufp), len);
     }
 }

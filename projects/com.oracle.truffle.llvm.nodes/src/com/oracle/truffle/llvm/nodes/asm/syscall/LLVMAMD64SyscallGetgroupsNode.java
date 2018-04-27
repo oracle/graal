@@ -48,12 +48,12 @@ public abstract class LLVMAMD64SyscallGetgroupsNode extends LLVMSyscallOperation
     }
 
     @Specialization
-    protected long execute(long gidsetsize, LLVMNativePointer grouplist) {
+    protected long op(long gidsetsize, LLVMNativePointer grouplist) {
         return (int) getgroups.execute((int) gidsetsize, grouplist.asNative());
     }
 
     @Specialization
     protected long execute(long gidsetsize, long grouplist) {
-        return execute(gidsetsize, LLVMNativePointer.create(grouplist));
+        return op(gidsetsize, LLVMNativePointer.create(grouplist));
     }
 }
