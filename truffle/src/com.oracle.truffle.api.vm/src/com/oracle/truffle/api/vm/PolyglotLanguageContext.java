@@ -159,7 +159,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     CallTarget parseCached(PolyglotLanguage accessingLanguage, com.oracle.truffle.api.source.Source source, String[] argumentNames) throws AssertionError {
-        // should be initilaized during initailization
         ensureInitialized(accessingLanguage);
         assert this.sourceCache != null;
 
