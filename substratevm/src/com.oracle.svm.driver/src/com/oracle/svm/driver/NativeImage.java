@@ -187,7 +187,6 @@ class NativeImage {
     private boolean dryRun = false;
 
     final Registry optionRegistry;
-    private final MacroOption truffleOption;
 
     protected NativeImage() {
         workDir = Paths.get(".").toAbsolutePath().normalize();
@@ -245,7 +244,6 @@ class NativeImage {
 
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
-        truffleOption = optionRegistry.addBuiltin("truffle");
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
@@ -328,10 +326,6 @@ class NativeImage {
             }
         }
 
-        if (!enabledLanguages.isEmpty() || optionRegistry.getEnabledOption(truffleOption) != null) {
-            enableTruffle();
-        }
-
         /* Create a polyglot image if we have more than one LauncherClass. */
         Set<String> launcherClasses = enabledLanguages.stream()
                         .map(lang -> lang.getProperty("LauncherClass"))
@@ -356,17 +350,7 @@ class NativeImage {
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
-    }
 
-    private void enableTruffle() {
-        Path truffleDir = getRootDir().resolve(Paths.get("lib", "truffle"));
-        addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
-        addImageBuilderArg(oHFeatures + "com.oracle.svm.truffle.TruffleFeature");
-        addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
-        addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
-
-        Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
-        getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
