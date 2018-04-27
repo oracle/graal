@@ -2,6 +2,7 @@ common_vm: ${common} ${vm_java} {
   setup: [
     [cd, ${vm_subdir}]
   ]
+  logs: ["*/mxbuild/dists/stripped/*.map"]
 }
 
 common_vm_linux: ${common_vm} ${linux}  {
@@ -58,6 +59,10 @@ fastr: {
   environment: {
     FASTR_RELEASE: "true"
   }
+  logs: [
+    "fastr/libdownloads/*/gnur_configure.log"
+    "fastr/libdownloads/*/gnur_make.log"
+  ]
 }
 
 fastr_linux: ${fastr} {
