@@ -964,8 +964,6 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         StampInverter stampInverter = (StampInverter) value;
                         value = stampInverter.getValue();
                         stamp = stampInverter.invertStamp(stamp);
-                    } else if (value instanceof PiNode) {
-                        value = ((PiNode) value).getOriginalNode();
                     } else {
                         value = null;
                         stamp = null;
@@ -994,7 +992,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
-                return value instanceof ProxyNode || value instanceof PiNode;
+                // PiNode is a pass-through StampInverter.
+                return value instanceof ProxyNode || value instanceof StampInverter;
             }
         }
 
