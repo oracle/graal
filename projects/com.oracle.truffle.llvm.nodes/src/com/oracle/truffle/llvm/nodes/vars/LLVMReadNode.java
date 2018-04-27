@@ -81,13 +81,19 @@ public abstract class LLVMReadNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMI64ReadNode extends LLVMReadNode {
-        @Specialization
-        protected Object readI64(VirtualFrame frame) {
-            if (getSlot().getKind() == FrameSlotKind.Long) {
-                return FrameUtil.getLongSafe(frame, getSlot());
-            } else {
-                return FrameUtil.getObjectSafe(frame, getSlot());
-            }
+
+        protected final boolean isLongSlot() {
+            return getSlot().getKind() == FrameSlotKind.Long;
+        }
+
+        @Specialization(guards = "isLongSlot()")
+        protected long readI64(VirtualFrame frame) {
+            return FrameUtil.getLongSafe(frame, getSlot());
+        }
+
+        @Specialization(guards = "!isLongSlot()")
+        protected Object readI64Object(VirtualFrame frame) {
+            return FrameUtil.getObjectSafe(frame, getSlot());
         }
     }
 

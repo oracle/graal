@@ -1804,6 +1804,9 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createPhi(LLVMParserRuntime runtime, LLVMExpressionNode[] from, FrameSlot[] to, Type[] types) {
         if (to.length > 0) {
+            if (to.length == 1) {
+                return createFrameWrite(runtime, types[0], from[0], to[0], null);
+            }
             LLVMWriteNode[] writes = new LLVMWriteNode[to.length];
             for (int i = 0; i < writes.length; i++) {
                 writes[i] = createFrameWrite(runtime, types[i], null, to[i], null);
