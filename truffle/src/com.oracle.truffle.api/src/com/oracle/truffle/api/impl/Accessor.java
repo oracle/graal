@@ -189,7 +189,7 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract CallTarget parseForLanguage(Object o, Source source, String[] argumentNames);
+        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames);
 
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
