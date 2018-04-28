@@ -137,8 +137,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private final AnalysisType componentType;
     private final AnalysisType elementalType;
 
-    private final AnalysisType enclosingType;
-
     private final AnalysisType[] interfaces;
 
     /* isArray is an expensive operation so we eagerly compute it */
@@ -162,6 +160,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
          * later use in AnalysisType.getDeclaredConstructors().
          */
         wrapped.getDeclaredConstructors();
+        /*
+         * Eagerly resolve the enclosing type. It is possible that we are dealing with an incomplete
+         * classpath. While normally JVM doesn't care about missing classes unless they are really
+         * used the analysis is eager to load all reachable classes. The analysis client should deal
+         * with type resolution problems.
+         * 
+         * We cannot cache the result as an AnalysisType, i.e., by calling
+         * universe.lookup(JavaType), because that could lead to a deadlock.
+         */
+        wrapped.getEnclosingType();
 
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         getSuperclass();
@@ -188,14 +196,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             this.componentType = null;
             this.elementalType = this;
         }
-
-        /*
-         * Eagerly resolve the enclosing type. It is possible that we are dealing with an incomplete
-         * classpath. While normally JVM doesn't care about missing classes unless they are really
-         * used the analysis is eager to load all reachable classes. The analysis client should deal
-         * with type resolution problems.
-         */
-        this.enclosingType = universe.lookup(wrapped.getEnclosingType());
 
         /* Set id after accessing super types, so that all these types get a lower id number. */
         this.id = universe.nextTypeId.getAndIncrement();
@@ -924,7 +924,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public AnalysisType getEnclosingType() {
-        return enclosingType;
+        return universe.lookup(wrapped.getEnclosingType());
     }
 
     @Override
