@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +27,7 @@ import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADD;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADDS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADR;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADRP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.AND;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ANDS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ASRV;
@@ -1346,16 +1348,14 @@ public abstract class AArch64Assembler extends Assembler {
 
     /**
      * Address of page: sign extends 21-bit offset, shifts if left by 12 and adds it to the value of
-     * the PC with its bottom 12-bits cleared, writing the result to dst.
+     * the PC with its bottom 12-bits cleared, writing the result to dst. No offset is emitted; the
+     * instruction will be patched later.
      *
      * @param dst general purpose register. May not be null, zero-register or stackpointer.
-     * @param imm Signed 33-bit offset with lower 12bits clear.
      */
-    // protected void adrp(Register dst, long imm) {
-    // assert (imm & NumUtil.getNbitNumberInt(12)) == 0 : "Lower 12-bit of immediate must be zero.";
-    // assert NumUtil.isSignedNbit(33, imm);
-    // addressCalculationInstruction(dst, (int) (imm >>> 12), Instruction.ADRP);
-    // }
+    public void adrp(Register dst) {
+        emitInt(ADRP.encoding | PcRelImmOp | rd(dst));
+    }
 
     /**
      * Adds a 21-bit signed offset to the program counter and writes the result to dst.
@@ -1367,6 +1367,13 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(ADR.encoding | PcRelImmOp | rd(dst) | getPcRelativeImmEncoding(imm21));
     }
 
+    /**
+     * Adds a 21-bit signed offset to the program counter and writes the result to dst.
+     *
+     * @param dst general purpose register. May not be null, zero-register or stackpointer.
+     * @param imm21 Signed 21-bit offset.
+     * @param pos the position in the code that the instruction is emitted.
+     */
     public void adr(Register dst, int imm21, int pos) {
         emitInt(ADR.encoding | PcRelImmOp | rd(dst) | getPcRelativeImmEncoding(imm21), pos);
     }
