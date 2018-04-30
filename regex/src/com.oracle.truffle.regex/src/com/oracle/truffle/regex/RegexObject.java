@@ -33,6 +33,7 @@ import com.oracle.truffle.regex.runtime.RegexObjectExecMethod;
 import com.oracle.truffle.regex.runtime.RegexObjectMessageResolutionForeign;
 import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
+
 import java.util.Map;
 
 /**

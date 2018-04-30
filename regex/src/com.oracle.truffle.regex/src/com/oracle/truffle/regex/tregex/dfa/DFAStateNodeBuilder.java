@@ -41,8 +41,7 @@ import java.util.List;
 public final class DFAStateNodeBuilder implements JsonConvertible {
 
     private static final List<DFACaptureGroupTransitionBuilder> NODE_SPLIT_TAINTED = new ArrayList<>();
-    private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG =
-                    "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
+    private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG = "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
 
     private final short id;
     private NFATransitionSet nfaStateSet;

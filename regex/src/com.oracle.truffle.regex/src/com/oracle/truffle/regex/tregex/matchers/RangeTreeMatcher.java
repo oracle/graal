@@ -128,7 +128,11 @@ public final class RangeTreeMatcher extends ProfiledCharMatcher {
 
     @Override
     public int estimatedCost() {
-        return MathUtil.log2ceil(tree.length);
+        // In every node of the tree, we perform two array loads (4) and two int comparisons (2).
+        // The number of nodes in the tree is tree.length / 2, so the depth d of the tree will be
+        // MathUtil.log2ceil(tree.length / 2).
+        // The average depth of traversal is then d - 1.
+        return 6 * (MathUtil.log2ceil(tree.length / 2) - 1);
     }
 
     @Override

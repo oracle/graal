@@ -33,7 +33,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.tregex.nodes.input.InputCharAtNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 public final class TRegexDFAExecutorNode extends Node {
 
@@ -89,6 +88,10 @@ public final class TRegexDFAExecutorNode extends Node {
 
     public boolean isSearching() {
         return props.isSearching();
+    }
+
+    public boolean isRegressionTestMode() {
+        return props.isRegressionTestMode();
     }
 
     public DFACaptureGroupLazyTransitionNode[] getCGTransitions() {

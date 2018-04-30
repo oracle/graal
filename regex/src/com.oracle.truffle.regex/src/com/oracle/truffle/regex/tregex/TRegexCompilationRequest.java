@@ -57,6 +57,11 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * This class is responsible for compiling a single regex pattern. The compilation process is
+ * designed to be single-threaded, but multiple {@link TRegexCompilationRequest}s can be compiled in
+ * parallel.
+ */
 final class TRegexCompilationRequest {
 
     private DebugUtil.DebugLogger logBailout;
@@ -197,7 +202,7 @@ final class TRegexCompilationRequest {
         return executorNode;
     }
 
-    private static TRegexDFAExecutorProperties createExecutorProperties(NFA nfa, boolean forward, boolean searching, boolean trackCaptureGroups) {
+    private TRegexDFAExecutorProperties createExecutorProperties(NFA nfaArg, boolean forward, boolean searching, boolean trackCaptureGroups) {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FrameSlot inputFS = frameDescriptor.addFrameSlot("input", FrameSlotKind.Object);
         FrameSlot fromIndexFS = frameDescriptor.addFrameSlot("fromIndex", FrameSlotKind.Int);
@@ -224,7 +229,8 @@ final class TRegexCompilationRequest {
                         forward,
                         searching,
                         trackCaptureGroups,
-                        nfa.getAst().getNumberOfCaptureGroups());
+                        tRegexCompiler.getOptions().isRegressionTestMode(),
+                        nfaArg.getAst().getNumberOfCaptureGroups());
     }
 
     private void logPhase(String msg) {

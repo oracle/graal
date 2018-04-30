@@ -70,11 +70,26 @@ public final class RegexLexer {
     public Token next() throws RegexSyntaxException {
         int startIndex = index;
         Token t = getNext();
-        if (DebugUtil.DEBUG) {
-            t.setSourceSection(source.getSource().createSection(startIndex + 1, index - startIndex));
-        }
+        setSourceSection(t, startIndex, index);
         lastToken = t;
         return t;
+    }
+
+    /**
+     * Sets the {@link com.oracle.truffle.api.source.SourceSection} of a given {@link Token} in
+     * respect of {@link RegexSource#getSource()}.
+     * 
+     * @param startIndex inclusive start index of the source section in respect of
+     *            {@link RegexSource#getPattern()}.
+     * @param endIndex exclusive end index of the source section in respect of
+     *            {@link RegexSource#getPattern()}.
+     */
+    private void setSourceSection(Token t, int startIndex, int endIndex) {
+        if (DebugUtil.DEBUG) {
+            // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
+            // offset of 1 here.
+            t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
+        }
     }
 
     /* input string access */

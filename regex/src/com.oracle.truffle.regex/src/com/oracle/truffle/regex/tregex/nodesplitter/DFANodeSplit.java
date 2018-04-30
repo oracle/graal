@@ -154,8 +154,8 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     }
 
     /**
-     * Register all changes made in the DFA generator. This is necessary for gathering debug information
-     * only, never do this in production!
+     * Register all changes made in the DFA generator. This is necessary for gathering debug
+     * information only, never do this in production!
      */
     private void updateDFAGenerator() {
         dfaGenerator.nodeSplitSetNewDFASize(graph.size());

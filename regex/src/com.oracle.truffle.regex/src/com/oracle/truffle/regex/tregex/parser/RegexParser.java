@@ -53,10 +53,10 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntries
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.Constants;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import java.util.function.Function;
 
 public final class RegexParser {
@@ -114,7 +114,7 @@ public final class RegexParser {
     public RegexParser(RegexSource source, RegexOptions options) {
         this.source = source;
         this.lexer = new RegexLexer(source, options);
-        this.ast = new RegexAST(source);
+        this.ast = new RegexAST(source, options);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
@@ -200,15 +200,30 @@ public final class RegexParser {
         }
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        addSequence();
+        addSequence(token);
         return group;
     }
 
-    private void addSequence() {
+    /**
+     * Adds a new {@link Sequence} to the current {@link Group}.
+     * 
+     * @param token the opening bracket of the parent group ({@link Token.Kind#captureGroupBegin})
+     *            or the alternation symbol ({@link Token.Kind#alternation}) that opens the new
+     *            sequence.
+     */
+    private void addSequence(Token token) {
         if (!curGroup.getAlternatives().isEmpty()) {
             setComplexLookAround();
         }
         curSequence = curGroup.addSequence(ast);
+        if (DebugUtil.DEBUG) {
+            if (token != null) {
+                SourceSection src = token.getSourceSection();
+                // set source section to empty string, it will be updated by the Sequence object
+                // when new Terms are added to it
+                curSequence.setSourceSection(src.getSource().createSection(src.getCharEndIndex(), 0));
+            }
+        }
         curTerm = null;
     }
 
@@ -408,9 +423,9 @@ public final class RegexParser {
         }
         if (greedy) {
             createOptionalBranch(term, greedy, recurse);
-            addSequence();
+            addSequence(null);
         } else {
-            addSequence();
+            addSequence(null);
             createOptionalBranch(term, greedy, recurse);
         }
         popGroup(null);
@@ -491,7 +506,7 @@ public final class RegexParser {
                     parseQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
-                    addSequence();
+                    addSequence(token);
                     properties.setAlternations();
                     break;
                 case captureGroupBegin:

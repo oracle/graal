@@ -133,13 +133,17 @@ public class DFAStateNode extends DFAAbstractStateNode {
         return (AllTransitionsInOneTreeMatcher) matchers[matchers.length - 1];
     }
 
-    private int treeTransitionMatchingGetLinearSuccessor(char c) {
-        for (int i = 0; i < matchers.length - 1; i++) {
-            if (matchers[i].match(c)) {
-                return i;
+    private boolean sameResultAsRegularMatchers(TRegexDFAExecutorNode executor, char c, int allTransitionsMatcherResult) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (executor.isRegressionTestMode()) {
+            for (int i = 0; i < matchers.length - 1; i++) {
+                if (matchers[i].match(c)) {
+                    return i == allTransitionsMatcherResult;
+                }
             }
+            return allTransitionsMatcherResult == -1;
         }
-        return -1;
+        return true;
     }
 
     /**
@@ -196,7 +200,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         executor.advance(frame);
         if (treeTransitionMatching()) {
             int successor = getTreeMatcher().checkMatchTree1(frame, executor, this, c);
-            assert successor == treeTransitionMatchingGetLinearSuccessor(c) : this.toString();
+            assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
             executor.setSuccessorIndex(frame, successor);
             return hasLoopToSelf() && isLoopToSelf(successor);
         } else {
@@ -237,7 +241,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         executor.advance(frame);
         if (treeTransitionMatching()) {
             int successor = getTreeMatcher().checkMatchTree2(frame, executor, this, c);
-            assert successor == treeTransitionMatchingGetLinearSuccessor(c) : this.toString();
+            assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
             executor.setSuccessorIndex(frame, successor);
             return isLoopToSelf(successor);
         } else {
@@ -288,7 +292,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         executor.advance(frame);
         if (treeTransitionMatching()) {
             int successor = getTreeMatcher().checkMatchTree3(frame, executor, this, c, preLoopIndex);
-            assert successor == treeTransitionMatchingGetLinearSuccessor(c) : this.toString();
+            assert sameResultAsRegularMatchers(executor, c, successor) : this.toString();
             executor.setSuccessorIndex(frame, successor);
             return isLoopToSelf(successor);
         } else {

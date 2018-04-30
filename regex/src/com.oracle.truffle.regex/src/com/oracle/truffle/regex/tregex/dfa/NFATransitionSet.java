@@ -38,12 +38,38 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+/**
+ * This class represents a set of NFA transitions leading to a set of NFA states. The uniqueness of
+ * one {@link NFAStateTransition} inside this class is defined by its target {@link NFAState} as
+ * returned by {@link NFAStateTransition#getTarget(boolean)}, where
+ * {@link NFATransitionSet#isForward()} is used as the parameter <code>forward</code>. If
+ * {@link #isPrioritySensitive()} is set, the transition set becomes sensitive to insertion order,
+ * so sets with the same elements are no longer considered equal if their element insertion order
+ * differs. The insertion reflects the priority of every transition, where elements added earlier
+ * are of higher priority. {@link #iterator()} will always reflect insertion order.
+ * {@link #isPrioritySensitive()} will also cause the transition set to stop accepting new elements
+ * as soon as a transition to a final state was added (more specific: a transition that leads to a
+ * state that has another transition to a final state, as denoted by
+ * {@link NFAState#hasTransitionToAnchoredFinalState(boolean)} and
+ * {@link NFAState#hasTransitionToUnAnchoredFinalState(boolean)}. The transition to the final state
+ * in the NFA does not consume a character, so it is treated as part of the transition leading to
+ * its source state in the DFA generator. Example: NFA state 1 leads to NFA state 2, which leads to
+ * final NFA state 3. The DFA generator will treat the transition from state 1 to state 2 as
+ * "transition to final state" and incorporate the transition from state 2 to state 3 in it.). This
+ * is necessary for correct DFA generation, since after reaching a final state, the DFA shall drop
+ * all NFA states whose priority is lower than that of the final state. Since in this set insertion
+ * order reflects priority, we do just that implicitly by dropping all add operations after a
+ * (transition to) a final state was added.
+ *
+ * @see DFAGenerator
+ * @see DFAStateTransitionBuilder
+ */
 public final class NFATransitionSet implements Iterable<NFAStateTransition>, JsonConvertible {
 
     private static final byte FLAG_FORWARD = 1;
     private static final byte FLAG_PRIORITY_SENSITIVE = 1 << 1;
     private static final byte FLAG_LEADS_TO_FINAL_STATE = 1 << 2;
-    private static final byte FLAG_HASH_COMPUTED = 1 << 4;
+    private static final byte FLAG_HASH_COMPUTED = 1 << 3;
     private static final byte MASK_NO_ADD = FLAG_PRIORITY_SENSITIVE | FLAG_LEADS_TO_FINAL_STATE;
 
     private final NFA nfa;
@@ -139,7 +165,13 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         clearFlag(FLAG_HASH_COMPUTED);
     }
 
-    private boolean noAdd() {
+    /**
+     * If the transition set is priority sensitive, it must stop accepting new elements after a
+     * transition to a final state was added. This method checks both of these conditions at once.
+     *
+     * @return <code>true</code> if no more elements are allowed to be added to the set.
+     */
+    private boolean addNotAllowed() {
         return (flags & MASK_NO_ADD) == MASK_NO_ADD;
     }
 
@@ -155,8 +187,16 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         return nfa.getTransitions()[transitions[i]];
     }
 
+    /**
+     * Add a {@link NFAStateTransition} to this set. Note that this set will refuse to add the
+     * transition if it already contains a transition leading to the same <em>target state</em> as
+     * denoted by {@link NFAStateTransition#getTarget(boolean)}, where {@link #isForward()} is used
+     * for the <code>forward</code> parameter. The new element will also be refused if
+     * {@link #isPrioritySensitive()} is <code>true</code> and the transition already contains a
+     * transition to a final state (see JavaDoc of this class).
+     */
     public void add(NFAStateTransition transition) {
-        if (noAdd()) {
+        if (addNotAllowed()) {
             return;
         }
         doAdd(transition);
@@ -195,45 +235,72 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         clearHashComputed();
     }
 
+    /**
+     * Add all transitions contained in the given transition set. Note this set's special behavior
+     * on add-operations as documented in {@link #add(NFAStateTransition)}.
+     *
+     * @see #add(NFAStateTransition)
+     */
     public void addAll(NFATransitionSet other) {
-        if (noAdd()) {
+        if (addNotAllowed()) {
             return;
         }
         ensureCapacity(size + other.size);
         for (int i = 0; i < other.size; i++) {
-            if (noAdd()) {
+            if (addNotAllowed()) {
                 return;
             }
             doAdd(other.getTransition(i));
         }
     }
 
+    /**
+     * Add all transitions contained in the given list. Note this set's special behavior on
+     * add-operations as documented in {@link #add(NFAStateTransition)}.
+     *
+     * @see #add(NFAStateTransition)
+     */
     public void addAll(List<NFAStateTransition> addTransitions) {
-        if (noAdd()) {
+        if (addNotAllowed()) {
             return;
         }
         ensureCapacity(size + addTransitions.size());
         for (NFAStateTransition t : addTransitions) {
-            if (noAdd()) {
+            if (addNotAllowed()) {
                 return;
             }
             doAdd(t);
         }
     }
 
+    /**
+     * Add all transitions contained in the given list. Note this set's special behavior on
+     * add-operations as documented in {@link #add(NFAStateTransition)}.
+     *
+     * @see #add(NFAStateTransition)
+     */
     public void addAll(NFAStateTransition... addTransitions) {
-        if (noAdd()) {
+        if (addNotAllowed()) {
             return;
         }
         ensureCapacity(size + addTransitions.length);
         for (NFAStateTransition t : addTransitions) {
-            if (noAdd()) {
+            if (addNotAllowed()) {
                 return;
             }
             doAdd(t);
         }
     }
 
+    /**
+     * Returns the hash code value for this set.
+     *
+     * Note that {@link #isPrioritySensitive()} affects the hash calculation. If
+     * {@link #isPrioritySensitive()} is true, the hash is calculated using the target states (
+     * {@link NFAStateTransition#getTarget(boolean)} of all {@link NFAStateTransition}s in this set
+     * <em>in insertion order</em>. Otherwise, the hash is equal to the hashcode of a
+     * {@link NFAStateSet} containing all target states of the transitions in this transition set.
+     */
     @Override
     public int hashCode() {
         if (!isHashComputed()) {
@@ -257,6 +324,15 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         return nfaStates.hashCode();
     }
 
+    /**
+     * Checks if the set is equal to another given set. Note that the definition of equality in this
+     * class changes if {@link #isPrioritySensitive()} is changed: If {@link #isPrioritySensitive()}
+     * is <code>false</code>, it is equal to another {@link NFATransitionSet} if it has the same set
+     * of <em>target states</em>. Otherwise, the two sets are equal only if both have the same
+     * target states <em>in the same order</em> - This means that if both sets are iterated in
+     * <em>insertion order</em>, their transitions must yield the same sequence of target states (as
+     * returned by {@link NFAStateTransition#getTarget(boolean)}).
+     */
     @Override
     public boolean equals(Object obj) {
         if (obj == this) {
@@ -288,6 +364,10 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         return a.equals(b);
     }
 
+    /**
+     * Returns an iterator that will yield the elements contained in this set <em>in insertion
+     * order</em>.
+     */
     @Override
     public Iterator<NFAStateTransition> iterator() {
         return new NFATransitionSetIterator(nfa, transitions, size);
@@ -317,6 +397,10 @@ public final class NFATransitionSet implements Iterable<NFAStateTransition>, Jso
         }
     }
 
+    /**
+     * Returns a stream that will yield the elements contained in this set <em>in insertion
+     * order</em>.
+     */
     public Stream<NFAStateTransition> stream() {
         return StreamSupport.stream(spliterator(), false);
     }

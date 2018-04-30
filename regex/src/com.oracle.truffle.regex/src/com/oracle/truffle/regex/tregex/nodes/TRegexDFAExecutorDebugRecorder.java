@@ -35,6 +35,13 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * This class is used to store a trace of the execution of a
+ * {@link TRegexDFAExecutorNode#execute(VirtualFrame)}. A trace contains the arguments received by
+ * {@link TRegexDFAExecutorNode#execute(VirtualFrame)}, and the ID of the DFA transition taken for
+ * all characters of the input string that have been traversed. After execution, the recorded trace
+ * can be dumped to disk as JSON with {@link #finishRecording()}.
+ */
 public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
     private static final class Recording implements JsonConvertible {
@@ -53,6 +60,7 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
             transitions = new ArrayList<>();
         }
 
+        @TruffleBoundary
         public void recordTransition(int currentIndex, int transitionID) {
             transitions.add(new RecordedTransition(currentIndex, transitionID));
         }
@@ -102,12 +110,14 @@ public class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
         return recordings.get(recordings.size() - 1);
     }
 
+    @TruffleBoundary
     public void recordTransition(int currentIndex, short stateNodeID, int transitionIndex) {
         CompilerAsserts.neverPartOfCompilation();
         int transitionID = dfa.getState(stateNodeID).getTransitions()[transitionIndex].getId();
         curRecording().recordTransition(currentIndex, transitionID);
     }
 
+    @TruffleBoundary
     public void finishRecording() {
         CompilerAsserts.neverPartOfCompilation();
         Json.obj(Json.prop("dfa", dfa), Json.prop("recording", curRecording())).dump(

@@ -30,6 +30,23 @@ import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 
+import static com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.*;
+
+/**
+ * This regex engine is designed for very simple cases, where the regular expression can be directly
+ * translated to common string operations. It will map expressions to simple index checks (
+ * {@link EmptyStartsWith}, {@link EmptyEndsWith}, {@link EmptyIndexOf}) or to the following methods
+ * of {@link String} (or equivalent nodes in {@link com.oracle.truffle.regex.tregex.nodes.input})
+ * whenever possible:
+ * <ul>
+ * <li>{@link String#isEmpty()}: {@link EmptyEquals}</li>
+ * <li>{@link String#indexOf(int)}: {@link IndexOfChar}</li>
+ * <li>{@link String#startsWith(String)}: {@link StartsWith}</li>
+ * <li>{@link String#endsWith(String)}: {@link EndsWith}</li>
+ * <li>{@link String#equals(Object)}: {@link Equals}</li>
+ * <li>{@link String#regionMatches(int, String, int, int)}: {@link RegionMatches}</li>
+ * </ul>
+ */
 public final class LiteralRegexEngine {
 
     public static LiteralRegexExecRootNode createNode(RegexLanguage language, RegexAST ast) {
@@ -49,29 +66,29 @@ public final class LiteralRegexEngine {
         if (preCalcResultVisitor.getLiteral().length() == 0) {
             if (caret) {
                 if (dollar) {
-                    return new LiteralRegexExecRootNode.EmptyEquals(language, source, preCalcResultVisitor);
+                    return new EmptyEquals(language, source, preCalcResultVisitor);
                 }
-                return new LiteralRegexExecRootNode.EmptyStartsWith(language, source, preCalcResultVisitor);
+                return new EmptyStartsWith(language, source, preCalcResultVisitor);
             }
             if (dollar) {
-                return new LiteralRegexExecRootNode.EmptyEndsWith(language, source, preCalcResultVisitor);
+                return new EmptyEndsWith(language, source, preCalcResultVisitor);
             }
-            return new LiteralRegexExecRootNode.EmptyIndexOf(language, source, preCalcResultVisitor);
+            return new EmptyIndexOf(language, source, preCalcResultVisitor);
         }
         if (caret) {
             if (dollar) {
-                return new LiteralRegexExecRootNode.Equals(language, source, preCalcResultVisitor);
+                return new Equals(language, source, preCalcResultVisitor);
             }
-            return new LiteralRegexExecRootNode.StartsWith(language, source, preCalcResultVisitor);
+            return new StartsWith(language, source, preCalcResultVisitor);
         }
         if (dollar) {
-            return new LiteralRegexExecRootNode.EndsWith(language, source, preCalcResultVisitor);
+            return new EndsWith(language, source, preCalcResultVisitor);
         }
         if (source.getFlags().isSticky()) {
-            return new LiteralRegexExecRootNode.RegionMatches(language, source, preCalcResultVisitor);
+            return new RegionMatches(language, source, preCalcResultVisitor);
         }
         if (preCalcResultVisitor.getLiteral().length() == 1) {
-            return new LiteralRegexExecRootNode.IndexOfChar(language, source, preCalcResultVisitor);
+            return new IndexOfChar(language, source, preCalcResultVisitor);
         }
         return null;
     }

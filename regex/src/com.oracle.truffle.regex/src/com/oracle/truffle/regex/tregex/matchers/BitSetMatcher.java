@@ -71,7 +71,8 @@ public final class BitSetMatcher extends ProfiledCharMatcher {
 
     @Override
     public int estimatedCost() {
-        return 2;
+        // 4 for the bit set + 1 for the high byte check
+        return 5;
     }
 
     @Override

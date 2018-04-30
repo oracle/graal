@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -48,6 +49,7 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
      * Original pattern as seen by the parser.
      */
     private final RegexSource source;
+    private final RegexOptions options;
     private final Counter.ThresholdCounter nodeCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxParseTreeSize, "parse tree explosion");
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final RegexProperties properties = new RegexProperties();
@@ -68,12 +70,17 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     private ASTNodeSet<PositionAssertion> nfaAnchoredInitialStates;
     private ASTNodeSet<RegexASTNode> hardPrefixNodes;
 
-    public RegexAST(RegexSource source) {
+    public RegexAST(RegexSource source, RegexOptions options) {
         this.source = source;
+        this.options = options;
     }
 
     public RegexSource getSource() {
         return source;
+    }
+
+    public RegexOptions getOptions() {
+        return options;
     }
 
     public Group getRoot() {

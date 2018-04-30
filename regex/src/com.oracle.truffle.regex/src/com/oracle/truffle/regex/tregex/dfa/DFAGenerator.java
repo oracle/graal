@@ -26,6 +26,7 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
@@ -125,6 +126,10 @@ public final class DFAGenerator implements JsonConvertible {
 
     public Map<DFAStateNodeBuilder, DFAStateNodeBuilder> getStateMap() {
         return stateMap;
+    }
+
+    private RegexOptions getOptions() {
+        return nfa.getAst().getOptions();
     }
 
     private DFAStateNodeBuilder[] getStateIndexMap() {
@@ -475,18 +480,14 @@ public final class DFAGenerator implements JsonConvertible {
             // TODO: Potential benefits of this should be further explored.
             boolean useTreeTransitionMatcher = nCheckingTransitions > 1 && MathUtil.log2ceil(nRanges + 2) * 8 < estimatedTransitionsCost;
             if (useTreeTransitionMatcher) {
-                // ====
-                // TODO: Can be changed to
-                //
-                // matchers = new CharMatcher[]{createAllTransitionsInOneTreeMatcher(s)};
-                //
-                // with some minor changes in DFAStateNode. We'll keep this for testing purposes
-                // for the moment.
-
-                matchers = Arrays.copyOf(matchers, matchers.length + 1);
-                matchers[matchers.length - 1] = createAllTransitionsInOneTreeMatcher(s);
-
-                // ====
+                if (getOptions().isRegressionTestMode()) {
+                    // in regression test mode, we compare results of regular matchers and the
+                    // AllTransitionsInOneTreeMatcher
+                    matchers = Arrays.copyOf(matchers, matchers.length + 1);
+                    matchers[matchers.length - 1] = createAllTransitionsInOneTreeMatcher(s);
+                } else {
+                    matchers = new CharMatcher[]{createAllTransitionsInOneTreeMatcher(s)};
+                }
             }
 
             short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
@@ -612,7 +613,7 @@ public final class DFAGenerator implements JsonConvertible {
         }
     }
 
-    private boolean debugMode() {
+    private static boolean debugMode() {
         return DebugUtil.DEBUG || DebugUtil.DEBUG_STEP_EXECUTION;
     }
 

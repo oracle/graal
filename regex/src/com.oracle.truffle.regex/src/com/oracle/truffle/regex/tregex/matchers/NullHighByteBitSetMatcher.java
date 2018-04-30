@@ -47,7 +47,7 @@ public final class NullHighByteBitSetMatcher extends ProfiledCharMatcher {
 
     @Override
     public int estimatedCost() {
-        return 2;
+        return 4;
     }
 
     @Override

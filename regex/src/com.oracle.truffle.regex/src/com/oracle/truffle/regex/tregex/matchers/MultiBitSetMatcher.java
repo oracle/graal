@@ -101,6 +101,8 @@ public final class MultiBitSetMatcher extends ProfiledCharMatcher {
 
     @Override
     public int estimatedCost() {
+        // 4 for the bit set check, 2 for the array load + 2 penalty for potentially huge data
+        // structure
         return 8;
     }
 
