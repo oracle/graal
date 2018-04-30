@@ -22,6 +22,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 
 import org.graalvm.nativeimage.Platform;
@@ -57,6 +58,18 @@ class ReferenceWrapper extends FeebleReference<Object> {
 class ComputeReferenceValue implements CustomFieldValueComputer {
     @Override
     public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        if (receiver instanceof PhantomReference) {
+            /*
+             * PhantomReference does not allow access to its object, so it is mostly useless to have
+             * a PhantomReference on the image heap. But some JDK code uses it, e.g., for marker
+             * values, so we cannot disallow PhantomReference for the image heap.
+             *
+             * Some subclasses of PhantomReference override the get() method to throw an error
+             * (instead of the default implementation that returns null), so we need to manually
+             * check that here.
+             */
+            return null;
+        }
         return ((Reference<?>) receiver).get();
     }
 }
