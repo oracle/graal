@@ -134,6 +134,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
+    public String getCompilerConfigurationName() {
+        return hotspotGraalRuntime.getCompilerConfigurationName();
+    }
+
+    @Override
     public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, CompilableTruffleAST compilable) {
         return hotspotGraalRuntime.openDebugContext(options, compilationId, compilable, getDebugHandlerFactories());
     }

@@ -198,6 +198,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.lookupTypes = initLookupTypes(extraLookupTypes);
     }
 
+    @Override
+    public String getName() {
+        String compilerConfigurationName = getTruffleCompiler().getCompilerConfigurationName();
+        if (compilerConfigurationName != null && compilerConfigurationName.equals("enterprise")) {
+            return "GraalVM EE";
+        } else {
+            return "GraalVM CE";
+        }
+    }
+
     protected GraalTVMCI getTvmci() {
         return tvmci;
     }

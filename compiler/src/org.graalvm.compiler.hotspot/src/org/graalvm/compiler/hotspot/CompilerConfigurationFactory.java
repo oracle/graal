@@ -101,6 +101,13 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
         return new DefaultBackendMap(name);
     }
 
+    /**
+     * Returns a unique compiler configuration name.
+     */
+    public final String getName() {
+        return name;
+    }
+
     public interface BackendMap {
         HotSpotBackendFactory getBackendFactory(Architecture arch);
     }
