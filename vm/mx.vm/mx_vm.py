@@ -1004,7 +1004,7 @@ _graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _base_graalvm_layout = {
    "<jdk_base>/": [
-       "file:README.md",
+       "file:GRAALVM-README.md",
    ],
    "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
    "<jdk_base>/jre/bin/polyglot": "dependency:polyglot.launcher",
