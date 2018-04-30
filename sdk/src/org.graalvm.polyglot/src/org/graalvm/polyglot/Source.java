@@ -32,6 +32,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
@@ -392,7 +393,21 @@ public final class Source {
     }
 
     /**
+<<<<<<< HEAD
+     *
+     * TODO: Added, fix version
+     * 
+     * @since X
+     */
+    public static Builder newBuilder(String language, ByteBuffer bytes, String name) {
+        return EMPTY.new Builder(language, bytes).name(name);
+    }
+
+    /**
+     *
+=======
      * Creates a new source builder from language and URL.
+>>>>>>> upstream/master
      *
      * @since 1.0
      */

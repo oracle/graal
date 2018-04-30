@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -237,6 +238,8 @@ class PolyglotSource extends AbstractSourceImpl {
             needsName = true;
         } else if (origin instanceof URL) {
             builder = com.oracle.truffle.api.source.Source.newBuilder((URL) origin);
+        } else if (origin instanceof ByteBuffer) {
+            builder = com.oracle.truffle.api.source.Source.newBuilder((ByteBuffer) origin);
         } else {
             throw new AssertionError();
         }

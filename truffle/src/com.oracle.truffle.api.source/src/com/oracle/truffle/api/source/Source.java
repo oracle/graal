@@ -33,6 +33,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -131,6 +132,15 @@ public abstract class Source {
     private final boolean internal;
     private final boolean interactive;
     private volatile TextMap textMap;
+    private ByteBuffer bytes;
+
+    public ByteBuffer getBytes() {
+        return bytes;
+    }
+
+    public void setBytes(ByteBuffer bytes) {
+        this.bytes = bytes;
+    }
 
     /**
      * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
@@ -149,6 +159,10 @@ public abstract class Source {
      */
     public static Builder<IOException, RuntimeException, RuntimeException> newBuilder(File file) {
         return EMPTY.new Builder<>(file);
+    }
+
+    public static Builder<IOException, RuntimeException, RuntimeException> newBuilder(ByteBuffer bytes) {
+        return EMPTY.new Builder<>(bytes);
     }
 
     /**
@@ -916,6 +930,8 @@ public abstract class Source {
                     holder = buildReader();
                 } else if (origin instanceof URL) {
                     holder = buildURL();
+                } else if (origin instanceof ByteBuffer) {
+                    holder = buildBytes();
                 } else {
                     holder = buildString();
                 }
@@ -929,6 +945,9 @@ public abstract class Source {
                 SourceImpl ret = new SourceImpl(holder, type, language, uri, name, internal, interactive);
                 if (ret.getName() == null) {
                     throw raise(RuntimeException.class, new MissingNameException());
+                }
+                if (origin instanceof ByteBuffer) {
+                    ret.setBytes((ByteBuffer) origin);
                 }
                 return ret;
             } catch (IOException ex) {
@@ -969,6 +988,16 @@ public abstract class Source {
             final CharSequence r = (CharSequence) origin;
             if (content == null) {
                 content = r;
+            }
+            LiteralSourceImpl ret = new LiteralSourceImpl(
+                            name, content);
+            return ret;
+        }
+
+        private Content buildBytes() {
+            final ByteBuffer r = (ByteBuffer) origin;
+            if (content == null) {
+                content = r.array().toString();
             }
             LiteralSourceImpl ret = new LiteralSourceImpl(
                             name, content);
