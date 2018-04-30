@@ -67,7 +67,7 @@ public interface TruffleCompiler {
                     TruffleCompilerListener listener);
 
     /**
-     * Returns a unique compiler configuration name that is in use for the Graal compiler.
+     * Returns a unique name for the configuration in use by this compiler.
      */
     String getCompilerConfigurationName();
 
