@@ -404,11 +404,18 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         if not self._allow_bootstrapping():
             return False, 'Skip bootstrapping'
 
-        if mx.get_env("SUPPRESS_NATIVE_IMAGE_REBUILD"):
+        supress = mx.get_env("SUPPRESS_NATIVE_IMAGE_REBUILD", 'false')
+        if supress.lower() in ('false', '0', 'no', ''):
+            supress = False
+        elif supress.lower() in ('true', '1', 'yes'):
+            supress = True
+        else:
+            mx.abort("Could not understand SUPPRESS_NATIVE_IMAGE_REBUILD=" + supress)
+        if supress:
             # Only bootstrap if it doesn't already exist
             symlink_path = native_image_symlink_path(self.subject.native_image_root)
             if exists(symlink_path):
-                mx.log('Suppressed rebuilding native-image (delete ' + basename(symlink_path) + ' to allow rebuilding).')
+                mx.log('Suppressed rebuilding native-image (delete ' + symlink_path + ' to allow rebuilding).')
                 return False, 'Already bootstrapped'
 
         return True, ''
