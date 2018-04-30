@@ -552,21 +552,23 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Override
         public Object apply(Object languageContext, Object receiver) {
-            if (cachedClass == null) {
+            Class<?> cachedClassLocal = this.cachedClass;
+            if (cachedClassLocal == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (receiver == null) {
                     // directly go to slow path for null
-                    cachedClass = Generic.class;
+                    cachedClass = cachedClassLocal = Generic.class;
                 } else {
-                    cachedClass = receiver.getClass();
+                    cachedClass = cachedClassLocal = receiver.getClass();
                 }
             }
-            if (cachedClass != Generic.class) {
-                if (cachedClass.isInstance(receiver)) {
-                    return toGuestValue(languageContext, cachedClass.cast(receiver));
+            if (cachedClassLocal != Generic.class) {
+                assert cachedClassLocal != null;
+                if (cachedClassLocal.isInstance(receiver)) {
+                    return toGuestValue(languageContext, cachedClassLocal.cast(receiver));
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = Generic.class; // switch to generic
+                    cachedClass = cachedClassLocal = Generic.class; // switch to generic
                 }
             }
             return slowPath(languageContext, receiver);
@@ -652,7 +654,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         Value execute(Object value) {
             Object receiver = value;
-            if (cachedClass == null) {
+            Class<?> cachedClassLocal = cachedClass;
+            if (cachedClassLocal == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedClass = receiver.getClass();
                 cachedValue = valueCache.get(cachedClass);
@@ -664,9 +667,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     cache = cachedFallbackValue;
                 }
                 return apiAccess.newValue(receiver, cache);
-            } else if (cachedClass != Generic.class) {
-                if (cachedClass.isInstance(value)) {
-                    receiver = cachedClass.cast(receiver);
+            } else if (cachedClassLocal != Generic.class) {
+                if (cachedClassLocal.isInstance(value)) {
+                    receiver = cachedClassLocal.cast(receiver);
                     PolyglotValue cache = cachedValue;
                     if (cache == null) {
                         receiver = convertToInterop(receiver);
