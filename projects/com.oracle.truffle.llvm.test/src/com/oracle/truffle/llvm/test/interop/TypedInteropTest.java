@@ -169,4 +169,27 @@ public class TypedInteropTest extends InteropTestBase {
         fillNested.call(nested);
         checkNested(nested);
     }
+
+    public static class AccessBitFieldsNode extends SulongTestNode {
+
+        public AccessBitFieldsNode() {
+            super(testLibrary, "accessBitFields", 1);
+        }
+    }
+
+    private static Object createBitFieldsStruct() {
+        Map<String, Object> members = new HashMap<>();
+
+        members.put("x", 1);
+        members.put("y", 2);
+        members.put("z", 3);
+
+        return new StructObject(members);
+    }
+
+    @Test
+    public void testAccessBitFields(@Inject(AccessBitFieldsNode.class) CallTarget accessBitFields) {
+        int res = (int) accessBitFields.call(createBitFieldsStruct());
+        Assert.assertTrue(res != 0);
+    }
 }
