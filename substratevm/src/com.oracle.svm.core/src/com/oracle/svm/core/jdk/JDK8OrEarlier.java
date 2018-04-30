@@ -20,14 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.zipfile;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
-@TargetClass(value = java.util.zip.Inflater.class, onlyWith = JDK8OrEarlier.class)
-public final class Target_java_util_zip_Inflater {
-    @Alias
-    native boolean ended();
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
+
+public class JDK8OrEarlier implements BooleanSupplier, Predicate<Class<?>> {
+    @Override
+    public boolean getAsBoolean() {
+        return GraalServices.Java8OrEarlier;
+    }
+
+    @Override
+    public boolean test(Class<?> originalClass) {
+        return getAsBoolean();
+    }
 }

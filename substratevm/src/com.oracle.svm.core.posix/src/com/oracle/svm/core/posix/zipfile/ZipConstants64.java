@@ -31,13 +31,15 @@ package com.oracle.svm.core.posix.zipfile;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
+
 /*
  * This class defines the constants that are used by the classes
  * which manipulate Zip64 files.
  */
 @SuppressWarnings("all")
 @Substitute
-@TargetClass(className = "java.util.zip.ZipConstants64")
+@TargetClass(className = "java.util.zip.ZipConstants64", onlyWith = JDK8OrEarlier.class)
 final class ZipConstants64 {
 
     /*
