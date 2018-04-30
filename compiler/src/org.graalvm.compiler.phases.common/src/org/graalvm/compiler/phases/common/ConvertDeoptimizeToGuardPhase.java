@@ -29,6 +29,7 @@ import java.util.List;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -188,7 +189,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
                         StructuredGraph graph = ifNode.graph();
                         LogicNode conditionNode = ifNode.condition();
                         boolean negateGuardCondition = current == ifNode.trueSuccessor();
-                        FixedGuardNode guard = graph.add(new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition));
+                        NodeSourcePosition survivingSuccessorPosition = negateGuardCondition ? ifNode.falseSuccessor().getNodeSourcePosition() : ifNode.trueSuccessor().getNodeSourcePosition();
+                        FixedGuardNode guard = graph.add(
+                                        new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
 
                         FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
                         AbstractBeginNode survivingSuccessor;
@@ -223,11 +226,14 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<PhaseContext> {
         }
     }
 
+    @SuppressWarnings("try")
     private static void moveAsDeoptAfter(FixedWithNextNode node, StaticDeoptimizingNode deopt) {
-        FixedNode next = node.next();
-        if (next != deopt.asNode()) {
-            node.setNext(node.graph().add(new DeoptimizeNode(deopt.getAction(), deopt.getReason(), deopt.getSpeculation())));
-            GraphUtil.killCFG(next);
+        try (DebugCloseable position = deopt.asNode().withNodeSourcePosition()) {
+            FixedNode next = node.next();
+            if (next != deopt.asNode()) {
+                node.setNext(node.graph().add(new DeoptimizeNode(deopt.getAction(), deopt.getReason(), deopt.getSpeculation())));
+                GraphUtil.killCFG(next);
+            }
         }
     }
 }

@@ -522,7 +522,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             ctw([
                     '--ctwopts', 'Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
+                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
 
@@ -531,25 +531,33 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         b.run(tasks, extraVMarguments)
 
     # run selected DaCapo benchmarks
-    dacapos = {
+    # DaCapo benchmarks that can run with system assertions enabled
+    dacapos_with_sa = {
         'avrora':     1,
-        'batik':      1,
-        'fop':        8,
         'h2':         1,
         'jython':     2,
         'luindex':    1,
         'lusearch':   4,
-        'pmd':        1,
-        'sunflow':    2,
         'xalan':      1,
     }
-    for name, iterations in sorted(dacapos.iteritems()):
+    for name, iterations in sorted(dacapos_with_sa.iteritems()):
+        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
+
+    # DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
+    dacapos_without_sa = {
+        'batik':      1,
+        'fop':        8,
+        'pmd':        1,
+        'sunflow':    2,
+    }
+    for name, iterations in sorted(dacapos_without_sa.iteritems()):
         with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # run selected Scala DaCapo benchmarks
-    scala_dacapos = {
-        'actors':     1,
+    # Scala DaCapo benchmarks that can run with system assertions enabled
+    scala_dacapos_with_sa = {
         'apparat':    1,
         'factorie':   1,
         'kiama':      4,
@@ -561,10 +569,19 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalaxb':    1,
         'tmt':        1
     }
+    for name, iterations in sorted(scala_dacapos_with_sa.iteritems()):
+        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
+
+    # Scala DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
+    scala_dacapos_without_sa = {
+        'actors':     1,
+    }
     if not _jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos['actors']
-    for name, iterations in sorted(scala_dacapos.iteritems()):
+        del scala_dacapos_without_sa['actors']
+
+    for name, iterations in sorted(scala_dacapos_without_sa.iteritems()):
         with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
@@ -679,6 +696,9 @@ def _unittest_config_participant(config):
             # ALL-UNNAMED.
             jvmci = [m for m in jdk.get_modules() if m.name == 'jdk.internal.vm.ci'][0]
             vmArgs.extend(['--add-exports=' + jvmci.name + '/' + p + '=jdk.internal.vm.compiler,ALL-UNNAMED' for p in jvmci.packages])
+
+    vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
+    vmArgs.append('-esa')
 
     if isJDK8:
         # Run the VM in a mode where application/test classes can
