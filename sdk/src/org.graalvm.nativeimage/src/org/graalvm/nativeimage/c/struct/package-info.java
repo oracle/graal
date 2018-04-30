@@ -22,7 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
+/*
+ @ApiInfo(
+ group="Graal SDK"
+ )
+ */
 /**
  * This package provides parts of the Java / C interface that are related to C structures.
  *

@@ -1,0 +1,2 @@
+org.eclipse.jdt.core.compiler.problem.missingOverrideAnnotationForInterfaceMethodImplementation=enabled
+org.eclipse.jdt.core.formatter.insert_new_line_after_annotation_on_enum_constant=do not insert

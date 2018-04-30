@@ -279,7 +279,10 @@ public final class GraalOptions {
 
     @Option(help = "Enable experimental Trace Register Allocation.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceRA = new OptionKey<>(false);
-    @Option(help = "Enable tracing of inlining decision.", type = OptionType.Debug)
+
+    @Option(help = "file:doc-files/TraceInliningHelp.txt", type = OptionType.Debug)
     public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
 
+    @Option(help = "Enable inlining decision tracing in stubs and snippets.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> TraceInliningForStubsAndSnippets = new OptionKey<>(false);
 }

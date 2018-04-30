@@ -41,8 +41,9 @@ public class ExecutableViaCCBootImage extends NativeBootImageViaCC {
 
     public ExecutableViaCCBootImage(HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
                     List<HostedMethod> entryPoints,
-                    HostedMethod mainEntryPoint) {
-        super(NativeImageKind.EXECUTABLE, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints);
+                    HostedMethod mainEntryPoint,
+                    ClassLoader classLoader) {
+        super(NativeImageKind.EXECUTABLE, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
         this.mainEntryPoint = mainEntryPoint;
     }
 

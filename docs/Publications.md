@@ -55,6 +55,14 @@ SPLASH 2012, October 19-26, Tucson, AZ
 
 ## Truffle Papers
 
+### 2018
+
+- Michael Van De Vanter, Chris Seaton, Michael Haupt, Christian Humer, and Thomas Würthinger  
+[**Fast, Flexible, Polyglot Instrumentation Support for Debuggers and other Tools**](https://arxiv.org/pdf/1803.10201v1.pdf)  
+In _The Art, Science, and Engineering of Programming, vol. 2, no. 3, 2018, article 14 (<Programming 2018>, Nice, France, April 12, 2018)_  
+[DOI](https://doi.org/10.22152/programming-journal.org/2018/2/14)  
+
+
 ### 2017
 
 - T. Würthinger, C. Wimmer, C. Humer, A. Wöss, L. Stadler, C. Seaton, G. Duboscq, D. Simon, M. Grimmer  

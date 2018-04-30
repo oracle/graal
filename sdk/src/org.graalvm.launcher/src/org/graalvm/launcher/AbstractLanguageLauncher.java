@@ -33,6 +33,7 @@ import java.util.Map;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
 
 public abstract class AbstractLanguageLauncher extends Launcher {
 
@@ -53,6 +54,8 @@ public abstract class AbstractLanguageLauncher extends Launcher {
                 launch(new ArrayList<>(Arrays.asList(args)), null, true);
             } catch (AbortException e) {
                 throw e;
+            } catch (PolyglotException e) {
+                handlePolyglotException(e);
             } catch (Throwable t) {
                 throw abort(t);
             }
@@ -99,11 +102,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         } else {
             builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
         }
-        if (!isAOT()) {
-            builder.allowHostAccess(true);
-        }
-        builder.allowCreateThread(true);
-        builder.allowIO(true);
+        builder.allowAllAccess(true);
 
         launch(builder);
     }

@@ -29,8 +29,8 @@ public class RawStructureInfo extends StructInfo {
     private boolean isPlanned;
     private RawStructureInfo parentInfo;
 
-    public RawStructureInfo(String typeName, ResolvedJavaType annotatedType) {
-        super(typeName, annotatedType, false);
+    public RawStructureInfo(String typeName, String typedefAnnotation, ResolvedJavaType annotatedType) {
+        super(typeName, typedefAnnotation, annotatedType, false);
     }
 
     @Override

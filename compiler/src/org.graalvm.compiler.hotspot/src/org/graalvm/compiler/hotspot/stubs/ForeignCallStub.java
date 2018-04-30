@@ -246,7 +246,7 @@ public class ForeignCallStub extends Stub {
             kit.append(new ReturnNode(linkage.getDescriptor().getResultType() == void.class ? null : result));
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Initial stub graph");
 
-            kit.inlineInvokes();
+            kit.inlineInvokes("Foreign call stub.", "Backend");
             new RemoveValueProxyPhase().apply(graph);
 
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Stub graph before compilation");

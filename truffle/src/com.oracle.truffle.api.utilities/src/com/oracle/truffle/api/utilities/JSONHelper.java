@@ -51,6 +51,7 @@ public class JSONHelper {
     private static StringBuilder AstJsonDumpBuilder = new StringBuilder();
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public static void dumpNewChild(Node parentNode, Node childNode) {
         if (AstJsonDumpBuilder != null) {
             AstJsonDumpBuilder.append("{ \"action\": \"insertNode\", \"parentId\": \"" + getID(parentNode) + "\", \"newId\": \"" + getID(childNode) + "\" },\n");
@@ -58,6 +59,7 @@ public class JSONHelper {
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public static void dumpReplaceChild(Node oldNode, Node newNode, CharSequence reason) {
         if (AstJsonDumpBuilder != null) {
             AstJsonDumpBuilder.append("{ \"action\": \"replaceNode\", \"oldId\": \"" + getID(oldNode) + "\", \"newId\": \"" + getID(newNode) + "\", \"reason\": " + quote(reason) + " },\n");
@@ -65,6 +67,7 @@ public class JSONHelper {
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public static void dumpNewNode(Node newNode) {
         if (AstJsonDumpBuilder != null) {
             String language = "";
@@ -81,6 +84,7 @@ public class JSONHelper {
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public static String getResult() {
         return AstJsonDumpBuilder.toString();
     }
@@ -136,6 +140,7 @@ public class JSONHelper {
     }
 
     /** @since 0.8 or earlier */
+    @Deprecated
     public static void restart() {
         AstJsonDumpBuilder = new StringBuilder();
     }

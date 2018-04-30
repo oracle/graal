@@ -296,8 +296,14 @@ public class ElementUtils {
             return true;
         } else if (isVoid(to)) {
             return true;
+        } else if (isNone(to)) {
+            return false;
         } else if (isObject(to)) {
             return true;
+        }
+        if (from.getKind() == TypeKind.NONE || to.getKind() == TypeKind.NONE) {
+            // workaround for eclipse compiler bug: v4.7.3a throws IllegalArgumentException
+            return false;
         }
         ProcessorContext context = ProcessorContext.getInstance();
         if (!(from instanceof CodeTypeMirror) && !(to instanceof CodeTypeMirror)) {
@@ -585,6 +591,10 @@ public class ElementUtils {
             default:
                 throw new RuntimeException("Unknown type specified " + mirror + " mirror: " + mirror);
         }
+    }
+
+    public static boolean isNone(TypeMirror mirror) {
+        return mirror != null && mirror.getKind() == TypeKind.NONE;
     }
 
     public static boolean isVoid(TypeMirror mirror) {

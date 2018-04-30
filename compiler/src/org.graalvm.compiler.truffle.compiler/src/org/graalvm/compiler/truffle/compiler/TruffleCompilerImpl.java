@@ -23,6 +23,9 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static jdk.vm.ci.runtime.JVMCICompiler.INVOCATION_ENTRY_BCI;
+import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.Diagnose;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAction;
+import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.common.CompilationRequestIdentifier.asCompilationRequest;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.ALL;
 import static org.graalvm.compiler.phases.OptimisticOptimizations.Optimization.RemoveNeverExecutedCode;
@@ -70,6 +73,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -506,6 +510,22 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler {
         @Override
         public String toString() {
             return compilable.toString();
+        }
+
+        @Override
+        protected ExceptionAction lookupAction(OptionValues options, EnumOptionKey<ExceptionAction> actionKey, Throwable cause) {
+            // Respect current action if it has been explicitly set.
+            if (!actionKey.hasBeenSet(options)) {
+                if (actionKey == CompilationFailureAction ||
+                                (actionKey == CompilationBailoutAction && ((BailoutException) cause).isPermanent())) {
+                    if (TruffleCompilerRuntime.areTruffleCompilationExceptionsFatal()) {
+                        // Get more info for Truffle compilation exceptions
+                        // that will cause the VM to exit.
+                        return Diagnose;
+                    }
+                }
+            }
+            return super.lookupAction(options, actionKey, cause);
         }
 
         @Override

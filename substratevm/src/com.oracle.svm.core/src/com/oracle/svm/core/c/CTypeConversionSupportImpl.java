@@ -70,6 +70,23 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
         }
     }
 
+    @Override
+    public String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset) {
+        if (cString.isNull()) {
+            return null;
+        } else {
+            return toJavaStringWithCharset(cString, length, charset);
+        }
+    }
+
+    private static String toJavaStringWithCharset(CCharPointer cString, UnsignedWord length, Charset charset) {
+        byte[] bytes = new byte[(int) length.rawValue()];
+        for (int i = 0; i < bytes.length; i++) {
+            bytes[i] = ((Pointer) cString).readByte(i);
+        }
+        return new String(bytes, charset);
+    }
+
     private static String toJavaStringUnchecked(CCharPointer cString, UnsignedWord length) {
         byte[] bytes = new byte[(int) length.rawValue()];
         for (int i = 0; i < bytes.length; i++) {

@@ -44,6 +44,7 @@ import java.util.Set;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -113,7 +114,7 @@ public final class NativeImageHeap {
         processAddObjectWorklist(debug);
 
         HostedField internedStringsField = (HostedField) StringInternFeature.getInternedStringsField(metaAccess);
-        boolean usesInternedStrings = internedStringsField.wrapped.isAccessed();
+        boolean usesInternedStrings = internedStringsField.isAccessed();
 
         if (usesInternedStrings) {
             /*
@@ -176,6 +177,11 @@ public final class NativeImageHeap {
 
     long getReadOnlyRelocatablePartitionOffset() {
         return readOnlyRelocatable.offsetInSection();
+    }
+
+    long getFirstRelocatablePointerOffsetInSection() {
+        assert firstRelocatablePointerOffsetInSection != -1;
+        return firstRelocatablePointerOffsetInSection;
     }
 
     long getReadOnlyRelocatablePartitionSize() {
@@ -314,9 +320,7 @@ public final class NativeImageHeap {
     private boolean isCanonicalizable(Object object, boolean parentCanonicalizable) {
         if (object instanceof String) {
             final String str = (String) object;
-            // Because I want Strings to be immutable in the native image heap,
-            // I have to fill in hash field, even if I don't use it.
-            str.hashCode();
+            forceHashCodeComputation(str);
             if (hostInternedString(str)) {
                 /*
                  * The string is interned by the host VM, so it must also be interned in our image.
@@ -333,6 +337,14 @@ public final class NativeImageHeap {
             return true;
         }
         return parentCanonicalizable;
+    }
+
+    /**
+     * For immutable Strings in the native image heap, force eager computation of the hash field.
+     */
+    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
+    private static void forceHashCodeComputation(final String str) {
+        str.hashCode();
     }
 
     private static boolean isInstance(List<Class<?>> classList, Object object) {
@@ -435,16 +447,26 @@ public final class NativeImageHeap {
             final boolean fieldsAreImmutable = canonicalObj instanceof String;
             for (HostedField field : clazz.getInstanceFields(true)) {
                 if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
-                    written = written || (field.isWritten() && !field.isFinal());
-                    if (field.getType().getStorageKind() == JavaKind.Object) {
+                    boolean fieldRelocatable = false;
+                    if (field.getJavaKind() == JavaKind.Object) {
                         assert field.hasLocation();
-                        Object fieldValue = readObjectField(field, con);
-                        if (spawnIsolates()) {
-                            relocatable = relocatable || fieldValue instanceof RelocatedPointer;
+                        JavaConstant value = field.readValue(con);
+                        if (value.getJavaKind() == JavaKind.Object) {
+                            Object obj = SubstrateObjectConstant.asObject(value);
+                            if (spawnIsolates()) {
+                                fieldRelocatable = obj instanceof RelocatedPointer;
+                            }
+                            recursiveAddObject(obj, canonicalizable, fieldsAreImmutable, info);
+                            references = true;
                         }
-                        recursiveAddObject(fieldValue, canonicalizable, fieldsAreImmutable, info);
-                        references = true;
                     }
+                    /*
+                     * The analysis considers relocatable pointers to be written because their
+                     * eventual value is assigned at runtime by the dynamic linker and it cannot be
+                     * inlined. Relocatable pointers are read-only for our purposes, however.
+                     */
+                    relocatable = relocatable || fieldRelocatable;
+                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                 }
 
             }
@@ -508,7 +530,7 @@ public final class NativeImageHeap {
             }
             return references ? readOnlyReference : readOnlyPrimitive;
         } else {
-            assert !relocatable;
+            VMError.guarantee(!relocatable, "Objects with relocatable pointers must be immutable");
             return references ? writableReference : writablePrimitive;
         }
     }
@@ -553,7 +575,7 @@ public final class NativeImageHeap {
         ObjectInfo primitiveFields = objects.get(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = objects.get(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.wrapped.isWritten() && field.wrapped.isAccessed()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.isWritten() && field.isAccessed()) {
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
             }
@@ -615,7 +637,7 @@ public final class NativeImageHeap {
                 int shift = compressEncoding.getShift();
                 writePointer(buffer, index, targetInfo.getOffsetInSection() >>> shift);
             } else {
-                buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
+                addDirectRelocationWithoutAddend(buffer, index, target);
             }
         }
     }
@@ -651,7 +673,23 @@ public final class NativeImageHeap {
         } else {
             // The address of the DynamicHub target will have to be added by the link editor.
             // DynamicHubs are the size of Object references.
-            buffer.addDirectRelocationWithAddend(index, objectSize(), objectHeaderBits, target);
+            addDirectRelocationWithAddend(buffer, index, target, objectHeaderBits);
+        }
+    }
+
+    private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, Object target) {
+        assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
+        buffer.addDirectRelocationWithoutAddend(index, objectSize(), target);
+        if (firstRelocatablePointerOffsetInSection == -1) {
+            firstRelocatablePointerOffsetInSection = index;
+        }
+    }
+
+    private void addDirectRelocationWithAddend(RelocatableBuffer buffer, int index, DynamicHub target, long objectHeaderBits) {
+        assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
+        buffer.addDirectRelocationWithAddend(index, objectSize(), objectHeaderBits, target);
+        if (firstRelocatablePointerOffsetInSection == -1) {
+            firstRelocatablePointerOffsetInSection = index;
         }
     }
 
@@ -666,7 +704,7 @@ public final class NativeImageHeap {
         HostedMethod method = ((MethodPointer) pointer).getMethod();
         if (method.isCodeAddressOffsetValid()) {
             // Only compiled methods inserted in vtables require relocation.
-            buffer.addDirectRelocationWithoutAddend(index, objectSize(), pointer);
+            addDirectRelocationWithoutAddend(buffer, index, pointer);
         }
     }
 
@@ -710,137 +748,55 @@ public final class NativeImageHeap {
     private void patchPartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
         // Figure out where the boundaries of the heap partitions are and
         // patch the objects that reference them so they will be correct at runtime.
-        // TODO: Why do both these methods get both these RelocatableBuffers?
-        patchReadOnlyPartitionBoundaries(debug, roBuffer, rwBuffer);
-        patchWritablePartitionBoundaries(debug, roBuffer, rwBuffer);
+        final NativeImageInfoPatcher patcher = new NativeImageInfoPatcher(debug, roBuffer, rwBuffer);
+        patcher.patchReference("firstReadOnlyPrimitiveObject", readOnlyPrimitive.firstAllocatedObject);
+        patcher.patchReference("lastReadOnlyPrimitiveObject", readOnlyPrimitive.lastAllocatedObject);
+
+        Object firstReadOnlyReferenceObject = readOnlyReference.firstAllocatedObject;
+        if (firstReadOnlyReferenceObject == null) {
+            firstReadOnlyReferenceObject = readOnlyRelocatable.firstAllocatedObject;
+        }
+        patcher.patchReference("firstReadOnlyReferenceObject", firstReadOnlyReferenceObject);
+
+        Object lastReadOnlyReferenceObject = readOnlyRelocatable.lastAllocatedObject;
+        if (lastReadOnlyReferenceObject == null) {
+            lastReadOnlyReferenceObject = readOnlyReference.lastAllocatedObject;
+        }
+        patcher.patchReference("lastReadOnlyReferenceObject", lastReadOnlyReferenceObject);
+
+        patcher.patchReference("firstWritablePrimitiveObject", writablePrimitive.firstAllocatedObject);
+        patcher.patchReference("lastWritablePrimitiveObject", writablePrimitive.lastAllocatedObject);
+
+        patcher.patchReference("firstWritableReferenceObject", writableReference.firstAllocatedObject);
+        patcher.patchReference("lastWritableReferenceObject", writableReference.lastAllocatedObject);
     }
 
-    private void patchBootImageInfoField(ObjectInfo info, String fieldName, RelocatableBuffer roBuffer, RelocatableBuffer rwBuffer) {
-        try {
-            ObjectInfo staticFieldsInfo = objects.get(StaticFieldsSupport.getStaticObjectFields());
-            final HostedField field = getMetaAccess().lookupJavaField(NativeImageInfo.class.getDeclaredField(fieldName));
-            final int index = staticFieldsInfo.getIntIndexInSection(field.getLocation());
-            // Overwrite the previously written null-value with the actual object location.
-            final RelocatableBuffer buffer = bufferForPartition(staticFieldsInfo, roBuffer, rwBuffer);
-            writeReference(buffer, index, info.getObject(), staticFieldsInfo);
-        } catch (NoSuchFieldException ex) {
-            throw shouldNotReachHere(ex);
+    private final class NativeImageInfoPatcher {
+        NativeImageInfoPatcher(DebugContext debugContext, RelocatableBuffer roBuffer, RelocatableBuffer rwBuffer) {
+            staticFieldsInfo = objects.get(StaticFieldsSupport.getStaticObjectFields());
+            buffer = bufferForPartition(staticFieldsInfo, roBuffer, rwBuffer);
+            debug = debugContext;
         }
-    }
 
-    private void patchReadOnlyPartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
-        // Find the boundaries of the read-only partitions in what will be the native image heap.
-        final ObjectInfo firstReadOnlyPrimitiveObject = findFirstReadOnlyPrimitiveObject();
-        if (firstReadOnlyPrimitiveObject != null) {
-            patchBootImageInfoField(firstReadOnlyPrimitiveObject, "firstReadOnlyPrimitiveObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchReadOnlyPartitionBoundaries: firstReadOnlyPrimitiveObject is null.");
-        }
-        final ObjectInfo lastReadOnlyPrimitiveObject = findLastReadOnlyPrimitiveObject();
-        if (lastReadOnlyPrimitiveObject != null) {
-            patchBootImageInfoField(lastReadOnlyPrimitiveObject, "lastReadOnlyPrimitiveObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchReadOnlyPartitionBoundaries: lastReadOnlyPrimitiveObject is null.");
-        }
-        final ObjectInfo firstReadOnlyReferenceObject = findFirstReadOnlyReferenceObject();
-        if (firstReadOnlyReferenceObject != null) {
-            patchBootImageInfoField(firstReadOnlyReferenceObject, "firstReadOnlyReferenceObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchReadOnlyPartitionBoundaries: firstReadOnlyReferenceObject is null.");
-        }
-        final ObjectInfo lastReadOnlyReferenceObject = findLastReadOnlyReferenceObject();
-        if (lastReadOnlyReferenceObject != null) {
-            patchBootImageInfoField(lastReadOnlyReferenceObject, "lastReadOnlyReferenceObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchReadOnlyPartitionBoundaries: lastReadOnlyReferenceObject is null.");
-        }
-    }
+        void patchReference(String fieldName, Object fieldValue) {
+            if (fieldValue == null) {
+                debug.log("BootImageHeap.patchPartitionBoundaries: %s is null", fieldName);
+                return;
+            }
 
-    private void patchWritablePartitionBoundaries(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
-        // Find the boundaries of the writable partitions in what will be the native image heap.
-        final ObjectInfo firstWritablePrimitiveObject = findFirstWritablePrimitiveObject();
-        if (firstWritablePrimitiveObject != null) {
-            patchBootImageInfoField(firstWritablePrimitiveObject, "firstWritablePrimitiveObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchWritablePartitionBoundaries: firstWritablePrimitiveObject is null.");
-        }
-        final ObjectInfo lastWritablePrimitiveObject = findLastWritablePrimitiveObject();
-        if (lastWritablePrimitiveObject != null) {
-            patchBootImageInfoField(lastWritablePrimitiveObject, "lastWritablePrimitiveObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchWritablePartitionBoundaries: lastWritablePrimitiveObject is null.");
-        }
-        final ObjectInfo firstWritableReferenceObject = findFirstWritableReferenceObject();
-        if (firstWritableReferenceObject != null) {
-            patchBootImageInfoField(firstWritableReferenceObject, "firstWritableReferenceObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchWritablePartitionBoundaries: firstWritableReferenceObject is null.");
-        }
-        final ObjectInfo lastWritableReferenceObject = findLastWritableReferenceObject();
-        if (lastWritableReferenceObject != null) {
-            patchBootImageInfoField(lastWritableReferenceObject, "lastWritableReferenceObject", roBuffer, rwBuffer);
-        } else {
-            debug.log("BootImageHeap.patchWritablePartitionBoundaries: lastWritableReferenceObject is null.");
-        }
-    }
-
-    /*
-     * Methods to convert from native image heap partitions to native image sections.
-     */
-
-    private interface ObjectInfoMonadPredicate {
-        /** Returns true if the ObjectInfo matches some predicate. */
-        boolean predicate(ObjectInfo info);
-    }
-
-    private interface ObjectInfoDyadPredicate {
-        /** Returns true if the candidate is better than the current best. */
-        boolean predicate(ObjectInfo best, ObjectInfo candidate);
-    }
-
-    /** Run through the objects collection, filtering entries and choosing the best. */
-    private ObjectInfo selectFromObjects(final ObjectInfoMonadPredicate pp, final ObjectInfoDyadPredicate op) {
-        ObjectInfo result = null;
-        for (ObjectInfo info : objects.values()) {
-            if (pp.predicate(info)) {
-                if ((result == null) || op.predicate(result, info)) {
-                    result = info;
-                }
+            try {
+                final HostedField field = getMetaAccess().lookupJavaField(NativeImageInfo.class.getDeclaredField(fieldName));
+                final int index = staticFieldsInfo.getIntIndexInSection(field.getLocation());
+                // Overwrite the previously written null-value with the actual object location.
+                writeReference(buffer, index, fieldValue, staticFieldsInfo);
+            } catch (NoSuchFieldException ex) {
+                throw shouldNotReachHere(ex);
             }
         }
-        return result;
-    }
 
-    private ObjectInfo findFirstReadOnlyPrimitiveObject() {
-        return selectFromObjects((i) -> (i.getPartition() == readOnlyPrimitive), (b, c) -> (c.getOffsetInSection() < b.getOffsetInSection()));
-    }
-
-    private ObjectInfo findLastReadOnlyPrimitiveObject() {
-        return selectFromObjects((i) -> (i.getPartition() == readOnlyPrimitive), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
-    }
-
-    private ObjectInfo findFirstReadOnlyReferenceObject() {
-        return selectFromObjects((i) -> (i.getPartition() == readOnlyReference || i.getPartition() == readOnlyRelocatable), (b, c) -> (c.getOffsetInSection() < b.getOffsetInSection()));
-    }
-
-    private ObjectInfo findLastReadOnlyReferenceObject() {
-        return selectFromObjects((i) -> (i.getPartition() == readOnlyReference || i.getPartition() == readOnlyRelocatable), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
-    }
-
-    private ObjectInfo findFirstWritablePrimitiveObject() {
-        return selectFromObjects((i) -> (i.getPartition() == writablePrimitive), (b, c) -> (c.getOffsetInSection() < b.getOffsetInSection()));
-    }
-
-    private ObjectInfo findLastWritablePrimitiveObject() {
-        return selectFromObjects((i) -> (i.getPartition() == writablePrimitive), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
-    }
-
-    private ObjectInfo findFirstWritableReferenceObject() {
-        return selectFromObjects((i) -> (i.getPartition() == writableReference), (b, c) -> (c.getOffsetInSection() < b.getOffsetInSection()));
-    }
-
-    private ObjectInfo findLastWritableReferenceObject() {
-        return selectFromObjects((i) -> (i.getPartition() == writableReference), (b, c) -> (b.getOffsetInSection() < c.getOffsetInSection()));
+        private final ObjectInfo staticFieldsInfo;
+        private final RelocatableBuffer buffer;
+        private final DebugContext debug;
     }
 
     private static RelocatableBuffer bufferForPartition(final ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
@@ -939,6 +895,7 @@ public final class NativeImageHeap {
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIntIndexInSection(layout.getArrayElementOffset(kind, i));
                     final Object element = aUniverse.replaceObject(oarray[i]);
+                    assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }
             } else {
@@ -1031,6 +988,7 @@ public final class NativeImageHeap {
     private final HeapPartition readOnlyPrimitive;
     private final HeapPartition readOnlyReference;
     private final HeapPartition readOnlyRelocatable;
+    private long firstRelocatablePointerOffsetInSection = -1;
     private final HeapPartition writablePrimitive;
     private final HeapPartition writableReference;
 
@@ -1165,8 +1123,7 @@ public final class NativeImageHeap {
         void assignToHeapPartition(HeapPartition objectPartition, ObjectLayout layout) {
             assert partition == null;
             partition = objectPartition;
-            offsetInPartition = partition.getSize();
-            partition.incrementSize(size);
+            offsetInPartition = partition.allocate(this);
             assert layout.isReferenceAligned(offsetInPartition) : "start: " + offsetInPartition + " must be aligned.";
             assert layout.isReferenceAligned(size) : "size: " + size + " must be aligned.";
         }
@@ -1208,6 +1165,18 @@ public final class NativeImageHeap {
         void incrementSize(final long increment) {
             size += increment;
             count += 1L;
+        }
+
+        long allocate(ObjectInfo info) {
+            Object object = info.getObject();
+            lastAllocatedObject = object;
+            if (firstAllocatedObject == null) {
+                firstAllocatedObject = object;
+            }
+
+            long position = size;
+            incrementSize(info.getSize());
+            return position;
         }
 
         public boolean isWritable() {
@@ -1281,6 +1250,8 @@ public final class NativeImageHeap {
             this.writable = writable;
             this.size = 0L;
             this.count = 0L;
+            this.firstAllocatedObject = null;
+            this.lastAllocatedObject = null;
             this.sectionName = null;
             this.sectionOffset = INVALID_SECTION_OFFSET;
         }
@@ -1295,6 +1266,10 @@ public final class NativeImageHeap {
         private long size;
         /** The number of objects in this partition. */
         private long count;
+
+        Object firstAllocatedObject;
+        Object lastAllocatedObject;
+
         /** The name of the native image section in which this partition lives. */
         private String sectionName;
         /**

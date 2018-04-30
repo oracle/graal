@@ -44,7 +44,10 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
+import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.WebSocketServer;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Chrome inspector as an instrument.
@@ -54,6 +57,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final int DEFAULT_PORT = 9229;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
+    private ConnectionWatcher connectionWatcher;
 
     static final OptionType<HostAndPort> ADDRESS_OR_BOOLEAN = new OptionType<>("[[host:]port]", DEFAULT_ADDRESS, (address) -> {
         if (address.isEmpty() || address.equals("true")) {
@@ -99,12 +103,24 @@ public final class InspectorInstrument extends TruffleInstrument {
         OptionValues options = env.getOptions();
         if (options.hasSetOptions()) {
             Server server = new Server(env);
+            HostAndPort hostAndPort = options.get(Inspect);
+            connectionWatcher = new ConnectionWatcher();
             try {
-                InetSocketAddress socketAddress = options.get(Inspect).createSocket(options.get(Remote));
-                server.start("Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path));
+                InetSocketAddress socketAddress = hostAndPort.createSocket(options.get(Remote));
+                server.start("Main Context", socketAddress, options.get(Suspend), options.get(WaitAttached), options.get(HideErrors), options.get(Path), connectionWatcher);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new InspectorIOException(hostAndPort.getHostPort(options.get(Remote)), e);
             }
+        }
+    }
+
+    @Override
+    protected void onFinalize(Env env) {
+        if (connectionWatcher.shouldWaitForClose()) {
+            PrintWriter info = new PrintWriter(env.out());
+            info.println("Waiting for the debugger to disconnect...");
+            info.flush();
+            connectionWatcher.waitForClose();
         }
     }
 
@@ -152,6 +168,20 @@ public final class InspectorInstrument extends TruffleInstrument {
             }
         }
 
+        String getHostPort(boolean remote) {
+            String hostName = host;
+            if (hostName == null || hostName.isEmpty()) {
+                if (inetAddress != null) {
+                    hostName = inetAddress.toString();
+                } else if (remote) {
+                    hostName = "localhost";
+                } else {
+                    hostName = InetAddress.getLoopbackAddress().toString();
+                }
+            }
+            return hostName + ":" + port;
+        }
+
         InetSocketAddress createSocket(boolean remote) throws UnknownHostException {
             InetAddress ia;
             if (inetAddress == null) {
@@ -176,7 +206,8 @@ public final class InspectorInstrument extends TruffleInstrument {
             this.env = env;
         }
 
-        String start(String contextName, InetSocketAddress socketAdress, boolean debugBreak, boolean waitAttached, boolean hideErrors, String path) throws IOException {
+        String start(String contextName, InetSocketAddress socketAdress, boolean debugBreak, boolean waitAttached, boolean hideErrors, String path, ConnectionWatcher connectionWatcher)
+                        throws IOException {
             PrintWriter info = new PrintWriter(env.err());
             String wsspath;
             if (path == null || path.isEmpty()) {
@@ -188,9 +219,16 @@ public final class InspectorInstrument extends TruffleInstrument {
 
             PrintWriter err = (hideErrors) ? null : info;
             final TruffleExecutionContext executionContext = TruffleExecutionContext.create(contextName, env, err);
+            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak, connectionWatcher);
+            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
+            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
+            info.println("To start debugging, open the following URL in Chrome:");
+            info.println("    " + address);
+            info.flush();
             if (debugBreak || waitAttached) {
-                final EventBinding<?>[] execEnter = new EventBinding<?>[1];
-                execEnter[0] = env.getInstrumenter().attachContextsListener(new ContextsListener() {
+                final AtomicReference<EventBinding<?>> execEnter = new AtomicReference<>();
+                final AtomicBoolean disposeBinding = new AtomicBoolean(false);
+                execEnter.set(env.getInstrumenter().attachContextsListener(new ContextsListener() {
                     @Override
                     public void onContextCreated(TruffleContext context) {
                     }
@@ -206,7 +244,12 @@ public final class InspectorInstrument extends TruffleInstrument {
                             executionContext.waitForRunPermission();
                         } catch (InterruptedException ex) {
                         }
-                        execEnter[0].dispose();
+                        final EventBinding<?> binding = execEnter.getAndSet(null);
+                        if (binding != null) {
+                            binding.dispose();
+                        } else {
+                            disposeBinding.set(true);
+                        }
                     }
 
                     @Override
@@ -220,14 +263,11 @@ public final class InspectorInstrument extends TruffleInstrument {
                     @Override
                     public void onContextClosed(TruffleContext context) {
                     }
-                }, true);
+                }, true));
+                if (disposeBinding.get()) {
+                    execEnter.get().dispose();
+                }
             }
-            wss = WebSocketServer.get(socketAdress, wsspath, executionContext, debugBreak);
-            String address = buildAddress(socketAdress.getAddress().getHostAddress(), wss.getListeningPort(), wsspath);
-            info.println("Debugger listening on port " + wss.getListeningPort() + ".");
-            info.println("To start debugging, open the following URL in Chrome:");
-            info.println("    " + address);
-            info.flush();
             return address;
         }
 

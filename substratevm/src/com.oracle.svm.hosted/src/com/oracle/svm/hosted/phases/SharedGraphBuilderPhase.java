@@ -215,6 +215,19 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        @Override
+        protected JavaType lookupType(int cpi, int bytecode) {
+            try {
+                return super.lookupType(cpi, bytecode);
+            } catch (LinkageError e) {
+                if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+                    /* The caller knows how do deal with unresolved types. */
+                    return null;
+                }
+                throw e;
+            }
+        }
+
         private boolean handleStoreFieldResolutionError(int cpi, int opcode) {
             if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
                 JavaField target = lookupFailedResolutionField(cpi, method, opcode);

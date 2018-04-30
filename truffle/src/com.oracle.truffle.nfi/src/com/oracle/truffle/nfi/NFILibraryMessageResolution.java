@@ -104,6 +104,14 @@ class NFILibraryMessageResolution {
         }
     }
 
+    @Resolve(message = "KEYS")
+    abstract static class KeysNode extends Node {
+
+        public Object access(NFILibrary receiver) {
+            return receiver.getSymbols();
+        }
+    }
+
     @Resolve(message = "KEY_INFO")
     abstract static class KeyInfoNode extends Node {
 

@@ -39,9 +39,9 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 @TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", mimeType = ProxyLanguage.ID)
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
-    static final String ID = "proxyLanguage";
+    public static final String ID = "proxyLanguage";
 
-    static class LanguageContext {
+    public static class LanguageContext {
         final Env env;
 
         LanguageContext(Env env) {
@@ -56,9 +56,18 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     private boolean wrapper = true;
     protected ProxyLanguage languageInstance;
 
-    public static void setDelegate(ProxyLanguage delegate) {
-        delegate.wrapper = false;
+    public static <T extends ProxyLanguage> T setDelegate(T delegate) {
+        ((ProxyLanguage) delegate).wrapper = false;
         ProxyLanguage.delegate = delegate;
+        return delegate;
+    }
+
+    public static LanguageContext getCurrentContext() {
+        return getCurrentContext(ProxyLanguage.class);
+    }
+
+    public static ContextReference<LanguageContext> getCurrentContextReference() {
+        return getCurrentLanguage(ProxyLanguage.class).getContextReference();
     }
 
     @Override
@@ -151,6 +160,16 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             super.initializeContext(context);
         }
 
+    }
+
+    @Override
+    protected boolean initializeMultiContext() {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.initializeMultiContext();
+        } else {
+            return super.initializeMultiContext();
+        }
     }
 
     @Override

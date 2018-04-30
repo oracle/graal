@@ -96,7 +96,7 @@ public final class Debugger {
     Debugger(Env env) {
         this.env = env;
         this.msgNodes = new ObjectStructures.MessageNodes();
-        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, SuspendAnchor.BEFORE, false, null);
+        this.alwaysHaltBreakpoint = new Breakpoint(BreakpointLocation.ANY, SuspendAnchor.BEFORE);
         this.alwaysHaltBreakpoint.setEnabled(true);
     }
 
@@ -364,8 +364,8 @@ public final class Debugger {
          * TODO I initially moved this to TruffleInstrument.Env but decided against as a new API for
          * inline parsing might replace it.
          */
-        protected Object evalInContext(Node node, MaterializedFrame frame, String code) {
-            return languageSupport().evalInContext(code, node, frame);
+        protected Object evalInContext(Source source, Node node, MaterializedFrame frame) {
+            return languageSupport().evalInContext(source, node, frame);
         }
 
     }

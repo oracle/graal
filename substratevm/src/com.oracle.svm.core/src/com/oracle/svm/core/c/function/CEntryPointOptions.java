@@ -50,6 +50,13 @@ public @interface CEntryPointOptions {
         }
     }
 
+    final class UnchangedNameTransformation implements Function<String, String> {
+        @Override
+        public String apply(String name) {
+            return name;
+        }
+    }
+
     /**
      * A function that is passed the name provided with {@link CEntryPoint#name()} and returns
      * another string that will be used for the entry point's symbol name. A common use is to add

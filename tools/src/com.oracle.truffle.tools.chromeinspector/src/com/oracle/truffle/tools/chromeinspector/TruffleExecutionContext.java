@@ -30,17 +30,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.debug.DebugException;
+import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 import com.oracle.truffle.tools.chromeinspector.instrument.Enabler;
 import com.oracle.truffle.tools.chromeinspector.instrument.SourceLoadInstrument;
 import com.oracle.truffle.tools.chromeinspector.server.CommandProcessException;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
 /**
  * The Truffle engine execution context.
@@ -54,7 +55,7 @@ public final class TruffleExecutionContext {
     private final PrintWriter err;
     private final List<Listener> listeners = Collections.synchronizedList(new ArrayList<>(3));
     private final long id = LAST_ID.incrementAndGet();
-    private final Semaphore runPermission = new Semaphore(1);
+    private final boolean[] runPermission = new boolean[]{false};
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
@@ -68,7 +69,6 @@ public final class TruffleExecutionContext {
         this.name = name;
         this.env = env;
         this.err = err;
-        runPermission.drainPermits();
     }
 
     public static TruffleExecutionContext create(String name, TruffleInstrument.Env env, PrintWriter err) {
@@ -89,7 +89,10 @@ public final class TruffleExecutionContext {
 
     public void doRunIfWaitingForDebugger() {
         fireContextCreated();
-        runPermission.release();
+        synchronized (runPermission) {
+            runPermission[0] = true;
+            runPermission.notifyAll();
+        }
     }
 
     public ScriptsHandler getScriptsHandler() {
@@ -127,7 +130,11 @@ public final class TruffleExecutionContext {
     }
 
     public void waitForRunPermission() throws InterruptedException {
-        runPermission.acquire();
+        synchronized (runPermission) {
+            while (!runPermission[0]) {
+                runPermission.wait();
+            }
+        }
     }
 
     synchronized RemoteObjectsHandler getRemoteObjectsHandler() {
@@ -135,6 +142,14 @@ public final class TruffleExecutionContext {
             roh = new RemoteObjectsHandler(err);
         }
         return roh;
+    }
+
+    public RemoteObject createAndRegister(DebugValue value) {
+        RemoteObject ro = new RemoteObject(value, getErr());
+        if (ro.getId() != null) {
+            getRemoteObjectsHandler().register(ro);
+        }
+        return ro;
     }
 
     void setSuspendThreadExecutor(SuspendedThreadExecutor suspendThreadExecutor) {
@@ -168,8 +183,8 @@ public final class TruffleExecutionContext {
             params = cf.get();
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
-            if (cause instanceof TruffleException && !((TruffleException) cause).isInternalError()) {
-                throw new GuestLanguageException((TruffleException) cause);
+            if (cause instanceof DebugException && !((DebugException) cause).isInternalError()) {
+                throw new GuestLanguageException((DebugException) cause);
             }
             if (cause instanceof CommandProcessException) {
                 throw (CommandProcessException) cause;
@@ -249,16 +264,17 @@ public final class TruffleExecutionContext {
         }
     }
 
+    /** A checked variant of DebugException. */
     static final class GuestLanguageException extends Exception {
 
         private static final long serialVersionUID = 7386388514508637851L;
 
-        private GuestLanguageException(TruffleException truffleException) {
-            super((Throwable) truffleException);
+        private GuestLanguageException(DebugException truffleException) {
+            super(truffleException);
         }
 
-        TruffleException getTruffleException() {
-            return (TruffleException) getCause();
+        DebugException getDebugException() {
+            return (DebugException) getCause();
         }
     }
 }

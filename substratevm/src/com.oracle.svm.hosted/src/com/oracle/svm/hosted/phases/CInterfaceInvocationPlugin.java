@@ -28,12 +28,10 @@ import java.util.Arrays;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -70,21 +68,20 @@ import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.CInterfaceError;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
+import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;
-import com.oracle.svm.hosted.c.info.EnumInfo;
-import com.oracle.svm.hosted.c.info.EnumLookupInfo;
-import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.c.info.PointerToInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.JavaKind;
@@ -98,14 +95,11 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
 
     private final NativeLibraries nativeLibs;
 
-    private final CInterfaceEnumTool enumTool;
-
     private final ResolvedJavaType functionPointerType;
 
-    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, NativeLibraries nativeLibs) {
+    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, WordTypes wordTypes, NativeLibraries nativeLibs) {
         this.wordTypes = wordTypes;
         this.nativeLibs = nativeLibs;
-        this.enumTool = new CInterfaceEnumTool(metaAccess, snippetReflection);
         this.functionPointerType = metaAccess.lookupJavaType(CFunctionPointer.class);
     }
 
@@ -130,10 +124,6 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
-        } else if (methodInfo instanceof EnumValueInfo) {
-            return enumTool.replaceEnumValueInvoke((BytecodeParser) b, (EnumInfo) methodInfo.getParent(), method, args);
-        } else if (methodInfo instanceof EnumLookupInfo) {
-            return enumTool.replaceEnumLookupInvoke((BytecodeParser) b, (EnumInfo) methodInfo.getParent(), method, args);
         } else if (method.getAnnotation(InvokeCFunctionPointer.class) != null) {
             return replaceFunctionPointerInvoke(b, method, args, SubstrateCallingConventionType.NativeCall);
         } else if (method.getAnnotation(InvokeJavaFunctionPointer.class) != null) {
@@ -382,7 +372,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return locationIdentity;
     }
 
-    static ValueNode adaptPrimitiveType(StructuredGraph graph, ValueNode value, JavaKind fromKind, JavaKind toKind, boolean isUnsigned) {
+    public static ValueNode adaptPrimitiveType(StructuredGraph graph, ValueNode value, JavaKind fromKind, JavaKind toKind, boolean isUnsigned) {
         if (fromKind == toKind) {
             return value;
         }
@@ -489,6 +479,8 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
              * introducing additional invokes without real BCIs in a BytecodeParser context, which
              * does not work too well.
              */
+
+            b.append(new CFunctionPrologueNode());
         }
 
         // We "discard" the receiver from the signature by pretending we are a static method
@@ -517,13 +509,14 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else {
                 b.add(invokeNode);
             }
+            b.append(new CFunctionEpilogueNode());
         } else {
             throw shouldNotReachHere("Unsupported type of call: " + callType);
         }
         return true;
     }
 
-    static JavaKind pushKind(ResolvedJavaMethod method) {
+    public static JavaKind pushKind(ResolvedJavaMethod method) {
         return method.getSignature().getReturnKind().getStackKind();
     }
 }

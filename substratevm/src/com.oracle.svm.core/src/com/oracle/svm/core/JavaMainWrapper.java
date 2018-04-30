@@ -207,6 +207,9 @@ public class JavaMainWrapper {
         JavaThreads.singleton().joinAllNonDaemons();
         Counter.logValues();
 
+        /* Shut down the VM. */
+        RuntimeSupport.getRuntimeSupport().shutdown();
+
         return 0;
     }
 

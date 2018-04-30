@@ -22,13 +22,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not
@@ -41,121 +40,109 @@ public class UninterruptibleUtils {
 
     public static class AtomicInteger {
 
-        /**
-         * A mutable int value holder. I am not using anything <em>atomic</em> about the holder, but
-         * I can not use a vanilla {@link Integer} because that would be immutable.
-         */
-        private final java.util.concurrent.atomic.AtomicInteger intHolder;
+        private static final long VALUE_OFFSET;
+
+        static {
+            try {
+                VALUE_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(AtomicInteger.class.getDeclaredField("value"));
+            } catch (Throwable ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
+        private volatile int value;
 
         public AtomicInteger(int value) {
-            this.intHolder = new java.util.concurrent.atomic.AtomicInteger(value);
+            this.value = value;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public int get() {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicInteger.valueOffset;
-            return UnsafeAccess.UNSAFE.getInt(intHolder, valueOffset);
+            return value;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public void set(int newValue) {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicInteger.valueOffset;
-            UnsafeAccess.UNSAFE.putInt(intHolder, valueOffset, newValue);
+            value = newValue;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public int incrementAndGet() {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicInteger.valueOffset;
-            final int previous = UnsafeAccess.UNSAFE.getAndAddInt(intHolder, valueOffset, 1);
-            // This sum may be out of date by the time the caller gets it, but that could have
-            // happened with incrementAndGet, too.
-            return (previous + 1);
+            return UnsafeAccess.UNSAFE.getAndAddInt(this, VALUE_OFFSET, 1) + 1;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public int decrementAndGet() {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicInteger.valueOffset;
-            final int previous = UnsafeAccess.UNSAFE.getAndAddInt(intHolder, valueOffset, -1);
-            // This result may be out of date by the time the caller gets it, but that could have
-            // happened with decrementAndGet, too.
-            return (previous - 1);
+            return UnsafeAccess.UNSAFE.getAndAddInt(this, VALUE_OFFSET, -1) - 1;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public boolean compareAndSet(int expected, int update) {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicInteger.valueOffset;
-            return UnsafeAccess.UNSAFE.compareAndSwapInt(intHolder, valueOffset, expected, update);
+            return UnsafeAccess.UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
         }
     }
 
     public static class AtomicPointer<T extends PointerBase> {
 
-        /**
-         * Store the PointerBase field in a mutable long value holder. I am not using anything
-         * <em>atomic</em> about the holder, but I can not use a vanilla {@link Long} because that
-         * would be immutable.
-         */
-        private final java.util.concurrent.atomic.AtomicLong longHolder;
+        private static final long VALUE_OFFSET;
 
-        public AtomicPointer() {
-            this.longHolder = new AtomicLong();
+        static {
+            try {
+                VALUE_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(AtomicPointer.class.getDeclaredField("value"));
+            } catch (Throwable ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
         }
 
-        @SuppressWarnings("unchecked")
+        private volatile long value;
+
         @Uninterruptible(reason = "Called from uninterruptible code.")
         public T get() {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicLong.valueOffset;
-            final long valueLong = UnsafeAccess.UNSAFE.getLong(longHolder, valueOffset);
-            return (T) WordFactory.unsigned(valueLong);
+            return WordFactory.pointer(value);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.")
         public void set(T newValue) {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicLong.valueOffset;
-            final long valueLong = newValue.rawValue();
-            UnsafeAccess.UNSAFE.putLong(longHolder, valueOffset, valueLong);
+            value = newValue.rawValue();
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.")
         public boolean compareAndSet(T expected, T update) {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicLong.valueOffset;
-            final long expectedLong = expected.rawValue();
-            final long updateLong = update.rawValue();
-            return UnsafeAccess.UNSAFE.compareAndSwapLong(longHolder, valueOffset, expectedLong, updateLong);
+            return UnsafeAccess.UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
         }
     }
 
     public static class AtomicReference<T> {
 
-        /**
-         * A mutable AtomicReference value holder. I am not using anything <em>atomic</em> about the
-         * holder, I need a holder that I can use with
-         * {@link sun.misc.Unsafe#compareAndSwapObject(Object, long, Object, Object)}.
-         */
-        private final java.util.concurrent.atomic.AtomicReference<T> referenceHolder;
+        private static final long VALUE_OFFSET;
+
+        static {
+            try {
+                VALUE_OFFSET = UnsafeAccess.UNSAFE.objectFieldOffset(AtomicReference.class.getDeclaredField("value"));
+            } catch (Throwable ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
+        private volatile T value;
 
         public AtomicReference(T value) {
-            this.referenceHolder = new java.util.concurrent.atomic.AtomicReference<>(value);
+            this.value = value;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public T get() {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicReference.valueOffset;
-            @SuppressWarnings("unchecked")
-            final T result = (T) UnsafeAccess.UNSAFE.getObject(referenceHolder, valueOffset);
-            return result;
+            return value;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public void set(T newValue) {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicReference.valueOffset;
-            UnsafeAccess.UNSAFE.putObject(referenceHolder, valueOffset, newValue);
+            value = newValue;
         }
 
         @Uninterruptible(reason = "Uninterruptible inline expansion")
         public boolean compareAndSet(T expected, T update) {
-            final long valueOffset = Target_java_util_concurrent_atomic_AtomicReference.valueOffset;
-            return UnsafeAccess.UNSAFE.compareAndSwapObject(referenceHolder, valueOffset, expected, update);
+            return UnsafeAccess.UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
         }
     }
 

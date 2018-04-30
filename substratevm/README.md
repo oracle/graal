@@ -7,7 +7,11 @@ Substrate VM is a framework that allows ahead-of-time (AOT) compilation of Java 
 
 ## Quick start
 
-Install [mx](https://github.com/graalvm/mx) and point `JAVA_HOME` to a [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html). After cloning the repository, run
+Install [mx](https://github.com/graalvm/mx) and point `JAVA_HOME` to a [labsjdk](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
+
+For compilation `native-image` depends on the local toolchain, so make sure: `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`) and `gcc` are available on your system.
+
+After cloning the repository, run
 
 ```bash
 cd substratevm
@@ -20,7 +24,7 @@ $JAVA_HOME/bin/javac HelloWorld.java
 ./native-image --server-shutdown
 ```
 
-To speed up successive image-build requests, native-image launches background image-build servers. The last command ensures that all image-build servers are shut down. (If you build images only with `-no-server`, this step can be omitted.)
+To speed up successive image-build requests, native-image launches background image-build servers. The last command ensures that all image-build servers are shut down. (If you build images only with `--no-server`, this step can be omitted.)
 
 ## Build Script
 

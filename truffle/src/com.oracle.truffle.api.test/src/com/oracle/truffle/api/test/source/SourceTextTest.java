@@ -60,18 +60,14 @@ public class SourceTextTest {
         assertTrue(emptySource.getURI().toString().endsWith("emptySource"));
     }
 
-    // Temp disable of empty text tests
-
-    // @Test(expected = IllegalArgumentException.class)
-    @Test()
+    @Test
     public void emptyTextTest1() {
-        emptySource.getLineNumber(0);
+        assertEquals(1, emptySource.getLineNumber(0));
     }
 
-    // @Test(expected = IllegalArgumentException.class)
-    @Test()
+    @Test
     public void emptyTextTest2() {
-        emptySource.getColumnNumber(0);
+        assertEquals(1, emptySource.getColumnNumber(0));
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -79,20 +75,34 @@ public class SourceTextTest {
         emptySource.getLineNumber(-1);
     }
 
-    // @Test(expected = IllegalArgumentException.class)
-    @Test()
+    @Test(expected = IllegalArgumentException.class)
     public void emptyTextTest4() {
         emptySource.getLineStartOffset(0);
     }
 
-    // @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptyTextTest5() {
-        emptySource.getLineStartOffset(1);
+        assertEquals(0, emptySource.getLineStartOffset(1));
     }
 
-    // @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptyTextTest6() {
-        emptySource.getLineLength(1);
+        assertEquals(0, emptySource.getLineLength(1));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest7() {
+        emptySource.getLineStartOffset(2);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest8() {
+        emptySource.getLineLength(2);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyTextTest9() {
+        emptySource.getLineLength(0);
     }
 
     @Test
@@ -104,24 +114,34 @@ public class SourceTextTest {
         assertEquals(emptyLineSource.getLineLength(1), 0);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptyLineTest1() {
-        emptyLineSource.getLineNumber(1);
+        assertEquals(2, emptyLineSource.getLineNumber(1));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptyLineTest2() {
-        emptyLineSource.getLineStartOffset(2);
+        assertEquals(1, emptyLineSource.getLineStartOffset(2));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptyLineTest3() {
-        emptyLineSource.getColumnNumber(1);
+        assertEquals(1, emptyLineSource.getColumnNumber(1));
+    }
+
+    @Test
+    public void emptyLineTest4() {
+        assertEquals(0, emptyLineSource.getLineLength(2));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void emptyLineTest4() {
-        emptyLineSource.getLineLength(2);
+    public void emptyLineTest5() {
+        emptyLineSource.getLineNumber(2);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void emptyLineTest6() {
+        emptyLineSource.getColumnNumber(2);
     }
 
     @Test
@@ -149,24 +169,34 @@ public class SourceTextTest {
         shortSource.getColumnNumber(-1);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void shortTextTest3() {
-        shortSource.getLineNumber(2);
+        assertEquals(1, shortSource.getLineNumber(2));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void shortTextTest4() {
-        shortSource.getColumnNumber(2);
+        assertEquals(3, shortSource.getColumnNumber(2));
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest5() {
-        shortSource.getLineLength(2);
+        shortSource.getLineStartOffset(2);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void shortTextTest6() {
         shortSource.getLineLength(2);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shortTextTest7() {
+        shortSource.getLineNumber(3);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void shortTextTest8() {
+        shortSource.getColumnNumber(3);
     }
 
     @Test
@@ -206,19 +236,44 @@ public class SourceTextTest {
 
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void longTextTest1() {
-        longSource.getLineNumber(11);
+        assertEquals(4, longSource.getLineNumber(11));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void longTextTest2() {
-        longSource.getColumnNumber(11);
+        assertEquals(1, longSource.getColumnNumber(11));
+    }
+
+    @Test
+    public void longTextTest3() {
+        assertEquals(11, longSource.getLineStartOffset(4));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void longTextTest3() {
-        longSource.getLineStartOffset(4);
+    public void longTextTest4() {
+        longSource.getLineStartOffset(5);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void longTextTest5() {
+        longSource.getLineNumber(12);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void longTextTest6() {
+        longSource.getColumnNumber(12);
+    }
+
+    @Test
+    public void longTextTest7() {
+        assertEquals(0, longSource.getLineLength(4));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void longTextTest8() {
+        longSource.getLineLength(5);
     }
 
     @Test

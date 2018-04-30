@@ -30,9 +30,9 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
- * A filter to skip certain suspension locations. An instance of this filter can be provided to
+ * A filter to limit the suspension locations. An instance of this filter can be provided to
  * {@link DebuggerSession#setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter) debugger
- * session} to skip matching code during stepping.
+ * session} to step on locations matching this filter only.
  *
  * @see DebuggerSession#setSteppingFilter(com.oracle.truffle.api.debug.SuspensionFilter)
  * @since 0.26

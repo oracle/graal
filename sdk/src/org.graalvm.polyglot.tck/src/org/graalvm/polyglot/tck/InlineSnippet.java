@@ -188,7 +188,7 @@ public final class InlineSnippet {
                             script,
                             code,
                             predicate,
-                            verifier != null ? verifier : ResultVerifier.getDefaultResultVerfier());
+                            verifier != null ? verifier : ResultVerifier.getDefaultResultVerifier());
         }
     }
 }

@@ -99,9 +99,9 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
     }
 
     @Override
-    public EconomicSet<Node> inline(Providers providers) {
+    public EconomicSet<Node> inline(Providers providers, String reason) {
         createGuard(graph(), providers);
-        return inline(invoke, concrete, inlineableElement, false);
+        return inline(invoke, concrete, inlineableElement, false, reason);
     }
 
     @Override

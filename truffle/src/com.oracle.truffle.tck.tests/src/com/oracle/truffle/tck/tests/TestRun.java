@@ -27,6 +27,7 @@ package com.oracle.truffle.tck.tests;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.function.Function;
@@ -58,7 +59,7 @@ public class TestRun {
         return snippet.getValue();
     }
 
-    List<? extends TypeDescriptor> gatActualParameterTypes() {
+    List<? extends TypeDescriptor> getActualParameterTypes() {
         final List<TypeDescriptor> res = new ArrayList<>();
         for (Entry<String, ? extends Snippet> argument : arguments) {
             res.add(argument.getValue().getReturnType());
@@ -73,6 +74,10 @@ public class TestRun {
             res.add(value.execute());
         }
         return res;
+    }
+
+    List<? extends Map.Entry<String, ? extends Snippet>> getActualParameterSnippets() {
+        return arguments;
     }
 
     @Override

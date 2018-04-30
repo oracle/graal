@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
@@ -63,11 +64,16 @@ import org.graalvm.polyglot.io.FileSystem;
 /**
  * Communication between TruffleLanguage API/SPI, and other services.
  */
+@SuppressWarnings("deprecation")
 public abstract class Accessor {
 
     @SuppressWarnings("all")
     protected final Collection<ClassLoader> loaders() {
         return TruffleLocator.loaders();
+    }
+
+    protected void initializeNativeImageTruffleLocator() {
+        TruffleLocator.initializeNativeImageTruffleLocator();
     }
 
     public abstract static class Nodes {
@@ -144,7 +150,6 @@ public abstract class Accessor {
         public static final int EXECUTION_EVENT = 1;
         public static final int SUSPENDED_EVENT = 2;
 
-        @SuppressWarnings("deprecation")
         public abstract <C> com.oracle.truffle.api.impl.FindContextNode<C> createFindContextNode(TruffleLanguage<C> lang);
 
         @SuppressWarnings("rawtypes")
@@ -184,7 +189,7 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract Env getEnvForLanguage(Object languageShared, String languageId, String mimeType);
+        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames);
 
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
@@ -225,6 +230,8 @@ public abstract class Accessor {
         public abstract Object lookupHostSymbol(Object vmObject, Env env, String symbolName);
 
         public abstract boolean isHostAccessAllowed(Object vmObject, Env env);
+
+        public abstract boolean isNativeAccessAllowed(Object vmObject, Env env);
 
         public abstract Object createInternalContext(Object vmObject, Map<String, Object> config, TruffleContext spiContext);
 
@@ -291,6 +298,13 @@ public abstract class Accessor {
         public abstract Object findMetaObjectForLanguage(Object vmObject, Object value);
 
         public abstract boolean isDefaultFileSystem(FileSystem fs);
+
+        public abstract String getLanguageHome(Object engineObject);
+
+        public abstract void addToHostClassPath(Object vmObject, TruffleFile entries);
+
+        public abstract boolean isInstrumentExceptionsAreThrown(Object vmObject);
+
     }
 
     public abstract static class LanguageSupport {
@@ -306,7 +320,7 @@ public abstract class Accessor {
 
         public abstract void postInitEnv(Env env);
 
-        public abstract Object evalInContext(String code, Node node, MaterializedFrame frame);
+        public abstract Object evalInContext(Source source, Node node, MaterializedFrame frame);
 
         public abstract Object findExportedSymbol(TruffleLanguage.Env env, String globalName, boolean onlyExplicit);
 
@@ -365,6 +379,8 @@ public abstract class Accessor {
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
                         FileSystem fileSystem);
 
+        public abstract boolean initializeMultiContext(LanguageInfo info);
+
     }
 
     public abstract static class InstrumentSupport {
@@ -372,6 +388,8 @@ public abstract class Accessor {
         public abstract void initializeInstrument(Object instrumentationHandler, Object key, Class<?> instrumentClass);
 
         public abstract void createInstrument(Object instrumentationHandler, Object key, String[] expectedServices, OptionValues options);
+
+        public abstract void finalizeInstrument(Object instrumentationHandler, Object key);
 
         public abstract void disposeInstrument(Object instrumentationHandler, Object key, boolean cleanupRequired);
 
@@ -665,7 +683,6 @@ public abstract class Accessor {
         return SUPPORT.callProfiled(target, args);
     }
 
-    @SuppressWarnings("deprecation")
     protected void onLoopCount(Node source, int iterations) {
         if (SUPPORT != null) {
             SUPPORT.onLoopCount(source, iterations);

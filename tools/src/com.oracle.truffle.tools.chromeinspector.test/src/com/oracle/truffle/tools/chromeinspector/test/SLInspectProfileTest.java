@@ -25,7 +25,9 @@
 package com.oracle.truffle.tools.chromeinspector.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Test;
 
@@ -84,8 +86,10 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":3,\"method\":\"Profiler.setSamplingInterval\",\"params\":{\"interval\":1000}}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
+        assertFalse(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.start\"}");
         assertEquals("{\"result\":{},\"id\":4}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.eval(source).get();
         tester.sendMessage("{\"id\":5,\"method\":\"Profiler.stop\"}");
         JSONObject json = new JSONObject(tester.getMessages(true).trim());
@@ -97,6 +101,7 @@ public class SLInspectProfileTest {
         assertNotNull(jsonProfile);
         tester.sendMessage("{\"id\":6,\"method\":\"Profiler.disable\"}");
         assertEquals("{\"result\":{},\"id\":6}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.finish();
     }
 
@@ -109,8 +114,10 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        assertFalse(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\"}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.takePreciseCoverage\"}");
         assertEquals("{\"result\":{\"result\":[]},\"id\":4}", tester.getMessages(true).trim());
         tester.eval(source).get();
@@ -125,6 +132,7 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":7}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":8,\"method\":\"Profiler.disable\"}");
         assertEquals("{\"result\":{},\"id\":8}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.finish();
     }
 
@@ -137,8 +145,10 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        assertFalse(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startPreciseCoverage\",\"params\":{\"detailed\":true}}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.takePreciseCoverage\"}");
         assertEquals("{\"result\":{\"result\":[]},\"id\":4}", tester.getMessages(true).trim());
         tester.eval(source).get();
@@ -153,6 +163,7 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":7}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":8,\"method\":\"Profiler.disable\"}");
         assertEquals("{\"result\":{},\"id\":8}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.finish();
     }
 
@@ -165,8 +176,10 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":1}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":2,\"method\":\"Profiler.enable\"}");
         assertEquals("{\"result\":{},\"id\":2}", tester.getMessages(true).trim());
+        assertFalse(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":3,\"method\":\"Profiler.startTypeProfile\"}");
         assertEquals("{\"result\":{},\"id\":3}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.sendMessage("{\"id\":4,\"method\":\"Profiler.takeTypeProfile\"}");
         assertEquals("{\"result\":{\"result\":[]},\"id\":4}", tester.getMessages(true).trim());
         tester.eval(source).get();
@@ -183,6 +196,7 @@ public class SLInspectProfileTest {
         assertEquals("{\"result\":{},\"id\":7}", tester.getMessages(true).trim());
         tester.sendMessage("{\"id\":8,\"method\":\"Profiler.disable\"}");
         assertEquals("{\"result\":{},\"id\":8}", tester.getMessages(true).trim());
+        assertTrue(tester.shouldWaitForClose());
         tester.finish();
     }
     // @formatter:on

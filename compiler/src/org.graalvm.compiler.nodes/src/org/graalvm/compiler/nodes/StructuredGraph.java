@@ -359,12 +359,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.compilationId = compilationId;
         this.entryBCI = entryBCI;
         this.assumptions = assumptions;
-        this.speculationLog = speculationLog;
+        if (speculationLog != null && !(speculationLog instanceof GraphSpeculationLog)) {
+            this.speculationLog = new GraphSpeculationLog(speculationLog);
+        } else {
+            this.speculationLog = speculationLog;
+        }
         this.useProfilingInfo = useProfilingInfo;
         this.trackNodeSourcePosition = trackNodeSourcePosition;
         assert trackNodeSourcePosition != null;
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog(rootMethod, options);
+        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options));
         this.callerContext = context;
     }
 
@@ -480,7 +484,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void logInliningTree() {
         if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            TTY.println(getInliningLog().formatAsTree());
+            String formattedTree = getInliningLog().formatAsTree(true);
+            if (formattedTree != null) {
+                TTY.println(formattedTree);
+            }
         }
     }
 

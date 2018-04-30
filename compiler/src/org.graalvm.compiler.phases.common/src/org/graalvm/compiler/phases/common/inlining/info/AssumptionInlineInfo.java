@@ -46,9 +46,9 @@ public class AssumptionInlineInfo extends ExactInlineInfo {
     }
 
     @Override
-    public EconomicSet<Node> inline(Providers providers) {
+    public EconomicSet<Node> inline(Providers providers, String reason) {
         takenAssumption.recordTo(invoke.asNode().graph().getAssumptions());
-        return super.inline(providers);
+        return super.inline(providers, reason);
     }
 
     @Override

@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.util.InterruptImageBuilding;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
@@ -80,7 +81,7 @@ public class CCompilerInvoker {
         } catch (InterruptedException ex) {
             throw new InterruptImageBuilding();
         } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
+            throw UserError.abort("Unable to compile C-ABI query code. Make sure GCC toolchain is installed on your system.");
         }
     }
 

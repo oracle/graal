@@ -61,7 +61,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.genscavenge.HeapPolicyOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -163,13 +162,6 @@ class NativeImage {
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
 
-    private static <T> String oR(OptionKey<T> option) {
-        return oR + option.getName() + "=";
-    }
-
-    static final String oRYoungGenerationSize = oR(HeapPolicyOptions.YoungGenerationSize);
-    static final String oROldGenerationSize = oR(HeapPolicyOptions.OldGenerationSize);
-
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
 
@@ -195,7 +187,6 @@ class NativeImage {
     private boolean dryRun = false;
 
     final Registry optionRegistry;
-    private final MacroOption truffleOption;
 
     protected NativeImage() {
         workDir = Paths.get(".").toAbsolutePath().normalize();
@@ -253,7 +244,6 @@ class NativeImage {
 
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
-        truffleOption = optionRegistry.addBuiltin("truffle");
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
@@ -326,9 +316,7 @@ class NativeImage {
         getJars(bootDir).forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
     }
 
-    private void applyOptionArgs() {
-        optionRegistry.applyOptions(this);
-
+    private void completeOptionArgs() {
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
         LinkedHashSet<EnabledOption> enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
         for (EnabledOption enabledOption : optionRegistry.getEnabledOptions()) {
@@ -338,19 +326,19 @@ class NativeImage {
             }
         }
 
-        if (!enabledLanguages.isEmpty() || optionRegistry.getEnabledOption(truffleOption) != null) {
-            enableTruffle();
-        }
-
         /* Create a polyglot image if we have more than one LauncherClass. */
         Set<String> launcherClasses = enabledLanguages.stream()
                         .map(lang -> lang.getProperty("LauncherClass"))
                         .filter(Objects::nonNull).collect(Collectors.toSet());
         if (launcherClasses.size() > 1) {
-            /* Use polyglot as image name */
-            replaceArg(imageBuilderArgs, oHName, "polyglot");
-            /* and the PolyglotLauncher as main class */
-            replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
+            /* Use polyglot as image name if not defined on command line */
+            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
+                replaceArg(imageBuilderArgs, oHName, "polyglot");
+            }
+            if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHClass))) {
+                /* and the PolyglotLauncher as main class if not defined on command line */
+                replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
+            }
             /* Collect the launcherClasses for enabledLanguages. */
             addImageBuilderJavaArgs("-Dcom.oracle.graalvm.launcher.launcherclasses=" + launcherClasses.stream().collect(Collectors.joining(",")));
         }
@@ -362,17 +350,7 @@ class NativeImage {
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
-    }
 
-    private void enableTruffle() {
-        Path truffleDir = getRootDir().resolve(Paths.get("lib", "truffle"));
-        addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
-        addImageBuilderArg(oHFeatures + "com.oracle.svm.truffle.TruffleFeature");
-        addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
-        addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
-
-        Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
-        getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
@@ -423,7 +401,7 @@ class NativeImage {
     private void completeImageBuildArgs(String[] args) {
         List<String> leftoverArgs = processNativeImageArgs(args);
 
-        applyOptionArgs();
+        completeOptionArgs();
 
         /* If no customImageClasspath was specified put "." on classpath */
         if (customImageClasspath.isEmpty()) {
@@ -440,14 +418,10 @@ class NativeImage {
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
-        /* Append user provided imageBuilderArgs to imageBuilderArgs */
-        imageBuilderArgs.addAll(customImageBuilderArgs);
 
         /* Perform option consolidation of imageBuilderArgs */
         Function<String, String> canonicalizedPathStr = s -> canonicalize(Paths.get(s)).toString();
         consolidateArgs(imageBuilderArgs, oHMaxRuntimeCompileMethods, Integer::parseInt, String::valueOf, () -> 0, Integer::sum);
-        consolidateArgs(imageBuilderArgs, oRYoungGenerationSize, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
-        consolidateArgs(imageBuilderArgs, oROldGenerationSize, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
         consolidateListArgs(imageBuilderArgs, oHCLibraryPath, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHSubstitutionResources, ",", Function.identity());
@@ -475,13 +449,6 @@ class NativeImage {
                 if (!leftoverArg.startsWith("-")) {
                     leftoverArgsItr.remove();
                     extraImageArgs.add(leftoverArg);
-                }
-            }
-            if (!leftoverArgs.isEmpty()) {
-                if (leftoverArgs.size() == 1) {
-                    showError("Unrecognized option: " + leftoverArgs.get(0));
-                } else {
-                    showError(leftoverArgs.stream().collect(Collectors.joining(", ", "Unrecognized options: ", "")));
                 }
             }
 
@@ -515,6 +482,11 @@ class NativeImage {
                 /* extraImageArgs executable name overrules previous specification */
                 replaceArg(imageBuilderArgs, oHName, extraImageArgs.remove(0));
             }
+        }
+
+        if (!leftoverArgs.isEmpty()) {
+            String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
+            showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
         }
 
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
@@ -578,10 +550,20 @@ class NativeImage {
 
     Path canonicalize(Path path) {
         Path absolutePath = path.isAbsolute() ? path : workDir.resolve(path);
+        boolean hasWildcard = absolutePath.endsWith("*");
+        if (hasWildcard) {
+            absolutePath = absolutePath.getParent();
+        }
         try {
             Path realPath = absolutePath.toRealPath(LinkOption.NOFOLLOW_LINKS);
             if (!Files.isReadable(realPath)) {
                 showError("Path entry " + path.toString() + " is not readable");
+            }
+            if (hasWildcard) {
+                if (!Files.isDirectory(realPath)) {
+                    showError("Path entry with wildcard " + path.toString() + " is not a directory");
+                }
+                realPath = realPath.resolve("*");
             }
             return realPath;
         } catch (IOException e) {
@@ -624,6 +606,7 @@ class NativeImage {
     }
 
     void addImageBuilderArg(String arg) {
+        imageBuilderArgs.remove(arg);
         imageBuilderArgs.add(arg);
     }
 
@@ -640,6 +623,7 @@ class NativeImage {
     }
 
     void addCustomImageBuilderArgs(String arg) {
+        addImageBuilderArg(arg);
         customImageBuilderArgs.add(arg);
     }
 
@@ -771,9 +755,20 @@ class NativeImage {
         return Collections.unmodifiableMap(map);
     }
 
+    private static String deletedFileSuffix = ".deleted";
+
+    protected static boolean isDeletedPath(Path toDelete) {
+        return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
+    }
+
     protected void deleteAllFiles(Path toDelete) {
         try {
-            Files.walk(toDelete).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            Path deletedPath = toDelete;
+            if (!isDeletedPath(deletedPath)) {
+                deletedPath = toDelete.resolveSibling(toDelete.getFileName() + deletedFileSuffix);
+                Files.move(toDelete, deletedPath);
+            }
+            Files.walk(deletedPath).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         } catch (IOException e) {
             if (isVerbose()) {
                 showMessage("Could not recursively delete path: " + toDelete);

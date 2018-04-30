@@ -46,13 +46,6 @@ These options enable additional checks in the generated executable. This helps w
 * `-R:[+|-]VerboseGC`
   Print more information about the heap before and after each
   collection.
-* Deprecated Garbage Collection options:
-    * `-R:YoungGenerationSize=`
-  Set the size of the young generation (the amount of memory that can be allocated without triggering a GC in between). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. 
-  Replaced by `-Xmn`.
-    * `-R:OldGenerationSize=`
-  Set the size of the old generation (the maximum heap size). Value is specified in bytes, suffix `k`, `m`, or `g` can be used for scaling. Note that this is not the maximum amount of consumed memory, because during GC the system can request more temporary memory.
-  Replaced by `-Xmx`.
 
 
 ### Control the main entry points

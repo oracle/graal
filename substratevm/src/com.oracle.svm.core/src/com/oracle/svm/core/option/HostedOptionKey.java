@@ -50,6 +50,17 @@ public class HostedOptionKey<T> extends OptionKey<T> {
     }
 
     /**
+     * Returns {@code true} if this option has been set in the {@link HostedOptionValues}.
+     * <p>
+     * The result of this method is guaranteed to be constant folded in the native image due to the
+     * {@link Fold} annotation.
+     */
+    @Fold
+    public boolean hasBeenSet() {
+        return hasBeenSet(HostedOptionValues.singleton());
+    }
+
+    /**
      * Descriptors are not loaded for {@link HostedOptionKey}.
      */
     @Override

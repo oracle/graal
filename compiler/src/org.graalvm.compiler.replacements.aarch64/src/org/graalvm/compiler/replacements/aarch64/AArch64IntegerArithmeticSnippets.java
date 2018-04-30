@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -160,14 +161,14 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     private static void checkForZero(int y) {
         if (y == 0) {
             // "/ by zero"
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.ArithmeticException);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException);
         }
     }
 
     private static void checkForZero(long y) {
         if (y == 0) {
             // "/ by zero"
-            DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.ArithmeticException);
+            DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.ArithmeticException);
         }
     }
 

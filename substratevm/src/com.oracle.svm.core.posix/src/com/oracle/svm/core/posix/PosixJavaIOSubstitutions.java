@@ -80,6 +80,7 @@ import static com.oracle.svm.core.posix.headers.Unistd.close;
 import static com.oracle.svm.core.posix.headers.Unistd.ftruncate;
 import static com.oracle.svm.core.posix.headers.Unistd.lseek;
 
+import java.io.Console;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileNotFoundException;
@@ -88,7 +89,9 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -111,6 +114,7 @@ import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
 import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.Termios;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -694,10 +698,16 @@ final class Target_java_io_RandomAccessFile {
 @TargetClass(java.io.Console.class)
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_Console {
-    @Alias Charset cs;
+
+    @Alias //
+    Charset cs;
+
+    @Alias //
+    static boolean echoOff;
 
     @Alias
     Target_java_io_Console() {
+        /* The empty body on an alias does not substitute. */
     }
 
     @Substitute
@@ -708,6 +718,106 @@ final class Target_java_io_Console {
     @Substitute
     static boolean istty() {
         return Unistd.isatty(Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.in)) == 1 && Unistd.isatty(Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.out)) == 1;
+    }
+
+    /* { Do not re-format commented out C code: @formatter:off */
+    // 047 JNIEXPORT jboolean JNICALL
+    // 048 Java_java_io_Console_echo(JNIEnv *env,
+    // 049                           jclass cls,
+    // 050                           jboolean on) {
+    @Substitute
+    static boolean echo(boolean on) throws IOException {
+        /* Initialize the echo shut down hook, once. */
+        Util_java_io_Console.addShutdownHook();
+        // 052     struct termios tio;
+        final Termios.termios tio = StackValue.get(SizeOf.get(Termios.termios.class));
+        // 053     jboolean old;
+        boolean old;
+        // 054     int tty = fileno(stdin);
+        /* TODO: Cf. in istty(): Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.in). */
+        final int tty = Unistd.STDIN_FILENO();
+        // 055     if (tcgetattr(tty, &tio) == -1) {
+        if (Termios.tcgetattr(tty, tio) == -1) {
+            // 056         JNU_ThrowIOExceptionWithLastError(env, "tcgetattr failed");
+            throw new IOException("tcgetattr failed");
+            // 057         return !on;
+            /* Unreachable code. */
+        }
+        // 059     old = (tio.c_lflag & ECHO);
+        old = (tio.get_c_lflag() & Termios.ECHO()) != 0;
+        // 060     if (on) {
+        if (on) {
+            // 061         tio.c_lflag |= ECHO;
+            tio.set_c_lflag(tio.get_c_lflag() | Termios.ECHO());
+        } else {
+            // 063         tio.c_lflag &= ~ECHO;
+            tio.set_c_lflag(tio.get_c_lflag() & ~Termios.ECHO());
+        }
+        // 065     if (tcsetattr(tty, TCSANOW, &tio) == -1) {
+        if (Termios.tcsetattr(tty, Termios.TCSANOW(), tio) == -1) {
+            // 066         JNU_ThrowIOExceptionWithLastError(env, "tcsetattr failed");
+            throw new IOException("tcsetattr failed");
+        }
+        // 068     return old;
+        return old;
+    }
+    /* } Do not re-format commented out C code: @formatter:on */
+}
+
+/** Utility methods for {@link Target_java_io_Console}. */
+class Util_java_io_Console {
+
+    @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
+    static Console fromTarget(Target_java_io_Console tjic) {
+        return Console.class.cast(tjic);
+    }
+
+    public static Console toConsole(Target_java_io_Console tjic) {
+        return fromTarget(tjic);
+    }
+
+    /** An initialization flag. */
+    static volatile boolean initialized = false;
+
+    /** A lock to protect the initialization flag. */
+    static ReentrantLock lock = new ReentrantLock();
+
+    static void addShutdownHook() {
+        if (!initialized) {
+            lock.lock();
+            try {
+                if (!initialized) {
+                    try {
+                        /*
+                         * Compare this code to the static initialization code of {@link
+                         * java.io.Console}.
+                         */
+                        Target_sun_misc_SharedSecrets.getJavaLangAccess().registerShutdownHook(
+                                        0 /* shutdown hook invocation order */,
+                                        false /* only register if shutdown is not in progress */,
+                                        new Runnable() {/* hook */
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    if (Target_java_io_Console.echoOff) {
+                                                        Target_java_io_Console.echo(true);
+                                                    }
+                                                } catch (IOException x) {
+                                                    /* Ignored. */
+                                                }
+                                            }
+                                        });
+                        initialized = true;
+                    } catch (InternalError ie) {
+                        /* Someone already registered the shutdown hook at slot 0. */
+                    } catch (IllegalStateException e) {
+                        /* Too late to register this shutdown hook. */
+                    }
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
     }
 }
 

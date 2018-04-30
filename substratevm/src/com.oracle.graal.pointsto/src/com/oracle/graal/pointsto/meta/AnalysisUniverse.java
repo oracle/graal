@@ -607,4 +607,9 @@ public class AnalysisUniverse implements Universe {
     public SnippetReflectionProvider getOriginalSnippetReflection() {
         return originalSnippetReflection;
     }
+
+    @Override
+    public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
+        return substitutions.resolve(method);
+    }
 }

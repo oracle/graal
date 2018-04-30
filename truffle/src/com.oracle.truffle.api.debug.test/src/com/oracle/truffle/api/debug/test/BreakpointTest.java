@@ -46,6 +46,7 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Source;
 
 public class BreakpointTest extends AbstractDebugTest {
@@ -664,7 +665,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
         // Breakpoints deactivated after the first suspend - no breakpoints are hit
         try (DebuggerSession session = startSession()) {
-            Assert.assertTrue(session.isBreakpointsActive());
+            Assert.assertTrue(session.isBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION));
             // normal breakpoint
             Breakpoint breakpoint3 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
 
@@ -682,7 +683,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 2, true, "STATEMENT");
-                session.setBreakpointsActive(false);
+                session.setBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION, false);
             });
             expectDone();
 
@@ -696,7 +697,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
         // Breakpoints deactivated after the first one is hit - the others are not
         try (DebuggerSession session = startSession()) {
-            Assert.assertTrue(session.isBreakpointsActive());
+            Assert.assertTrue(session.isBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION));
             // normal breakpoint
             Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build());
 
@@ -714,7 +715,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 2, true, "STATEMENT");
-                session.setBreakpointsActive(false);
+                session.setBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION, false);
             });
             expectDone();
 
@@ -728,9 +729,9 @@ public class BreakpointTest extends AbstractDebugTest {
 
         // Breakpoints initially deactivated, they are activated before the last one is hit.
         try (DebuggerSession session = startSession()) {
-            Assert.assertTrue(session.isBreakpointsActive());
-            session.setBreakpointsActive(false);
-            Assert.assertFalse(session.isBreakpointsActive());
+            Assert.assertTrue(session.isBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION));
+            session.setBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION, false);
+            Assert.assertFalse(session.isBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION));
             // normal breakpoint
             Breakpoint breakpoint2 = session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(2).build());
 
@@ -751,7 +752,7 @@ public class BreakpointTest extends AbstractDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 4, true, "STATEMENT");
-                session.setBreakpointsActive(true);
+                session.setBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION, true);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 5, true, "STATEMENT");
@@ -1043,6 +1044,96 @@ public class BreakpointTest extends AbstractDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 Assert.assertSame(breakpoint, event.getBreakpoints().get(0));
                 checkState(event, 3, true, "STATEMENT");
+            });
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testMisplacedLineBreakpoints() throws Exception {
+        final String source = "ROOT(\n" +
+                        "  DEFINE(foo,\n" +
+                        "    R3_STATEMENT,\n" +
+                        "    EXPRESSION,\n" +
+                        "    DEFINE(fooinner,\n" +
+                        "      VARIABLE(n, 10),\n" +
+                        "      \n" +
+                        "      R6-9_STATEMENT\n" +
+                        "    ),\n" +
+                        "    R4-5_R10-12_STATEMENT(EXPRESSION),\n" +
+                        "    CALL(fooinner)\n" +
+                        "  ),\n" +
+                        "  \n" +
+                        "  R1-2_R13-16_STATEMENT,\n" +
+                        "  CALL(foo)\n" +
+                        ")\n";
+        tester.assertLineBreakpointsResolution(source, "R", InstrumentationTestLanguage.ID);
+    }
+
+    @Test
+    public void testMisplacedBreakpointPositions() throws Exception {
+        String source = " B1_{} R1-2_{S B2_}B3_\n" +
+                        "R3_[SFB ]\n" +
+                        "{F{B\n" +
+                        "  B4_{I B5_ } R4-5_[SFIB B6_ R6-7_{S}B7_] B8_\n" +
+                        "  {}\n" +
+                        "  R8-11_{S}\n" +
+                        "B9_}B10_}B11_\n";
+        assertColumnPositionsTest(source);
+    }
+
+    private void assertColumnPositionsTest(String source) throws Exception {
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+        tester.close();
+        // Different materialization changes the order of nodes that are processed during search for
+        // the nearest suspendable location of a breakpoint.
+        tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "1"));
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+        tester.close();
+        tester = new DebuggerTester(org.graalvm.polyglot.Context.newBuilder().option(InstrumentablePositionsTestLanguage.ID + ".PreMaterialize", "2"));
+        tester.assertColumnBreakpointsResolution(source, "B", "R", InstrumentablePositionsTestLanguage.ID);
+    }
+
+    @Test
+    public void testStepOverBreakpoint() {
+        final Source source = testSource("ROOT(\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT,\n" +
+                        "  STATEMENT\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            Breakpoint breakpoint3 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build();
+            Breakpoint breakpoint4 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(4).build();
+            Breakpoint breakpoint5 = Breakpoint.newBuilder(getSourceImpl(source)).lineIs(5).build();
+            session.install(breakpoint3);
+            session.install(breakpoint4);
+            session.install(breakpoint5);
+            breakpoint4.setEnabled(false);
+
+            startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                // No breakpoints set at line 2
+                assertEquals(0, event.getBreakpoints().size());
+                checkState(event, 2, true, "STATEMENT").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // Enabled breakpoint at line 3
+                assertEquals(1, event.getBreakpoints().size());
+                assertSame(breakpoint3, event.getBreakpoints().get(0));
+                checkState(event, 3, true, "STATEMENT").prepareStepOver(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // Disabled breakpoint at line 4
+                assertEquals(0, event.getBreakpoints().size());
+                checkState(event, 4, true, "STATEMENT").prepareStepOver(1);
+                session.setBreakpointsActive(Breakpoint.Kind.SOURCE_LOCATION, false);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                // Deactivated breakpoints
+                assertEquals(0, event.getBreakpoints().size());
+                checkState(event, 5, true, "STATEMENT").prepareStepOver(1);
             });
             expectDone();
         }

@@ -183,6 +183,7 @@ public class PluginGenerator {
         out.printf("import jdk.vm.ci.meta.ResolvedJavaMethod;\n");
         out.printf("import org.graalvm.compiler.serviceprovider.ServiceProvider;\n");
         out.printf("\n");
+        out.printf("import java.lang.annotation.Annotation;\n");
         out.printf("import org.graalvm.compiler.nodes.ValueNode;\n");
         out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;\n");
         out.printf("import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;\n");

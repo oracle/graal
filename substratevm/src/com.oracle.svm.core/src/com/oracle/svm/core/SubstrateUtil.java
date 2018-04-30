@@ -152,27 +152,6 @@ public class SubstrateUtil {
         public native long address();
     }
 
-    @TargetClass(java.lang.String.class)
-    private static final class Target_java_lang_String {
-        @Alias//
-        char[] value;
-
-        @SuppressWarnings("unused")
-        @Alias
-        Target_java_lang_String(char[] value, boolean share) {
-        }
-    }
-
-    /**
-     * Returns the char[] arrays used to store the characters in a {@link String} without any
-     * copying. You must not modify the returned array, otherwise you violate the immutability of
-     * strings.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public static char[] getRawStringChars(String s) {
-        return KnownIntrinsics.unsafeCast(s, Target_java_lang_String.class).value;
-    }
-
     /**
      * Wraps a pointer to C memory into a {@link ByteBuffer}.
      *

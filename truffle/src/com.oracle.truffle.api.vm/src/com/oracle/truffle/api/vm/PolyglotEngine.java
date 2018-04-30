@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package com.oracle.truffle.api.vm;
+
+import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -58,6 +60,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
@@ -997,8 +1000,13 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
-            return ((Language) vmObject).engine().findLanguage(mimeType, true).getEnv(true);
+        public CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames) {
+            Env env = ((Language) vmObject).engine().findLanguage(source.getMimeType(), true).getEnv(true);
+            CallTarget target = LANGUAGE.parse(env, source, null, argumentNames);
+            if (target == null) {
+                throw new NullPointerException("Parsing has not produced a CallTarget for " + source);
+            }
+            return target;
         }
 
         @Override
@@ -1010,6 +1018,12 @@ public class PolyglotEngine {
         @Override
         public boolean isHostAccessAllowed(Object vmObject, Env env) {
             return false;
+        }
+
+        @Override
+        public boolean isNativeAccessAllowed(Object vmObject, Env env) {
+            // now way to specify access rights with legacy PolyglotEngine
+            return true;
         }
 
         @Override
@@ -1049,6 +1063,11 @@ public class PolyglotEngine {
             Object vmObject = VMAccessor.LANGUAGE.getVMObject(info);
             Instrument instrument = (Instrument) vmObject;
             return instrument.lookup(serviceClass);
+        }
+
+        @Override
+        public void addToHostClassPath(Object vmObject, TruffleFile entries) {
+            // not supported
         }
 
         @Override
@@ -1479,6 +1498,16 @@ public class PolyglotEngine {
 
         @Override
         public boolean isDefaultFileSystem(FileSystem fs) {
+            return false;
+        }
+
+        @Override
+        public String getLanguageHome(Object engineObject) {
+            return ((PolyglotRuntime.LanguageShared) engineObject).cache.getLanguageHome();
+        }
+
+        @Override
+        public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
             return false;
         }
     }

@@ -49,11 +49,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final class OptionInfo {
         final String builderOption;
+        final String defaultValue;
         final String helpText;
         final boolean hasPathArguments;
 
-        OptionInfo(String builderOption, String helpText, boolean hasPathArguments) {
+        OptionInfo(String builderOption, String defaultValue, String helpText, boolean hasPathArguments) {
             this.builderOption = builderOption;
+            this.defaultValue = defaultValue;
             this.helpText = helpText;
             this.hasPathArguments = hasPathArguments;
         }
@@ -74,10 +76,14 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (option != null) {
             args.poll();
             String builderOption = option.builderOption;
+            String optionValue = option.defaultValue;
             if (optionParts.length == 2) {
-                String optionValue = optionParts[1];
+                optionValue = optionParts[1];
+            }
+            if (optionValue != null) {
                 if (option.hasPathArguments) {
                     optionValue = Arrays.stream(optionValue.split(","))
+                                    .filter(s -> !s.isEmpty())
                                     .map(s -> nativeImage.canonicalize(Paths.get(s)).toString())
                                     .collect(Collectors.joining(","));
                 }
@@ -123,17 +129,20 @@ final class APIOptionCollector implements Feature {
                 String builderOption = optionPrefix;
                 if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
                     VMError.guarantee(!apiAnnotation.kind().equals(APIOptionKind.Paths));
+                    VMError.guarantee(apiAnnotation.defaultValue().length == 0);
                     builderOption += apiAnnotation.kind().equals(APIOptionKind.Negated) ? "-" : "+";
                     builderOption += optionDescriptor.getName();
                 } else {
                     VMError.guarantee(!apiAnnotation.kind().equals(APIOptionKind.Negated));
+                    VMError.guarantee(apiAnnotation.defaultValue().length <= 1, "SustrateVM APIOption cannot have more than one default value");
                     builderOption += optionDescriptor.getName();
                     builderOption += "=";
                 }
+                String defaultValue = apiAnnotation.defaultValue().length == 0 ? null : apiAnnotation.defaultValue()[0];
                 String helpText = optionDescriptor.getHelp();
                 VMError.guarantee(helpText != null && !helpText.isEmpty(), "SustrateVM APIOption needs to provide help text");
                 helpText = helpText.substring(0, 1).toLowerCase() + helpText.substring(1);
-                options.put("--" + apiAnnotation.name(), new APIOptionHandler.OptionInfo(builderOption, helpText, apiAnnotation.kind().equals(APIOptionKind.Paths)));
+                options.put("--" + apiAnnotation.name(), new APIOptionHandler.OptionInfo(builderOption, defaultValue, helpText, apiAnnotation.kind().equals(APIOptionKind.Paths)));
             }
         } catch (NoSuchFieldException e) {
             /* Does not qualify as APIOption */

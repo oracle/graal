@@ -383,7 +383,8 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new source builder from language and file. To detect the language of a file use
+     * {@link #findLanguage(File)}.
      *
      * @since 1.0
      */
@@ -392,6 +393,7 @@ public final class Source {
     }
 
     /**
+<<<<<<< HEAD
      *
      * TODO: Added, fix version
      * 
@@ -403,6 +405,9 @@ public final class Source {
 
     /**
      *
+=======
+     * Creates a new source builder from language and URL.
+>>>>>>> upstream/master
      *
      * @since 1.0
      */
@@ -411,7 +416,7 @@ public final class Source {
     }
 
     /**
-     *
+     * Creates a new source builder from language and reader.
      *
      * @since 1.0
      */
@@ -420,7 +425,8 @@ public final class Source {
     }
 
     /**
-     *
+     * Shortcut for creating a source object from a language and char sequence. The given characters
+     * must not mutate after they were accessed for the first time.
      *
      * @since 1.0
      */
@@ -453,7 +459,7 @@ public final class Source {
     private static final Source EMPTY = new Source(null, null);
 
     /**
-     *
+     * Represents a builder to build {@link Source} objects.
      *
      * @since 1.0
      */

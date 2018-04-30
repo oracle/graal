@@ -35,13 +35,14 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 /**
  * Base class for all execution event nodes that were inserted by the debugger.
  */
-abstract class DebuggerNode extends ExecutionEventNode {
+abstract class DebuggerNode extends ExecutionEventNode implements InsertableNode {
 
     abstract EventBinding<?> getBinding();
 
@@ -76,6 +77,11 @@ abstract class DebuggerNode extends ExecutionEventNode {
 
     final EventContext getContext() {
         return context;
+    }
+
+    @Override
+    public void setParentOf(Node child) {
+        insert(child);
     }
 
     void markAsDuplicate(DebuggerSession session) {

@@ -269,6 +269,8 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
 
     private Map<String, Entry> entriesByName = new HashMap<>();
 
+    private Map<Entry, Integer> entriesToIndex;
+
     private void createNullEntry() {
         assert entries.size() == 0;
         addEntry(new Entry());
@@ -438,6 +440,9 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     }
 
     private Entry addEntry(Entry entry) {
+        if (entriesToIndex != null) {
+            throw new IllegalArgumentException("Symbol table already sealed");
+        }
         entries.add(entry);
         entriesByName.put(entry.getName(), entry);
         return entry;
@@ -448,14 +453,25 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
     }
 
     public int indexOf(Symbol sym) {
-        int i = 0;
-        for (Entry entry : entries) {
-            if (entry.equals(sym)) {
-                return i;
-            }
-            i++;
+        if (entriesToIndex == null) {
+            initializeEntriesToIndex();
         }
-        return -1;
+        Integer result = entriesToIndex.get(sym);
+        if (result == null) {
+            return -1;
+        } else {
+            return result;
+        }
+    }
+
+    private void initializeEntriesToIndex() {
+        entriesToIndex = new HashMap<>(entries.size());
+        int index = 0;
+        for (Entry entry : entries) {
+            entriesToIndex.put(entry, index);
+            index++;
+        }
+        assert entriesToIndex.size() == entries.size();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

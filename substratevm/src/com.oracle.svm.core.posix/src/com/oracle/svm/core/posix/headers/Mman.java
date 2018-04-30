@@ -379,5 +379,8 @@ public class Mman {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int munmap(PointerBase addr, UnsignedWord len);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int mprotect(PointerBase addr, UnsignedWord len, int prot);
     }
 }

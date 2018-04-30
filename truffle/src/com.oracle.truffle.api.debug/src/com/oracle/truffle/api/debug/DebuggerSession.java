@@ -25,7 +25,6 @@
 package com.oracle.truffle.api.debug;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.debug.Breakpoint.BreakpointConditionFailure;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -67,8 +67,10 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.CallTag;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -185,7 +187,9 @@ public final class DebuggerSession implements Closeable {
     private final StableBoolean ignoreLanguageContextInitialization = new StableBoolean(false);
     private boolean includeInternal = false;
     private Predicate<Source> sourceFilter;
-    private final StableBoolean breakpointsActive = new StableBoolean(true);
+    private final StableBoolean alwaysHaltBreakpointsActive = new StableBoolean(true);
+    private final StableBoolean locationBreakpointsActive = new StableBoolean(true);
+    private final StableBoolean exceptionBreakpointsActive = new StableBoolean(true);
     private final DebuggerExecutionLifecycle executionLifecycle;
     final ThreadLocal<ThreadSuspension> threadSuspensions = new ThreadLocal<>();
 
@@ -292,7 +296,7 @@ public final class DebuggerSession implements Closeable {
     }
 
     /**
-     * Set a stepping suspension filter. Prepared steps skip code that match this filter.
+     * Set a stepping suspension filter. Prepared steps skip code that does not match this filter.
      *
      * @since 0.26
      */
@@ -593,9 +597,40 @@ public final class DebuggerSession implements Closeable {
      * @param active <code>true</code> to make all breakpoints active, <code>false</code> to make
      *            all breakpoints inactive.
      * @since 0.24
+     * @deprecated Use {@link #setBreakpointsActive(Breakpoint.Kind, boolean)} instead.
      */
+    @Deprecated
     public void setBreakpointsActive(boolean active) {
-        breakpointsActive.set(active);
+        for (Breakpoint.Kind kind : Breakpoint.Kind.values()) {
+            setBreakpointsActive(kind, active);
+        }
+    }
+
+    /**
+     * Set whether breakpoints of the given kind are active in this session. This has no effect on
+     * breakpoints enabled/disabled state. Breakpoints need to be active to actually break the
+     * execution. The breakpoints are active by default.
+     *
+     * @param breakpointKind the kind of breakpoints to activate/deactivate
+     * @param active <code>true</code> to make breakpoints active, <code>false</code> to make
+     *            breakpoints inactive.
+     * @since 1.0
+     */
+    public void setBreakpointsActive(Breakpoint.Kind breakpointKind, boolean active) {
+        switch (breakpointKind) {
+            case SOURCE_LOCATION:
+                locationBreakpointsActive.set(active);
+                break;
+            case EXCEPTION:
+                exceptionBreakpointsActive.set(active);
+                break;
+            case HALT_INSTRUCTION:
+                alwaysHaltBreakpointsActive.set(active);
+                break;
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Unhandled breakpoint kind: " + breakpointKind);
+        }
     }
 
     /**
@@ -603,9 +638,37 @@ public final class DebuggerSession implements Closeable {
      * not active.
      *
      * @since 0.24
+     * @deprecated Use {@link #isBreakpointsActive(Breakpoint.Kind)} instead.
      */
+    @Deprecated
     public boolean isBreakpointsActive() {
-        return breakpointsActive.get();
+        for (Breakpoint.Kind kind : Breakpoint.Kind.values()) {
+            if (isBreakpointsActive(kind)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Test whether breakpoints of the given kind are active in this session. Breakpoints do not
+     * break execution when not active.
+     *
+     * @param breakpointKind the kind of breakpoints to test
+     * @since 1.0
+     */
+    public boolean isBreakpointsActive(Breakpoint.Kind breakpointKind) {
+        switch (breakpointKind) {
+            case SOURCE_LOCATION:
+                return locationBreakpointsActive.get();
+            case EXCEPTION:
+                return exceptionBreakpointsActive.get();
+            case HALT_INSTRUCTION:
+                return alwaysHaltBreakpointsActive.get();
+            default:
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Unhandled breakpoint kind: " + breakpointKind);
+        }
     }
 
     /**
@@ -681,7 +744,8 @@ public final class DebuggerSession implements Closeable {
     }
 
     @TruffleBoundary
-    void notifyCallback(DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor, InputValuesProvider inputValuesProvider, Object returnValue,
+    void notifyCallback(DebuggerNode source, MaterializedFrame frame, SuspendAnchor suspendAnchor,
+                    InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
                     BreakpointConditionFailure conditionFailure) {
         ThreadSuspension suspensionDisabled = threadSuspensions.get();
         if (suspensionDisabled != null && !suspensionDisabled.enabled) {
@@ -752,13 +816,13 @@ public final class DebuggerSession implements Closeable {
         List<Breakpoint> breaks = null;
         for (DebuggerNode node : nodes) {
             Breakpoint breakpoint = node.getBreakpoint();
-            if (breakpoint == null || !isBreakpointsActive()) {
+            if (breakpoint == null || !isBreakpointsActive(breakpoint.getKind())) {
                 continue; // not a breakpoint node
             }
             boolean hit = true;
             BreakpointConditionFailure failure = null;
             try {
-                hit = breakpoint.notifyIndirectHit(source, node, frame);
+                hit = breakpoint.notifyIndirectHit(source, node, frame, exception);
             } catch (BreakpointConditionFailure e) {
                 failure = e;
             }
@@ -784,7 +848,7 @@ public final class DebuggerSession implements Closeable {
         boolean hitBreakpoint = breaks != null && !breaks.isEmpty();
         if (hitStepping || hitBreakpoint) {
             s.consume();
-            doSuspend(SuspendedContext.create(source.getContext()), suspendAnchor, frame, inputValuesProvider, returnValue, breaks, breakpointFailures);
+            doSuspend(SuspendedContext.create(source.getContext()), suspendAnchor, frame, source, inputValuesProvider, returnValue, exception, breaks, breakpointFailures);
         } else {
             if (Debugger.TRACE) {
                 trace("ignored suspended reason: strategy(%s) from source:%s context:%s location:%s", s, source, source.getContext(), source.getSuspendAnchors());
@@ -803,7 +867,7 @@ public final class DebuggerSession implements Closeable {
         }
     }
 
-    private void notifyUnwindCallback(MaterializedFrame frame) {
+    private void notifyUnwindCallback(MaterializedFrame frame, InsertableNode insertableNode) {
         Thread currentThread = Thread.currentThread();
         SteppingStrategy s = getSteppingStrategy(currentThread);
         // We must have an active stepping strategy on this thread when unwind finished
@@ -835,17 +899,21 @@ public final class DebuggerSession implements Closeable {
             }
         });
         SuspendedContext context = SuspendedContext.create(caller.node, ((SteppingStrategy.Unwind) s).unwind);
-        doSuspend(context, SuspendAnchor.AFTER, caller.frame, null, null, Collections.emptyList(), Collections.emptyMap());
+        doSuspend(context, SuspendAnchor.AFTER, caller.frame, insertableNode, null, null, null, Collections.emptyList(), Collections.emptyMap());
     }
 
-    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame, InputValuesProvider inputValuesProvider, Object returnValue, List<Breakpoint> breaks,
-                    Map<Breakpoint, Throwable> conditionFailures) {
+    private void doSuspend(SuspendedContext context, SuspendAnchor suspendAnchor, MaterializedFrame frame,
+                    InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
+                    List<Breakpoint> breaks, Map<Breakpoint, Throwable> conditionFailures) {
         CompilerAsserts.neverPartOfCompilation();
         Thread currentThread = Thread.currentThread();
 
         SuspendedEvent suspendedEvent;
         try {
-            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, inputValuesProvider, returnValue, breaks, conditionFailures);
+            suspendedEvent = new SuspendedEvent(this, currentThread, context, frame, suspendAnchor, insertableNode, inputValuesProvider, returnValue, exception, breaks, conditionFailures);
+            if (exception != null) {
+                exception.setSuspendedEvent(suspendedEvent);
+            }
             currentSuspendedEventMap.put(currentThread, suspendedEvent);
             try {
                 callback.onSuspend(suspendedEvent);
@@ -949,23 +1017,54 @@ public final class DebuggerSession implements Closeable {
      * @param ev event notification where execution is halted
      * @param code text of the code to be executed
      * @param frameInstance frame where execution is halted
-     * @return
-     * @throws IOException
+     * @throws DebugException
      */
-    static Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws IOException {
+    static Object evalInContext(SuspendedEvent ev, String code, FrameInstance frameInstance) throws DebugException {
+        Node node;
+        MaterializedFrame frame;
+        if (frameInstance == null) {
+            node = ev.getContext().getInstrumentedNode();
+            frame = ev.getMaterializedFrame();
+        } else {
+            node = frameInstance.getCallNode();
+            frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
+        }
         try {
-            Node node;
-            MaterializedFrame frame;
-            if (frameInstance == null) {
-                node = ev.getContext().getInstrumentedNode();
-                frame = ev.getMaterializedFrame();
-            } else {
-                node = frameInstance.getCallNode();
-                frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
-            }
-            return Debugger.ACCESSOR.evalInContext(node, frame, code);
+            return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
-            throw new IOException("Evaluation was killed.", kex);
+            throw new DebugException(ev.getSession().getDebugger(), "Evaluation was killed.", null, true, null);
+        } catch (Throwable ex) {
+            if (ex instanceof TruffleException) {
+                LanguageInfo language = null;
+                RootNode root = node.getRootNode();
+                if (root != null) {
+                    language = root.getLanguageInfo();
+                }
+                throw new DebugException(ev.getSession().getDebugger(), (TruffleException) ex, language, null, true, null);
+            } else {
+                throw ex;
+            }
+        }
+    }
+
+    private static Object evalInContext(SuspendedEvent ev, Node node, MaterializedFrame frame, String code) {
+        RootNode rootNode = node.getRootNode();
+        if (rootNode == null) {
+            throw new IllegalArgumentException("Cannot evaluate in context using a node that is not yet adopated using a RootNode.");
+        }
+
+        LanguageInfo info = rootNode.getLanguageInfo();
+        if (info == null) {
+            throw new IllegalArgumentException("Cannot evaluate in context using a without an associated TruffleLanguage.");
+        }
+
+        final Source source = Source.newBuilder(code).name("eval in context").language(info.getId()).mimeType("content/unknown").build();
+        ExecutableNode fragment = ev.getSession().getDebugger().getEnv().parseInline(source, node, frame);
+        if (fragment != null) {
+            ev.getInsertableNode().setParentOf(fragment);
+            return fragment.execute(frame);
+        } else {
+            return Debugger.ACCESSOR.evalInContext(source, node, frame);
         }
     }
 
@@ -1033,7 +1132,7 @@ public final class DebuggerSession implements Closeable {
             SuspendAnchor anchor = SuspendAnchor.BEFORE;
             SteppingStrategy steppingStrategy;
             if (suspendNext || suspendAll || (steppingStrategy = getSteppingStrategy(Thread.currentThread())) != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
-                notifyCallback(this, frame, anchor, null, null, null);
+                notifyCallback(this, frame, anchor, null, null, null, null);
             }
         }
 
@@ -1042,7 +1141,7 @@ public final class DebuggerSession implements Closeable {
             SuspendAnchor anchor = SuspendAnchor.AFTER;
             SteppingStrategy steppingStrategy = getSteppingStrategy(Thread.currentThread());
             if (steppingStrategy != null && steppingStrategy.isActiveOnStepTo(context, anchor)) {
-                notifyCallback(this, frame, anchor, this, result, null);
+                notifyCallback(this, frame, anchor, this, result, null, null);
             }
         }
 
@@ -1102,7 +1201,7 @@ public final class DebuggerSession implements Closeable {
         private void doReturn(MaterializedFrame frame, Object result) {
             SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
             if (steppingStrategy != null && steppingStrategy.isStopAfterCall()) {
-                notifyCallback(this, frame, SuspendAnchor.AFTER, null, result, null);
+                notifyCallback(this, frame, SuspendAnchor.AFTER, null, result, null, null);
             }
         }
 
@@ -1118,7 +1217,7 @@ public final class DebuggerSession implements Closeable {
 
     }
 
-    private final class RootSteppingDepthNode extends ExecutionEventNode {
+    private final class RootSteppingDepthNode extends ExecutionEventNode implements InsertableNode {
 
         @Override
         protected void onEnter(VirtualFrame frame) {
@@ -1150,6 +1249,11 @@ public final class DebuggerSession implements Closeable {
             }
         }
 
+        @Override
+        public void setParentOf(Node child) {
+            insert(child);
+        }
+
         @TruffleBoundary
         private void doEnter() {
             SteppingStrategy steppingStrategy = strategyMap.get(Thread.currentThread());
@@ -1172,7 +1276,7 @@ public final class DebuggerSession implements Closeable {
             if (steppingStrategy != null) {
                 Object info = steppingStrategy.notifyOnUnwind();
                 if (info == ProbeNode.UNWIND_ACTION_REENTER) {
-                    notifyUnwindCallback(frame);
+                    notifyUnwindCallback(frame, this);
                 }
                 return info;
             } else {
@@ -1185,7 +1289,7 @@ public final class DebuggerSession implements Closeable {
      * Helper class that uses an assumption to switch between stepping mode and non-stepping mode
      * efficiently.
      */
-    private static final class StableBoolean {
+    static final class StableBoolean {
 
         @CompilationFinal private volatile Assumption unchanged;
         @CompilationFinal private volatile boolean value;

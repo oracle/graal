@@ -360,11 +360,17 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                                     targetMethod.format("%H.%n(%p)") + " -> " + handlerMethods[0].format("%H.%n(%p)"));
                 }
             }
+
+            /* The exception is handled, we can continue with the normal epilogue. */
+            InvokeNode epilogueInvoke = generateEpilogue(providers, kit);
+
             kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
             kit.append(new DeadEndNode());
             kit.endInvokeWithException();
+
+            kit.inline(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
         }
     }
 
@@ -428,7 +434,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     private static void inlinePrologueAndEpilogue(SubstrateGraphKit kit, InvokeNode prologueInvoke, InvokeNode epilogueInvoke, JavaKind returnKind) {
         assert (prologueInvoke != null) == (epilogueInvoke != null);
         if (prologueInvoke != null) {
-            kit.inline(prologueInvoke);
+            kit.inline(prologueInvoke, "Inline prologue.", "GraphBuilding");
             NodeIterable<CEntryPointPrologueBailoutNode> bailoutNodes = kit.getGraph().getNodes().filter(CEntryPointPrologueBailoutNode.class);
             for (CEntryPointPrologueBailoutNode node : bailoutNodes) {
                 ValueNode result = node.getResult();
@@ -452,7 +458,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                 node.replaceAndDelete(returnNode);
             }
             if (epilogueInvoke.isAlive()) {
-                kit.inline(epilogueInvoke);
+                kit.inline(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
             }
         }
     }

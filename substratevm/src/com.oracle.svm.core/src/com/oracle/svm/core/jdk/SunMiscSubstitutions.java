@@ -51,6 +51,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import jdk.vm.ci.code.MemoryBarriers;
 import sun.misc.Cleaner;
 import sun.misc.JavaAWTAccess;
+import sun.misc.JavaLangAccess;
 import sun.misc.Unsafe;
 
 @TargetClass(sun.misc.Unsafe.class)
@@ -216,12 +217,34 @@ final class Target_sun_misc_Cleaner {
     protected static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
 }
 
+/** PerfCounter methods that access the lb field fail with SIGSEV. */
+@TargetClass(sun.misc.PerfCounter.class)
+final class Target_sun_misc_PerfCounter {
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    public long get() {
+        return 0;
+    }
+
+    @Substitute
+    public void set(@SuppressWarnings("unused") long var1) {
+    }
+
+    @Substitute
+    public void add(@SuppressWarnings("unused") long var1) {
+    }
+}
+
 @TargetClass(sun.misc.SharedSecrets.class)
 final class Target_sun_misc_SharedSecrets {
     @Substitute
     private static JavaAWTAccess getJavaAWTAccess() {
         return null;
     }
+
+    @Alias
+    static native JavaLangAccess getJavaLangAccess();
 }
 
 @TargetClass(value = sun.misc.URLClassPath.class, innerClass = "JarLoader")

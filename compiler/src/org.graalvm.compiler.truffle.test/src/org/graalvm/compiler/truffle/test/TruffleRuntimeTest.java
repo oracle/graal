@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.runtime.RuntimeProvider;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
@@ -80,7 +81,7 @@ public class TruffleRuntimeTest {
         LayoutFactory layoutFactory = runtime.getCapability(LayoutFactory.class);
         assertNotNull("LayoutFactory not found", layoutFactory);
 
-        boolean java8OrEarlier = System.getProperty("java.specification.version").compareTo("1.9") < 0;
+        boolean java8OrEarlier = GraalServices.Java8OrEarlier;
         ClassLoader layoutFactoryCL = layoutFactory.getClass().getClassLoader();
         if (java8OrEarlier) {
             // Bootstrap class loader or JVMCI class loader

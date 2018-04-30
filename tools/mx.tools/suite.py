@@ -37,10 +37,12 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "com.oracle.truffle.tools.chromeinspector",
+                "truffle:TRUFFLE_TEST",
                 "mx:JUNIT",
             ],
             "javaCompliance" : "1.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector.test",
+            "checkstyleVersion" : "8.8",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
             "license" : "GPLv2-CPE",
@@ -121,6 +123,7 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
                 "CHROMEINSPECTOR",
+                "truffle:TRUFFLE_TEST",
                 "truffle:TRUFFLE_SL",
             ],
             "exclude": [

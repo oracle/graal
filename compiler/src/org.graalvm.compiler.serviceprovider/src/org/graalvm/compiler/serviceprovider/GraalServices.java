@@ -22,14 +22,29 @@
  */
 package org.graalvm.compiler.serviceprovider;
 
+import static java.lang.Thread.currentThread;
+import static org.graalvm.compiler.serviceprovider.GraalServices.JMXService.jmx;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceConfigurationError;
+import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.services.JVMCIPermission;
 import jdk.vm.ci.services.Services;
+
+/*
+ * Note: Avoid import statements for java.management or com.sun.management to prevent
+ * mx creating a jdk.internal.vm.compiler module that `requires` the java.management
+ * or jdk.management modules. The GraalServices class is replaced by a multi-release jar
+ * version in JDK 9 and later which does not depend these modules.
+ *
+ * See also org.graalvm.compiler.serviceprovider.GraalServices.LazyJMX in the
+ * org.graalvm.compiler.serviceprovider.jdk9 project.
+ */
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -142,5 +157,160 @@ public final class GraalServices {
     public static boolean isToStringTrusted(Class<?> c) {
         ClassLoader cl = c.getClassLoader();
         return cl == null || cl == JVMCI_LOADER || cl == JVMCI_PARENT_LOADER;
+    }
+
+    /**
+     * Gets a unique identifier for this execution such as a process ID or a
+     * {@linkplain #getGlobalTimeStamp() fixed timestamp}.
+     */
+    public static String getExecutionID() {
+        try {
+            String runtimeName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+            try {
+                int index = runtimeName.indexOf('@');
+                if (index != -1) {
+                    long pid = Long.parseLong(runtimeName.substring(0, index));
+                    return Long.toString(pid);
+                }
+            } catch (NumberFormatException e) {
+            }
+            return runtimeName;
+        } catch (LinkageError err) {
+            return String.valueOf(getGlobalTimeStamp());
+        }
+    }
+
+    private static final AtomicLong globalTimeStamp = new AtomicLong();
+
+    /**
+     * Gets a time stamp for the current process. This method will always return the same value for
+     * the current VM execution.
+     */
+    public static long getGlobalTimeStamp() {
+        if (globalTimeStamp.get() == 0) {
+            globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
+        }
+        return globalTimeStamp.get();
+    }
+
+    /**
+     * Access to thread specific information made available via Java Management Extensions (JMX).
+     */
+    public static class JMXService {
+        // In this JDK 8 specific implementation, we can reference
+        // JMX classes directly since there's no module dependencies to
+        // worry about - everything is in rt.jar.
+        private final com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+
+        protected long getThreadAllocatedBytes(long id) {
+            return threadMXBean.getThreadAllocatedBytes(id);
+        }
+
+        protected long getCurrentThreadCpuTime() {
+            return threadMXBean.getCurrentThreadCpuTime();
+        }
+
+        protected boolean isThreadAllocatedMemorySupported() {
+            return threadMXBean.isThreadAllocatedMemorySupported();
+        }
+
+        protected boolean isCurrentThreadCpuTimeSupported() {
+            return threadMXBean.isCurrentThreadCpuTimeSupported();
+        }
+
+        protected List<String> getInputArguments() {
+            return java.lang.management.ManagementFactory.getRuntimeMXBean().getInputArguments();
+        }
+
+        // Placing this static field in JMXService (instead of GraalServices)
+        // allows for lazy initialization.
+        static final JMXService jmx = new JMXService();
+
+    }
+
+    /**
+     * Returns an approximation of the total amount of memory, in bytes, allocated in heap memory
+     * for the thread of the specified ID. The returned value is an approximation because some Java
+     * virtual machine implementations may use object allocation mechanisms that result in a delay
+     * between the time an object is allocated and the time its size is recorded.
+     * <p>
+     * If the thread of the specified ID is not alive or does not exist, this method returns
+     * {@code -1}. If thread memory allocation measurement is disabled, this method returns
+     * {@code -1}. A thread is alive if it has been started and has not yet died.
+     * <p>
+     * If thread memory allocation measurement is enabled after the thread has started, the Java
+     * virtual machine implementation may choose any time up to and including the time that the
+     * capability is enabled as the point where thread memory allocation measurement starts.
+     *
+     * @param id the thread ID of a thread
+     * @return an approximation of the total memory allocated, in bytes, in heap memory for a thread
+     *         of the specified ID if the thread of the specified ID exists, the thread is alive,
+     *         and thread memory allocation measurement is enabled; {@code -1} otherwise.
+     *
+     * @throws IllegalArgumentException if {@code id} {@code <=} {@code 0}.
+     * @throws UnsupportedOperationException if the Java virtual machine implementation does not
+     *             {@linkplain #isThreadAllocatedMemorySupported() support} thread memory allocation
+     *             measurement.
+     */
+    public static long getThreadAllocatedBytes(long id) {
+        return jmx.getThreadAllocatedBytes(id);
+    }
+
+    /**
+     * Convenience method for calling {@link #getThreadAllocatedBytes(long)} with the id of the
+     * current thread.
+     */
+    public static long getCurrentThreadAllocatedBytes() {
+        return getThreadAllocatedBytes(currentThread().getId());
+    }
+
+    /**
+     * Returns the total CPU time for the current thread in nanoseconds. The returned value is of
+     * nanoseconds precision but not necessarily nanoseconds accuracy. If the implementation
+     * distinguishes between user mode time and system mode time, the returned CPU time is the
+     * amount of time that the current thread has executed in user mode or system mode.
+     *
+     * @return the total CPU time for the current thread if CPU time measurement is enabled;
+     *         {@code -1} otherwise.
+     *
+     * @throws UnsupportedOperationException if the Java virtual machine does not
+     *             {@linkplain #isCurrentThreadCpuTimeSupported() support} CPU time measurement for
+     *             the current thread
+     */
+    public static long getCurrentThreadCpuTime() {
+        return jmx.getCurrentThreadCpuTime();
+    }
+
+    /**
+     * Determines if the Java virtual machine implementation supports thread memory allocation
+     * measurement.
+     */
+    public static boolean isThreadAllocatedMemorySupported() {
+        return jmx.isThreadAllocatedMemorySupported();
+    }
+
+    /**
+     * Determines if the Java virtual machine supports CPU time measurement for the current thread.
+     */
+    public static boolean isCurrentThreadCpuTimeSupported() {
+        return jmx.isCurrentThreadCpuTimeSupported();
+    }
+
+    /**
+     * Gets the input arguments passed to the Java virtual machine which does not include the
+     * arguments to the {@code main} method. This method returns an empty list if there is no input
+     * argument to the Java virtual machine.
+     * <p>
+     * Some Java virtual machine implementations may take input arguments from multiple different
+     * sources: for examples, arguments passed from the application that launches the Java virtual
+     * machine such as the 'java' command, environment variables, configuration files, etc.
+     * <p>
+     * Typically, not all command-line options to the 'java' command are passed to the Java virtual
+     * machine. Thus, the returned input arguments may not include all command-line options.
+     *
+     * @return the input arguments to the JVM or {@code null} if they are unavailable
+     */
+    public static List<String> getInputArguments() {
+        return jmx.getInputArguments();
     }
 }

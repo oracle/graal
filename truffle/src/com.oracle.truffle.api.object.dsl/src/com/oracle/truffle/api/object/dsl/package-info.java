@@ -24,7 +24,9 @@
  */
 
 /*
- * @ApiInfo( group="Stable" )
+ @ApiInfo(
+ group="Truffle"
+ )
  */
 /**
  * Domain specific language for using the Truffle dynamic object storage model to create classic

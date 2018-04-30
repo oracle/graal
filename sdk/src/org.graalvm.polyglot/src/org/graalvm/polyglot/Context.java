@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -239,7 +239,7 @@ import org.graalvm.polyglot.io.FileSystem;
  * instance may be used from multiple threads at the same time depends on if all initialized
  * languages support it. If only languages are initialized that support multi-threading then the
  * context instance may be used from multiple threads at the same time. If a context is used from
- * multiple threads and the language does not it then an {@link IllegalStateException} is thrown by
+ * multiple threads and the language does not fit then an {@link IllegalStateException} is thrown by
  * the accessing method.
  * <p>
  * Meta-data from the context's underlying {@link #getEngine() engine} can be retrieved safely by
@@ -629,8 +629,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a context with default configuration.
      *
-     * @param permittedLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param permittedLanguages names of languages permitted in this context, if no languages are
+     *            provided then all the use of languages will be permitted.
      * @return a new context
      * @since 1.0
      */
@@ -641,8 +641,8 @@ public final class Context implements AutoCloseable {
     /**
      * Creates a builder for constructing a context with custom configuration.
      *
-     * @param permittedLanguages names of languages permitted in this context, {@code null} if all
-     *            languages are permitted
+     * @param permittedLanguages names of languages permitted in this context, if no languages are
+     *            provided then the use of all languages will be permitted.
      * @return a builder that can create a context
      * @since 1.0
      */
@@ -672,9 +672,11 @@ public final class Context implements AutoCloseable {
         private Map<String, String[]> arguments;
         private Predicate<String> hostClassFilter;
         private Boolean allowHostAccess;
+        private Boolean allowNativeAccess;
         private Boolean allowCreateThread;
         private boolean allowAllAccess;
         private Boolean allowIO;
+        private Boolean allowHostClassLoading;
         private FileSystem customFileSystem;
 
         Builder(String... onlyLanguages) {
@@ -750,6 +752,16 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Allows guest languages to access the native interface.
+         *
+         * @since 1.0
+         */
+        public Builder allowNativeAccess(boolean enabled) {
+            this.allowNativeAccess = enabled;
+            return this;
+        }
+
+        /**
          * If <code>true</code> allows guest languages to create new threads. Default is
          * <code>false</code>. If {@link #allowAllAccess(boolean) all access} is set to
          * <code>true</code> then the creation of threads is enabled if not allowed explicitly.
@@ -778,6 +790,8 @@ public final class Context implements AutoCloseable {
          * <ul>
          * <li>The {@link #allowCreateThread(boolean) creation} and use of new threads.
          * <li>The access to public {@link #allowHostAccess(boolean) host classes}.
+         * <li>The loading of new {@link #allowHostClassLoading(boolean) host classes} by adding
+         * entries to the class path.
          * <li>Exporting new members into the polyglot {@link Context#getPolyglotBindings()
          * bindings}.
          * <li>Unrestricted {@link #allowIO(boolean) IO operations} on host system.
@@ -788,6 +802,20 @@ public final class Context implements AutoCloseable {
          */
         public Builder allowAllAccess(boolean enabled) {
             this.allowAllAccess = enabled;
+            return this;
+        }
+
+        /**
+         * If host class loading is enabled then the guest language is allowed to load new host
+         * classes via jar or class files. If {@link #allowAllAccess(boolean) all access} is set to
+         * <code>true</code> then the host class loading is enabled if it is not disallowed
+         * explicitly. For host class loading to be useful {@link #allowIO(boolean) IO} operations
+         * and {@link #allowHostAccess(boolean) host access} need to be allowed as well.
+         *
+         * @since 1.0
+         */
+        public Builder allowHostClassLoading(boolean enabled) {
+            this.allowHostClassLoading = enabled;
             return this;
         }
 
@@ -915,11 +943,17 @@ public final class Context implements AutoCloseable {
             if (allowHostAccess == null) {
                 allowHostAccess = allowAllAccess;
             }
+            if (allowNativeAccess == null) {
+                allowNativeAccess = allowAllAccess;
+            }
             if (allowCreateThread == null) {
                 allowCreateThread = allowAllAccess;
             }
             if (allowIO == null) {
                 allowIO = allowAllAccess;
+            }
+            if (allowHostClassLoading == null) {
+                allowHostClassLoading = allowAllAccess;
             }
             if (!allowIO && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
@@ -938,13 +972,13 @@ public final class Context implements AutoCloseable {
                 }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, allowHostAccess, allowCreateThread, allowIO,
-                                hostClassFilter,
-                                Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
+                return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
+                                allowHostClassLoading,
+                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             } else {
-                return engine.impl.createContext(out, err, in, allowHostAccess, allowCreateThread, allowIO,
-                                hostClassFilter,
-                                options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
+                return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
+                                allowHostClassLoading,
+                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
             }
         }
 

@@ -34,6 +34,7 @@ import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -66,6 +67,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -73,6 +75,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.graalvm.polyglot.io.FileSystem;
+import org.junit.Before;
 
 @RunWith(Parameterized.class)
 public class VirtualizedFileSystemTest {
@@ -111,6 +114,15 @@ public class VirtualizedFileSystemTest {
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
                         fullIO);
         result.add(new Configuration("No IO", ctx, privateDir, cwd, fullIO, false, false, false, true));
+        // No IO under language home
+        ctx = Context.newBuilder(LANGAUGE_ID).allowIO(false).build();
+        privateDir = createContent(
+                        Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
+                        fullIO);
+        final String langHome = privateDir.toString();
+        result.add(new Configuration("No IO under language home", ctx, privateDir, cwd, fullIO, false, true, false, true, () -> {
+            System.setProperty(LANGAUGE_ID + ".home", langHome);
+        }));
         // Checked IO
         accessibleDir = createContent(
                         Files.createTempDirectory(VirtualizedFileSystemTest.class.getSimpleName()),
@@ -162,6 +174,16 @@ public class VirtualizedFileSystemTest {
 
     public VirtualizedFileSystemTest(final Configuration cfg) {
         this.cfg = cfg;
+    }
+
+    @Before
+    public void setUp() {
+        Optional.ofNullable(this.cfg.getBeforeAction()).ifPresent(Runnable::run);
+        resetLanguageHomes();
+        // JUnit mixes test executions from different classes. There are still tests using the
+        // deprecated PolyglotEngine. For tests executed by Parametrized runner
+        // creating Context as a test parameter we need to ensure that correct SPI is used.
+        Engine.create().close();
     }
 
     @After
@@ -223,7 +245,7 @@ public class VirtualizedFileSystemTest {
             try {
                 final TruffleFile file = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 final StringBuilder content = new StringBuilder();
-                try (final BufferedReader in = file.newBufferedReader()) {
+                try (BufferedReader in = file.newBufferedReader()) {
                     final char[] buffer = new char[512];
                     while (true) {
                         int len = in.read(buffer);
@@ -626,6 +648,7 @@ public class VirtualizedFileSystemTest {
         private final boolean readable;
         private final boolean writable;
         private final boolean allowsUserDir;
+        private final Runnable beforeAction;
 
         Configuration(
                         final String name,
@@ -636,7 +659,7 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
-            this(name, context, path, path, fileSystem, needsURI, readable, writable, allowsUserDir);
+            this(name, context, path, path, fileSystem, needsURI, readable, writable, allowsUserDir, null);
         }
 
         Configuration(
@@ -649,6 +672,20 @@ public class VirtualizedFileSystemTest {
                         final boolean readable,
                         final boolean writable,
                         final boolean allowsUserDir) {
+            this(name, context, path, userDir, fileSystem, needsURI, readable, writable, allowsUserDir, null);
+        }
+
+        Configuration(
+                        final String name,
+                        final Context context,
+                        final Path path,
+                        final Path userDir,
+                        final FileSystem fileSystem,
+                        final boolean needsURI,
+                        final boolean readable,
+                        final boolean writable,
+                        final boolean allowsUserDir,
+                        final Runnable beforeAction) {
             Objects.requireNonNull(name, "Name must be non null.");
             Objects.requireNonNull(context, "Context must be non null.");
             Objects.requireNonNull(path, "Path must be non null.");
@@ -663,6 +700,11 @@ public class VirtualizedFileSystemTest {
             this.readable = readable;
             this.writable = writable;
             this.allowsUserDir = allowsUserDir;
+            this.beforeAction = beforeAction;
+        }
+
+        Runnable getBeforeAction() {
+            return beforeAction;
         }
 
         String getName() {
@@ -823,6 +865,17 @@ public class VirtualizedFileSystemTest {
         try {
             fs.delete(path);
         } catch (NoSuchFileException notFound) {
+        }
+    }
+
+    private static void resetLanguageHomes() {
+        try {
+            final Class<?> langCacheClz = Class.forName("com.oracle.truffle.api.vm.LanguageCache", true, VirtualizedFileSystemTest.class.getClassLoader());
+            final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
+            reset.setAccessible(true);
+            reset.invoke(null);
+        } catch (ReflectiveOperationException re) {
+            throw new RuntimeException(re);
         }
     }
 

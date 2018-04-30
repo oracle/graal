@@ -86,7 +86,7 @@ public final class ScriptsHandler implements LoadSourceListener {
         }
     }
 
-    int assureLoaded(Source source) {
+    public int assureLoaded(Source source) {
         Script scr;
         URI uri = source.getURI();
         int id;

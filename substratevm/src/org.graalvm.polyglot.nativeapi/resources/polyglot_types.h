@@ -23,6 +23,8 @@
 #ifndef POLYGLOT_TYPES_H
 #define POLYGLOT_TYPES_H
 
+#define POLY_AUTO_LENGTH SIZE_MAX
+
 typedef enum {
   poly_ok,
   poly_invalid_arg,
@@ -46,17 +48,28 @@ typedef struct {
   poly_status error_code;
 } poly_extended_error_info;
 
-// GR-7868 poly_handle becomes void* and all CPointers become CTypeDef
-typedef void poly_handle;
+typedef void* poly_handle;
 
 typedef poly_handle poly_value;
 
 typedef poly_handle poly_engine;
 
+typedef poly_handle poly_engine_builder;
+
 typedef poly_handle poly_context;
+
+typedef poly_handle poly_context_builder;
 
 typedef poly_handle poly_callback_info;
 
-typedef poly_value* (*poly_callback)(void* ithread, poly_callback_info* info);
+typedef poly_handle poly_language;
+
+typedef graal_create_isolate_params_t poly_isolate_params;
+
+typedef graal_isolate_t* poly_isolate;
+
+typedef graal_isolatethread_t* poly_thread;
+
+typedef poly_value (*poly_callback)(poly_thread thread, poly_callback_info info);
 
 #endif

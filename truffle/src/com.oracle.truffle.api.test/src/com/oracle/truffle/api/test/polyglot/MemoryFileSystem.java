@@ -369,7 +369,7 @@ final class MemoryFileSystem implements FileSystem {
     }
 
     private Map<String, Long> readDir(long forInode) throws IOException {
-        try (final DataInputStream in = new DataInputStream(new ByteArrayInputStream(blocks.get(forInode)))) {
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(blocks.get(forInode)))) {
             final Map<String, Long> result = new HashMap<>();
             int count = in.readInt();
             for (int i = 0; i < count; i++) {
@@ -386,7 +386,7 @@ final class MemoryFileSystem implements FileSystem {
     }
 
     private static byte[] serializeDir(Map<String, Long> dir) throws IOException {
-        try (final ByteArrayOutputStream bout = new ByteArrayOutputStream(); final DataOutputStream out = new DataOutputStream(bout)) {
+        try (ByteArrayOutputStream bout = new ByteArrayOutputStream(); DataOutputStream out = new DataOutputStream(bout)) {
             out.writeInt(dir.size());
             for (Map.Entry<String, Long> e : dir.entrySet()) {
                 out.writeUTF(e.getKey());

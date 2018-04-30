@@ -75,7 +75,7 @@ public interface InlineInfo {
      *
      * @return a collection of nodes that need to be canonicalized after the inlining
      */
-    EconomicSet<Node> inline(Providers providers);
+    EconomicSet<Node> inline(Providers providers, String reason);
 
     /**
      * Try to make the call static bindable to avoid interface and virtual method calls.

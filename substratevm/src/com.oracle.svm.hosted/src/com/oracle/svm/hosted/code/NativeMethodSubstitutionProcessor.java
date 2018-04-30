@@ -29,8 +29,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.word.Word.Operation;
 import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.constant.CEnumLookup;
-import org.graalvm.nativeimage.c.constant.CEnumValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -46,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link SubstitutionProcessor#chainUpInOrder(SubstitutionProcessor...) chain} of them.
  */
 public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
-    private static final Class<?>[] FILTER_ANNOTATIONS = {NodeIntrinsic.class, Operation.class, CConstant.class, CEnumValue.class, CEnumLookup.class};
+    private static final Class<?>[] FILTER_ANNOTATIONS = {NodeIntrinsic.class, Operation.class, CConstant.class};
 
     private final SubstitutionProcessor processor;
     private final Replacements replacements;

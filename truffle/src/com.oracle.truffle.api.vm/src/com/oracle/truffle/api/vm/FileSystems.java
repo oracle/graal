@@ -34,8 +34,10 @@ import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -328,6 +330,8 @@ final class FileSystems {
     private static final class DeniedIOFileSystem implements FileSystem {
         private final Path userDir;
         private final boolean explicitUserDir;
+        private final FileSystem fullIO;
+        private volatile Set<Path> languageHomes;
 
         DeniedIOFileSystem() {
             this(null, false);
@@ -340,6 +344,7 @@ final class FileSystems {
         private DeniedIOFileSystem(final Path userDir, final boolean explicitUserDir) {
             this.userDir = userDir;
             this.explicitUserDir = explicitUserDir;
+            this.fullIO = FileSystems.getDefaultFileSystem();
         }
 
         @Override
@@ -354,7 +359,12 @@ final class FileSystems {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            throw forbidden(path);
+            Path absolutePath = toAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                fullIO.checkAccess(absolutePath, modes, linkOptions);
+                return;
+            }
+            throw forbidden(absolutePath);
         }
 
         @Override
@@ -378,18 +388,43 @@ final class FileSystems {
         }
 
         @Override
-        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            throw forbidden(path);
+        public SeekableByteChannel newByteChannel(Path inPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            boolean read = options.contains(StandardOpenOption.READ);
+            boolean write = options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.DELETE_ON_CLOSE);
+            if (!read && !write) {
+                if (options.contains(StandardOpenOption.APPEND)) {
+                    write = true;
+                } else {
+                    read = true;
+                }
+            }
+            if (write) {
+                throw forbidden(inPath);
+            }
+            assert read;
+            Path absolutePath = toAbsolutePath(inPath);
+            if (inLanguageHome(absolutePath)) {
+                return fullIO.newByteChannel(absolutePath, options, attrs);
+            }
+            throw forbidden(absolutePath);
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            throw forbidden(dir);
+            Path absoluteDir = toAbsolutePath(dir);
+            if (inLanguageHome(absoluteDir)) {
+                return fullIO.newDirectoryStream(absoluteDir, filter);
+            }
+            throw forbidden(absoluteDir);
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            throw forbidden(path);
+            Path absolutePath = toAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                return fullIO.readAttributes(absolutePath, attributes, options);
+            }
+            throw forbidden(absolutePath);
         }
 
         @Override
@@ -414,7 +449,40 @@ final class FileSystems {
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            throw forbidden(path);
+            Path absoluetPath = toAbsolutePath(path);
+            if (inLanguageHome(absoluetPath)) {
+                return fullIO.toRealPath(absoluetPath, linkOptions);
+            }
+            throw forbidden(absoluetPath);
+        }
+
+        private boolean inLanguageHome(final Path path) {
+            for (Path home : getLanguageHomes()) {
+                if (path.startsWith(home)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private Set<Path> getLanguageHomes() {
+            Set<Path> res = languageHomes;
+            if (res == null) {
+                synchronized (this) {
+                    res = languageHomes;
+                    if (res == null) {
+                        res = new HashSet<>();
+                        for (LanguageCache cache : LanguageCache.languages().values()) {
+                            final String languageHome = cache.getLanguageHome();
+                            if (languageHome != null) {
+                                res.add(Paths.get(languageHome));
+                            }
+                        }
+                        languageHomes = res;
+                    }
+                }
+            }
+            return res;
         }
 
         private static SecurityException forbidden(final Path path) {

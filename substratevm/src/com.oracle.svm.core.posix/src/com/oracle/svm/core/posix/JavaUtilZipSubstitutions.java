@@ -22,7 +22,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import java.io.IOException;
 import java.util.zip.DataFormatException;
 
 import org.graalvm.nativeimage.PinnedObject;
@@ -163,9 +162,9 @@ final class Target_java_util_zip_Deflater {
     private int deflateBytes(long addr, byte[] b, int off, int len, int flush) {
         z_stream strm = WordFactory.pointer(addr);
 
-        try (PinnedObject pinned_in_buf = PinnedObject.create(this.buf); PinnedObject pinned_out_buf = PinnedObject.create(b)) {
-            strm.set_next_in(pinned_in_buf.addressOfArrayElement(this.off));
-            strm.set_next_out(pinned_out_buf.addressOfArrayElement(off));
+        try (PinnedObject pinnedInBuf = PinnedObject.create(this.buf); PinnedObject pinnedOutBuf = PinnedObject.create(b)) {
+            strm.set_next_in(pinnedInBuf.addressOfArrayElement(this.off));
+            strm.set_next_out(pinnedOutBuf.addressOfArrayElement(off));
             strm.set_avail_in(this.len);
             strm.set_avail_out(len);
 
@@ -289,9 +288,10 @@ final class Target_java_util_zip_Inflater {
     private int inflateBytes(long addr, byte[] b, int off, int len) throws DataFormatException {
         z_stream strm = WordFactory.pointer(addr);
 
-        try (PinnedObject pinned_in_buf = PinnedObject.create(this.buf); PinnedObject pinned_out_buf = PinnedObject.create(b)) {
-            strm.set_next_in(pinned_in_buf.addressOfArrayElement(this.off));
-            strm.set_next_out(pinned_out_buf.addressOfArrayElement(off));
+        try (PinnedObject pinnedInBuf = PinnedObject.create(this.buf); PinnedObject pinnedOutBuf = PinnedObject.create(b)) {
+            strm.set_next_in(pinnedInBuf.addressOfArrayElement(this.off));
+            strm.set_next_out(pinnedOutBuf.addressOfArrayElement(off));
+
             strm.set_avail_in(this.len);
             strm.set_avail_out(len);
 
@@ -352,119 +352,6 @@ final class Util_java_util_zip_Inflater {
         return len - strm.avail_out();
     }
 
-}
-
-@SuppressWarnings("unused")
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-@TargetClass(java.util.zip.ZipFile.class)
-final class Target_java_util_zip_ZipFile {
-    // ZipFile.c-Java_java_util_zip_ZipFile_initIDs(JNIEnv *env, jclass cls)
-    @Substitute
-    private static void initIDs() {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_open(JNIEnv *env, jclass cls, jstring name,
-    @Substitute
-    private static long open(String name, int mode, long lastModified, boolean usemmap) throws IOException {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_close(JNIEnv *env, jclass cls, jlong zfile)
-    @Substitute
-    private static void close(long jzfile) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getTotal(JNIEnv *env, jclass cls, jlong zfile)
-    @Substitute
-    private static int getTotal(long jzfile) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_startsWithLOC(JNIEnv *env, jclass cls, jlong zfile)
-    @Substitute
-    private static boolean startsWithLOC(long jzfile) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_read(JNIEnv *env, jclass cls, jlong zfile,
-    @Substitute
-    private static int read(long jzfile, long jzentry, long pos, byte[] b, int off, int len) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntry(JNIEnv *env, jclass cls, jlong zfile,
-    @Substitute
-    private static long getEntry(long jzfile, byte[] name, boolean addSlash) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_freeEntry(JNIEnv *env, jclass cls, jlong zfile,
-    @Substitute
-    private static void freeEntry(long jzfile, long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getNextEntry(JNIEnv *env, jclass cls, jlong zfile,
-    @Substitute
-    private static long getNextEntry(long jzfile, int i) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntryTime(JNIEnv *env, jclass cls, jlong zentry)
-    @Substitute
-    private static long getEntryTime(long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntryCrc(JNIEnv *env, jclass cls, jlong zentry)
-    @Substitute
-    private static long getEntryCrc(long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntryCSize(JNIEnv *env, jclass cls, jlong zentry)
-    @Substitute
-    private static long getEntryCSize(long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntrySize(JNIEnv *env, jclass cls, jlong zentry)
-    @Substitute
-    private static long getEntrySize(long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntryMethod(JNIEnv *env, jclass cls, jlong zentry)
-    @Substitute
-    private static int getEntryMethod(long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntryFlag(JNIEnv *env, jclass cls, jlong zentry)
-    @Substitute
-    private static int getEntryFlag(long jzentry) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getCommentBytes(JNIEnv *env,
-    @Substitute
-    private static byte[] getCommentBytes(long jzfile) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getEntryBytes(JNIEnv *env,
-    @Substitute
-    private static byte[] getEntryBytes(long jzentry, int type) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
-
-    // ZipFile.c-Java_java_util_zip_ZipFile_getZipMessage(JNIEnv *env, jclass cls, jlong zfile)
-    @Substitute
-    private static String getZipMessage(long jzfile) {
-        throw VMError.unsupportedFeature("java.util.zip.ZipFile");
-    }
 }
 
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})

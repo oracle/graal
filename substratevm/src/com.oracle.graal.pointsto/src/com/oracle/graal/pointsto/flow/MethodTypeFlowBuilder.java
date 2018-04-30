@@ -1167,19 +1167,26 @@ public class MethodTypeFlowBuilder {
 
                 TypeFlowBuilder<?> srcBuilder = state.lookup(node.getSource());
                 TypeFlowBuilder<?> dstBuilder = state.lookup(node.getDestination());
-                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
 
-                TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
-                    ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(node, type, srcBuilder.get(), dstBuilder.get());
-                    methodFlow.addMiscEntry(arrayCopyFlow);
-                    return arrayCopyFlow;
-                });
+                /*
+                 * Shuffling elements around in the same array (source and target are the same) does
+                 * not need a type flow. We do not track individual array elements.
+                 */
+                if (srcBuilder != dstBuilder) {
+                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node);
 
-                arrayCopyBuilder.addObserverDependency(srcBuilder);
-                arrayCopyBuilder.addObserverDependency(dstBuilder);
+                    TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
+                        ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(node, type, srcBuilder.get(), dstBuilder.get());
+                        methodFlow.addMiscEntry(arrayCopyFlow);
+                        return arrayCopyFlow;
+                    });
 
-                /* Array copies must not be removed. */
-                typeFlowGraphBuilder.registerSinkBuilder(arrayCopyBuilder);
+                    arrayCopyBuilder.addObserverDependency(srcBuilder);
+                    arrayCopyBuilder.addObserverDependency(dstBuilder);
+
+                    /* Array copies must not be removed. */
+                    typeFlowGraphBuilder.registerSinkBuilder(arrayCopyBuilder);
+                }
 
             } else if (n instanceof WordCastNode) {
                 WordCastNode node = (WordCastNode) n;

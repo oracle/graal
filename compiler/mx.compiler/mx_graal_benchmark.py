@@ -331,7 +331,58 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
         ] + super(CounterBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
 
 
-class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin):
+class MemUseTrackerBenchmarkMixin(DebugValueBenchmarkMixin):
+    trackers = [
+        # LIR stages
+        "LIRPhaseMemUse_AllocationStage",
+        "LIRPhaseMemUse_PostAllocationOptimizationStage",
+        "LIRPhaseMemUse_PreAllocationOptimizationStage",
+        # RA phases
+        "LIRPhaseMemUse_LinearScanPhase",
+        "LIRPhaseMemUse_GlobalLivenessAnalysisPhase",
+        "LIRPhaseMemUse_TraceBuilderPhase",
+        "LIRPhaseMemUse_TraceRegisterAllocationPhase",
+    ]
+    name_re = re.compile(r"(?P<name>\w+)_Accm")
+
+    @staticmethod
+    def counterArgs():
+        return "-Dgraal.MemUseTrackers=" + ','.join(MemUseTrackerBenchmarkMixin.trackers)
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = [MemUseTrackerBenchmarkMixin.counterArgs()] + super(MemUseTrackerBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return vmArgs
+
+    @staticmethod
+    def filterResult(r):
+        m = MemUseTrackerBenchmarkMixin.name_re.match(r['name'])
+        if m:
+            name = m.groupdict()['name']
+            if name in MemUseTrackerBenchmarkMixin.trackers:
+                r['name'] = name
+                return r
+        return None
+
+    def shorten_vm_flags(self, args):
+        # not need for timer names
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.MemUseTrackers=")]
+        return super(MemUseTrackerBenchmarkMixin, self).shorten_vm_flags(filtered_args)
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            DebugValueRule(
+                debug_value_file=self.get_csv_filename(),
+                benchmark=self.getBenchmarkName(),
+                bench_suite=self.benchSuiteName(),
+                metric_name="allocated-memory",
+                metric_unit="B",
+                vm_flags=self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                filter_fn=MemUseTrackerBenchmarkMixin.filterResult,
+            ),
+        ] + super(MemUseTrackerBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, MemUseTrackerBenchmarkMixin):
 
     def host_vm_config_name(self, host_vm, vm):
         return super(DaCapoTimingBenchmarkMixin, self).host_vm_config_name(host_vm, vm) + "-timing"
@@ -829,7 +880,8 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(ScalaDaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-        if mx_compiler.jdk.javaCompliance >= '9':
+        # Do not add corba module on JDK>=11 (http://openjdk.java.net/jeps/320)
+        if mx_compiler.jdk.javaCompliance >= '9' and mx_compiler.jdk.javaCompliance < '11':
             vmArgs += ["--add-modules", "java.corba"]
         return vmArgs
 

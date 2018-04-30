@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -460,15 +461,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             handleOriginalMethodInSubstitutionClass(c);
         }
 
-        for (Field f : originalClass.getDeclaredFields()) {
-            registerAsDeleted(null, metaAccess.lookupJavaField(f), SUBSTITUTION_DELETE);
-        }
         for (Field f : annotatedClass.getDeclaredFields()) {
             ResolvedJavaField field = metaAccess.lookupJavaField(f);
             ResolvedJavaField alias = fieldValueRecomputation(annotatedClass, field, field, f);
             if (!alias.equals(field)) {
                 register(fieldSubstitutions, field, null, alias);
+            } else {
+                handleAnnotatedFieldInSubstitutionClass(f, originalClass);
             }
+        }
+        for (Field f : originalClass.getDeclaredFields()) {
+            handleOriginalFieldInSubstitutionClass(f);
         }
     }
 
@@ -489,9 +492,28 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else if (substituteAnnotation != null) {
-            register(methodSubstitutions, annotated, original, annotated);
+            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true);
+            register(methodSubstitutions, annotated, original, substitution);
         } else if (keepOriginalAnnotation != null) {
             register(methodSubstitutions, annotated, original, original);
+        }
+    }
+
+    private void handleAnnotatedFieldInSubstitutionClass(Field annotatedField, Class<?> originalClass) {
+        Substitute substituteAnnotation = lookupAnnotation(annotatedField, Substitute.class);
+
+        if (substituteAnnotation == null) {
+            /* Unannotated field in substitution class: a regular field, nothing to do. */
+            return;
+        }
+
+        ResolvedJavaField annotated = metaAccess.lookupJavaField(annotatedField);
+        ResolvedJavaField original = findOriginalField(annotatedField, originalClass, false);
+
+        if (original == null) {
+            /* Optional target that is not present, so nothing to do. */
+        } else {
+            register(fieldSubstitutions, annotated, original, annotated);
         }
     }
 
@@ -514,13 +536,25 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
+    private void handleOriginalFieldInSubstitutionClass(Field f) {
+        ResolvedJavaField field = metaAccess.lookupJavaField(f);
+        if (!fieldSubstitutions.containsKey(field)) {
+            if (field.isSynthetic()) {
+                register(fieldSubstitutions, null, field, field);
+            } else {
+                registerAsDeleted(null, field, SUBSTITUTION_DELETE);
+            }
+        }
+    }
+
     private ResolvedJavaMethod findOriginalMethod(Executable annotatedMethod, Class<?> originalClass) {
         TargetElement targetElementAnnotation = lookupAnnotation(annotatedMethod, TargetElement.class);
         String originalName = "";
-        boolean optional = false;
         if (targetElementAnnotation != null) {
             originalName = targetElementAnnotation.name();
-            optional = targetElementAnnotation.optional();
+            if (!isIncluded(targetElementAnnotation, originalClass, annotatedMethod)) {
+                return null;
+            }
         }
 
         if (originalName.length() == 0) {
@@ -543,18 +577,18 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
 
         } catch (NoSuchMethodException ex) {
-            guarantee(optional, "could not find non-optional target method: %s", annotatedMethod);
-            return null;
+            throw UserError.abort("could not find target method: " + annotatedMethod);
         }
     }
 
     private ResolvedJavaField findOriginalField(Field annotatedField, Class<?> originalClass, boolean forceOptional) {
         TargetElement targetElementAnnotation = lookupAnnotation(annotatedField, TargetElement.class);
         String originalName = "";
-        boolean optional = false;
         if (targetElementAnnotation != null) {
             originalName = targetElementAnnotation.name();
-            optional = targetElementAnnotation.optional();
+            if (!isIncluded(targetElementAnnotation, originalClass, annotatedField)) {
+                return null;
+            }
         }
         if (originalName.length() == 0) {
             originalName = annotatedField.getName();
@@ -579,9 +613,26 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 }
             }
 
-            guarantee(optional || forceOptional, "could not find non-optional target field: %s", annotatedField);
+            guarantee(forceOptional, "could not find target field: %s", annotatedField);
             return null;
         }
+    }
+
+    private static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
+        for (Class<? extends Predicate<Class<?>>> predicateClass : targetElementAnnotation.onlyWith()) {
+            Predicate<Class<?>> predicate;
+            try {
+                Constructor<? extends Predicate<Class<?>>> constructor = predicateClass.getDeclaredConstructor();
+                constructor.setAccessible(true);
+                predicate = constructor.newInstance();
+            } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + predicateClass.getTypeName());
+            }
+            if (!predicate.test(originalClass)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static <T> void register(Map<T, T> substitutions, T annotated, T original, T target) {
@@ -664,7 +715,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 constructor.setAccessible(true);
                 predicate = constructor.newInstance();
             } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                throw VMError.shouldNotReachHere(ex);
+                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + predicateClass.getTypeName());
             }
             if (!predicate.getAsBoolean()) {
                 return null;

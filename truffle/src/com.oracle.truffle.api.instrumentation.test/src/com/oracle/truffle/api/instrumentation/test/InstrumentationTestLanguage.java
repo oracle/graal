@@ -47,6 +47,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -124,7 +125,8 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 @Registration(id = InstrumentationTestLanguage.ID, mimeType = InstrumentationTestLanguage.MIME_TYPE, name = "InstrumentTestLang", version = "2.0")
 @ProvidedTags({StandardTags.ExpressionTag.class, DefineTag.class, LoopTag.class,
-                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, BlockTag.class, StandardTags.RootTag.class, ConstantTag.class})
+                StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class,
+                StandardTags.TryBlockTag.class, BlockTag.class, ConstantTag.class})
 public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 implements SpecialService {
 
@@ -156,10 +158,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
     public static final Class<? extends Tag> ROOT = StandardTags.RootTag.class;
     public static final Class<? extends Tag> BLOCK = BlockTag.class;
     public static final Class<? extends Tag> CONSTANT = ConstantTag.class;
+    public static final Class<? extends Tag> TRY_CATCH = StandardTags.TryBlockTag.class;
 
-    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT};
+    public static final Class<?>[] TAGS = new Class<?>[]{EXPRESSION, DEFINE, LOOP, STATEMENT, CALL, BLOCK, ROOT, CONSTANT, TRY_CATCH};
     public static final String[] TAG_NAMES = new String[]{"EXPRESSION", "DEFINE", "CONTEXT", "LOOP", "STATEMENT", "CALL", "RECURSIVE_CALL", "BLOCK", "ROOT", "CONSTANT", "VARIABLE", "ARGUMENT",
-                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION"};
+                    "PRINT", "ALLOCATION", "SLEEP", "SPAWN", "JOIN", "INVALIDATE", "INTERNAL", "INNER_FRAME", "MATERIALIZE_CHILD_EXPRESSION", "BLOCK_NO_SOURCE_SECTION",
+                    "TRY", "CATCH", "THROW"};
 
     // used to test that no getSourceSection calls happen in certain situations
     private static int rootSourceSectionQueryCount;
@@ -266,6 +270,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
         @Override
         public Object execute(VirtualFrame frame) {
+            assert getParent() != null;
             return node.execute(frame);
         }
 
@@ -315,9 +320,10 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
             int argumentIndex = 0;
             int numberOfIdents = 0;
-            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP") || tag.equals("SPAWN")) {
+            if (tag.equals("DEFINE") || tag.equals("ARGUMENT") || tag.equals("CALL") || tag.equals("LOOP") || tag.equals("CONSTANT") || tag.equals("SLEEP") ||
+                            tag.equals("SPAWN") | tag.equals("CATCH")) {
                 numberOfIdents = 1;
-            } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT")) {
+            } else if (tag.equals("VARIABLE") || tag.equals("RECURSIVE_CALL") || tag.equals("PRINT") || tag.equals("THROW")) {
                 numberOfIdents = 2;
             }
             String[] idents = new String[numberOfIdents];
@@ -423,6 +429,12 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                     return new InnerFrameNode(childArray);
                 case "MATERIALIZE_CHILD_EXPRESSION":
                     return new MaterializeChildExpressionNode(childArray);
+                case "TRY":
+                    return new TryCatchNode(childArray, lang.getContextReference());
+                case "CATCH":
+                    return new CatchNode(idents[0], childArray);
+                case "THROW":
+                    return new ThrowNode(idents[0], idents[1]);
                 default:
                     throw new AssertionError();
             }
@@ -624,6 +636,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
                 return this instanceof StatementNode;
             } else if (tag == StandardTags.ExpressionTag.class) {
                 return this instanceof ExpressionNode;
+            } else if (tag == StandardTags.TryBlockTag.class) {
+                return this instanceof TryNode;
             } else if (tag == LOOP) {
                 return this instanceof LoopNode;
             } else if (tag == BLOCK) {
@@ -654,6 +668,221 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
 
     }
 
+    static class TryCatchNode extends InstrumentedNode {
+
+        @Child TryNode tryNode;
+        @Children private final CatchNode[] catchNodes;
+
+        TryCatchNode(BaseNode[] children, ContextReference<Context> contextRef) {
+            super();
+            BaseNode[] tryNodes = selectTryBlock(children);
+            int tn = tryNodes.length;
+            int cn = children.length - tn;
+            catchNodes = new CatchNode[cn];
+            System.arraycopy(children, tn, catchNodes, 0, cn);
+            tryNode = new TryNode(tryNodes, catchNodes, contextRef);
+        }
+
+        @Override
+        public void setSourceSection(SourceSection sourceSection) {
+            super.setSourceSection(sourceSection);
+            int start = sourceSection.getCharIndex();
+            int end = catchNodes[0].getSourceSection().getCharIndex();
+            SourceSection trySection = sourceSection.getSource().createSection(start, end - start);
+            CharSequence characters = trySection.getCharacters();
+            int lastChar = trySection.getCharLength() - 1;
+            char c;
+            while (Character.isWhitespace(c = characters.charAt(lastChar)) || c == ',') {
+                lastChar--;
+            }
+            trySection = sourceSection.getSource().createSection(start, lastChar + 1);
+            tryNode.setSourceSection(trySection);
+        }
+
+        static BaseNode[] selectTryBlock(BaseNode[] children) {
+            for (int i = 0; i < children.length; i++) {
+                if (children[i] instanceof CatchNode) {
+                    BaseNode[] tryBlock = new BaseNode[i];
+                    System.arraycopy(children, 0, tryBlock, 0, i);
+                    return tryBlock;
+                }
+            }
+            return children;
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            try {
+                return tryNode.execute(frame);
+            } catch (Exception ex) {
+                if (ex instanceof TruffleException) {
+                    Object exceptionObject = ((TruffleException) ex).getExceptionObject();
+                    if (exceptionObject != null) {
+                        String type = exceptionObject.toString();
+                        for (CatchNode cn : catchNodes) {
+                            if (type.startsWith(cn.getExceptionName())) {
+                                return cn.execute(frame);
+                            }
+                        }
+                    }
+                }
+                throw ex;
+            }
+        }
+
+    }
+
+    static class TryNode extends BlockNode {
+
+        private final TruffleObject catchesInfoNode;
+
+        TryNode(BaseNode[] children, CatchNode[] catches, ContextReference<Context> contextRef) {
+            super(children);
+            this.catchesInfoNode = new CatchesInfoObject(catches, contextRef);
+        }
+
+        @Override
+        public Object getNodeObject() {
+            return catchesInfoNode;
+        }
+
+        static class CatchesInfoObject implements TruffleObject {
+
+            private final CatchNode[] catches;
+            private final ContextReference<Context> contextRef;
+
+            CatchesInfoObject(CatchNode[] catches, ContextReference<Context> contextRef) {
+                this.catches = catches;
+                this.contextRef = contextRef;
+            }
+
+            @Override
+            public ForeignAccess getForeignAccess() {
+                return CatchesInfoObjectMessageResolutionForeign.ACCESS;
+            }
+
+            public static boolean isInstance(TruffleObject obj) {
+                return obj instanceof CatchesInfoObject;
+            }
+
+            @MessageResolution(receiverType = CatchesInfoObject.class)
+            static class CatchesInfoObjectMessageResolution {
+
+                @Resolve(message = "HAS_KEYS")
+                abstract static class HasKeysNode extends Node {
+
+                    @SuppressWarnings("unused")
+                    public Object access(CatchesInfoObject info) {
+                        return true;
+                    }
+                }
+
+                @Resolve(message = "KEYS")
+                abstract static class KeysNode extends Node {
+
+                    @TruffleBoundary
+                    public Object access(CatchesInfoObject info) {
+                        return info.contextRef.get().env.asGuestValue(new String[]{"catches"});
+                    }
+                }
+
+                @Resolve(message = "KEY_INFO")
+                abstract static class KeyInfoNode extends Node {
+
+                    @TruffleBoundary
+                    public Object access(CatchesInfoObject info, String name) {
+                        assert info != null;
+                        if ("catches".equals(name)) {
+                            return KeyInfo.INVOCABLE;
+                        } else {
+                            return 0;
+                        }
+                    }
+                }
+
+                @Resolve(message = "INVOKE")
+                abstract static class InvokeNode extends Node {
+
+                    @TruffleBoundary
+                    public Object access(CatchesInfoObject info, String name, Object[] arguments) {
+                        if ("catches".equals(name)) {
+                            String type = arguments[0].toString();
+                            for (CatchNode c : info.catches) {
+                                if (type.startsWith(c.getExceptionName())) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        } else {
+                            throw UnknownIdentifierException.raise(name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    static class CatchNode extends BlockNode {
+
+        private final String exceptionName;
+
+        CatchNode(String exceptionName, BaseNode[] children) {
+            super(children);
+            this.exceptionName = exceptionName;
+        }
+
+        String getExceptionName() {
+            return exceptionName;
+        }
+    }
+
+    static class ThrowNode extends InstrumentedNode {
+
+        private final String type;
+        private final String message;
+
+        ThrowNode(String exceptionType, String message) {
+            this.type = exceptionType;
+            this.message = message;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw createException();
+        }
+
+        @TruffleBoundary
+        private TestLanguageException createException() {
+            return new TestLanguageException(type, message, this);
+        }
+
+        private static class TestLanguageException extends RuntimeException implements TruffleException {
+
+            private static final long serialVersionUID = 2709459650157465163L;
+
+            private final String type;
+            private final ThrowNode throwNode;
+
+            TestLanguageException(String type, String message, ThrowNode throwNode) {
+                super(message);
+                this.type = type;
+                this.throwNode = throwNode;
+            }
+
+            @Override
+            public Node getLocation() {
+                return throwNode;
+            }
+
+            @Override
+            public Object getExceptionObject() {
+                return type + ": " + getMessage();
+            }
+
+        }
+    }
+
     private static final class FunctionRootNode extends InstrumentedNode {
 
         FunctionRootNode(BaseNode[] children) {
@@ -679,9 +908,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<Context>
             String code = source.getCharacters().toString();
             int index = code.indexOf('(') + 1;
             index = code.indexOf(',', index) + 1;
-            while (Character.isWhitespace(code.charAt(index))) {
-                index++;
-            }
             SourceSection functionSection = source.getSource().createSection(source.getCharIndex() + index, source.getCharLength() - index - 1);
             this.target = Truffle.getRuntime().createCallTarget(new InstrumentationTestRootNode(lang, identifier, functionSection, children));
         }

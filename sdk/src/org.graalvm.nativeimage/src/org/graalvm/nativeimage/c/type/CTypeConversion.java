@@ -138,6 +138,18 @@ public final class CTypeConversion {
     }
 
     /**
+     * Decodes a C {@code char*} of length {@code length} to a Java string using {@code charset}.
+     *
+     * @param cString the pointer to a 0 terminated C string
+     * @return a Java string
+     *
+     * @since 1.0
+     */
+    public static String toJavaString(CCharPointer cString, UnsignedWord length, Charset charset) {
+        return ImageSingletons.lookup(CTypeConversionSupport.class).toJavaString(cString, length, charset);
+    }
+
+    /**
      * Converts a Java boolean into a C int containing boolean values.
      *
      * @param value the Java boolean value
@@ -145,8 +157,8 @@ public final class CTypeConversion {
      *
      * @since 1.0
      */
-    public static int toCBoolean(boolean value) {
-        return value ? 1 : 0;
+    public static byte toCBoolean(boolean value) {
+        return (byte) (value ? 1 : 0);
     }
 
     /**

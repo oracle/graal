@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -260,9 +260,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions();
 
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
-                        boolean allowCreateThread, boolean allowHostIO, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages,
-                        FileSystem fileSystem);
+        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, boolean allowNativeAccess,
+                        boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments,
+                        String[] onlyLanguages, FileSystem fileSystem);
 
         public abstract String getImplementationName();
 
@@ -632,6 +632,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
 
+        public abstract SourceSection getSourceLocation(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);
