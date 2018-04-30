@@ -1027,6 +1027,11 @@ public class PolyglotEngine {
         }
 
         @Override
+        public Object asBoxedGuestValue(Object guestObject, Object vmObject) {
+            return guestObject;
+        }
+
+        @Override
         public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
             return null;
         }

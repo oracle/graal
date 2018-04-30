@@ -137,6 +137,8 @@ public abstract class Accessor {
 
         public abstract Object toGuestObject(Object hostObject, Object languageContext);
 
+        public abstract Object asBoxedGuestValue(Object hostObject, Object languageContext);
+
         public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
 
         public abstract boolean isHostObject(Object guestObject);
@@ -304,6 +306,8 @@ public abstract class Accessor {
         public abstract void addToHostClassPath(Object vmObject, TruffleFile entries);
 
         public abstract boolean isInstrumentExceptionsAreThrown(Object vmObject);
+
+        public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
     }
 
