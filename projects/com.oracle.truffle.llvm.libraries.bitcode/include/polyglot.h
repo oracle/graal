@@ -492,7 +492,6 @@ void *__polyglot_from_typed(void *p, void *typeId);
  */
 void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeId);
 
-
 #define POLYGLOT_DECLARE_GENERIC_TYPE(typedecl, typename)                                                                                            \
   static typedecl __polyglot_typeid_##typename[0];                                                                                                   \
                                                                                                                                                      \
@@ -506,7 +505,7 @@ void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeId);
     return (typedecl *)ret;                                                                                                                          \
   }                                                                                                                                                  \
                                                                                                                                                      \
-  __attribute__((always_inline)) static void *polyglot_from_##typename(typedecl *s) {                                                                \
+  __attribute__((always_inline)) static void *polyglot_from_##typename(typedecl * s) {                                                               \
     return __polyglot_from_typed(s, __polyglot_typeid_##typename);                                                                                   \
   }                                                                                                                                                  \
                                                                                                                                                      \
@@ -537,6 +536,7 @@ void *__polyglot_from_typed_array(void *arr, uint64_t length, void *typeId);
  * \endcode
  */
 #define POLYGLOT_DECLARE_STRUCT(type) POLYGLOT_DECLARE_GENERIC_TYPE(struct type, type)
+
 /**
  * Declare polyglot conversion functions for a user-defined anonymous struct type.
  *
