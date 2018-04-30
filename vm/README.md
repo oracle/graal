@@ -36,6 +36,17 @@ To create installable components for FastR, TruffleRuby and Graal.python.
 Note that if `substratevm` is included, native launchers will be created otherwise, bash launchers will be used.
 If `substratevm` is included, the `polyglot` launcher will also be built as well as `libpolyglot`.
 
-# Providing components
+## Versioned dynamic imports
+Dynamic imports typically require the user to locate and clone the dynamically imported suites.
+There is also no indication of which version of those suites would work.
+To avoid this issue, the `vm` suite uses "versioned dynamic imports".
+
+The `mx.vm/suite.py` file contains references to all the suites that might be imported to compose a GraalVM.
+Unlike usual suite imports, they are marked as `dyanmic`, which means they are only considered if they are part of the dynamically imported suites.
+However, when they are included, they have URLs and versions which allow mx to automatically clone the correct version.
+
+More details can be found in `docs/dynamic-imports.md` in the `mx` repository.
+
+## Providing components
 
 Suites can provide components using `mx_sdk.register_graalvm_component`.
