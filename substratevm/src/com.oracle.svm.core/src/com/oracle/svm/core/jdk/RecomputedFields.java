@@ -41,7 +41,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinPool.ForkJoinWorkerThreadFactory;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
@@ -314,18 +313,13 @@ final class Target_java_util_concurrent_ForkJoinTask {
     private static final ReferenceQueue<Object> exceptionTableRefQueue;
 
     static {
-        int exceptionMapCapacity;
-        try {
-            Field field = ForkJoinTask.class.getDeclaredField("EXCEPTION_MAP_CAPACITY");
-            field.setAccessible(true);
-            exceptionMapCapacity = field.getInt(null);
-        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-
         exceptionTableLock = new ReentrantLock();
         exceptionTableRefQueue = new ReferenceQueue<>();
-        exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[exceptionMapCapacity];
+        /*
+         * JDK 8 has a static final field EXCEPTION_MAP_CAPACITY with value 32, later versions just
+         * use 32 hardcoded. To be JDK version independent, we duplicate the hardcoded value.
+         */
+        exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[32];
     }
 
     @Substitute
