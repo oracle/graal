@@ -1027,7 +1027,7 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Object boxGuestValue(Object guestObject, Object vmObject) {
+        public Object asBoxedGuestValue(Object guestObject, Object vmObject) {
             return guestObject;
         }
 

@@ -85,7 +85,7 @@ final class JavaInteropAccessor extends Accessor {
             }
 
             @Override
-            public Object boxGuestObject(Object hostObject, Object languageContext) {
+            public Object asBoxedGuestValue(Object hostObject, Object languageContext) {
                 if (isGuestPrimitive(hostObject)) {
                     return JavaObject.forObject(hostObject, languageContext);
                 } else if (hostObject instanceof TruffleObject) {

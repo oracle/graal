@@ -5,7 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 1.0.0 RC2
 
  * Added notification when [multiple language contexts](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#initializeMultiContext--) were created for a language instance. Allows languages to invalidate assumptions only valid with a single context. Returning true also allows to enable caching of ASTs per language and not only per context.
- * Added [boxGuestvalue](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#boxGuestvalue-java.lang.Object-) method that allows to expose host members for primitive interop values.
+ * Added [asBoxedGuestValue](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#asBoxedGuestValue-java.lang.Object-) method that allows to expose host members for primitive interop values.
 
 ## Version 1.0.0 RC1
 

@@ -137,7 +137,7 @@ public abstract class Accessor {
 
         public abstract Object toGuestObject(Object hostObject, Object languageContext);
 
-        public abstract Object boxGuestObject(Object hostObject, Object languageContext);
+        public abstract Object asBoxedGuestValue(Object hostObject, Object languageContext);
 
         public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
 
@@ -307,7 +307,7 @@ public abstract class Accessor {
 
         public abstract boolean isInstrumentExceptionsAreThrown(Object vmObject);
 
-        public abstract Object boxGuestValue(Object guestObject, Object vmObject);
+        public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
 
     }
 

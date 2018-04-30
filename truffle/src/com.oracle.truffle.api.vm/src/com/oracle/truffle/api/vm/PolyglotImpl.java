@@ -661,9 +661,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Object boxGuestValue(Object guestObject, Object vmObject) {
+        public Object asBoxedGuestValue(Object guestObject, Object vmObject) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) vmObject;
-            return JAVAINTEROP.boxGuestObject(guestObject, languageContext);
+            return JAVAINTEROP.asBoxedGuestValue(guestObject, languageContext);
         }
 
         @Override

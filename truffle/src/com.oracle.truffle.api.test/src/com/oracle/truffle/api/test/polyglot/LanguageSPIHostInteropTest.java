@@ -330,18 +330,18 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void testPrimitiveBoxing() {
-        assertNumberMembers((byte) 1, env.boxGuestvalue((byte) 1));
-        assertNumberMembers((short) 1, env.boxGuestvalue((short) 1));
-        assertNumberMembers(1, env.boxGuestvalue(1));
-        assertNumberMembers(1L, env.boxGuestvalue(1L));
-        assertNumberMembers(1F, env.boxGuestvalue(1F));
-        assertNumberMembers(1D, env.boxGuestvalue(1D));
+        assertNumberMembers((byte) 1, env.asBoxedGuestValue((byte) 1));
+        assertNumberMembers((short) 1, env.asBoxedGuestValue((short) 1));
+        assertNumberMembers(1, env.asBoxedGuestValue(1));
+        assertNumberMembers(1L, env.asBoxedGuestValue(1L));
+        assertNumberMembers(1F, env.asBoxedGuestValue(1F));
+        assertNumberMembers(1D, env.asBoxedGuestValue(1D));
 
-        assertStringMembers("foobarbaz", env.boxGuestvalue("foobarbaz"));
-        assertStringMembers("", env.boxGuestvalue(""));
-        assertBooleanMembers(false, env.boxGuestvalue(false));
-        assertBooleanMembers(true, env.boxGuestvalue(true));
-        assertCharacterMembers('a', env.boxGuestvalue('a'));
+        assertStringMembers("foobarbaz", env.asBoxedGuestValue("foobarbaz"));
+        assertStringMembers("", env.asBoxedGuestValue(""));
+        assertBooleanMembers(false, env.asBoxedGuestValue(false));
+        assertBooleanMembers(true, env.asBoxedGuestValue(true));
+        assertCharacterMembers('a', env.asBoxedGuestValue('a'));
 
     }
 

@@ -1510,8 +1510,8 @@ public abstract class TruffleLanguage<C> {
          * @see #asGuestValue(Object)
          * @since 1.0
          */
-        public Object boxGuestvalue(Object guestObject) {
-            return AccessAPI.engineAccess().boxGuestValue(guestObject, vmObject);
+        public Object asBoxedGuestValue(Object guestObject) {
+            return AccessAPI.engineAccess().asBoxedGuestValue(guestObject, vmObject);
         }
 
         /**
