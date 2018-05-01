@@ -45,6 +45,13 @@ Debugger for debugging Sulong itself in addition to the source-level debugger.
 When launched, the inspector will suspend execution at the first instruction of the program and print
 a link to the console. Pasting this link into Chrome's address bar will open the developer tools for you.
 
+#### Breakpoints
+
+Breakpoints can only be set in functions that have already been parsed. Sulong defaults to parsing
+functions in LLVM bitcode files only when they are first being executed. To instead parse functions
+eagerly and be able to set breakpoints also in functions not yet executed you can launch Sulong
+with the option `--llvm.lazyParsing=false`.
+
 ## Netbeans
 
 ### Setup
