@@ -1001,12 +1001,12 @@ public abstract class Source {
         }
 
         private Content buildBytes() {
-            final ByteBuffer r = (ByteBuffer) origin;
+            final ByteBuffer bytes = (ByteBuffer) origin;
             if (content == null) {
-                content = new String(r.array());
+                content = new String(bytes.array());
             }
             BinarySourceImpl ret = new BinarySourceImpl(
-                            name, (ByteBuffer) origin, content);
+                            name, bytes, content);
             return ret;
         }
     }

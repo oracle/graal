@@ -101,10 +101,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
  *
  * @since 1.0
  */
-/**
- * @author salim
- *
- */
 public final class Source {
 
     private static volatile AbstractSourceImpl IMPL;
