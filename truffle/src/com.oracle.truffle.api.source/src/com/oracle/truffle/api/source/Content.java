@@ -29,6 +29,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 abstract class Content {
@@ -37,6 +38,11 @@ abstract class Content {
 
     CharSequence code;
     private volatile URI uri;
+    ByteBuffer bytes;
+
+    public ByteBuffer getBytes() {
+        return null;
+    }
 
     abstract String findMimeType() throws IOException;
 

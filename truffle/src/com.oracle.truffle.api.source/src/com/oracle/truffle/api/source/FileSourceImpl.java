@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.spi.FileTypeDetector;
@@ -51,6 +52,11 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
         this.name = name;
         this.path = path;
         this.hashKey = path != null ? path : file.getPath();
+    }
+
+    FileSourceImpl(String content, File file, String name, String path, ByteBuffer bytes) {
+        this(content, file, name, path);
+        this.bytes = bytes;
     }
 
     @Override
@@ -96,6 +102,11 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
     @Override
     public int hashCode() {
         return hashKey.hashCode();
+    }
+
+    @Override
+    public ByteBuffer getBytes() {
+        return bytes;
     }
 
     @Override

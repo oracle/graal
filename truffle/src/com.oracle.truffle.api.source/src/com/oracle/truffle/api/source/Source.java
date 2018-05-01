@@ -33,6 +33,7 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -181,6 +182,19 @@ public abstract class Source {
      */
     public static Builder<RuntimeException, MissingMIMETypeException, MissingNameException> newBuilder(CharSequence characters) {
         return EMPTY.new Builder<>(characters);
+    }
+
+    /**
+     * Builds new {@link Source source} from a provided byte buffer. One needs to specify a
+     * {@link Builder#mimeType(java.lang.String)}, possibly a {@link Builder#name(java.lang.String)}
+     * and other attributes and then can {@link Builder#build()} a new instance of the source.
+     *
+     * @param bytes to be returned by {@link Source#getBytes()}
+     * @return new builder to configure additional properties
+     * @since
+     */
+    public static Builder<RuntimeException, RuntimeException, RuntimeException> newBuilder(ByteBuffer bytes) {
+        return EMPTY.new Builder<>(bytes);
     }
 
     /**
@@ -386,6 +400,15 @@ public abstract class Source {
      */
     public final InputStream getInputStream() {
         return new ByteArrayInputStream(getCharacters().toString().getBytes());
+    }
+
+    /**
+     * Original bytes read if the content is a binary source.
+     *
+     * @since
+     */
+    public ByteBuffer getBytes() {
+        return content().getBytes();
     }
 
     /**
@@ -916,6 +939,8 @@ public abstract class Source {
                     holder = buildReader();
                 } else if (origin instanceof URL) {
                     holder = buildURL();
+                } else if (origin instanceof ByteBuffer) {
+                    holder = buildBytes();
                 } else {
                     holder = buildString();
                 }
@@ -972,6 +997,16 @@ public abstract class Source {
             }
             LiteralSourceImpl ret = new LiteralSourceImpl(
                             name, content);
+            return ret;
+        }
+
+        private Content buildBytes() {
+            final ByteBuffer r = (ByteBuffer) origin;
+            if (content == null) {
+                content = new String(r.array());
+            }
+            BinarySourceImpl ret = new BinarySourceImpl(
+                            name, (ByteBuffer) origin, content);
             return ret;
         }
     }
