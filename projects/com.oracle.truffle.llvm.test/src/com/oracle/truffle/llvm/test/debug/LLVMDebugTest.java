@@ -71,6 +71,7 @@ public final class LLVMDebugTest {
 
     private static final String TRACE_EXT = ".txt";
     private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";
+    private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
     private static final String BC_O0 = "O0.bc";
     private static final String BC_O1 = "O1.bc";
@@ -85,13 +86,13 @@ public final class LLVMDebugTest {
     public static Collection<Object[]> getConfigurations() {
         final Map<String, String[]> configs = new HashMap<>();
         configs.put("testPrimitives", new String[]{BC_O0, BC_MEM2REG});
-        // configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testUnions", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testDecorators", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        // configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        // configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
-        // configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testFunctionPointer", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
     }
@@ -103,7 +104,7 @@ public final class LLVMDebugTest {
 
     @Before
     public void before() {
-        tester = new DebuggerTester(Context.newBuilder().option(OPTION_ENABLE_LVI, "true").allowAllAccess(true));
+        tester = new DebuggerTester(Context.newBuilder().option(OPTION_ENABLE_LVI, String.valueOf(true)).option(OPTION_LAZY_PARSING, String.valueOf(false)).allowAllAccess(true));
     }
 
     @After
