@@ -48,11 +48,9 @@ import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 /**
  * This class is used to represent a ZIP file entry.
@@ -62,7 +60,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  */
 @SuppressWarnings("all")
 @Substitute
-@TargetClass(java.util.zip.ZipEntry.class)
+@TargetClass(value = java.util.zip.ZipEntry.class, onlyWith = JDK8OrEarlier.class)
 public final class ZipEntry implements ZipConstants, Cloneable {
 
     @Substitute

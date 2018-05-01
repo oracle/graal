@@ -41,6 +41,7 @@ import java.util.Arrays;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import sun.nio.cs.ArrayDecoder;
 import sun.nio.cs.ArrayEncoder;
 
@@ -49,7 +50,7 @@ import sun.nio.cs.ArrayEncoder;
  */
 @SuppressWarnings("all")
 @Substitute
-@TargetClass(className = "java.util.zip.ZipCoder")
+@TargetClass(className = "java.util.zip.ZipCoder", onlyWith = JDK8OrEarlier.class)
 final class ZipCoder {
 
     String toString(byte[] ba, int off, int length) {
