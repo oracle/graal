@@ -52,6 +52,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -2021,6 +2022,21 @@ public abstract class TruffleLanguage<C> {
     }
 
     static final class LanguageImpl extends Accessor.LanguageSupport {
+
+        @Override
+        public boolean isTruffleStackTrace(Throwable t) {
+            return t instanceof LazyStackTrace;
+        }
+
+        @Override
+        public StackTraceElement[] getInternalStackTraceElements(Throwable t) {
+            TruffleStackTrace trace = ((LazyStackTrace) t).getInternalStackTrace();
+            if (trace == null) {
+                return new StackTraceElement[0];
+            } else {
+                return trace.getInternalStackTrace();
+            }
+        }
 
         @Override
         public InstrumentInfo createInstrument(Object vmObject, String id, String name, String version) {
