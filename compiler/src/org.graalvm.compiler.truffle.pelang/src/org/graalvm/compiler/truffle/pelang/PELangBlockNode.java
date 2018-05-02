@@ -26,24 +26,22 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-public final class PELangExpressionBlockNode extends PELangExpressionNode {
+public final class PELangBlockNode extends PELangStatementNode {
 
-    @Children private final PELangExpressionNode[] bodyNodes;
+    @Children private final PELangStatementNode[] bodyNodes;
 
-    public PELangExpressionBlockNode(PELangExpressionNode[] bodyNodes) {
+    public PELangBlockNode(PELangStatementNode[] bodyNodes) {
         this.bodyNodes = bodyNodes;
     }
 
     @Override
     @ExplodeLoop
-    public Object executeGeneric(VirtualFrame frame) {
+    public void executeVoid(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(bodyNodes.length);
-        Object lastResult = PELangNull.Instance;
 
-        for (PELangExpressionNode bodyNode : bodyNodes) {
-            lastResult = bodyNode.executeGeneric(frame);
+        for (PELangStatementNode bodyNode : bodyNodes) {
+            bodyNode.executeVoid(frame);
         }
-        return lastResult;
     }
 
 }

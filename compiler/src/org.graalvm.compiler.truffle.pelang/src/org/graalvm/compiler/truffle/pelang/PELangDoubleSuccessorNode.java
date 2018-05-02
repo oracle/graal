@@ -24,23 +24,22 @@ package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
+public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
 
-    private final int firstSuccessor;
-    private final int secondSuccessor;
+    @Child private PELangExpressionNode bodyNode;
 
-    public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode, int firstSuccessor, int secondSuccessor) {
-        super(bodyNode);
-        this.firstSuccessor = firstSuccessor;
-        this.secondSuccessor = secondSuccessor;
+    private final int trueSuccessor;
+    private final int falseSuccessor;
+
+    public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
+        this.bodyNode = bodyNode;
+        this.trueSuccessor = trueSuccessor;
+        this.falseSuccessor = falseSuccessor;
     }
 
     @Override
-    public Execution executeBlock(VirtualFrame frame) {
-        long conditionResult = bodyNode.evaluateCondition(frame);
-        int successor = (conditionResult == 0L) ? firstSuccessor : secondSuccessor;
-
-        return new Execution(conditionResult, successor);
+    public int executeBlock(VirtualFrame frame) {
+        return (bodyNode.evaluateCondition(frame) == 0L) ? trueSuccessor : falseSuccessor;
     }
 
 }
