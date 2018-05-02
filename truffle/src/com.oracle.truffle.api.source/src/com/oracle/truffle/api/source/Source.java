@@ -243,9 +243,8 @@ public abstract class Source {
         return EMPTY.new Builder<>(reader);
     }
 
-    static String read(File file) throws IOException {
-        byte[] content = SourceAccessor.isTruffleFile(file) ? SourceAccessor.readTruffleFile(file) : Files.readAllBytes(file.toPath());
-        return new String(content, StandardCharsets.UTF_8);
+    static byte[] read(File file) throws IOException {
+        return SourceAccessor.isTruffleFile(file) ? SourceAccessor.readTruffleFile(file) : Files.readAllBytes(file.toPath());
     }
 
     static String read(Reader reader) throws IOException {
@@ -928,13 +927,13 @@ public abstract class Source {
          * @throws E1 exception if something went wrong while creating the source
          * @throws E2 eliminate this exception by calling {@link #mimeType(java.lang.String) }
          * @throws E3 eliminate this exception by calling {@link #name(java.lang.String) }
-         * @since 0.15
+         * @since
          */
-        public Source build() throws E1, E2, E3 {
+        public Source build(boolean preserve) throws E1, E2, E3 {
             Content holder;
             try {
                 if (origin instanceof File) {
-                    holder = buildFile(content == null);
+                    holder = buildFile(content == null, preserve);
                 } else if (origin instanceof Reader) {
                     holder = buildReader();
                 } else if (origin instanceof URL) {
@@ -961,14 +960,40 @@ public abstract class Source {
             }
         }
 
-        private Content buildFile(boolean read) throws IOException {
+        /**
+         * Uses configuration of this builder to create new {@link Source} object. The return value
+         * is parametrized to ensure your code doesn't compile until you specify a MIME type:
+         * <ul>
+         * <li>either via file related methods like {@link Source#newBuilder(java.io.File)} that can
+         * guess the MIME type</li>
+         * <li>or directly via {@link #mimeType(java.lang.String)} method on this builder
+         * </ul>
+         * This method may throw an exception - especially when dealing with files (e.g.
+         * {@link Source#newBuilder(java.net.URL)}, {@link Source#newBuilder(java.io.File)} or
+         * {@link Source#newBuilder(java.io.Reader)} this method may throw {@link IOException} that
+         * one needs to deal with. In case of other building styles (like
+         * {@link Source#newBuilder(java.lang.String)} one doesn't need to capture any exception
+         * when calling this method.
+         *
+         * @return the source object
+         * @throws E1 exception if something went wrong while creating the source
+         * @throws E2 eliminate this exception by calling {@link #mimeType(java.lang.String) }
+         * @throws E3 eliminate this exception by calling {@link #name(java.lang.String) }
+         * @since 0.15
+         */
+        public Source build() throws E1, E2, E3 {
+            return build(false);
+        }
+
+        private Content buildFile(boolean read, boolean preserveBytes) throws IOException {
             final File file = (File) origin;
             File absoluteFile = file.getCanonicalFile();
+            byte[] bytes = Source.read(file);
             FileSourceImpl fileSource = new FileSourceImpl(
-                            read ? Source.read(file) : null,
+                            read ? new String(bytes, StandardCharsets.UTF_8) : null,
                             absoluteFile,
                             name == null ? file.getName() : name,
-                            path);
+                            path, preserveBytes ? ByteBuffer.wrap(bytes) : null);
             return fileSource;
         }
 

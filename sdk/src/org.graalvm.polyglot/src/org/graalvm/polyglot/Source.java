@@ -411,7 +411,7 @@ public final class Source {
     }
 
     /**
-     * Creates a new source builder from language and byte buffer
+     * Creates a new source builder from language and byte buffer.
      *
      * @since
      */
@@ -567,13 +567,25 @@ public final class Source {
 
         /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
-         * an {@link IOException} if an error loading the source occured.
+         * an {@link IOException} if an error loading the source occurred.
          *
          * @return the source object
          * @since 1.0
          */
         public Source build() throws IOException {
             return getImpl().build(language, origin, uri, name, content, interactive, internal);
+        }
+
+        /**
+         * Uses configuration of this builder to create new {@link Source} object. The method throws
+         * an {@link IOException} if an error loading the source occurred.
+         *
+         * @param preserveBytes True to preserve the original bytes of the source file
+         * @return the source object
+         * @since
+         */
+        public Source build(boolean preserveBytes) throws IOException {
+            return getImpl().build(language, origin, uri, name, content, interactive, internal, preserveBytes);
         }
 
         /**

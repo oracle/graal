@@ -587,6 +587,11 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
+            public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean preserveBytes) throws IOException {
+                throw noPolyglotImplementationFound();
+            }
+
+            @Override
             public String findLanguage(File file) throws IOException {
                 return null;
             }

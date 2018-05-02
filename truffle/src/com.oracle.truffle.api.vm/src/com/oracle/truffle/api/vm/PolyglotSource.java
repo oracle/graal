@@ -222,9 +222,14 @@ class PolyglotSource extends AbstractSourceImpl {
         return impl.equals(otherImpl);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException {
+        return build(language, origin, uri, name, content, interactive, internal, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean preserveBytes) throws IOException {
         assert language != null;
         com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
         boolean needsName = false;
@@ -269,7 +274,7 @@ class PolyglotSource extends AbstractSourceImpl {
         builder.language(language);
 
         try {
-            return engineImpl.getAPIAccess().newSource(language, ((com.oracle.truffle.api.source.Source.Builder<IOException, ?, ?>) builder).build());
+            return engineImpl.getAPIAccess().newSource(language, ((com.oracle.truffle.api.source.Source.Builder<IOException, ?, ?>) builder).build(preserveBytes));
         } catch (IOException e) {
             throw e;
         } catch (RuntimeException e) {

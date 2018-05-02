@@ -136,6 +136,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException;
 
+        public abstract Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean preserveBytes) throws IOException;
+
         public abstract String getName(Object impl);
 
         public abstract String getPath(Object impl);

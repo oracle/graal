@@ -56,7 +56,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     FileSourceImpl(String content, File file, String name, String path, ByteBuffer bytes) {
         this(content, file, name, path);
-        this.bytes = bytes;
+        this.sourceBytes = bytes;
     }
 
     @Override
@@ -106,7 +106,7 @@ final class FileSourceImpl extends Content implements Content.CreateURI {
 
     @Override
     public ByteBuffer getBytes() {
-        return bytes;
+        return sourceBytes;
     }
 
     @Override

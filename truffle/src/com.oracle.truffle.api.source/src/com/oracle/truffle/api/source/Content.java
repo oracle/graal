@@ -38,7 +38,7 @@ abstract class Content {
 
     CharSequence code;
     private volatile URI uri;
-    ByteBuffer bytes;
+    ByteBuffer sourceBytes;
 
     public ByteBuffer getBytes() {
         return null;

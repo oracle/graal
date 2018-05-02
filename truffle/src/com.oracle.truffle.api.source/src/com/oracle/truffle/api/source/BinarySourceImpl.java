@@ -37,13 +37,13 @@ public class BinarySourceImpl extends Content implements Content.CreateURI {
 
     public BinarySourceImpl(String name, ByteBuffer bytes, CharSequence code) {
         this.name = name;
-        this.bytes = bytes;
+        this.sourceBytes = bytes;
         this.code = enforceCharSequenceContract(code);
     }
 
     @Override
     public ByteBuffer getBytes() {
-        return bytes;
+        return sourceBytes;
     }
 
     @Override
