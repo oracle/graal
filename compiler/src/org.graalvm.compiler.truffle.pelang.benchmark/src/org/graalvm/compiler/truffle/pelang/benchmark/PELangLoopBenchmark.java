@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.pelang.benchmark;
 
-import org.graalvm.compiler.truffle.pelang.PELangExpressionBuilder;
+import org.graalvm.compiler.truffle.pelang.PELangBuilder;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import com.oracle.truffle.api.CallTarget;
@@ -32,21 +32,25 @@ public class PELangLoopBenchmark extends PartialEvaluationBenchmark {
 
     @Override
     protected OptimizedCallTarget createCallTarget() {
-        PELangExpressionBuilder b = new PELangExpressionBuilder();
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(b.root(
-            b.expressionBlock(
+            b.block(
                 b.write(0, "flag"),
                 b.write(0, "counter"),
                 b.loop(
                     b.read("flag"),
-                    b.expressionBlock(
+                    b.block(
                         b.increment(1, "counter"),
                         b.branch(
                             b.equals(10, "counter"),
                             b.write(1, "flag")))),
-                b.read("counter"))));
+                b.ret(
+                    b.read("counter")
+                )
+            )
+        ));
         // @formatter:on
 
         return (OptimizedCallTarget) callTarget;

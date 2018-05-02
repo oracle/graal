@@ -22,36 +22,74 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangExpressionBuilder;
+import org.graalvm.compiler.truffle.pelang.PELangBuilder;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class PELangLoopTest extends PELangTest {
 
-    @Test
-    public void loopTest() {
-        PELangExpressionBuilder b = new PELangExpressionBuilder();
+    protected Object constant10() {
+        return 10;
+    }
+
+    @Before
+    public void setup() {
+        PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         RootNode rootNode = b.root(
-            b.expressionBlock(
+            b.block(
                 b.write(0, "flag"),
                 b.write(0, "counter"),
                 b.loop(
                     b.read("flag"),
-                    b.expressionBlock(
+                    b.block(
                         b.increment(1, "counter"),
                         b.branch(
                             b.equals(10, "counter"),
                             b.write(1, "flag")))),
-                b.read("counter")));
+                b.ret(
+                    b.read("counter"))
+                )
+        );
         // @formatter:on
 
-        assertConstant10CallResult(rootNode);
+        // warm up compiler to avoid code installation failures
+        try {
+            compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        } catch (Exception e) {
+            // swallow exception
+        }
+    }
 
-        // this currently fails
-        // assertConstant10PartialEvaluationResult(rootNode);
+    @Test
+    public void loopTest() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        RootNode rootNode = b.root(
+            b.block(
+                b.write(0, "flag"),
+                b.write(0, "counter"),
+                b.loop(
+                    b.read("flag"),
+                    b.block(
+                        b.increment(1, "counter"),
+                        b.branch(
+                            b.equals(10, "counter"),
+                            b.write(1, "flag")))),
+                b.ret(
+                    b.read("counter"))
+                )
+        );
+        // @formatter:on
+
+        assertCallResult(10L, rootNode);
+
+        // TODO: some assertions about PE should be done here
+        // assertPartialEvalEquals("constant10", rootNode);
     }
 
 }
