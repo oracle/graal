@@ -24,26 +24,24 @@ package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class PELangIfNode extends PELangExpressionNode {
+public final class PELangIfNode extends PELangStatementNode {
 
     @Child private PELangExpressionNode conditionNode;
-    @Child private PELangExpressionNode thenNode;
-    @Child private PELangExpressionNode elseNode;
+    @Child private PELangStatementNode thenNode;
+    @Child private PELangStatementNode elseNode;
 
-    public PELangIfNode(PELangExpressionNode conditionNode, PELangExpressionNode thenNode, PELangExpressionNode elseNode) {
+    public PELangIfNode(PELangExpressionNode conditionNode, PELangStatementNode thenNode, PELangStatementNode elseNode) {
         this.conditionNode = conditionNode;
         this.thenNode = thenNode;
         this.elseNode = elseNode;
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        long conditionResult = conditionNode.evaluateCondition(frame);
-
-        if (conditionResult == 0L) {
-            return thenNode.executeGeneric(frame);
+    public void executeVoid(VirtualFrame frame) {
+        if (conditionNode.evaluateCondition(frame) == 0L) {
+            thenNode.executeVoid(frame);
         } else {
-            return elseNode.executeGeneric(frame);
+            elseNode.executeVoid(frame);
         }
     }
 

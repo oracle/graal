@@ -22,14 +22,12 @@
  */
 package org.graalvm.compiler.truffle.pelang;
 
-import org.graalvm.compiler.truffle.pelang.PELangBasicBlockNode.Execution;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
-public class PELangBasicBlockDispatchNode extends PELangExpressionNode {
+public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
 
     @Children private final PELangBasicBlockNode[] blockNodes;
 
@@ -39,19 +37,14 @@ public class PELangBasicBlockDispatchNode extends PELangExpressionNode {
 
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
-    public Object executeGeneric(VirtualFrame frame) {
+    public void executeVoid(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(blockNodes.length);
-        Object result = PELangNull.Instance;
         int blockIndex = (blockNodes.length == 0) ? PELangBasicBlockNode.NO_SUCCESSOR : 0;
 
         while (blockIndex != PELangBasicBlockNode.NO_SUCCESSOR) {
-            Execution execution = blockNodes[blockIndex].executeBlock(frame);
-
-            result = execution.getResult();
-            blockIndex = execution.getSuccessor();
+            CompilerAsserts.partialEvaluationConstant(blockIndex);
+            blockIndex = blockNodes[blockIndex].executeBlock(frame);
         }
-
-        return result;
     }
 
 }

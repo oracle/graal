@@ -28,16 +28,21 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public final class PELangRootNode extends RootNode {
 
-    @Child private PELangExpressionNode bodyNode;
+    @Child private PELangStatementNode bodyNode;
 
-    protected PELangRootNode(PELangExpressionNode bodyNode, FrameDescriptor frameDescriptor) {
+    protected PELangRootNode(PELangStatementNode bodyNode, FrameDescriptor frameDescriptor) {
         super(null, frameDescriptor);
         this.bodyNode = bodyNode;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return bodyNode.executeGeneric(frame);
+        try {
+            bodyNode.executeVoid(frame);
+            return PELangNull.Instance;
+        } catch (PELangReturnException e) {
+            return e.getResult();
+        }
     }
 
 }

@@ -23,41 +23,12 @@
 package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 
-public abstract class PELangBasicBlockNode extends PELangExpressionNode {
+public abstract class PELangBasicBlockNode extends Node {
 
     public static final int NO_SUCCESSOR = -1;
 
-    @Child protected PELangExpressionNode bodyNode;
-
-    public PELangBasicBlockNode(PELangExpressionNode bodyNode) {
-        this.bodyNode = bodyNode;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        return executeBlock(frame);
-    }
-
-    public abstract Execution executeBlock(VirtualFrame frame);
-
-    public static class Execution {
-        private final Object result;
-        private final int successor;
-
-        public Execution(Object result, int successor) {
-            this.result = result;
-            this.successor = successor;
-        }
-
-        public Object getResult() {
-            return result;
-        }
-
-        public int getSuccessor() {
-            return successor;
-        }
-
-    }
+    public abstract int executeBlock(VirtualFrame frame);
 
 }

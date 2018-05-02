@@ -24,11 +24,11 @@ package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 
-public class PELangExpressionBuilder {
+public class PELangBuilder {
 
     private final FrameDescriptor frameDescriptor = new FrameDescriptor();
 
-    public PELangRootNode root(PELangExpressionNode bodyNode) {
+    public PELangRootNode root(PELangStatementNode bodyNode) {
         return new PELangRootNode(bodyNode, frameDescriptor);
     }
 
@@ -56,20 +56,20 @@ public class PELangExpressionBuilder {
         return add(literal(-value), read(identifier));
     }
 
-    public PELangExpressionNode expressionBlock(PELangExpressionNode... bodyNodes) {
-        return new PELangExpressionBlockNode(bodyNodes);
+    public PELangStatementNode block(PELangStatementNode... bodyNodes) {
+        return new PELangBlockNode(bodyNodes);
     }
 
-    public PELangExpressionNode branch(PELangExpressionNode conditionNode, PELangExpressionNode thenNode,
-                    PELangExpressionNode elseNode) {
+    public PELangStatementNode branch(PELangExpressionNode conditionNode, PELangStatementNode thenNode,
+                    PELangStatementNode elseNode) {
         return new PELangIfNode(conditionNode, thenNode, elseNode);
     }
 
-    public PELangExpressionNode branch(PELangExpressionNode conditionNode, PELangExpressionNode thenNode) {
-        return branch(conditionNode, thenNode, expressionBlock());
+    public PELangStatementNode branch(PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
+        return branch(conditionNode, thenNode, block());
     }
 
-    public PELangExpressionNode loop(PELangExpressionNode conditionNode, PELangExpressionNode bodyNode) {
+    public PELangStatementNode loop(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
         return new PELangWhileNode(conditionNode, bodyNode);
     }
 
@@ -97,11 +97,15 @@ public class PELangExpressionBuilder {
         return write(add(literal(value), read(identifier)), identifier);
     }
 
-    public PELangExpressionNode dispatch(PELangBasicBlockNode... blockNodes) {
+    public PELangStatementNode ret(PELangExpressionNode bodyNode) {
+        return new PELangReturnNode(bodyNode);
+    }
+
+    public PELangStatementNode dispatch(PELangBasicBlockNode... blockNodes) {
         return new PELangBasicBlockDispatchNode(blockNodes);
     }
 
-    public PELangBasicBlockNode basicBlock(PELangExpressionNode bodyNode, int successor) {
+    public PELangBasicBlockNode basicBlock(PELangStatementNode bodyNode, int successor) {
         return new PELangSingleSuccessorNode(bodyNode, successor);
     }
 

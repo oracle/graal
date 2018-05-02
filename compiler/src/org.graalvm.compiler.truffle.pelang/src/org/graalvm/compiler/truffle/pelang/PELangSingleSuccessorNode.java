@@ -24,19 +24,24 @@ package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class PELangSingleSuccessorNode extends PELangBasicBlockNode {
+public final class PELangSingleSuccessorNode extends PELangBasicBlockNode {
+
+    @Child private PELangStatementNode bodyNode;
 
     private final int successor;
 
-    public PELangSingleSuccessorNode(PELangExpressionNode bodyNode, int successor) {
-        super(bodyNode);
+    public PELangSingleSuccessorNode(PELangStatementNode bodyNode, int successor) {
+        if (bodyNode instanceof PELangReturnNode && successor != PELangBasicBlockNode.NO_SUCCESSOR) {
+            throw new IllegalArgumentException("basic block with return node must not have a successor");
+        }
+        this.bodyNode = bodyNode;
         this.successor = successor;
     }
 
     @Override
-    public Execution executeBlock(VirtualFrame frame) {
-        Object result = bodyNode.executeGeneric(frame);
-        return new Execution(result, successor);
+    public int executeBlock(VirtualFrame frame) {
+        bodyNode.executeVoid(frame);
+        return successor;
     }
 
 }

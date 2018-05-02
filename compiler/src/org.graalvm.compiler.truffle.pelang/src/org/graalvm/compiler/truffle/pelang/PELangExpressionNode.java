@@ -23,10 +23,14 @@
 package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-public abstract class PELangExpressionNode extends Node {
+public abstract class PELangExpressionNode extends PELangStatementNode {
+
+    @Override
+    public void executeVoid(VirtualFrame frame) {
+        executeGeneric(frame);
+    }
 
     public abstract Object executeGeneric(VirtualFrame frame);
 

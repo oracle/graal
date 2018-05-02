@@ -25,7 +25,7 @@ package org.graalvm.compiler.truffle.pelang;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
-public class PELangException extends RuntimeException implements TruffleException {
+public final class PELangException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = 1L;
 
@@ -39,6 +39,11 @@ public class PELangException extends RuntimeException implements TruffleExceptio
     @Override
     public Node getLocation() {
         return node;
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return null;
     }
 
 }
