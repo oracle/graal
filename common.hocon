@@ -11,7 +11,7 @@ jdks: {
   oraclejdk10 : {name : oraclejdk, version : "10+46", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
-  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180420-122544", platformspecific: true}
+  oraclejdkSNAPSHOT : {name : labsjdk, version : "20180502-092427", platformspecific: true}
 
   openjdk8 : {name : openjdk, version : "8u161-jvmci-0.42", platformspecific: true}
 }
