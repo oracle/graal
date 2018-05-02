@@ -29,25 +29,69 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
 
+/**
+ * Common base interface for all pointer representations. An {@link LLVMPointer} is either a
+ * {@link LLVMNativePointer} or a {@link LLVMManagedPointer}.
+ *
+ * Important: Java type checks or casts for the pointer interface types will not work because all
+ * interfaces are implemented by a single implementation class for efficiency reasons. Use the
+ * static methods {@link #isInstance} and {@link #cast} instead.
+ *
+ * All nodes that use specializations on pointer interfaces need to extend from {@link LLVMNode}, or
+ * at least use the {@link LLVMTypes} type system.
+ */
 public interface LLVMPointer extends TruffleObject {
 
+    /**
+     * Check whether this pointer is null.
+     */
     boolean isNull();
 
+    /**
+     * Create an exact copy of this pointer. This method should be used whenever a pointer is read
+     * from or written to the Java heap, to help escape analysis.
+     *
+     * Note that {@link LLVMPointer} and its sub-interfaces are considered {@link ValueType}, so
+     * reference comparison with {@code ==} is undefined. Therefore, depending on compiler
+     * optimizations, {@link #copy} might not really create a new instance.
+     */
     LLVMPointer copy();
 
+    /**
+     * Increment this pointer. The {@link #getExportType export type} of the result pointer is reset
+     * to {@code null}.
+     */
     LLVMPointer increment(long offset);
 
+    /**
+     * Get the {@link LLVMInteropType} of this pointer. This type is used to determine access
+     * semantics from other languages.
+     */
     LLVMInteropType getExportType();
 
+    /**
+     * Create a copy of this pointer with a new {@link LLVMInteropType}.
+     */
     LLVMPointer export(LLVMInteropType newType);
 
+    /**
+     * Check whether an object is a {@link LLVMPointer}. This method must be used instead of the
+     * regular Java {@code instanceof} operator.
+     */
     static boolean isInstance(Object object) {
         return object instanceof LLVMPointerImpl;
     }
 
+    /**
+     * Cast an object to a {@link LLVMPointer}. This method must be used instead of the regular Java
+     * typecast operator.
+     */
     static LLVMPointer cast(Object object) {
         return (LLVMPointerImpl) object;
     }

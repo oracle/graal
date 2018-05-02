@@ -30,28 +30,59 @@
 package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
 
+/**
+ * Represents a raw pointer to the native heap.
+ *
+ * Important: Java type checks or cast for the pointer interface types will not work because all
+ * interfaces are implemented by a single implementation class for efficiency reasons. Use the
+ * static methods {@link #isInstance} and {@link #cast} instead.
+ *
+ * All nodes that use specializations on pointer interfaces need to extend from {@link LLVMNode}, or
+ * at least use the {@link LLVMTypes} type system.
+ */
 public interface LLVMNativePointer extends LLVMPointer {
 
+    /**
+     * Get the native address of this pointer.
+     */
     long asNative();
 
     @Override
     LLVMNativePointer copy();
 
+    /**
+     * Increment this pointer. The result is determined by simply adding the offset to the
+     * {@link #asNative} address.
+     *
+     * The {@link #getExportType export type} of the result pointer is reset to {@code null}.
+     */
     @Override
     LLVMNativePointer increment(long offset);
 
     @Override
     LLVMNativePointer export(LLVMInteropType newType);
 
+    /**
+     * Create a null pointer.
+     */
     static LLVMNativePointer createNull() {
         return new LLVMPointerImpl(null, 0, null);
     }
 
+    /**
+     * Create a native pointer.
+     */
     static LLVMNativePointer create(long ptr) {
         return new LLVMPointerImpl(null, ptr, null);
     }
 
+    /**
+     * Check whether an object is a {@link LLVMNativePointer}. This method must be used instead of
+     * the regular Java {@code instanceof} operator.
+     */
     static boolean isInstance(Object object) {
         if (object instanceof LLVMPointerImpl) {
             return ((LLVMPointerImpl) object).isNative();
@@ -60,9 +91,12 @@ public interface LLVMNativePointer extends LLVMPointer {
         }
     }
 
+    /**
+     * Cast an object to a {@link LLVMNativePointer}. This method must be used instead of the
+     * regular Java typecast operator.
+     */
     static LLVMNativePointer cast(Object object) {
         assert isInstance(object);
         return (LLVMPointerImpl) object;
     }
-
 }

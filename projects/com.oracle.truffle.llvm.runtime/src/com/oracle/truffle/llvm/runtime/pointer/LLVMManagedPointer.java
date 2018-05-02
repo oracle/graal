@@ -31,26 +31,58 @@ package com.oracle.truffle.llvm.runtime.pointer;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
 
+/**
+ * Represents a pointer to a managed object on the Java heap. Managed pointers consist of a
+ * {@link #getObject base object} and an {@link #getOffset offset}.
+ *
+ * Important: Java type checks or cast for the pointer interface types will not work because all
+ * interfaces are implemented by a single implementation class for efficiency reasons. Use the
+ * static methods {@link #isInstance} and {@link #cast} instead.
+ *
+ * All nodes that use specializations on pointer interfaces need to extend from {@link LLVMNode}, or
+ * at least use the {@link LLVMTypes} type system.
+ */
 public interface LLVMManagedPointer extends LLVMPointer {
 
+    /**
+     * Get the managed object that is the base of this pointer. This is guaranteed to be non-null.
+     */
     TruffleObject getObject();
 
+    /**
+     * Get the offset into the base object.
+     */
     long getOffset();
 
     @Override
     LLVMManagedPointer copy();
 
+    /**
+     * Increment this pointer. The result has the same {@link #getObject base object}, and the
+     * {@link #getOffset offset} is incremented.
+     *
+     * The {@link #getExportType export type} of the result pointer is reset to {@code null}.
+     */
     @Override
     LLVMManagedPointer increment(long offset);
 
     @Override
     LLVMManagedPointer export(LLVMInteropType newType);
 
+    /**
+     * Create a new managed pointer, pointing to the beginning of a managed object.
+     */
     static LLVMManagedPointer create(TruffleObject object) {
         return new LLVMPointerImpl(object, 0, null);
     }
 
+    /**
+     * Check whether an object is a {@link LLVMManagedPointer}. This method must be used instead of
+     * the regular Java {@code instanceof} operator.
+     */
     static boolean isInstance(Object object) {
         if (object instanceof LLVMPointerImpl) {
             return ((LLVMPointerImpl) object).isManaged();
@@ -59,6 +91,10 @@ public interface LLVMManagedPointer extends LLVMPointer {
         }
     }
 
+    /**
+     * Cast an object to a {@link LLVMManagedPointer}. This method must be used instead of the
+     * regular Java typecast operator.
+     */
     static LLVMManagedPointer cast(Object object) {
         assert isInstance(object);
         return (LLVMPointerImpl) object;
