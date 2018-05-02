@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.pelang.benchmark;
 
-import org.graalvm.compiler.truffle.pelang.PELangBuilder;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionBuilder;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 import com.oracle.truffle.api.CallTarget;
