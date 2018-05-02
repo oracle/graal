@@ -531,7 +531,7 @@ class NativeImage {
             showVerboseMessage(verbose || dryRun, "Automatically appending LauncherClassPath");
             getAbsoluteLauncherClassPath().forEach(p -> {
                 if (!Files.isRegularFile(p)) {
-                    System.err.println(String.format("WARNING: Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
+                    showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
                 } else {
                     addImageClasspath(p);
                 }
