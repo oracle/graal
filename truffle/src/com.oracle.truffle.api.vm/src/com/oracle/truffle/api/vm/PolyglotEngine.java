@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.vm;
 
+import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.AbstractMap;
@@ -998,8 +1000,13 @@ public class PolyglotEngine {
         }
 
         @Override
-        public Env getEnvForLanguage(Object vmObject, String languageId, String mimeType) {
-            return ((Language) vmObject).engine().findLanguage(mimeType, true).getEnv(true);
+        public CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames) {
+            Env env = ((Language) vmObject).engine().findLanguage(source.getMimeType(), true).getEnv(true);
+            CallTarget target = LANGUAGE.parse(env, source, null, argumentNames);
+            if (target == null) {
+                throw new NullPointerException("Parsing has not produced a CallTarget for " + source);
+            }
+            return target;
         }
 
         @Override
@@ -1017,6 +1024,11 @@ public class PolyglotEngine {
         public boolean isNativeAccessAllowed(Object vmObject, Env env) {
             // now way to specify access rights with legacy PolyglotEngine
             return true;
+        }
+
+        @Override
+        public Object asBoxedGuestValue(Object guestObject, Object vmObject) {
+            return guestObject;
         }
 
         @Override

@@ -91,6 +91,8 @@ public final class NativeLibraries {
     private final List<CInterfaceError> errors;
     private final ConstantReflectionProvider constantReflection;
 
+    private final CAnnotationProcessorCache cache;
+
     static final class SizeOfSupportImpl implements SizeOfSupport {
         private final NativeLibraries nativeLibraries;
 
@@ -193,6 +195,8 @@ public final class NativeLibraries {
 
         ImageSingletons.add(SizeOfSupport.class, new SizeOfSupportImpl(this));
         ImageSingletons.add(CConstantValueSupport.class, new CConstantValueSupportImpl(this));
+
+        this.cache = new CAnnotationProcessorCache();
     }
 
     public MetaAccessProvider getMetaAccess() {
@@ -337,7 +341,7 @@ public final class NativeLibraries {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
 
-                new CAnnotationProcessor(this, context, tempDirectory).process();
+                new CAnnotationProcessor(this, context, tempDirectory).process(cache);
             }
         }
     }

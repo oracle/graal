@@ -37,8 +37,8 @@
  * <p>
  *
  * <p>
- * See <a href="http://www.graalvm.org/docs/embed">graalvm.org</a> for more examples on how to use
- * this API.
+ * See <a href="http://www.graalvm.org/docs/graalvm-as-a-platform/embed/">graalvm.org</a> for more
+ * examples on how to use this API.
  *
  * @see org.graalvm.polyglot.Context For an overview over the features the polyglot API provides.
  * @since 1.0

@@ -136,7 +136,17 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         }
 
         for (Class<?> clazz : allClasses) {
-            DynamicHub hub = access.getHostVM().dynamicHub(access.getMetaAccess().lookupJavaType(clazz));
+            AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
+            DynamicHub hub = access.getHostVM().dynamicHub(type);
+
+            if (type.isArray()) {
+                /*
+                 * Array types allocated reflectively need to be registered as instantiated.
+                 * Otherwise the isInstantiated check in AllocationSnippets.checkDynamicHub() will
+                 * fail at runtime when the array is *only* allocated through Array.newInstance().
+                 */
+                type.registerAsInHeap();
+            }
 
             if (reflectionClasses.contains(clazz)) {
                 ClassForNameSupport.registerClass(clazz);

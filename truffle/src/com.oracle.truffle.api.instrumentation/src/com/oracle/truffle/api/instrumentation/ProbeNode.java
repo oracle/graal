@@ -429,13 +429,73 @@ public final class ProbeNode extends Node {
         int index = indexOfChild(binding, rootNode, providedTags, parentContext.getInstrumentedNode(), parentContext.getInstrumentedSourceSection(), context.getInstrumentedNode());
         if (index < 0 || index >= parentChain.inputCount) {
             // not found. a child got replaced?
-            // TODO what to do if child was not found?
-            // we should not continue with an out of bounds child index.
-            assert false;
+            // probe should have been notified about this with notifyInserted
+            assert throwIllegalASTAssertion(parentChain, parentContext, binding, rootNode, providedTags, index);
             return null;
         }
         ProbeNode probe = parent.findProbe();
         return new InputValueChainNode(binding, probe, context, index);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean throwIllegalASTAssertion(EventProviderWithInputChainNode parentChain, EventContext parentContext, EventBinding.Source<?> binding, RootNode rootNode,
+                    Set<Class<?>> providedTags, int index) {
+        StringBuilder msg = new StringBuilder();
+        try {
+            // number of additional children that will be looked up from the current index
+            // might not be enough depending on the violation.
+            final int lookupChildrenCount = 10;
+
+            SourceSection parentSourceSection = parentContext.getInstrumentedSourceSection();
+            EventContext[] contexts = findChildContexts(binding, rootNode, providedTags, parentContext.getInstrumentedNode(), parentContext.getInstrumentedSourceSection(),
+                            Math.max(parentChain.inputCount, index + lookupChildrenCount));
+
+            int contextCount = 0;
+            for (int i = 0; i < contexts.length; i++) {
+                EventContext eventContext = contexts[i];
+                if (eventContext != null) {
+                    contextCount++;
+                }
+            }
+
+            msg.append("Stable AST assumption violated.  " + parentChain.inputCount + " children expected got " + contextCount);
+            msg.append("\n Parent: " + parentSourceSection);
+
+            for (int i = 0; i < contexts.length; i++) {
+                EventContext eventContext = contexts[i];
+                if (eventContext == null) {
+                    continue;
+                }
+                msg.append("\nChild[" + i + "] = " + eventContext.getInstrumentedSourceSection());
+                Node node = eventContext.getInstrumentedNode();
+                String indent = "  ";
+                while (node != null) {
+                    msg.append("\n");
+                    msg.append(indent);
+                    if (node == parentContext.getInstrumentedNode()) {
+                        msg.append("Parent");
+                        break;
+                    }
+                    if (node.getParent() == null) {
+                        msg.append("null parent = ");
+                    } else {
+                        String fieldName = NodeUtil.findChildField(node.getParent(), node).getName();
+                        msg.append(node.getParent().getClass().getSimpleName() + "." + fieldName + " = ");
+                    }
+
+                    msg.append(node.getClass().getSimpleName() + "#" + System.identityHashCode(node));
+                    indent += "  ";
+                    node = node.getParent();
+                }
+            }
+
+        } catch (Throwable e) {
+            // if assertion computation fails we need to fallback to some simplerm essage
+            AssertionError error = new AssertionError("Stable AST assumption violated");
+            error.addSuppressed(e);
+            throw error;
+        }
+        throw new AssertionError(msg.toString());
     }
 
     ProbeNode.EventChainNode createEventChainCallback(VirtualFrame frame, EventBinding.Source<?> binding, RootNode rootNode, Set<Class<?>> providedTags, Node instrumentedNode,

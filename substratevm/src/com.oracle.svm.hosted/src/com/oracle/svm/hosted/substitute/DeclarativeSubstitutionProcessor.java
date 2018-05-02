@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -436,6 +437,11 @@ class ClassDescriptor extends PlatformsDescriptor {
         @Override
         public String className() {
             return get("originalClass", null);
+        }
+
+        @Override
+        public Class<? extends Function<TargetClass, String>> classNameProvider() {
+            return TargetClass.NoClassNameProvider.class;
         }
 
         @Override

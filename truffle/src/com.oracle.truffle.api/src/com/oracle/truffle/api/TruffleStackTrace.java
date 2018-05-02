@@ -47,25 +47,29 @@ final class TruffleStackTrace extends Exception {
     private List<TruffleStackTraceElement> frames;
     private final int lazyFrames;
 
+    private StackTraceElement[] superFrames;
+
     private TruffleStackTrace(List<TruffleStackTraceElement> frames, int lazyFrames) {
         this.frames = frames;
         this.lazyFrames = lazyFrames;
+        this.superFrames = super.getStackTrace();
+        // clear stack trace so we don't see it anymore for internal errors.
+        setStackTrace(new StackTraceElement[0]);
     }
 
-    /**
-     * Preprocesses the stacktrace by adding "null" elements, which are treated like guest language
-     * calls.
-     */
-    @Override
-    public StackTraceElement[] getStackTrace() {
-        StackTraceElement[] stackTrace = super.getStackTrace();
+    StackTraceElement[] getInternalStackTrace() {
         if (lazyFrames == 0) {
-            return stackTrace;
+            return superFrames;
         } else {
-            StackTraceElement[] extended = new StackTraceElement[stackTrace.length + lazyFrames];
-            System.arraycopy(stackTrace, 0, extended, lazyFrames, stackTrace.length);
+            StackTraceElement[] extended = new StackTraceElement[superFrames.length + lazyFrames];
+            System.arraycopy(superFrames, 0, extended, lazyFrames, superFrames.length);
             return extended;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "Attached Guest Language Frames (" + frames.size() + ")";
     }
 
     @TruffleBoundary
@@ -185,7 +189,7 @@ final class TruffleStackTrace extends Exception {
         }
     }
 
-    private static final class LazyStackTrace extends Throwable {
+    static final class LazyStackTrace extends Throwable {
 
         /**
          * The root of a linked list of pieces of information about the stack trace of the
@@ -210,9 +214,7 @@ final class TruffleStackTrace extends Exception {
             return null;
         }
 
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable getCause() {
+        public TruffleStackTrace getInternalStackTrace() {
             return stackTrace;
         }
 
@@ -220,6 +222,11 @@ final class TruffleStackTrace extends Exception {
         @Override
         public Throwable initCause(Throwable cause) {
             throw new IllegalAccessError("cannot change cause of TruffleException stacktrace");
+        }
+
+        @Override
+        public String toString() {
+            return "Attached Guest Language Frames (" + (frameCount + (stackTrace != null ? stackTrace.frames.size() : 0)) + ")";
         }
     }
 

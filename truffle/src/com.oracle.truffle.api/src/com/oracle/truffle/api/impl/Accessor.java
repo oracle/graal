@@ -137,6 +137,8 @@ public abstract class Accessor {
 
         public abstract Object toGuestObject(Object hostObject, Object languageContext);
 
+        public abstract Object asBoxedGuestValue(Object hostObject, Object languageContext);
+
         public abstract Object asStaticClassObject(Class<?> clazz, Object hostLanguageContext);
 
         public abstract boolean isHostObject(Object guestObject);
@@ -189,7 +191,7 @@ public abstract class Accessor {
 
         public abstract Object getCurrentVM();
 
-        public abstract Env getEnvForLanguage(Object languageShared, String languageId, String mimeType);
+        public abstract CallTarget parseForLanguage(Object vmObject, Source source, String[] argumentNames);
 
         public abstract Env getEnvForInstrument(Object vm, String languageId, String mimeType);
 
@@ -304,6 +306,9 @@ public abstract class Accessor {
         public abstract void addToHostClassPath(Object vmObject, TruffleFile entries);
 
         public abstract boolean isInstrumentExceptionsAreThrown(Object vmObject);
+
+        public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
+
     }
 
     public abstract static class LanguageSupport {
@@ -377,6 +382,12 @@ public abstract class Accessor {
 
         public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
                         FileSystem fileSystem);
+
+        public abstract boolean initializeMultiContext(LanguageInfo info);
+
+        public abstract boolean isTruffleStackTrace(Throwable t);
+
+        public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
     }
 

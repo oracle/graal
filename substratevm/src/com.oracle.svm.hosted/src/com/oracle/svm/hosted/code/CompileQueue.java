@@ -813,24 +813,10 @@ public class CompileQueue {
         if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {
             return false;
         }
-
-        if (isNotExecuted(caller) || isNotExecuted(callee)) {
-            return false;
-        }
-
         if (!callee.canBeInlined()) {
             return false;
         }
         return invoke.useForInlining();
-    }
-
-    /**
-     * Hook for subclasses.
-     *
-     * @param method
-     */
-    protected boolean isNotExecuted(HostedMethod method) {
-        return false;
     }
 
     private static void handleSpecialization(final HostedMethod method, MethodCallTargetNode targetNode, HostedMethod invokeTarget, HostedMethod invokeImplementation) {
@@ -933,7 +919,7 @@ public class CompileQueue {
             };
             try (Indent indent = debug.logAndIndent("compile %s", method)) {
                 GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, method.getProfilingInfo(), suites, lirSuites, result,
-                                new HostedCompilationResultBuilderFactory());
+                                new HostedCompilationResultBuilderFactory(), false);
             }
             method.getProfilingInfo().setCompilerIRSize(StructuredGraph.class, method.compilationInfo.graph.getNodeCount());
             method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();

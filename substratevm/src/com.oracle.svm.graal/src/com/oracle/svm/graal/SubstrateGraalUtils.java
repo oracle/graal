@@ -222,7 +222,7 @@ public class SubstrateGraalUtils {
             try (Indent indent2 = debug.logAndIndent("do compilation")) {
                 SubstrateCompilationResult result = new SubstrateCompilationResult(graph.compilationId(), method.format("%H.%n(%p)"));
                 GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, optimisticOpts, null, suites, lirSuites, result,
-                                CompilationResultBuilderFactory.Default);
+                                CompilationResultBuilderFactory.Default, false);
                 return result;
             }
         }

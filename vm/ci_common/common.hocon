@@ -1,0 +1,148 @@
+common_vm: ${common} ${vm_java} {
+  setup: [
+    [cd, ${vm_subdir}]
+  ]
+  logs: [
+    "*/mxbuild/dists/stripped/*.map"
+    "../fastr/libdownloads/*/gnur_configure.log"
+    "../fastr/libdownloads/*/gnur_make.log"
+  ]
+}
+
+common_vm_linux: ${common_vm} ${linux}  {
+  packages: {
+    gcc-build-essentials: "==4.9.1" # GCC 4.9.0 fails on cluster
+    make : ">=3.83"
+  }
+}
+
+common_vm_darwin: ${common_vm} ${darwin} {
+  environment: {
+    LANG: en_US.UTF-8
+    MACOSX_DEPLOYMENT_TARGET: "10.11"
+  }
+}
+
+# SULONG
+sulong_linux: {
+  packages: {
+    llvm: "==3.8"
+    ruby: "==2.1.0" # for mdl
+  }
+  downloads: {
+    LIBGMP: {name: libgmp, version: 6.1.0, platformspecific: true}
+  }
+  environment: {
+    "CPPFLAGS": "-I$LIBGMP/include"
+    "LD_LIBRARY_PATH": "$LIBGMP/lib:$LD_LIBRARY_PATH"
+  }
+}
+
+sulong_darwin: {
+  packages: {
+    llvm: "==4.0.1"
+  }
+}
+
+# TRUFFLERUBY
+truffleruby_linux: {
+  packages: {
+    llvm: "==3.8"
+    ruby: "==2.1.0"
+  }
+}
+
+truffleruby_darwin: {
+  packages: {
+    llvm: "==4.0.1"
+  }
+}
+
+# FASTR
+fastr: {
+  environment: {
+    FASTR_RELEASE: "true"
+  }
+}
+
+fastr_linux: ${fastr} {
+  packages: {
+    readline: "==6.3"
+    pcre: ">=8.38"
+    zlib: ">=1.2.8"
+    curl: ">=7.50.1"
+  }
+  environment: {
+    TZDIR: "/usr/share/zoneinfo"
+    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/zlib/1.2.8/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/curl/7.50.1/include"""
+    PKG_LDFLAGS_OVERRIDE : """-L/cm/shared/apps/zlib/1.2.8/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64"""
+  }
+}
+
+fastr_darwin: ${fastr} {
+  packages: {
+    "pcre" : "==8.38"
+  }
+  environment:  {
+    # TODO: check these env vars
+    PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
+    F77: "/usr/local/bin/gfortran-4.9"
+    TZDIR: "/usr/share/zoneinfo"
+    PKG_INCLUDE_FLAGS_OVERRIDE : """-I/cm/shared/apps/pcre/8.38/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"""
+    PKG_LDFLAGS_OVERRIDE : """ -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.38/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.9.1/lib64 -L/usr/local/Cellar/gcc@4.9/4.9.4/lib/gcc/4.9/ -L/usr/lib"""
+  }
+}
+
+# GRAALPYTHON
+graalpython_linux: {
+  packages: {
+    python: "==3.4.1",
+    libffi: ">=3.2.1",
+    bzip2: ">=1.0.6",
+  }
+}
+
+vm_linux: ${common_vm_linux} {
+  capabilities: [linux, amd64, manycores, ram16gb, fast]
+}
+
+vm_darwin: ${common_vm_darwin} {
+  capabilities: [darwin_sierra, amd64, ram16gb]
+}
+
+gate_vm_linux: ${vm_linux} {
+  targets: [gate]
+}
+
+gate_vm_darwin: ${vm_darwin} {
+  targets: [gate]
+}
+
+post-merge_vm_linux: ${vm_linux} {
+  targets: [post-merge]
+}
+
+post-merge_vm_darwin: ${vm_darwin} {
+  targets: [post-merge]
+}
+
+builds += [
+  ${eclipse} ${jdt} ${gate_vm_linux} {
+    run: [
+      [mx, gate, "-B=--force-deprecation-as-warning", --tags, "style,fullbuild"]
+    ]
+    name: gate-vm-style-linux-amd64
+  },
+  ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${gate_vm_linux} ${linux-deploy} {
+    run: [
+      [export, "SUITES="${vm_all_suites}]
+      [mx, --strip-jars, --dynamicimports, "$SUITES", build]
+      [mx, --strip-jars, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+      [export, "SUITES="${vm_base_suites}]
+      [mx, --strip-jars, --dynamicimports, "$SUITES", build]
+      [mx, --strip-jars, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+    ]
+    timelimit: "45:00"
+    name: gate-vm-build-linux-amd64
+  },
+]

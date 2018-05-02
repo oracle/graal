@@ -31,6 +31,7 @@ package com.oracle.svm.core.posix.zipfile;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -42,7 +43,7 @@ import static com.oracle.svm.core.posix.zipfile.ZipConstants.ENDHDR;
 
 @SuppressWarnings("all")
 @Substitute
-@TargetClass(className = "java.util.zip.ZipUtils")
+@TargetClass(className = "java.util.zip.ZipUtils", onlyWith = JDK8OrEarlier.class)
 final class ZipUtils {
 
     // used to adjust values between Windows and java epoch
