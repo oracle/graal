@@ -133,8 +133,8 @@ public class StandardGraphBuilderPlugins {
         registerShortPlugins(plugins);
         registerIntegerLongPlugins(plugins, JavaKind.Int);
         registerIntegerLongPlugins(plugins, JavaKind.Long);
-        registerFloatPlugins(plugins);
-        registerDoublePlugins(plugins);
+        registerFloatPlugins(plugins, bytecodeProvider);
+        registerDoublePlugins(plugins, bytecodeProvider);
         registerArraysPlugins(plugins, bytecodeProvider);
         registerArrayPlugins(plugins, bytecodeProvider);
         registerUnsafePlugins(plugins, bytecodeProvider);
@@ -344,8 +344,10 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerFloatPlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Float.class);
+    private static void registerFloatPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Float.class, bytecodeProvider);
+        r.registerMethodSubstitution(FloatSubstitutions.class, "isNan", float.class);
+        r.registerMethodSubstitution(FloatSubstitutions.class, "floatToIntBits", float.class);
         r.register1("floatToRawIntBits", float.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -362,8 +364,10 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerDoublePlugins(InvocationPlugins plugins) {
-        Registration r = new Registration(plugins, Double.class);
+    private static void registerDoublePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
+        Registration r = new Registration(plugins, Double.class, bytecodeProvider);
+        r.registerMethodSubstitution(DoubleSubstitutions.class, "isNan", double.class);
+        r.registerMethodSubstitution(DoubleSubstitutions.class, "doubleToLongBits", double.class);
         r.register1("doubleToRawLongBits", double.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {

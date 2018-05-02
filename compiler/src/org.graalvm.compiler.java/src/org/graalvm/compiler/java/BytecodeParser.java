@@ -2068,7 +2068,7 @@ public class BytecodeParser implements GraphBuilderContext {
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
                 // Self recursive intrinsic means the original
                 // method should be called.
-                assert !targetMethod.hasBytecodes() : "TODO: when does this happen?";
+//              assert !targetMethod.hasBytecodes() : "TODO: when does this happen?";
                 return false;
             }
 
