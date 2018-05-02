@@ -110,7 +110,11 @@ class LLVMPointerImpl implements LLVMManagedPointer, LLVMNativePointer, LLVMObje
 
     @Override
     public LLVMPointerImpl copy() {
-        return new LLVMPointerImpl(object, offset, exportType);
+        if (CompilerDirectives.inCompiledCode()) {
+            return new LLVMPointerImpl(object, offset, exportType);
+        } else {
+            return this;
+        }
     }
 
     @Override
