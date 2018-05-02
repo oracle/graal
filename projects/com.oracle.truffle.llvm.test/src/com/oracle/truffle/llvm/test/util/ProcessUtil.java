@@ -38,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.test.options.TestOptions;
+
+import java.util.Map;
 import java.util.Objects;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -124,24 +126,33 @@ public class ProcessUtil {
         }
     }
 
-    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args) throws Exception {
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options) throws Exception {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             try (CaptureOutput out = new CaptureOutput()) {
-                int result = executeMain(bitcodeFile, args);
+                int result = executeMain(bitcodeFile, args, options);
                 System.out.flush();
                 System.err.flush();
                 return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
             }
         } else {
             String aotArgs = TestOptions.TEST_AOT_ARGS == null ? "" : TestOptions.TEST_AOT_ARGS + " ";
-            String cmdline = TestOptions.TEST_AOT_IMAGE + " " + aotArgs + bitcodeFile.getAbsolutePath() + " " + concatCommand(args);
+            String cmdline = TestOptions.TEST_AOT_IMAGE + " " + aotArgs + concatOptions(options) + bitcodeFile.getAbsolutePath() + " " + concatCommand(args);
             return executeNativeCommand(cmdline);
         }
     }
 
-    private static int executeMain(File file, String[] args) throws Exception {
+    private static String concatOptions(Map<String, String> options) {
+        StringBuilder str = new StringBuilder();
+        for (Map.Entry<String, String> entry : options.entrySet()) {
+            String encoded = entry.getKey() + '=' + entry.getValue();
+            str.append("'--").append(encoded.replace("'", "''")).append("' ");
+        }
+        return str.toString();
+    }
+
+    private static int executeMain(File file, String[] args, Map<String, String> options) throws Exception {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, file).build();
-        try (Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).allowAllAccess(true).build()) {
+        try (Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).options(options).allowAllAccess(true).build()) {
             Value result = context.eval(source);
             if (!result.canExecute()) {
                 throw new LinkageError("No main function found.");

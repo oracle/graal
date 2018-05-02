@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.test;
 
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,7 +43,7 @@ public abstract class BaseSulongOnlyHarness {
 
     @Test
     public void test() throws Exception {
-        ProcessResult out = ProcessUtil.executeSulongTestMain(getPath().toAbsolutePath().toFile(), getConfiguration().args);
+        ProcessResult out = ProcessUtil.executeSulongTestMain(getPath().toAbsolutePath().toFile(), getConfiguration().args, getContextOptions());
         int sulongResult = out.getReturnValue();
         String sulongStdOut = out.getStdOutput();
 
@@ -60,6 +62,10 @@ public abstract class BaseSulongOnlyHarness {
     public abstract Path getPath();
 
     public abstract RunConfiguration getConfiguration();
+
+    protected Map<String, String> getContextOptions() {
+        return Collections.emptyMap();
+    }
 
     static final class RunConfiguration {
         private final int expectedPosixReturn;

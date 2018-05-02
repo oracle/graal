@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +64,10 @@ public abstract class BaseTestHarness {
 
     @Test
     public abstract void test() throws Exception;
+
+    protected Map<String, String> getContextOptions() {
+        return Collections.emptyMap();
+    }
 
     /**
      * This function can be overwritten to specify a filter on test file names. E.g. if one wants to
