@@ -1059,6 +1059,7 @@ def makegraaljdk(args):
         shutil.copytree(srcJdk, dstJdk)
 
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
+        truffleDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'truffle'))
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
@@ -1087,7 +1088,11 @@ def makegraaljdk(args):
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
             src = basename(e.classpath_repr())
-            mx.log('Copying {} to {}'.format(e.classpath_repr(), bootDir))
+            if e.suite.name == 'truffle':
+                dstDir = truffleDir
+            else:
+                dstDir = bootDir
+            mx.log('Copying {} to {}'.format(e.classpath_repr(), dstDir))
             candidate = e.classpath_repr() + '.map'
             if exists(candidate):
                 mapFiles.add(candidate)
@@ -1095,7 +1100,7 @@ def makegraaljdk(args):
             with open(join(dstJdk, 'release'), 'a') as fp:
                 s = e.suite
                 print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
-            shutil.copyfile(e.classpath_repr(), join(bootDir, src))
+            shutil.copyfile(e.classpath_repr(), join(dstDir, src))
 
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)

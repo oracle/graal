@@ -98,6 +98,22 @@ public class Truffle {
      * Gets the {@link TruffleRuntimeAccess} providers available on the JVMCI class path.
      */
     private static Iterable<TruffleRuntimeAccess> getJVMCIProviders() {
+        ClassLoader cl = Truffle.class.getClassLoader();
+        ClassLoader scl = ClassLoader.getSystemClassLoader();
+        while (cl != null) {
+            if (cl == scl) {
+                /*
+                 * If Truffle can see the app class loader, then it is not on the JVMCI class path.
+                 * This means providers of TruffleRuntimeAccess on the JVMCI class path must be
+                 * ignored as they will bind to the copy of Truffle resolved on the JVMCI class
+                 * path. Failing to ignore will result in ServiceConfigurationErrors (e.g.,
+                 * https://github.com/oracle/graal/issues/385#issuecomment-385313521).
+                 */
+                return null;
+            }
+            cl = cl.getParent();
+        }
+
         // Go back through JVMCI renaming history...
         String[] serviceClassNames = {
                         "jdk.vm.ci.services.Services",
