@@ -32,6 +32,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -198,6 +200,7 @@ final class Util_sun_misc_MessageUtils {
     }
 }
 
+@Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {
