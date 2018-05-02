@@ -1,6 +1,7 @@
 suite = {
   "mxversion" : "5.149.0",
   "name" : "truffle",
+  "version": "1.0.0-rc2-dev",
   "sourceinprojectwhitelist" : [],
   "url" : "http://openjdk.java.net/projects/graal",
   "developer" : {
@@ -977,5 +978,13 @@ suite = {
       "maven" : False,
      },
 
+    "TRUFFLE_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for the GraalVM",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/tools-truffle.properties",
+        "builder/" : "dependency:truffle:TRUFFLE_NFI",
+      },
+    },
   },
 }

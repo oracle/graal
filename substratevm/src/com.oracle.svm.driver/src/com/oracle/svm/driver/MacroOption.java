@@ -26,17 +26,19 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 final class MacroOption {
     enum MacroOptionKind {
@@ -59,11 +61,8 @@ final class MacroOption {
         }
 
         static MacroOptionKind fromString(String kindName) {
-            /* TODO: Remove once all .properties files use lowercase */
-            String kindNameLowercase = kindName.toLowerCase();
-
             for (MacroOptionKind kind : MacroOptionKind.values()) {
-                if (kind.toString().equals(kindNameLowercase)) {
+                if (kind.toString().equals(kindName)) {
                     return kind;
                 }
             }
@@ -214,7 +213,7 @@ final class MacroOption {
         boolean forEachPropertyValue(String propertyKey, Consumer<String> target) {
             String propertyValueRaw = option.properties.get(propertyKey);
             if (propertyValueRaw != null) {
-                for (String propertyValue : Arrays.asList(propertyValueRaw.split(" "))) {
+                for (String propertyValue : propertyValueRaw.split(" ")) {
                     target.accept(resolvePropertyValue(propertyValue));
                 }
                 return true;
@@ -267,6 +266,10 @@ final class MacroOption {
             } catch (IOException e) {
                 throw new InvalidMacroException("Error while discovering supported MacroOptions in " + rootDir + ": " + e.getMessage());
             }
+        }
+
+        Set<String> getAvailableOptions(MacroOptionKind forKind) {
+            return supported.get(forKind).keySet();
         }
 
         void showOptions(MacroOptionKind forKind, boolean commandLineStyle, Consumer<String> lineOut) {
@@ -352,7 +355,7 @@ final class MacroOption {
 
         private void enableResolved(MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             if (addedCheck.contains(option)) {
-                throw new AddedTwiceException(option, context);
+                return;
             }
             addedCheck.add(option);
             EnabledOption enabledOption = new EnabledOption(option, optionArg);
@@ -377,6 +380,11 @@ final class MacroOption {
 
         LinkedHashSet<EnabledOption> getEnabledOptions(MacroOptionKind kind) {
             return enabled.stream().filter(eo -> kind.equals(eo.option.kind)).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Stream<EnabledOption> getEnabledOptionsStream(MacroOptionKind kind, MacroOptionKind... otherKinds) {
+            EnumSet<MacroOptionKind> kindSet = EnumSet.of(kind, otherKinds);
+            return enabled.stream().filter(eo -> kindSet.contains(eo.option.kind));
         }
 
         LinkedHashSet<EnabledOption> getEnabledOptions() {

@@ -90,10 +90,12 @@ def _create_temporary_workdir_parser():
     group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
     return parser
 
+
 mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
     _create_temporary_workdir_parser(),
     "\n\nFlags for benchmark suites with temporary working directories:\n"
 )
+
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):

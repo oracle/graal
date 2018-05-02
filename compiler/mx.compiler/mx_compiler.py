@@ -35,18 +35,22 @@ import tarfile
 import subprocess
 import tempfile
 import shutil
+
 import mx_truffle
+import mx_sdk
 
 import mx
+import mx_gate
 from mx_gate import Task
 
-from mx_unittest import unittest
-from mx_javamodules import as_java_module
-import mx_gate
 import mx_unittest
+from mx_unittest import unittest
+
+from mx_javamodules import as_java_module
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
+
 import argparse
 import shlex
 import glob
@@ -425,7 +429,7 @@ def _gate_java_benchmark(args, successRe):
     try:
         run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
     finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\]hs_err_pid[0-9]+\.log)', out.data)
+        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
@@ -1295,6 +1299,19 @@ def updategraalinopenjdk(args):
         with open(overwritten_file, 'w') as fp:
             fp.write(overwritten)
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
+    suite=_suite,
+    name='Graal compiler',
+    short_name='cmp',
+    dir_name='graal',
+    license_files=[],
+    third_party_license_files=[],
+    jvmci_jars=['compiler:GRAAL'],
+    graal_compiler='graal',
+))
+
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],

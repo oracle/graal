@@ -240,31 +240,31 @@ suite = {
             "findbugs": "false",
         },
 
-    "com.oracle.svm.tutorial" : {
-      "subDir": "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : ["com.oracle.svm.core"],
-      "checkstyle" : "com.oracle.svm.truffle",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : [
-        "compiler:GRAAL_NODEINFO_PROCESSOR",
-        "compiler:GRAAL_REPLACEMENTS_VERIFIER",
-        "compiler:GRAAL_OPTIONS_PROCESSOR",
-      ],
-      "workingSets" : "SVM",
-      "findbugs" : "false",
-    },
+        "com.oracle.svm.tutorial" : {
+            "subDir": "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : ["com.oracle.svm.core"],
+            "checkstyle" : "com.oracle.svm.truffle",
+            "javaCompliance" : "1.8",
+            "annotationProcessors" : [
+                "compiler:GRAAL_NODEINFO_PROCESSOR",
+                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_OPTIONS_PROCESSOR",
+            ],
+            "workingSets" : "SVM",
+            "findbugs" : "false",
+        },
 
-    "com.oracle.objectfile" : {
-      "subDir": "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [],
-      "checkstyle" : "com.oracle.svm.hosted",
-      "javaCompliance" : "1.8",
-      "annotationProcessors" : ["compiler:GRAAL_OPTIONS_PROCESSOR"],
-      "workingSets" : "SVM",
-      "findbugs" : "false",
-    },
+        "com.oracle.objectfile" : {
+            "subDir": "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [],
+            "checkstyle" : "com.oracle.svm.hosted",
+            "javaCompliance" : "1.8",
+            "annotationProcessors" : ["compiler:GRAAL_OPTIONS_PROCESSOR"],
+            "workingSets" : "SVM",
+            "findbugs" : "false",
+        },
 
         "com.oracle.svm.graal": {
             "subDir": "src",
@@ -417,18 +417,7 @@ suite = {
             "subDir" : "src",
             "native" : True,
             "output" : "mxbuild/org.graalvm.polyglot.nativeapi.native",
-            "os_arch" : {
-                "linux": {
-                    "amd64" : {
-                        "results" : ["linux-amd64/polyglot-nativeapi.o"],
-                    },
-                },
-                "darwin": {
-                    "amd64" : {
-                        "results" : ["darwin-amd64/polyglot-nativeapi.o"],
-                    },
-                },
-            }
+            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
         },
 
         "bootstrap.native-image" : {
@@ -535,47 +524,87 @@ suite = {
             "output": "clibraries",
         },
 
-    #
-    # Internal Distributions
-    #
-    "SVM_DRIVER": {
-      "subDir": "src",
-      "dependencies": [
-        "com.oracle.svm.driver",
-      ],
-      "distDependencies": [
-        "LIBRARY_SUPPORT",
-      ],
-    },
+        #
+        # Internal Distributions
+        #
+        "SVM_DRIVER": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.driver",
+            ],
+            "distDependencies": [
+                "LIBRARY_SUPPORT",
+            ],
+        },
 
-   "POINTSTO": {
-      "subDir": "src",
-      "dependencies": [
-        "com.oracle.graal.pointsto",
-      ],
-      "distDependencies": [
-        "compiler:GRAAL_RUNTIME",
-      ],
-      "exclude": [
-      ]
-    },
+        "POINTSTO": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.graal.pointsto",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL_RUNTIME",
+            ],
+            "exclude": [
+            ]
+        },
 
-    "NATIVE_IMAGE": {
-      "native": True,
-      "dependencies": [
-        "bootstrap.native-image",
-      ],
-      "output": "svmbuild/native-image-root",
-    },
+        "NATIVE_IMAGE": {
+            "native": True,
+            "dependencies": [
+                "bootstrap.native-image",
+            ],
+            "output": "svmbuild/native-image-root",
+        },
 
-    "POLYGLOT_NATIVE_API" : {
-      "dependencies": [
-        "org.graalvm.polyglot.nativeapi",
-      ],
-      "distDependencies": [
-        "sdk:GRAAL_SDK",
-        "SVM",
-      ],
+        "POLYGLOT_NATIVE_API" : {
+            "dependencies": [
+                "org.graalvm.polyglot.nativeapi",
+            ],
+            "distDependencies": [
+                "sdk:GRAAL_SDK",
+                "SVM",
+            ],
+        },
+
+        "POLYGLOT_NATIVE_API_HEADERS" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "polyglot.nativeapi header files for the GraalVM build process",
+            "layout" : {
+                "./" : [
+                    "file:<path:org.graalvm.polyglot.nativeapi>/resources/*.h",
+                ],
+            },
+        },
+
+        "POLYGLOT_NATIVE_API_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "polyglot.nativeapi support distribution for the GraalVM",
+            "layout" : {
+                "./" : [
+                    "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
+                    "dependency:POLYGLOT_NATIVE_API",
+                ],
+            },
+        },
+
+        "SVM_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "platformDependent" : True,
+            "description" : "SubstrateVM support distribution for the GraalVM",
+            "layout" : {
+                "./" : "dependency:substratevm:LIBRARY_SUPPORT",
+                "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
+                "builder/" : [
+                    "dependency:substratevm:SVM",
+                    "dependency:substratevm:OBJECTFILE",
+                    "dependency:substratevm:POINTSTO",
+                ],
+                "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+                "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+            },
+        },
     },
-  },
 }

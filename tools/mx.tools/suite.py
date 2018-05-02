@@ -132,6 +132,13 @@ suite = {
               "truffle:JLINE",
             ],
         },
+        "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Chrome Inspector support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-chromeinspector.properties",
+            },
+        },
         "TRUFFLE_PROFILER": {
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",
@@ -152,6 +159,13 @@ suite = {
             ],
             "description" : "Tests for the truffle profiler.",
             "maven" : False,
+        },
+        "TRUFFLE_PROFILER_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Profiler support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-profiler.properties",
+            },
         },
     },
 }

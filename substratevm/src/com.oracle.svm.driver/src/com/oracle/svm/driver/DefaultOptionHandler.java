@@ -213,7 +213,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         /* Resolve relative manifestClassPath against directory containing jar */
                         manifestClassPath = filePath.getParent().resolve(manifestClassPath);
                     }
-                    nativeImage.addImageClasspath(manifestClassPath);
+                    nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
         } catch (IOException e) {
