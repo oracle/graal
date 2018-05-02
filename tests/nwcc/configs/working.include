@@ -226,7 +226,6 @@ nwcc_0.8.3/tests/z4.c
 nwcc_0.8.3/tests/aaa_BUGarinitbug.c
 nwcc_0.8.3/tests/z.c
 nwcc_0.8.3/tests/dowhile.c
-nwcc_0.8.3/tests/tentative3.c
 nwcc_0.8.3/tests/bitfield_bug1.c
 nwcc_0.8.3/tests/bf_lneg_indir.c
 nwcc_0.8.3/tests/declbug.c

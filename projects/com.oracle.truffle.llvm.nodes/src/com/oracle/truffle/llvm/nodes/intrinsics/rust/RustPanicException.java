@@ -34,7 +34,7 @@ import com.oracle.truffle.llvm.runtime.GuestLanguageRuntimeException;
 
 public class RustPanicException extends GuestLanguageRuntimeException {
     private static final long serialVersionUID = -130422912069713860L;
-    public static final long EXIT_CODE_PANIC = 101;
+    public static final int EXIT_CODE_PANIC = 101;
     private final String desc;
     private final String filename;
     private final int linenr;
@@ -50,7 +50,7 @@ public class RustPanicException extends GuestLanguageRuntimeException {
 
     @Override
     @TruffleBoundary
-    public Object handleExit() {
+    public int handleExit() {
         print();
         return EXIT_CODE_PANIC;
     }

@@ -39,7 +39,9 @@ import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProces
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
@@ -54,7 +56,8 @@ public final class ModelModule {
     private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-i64:64-f80:128-n8:16:32:64-S128");
 
     private final List<Type> types = new ArrayList<>();
-    private final List<GlobalValueSymbol> globals = new ArrayList<>();
+    private final List<GlobalVariable> globalVariables = new ArrayList<>();
+    private final List<GlobalAlias> aliases = new ArrayList<>();
     private final List<FunctionDeclaration> declares = new ArrayList<>();
     private final List<FunctionDefinition> defines = new ArrayList<>();
     private final List<TargetInformation> targetInfo = new ArrayList<>();
@@ -81,8 +84,11 @@ public final class ModelModule {
         visitor.visit(targetDataLayout);
         targetInfo.forEach(visitor::visit);
         types.forEach(visitor::visit);
-        for (GlobalValueSymbol variable : globals) {
+        for (GlobalValueSymbol variable : globalVariables) {
             variable.accept(visitor);
+        }
+        for (GlobalValueSymbol alias : aliases) {
+            alias.accept(visitor);
         }
         defines.forEach(visitor::visit);
         declares.forEach(visitor::visit);
@@ -90,6 +96,10 @@ public final class ModelModule {
 
     public void addFunctionDeclaration(FunctionDeclaration declaration) {
         declares.add(declaration);
+    }
+
+    public List<FunctionDeclaration> getDeclaredFunctions() {
+        return declares;
     }
 
     public void addFunctionDefinition(FunctionDefinition definition) {
@@ -112,16 +122,24 @@ public final class ModelModule {
         types.add(type);
     }
 
-    public void addGlobalSymbol(GlobalValueSymbol global) {
-        globals.add(global);
+    public void addGlobalVariable(GlobalVariable global) {
+        globalVariables.add(global);
+    }
+
+    public void addAlias(GlobalAlias alias) {
+        aliases.add(alias);
     }
 
     public void addTargetInformation(TargetInformation info) {
         targetInfo.add(info);
     }
 
-    public List<GlobalValueSymbol> getGlobals() {
-        return globals;
+    public List<GlobalVariable> getGlobalVariables() {
+        return globalVariables;
+    }
+
+    public List<GlobalAlias> getAliases() {
+        return aliases;
     }
 
     public Map<LLVMSourceSymbol, SymbolImpl> getSourceGlobals() {
@@ -142,7 +160,7 @@ public final class ModelModule {
 
     @Override
     public String toString() {
-        return String.format("Model (%d defines, %d declares, %d globals, %d types)", defines.size(), declares.size(), globals.size(), types.size());
+        return String.format("Model (%d defines, %d declares, %d global variables, %d aliases, %d types)", defines.size(), declares.size(), globalVariables.size(), aliases.size(), types.size());
     }
 
     public void addLibraries(List<String> l) {

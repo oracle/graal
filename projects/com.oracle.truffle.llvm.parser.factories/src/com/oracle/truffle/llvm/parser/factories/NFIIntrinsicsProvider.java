@@ -145,6 +145,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMRunDestructorFunction
 import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -152,6 +153,12 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextExtension {
+    private final ExternalLibrary library = new ExternalLibrary("SulongIntrinsics", false, false);
+
+    @Override
+    public ExternalLibrary getLibrary() {
+        return library;
+    }
 
     @Override
     public Class<?> extensionClass() {

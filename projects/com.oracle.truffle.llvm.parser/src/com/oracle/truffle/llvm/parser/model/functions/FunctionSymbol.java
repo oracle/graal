@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.globals;
+package com.oracle.truffle.llvm.parser.model.functions;
 
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public final class GlobalConstant extends GlobalValueSymbol {
-
-    private GlobalConstant(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, align, linkage, visibility, symbolTable, value);
-    }
-
+public interface FunctionSymbol extends ValueSymbol {
     @Override
-    public void accept(ModelVisitor visitor) {
-        visitor.visit(this);
-    }
+    FunctionType getType();
 
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
+    boolean isExported();
 
-    public static GlobalConstant create(Type type, int align, long linkage, long visibility, SymbolTable symbolTable, int value) {
-        return new GlobalConstant(type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value);
-    }
+    boolean isExternal();
 }

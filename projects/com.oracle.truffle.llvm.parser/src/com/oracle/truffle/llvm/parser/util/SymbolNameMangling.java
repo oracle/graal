@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
@@ -139,11 +138,6 @@ public final class SymbolNameMangling {
         @Override
         public void visit(GlobalAlias alias) {
             demangle(alias.getLinkage(), alias);
-        }
-
-        @Override
-        public void visit(GlobalConstant constant) {
-            demangle(constant.getLinkage(), constant);
         }
 
         @Override

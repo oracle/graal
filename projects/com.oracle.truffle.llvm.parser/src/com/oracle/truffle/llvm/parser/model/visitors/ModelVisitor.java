@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.parser.model.visitors;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
@@ -48,10 +47,6 @@ public interface ModelVisitor {
 
     default void visit(GlobalAlias alias) {
         defaultModelAction(alias);
-    }
-
-    default void visit(GlobalConstant constant) {
-        defaultModelAction(constant);
     }
 
     default void visit(GlobalVariable variable) {

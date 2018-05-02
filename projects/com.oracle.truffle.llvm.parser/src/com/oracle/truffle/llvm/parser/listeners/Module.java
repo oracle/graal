@@ -29,17 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
+import java.util.LinkedList;
+
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDeclaration;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
+import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
@@ -50,9 +51,6 @@ import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
-
-import java.util.LinkedList;
 
 public final class Module implements ParserListener {
 
@@ -96,6 +94,7 @@ public final class Module implements ParserListener {
     private static final int FUNCTION_ISPROTOTYPE = 2;
     private static final int FUNCTION_LINKAGE = 3;
     private static final int FUNCTION_PARAMATTR = 4;
+    private static final int FUNCTION_VISIBILITY = 7;
 
     private void createFunction(long[] args) {
         final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
@@ -110,6 +109,11 @@ public final class Module implements ParserListener {
 
         final AttributesCodeEntry paramAttr = paramAttributes.getCodeEntry(args[FUNCTION_PARAMATTR + recordOffset]);
 
+        Visibility visibility = Visibility.DEFAULT;
+        if (FUNCTION_VISIBILITY + recordOffset < args.length) {
+            visibility = Visibility.decode(args[FUNCTION_VISIBILITY + recordOffset]);
+        }
+
         if (isPrototype) {
             final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr);
             module.addFunctionDeclaration(function);
@@ -118,7 +122,7 @@ public final class Module implements ParserListener {
                 readNameFromStrTab(args, function);
             }
         } else {
-            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, paramAttr);
+            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr);
             module.addFunctionDefinition(function);
             scope.addSymbol(function, function.getType());
             if (useStrTab()) {
@@ -157,16 +161,11 @@ public final class Module implements ParserListener {
             visibility = args[GLOBALVAR_VISIBILITY + recordOffset];
         }
 
-        final GlobalValueSymbol global;
-        if (isConstant) {
-            global = GlobalConstant.create(type, align, linkage, visibility, scope.getSymbols(), initialiser);
-        } else {
-            global = GlobalVariable.create(type, align, linkage, visibility, scope.getSymbols(), initialiser);
-        }
+        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser);
         if (useStrTab()) {
             readNameFromStrTab(args, global);
         }
-        module.addGlobalSymbol(global);
+        module.addGlobalVariable(global);
         scope.addSymbol(global, global.getType());
     }
 
@@ -176,7 +175,7 @@ public final class Module implements ParserListener {
 
     private void createGlobalAliasNew(long[] args) {
         final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
-        final Type type = new PointerType(types.get(args[GLOBALALIAS_TYPE + recordOffset]));
+        final PointerType type = new PointerType(types.get(args[GLOBALALIAS_TYPE + recordOffset]));
 
         // idx = 1 is address space information
         final int value = (int) args[GLOBALALIAS_NEW_VALUE + recordOffset];
@@ -186,7 +185,7 @@ public final class Module implements ParserListener {
         if (useStrTab()) {
             readNameFromStrTab(args, global);
         }
-        module.addGlobalSymbol(global);
+        module.addAlias(global);
         scope.addSymbol(global, global.getType());
     }
 
@@ -195,7 +194,7 @@ public final class Module implements ParserListener {
 
     private void createGlobalAliasOld(long[] args) {
         final int recordOffset = useStrTab() ? STRTAB_RECORD_OFFSET : 0;
-        final Type type = types.get(args[GLOBALALIAS_TYPE + recordOffset]);
+        final PointerType type = (PointerType) types.get(args[GLOBALALIAS_TYPE + recordOffset]);
         int value = (int) args[GLOBALALIAS_OLD_VALUE + recordOffset];
         long linkage = args[GLOBALALIAS_OLD_LINKAGE + recordOffset];
 
@@ -203,7 +202,7 @@ public final class Module implements ParserListener {
         if (useStrTab()) {
             readNameFromStrTab(args, global);
         }
-        module.addGlobalSymbol(global);
+        module.addAlias(global);
         scope.addSymbol(global, global.getType());
     }
 

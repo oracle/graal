@@ -29,11 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
+import java.util.Map.Entry;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
@@ -42,126 +43,199 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMContext.FunctionFactory;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import java.util.ArrayList;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class LLVMScope implements TruffleObject {
 
-    private final HashMap<String, LLVMFunctionDescriptor> functions;
-    private final ArrayList<String> functionKeys;
-
-    private final LLVMScope parent;
+    private final LLVMFunctionRegistry functionRegistry;
     private final LLVMGlobalRegistry globalVariableRegistry;
 
-    public static synchronized LLVMScope createFileScope(LLVMContext context) {
-        return new LLVMScope(context.getGlobalScope());
-    }
-
-    public static synchronized LLVMScope createGlobalScope(LLVMContext context) {
-        LLVMScope scope = new LLVMScope(null);
-        scope.lookupOrCreateFunction(context, "<zero function>", true,
-                        idx -> LLVMFunctionDescriptor.createDescriptor(context, new ExternalLibrary("default"), "<zero function>", new FunctionType(MetaType.UNKNOWN, new Type[0], false),
-                                        idx));
-        return scope;
-    }
-
-    private LLVMScope(LLVMScope parent) {
-        this.functions = new HashMap<>();
-        this.functionKeys = new ArrayList<>();
-        this.parent = parent;
+    public LLVMScope() {
+        this.functionRegistry = new LLVMFunctionRegistry();
         this.globalVariableRegistry = new LLVMGlobalRegistry();
     }
 
-    @TruffleBoundary
-    public synchronized LLVMFunctionDescriptor getFunctionDescriptor(String name) {
-        LLVMFunctionDescriptor functionDescriptor = functions.get(name);
-        if (functionDescriptor != null) {
-            return functionDescriptor;
-        } else if (functionDescriptor == null && parent != null) {
-            return parent.getFunctionDescriptor(name);
+    public LLVMFunctionRegistry functions() {
+        return functionRegistry;
+    }
+
+    public LLVMGlobalRegistry globals() {
+        return globalVariableRegistry;
+    }
+
+    public boolean isEmpty() {
+        return functions().isEmpty() && globals().isEmpty();
+    }
+
+    public void addMissingEntries(LLVMScope other) {
+        for (Entry<String, LLVMFunctionDescriptor> entry : other.functionRegistry.functions.entrySet()) {
+            if (!this.functions().contains(entry.getKey())) {
+                this.functions().put(entry.getKey(), entry.getValue());
+            }
         }
-        throw new IllegalStateException("Unknown function: " + name);
+
+        for (Entry<String, LLVMGlobal> entry : other.globalVariableRegistry.globals.entrySet()) {
+            if (!this.globals().contains(entry.getKey())) {
+                this.globals().put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
-    @TruffleBoundary
-    public synchronized boolean functionExists(String name) {
-        return functions.containsKey(name) || (parent != null && parent.functionExists(name));
+    public static final class LLVMFunctionRegistry {
+        private final HashMap<String, LLVMFunctionDescriptor> functions;
+        private final ArrayList<String> functionKeys;
+
+        private LLVMFunctionRegistry() {
+            this.functions = new HashMap<>();
+            this.functionKeys = new ArrayList<>();
+        }
+
+        @TruffleBoundary
+        public LLVMFunctionDescriptor get(String name) {
+            LLVMFunctionDescriptor functionDescriptor = functions.get(name);
+            if (functionDescriptor != null) {
+                return functionDescriptor;
+            }
+            throw new IllegalStateException("Unknown function: " + name);
+        }
+
+        @TruffleBoundary
+        public LLVMFunctionDescriptor getOrCreate(LLVMContext context, String name, FunctionType type) {
+            if (functions.containsKey(name)) {
+                return functions.get(name);
+            } else {
+                LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(name, type);
+                put(descriptor.getName(), descriptor);
+                return descriptor;
+            }
+        }
+
+        @TruffleBoundary
+        public void register(LLVMFunctionDescriptor descriptor) {
+            register(descriptor.getName(), descriptor);
+        }
+
+        @TruffleBoundary
+        public void registerAlias(String name, LLVMFunctionDescriptor descriptor) {
+            register(name, descriptor);
+        }
+
+        @TruffleBoundary
+        public boolean contains(String name) {
+            return functions.containsKey(name);
+        }
+
+        @TruffleBoundary
+        public boolean contains(LLVMFunctionDescriptor descriptor) {
+            return functions.get(descriptor.getName()) == descriptor;
+        }
+
+        @TruffleBoundary
+        public boolean exports(LLVMContext context, String name) {
+            if (contains(name) && context.getGlobalScope().functions().contains(name)) {
+                LLVMFunctionDescriptor localMainFunctionDescriptor = get(name);
+                LLVMFunctionDescriptor globalMainFunctionDescriptor = context.getGlobalScope().functions().get(name);
+                return localMainFunctionDescriptor == globalMainFunctionDescriptor;
+            }
+            return false;
+        }
+
+        @TruffleBoundary
+        public LLVMFunctionDescriptor[] toArray() {
+            return functions.values().toArray(new LLVMFunctionDescriptor[functions.size()]);
+        }
+
+        public boolean isEmpty() {
+            return functions.isEmpty();
+        }
+
+        private void register(String name, LLVMFunctionDescriptor descriptor) {
+            LLVMFunctionDescriptor existing = functions.get(name);
+            assert existing == null || existing == descriptor;
+            if (existing == null) {
+                put(name, descriptor);
+            }
+        }
+
+        private void put(String name, LLVMFunctionDescriptor descriptor) {
+            assert !functions.containsKey(name) && !functionKeys.contains(name);
+            assert functionKeys.size() == functions.size();
+            functions.put(name, descriptor);
+            functionKeys.add(name);
+        }
     }
 
-    @TruffleBoundary
-    public synchronized Object getGlobalVariable(String name) {
-        if (globalVariableRegistry.exists(name)) {
-            return globalVariableRegistry.lookup(name);
-        } else if (parent != null) {
-            return parent.getGlobalVariable(name);
-        } else {
+    public static final class LLVMGlobalRegistry {
+        private final Map<String, LLVMGlobal> globals;
+
+        private LLVMGlobalRegistry() {
+            globals = new HashMap<>();
+        }
+
+        @TruffleBoundary
+        public LLVMGlobal get(String name) {
+            LLVMGlobal global = globals.get(name);
+            if (global != null) {
+                return global;
+            }
             throw new IllegalStateException("Unknown global: " + name);
         }
-    }
 
-    @TruffleBoundary
-    public synchronized Object lookupOrCreateGlobal(String name, boolean global, Supplier<Object> generator) {
-        if (global && parent != null) {
-            // insert non-file-internal (global) variables in the top level (global) scope
-            assert !globalVariableRegistry.exists(name) : "Global is already defined in file-local scope";
-            return parent.lookupOrCreateGlobal(name, global, generator);
+        @TruffleBoundary
+        public LLVMGlobal getOrCreate(LLVMContext context, String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
+            if (globals.containsKey(name)) {
+                return globals.get(name);
+            } else {
+                LLVMGlobal global = LLVMGlobal.create(context, name, type, sourceSymbol, readOnly);
+                put(name, global);
+                return global;
+            }
         }
-        assert global || parent != null;
-        return globalVariableRegistry.lookupOrCreate(name, generator);
-    }
 
-    @TruffleBoundary
-    public synchronized LLVMFunctionDescriptor lookupOrCreateFunction(LLVMContext context, String name, boolean global, FunctionFactory generator) {
-        if (global && parent != null) {
-            // insert non-file-internal (global) function in the top level (global) scope
-            assert !functions.containsKey(name) : "Function is already defined in file-local scope";
-            return parent.lookupOrCreateFunction(context, name, global, generator);
+        @TruffleBoundary
+        public void register(LLVMGlobal global) {
+            register(global.getName(), global);
         }
-        assert global || parent != null;
-        if (functions.containsKey(name)) {
-            return functions.get(name);
-        } else {
-            LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(generator);
-            functions.put(name, functionDescriptor);
-            functionKeys.add(name);
-            return functionDescriptor;
+
+        @TruffleBoundary
+        public void registerAlias(String name, LLVMGlobal global) {
+            register(name, global);
         }
-    }
 
-    private static final class LLVMGlobalRegistry {
-        private final Map<String, Object> globals = new HashMap<>();
+        private void register(String name, LLVMGlobal global) {
+            LLVMGlobal existing = globals.get(name);
+            assert existing == null || existing == global;
+            if (existing == null) {
+                put(name, global);
+            }
+        }
 
-        synchronized boolean exists(String name) {
+        @TruffleBoundary
+        public boolean contains(String name) {
             return globals.containsKey(name);
         }
 
-        synchronized void add(String name, Object global) {
-            if (exists(name)) {
-                throw new IllegalStateException("Global " + name + " already added.");
-            }
+        @TruffleBoundary
+        public boolean contains(LLVMGlobal global) {
+            return globals.get(global.getName()) == global;
+        }
+
+        @TruffleBoundary
+        public LLVMGlobal[] toArray() {
+            return globals.values().toArray(new LLVMGlobal[globals.size()]);
+        }
+
+        public boolean isEmpty() {
+            return globals.isEmpty();
+        }
+
+        private void put(String name, LLVMGlobal global) {
             globals.put(name, global);
         }
 
-        synchronized Object lookup(String name) {
-            if (exists(name)) {
-                return globals.get(name);
-            }
-            throw new IllegalStateException("Global " + name + " does not exist.");
-        }
-
-        synchronized Object lookupOrCreate(String name, Supplier<Object> generator) {
-            if (exists(name)) {
-                return lookup(name);
-            } else {
-                Object variable = generator.get();
-                add(name, variable);
-                return variable;
-            }
-        }
     }
 
     @Override
@@ -198,11 +272,11 @@ public final class LLVMScope implements TruffleObject {
 
             protected Object access(LLVMScope scope, String globalName) {
                 String atname = "@" + globalName; // for interop
-                if (scope.functionExists(atname)) {
-                    return scope.getFunctionDescriptor(atname);
+                if (scope.functions().contains(atname)) {
+                    return scope.functions().get(atname);
                 }
-                if (scope.functionExists(globalName)) {
-                    return scope.getFunctionDescriptor(globalName);
+                if (scope.globals().contains(globalName)) {
+                    return scope.globals().get(globalName);
                 }
                 return null;
             }
@@ -231,7 +305,7 @@ public final class LLVMScope implements TruffleObject {
         abstract static class GetSize extends Node {
 
             int access(Keys receiver) {
-                return receiver.scope.functionKeys.size();
+                return receiver.scope.functions().functionKeys.size();
             }
         }
 
@@ -240,7 +314,7 @@ public final class LLVMScope implements TruffleObject {
 
             Object access(Keys receiver, int index) {
                 try {
-                    return receiver.scope.functionKeys.get(index);
+                    return receiver.scope.functions().functionKeys.get(index);
                 } catch (IndexOutOfBoundsException ex) {
                     CompilerDirectives.transferToInterpreter();
                     throw UnknownIdentifierException.raise(Integer.toString(index));

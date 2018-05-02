@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,15 +34,29 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -57,23 +71,62 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.ExecuteMainNodeGen;
 import com.oracle.truffle.llvm.RunnerFactory.SulongLibraryMessageResolutionFactory.LookupNodeGen;
-import com.oracle.truffle.llvm.parser.BitcodeParserResult;
+import com.oracle.truffle.llvm.nodes.func.LLVMGlobalRootNode;
+import com.oracle.truffle.llvm.nodes.others.LLVMStaticInitsBlockNode;
+import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.NodeFactory;
+import com.oracle.truffle.llvm.parser.StackManager;
+import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Intrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
+import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
+import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
 
 public final class Runner {
+    private static final String LIBSULONG_FILENAME = "libsulong.bc";
+    private static final String LIBC_FILENAME = "libc.bc";
+    private static final String LIBSULONG_OVERRIDES_FILENAME = "libsulong-overrides.bc";
+
+    private static final String MAIN_METHOD_NAME = "@main";
+    private static final String START_METHOD_NAME = "@_start";
+
+    private static final String CONSTRUCTORS_VARNAME = "@llvm.global_ctors";
+    private static final String DESTRUCTORS_VARNAME = "@llvm.global_dtors";
+    private static final int LEAST_CONSTRUCTOR_PRIORITY = 65535;
+
+    private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() - p2.getFirst();
+    private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p2.getFirst() - p1.getFirst();
 
     private final NodeFactory nodeFactory;
 
@@ -83,21 +136,16 @@ public final class Runner {
     static final class SulongLibrary implements TruffleObject {
 
         private final LLVMScope scope;
-        private final ExternalLibrary library;
         private final CallTarget main;
 
-        private SulongLibrary(LLVMScope scope, ExternalLibrary library, CallTarget main) {
+        private SulongLibrary(LLVMScope scope, CallTarget main) {
             this.scope = scope;
-            this.library = library;
             this.main = main;
         }
 
         private LLVMFunctionDescriptor lookup(String name) {
-            if (scope.functionExists(name)) {
-                LLVMFunctionDescriptor d = scope.getFunctionDescriptor(name);
-                if (d.getLibrary().equals(library)) {
-                    return d;
-                }
+            if (scope.functions().contains(name)) {
+                return scope.functions().get(name);
             }
             return null;
         }
@@ -246,52 +294,477 @@ public final class Runner {
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
     public CallTarget parse(LLVMLanguage language, LLVMContext context, Source source) throws IOException {
-        initializeContext(language, context);
+        // per context, only one thread must do any parsing
+        synchronized (context.getGlobalScope()) {
+            ParserData parserData = getParserData(source);
+            return parse(language, context, source, parserData.bytes, parserData.library);
+        }
+    }
 
+    private static ParserData getParserData(Source source) throws IOException {
+        ByteBuffer bytes;
+        ExternalLibrary library;
         try {
-            ByteBuffer bytes;
-            ExternalLibrary library;
             if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                 bytes = ByteBuffer.wrap(decodeBase64(source.getCharacters()));
-                library = new ExternalLibrary("<STREAM>");
+                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, false);
             } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
                 NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
                 String filename = descriptor.getFilename();
                 bytes = read(filename);
-                library = new ExternalLibrary(Paths.get(filename), null);
+                library = new ExternalLibrary(Paths.get(filename), false, false);
             } else if (source.getPath() != null) {
                 bytes = read(source.getPath());
-                library = new ExternalLibrary(Paths.get(source.getPath()), null);
+                library = new ExternalLibrary(Paths.get(source.getPath()), false, false);
             } else {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Neither a valid path nor a valid mime-type were specified.");
             }
-
-            LLVMParserResult parserResult = parse(language, context, source, library, bytes);
-            handleParserResult(context, parserResult);
-            return createLibraryCallTarget(context, library, parserResult);
         } catch (Throwable t) {
-            throw new IOException("Error while trying to parse " + source.getPath(), t);
+            throw new IOException("Error while preparing data for parsing: " + source.getName(), t);
+        }
+        return new ParserData(bytes, library);
+    }
+
+    private CallTarget parse(LLVMLanguage language, LLVMContext context, Source source, ByteBuffer bytes, ExternalLibrary library) throws IOException {
+        // process the bitcode file and its dependencies in the dynamic linking order
+        // (breadth-first)
+        try {
+            List<LLVMParserResult> parserResults = new ArrayList<>();
+            ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
+
+            parse(parserResults, dependencyQueue, language, context, source, library, bytes, new LLVMScope());
+            assert !library.isNative() && !parserResults.isEmpty();
+
+            parseDependencies(parserResults, dependencyQueue, language, context);
+            assert dependencyQueue.isEmpty();
+
+            addExternalsToScope(context, parserResults);
+            bindUnresolvedGlobals(context, parserResults);
+            bindUnresolvedFunctions(context, parserResults);
+            registerDynamicLinkChain(context, parserResults);
+            callStructors(context, parserResults);
+            return createLibraryCallTarget(language, context, parserResults);
+        } catch (Throwable t) {
+            throw new IOException("Error while parsing " + library, t);
         }
     }
 
-    private LLVMParserResult[] parse(LLVMLanguage language, LLVMContext context, ExternalLibrary[] libs) {
-        LLVMParserResult[] parserResults = new LLVMParserResult[libs.length];
-        for (int i = 0; i < libs.length; i++) {
-            ExternalLibrary lib = libs[i];
-            if (!lib.isParsed()) {
-                try {
-                    Path path = lib.getPath();
-                    byte[] bytes = Files.readAllBytes(path);
-                    // at the moment, we don't need the bitcode as the content of the source
-                    Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
-                    parserResults[i] = parse(language, context, source, lib, ByteBuffer.wrap(bytes));
-                    lib.setParsed();
-                } catch (Throwable t) {
-                    throw new RuntimeException("Error while trying to parse " + lib.getName(), t);
+    private void parseDependencies(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context) {
+        // at first, we are only parsing the direct dependencies of the main bitcode file
+        int directDependencies = dependencyQueue.size();
+        for (int i = 0; i < directDependencies; i++) {
+            ExternalLibrary lib = dependencyQueue.removeFirst();
+            parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
+        }
+
+        // then, we are parsing the default libraries
+        if (!context.areDefaultLibrariesLoaded()) {
+            context.setDefaultLibrariesLoaded();
+            Env env = context.getEnv();
+
+            // There could be conflicts between Sulong's default libraries and the ones that are
+            // passed on the command-line. To resolve that, we add ours first but parse them later
+            // on.
+            boolean useLibcBitcode = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.USE_LIBC_BITCODE));
+            ExternalLibrary[] sulongLibs = addSulongDefaultLibraries(context, useLibcBitcode);
+
+            // parse all libraries that were passed on the command-line
+            List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(env);
+            for (String external : externals) {
+                // assume that the library is a native one until we parsed it and can say for sure
+                ExternalLibrary lib = context.addExternalLibrary(external, true, false);
+                if (lib != null) {
+                    parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
+                }
+            }
+
+            // now parse the default Sulong libraries
+            if (useLibcBitcode) {
+                parseTogether(parserResults, dependencyQueue, language, context, sulongLibs);
+            } else {
+                // TODO (chaeubl): we have an ordering issue here... - the search order for native
+                // code comes last, which is not necessarily correct...
+                assert sulongLibs.length == 1;
+                parse(parserResults, dependencyQueue, language, context, sulongLibs[0], new LLVMScope());
+            }
+        }
+
+        // finally we are dealing with all indirect dependencies
+        while (!dependencyQueue.isEmpty()) {
+            ExternalLibrary lib = dependencyQueue.removeFirst();
+            parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
+        }
+    }
+
+    private static ExternalLibrary[] addSulongDefaultLibraries(LLVMContext context, boolean useLibcBitcode) {
+        if (useLibcBitcode) {
+            ExternalLibrary libSulongOverrides = context.addExternalLibrary(LIBSULONG_OVERRIDES_FILENAME, false, false);
+            ExternalLibrary libSulong = context.addExternalLibrary(LIBSULONG_FILENAME, false, true);
+            ExternalLibrary libc = context.addExternalLibrary(LIBC_FILENAME, false, true);
+            return new ExternalLibrary[]{libSulongOverrides, libSulong, libc};
+        } else {
+            ExternalLibrary libSulong = context.addExternalLibrary(LIBSULONG_FILENAME, false, false);
+            return new ExternalLibrary[]{libSulong};
+        }
+    }
+
+    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context, ExternalLibrary lib, LLVMScope scope) {
+        if (lib.getPath() == null || !lib.getPath().toFile().isFile()) {
+            if (!lib.isNative()) {
+                throw new RuntimeException("'" + lib.getPath() + "' is not a file or does not exist.");
+            } else {
+                // lets assume that this is not a bitcode file and the NFI is going to handle it
+                return;
+            }
+        }
+
+        try {
+            Path path = lib.getPath();
+            byte[] bytes = Files.readAllBytes(path);
+            // at the moment, we don't need the bitcode as the content of the source
+            Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
+            parse(parserResults, dependencyQueue, language, context, source, lib, ByteBuffer.wrap(bytes), scope);
+        } catch (Throwable t) {
+            throw new RuntimeException("Error while trying to parse " + lib.getName(), t);
+        }
+    }
+
+    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context, Source source,
+                    ExternalLibrary library, ByteBuffer bytes, LLVMScope scope) {
+        ModelModule module = LLVMScanner.parse(source, bytes);
+        if (module != null) {
+            library.setIsNative(false);
+            context.addLibraryPaths(module.getLibraryPaths());
+            List<String> libraries = module.getLibraries();
+            for (String lib : libraries) {
+                ExternalLibrary dependency = context.addExternalLibrary(lib, true, false);
+                if (dependency != null) {
+                    dependencyQueue.addLast(dependency);
+                }
+            }
+            LLVMParserRuntime runtime = new LLVMParserRuntime(language, context, nodeFactory, library, scope);
+            LLVMParser parser = new LLVMParser(source, runtime);
+            LLVMParserResult parserResult = parser.parse(module);
+            parserResults.add(parserResult);
+        } else if (!library.isNative()) {
+            throw new RuntimeException("The file is not a bitcode file nor an ELF File with a .llvmbc section.");
+        }
+    }
+
+    private void parseTogether(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context,
+                    ExternalLibrary... externalLibraries) {
+        assert externalLibraries.length > 1 : "use the normal parse method instead";
+        LLVMScope commonScope = new LLVMScope();
+        for (ExternalLibrary lib : externalLibraries) {
+            parse(parserResults, dependencyQueue, language, context, lib, commonScope);
+        }
+    }
+
+    private static void addExternalsToScope(LLVMContext context, List<LLVMParserResult> parserResults) {
+        // TODO (chaeubl): in here, we should validate if the return types/argument types/global
+        // types match
+        LLVMScope globalScope = context.getGlobalScope();
+        for (LLVMParserResult parserResult : parserResults) {
+            LLVMScope fileScope = parserResult.getRuntime().getFileScope();
+            for (FunctionSymbol function : parserResult.getExternalFunctions()) {
+                LLVMFunctionDescriptor descriptor = globalScope.functions().getOrCreate(context, function.getName(), function.getType());
+                if (!fileScope.functions().contains(function.getName())) {
+                    // there can already be a different local entry in the file scope
+                    fileScope.functions().register(descriptor);
+                }
+            }
+
+            for (GlobalVariable global : parserResult.getExternalGlobals()) {
+                LLVMGlobal descriptor = globalScope.globals().getOrCreate(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+                if (!fileScope.globals().contains(global.getName())) {
+                    // there can already be a different local entry in the file scope
+                    fileScope.globals().register(descriptor);
                 }
             }
         }
-        return parserResults;
+    }
+
+    private static void bindUnresolvedGlobals(LLVMContext context, List<LLVMParserResult> parserResults) {
+        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        for (LLVMParserResult parserResult : parserResults) {
+            for (LLVMGlobal global : parserResult.getRuntime().getFileScope().globals().toArray()) {
+                if (!global.isDefined()) {
+                    assert context.getGlobalScope().globals().contains(global);
+                    if (nfiContextExtension != null) {
+                        NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(context, global.getName());
+                        if (pointerIntoLibrary != null) {
+                            global.define(pointerIntoLibrary.getLibrary());
+                            global.bindToNativeAddress(context, pointerIntoLibrary.getAddress());
+                        }
+                    }
+
+                    if (!global.isDefined() && !context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
+                        throw new LinkageError("Global variable " + global.getName() + " is declared but not defined.");
+                    }
+                }
+            }
+        }
+    }
+
+    private static void bindUnresolvedFunctions(LLVMContext context, List<LLVMParserResult> parserResults) {
+        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+        NativeIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(NativeIntrinsicProvider.class);
+        for (LLVMParserResult parserResult : parserResults) {
+            for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
+                if (!function.isDefined()) {
+                    assert context.getGlobalScope().functions().contains(function);
+                    if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(function.getName())) {
+                        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, function.getName());
+                        function.define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.NativeIntrinsicFunction(intrinsification));
+                    } else if (nfiContextExtension != null) {
+                        NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, function.getName());
+                        if (nativeFunction != null) {
+                            function.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+                        }
+                    }
+                    // if we were unable to bind the function, then we will try another lookup when
+                    // someone tries to execute the function
+                }
+            }
+        }
+    }
+
+    private static void registerDynamicLinkChain(LLVMContext context, List<LLVMParserResult> parserResults) {
+        for (LLVMParserResult parserResult : parserResults) {
+            context.registerScope(parserResult.getRuntime().getFileScope());
+        }
+    }
+
+    private static InitializationOrder computeInitializationOrder(LLVMContext context, List<LLVMParserResult> parserResults) {
+        // Split libraries into Sulong-specific ones and others, so that we can handle the
+        // Sulong-specific ones separately.
+        List<LLVMParserResult> sulongLibs = new ArrayList<>();
+        List<LLVMParserResult> otherLibs = new ArrayList<>();
+        for (LLVMParserResult parserResult : parserResults) {
+            if (isSulongLib(parserResult)) {
+                sulongLibs.add(parserResult);
+            } else {
+                otherLibs.add(parserResult);
+            }
+        }
+
+        // Typically, the initialization order is very close to the reversed parsing order. So, we
+        // only want to change the order when it is really necessary.
+        List<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
+        EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
+        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = computeDependencies(context, otherLibs);
+        for (int i = otherLibs.size() - 1; i >= 0; i--) {
+            LLVMParserResult parserResult = otherLibs.get(i);
+            if (!visited.contains(parserResult)) {
+                addToInitializationOrder(parserResult, dependencies, otherLibsInitializationOrder, visited);
+            }
+        }
+
+        assert sulongLibs.size() + otherLibsInitializationOrder.size() == parserResults.size();
+        return new InitializationOrder(sulongLibs, otherLibsInitializationOrder);
+    }
+
+    private static boolean isSulongLib(LLVMParserResult parserResult) {
+        Path path = parserResult.getRuntime().getLibrary().getPath();
+        return path != null && (path.endsWith(LIBSULONG_FILENAME) || path.endsWith(LIBSULONG_OVERRIDES_FILENAME) || path.endsWith(LIBC_FILENAME));
+    }
+
+    private static void addToInitializationOrder(LLVMParserResult current, EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies, List<LLVMParserResult> initializationOrder,
+                    EconomicSet<LLVMParserResult> visited) {
+        visited.add(current);
+        List<LLVMParserResult> currentDependencies = dependencies.get(current);
+        for (LLVMParserResult dependency : currentDependencies) {
+            if (!visited.contains(dependency)) {
+                addToInitializationOrder(dependency, dependencies, initializationOrder, visited);
+            }
+        }
+        initializationOrder.add(current);
+    }
+
+    private static EconomicMap<LLVMParserResult, List<LLVMParserResult>> computeDependencies(LLVMContext context, List<LLVMParserResult> parserResults) {
+        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = EconomicMap.create(Equivalence.IDENTITY);
+        Map<ExternalLibrary, LLVMParserResult> libsToParserResults = mapLibsToParserResults(parserResults);
+        LLVMScope globalScope = context.getGlobalScope();
+        for (LLVMParserResult parserResult : parserResults) {
+            List<LLVMParserResult> currentDependencies = new ArrayList<>();
+            for (ExternalLibrary lib : getImportedLibraries(globalScope, parserResult)) {
+                // ignore self imports
+                if (!parserResult.getRuntime().getLibrary().equals(lib)) {
+                    LLVMParserResult dependency = libsToParserResults.get(lib);
+                    if (dependency != null) {
+                        currentDependencies.add(dependency);
+                    }
+                }
+            }
+            dependencies.put(parserResult, currentDependencies);
+        }
+        return dependencies;
+    }
+
+    private static EconomicSet<ExternalLibrary> getImportedLibraries(LLVMScope globalScope, LLVMParserResult parserResult) {
+        EconomicSet<ExternalLibrary> importedLibs = EconomicSet.create(Equivalence.IDENTITY);
+        for (String imported : parserResult.getImportedFunctions()) {
+            ExternalLibrary lib = globalScope.functions().get(imported).getLibrary();
+            if (lib != null) {
+                importedLibs.add(lib);
+            }
+        }
+
+        for (String imported : parserResult.getImportedGlobals()) {
+            ExternalLibrary lib = globalScope.globals().get(imported).getLibrary();
+            if (lib != null) {
+                importedLibs.add(lib);
+            }
+        }
+        return importedLibs;
+    }
+
+    private static Map<ExternalLibrary, LLVMParserResult> mapLibsToParserResults(List<LLVMParserResult> parserResults) {
+        Map<ExternalLibrary, LLVMParserResult> map = new HashMap<>();
+        for (LLVMParserResult parserResult : parserResults) {
+            map.put(parserResult.getRuntime().getLibrary(), parserResult);
+        }
+        return map;
+    }
+
+    private static void callStructors(LLVMContext context, List<LLVMParserResult> parserResults) {
+        if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
+            InitializationOrder initializationOrder = computeInitializationOrder(context, parserResults);
+            initialize(context, initializationOrder.sulongLibraries);
+            context.initialize();
+            initialize(context, initializationOrder.otherLibraries);
+        }
+    }
+
+    private static void initialize(LLVMContext context, List<LLVMParserResult> parserResults) {
+        for (LLVMParserResult parserResult : parserResults) {
+            // register destructor function so that we can execute it when exit is called
+            RootCallTarget destructor = createDestructor(parserResult);
+            if (destructor != null) {
+                context.registerDestructorFunctions(destructor);
+            }
+
+            // initialize global variables
+            RootCallTarget globalVarInit = createGlobalVariableInitializer(parserResult);
+            if (globalVarInit != null) {
+                try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                    globalVarInit.call(stackPointer);
+                }
+            }
+
+            // execute constructor function
+            RootCallTarget constructor = createConstructor(parserResult);
+            if (constructor != null) {
+                try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
+                    constructor.call(stackPointer);
+                }
+            }
+        }
+    }
+
+    private static RootCallTarget createGlobalVariableInitializer(LLVMParserResult parserResult) {
+        FrameDescriptor rootFrame = StackManager.createRootFrame();
+        LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(parserResult.getRuntime(), rootFrame);
+        final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
+        for (GlobalVariable global : parserResult.getDefinedGlobals()) {
+            final LLVMExpressionNode store = createGlobalInitialization(parserResult.getRuntime(), symbolResolver, global);
+            if (store != null) {
+                globalNodes.add(store);
+            }
+        }
+
+        if (!globalNodes.isEmpty()) {
+            LLVMExpressionNode[] initNodes = globalNodes.toArray(new LLVMExpressionNode[globalNodes.size()]);
+            RootNode globalVarInits = new LLVMStaticInitsBlockNode(parserResult.getRuntime().getLanguage(), initNodes, rootFrame);
+            return Truffle.getRuntime().createCallTarget(globalVarInits);
+        }
+        return null;
+    }
+
+    private static LLVMExpressionNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
+        if (global == null || global.getValue() == null) {
+            return null;
+        }
+
+        LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
+        if (constant != null) {
+            final Type type = global.getType().getPointeeType();
+            final int size = runtime.getContext().getByteSize(type);
+
+            final LLVMExpressionNode globalVarAddress = symbolResolver.resolve(global);
+            if (size != 0) {
+                if (type instanceof ArrayType || type instanceof StructureType) {
+                    return runtime.getNodeFactory().createStore(runtime, globalVarAddress, constant, type, null);
+                } else {
+                    Type t = global.getValue().getType();
+                    return runtime.getNodeFactory().createStore(runtime, globalVarAddress, constant, t, null);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static RootCallTarget createConstructor(LLVMParserResult parserResult) {
+        return createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY);
+    }
+
+    private static RootCallTarget createDestructor(LLVMParserResult parserResult) {
+        return createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
+    }
+
+    private static RootCallTarget createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
+        for (GlobalVariable globalVariable : parserResult.getDefinedGlobals()) {
+            if (globalVariable.getName().equals(name)) {
+                LLVMExpressionNode[] targets = resolveStructor(parserResult.getRuntime(), globalVariable, priorityComparator);
+                if (targets.length > 0) {
+                    return Truffle.getRuntime().createCallTarget(new LLVMStaticInitsBlockNode(parserResult.getRuntime().getLanguage(), targets, StackManager.createRootFrame()));
+                } else {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static LLVMExpressionNode[] resolveStructor(LLVMParserRuntime runtime, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator) {
+        if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
+            // array globals of length 0 may be initialized with scalar null
+            return LLVMExpressionNode.NO_EXPRESSIONS;
+        }
+
+        final LLVMGlobal global = runtime.getFileScope().globals().get(globalSymbol.getName());
+        final ArrayConstant arrayConstant = (ArrayConstant) globalSymbol.getValue();
+        final int elemCount = arrayConstant.getElementCount();
+
+        final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
+        final int elementSize = runtime.getContext().getByteSize(elementType);
+
+        final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
+        final int indexedTypeLength = runtime.getContext().getByteAlignment(functionType);
+
+        final ArrayList<Pair<Integer, LLVMExpressionNode>> structors = new ArrayList<>(elemCount);
+        FrameDescriptor rootFrame = StackManager.createRootFrame();
+        for (int i = 0; i < elemCount; i++) {
+            final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(runtime, global, new PointerType(globalSymbol.getType()));
+            final LLVMExpressionNode iNode = runtime.getNodeFactory().createLiteral(runtime, i, PrimitiveType.I32);
+            final LLVMExpressionNode structPointer = runtime.getNodeFactory().createTypedElementPointer(runtime, globalVarAddress, iNode, elementSize, elementType);
+            final LLVMExpressionNode loadedStruct = runtime.getNodeFactory().createLoad(runtime, elementType, structPointer);
+
+            final LLVMExpressionNode oneLiteralNode = runtime.getNodeFactory().createLiteral(runtime, 1, PrimitiveType.I32);
+            final LLVMExpressionNode functionLoadTarget = runtime.getNodeFactory().createTypedElementPointer(runtime, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
+            final LLVMExpressionNode loadedFunction = runtime.getNodeFactory().createLoad(runtime, functionType, functionLoadTarget);
+            final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
+                            runtime.getNodeFactory().createFrameRead(runtime, PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+            final LLVMExpressionNode functionCall = runtime.getNodeFactory().createFunctionCall(runtime, loadedFunction, argNodes, functionType, null);
+
+            final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
+            final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
+            final Integer priority = LLVMSymbolReadResolver.evaluateIntegerConstant(prioritySymbol);
+            structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
+        }
+
+        return structors.stream().sorted(priorityComparator).map(Pair::getSecond).toArray(LLVMExpressionNode[]::new);
     }
 
     private static byte[] decodeBase64(CharSequence charSequence) {
@@ -302,30 +775,6 @@ public final class Runner {
             result[i] = (byte) ch;
         }
         return Base64.getDecoder().decode(result);
-    }
-
-    private LLVMParserResult parse(LLVMLanguage language, LLVMContext context, Source source, ExternalLibrary library, ByteBuffer bytes) throws IOException {
-        assert library != null;
-        BitcodeParserResult bitcodeParserResult = BitcodeParserResult.getFromSource(source, bytes);
-        context.addLibraryPaths(bitcodeParserResult.getLibraryPaths());
-        List<String> libraries = bitcodeParserResult.getLibraries();
-        if (!libraries.isEmpty()) {
-            ExternalLibrary[] libs = context.addExternalLibraries(libraries);
-            LLVMParserResult[] parserResults = parse(language, context, libs);
-            handleParserResult(context, parserResults);
-        }
-        return LLVMParserRuntime.parse(source, library, bitcodeParserResult, language, context, nodeFactory);
-    }
-
-    private void initializeContext(LLVMLanguage language, LLVMContext context) {
-        // we can't do the initialization in the LLVMContext constructor nor in
-        // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
-        // do it here...
-        if (!context.isInitialized()) {
-            LLVMParserResult[] parserResults = parse(language, context, context.getExternalLibraries());
-            handleParserResult(context, parserResults);
-            context.initialize();
-        }
     }
 
     private static ByteBuffer read(String filename) {
@@ -340,40 +789,78 @@ public final class Runner {
         }
     }
 
-    private static void handleParserResult(LLVMContext context, LLVMParserResult result) {
-        // register destructor functions so that we can execute them when exit is called
-        if (result.getDestructorFunction() != null) {
-            context.registerDestructorFunction(result.getDestructorFunction());
+    private static CallTarget createLibraryCallTarget(LLVMLanguage language, LLVMContext context, List<LLVMParserResult> parserResults) {
+        RootCallTarget mainFunctionCallTarget = null;
+        LLVMFunctionDescriptor mainFunctionDescriptor = findMainMethod(context, parserResults);
+        LLVMFunctionDescriptor startFunctionDescriptor = findStartMethod(context);
+        if (mainFunctionDescriptor != null && startFunctionDescriptor != null) {
+            RootCallTarget startCallTarget = startFunctionDescriptor.getLLVMIRFunction();
+            Path applicationPath = mainFunctionDescriptor.getLibrary().getPath();
+            RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunctionDescriptor, startCallTarget, Objects.toString(applicationPath, ""));
+            mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
         }
 
-        // initialize global variables and execute constructor functions
-        if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
-                result.getGlobalVarInit().call(stackPointer);
-            }
-            if (result.getConstructorFunction() != null) {
-                try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
-                    result.getConstructorFunction().call(stackPointer);
-                }
-            }
-        }
-    }
-
-    private static void handleParserResult(LLVMContext context, LLVMParserResult[] parserResults) {
-        for (int i = 0; i < parserResults.length; i++) {
-            if (parserResults[i] != null) {
-                handleParserResult(context, parserResults[i]);
-            }
-        }
-    }
-
-    private static CallTarget createLibraryCallTarget(LLVMContext context, ExternalLibrary library, LLVMParserResult parserResult) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
-            SulongLibrary lib = new SulongLibrary(parserResult.getScope(), library, parserResult.getMainCallTarget());
+            LLVMScope scope = combineScopes(parserResults);
+            SulongLibrary lib = new SulongLibrary(scope, mainFunctionCallTarget);
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(lib));
         }
     }
 
+    private static LLVMFunctionDescriptor findMainMethod(LLVMContext context, List<LLVMParserResult> parserResults) {
+        // check if the freshly parsed code exports a main method
+        for (LLVMParserResult parserResult : parserResults) {
+            LLVMScope fileScope = parserResult.getRuntime().getFileScope();
+            if (fileScope.functions().exports(context, MAIN_METHOD_NAME)) {
+                LLVMFunctionDescriptor mainMethod = fileScope.functions().get(MAIN_METHOD_NAME);
+                if (mainMethod.isDefined()) {
+                    return mainMethod;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static LLVMFunctionDescriptor findStartMethod(LLVMContext context) {
+        // the start method just needs to be present in the global scope, we don't care when it was
+        // parsed.
+        if (context.getGlobalScope().functions().contains(START_METHOD_NAME)) {
+            LLVMFunctionDescriptor startMethod = context.getGlobalScope().functions().get(START_METHOD_NAME);
+            if (startMethod.isDefined()) {
+                return startMethod;
+            }
+        }
+        return null;
+    }
+
+    private static LLVMScope combineScopes(List<LLVMParserResult> parserResults) {
+        LLVMScope result = new LLVMScope();
+        for (LLVMParserResult parserResult : parserResults) {
+            LLVMScope scope = parserResult.getRuntime().getFileScope();
+            result.addMissingEntries(scope);
+        }
+        return result;
+    }
+
+    private static final class InitializationOrder {
+        private final List<LLVMParserResult> sulongLibraries;
+        private final List<LLVMParserResult> otherLibraries;
+
+        private InitializationOrder(List<LLVMParserResult> sulongLibraries, List<LLVMParserResult> otherLibraries) {
+            this.sulongLibraries = sulongLibraries;
+            this.otherLibraries = otherLibraries;
+        }
+    }
+
+    private static final class ParserData {
+        private final ByteBuffer bytes;
+        private final ExternalLibrary library;
+
+        private ParserData(ByteBuffer bytes, ExternalLibrary library) {
+            this.bytes = bytes;
+            this.library = library;
+        }
+    }
 }

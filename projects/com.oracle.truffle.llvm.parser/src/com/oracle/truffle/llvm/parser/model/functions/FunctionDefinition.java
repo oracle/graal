@@ -42,11 +42,11 @@ import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoModuleProcessor;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
+import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
@@ -57,7 +57,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public final class FunctionDefinition implements Constant, ValueSymbol, MetadataAttachmentHolder {
+public final class FunctionDefinition implements Constant, FunctionSymbol, MetadataAttachmentHolder {
 
     private static final InstructionBlock[] EMPTY = new InstructionBlock[0];
 
@@ -65,6 +65,7 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     private final FunctionType type;
     private final AttributesCodeEntry paramAttr;
     private final Linkage linkage;
+    private final Visibility visibility;
 
     private List<MDAttachment> mdAttachments = null;
     private SourceFunction sourceFunction = DebugInfoModuleProcessor.DEFAULT_FUNCTION;
@@ -73,15 +74,16 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
     private int currentBlock = 0;
     private String name;
 
-    public FunctionDefinition(FunctionType type, String name, Linkage linkage, AttributesCodeEntry paramAttr) {
+    public FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
         this.type = type;
         this.name = name;
         this.paramAttr = paramAttr;
         this.linkage = linkage;
+        this.visibility = visibility;
     }
 
-    public FunctionDefinition(FunctionType type, Linkage linkage, AttributesCodeEntry paramAttr) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, paramAttr);
+    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
+        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr);
     }
 
     @Override
@@ -246,5 +248,15 @@ public final class FunctionDefinition implements Constant, ValueSymbol, Metadata
 
     public void setSourceFunction(SourceFunction sourceFunction) {
         this.sourceFunction = sourceFunction;
+    }
+
+    @Override
+    public boolean isExported() {
+        return Linkage.isExported(linkage, visibility);
+    }
+
+    @Override
+    public boolean isExternal() {
+        return Linkage.isExternal(linkage);
     }
 }

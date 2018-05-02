@@ -194,6 +194,20 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
+    protected Object doVoid(LLVMTruffleObject target, LLVMGlobal source, Object length, int align, boolean isVolatile) {
+        memMove.executeWithTarget(target, source, length);
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
+    protected Object doVoid(LLVMGlobal target, LLVMTruffleObject source, Object length, int align, boolean isVolatile) {
+        memMove.executeWithTarget(target, source, length);
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization
     protected Object doVoid(LLVMAddress target, LLVMTruffleObject source, Object length, int align, boolean isVolatile) {
         memMove.executeWithTarget(target, source, length);
         return null;
