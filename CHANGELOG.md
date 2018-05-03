@@ -5,6 +5,10 @@ New features:
 * Use dynamic linker semantics when loading multiple bitcode files.
 * Support ELF files with embedded LLVM bitcode.
 
+Improvements:
+
+* Unified representation of pointers to native memory and polyglot values.
+
 # Version 1.0.0 RC1
 
 New features:

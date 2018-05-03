@@ -41,14 +41,15 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen.BoxedGetStringSizeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
 
     @Specialization
-    long getForeignStringSize(LLVMTruffleObject object,
+    long getForeignStringSize(LLVMManagedPointer object,
                     @Cached("create()") LLVMAsForeignNode asForeign,
                     @Cached("create()") BoxedGetStringSize getSize) {
         return getSize.execute(asForeign.execute(object));
@@ -59,7 +60,7 @@ public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
         return str.length();
     }
 
-    abstract static class BoxedGetStringSize extends Node {
+    abstract static class BoxedGetStringSize extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
         @Child Node unbox = Message.UNBOX.createNode();

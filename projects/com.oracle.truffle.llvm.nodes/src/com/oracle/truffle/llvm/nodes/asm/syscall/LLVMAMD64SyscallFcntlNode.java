@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64SyscallFcntlNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode fcntl;
@@ -53,7 +53,7 @@ public abstract class LLVMAMD64SyscallFcntlNode extends LLVMSyscallOperationNode
     }
 
     @Specialization
-    protected long doI64(long fd, long cmd, LLVMAddress arg) {
-        return doI64(fd, cmd, arg.getVal());
+    protected long doI64(long fd, long cmd, LLVMNativePointer arg) {
+        return doI64(fd, cmd, arg.asNative());
     }
 }

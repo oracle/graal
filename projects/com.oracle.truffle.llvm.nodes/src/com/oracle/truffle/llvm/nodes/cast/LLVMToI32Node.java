@@ -34,17 +34,17 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.cast.LLVMToI64Node.LLVMToI64BitNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
@@ -57,21 +57,21 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
     @Specialization
     protected int doI32(LLVMFunctionDescriptor from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (int) toNative.executeWithTarget(from).getVal();
+        return (int) toNative.executeWithTarget(from).asNative();
     }
 
     @Specialization
     protected int doGlobal(LLVMGlobal from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (int) access.executeWithTarget(from).getVal();
+        return (int) access.executeWithTarget(from).asNative();
     }
 
     @Child private ForeignToLLVM convert = ForeignToLLVM.create(ForeignToLLVMType.I32);
 
     @Specialization
-    protected int doLLVMTruffleObject(LLVMTruffleObject from,
+    protected int doManaged(LLVMManagedPointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (int) toNative.executeWithTarget(from).getVal();
+        return (int) toNative.executeWithTarget(from).asNative();
     }
 
     @Specialization
@@ -97,8 +97,8 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected int doI32(LLVMAddress from) {
-            return (int) from.getVal();
+        protected int doI32(LLVMNativePointer from) {
+            return (int) from.asNative();
         }
 
         @Specialization

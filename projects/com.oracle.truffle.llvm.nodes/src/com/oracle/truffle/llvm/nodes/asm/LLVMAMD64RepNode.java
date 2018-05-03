@@ -33,11 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public class LLVMAMD64RepNode extends LLVMExpressionNode {
     @Child private LoopNode loop;
@@ -52,7 +52,7 @@ public class LLVMAMD64RepNode extends LLVMExpressionNode {
         return null;
     }
 
-    private static class LLVMAMD64RepLoopNode extends Node implements RepeatingNode {
+    private static class LLVMAMD64RepLoopNode extends LLVMNode implements RepeatingNode {
         @Child private LLVMAMD64WriteValueNode writeRCX;
         @Child private LLVMExpressionNode rcx;
         @Child private LLVMExpressionNode body;

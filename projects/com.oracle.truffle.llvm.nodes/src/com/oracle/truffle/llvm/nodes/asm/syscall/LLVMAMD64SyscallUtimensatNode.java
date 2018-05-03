@@ -32,8 +32,8 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNode;
 import com.oracle.truffle.llvm.nodes.asm.syscall.posix.LLVMAMD64PosixCallNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64SyscallUtimensatNode extends LLVMSyscallOperationNode {
     @Child private LLVMAMD64PosixCallNode utimensat;
@@ -48,22 +48,22 @@ public abstract class LLVMAMD64SyscallUtimensatNode extends LLVMSyscallOperation
     }
 
     @Specialization
-    protected long doOp(long dfd, LLVMAddress filename, LLVMAddress utimes, long mode) {
-        return (int) utimensat.execute(dfd, filename.getVal(), utimes.getVal(), mode);
+    protected long doOp(long dfd, LLVMNativePointer filename, LLVMNativePointer utimes, long mode) {
+        return (int) utimensat.execute(dfd, filename.asNative(), utimes.asNative(), mode);
     }
 
     @Specialization
-    protected long doOp(long dfd, LLVMAddress filename, long utimes, long mode) {
-        return doOp(dfd, filename, LLVMAddress.fromLong(utimes), mode);
+    protected long doOp(long dfd, LLVMNativePointer filename, long utimes, long mode) {
+        return doOp(dfd, filename, LLVMNativePointer.create(utimes), mode);
     }
 
     @Specialization
-    protected long doOp(long dfd, long filename, LLVMAddress utimes, long mode) {
-        return doOp(dfd, LLVMAddress.fromLong(filename), utimes, mode);
+    protected long doOp(long dfd, long filename, LLVMNativePointer utimes, long mode) {
+        return doOp(dfd, LLVMNativePointer.create(filename), utimes, mode);
     }
 
     @Specialization
     protected long doOp(long dfd, long filename, long utimes, long mode) {
-        return doOp(dfd, LLVMAddress.fromLong(filename), LLVMAddress.fromLong(utimes), mode);
+        return doOp(dfd, LLVMNativePointer.create(filename), LLVMNativePointer.create(utimes), mode);
     }
 }

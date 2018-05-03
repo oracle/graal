@@ -32,14 +32,14 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteI32Node;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
 
@@ -59,13 +59,13 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMAddress addr, int value) {
+    protected Object doOp(LLVMNativePointer addr, int value) {
         getLLVMMemoryCached().putI32(addr, value);
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMAddress addr, int value) {
+    protected Object doOpDerefHandle(LLVMNativePointer addr, int value) {
         return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
@@ -76,13 +76,8 @@ public abstract class LLVMI32StoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isNative()")
-    protected Object doOpNative(LLVMTruffleObject address, int value) {
-        return doOp(address.asNative(), value);
-    }
-
-    @Specialization(guards = "address.isManaged()")
-    protected Object doOpManaged(LLVMTruffleObject address, int value) {
+    @Specialization
+    protected Object doOpManaged(LLVMManagedPointer address, int value) {
         getForeignWriteNode().execute(address, value);
         return null;
     }

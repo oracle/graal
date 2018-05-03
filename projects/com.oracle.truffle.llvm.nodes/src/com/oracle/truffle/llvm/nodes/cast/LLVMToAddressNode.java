@@ -32,78 +32,58 @@ package com.oracle.truffle.llvm.nodes.cast;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.Message;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 public abstract class LLVMToAddressNode extends LLVMExpressionNode {
 
     @Specialization
-    protected LLVMAddress doI1(boolean from) {
-        return LLVMAddress.fromLong(from ? 1 : 0);
+    protected LLVMNativePointer doI1(boolean from) {
+        return LLVMNativePointer.create(from ? 1 : 0);
     }
 
     @Specialization
-    protected LLVMAddress doI8(byte from) {
-        return LLVMAddress.fromLong(LLVMExpressionNode.I8_MASK & (long) from);
+    protected LLVMNativePointer doI8(byte from) {
+        return LLVMNativePointer.create(LLVMExpressionNode.I8_MASK & (long) from);
     }
 
     @Specialization
-    protected LLVMAddress doI16(short from) {
-        return LLVMAddress.fromLong(LLVMExpressionNode.I16_MASK & (long) from);
+    protected LLVMNativePointer doI16(short from) {
+        return LLVMNativePointer.create(LLVMExpressionNode.I16_MASK & (long) from);
     }
 
     @Specialization
-    protected LLVMAddress doI32(int from) {
-        return LLVMAddress.fromLong(LLVMExpressionNode.I32_MASK & from);
+    protected LLVMNativePointer doI32(int from) {
+        return LLVMNativePointer.create(LLVMExpressionNode.I32_MASK & from);
     }
 
     @Specialization
-    protected LLVMAddress doI64(long from) {
-        return LLVMAddress.fromLong(from);
+    protected LLVMNativePointer doI64(long from) {
+        return LLVMNativePointer.create(from);
     }
 
     @Specialization
-    protected LLVMAddress doFunctionDescriptor(LLVMFunctionDescriptor from,
+    protected LLVMNativePointer doFunctionDescriptor(LLVMFunctionDescriptor from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return toNative.executeWithTarget(from);
     }
 
     @Specialization
-    protected LLVMAddress doLLVMAddress(LLVMAddress from) {
+    protected LLVMPointer doLLVMPointer(LLVMPointer from) {
         return from;
     }
 
     @Child private ForeignToLLVM toLong = ForeignToLLVM.create(ForeignToLLVMType.I64);
 
     @Specialization
-    protected LLVMAddress doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
-        return LLVMAddress.fromLong((long) toLong.executeWithTarget(from.getValue()));
-    }
-
-    protected static boolean checkIsPointer(Node isPointer, LLVMTruffleObject object) {
-        return ForeignAccess.sendIsPointer(isPointer, object.getObject());
-    }
-
-    protected static Node createIsPointer() {
-        return Message.IS_POINTER.createNode();
-    }
-
-    protected static Node createAsPointer() {
-        return Message.AS_POINTER.createNode();
-    }
-
-    @Specialization
-    protected LLVMTruffleObject doTruffleObject(LLVMTruffleObject from) {
-        return from;
+    protected LLVMNativePointer doLLVMBoxedPrimitive(LLVMBoxedPrimitive from) {
+        return LLVMNativePointer.create((long) toLong.executeWithTarget(from.getValue()));
     }
 }

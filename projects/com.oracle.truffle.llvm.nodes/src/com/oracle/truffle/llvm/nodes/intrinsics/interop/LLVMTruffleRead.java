@@ -44,9 +44,9 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
@@ -83,7 +83,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "2", guards = "cachedId.equals(readStr.executeWithTarget(id))")
-        protected Object cached(LLVMTruffleObject value, Object id,
+        protected Object cached(LLVMManagedPointer value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr,
                         @Cached("readStr.executeWithTarget(id)") String cachedId) {
             TruffleObject foreign = asForeign.execute(value);
@@ -91,7 +91,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
 
         @Specialization(replaces = "cached")
-        protected Object uncached(LLVMTruffleObject value, Object id,
+        protected Object uncached(LLVMManagedPointer value, Object id,
                         @Cached("createReadString()") LLVMReadStringNode readStr) {
             TruffleObject foreign = asForeign.execute(value);
             return doRead(foreign, readStr.executeWithTarget(id), foreignRead, toLLVM);
@@ -118,7 +118,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         }
 
         @Specialization
-        protected Object doIntrinsic(LLVMTruffleObject value, int id) {
+        protected Object doIntrinsic(LLVMManagedPointer value, int id) {
             TruffleObject foreign = asForeign.execute(value);
             return doReadIdx(foreign, id, foreignRead, toLLVM);
         }

@@ -29,38 +29,37 @@
  */
 package com.oracle.truffle.llvm.runtime.vector;
 
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import java.util.Arrays;
 import java.util.function.BiFunction;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+public final class LLVMPointerVector {
+    private final long[] vector;    // no LLVMNativePointer stored to improve performance
 
-public final class LLVMAddressVector {
-    private final long[] vector;    // no LLVMAddress stored to improve performance
-
-    public static LLVMAddressVector create(LLVMAddress[] vector) {
-        return new LLVMAddressVector(vector);
+    public static LLVMPointerVector create(LLVMNativePointer[] vector) {
+        return new LLVMPointerVector(vector);
     }
 
-    public static LLVMAddressVector create(long[] vector) {
-        return new LLVMAddressVector(vector);
+    public static LLVMPointerVector create(long[] vector) {
+        return new LLVMPointerVector(vector);
     }
 
-    public static LLVMAddressVector createNullVector() {
-        return new LLVMAddressVector();
+    public static LLVMPointerVector createNullVector() {
+        return new LLVMPointerVector();
     }
 
-    private LLVMAddressVector(LLVMAddress[] vector) {
+    private LLVMPointerVector(LLVMNativePointer[] vector) {
         this.vector = new long[vector.length];
         for (int i = 0; i < vector.length; i++) {
-            this.vector[i] = vector[i].getVal();
+            this.vector[i] = vector[i].asNative();
         }
     }
 
-    private LLVMAddressVector(long[] vector) {
+    private LLVMPointerVector(long[] vector) {
         this.vector = vector;
     }
 
-    private LLVMAddressVector() {
+    private LLVMPointerVector() {
         this.vector = null;
     }
 
@@ -69,7 +68,7 @@ public final class LLVMAddressVector {
         long eval(long a, long b);
     }
 
-    private static LLVMAddressVector doOperation(LLVMAddressVector lhs, LLVMAddressVector rhs, Operation op) {
+    private static LLVMPointerVector doOperation(LLVMPointerVector lhs, LLVMPointerVector rhs, Operation op) {
         long[] left = lhs.vector;
         long[] right = rhs.vector;
 
@@ -85,7 +84,7 @@ public final class LLVMAddressVector {
         return create(result);
     }
 
-    public LLVMAddressVector add(LLVMAddressVector rightValue) {
+    public LLVMPointerVector add(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -94,7 +93,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector mul(LLVMAddressVector rightValue) {
+    public LLVMPointerVector mul(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -103,7 +102,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector sub(LLVMAddressVector rightValue) {
+    public LLVMPointerVector sub(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -112,7 +111,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector div(LLVMAddressVector rightValue) {
+    public LLVMPointerVector div(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -121,7 +120,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector divUnsigned(LLVMAddressVector rightValue) {
+    public LLVMPointerVector divUnsigned(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -130,7 +129,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector rem(LLVMAddressVector rightValue) {
+    public LLVMPointerVector rem(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -139,7 +138,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector remUnsigned(LLVMAddressVector rightValue) {
+    public LLVMPointerVector remUnsigned(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -148,7 +147,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector and(LLVMAddressVector rightValue) {
+    public LLVMPointerVector and(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -157,7 +156,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector or(LLVMAddressVector rightValue) {
+    public LLVMPointerVector or(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -166,7 +165,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector leftShift(LLVMAddressVector rightValue) {
+    public LLVMPointerVector leftShift(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -175,7 +174,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector logicalRightShift(LLVMAddressVector rightValue) {
+    public LLVMPointerVector logicalRightShift(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -184,7 +183,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector arithmeticRightShift(LLVMAddressVector rightValue) {
+    public LLVMPointerVector arithmeticRightShift(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -193,7 +192,7 @@ public final class LLVMAddressVector {
         });
     }
 
-    public LLVMAddressVector xor(LLVMAddressVector rightValue) {
+    public LLVMPointerVector xor(LLVMPointerVector rightValue) {
         return doOperation(this, rightValue, new Operation() {
             @Override
             public long eval(long a, long b) {
@@ -206,10 +205,10 @@ public final class LLVMAddressVector {
         return vector;
     }
 
-    public LLVMAddress[] getAddresses() {
-        LLVMAddress[] addresses = new LLVMAddress[vector.length];
+    public LLVMNativePointer[] getPointers() {
+        LLVMNativePointer[] addresses = new LLVMNativePointer[vector.length];
         for (int i = 0; i < vector.length; i++) {
-            addresses[i] = LLVMAddress.fromLong(vector[i]);
+            addresses[i] = LLVMNativePointer.create(vector[i]);
         }
         return addresses;
     }
@@ -218,17 +217,17 @@ public final class LLVMAddressVector {
         return vector[index];
     }
 
-    public LLVMAddress getAddress(int index) {
-        return LLVMAddress.fromLong(vector[index]);
+    public LLVMNativePointer getPointer(int index) {
+        return LLVMNativePointer.create(vector[index]);
     }
 
-    public LLVMAddressVector insert(LLVMAddress element, int index) {
+    public LLVMPointerVector insert(LLVMNativePointer element, int index) {
         long[] copyOf = Arrays.copyOf(vector, vector.length);
-        copyOf[index] = element.getVal();
+        copyOf[index] = element.asNative();
         return create(copyOf);
     }
 
-    public LLVMAddressVector insert(long element, int index) {
+    public LLVMPointerVector insert(long element, int index) {
         long[] copyOf = Arrays.copyOf(vector, vector.length);
         copyOf[index] = element;
         return create(copyOf);
@@ -238,7 +237,7 @@ public final class LLVMAddressVector {
         return vector.length;
     }
 
-    public LLVMI1Vector doCompare(LLVMAddressVector other, BiFunction<Long, Long, Boolean> compare) {
+    public LLVMI1Vector doCompare(LLVMPointerVector other, BiFunction<Long, Long, Boolean> compare) {
         int length = other.getLength();
         boolean[] values = new boolean[length];
 

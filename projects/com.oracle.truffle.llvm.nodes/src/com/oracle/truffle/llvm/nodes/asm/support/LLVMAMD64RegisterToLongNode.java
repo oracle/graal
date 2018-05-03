@@ -34,10 +34,10 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMAMD64RegisterToLongNode extends Node {
+public abstract class LLVMAMD64RegisterToLongNode extends LLVMNode {
     public abstract long execute(VirtualFrame frame, FrameSlot slot);
 
     @Specialization(guards = "isLong(slot)")
@@ -47,7 +47,7 @@ public abstract class LLVMAMD64RegisterToLongNode extends Node {
 
     @Specialization(guards = "isAddress(slot)")
     protected long readAddress(VirtualFrame frame, FrameSlot slot) {
-        return ((LLVMAddress) FrameUtil.getObjectSafe(frame, slot)).getVal();
+        return LLVMNativePointer.cast(FrameUtil.getObjectSafe(frame, slot)).asNative();
     }
 
     protected boolean isLong(FrameSlot slot) {

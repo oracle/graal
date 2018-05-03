@@ -33,11 +33,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public final class LLVMComplexDivSC extends LLVMExpressionNode {
 
@@ -87,6 +87,6 @@ public final class LLVMComplexDivSC extends LLVMExpressionNode {
         long allocatedMemory = LLVMStack.allocateStackMemory(frame, getMemory(), getStackPointerSlot(), 2 * LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, 8);
         getMemory().putFloat(allocatedMemory, zReal);
         getMemory().putFloat(allocatedMemory + LLVMExpressionNode.FLOAT_SIZE_IN_BYTES, zImag);
-        return getMemory().getFloatVector(LLVMAddress.fromLong(allocatedMemory), 2);
+        return getMemory().getFloatVector(LLVMNativePointer.create(allocatedMemory), 2);
     }
 }

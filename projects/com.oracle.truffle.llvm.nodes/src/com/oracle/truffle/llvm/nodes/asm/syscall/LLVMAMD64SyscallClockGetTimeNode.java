@@ -32,9 +32,9 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 import static com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64Time.CLOCK_MONOTONIC;
 import static com.oracle.truffle.llvm.nodes.asm.syscall.LLVMAMD64Time.CLOCK_REALTIME;
@@ -47,7 +47,7 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
     }
 
     @Specialization
-    protected long doI64(long clkId, LLVMAddress tp,
+    protected long doI64(long clkId, LLVMNativePointer tp,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return clockGetTime(memory, (int) clkId, tp);
     }
@@ -55,7 +55,7 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
     @Specialization
     protected long doI64(long clkId, long tp,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doI64(clkId, LLVMAddress.fromLong(tp), memory);
+        return doI64(clkId, LLVMNativePointer.create(tp), memory);
     }
 
     @TruffleBoundary
@@ -68,7 +68,7 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
         return System.nanoTime();
     }
 
-    private static int clockGetTime(LLVMMemory memory, int clkId, LLVMAddress timespec) {
+    private static int clockGetTime(LLVMMemory memory, int clkId, LLVMNativePointer timespec) {
         long s;
         long ns;
         switch (clkId) {
@@ -87,7 +87,7 @@ public abstract class LLVMAMD64SyscallClockGetTimeNode extends LLVMSyscallOperat
             default:
                 return -LLVMAMD64Error.EINVAL;
         }
-        LLVMAddress ptr = timespec;
+        LLVMNativePointer ptr = timespec;
         memory.putI64(ptr, s);
         ptr = ptr.increment(8);
         memory.putI64(ptr, ns);

@@ -31,17 +31,17 @@ package com.oracle.truffle.llvm.nodes.memory;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateStringNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class NativeAllocateStringNode extends LLVMAllocateStringNode {
 
     @Specialization
     protected Object alloc(String s,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        LLVMAddress allocatedMemory = memory.allocateMemory(s.length() + 1);
-        long currentPtr = allocatedMemory.getVal();
+        LLVMNativePointer allocatedMemory = memory.allocateMemory(s.length() + 1);
+        long currentPtr = allocatedMemory.asNative();
         for (byte b : s.getBytes()) {
             memory.putI8(currentPtr, b);
             currentPtr += 1;

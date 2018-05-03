@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNode.WriteObjectNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
 
@@ -49,14 +49,14 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMAddress addr, Object value,
+    protected Object doOp(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        getLLVMMemoryCached().putFunctionPointer(addr, toNative.executeWithTarget(value).getVal());
+        getLLVMMemoryCached().putFunctionPointer(addr, toNative.executeWithTarget(value).asNative());
         return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMAddress addr, Object value) {
+    protected Object doOpDerefHandle(LLVMNativePointer addr, Object value) {
         return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
@@ -67,14 +67,8 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
         return null;
     }
 
-    @Specialization(guards = "address.isNative()")
-    protected Object doOpNative(LLVMTruffleObject address, Object value,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return doOp(address.asNative(), value, toNative);
-    }
-
-    @Specialization(guards = "address.isManaged()")
-    protected Object doOpManaged(LLVMTruffleObject address, Object value) {
+    @Specialization
+    protected Object doOpManaged(LLVMManagedPointer address, Object value) {
         getForeignWriteNode().execute(address, value);
         return null;
     }

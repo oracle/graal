@@ -32,9 +32,9 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode {
     protected final int displacement;
@@ -50,23 +50,18 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress doLLVMAddress(LLVMAddress base) {
+        protected LLVMPointer doLLVMPointer(LLVMPointer base) {
             return base.increment(displacement);
         }
 
         @Specialization
-        protected int doLLVMAddress(int base) {
+        protected int doInt(int base) {
             return base + displacement;
         }
 
         @Specialization
-        protected long doLLVMAddress(long base) {
+        protected long doLong(long base) {
             return base + displacement;
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base) {
-            return base.increment(displacement);
         }
     }
 
@@ -95,22 +90,12 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress doLLVMAddress(LLVMAddress base, int offset) {
+        protected LLVMPointer doLLVMPointer(LLVMPointer base, int offset) {
             return base.increment(displacement + (offset << shift));
         }
 
         @Specialization
-        protected LLVMAddress doLLVMAddress(LLVMAddress base, long offset) {
-            return base.increment(displacement + (offset << shift));
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, int offset) {
-            return base.increment(displacement + (offset << shift));
-        }
-
-        @Specialization
-        protected LLVMTruffleObject doLLVMTruffleObject(LLVMTruffleObject base, long offset) {
+        protected LLVMPointer doLLVMPointer(LLVMPointer base, long offset) {
             return base.increment(displacement + (offset << shift));
         }
     }
@@ -125,18 +110,18 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress doLLVMAddress(int offset) {
-            return LLVMAddress.fromLong(displacement + (offset << shift));
+        protected LLVMNativePointer doInt(int offset) {
+            return LLVMNativePointer.create(displacement + (offset << shift));
         }
 
         @Specialization
-        protected long doLLVMAddress(long offset) {
+        protected long doLong(long offset) {
             return displacement + (offset << shift);
         }
 
         @Specialization
-        protected LLVMAddress doLLVMAddress(LLVMAddress offset) {
-            return LLVMAddress.fromLong(displacement + (offset.getVal() << shift));
+        protected LLVMNativePointer doLLVMNativePointer(LLVMNativePointer offset) {
+            return LLVMNativePointer.create(displacement + (offset.asNative() << shift));
         }
     }
 
@@ -147,12 +132,12 @@ public abstract class LLVMAMD64AddressComputationNode extends LLVMExpressionNode
         }
 
         @Specialization
-        protected LLVMAddress doLLVMAddress(LLVMAddress base, LLVMAddress offset) {
-            return base.increment(offset.getVal());
+        protected LLVMPointer doLLVMPointer(LLVMPointer base, LLVMNativePointer offset) {
+            return base.increment(offset.asNative());
         }
 
         @Specialization
-        protected LLVMAddress doI64(LLVMAddress base, long offset) {
+        protected LLVMPointer doI64(LLVMPointer base, long offset) {
             return base.increment(offset);
         }
     }

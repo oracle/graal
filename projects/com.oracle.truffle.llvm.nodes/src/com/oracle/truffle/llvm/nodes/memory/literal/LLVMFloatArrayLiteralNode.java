@@ -36,13 +36,13 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMForeignWriteNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "address", type = LLVMExpressionNode.class)
 public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
@@ -56,17 +56,17 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected LLVMAddress write(VirtualFrame frame, LLVMGlobal global,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+    protected LLVMNativePointer write(VirtualFrame frame, LLVMGlobal global,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return writeFloat(frame, globalAccess.executeWithTarget(global), memory);
+        return writeFloat(frame, toNative.executeWithTarget(global), memory);
     }
 
     @Specialization
     @ExplodeLoop
-    protected LLVMAddress writeFloat(VirtualFrame frame, LLVMAddress addr,
+    protected LLVMNativePointer writeFloat(VirtualFrame frame, LLVMNativePointer addr,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        long currentPtr = addr.getVal();
+        long currentPtr = addr.asNative();
         for (int i = 0; i < values.length; i++) {
             float currentValue = LLVMTypesGen.asFloat(values[i].executeGeneric(frame));
             memory.putFloat(currentPtr, currentValue);
@@ -79,17 +79,11 @@ public abstract class LLVMFloatArrayLiteralNode extends LLVMExpressionNode {
         return LLVMForeignWriteNodeGen.create();
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected LLVMAddress writeFloat(VirtualFrame frame, LLVMTruffleObject addr,
-                    @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return writeFloat(frame, addr.asNative(), memory);
-    }
-
-    @Specialization(guards = "addr.isManaged()")
+    @Specialization
     @ExplodeLoop
-    protected LLVMTruffleObject foreignWriteFloat(VirtualFrame frame, LLVMTruffleObject addr,
+    protected LLVMManagedPointer foreignWriteFloat(VirtualFrame frame, LLVMManagedPointer addr,
                     @Cached("createForeignWrite()") LLVMForeignWriteNode foreignWrite) {
-        LLVMTruffleObject currentPtr = addr;
+        LLVMManagedPointer currentPtr = addr;
         for (int i = 0; i < values.length; i++) {
             float currentValue = LLVMTypesGen.asFloat(values[i].executeGeneric(frame));
             foreignWrite.execute(currentPtr, currentValue);

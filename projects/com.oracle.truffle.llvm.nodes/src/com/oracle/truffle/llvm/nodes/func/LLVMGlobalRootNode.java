@@ -44,10 +44,10 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -73,7 +73,7 @@ public class LLVMGlobalRootNode extends RootNode {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
                 TruffleObject appPath = (TruffleObject) ctxRef.get().getEnv().asGuestValue(applicationPath.getBytes());
-                LLVMTruffleObject applicationPathObj = new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(appPath));
+                LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
                 Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();

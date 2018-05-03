@@ -35,11 +35,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode implements VarargsAreaStackAllocationNode {
 
@@ -54,8 +54,8 @@ public abstract class LLVMNativeVarargsAreaStackAllocationNode extends LLVMNode 
     }
 
     @Specialization
-    protected LLVMAddress alloc(VirtualFrame frame, long size,
+    protected LLVMNativePointer alloc(VirtualFrame frame, long size,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return LLVMAddress.fromLong(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size, 8));
+        return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), size, 8));
     }
 }

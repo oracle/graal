@@ -32,10 +32,10 @@ package com.oracle.truffle.llvm.nodes.memory.store;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
 
@@ -74,7 +74,7 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         return foreignWriteNode;
     }
 
-    protected boolean isAutoDerefHandle(LLVMAddress addr) {
+    protected boolean isAutoDerefHandle(LLVMNativePointer addr) {
         return getLLVMMemoryCached().isDerefMemory(addr);
     }
 

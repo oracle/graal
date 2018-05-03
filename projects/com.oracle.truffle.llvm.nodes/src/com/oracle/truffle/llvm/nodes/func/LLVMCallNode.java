@@ -29,16 +29,17 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.func.LLVMCallNodeFactory.ArgumentNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public final class LLVMCallNode extends LLVMExpressionNode {
@@ -74,20 +75,16 @@ public final class LLVMCallNode extends LLVMExpressionNode {
         return dispatchNode.executeDispatch(function, argValues);
     }
 
-    protected abstract static class ArgumentNode extends Node {
+    protected abstract static class ArgumentNode extends LLVMNode {
 
         protected abstract Object executeWithTarget(Object value);
 
         @Specialization
-        protected LLVMAddress doAddress(LLVMAddress address) {
+        protected LLVMPointer doPointer(LLVMPointer address) {
             return address.copy();
         }
 
-        protected static boolean notAddress(Object value) {
-            return !(value instanceof LLVMAddress);
-        }
-
-        @Specialization(guards = "notAddress(value)")
+        @Fallback
         protected Object doOther(Object value) {
             return value;
         }

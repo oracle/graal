@@ -101,7 +101,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         throw new IllegalStateException("invalid struct access");
     }
 
-    abstract static class MakeAccessLocation extends Node {
+    abstract static class MakeAccessLocation extends LLVMNode {
 
         protected abstract AccessLocation execute(TruffleObject foreign, Object identifier, LLVMInteropType type, long restOffset);
 

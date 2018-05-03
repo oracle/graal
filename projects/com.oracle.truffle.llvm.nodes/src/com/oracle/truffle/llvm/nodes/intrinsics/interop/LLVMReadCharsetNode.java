@@ -34,33 +34,24 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMReadCharsetNode extends Node {
+public abstract class LLVMReadCharsetNode extends LLVMNode {
 
     @Child LLVMReadStringNode readString = LLVMReadStringNodeGen.create();
 
     public abstract Object execute(VirtualFrame frame);
 
-    @Specialization(guards = "cachedAddress.equals(address)")
+    @Specialization(guards = "cachedPointer.equals(pointer)")
     @SuppressWarnings("unused")
-    protected LLVMCharset doCachedAddress(LLVMAddress address,
-                    @Cached("address") LLVMAddress cachedAddress,
-                    @Cached("doGeneric(cachedAddress)") LLVMCharset cachedCharset) {
-        return cachedCharset;
-    }
-
-    @Specialization(guards = {"foreign.getObject() == cachedForeign.getObject()", "foreign.getOffset() == cachedForeign.getOffset()"})
-    @SuppressWarnings("unused")
-    protected LLVMCharset doCachedForeign(LLVMTruffleObject foreign,
-                    @Cached("foreign") LLVMTruffleObject cachedForeign,
-                    @Cached("doGeneric(cachedForeign)") LLVMCharset cachedCharset) {
+    protected LLVMCharset doCachedPointer(LLVMPointer pointer,
+                    @Cached("pointer") LLVMPointer cachedPointer,
+                    @Cached("doGeneric(cachedPointer)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
@@ -72,7 +63,7 @@ public abstract class LLVMReadCharsetNode extends Node {
         return cachedCharset;
     }
 
-    @Specialization(replaces = {"doCachedAddress", "doCachedForeign", "doCachedOther"})
+    @Specialization(replaces = {"doCachedPointer", "doCachedOther"})
     protected LLVMCharset doGeneric(Object strPtr) {
         String string = readString.executeWithTarget(strPtr);
         return lookup(string);

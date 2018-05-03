@@ -43,13 +43,10 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
@@ -61,7 +58,10 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalFactory.IsObjectStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -121,8 +121,8 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return sourceSymbol != null ? sourceSymbol.getType() : null;
     }
 
-    public LLVMAddress bindToNativeAddress(LLVMContext context, long nativeAddress) {
-        LLVMAddress n = LLVMAddress.fromLong(nativeAddress);
+    public LLVMNativePointer bindToNativeAddress(LLVMContext context, long nativeAddress) {
+        LLVMNativePointer n = LLVMNativePointer.create(nativeAddress);
         context.getGlobalFrame().setObject(slot, n);
         return n;
     }
@@ -158,7 +158,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
-    abstract static class TestGlobalStateNode extends Node {
+    abstract static class TestGlobalStateNode extends LLVMNode {
         public abstract boolean execute(LLVMContext context, LLVMGlobal global);
 
         @SuppressWarnings("unused")
@@ -197,7 +197,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     public abstract static class IsNative extends TestGlobalStateNode {
         @Override
         boolean doCheck(LLVMGlobal global, Object value) {
-            return value instanceof LLVMAddress;
+            return LLVMNativePointer.isInstance(value);
         }
 
         public static IsNative create() {
@@ -217,7 +217,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    abstract static class GetNativePointer extends Node {
+    abstract static class GetNativePointer extends LLVMNode {
         abstract long execute(LLVMContext context, LLVMGlobal global);
 
         public static GetNativePointer create() {
@@ -225,7 +225,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
 
         long getValue(LLVMContext context, LLVMGlobal global) {
-            return ((LLVMAddress) context.getGlobalFrame().getValue(global.getSlot())).getVal();
+            return LLVMNativePointer.cast(context.getGlobalFrame().getValue(global.getSlot())).asNative();
         }
 
         MaterializedFrame getFrame(LLVMContext context) {
@@ -245,17 +245,17 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
 
         @Specialization(assumptions = "getSingleContextAssumption()", replaces = "doCachedSingleThread")
         long doSingleThread(LLVMContext context, LLVMGlobal global, @Cached("getFrame(context)") MaterializedFrame frame) {
-            return ((LLVMAddress) frame.getValue(global.getSlot())).getVal();
+            return LLVMNativePointer.cast(frame.getValue(global.getSlot())).asNative();
         }
 
         @Specialization(replaces = {"doCachedSingleThread", "doSingleThread"})
         long generic(LLVMContext context, LLVMGlobal global) {
-            return ((LLVMAddress) getFrame(context).getValue(global.getSlot())).getVal();
+            return LLVMNativePointer.cast(getFrame(context).getValue(global.getSlot())).asNative();
         }
     }
 
     @SuppressWarnings("unused")
-    public abstract static class GetGlobalValueNode extends Node {
+    public abstract static class GetGlobalValueNode extends LLVMNode {
         public abstract Object execute(LLVMContext context, LLVMGlobal global);
 
         public static GetGlobalValueNode create() {
@@ -283,7 +283,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    public abstract static class GetFrame extends Node {
+    public abstract static class GetFrame extends LLVMNode {
         public abstract MaterializedFrame execute(LLVMContext context);
 
         public static GetFrame create() {
@@ -311,7 +311,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @SuppressWarnings("unused")
-    public abstract static class GetSlot extends Node {
+    public abstract static class GetSlot extends LLVMNode {
         public abstract FrameSlot execute(LLVMGlobal global);
 
         public static GetSlot create() {
@@ -333,7 +333,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
-    public static LLVMAddress toNative(LLVMContext context, LLVMMemory memory, LLVMGlobal global) {
+    public static LLVMNativePointer toNative(LLVMContext context, LLVMMemory memory, LLVMGlobal global) {
         return global.getAsNative(memory, context);
     }
 
@@ -399,10 +399,10 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         }
     }
 
-    LLVMAddress getAsNative(LLVMMemory memory, LLVMContext context) {
+    LLVMNativePointer getAsNative(LLVMMemory memory, LLVMContext context) {
         Object value = context.getGlobalFrame().getValue(slot);
-        if (value instanceof LLVMAddress) {
-            return (LLVMAddress) value;
+        if (LLVMNativePointer.isInstance(value)) {
+            return LLVMNativePointer.cast(value);
         } else if (value instanceof Managed) {
             return transformToNative(memory, context, ((Managed) value).wrapped);
         } else if (value instanceof TruffleObject) {
@@ -416,25 +416,25 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     @TruffleBoundary
-    private LLVMAddress transformToNative(LLVMContext context, TruffleObject value) {
+    private LLVMNativePointer transformToNative(LLVMContext context, TruffleObject value) {
         try {
             Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), value);
             if (value != nativized) {
                 context.getGlobalFrame().setObject(slot, nativized);
             }
             long toAddr = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativized);
-            return LLVMAddress.fromLong(toAddr);
+            return LLVMNativePointer.create(toAddr);
         } catch (UnsupportedMessageException e) {
             throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + value);
         }
     }
 
     @TruffleBoundary
-    private LLVMAddress transformToNative(LLVMMemory memory, LLVMContext context, Object value) {
+    private LLVMNativePointer transformToNative(LLVMMemory memory, LLVMContext context, Object value) {
         Type pointeeType = getPointeeType();
         int byteSize = context.getByteSize(pointeeType);
         long a = context.getGlobalsStack().allocateStackMemory(byteSize);
-        LLVMAddress n = bindToNativeAddress(context, a);
+        LLVMNativePointer n = bindToNativeAddress(context, a);
         if (value == null) {
             return n;
         }
@@ -477,16 +477,17 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     private static void putOther(LLVMMemory memory, LLVMContext context, long address, Object managedValue) {
         if (managedValue instanceof LLVMFunctionDescriptor) {
             long pointer = ((LLVMFunctionDescriptor) managedValue).toNative().asPointer();
-            memory.putAddress(address, pointer);
-        } else if (managedValue instanceof LLVMAddress) {
-            memory.putAddress(address, (LLVMAddress) managedValue);
+            memory.putPointer(address, pointer);
+        } else if (LLVMNativePointer.isInstance(managedValue)) {
+            memory.putPointer(address, LLVMNativePointer.cast(managedValue));
         } else if (managedValue instanceof LLVMGlobal) {
-            memory.putAddress(address, ((LLVMGlobal) managedValue).getAsNative(memory, context).getVal());
-        } else if (managedValue instanceof LLVMTruffleObject) {
+            memory.putPointer(address, ((LLVMGlobal) managedValue).getAsNative(memory, context));
+        } else if (LLVMManagedPointer.isInstance(managedValue)) {
+            LLVMManagedPointer pointer = LLVMManagedPointer.cast(managedValue);
             try {
-                Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), ((LLVMTruffleObject) managedValue).getObject());
+                Object nativized = ForeignAccess.sendToNative(Message.TO_NATIVE.createNode(), pointer.getObject());
                 long toAddr = ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), (TruffleObject) nativized);
-                memory.putAddress(address, toAddr + ((LLVMTruffleObject) managedValue).getOffset());
+                memory.putPointer(address, toAddr + pointer.getOffset());
             } catch (UnsupportedMessageException e) {
                 throw new IllegalStateException("Cannot resolve address of a foreign TruffleObject: " + managedValue);
             }
@@ -522,6 +523,6 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     }
 
     public static boolean isObjectStore(Type globalType, Object value) {
-        return !(globalType instanceof PrimitiveType || value instanceof LLVMAddress || value instanceof Managed);
+        return !(globalType instanceof PrimitiveType || LLVMNativePointer.isInstance(value) || value instanceof Managed);
     }
 }

@@ -36,7 +36,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetFrame;
@@ -54,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteOb
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMGlobalWriteNode extends LLVMNode {
@@ -89,8 +89,8 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
     public static void slowPrimitiveWrite(LLVMContext context, LLVMMemory memory, PrimitiveType primitiveType, LLVMGlobal global, Object value) {
         MaterializedFrame frame = context.getGlobalFrame();
         FrameSlot slot = global.getSlot();
-        boolean isNative = frame.getValue(slot) instanceof LLVMAddress;
-        long address = isNative ? ((LLVMAddress) frame.getValue(slot)).getVal() : 0;
+        boolean isNative = LLVMNativePointer.isInstance(frame.getValue(slot));
+        long address = isNative ? LLVMNativePointer.cast(frame.getValue(slot)).asNative() : 0;
         switch (primitiveType.getPrimitiveKind()) {
             case I1:
                 if (isNative) {
@@ -165,7 +165,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
         protected Object doNative(LLVMGlobal global, Object value,
                         @Cached("create()") GetNativePointer getPointer,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            getMemory().putAddress(getPointer.execute(getContext(), global), toNative.executeWithTarget(value));
+            getMemory().putPointer(getPointer.execute(getContext(), global), toNative.executeWithTarget(value));
             return value;
         }
     }

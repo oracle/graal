@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.syscall;
 
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public class LLVMAMD64Memory {
     public static final int PROT_READ = 0x1;
@@ -47,7 +47,7 @@ public class LLVMAMD64Memory {
     public static final int MAP_ANONYMOUS = 0x20;
     public static final int MAP_UNINITIALIZED = 0x4000000;
 
-    public static long brk(@SuppressWarnings("unused") LLVMAddress ptr) {
+    public static long brk(@SuppressWarnings("unused") LLVMPointer ptr) {
         return -LLVMAMD64Error.ENOSYS; // this will never be supported
     }
 }

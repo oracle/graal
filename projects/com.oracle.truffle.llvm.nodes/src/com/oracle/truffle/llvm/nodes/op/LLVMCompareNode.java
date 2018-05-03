@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.nodes.op;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -80,7 +80,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI1Vector eq(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector eq(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> a.longValue() == b.longValue());
         }
 
@@ -137,13 +137,13 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected boolean nq(boolean val1, LLVMAddress val2) {
-            return (val1 ? 1 : 0) != val2.getVal();
+        protected boolean nq(boolean val1, LLVMNativePointer val2) {
+            return (val1 ? 1 : 0) != val2.asNative();
         }
 
         @Specialization
-        protected boolean nq(long val1, LLVMAddress val2) {
-            return val1 != val2.getVal();
+        protected boolean nq(long val1, LLVMNativePointer val2) {
+            return val1 != val2.asNative();
         }
 
         @Specialization
@@ -152,7 +152,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected LLVMI1Vector nq(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector nq(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> a.longValue() != b.longValue());
         }
 
@@ -184,7 +184,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMSltNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector slt(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector slt(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> a < b);
         }
 
@@ -236,7 +236,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMSleNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector sle(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector sle(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> a <= b);
         }
 
@@ -288,7 +288,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMSgtNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector sgt(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector sgt(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> a > b);
         }
 
@@ -340,7 +340,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMSgeNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector sge(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector sge(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> a >= b);
         }
 
@@ -392,7 +392,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMUgtNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector ugt(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector ugt(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> Long.compareUnsigned(a, b) > 0);
         }
 
@@ -468,7 +468,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMUgeNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector uge(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector uge(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> Long.compareUnsigned(a, b) >= 0);
         }
 
@@ -540,7 +540,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMUltNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector ult(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector ult(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> Long.compareUnsigned(a, b) < 0);
         }
 
@@ -612,7 +612,7 @@ public abstract class LLVMCompareNode extends LLVMExpressionNode {
 
     public abstract static class LLVMUleNode extends LLVMCompareNode {
         @Specialization
-        protected LLVMI1Vector ule(LLVMAddressVector left, LLVMAddressVector right) {
+        protected LLVMI1Vector ule(LLVMPointerVector left, LLVMPointerVector right) {
             return left.doCompare(right, (a, b) -> Long.compareUnsigned(a, b) <= 0);
         }
 

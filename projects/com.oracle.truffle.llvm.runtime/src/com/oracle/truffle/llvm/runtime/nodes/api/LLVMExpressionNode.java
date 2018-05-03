@@ -29,18 +29,17 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -53,7 +52,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * An expression node is a node that returns a result, e.g., a local variable read, or an addition
  * operation.
  */
-@TypeSystemReference(LLVMTypes.class)
 public abstract class LLVMExpressionNode extends LLVMNode implements InstrumentableNode {
 
     @Override
@@ -74,12 +72,8 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
         return LLVMTypesGen.expectLLVM80BitFloat(executeGeneric(frame));
     }
 
-    public LLVMAddress executeLLVMAddress(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMAddress(executeGeneric(frame));
-    }
-
-    public LLVMTruffleObject executeLLVMTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
-        return LLVMTypesGen.expectLLVMTruffleObject(executeGeneric(frame));
+    public LLVMNativePointer executeLLVMNativePointer(VirtualFrame frame) throws UnexpectedResultException {
+        return LLVMTypesGen.expectLLVMNativePointer(executeGeneric(frame));
     }
 
     public TruffleObject executeTruffleObject(VirtualFrame frame) throws UnexpectedResultException {
@@ -154,15 +148,11 @@ public abstract class LLVMExpressionNode extends LLVMNode implements Instrumenta
         return LLVMTypesGen.expectLLVMFunctionDescriptor(executeGeneric(frame));
     }
 
-    protected boolean isLLVMAddress(Object object) {
-        return object instanceof LLVMAddress;
-    }
-
     public String getSourceDescription() {
         return getRootNode().getName();
     }
 
     public static boolean notLLVM(TruffleObject object) {
-        return !(object instanceof LLVMInternalTruffleObject) && !(object instanceof LLVMTruffleObject);
+        return !(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object);
     }
 }

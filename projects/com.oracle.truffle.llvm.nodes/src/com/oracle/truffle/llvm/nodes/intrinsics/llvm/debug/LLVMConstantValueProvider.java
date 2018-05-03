@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import java.math.BigInteger;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
@@ -230,18 +230,18 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
             final Object bigIntVal = readBigInteger(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE, false);
             if (bigIntVal instanceof BigInteger) {
                 final long longVal = ((BigInteger) bigIntVal).longValue();
-                return LLVMAddress.fromLong(longVal);
+                return LLVMNativePointer.create(longVal);
             }
             return super.readAddress(bitOffset);
         }
     }
 
-    static final class Address extends LLVMConstantValueProvider {
+    static final class Pointer extends LLVMConstantValueProvider {
 
-        private final LLVMAddress address;
+        private final LLVMNativePointer address;
         private final LLVMMemory memory;
 
-        Address(LLVMMemory memory, LLVMAddress address) {
+        Pointer(LLVMMemory memory, LLVMNativePointer address) {
             this.memory = memory;
             this.address = address;
         }
@@ -257,7 +257,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         }
 
         private long asLong(long bitOffset) {
-            long valAsLong = address.getVal();
+            long valAsLong = address.asNative();
             if (bitOffset != 0) {
                 valAsLong >>= bitOffset;
             }
@@ -266,7 +266,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
 
         @Override
         public Object readBoolean(long bitOffset) {
-            return !address.equals(LLVMAddress.nullPointer());
+            return !address.isNull();
         }
 
         @Override
@@ -457,7 +457,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         @Override
         public Object readAddress(long bitOffset) {
             if (bitOffset == 0) {
-                return LLVMAddress.fromLong(asLong(bitOffset));
+                return LLVMNativePointer.create(asLong(bitOffset));
             } else {
                 return super.readAddress(bitOffset);
             }

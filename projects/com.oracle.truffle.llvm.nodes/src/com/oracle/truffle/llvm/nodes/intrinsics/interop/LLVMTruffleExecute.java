@@ -51,13 +51,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
@@ -108,17 +108,17 @@ public abstract class LLVMTruffleExecute extends LLVMIntrinsic {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "value == cachedValue")
-    protected Object doIntrinsicCachedLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value,
-                    @Cached("value") LLVMTruffleObject cachedValue,
+    @Specialization(guards = "value.equals(cachedValue)")
+    protected Object doIntrinsicCachedLLVMManagedPointer(VirtualFrame frame, LLVMManagedPointer value,
+                    @Cached("value") LLVMManagedPointer cachedValue,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         TruffleObject foreign = asForeign.execute(cachedValue);
         return doExecute(frame, foreign, context.get(), getStack);
     }
 
-    @Specialization(replaces = "doIntrinsicCachedLLVMTruffleObject")
-    protected Object doIntrinsicLLVMTruffleObject(VirtualFrame frame, LLVMTruffleObject value,
+    @Specialization(replaces = "doIntrinsicCachedLLVMManagedPointer")
+    protected Object doIntrinsicLLVMManagedPointer(VirtualFrame frame, LLVMManagedPointer value,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("create()") LLVMGetStackNode getStack) {
         TruffleObject foreign = asForeign.execute(value);

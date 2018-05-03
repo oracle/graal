@@ -46,13 +46,13 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloatFactory.LLVM80BitFloatNativeCallNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @ValueType
 public final class LLVM80BitFloat implements LLVMArithmetic {
@@ -648,14 +648,14 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") TruffleObject function,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress mem = memory.allocateMemory(3 * 16);
-            LLVMAddress ptrX = mem;
-            LLVMAddress ptrY = ptrX.increment(16);
-            LLVMAddress ptrZ = ptrY.increment(16);
+            LLVMNativePointer mem = memory.allocateMemory(3 * 16);
+            LLVMNativePointer ptrX = mem;
+            LLVMNativePointer ptrY = ptrX.increment(16);
+            LLVMNativePointer ptrZ = ptrY.increment(16);
             memory.put80BitFloat(ptrX, x);
             memory.put80BitFloat(ptrY, y);
             try {
-                ForeignAccess.sendExecute(nativeExecute, function, ptrZ.getVal(), ptrX.getVal(), ptrY.getVal());
+                ForeignAccess.sendExecute(nativeExecute, function, ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
                 LLVM80BitFloat z = memory.get80BitFloat(ptrZ);
                 return z;
             } catch (InteropException e) {

@@ -43,34 +43,34 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(LLVMAddress value, int n,
+    protected Object doIntrinsic(LLVMNativePointer value, int n,
                     @Cached("getLLVMMemory()") LLVMMemory memory,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
         int count = n < 0 ? 0 : n;
         byte[] bytes = new byte[count];
-        long ptr = value.getVal();
+        long ptr = value.asNative();
         for (int i = 0; i < count; i++) {
             bytes[i] = memory.getI8(ptr);
             ptr += Byte.BYTES;
         }
         TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(bytes);
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(ret));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
     }
 
     @Specialization
-    protected Object interop(LLVMTruffleObject objectWithOffset, int n,
+    protected Object interop(LLVMManagedPointer objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
                     @Cached("createToByteNode()") ForeignToLLVM toLLVM,
                     @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
@@ -88,7 +88,7 @@ public abstract class LLVMTruffleReadNBytes extends LLVMIntrinsic {
             chars[i] = (byte) toLLVM.executeWithTarget(rawValue);
         }
         TruffleObject ret = (TruffleObject) ctxRef.get().getEnv().asGuestValue(chars);
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(ret));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(ret));
     }
 
     @Fallback

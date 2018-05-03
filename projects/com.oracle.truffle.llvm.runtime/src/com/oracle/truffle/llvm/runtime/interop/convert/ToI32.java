@@ -106,13 +106,13 @@ abstract class ToI32 extends ForeignToLLVM {
     @Specialization
     protected int fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return (int) toNative.executeWithTarget(fd).getVal();
+        return (int) toNative.executeWithTarget(fd).asNative();
     }
 
     @Specialization
     protected int fromSharedDescriptor(LLVMSharedGlobalVariable shared,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return (int) access.executeWithTarget(shared.getDescriptor()).getVal();
+        return (int) access.executeWithTarget(shared.getDescriptor()).asNative();
     }
 
     private int recursiveConvert(Object o) {
@@ -139,7 +139,7 @@ abstract class ToI32 extends ForeignToLLVM {
             return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMSharedGlobalVariable) {
             LLVMContext context = LLVMLanguage.getLLVMContextReference().get();
-            return (int) LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal();
+            return (int) LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).asNative();
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
             return slowPathPrimitiveConvert(memory, thiz, thiz.fromForeign((TruffleObject) value));
         } else {

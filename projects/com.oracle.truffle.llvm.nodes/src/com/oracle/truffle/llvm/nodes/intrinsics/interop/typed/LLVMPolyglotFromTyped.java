@@ -32,10 +32,9 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop.typed;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "ptr", type = LLVMExpressionNode.class)
 @NodeChild(value = "typeid", type = LLVMTypeIDNode.class)
@@ -50,12 +49,7 @@ public abstract class LLVMPolyglotFromTyped extends LLVMIntrinsic {
     }
 
     @Specialization
-    LLVMTruffleObject doAddress(LLVMAddress address, LLVMInteropType.Structured type) {
-        return LLVMTruffleObject.createPointer(address.getVal()).export(type);
-    }
-
-    @Specialization
-    LLVMTruffleObject doObject(LLVMTruffleObject object, LLVMInteropType.Structured type) {
-        return object.export(type);
+    LLVMPointer doPointer(LLVMPointer address, LLVMInteropType.Structured type) {
+        return address.export(type);
     }
 }

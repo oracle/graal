@@ -35,21 +35,21 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromString.ReadBytesNode;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromStringNodeGen.PutCharNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromStringNodeGen.ReadBytesWithLengthNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromStringNodeGen.ReadZeroTerminatedBytesNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadCharsetNode.LLVMCharset;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI16LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI64LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -74,7 +74,7 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
         return charset.decode(rawString);
     }
 
-    abstract static class ReadBytesNode extends Node {
+    abstract static class ReadBytesNode extends LLVMNode {
 
         protected abstract ByteBuffer execute(VirtualFrame frame, LLVMCharset charset);
     }
@@ -163,7 +163,7 @@ public abstract class LLVMPolyglotFromString extends LLVMIntrinsic {
         }
     }
 
-    abstract static class PutCharNode extends Node {
+    abstract static class PutCharNode extends LLVMNode {
 
         protected abstract boolean execute(ByteBuffer target, Object value);
 

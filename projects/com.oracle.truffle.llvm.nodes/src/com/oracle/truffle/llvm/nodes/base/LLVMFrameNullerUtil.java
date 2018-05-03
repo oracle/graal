@@ -33,16 +33,16 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -84,7 +84,7 @@ public final class LLVMFrameNullerUtil {
     }
 
     public static void nullAddress(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setObject(frameSlot, LLVMAddress.nullPointer());
+        frame.setObject(frameSlot, LLVMNativePointer.createNull());
     }
 
     public static void nullIVarBit(VirtualFrame frame, FrameSlot frameSlot) {
@@ -96,7 +96,7 @@ public final class LLVMFrameNullerUtil {
     }
 
     public static void nullFunction(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setObject(frameSlot, LLVMAddress.nullPointer());
+        frame.setObject(frameSlot, LLVMNativePointer.createNull());
     }
 
     public static void nullObject(VirtualFrame frame, FrameSlot frameSlot) {
@@ -113,7 +113,7 @@ public final class LLVMFrameNullerUtil {
             } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
                 nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
             } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
-                frame.setObject(frameSlot, LLVMAddressVector.createNullVector());
+                frame.setObject(frameSlot, LLVMPointerVector.createNullVector());
             } else if (type instanceof VariableBitWidthType) {
                 nullIVarBit(frame, frameSlot);
             } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {

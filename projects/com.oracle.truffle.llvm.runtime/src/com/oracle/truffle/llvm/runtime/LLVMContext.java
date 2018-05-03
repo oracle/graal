@@ -66,6 +66,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -83,11 +85,11 @@ public final class LLVMContext {
     private final LLVMThreadingStack threadingStack;
     private final Object[] mainArguments;
     private final Map<String, String> environment;
-    private final LinkedList<LLVMAddress> caughtExceptionStack = new LinkedList<>();
+    private final LinkedList<LLVMNativePointer> caughtExceptionStack = new LinkedList<>();
     private final HashMap<String, Integer> nativeCallStatistics;
     private final Object handlesLock;
-    private final IdentityHashMap<TruffleObject, LLVMAddress> toNative;
-    private final HashMap<LLVMAddress, TruffleObject> toManaged;
+    private final IdentityHashMap<TruffleObject, LLVMNativePointer> toNative;
+    private final HashMap<LLVMNativePointer, TruffleObject> toManaged;
     private final LLVMSourceContext sourceContext;
     private final LLVMGlobalsStack globalStack;
 
@@ -104,12 +106,12 @@ public final class LLVMContext {
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new HashMap<>();
-    private final Map<Thread, LLVMAddress> clearChildTid = new HashMap<>();
+    private final Map<Thread, LLVMNativePointer> clearChildTid = new HashMap<>();
 
     // signals
-    private final LLVMAddress sigDfl;
-    private final LLVMAddress sigIgn;
-    private final LLVMAddress sigErr;
+    private final LLVMNativePointer sigDfl;
+    private final LLVMNativePointer sigIgn;
+    private final LLVMNativePointer sigErr;
 
     private boolean initialized;
     private boolean cleanupNecessary;
@@ -133,7 +135,7 @@ public final class LLVMContext {
         @SuppressWarnings("deprecation")
         public LLVMGlobalsStack() {
             this.memory = LLVMMemory.getInstance();
-            long stackAllocation = memory.allocateMemory(SIZE).getVal();
+            long stackAllocation = memory.allocateMemory(SIZE).asNative();
             this.lowerBounds = stackAllocation;
             this.upperBounds = stackAllocation + SIZE;
             this.stackPointer = upperBounds;
@@ -170,7 +172,7 @@ public final class LLVMContext {
             } else if (nextFreeOverflowSlot >= overflowSlots.length) {
                 overflowSlots = Arrays.copyOf(overflowSlots, 2 * overflowSlots.length);
             }
-            long allocation = memory.allocateMemory(size).getVal();
+            long allocation = memory.allocateMemory(size).asNative();
             overflowSlots[nextFreeOverflowSlot++] = allocation;
             return allocation;
         }
@@ -178,21 +180,21 @@ public final class LLVMContext {
 
     private final class LLVMFunctionPointerRegistry {
         private int currentFunctionIndex = 0;
-        private final HashMap<LLVMAddress, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
+        private final HashMap<LLVMNativePointer, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
 
-        synchronized LLVMFunctionDescriptor getDescriptor(LLVMAddress pointer) {
+        synchronized LLVMFunctionDescriptor getDescriptor(LLVMNativePointer pointer) {
             return functionDescriptors.get(pointer);
         }
 
-        synchronized void register(LLVMAddress pointer, LLVMFunctionDescriptor desc) {
+        synchronized void register(LLVMNativePointer pointer, LLVMFunctionDescriptor desc) {
             functionDescriptors.put(pointer, desc);
         }
 
         synchronized LLVMFunctionDescriptor create(String name, FunctionType type) {
             LLVMFunctionDescriptor fn = LLVMFunctionDescriptor.createDescriptor(LLVMContext.this, name, type, currentFunctionIndex++);
             if (fn.isNullFunction()) {
-                assert !functionDescriptors.containsKey(LLVMAddress.nullPointer());
-                functionDescriptors.put(LLVMAddress.nullPointer(), fn);
+                assert !functionDescriptors.containsKey(LLVMNativePointer.createNull());
+                functionDescriptors.put(LLVMNativePointer.createNull(), fn);
             }
             return fn;
         }
@@ -209,9 +211,9 @@ public final class LLVMContext {
         this.globalStack = new LLVMGlobalsStack();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), env.getOptions().get(SulongEngineOption.STACK_SIZE_KB));
-        this.sigDfl = LLVMAddress.fromLong(0);
-        this.sigIgn = LLVMAddress.fromLong(1);
-        this.sigErr = LLVMAddress.fromLong(-1);
+        this.sigDfl = LLVMNativePointer.create(0);
+        this.sigIgn = LLVMNativePointer.create(1);
+        this.sigErr = LLVMNativePointer.create(-1);
         this.toNative = new IdentityHashMap<>();
         this.toManaged = new HashMap<>();
         this.handlesLock = new Object();
@@ -279,12 +281,12 @@ public final class LLVMContext {
         return environment.entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
     }
 
-    private LLVMTruffleObject toTruffleObjects(String[] values) {
+    private LLVMManagedPointer toTruffleObjects(String[] values) {
         TruffleObject[] result = new TruffleObject[values.length];
         for (int i = 0; i < values.length; i++) {
             result[i] = (TruffleObject) env.asGuestValue(values[i].getBytes());
         }
-        return new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown((TruffleObject) env.asGuestValue(result)));
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown((TruffleObject) env.asGuestValue(result)));
     }
 
     public void dispose(LLVMMemory memory) {
@@ -429,7 +431,7 @@ public final class LLVMContext {
         if (value != null) {
             return value;
         }
-        return LLVMAddress.nullPointer();
+        return LLVMNativePointer.createNull();
     }
 
     @TruffleBoundary
@@ -438,21 +440,21 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMAddress getClearChildTid() {
-        LLVMAddress value = clearChildTid.get(Thread.currentThread());
+    public LLVMNativePointer getClearChildTid() {
+        LLVMNativePointer value = clearChildTid.get(Thread.currentThread());
         if (value != null) {
             return value;
         }
-        return LLVMAddress.nullPointer();
+        return LLVMNativePointer.createNull();
     }
 
     @TruffleBoundary
-    public void setClearChildTid(LLVMAddress value) {
+    public void setClearChildTid(LLVMNativePointer value) {
         clearChildTid.put(Thread.currentThread(), value);
     }
 
     @TruffleBoundary
-    public LLVMFunctionDescriptor getFunctionDescriptor(LLVMAddress handle) {
+    public LLVMFunctionDescriptor getFunctionDescriptor(LLVMNativePointer handle) {
         return functionPointerRegistry.getDescriptor(handle);
     }
 
@@ -462,31 +464,31 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerFunctionPointer(LLVMAddress address, LLVMFunctionDescriptor descriptor) {
+    public void registerFunctionPointer(LLVMNativePointer address, LLVMFunctionDescriptor descriptor) {
         functionPointerRegistry.register(address, descriptor);
     }
 
-    public LLVMAddress getSigDfl() {
+    public LLVMNativePointer getSigDfl() {
         return sigDfl;
     }
 
-    public LLVMAddress getSigIgn() {
+    public LLVMNativePointer getSigIgn() {
         return sigIgn;
     }
 
-    public LLVMAddress getSigErr() {
+    public LLVMNativePointer getSigErr() {
         return sigErr;
     }
 
     @TruffleBoundary
-    public boolean isHandle(LLVMAddress address) {
+    public boolean isHandle(LLVMNativePointer address) {
         synchronized (handlesLock) {
             return toManaged.containsKey(address);
         }
     }
 
     @TruffleBoundary
-    public TruffleObject getManagedObjectForHandle(LLVMAddress address) {
+    public TruffleObject getManagedObjectForHandle(LLVMNativePointer address) {
         synchronized (handlesLock) {
             final TruffleObject object = toManaged.get(address);
 
@@ -507,7 +509,7 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void releaseHandle(LLVMMemory memory, LLVMAddress address) {
+    public void releaseHandle(LLVMMemory memory, LLVMNativePointer address) {
         synchronized (handlesLock) {
             final TruffleObject object = toManaged.get(address);
 
@@ -522,10 +524,10 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMAddress getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+    public LLVMNativePointer getHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
         synchronized (handlesLock) {
             return toNative.computeIfAbsent(getIdentityKey(object), (k) -> {
-                LLVMAddress allocatedMemory = memory.allocateMemory(Long.BYTES);
+                LLVMNativePointer allocatedMemory = memory.allocateMemory(Long.BYTES);
                 memory.putI64(allocatedMemory, 0xdeadbeef);
                 toManaged.put(allocatedMemory, object);
                 return allocatedMemory;
@@ -534,10 +536,10 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMAddress getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
+    public LLVMNativePointer getDerefHandleForManagedObject(LLVMMemory memory, TruffleObject object) {
         synchronized (handlesLock) {
             return toNative.computeIfAbsent(object, (k) -> {
-                LLVMAddress allocatedMemory = memory.allocateDerefMemory();
+                LLVMNativePointer allocatedMemory = memory.allocateDerefMemory();
                 toManaged.put(allocatedMemory, object);
                 return allocatedMemory;
             });
@@ -557,7 +559,7 @@ public final class LLVMContext {
         }
     }
 
-    public LinkedList<LLVMAddress> getCaughtExceptionStack() {
+    public LinkedList<LLVMNativePointer> getCaughtExceptionStack() {
         return caughtExceptionStack;
     }
 

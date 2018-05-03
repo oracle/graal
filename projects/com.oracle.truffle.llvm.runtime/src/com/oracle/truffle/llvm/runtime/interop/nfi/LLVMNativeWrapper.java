@@ -49,6 +49,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeWrapperFactory.CallbackHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 /**
@@ -89,7 +90,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
         }
     }
 
-    abstract static class CallbackHelperNode extends Node {
+    abstract static class CallbackHelperNode extends LLVMNode {
 
         @CompilationFinal ContextReference<LLVMContext> ctxRef;
         @Child LLVMGetStackNode getStack = LLVMGetStackNode.create();

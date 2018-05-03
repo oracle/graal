@@ -33,27 +33,27 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.LongValueProfile;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI64Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
 
     private final LongValueProfile profile = LongValueProfile.createIdentityProfile();
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected long doI64(LLVMAddress addr) {
+    protected long doI64Native(LLVMNativePointer addr) {
         return profile.profile(getLLVMMemoryCached().getI64(addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected long doI64DerefHandle(LLVMAddress addr) {
+    protected long doI64DerefHandle(LLVMNativePointer addr) {
         return doI64Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
@@ -67,7 +67,7 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
     protected long doI64(LLVMGlobal addr,
                     @Cached("create()") ReadI64Node globalAccess,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(globalAccess.execute(addr)).getVal();
+        return toNative.executeWithTarget(globalAccess.execute(addr)).asNative();
     }
 
     @Override
@@ -75,13 +75,8 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I64);
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected Object doI64Native(LLVMTruffleObject addr) {
-        return doI64(addr.asNative());
-    }
-
-    @Specialization(guards = "addr.isManaged()")
-    protected long doI64Managed(LLVMTruffleObject addr) {
+    @Specialization
+    protected long doI64Managed(LLVMManagedPointer addr) {
         return (long) getForeignReadNode().execute(addr);
     }
 

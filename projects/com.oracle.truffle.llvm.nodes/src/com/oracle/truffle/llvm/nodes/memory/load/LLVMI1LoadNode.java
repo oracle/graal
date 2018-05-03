@@ -32,14 +32,14 @@ package com.oracle.truffle.llvm.nodes.memory.load;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadI1Node;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
 
@@ -56,12 +56,12 @@ public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected boolean doI1(LLVMAddress addr) {
+    protected boolean doI1Native(LLVMNativePointer addr) {
         return getLLVMMemoryCached().getI1(addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected boolean doI1DerefHandle(LLVMAddress addr) {
+    protected boolean doI1DerefHandle(LLVMNativePointer addr) {
         return doI1Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
@@ -70,13 +70,8 @@ public abstract class LLVMI1LoadNode extends LLVMAbstractLoadNode {
         return new LLVMForeignReadNode(ForeignToLLVMType.I1);
     }
 
-    @Specialization(guards = "addr.isNative()")
-    protected boolean doI1Native(LLVMTruffleObject addr) {
-        return doI1(addr.asNative());
-    }
-
-    @Specialization(guards = "addr.isManaged()")
-    protected boolean doI1Managed(LLVMTruffleObject addr) {
+    @Specialization
+    protected boolean doI1Managed(LLVMManagedPointer addr) {
         return (boolean) getForeignReadNode().execute(addr);
     }
 

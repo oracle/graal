@@ -36,8 +36,8 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild("value")
 @NodeField(name = "slot", type = FrameSlot.class)
@@ -80,7 +80,7 @@ public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMExpressionNo
     }
 
     @Specialization
-    protected Object doAddress(VirtualFrame frame, LLVMAddress value) {
+    protected Object doAddress(VirtualFrame frame, LLVMPointer value) {
         getSlot().setKind(FrameSlotKind.Object);
         frame.setObject(getSlot(), value);
         return null;

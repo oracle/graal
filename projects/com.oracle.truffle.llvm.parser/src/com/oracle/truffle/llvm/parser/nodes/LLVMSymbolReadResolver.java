@@ -68,10 +68,10 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -172,7 +172,7 @@ public final class LLVMSymbolReadResolver {
             public void visit(StructureType structureType) {
                 final int structSize = runtime.getContext().getByteSize(structureType);
                 if (structSize == 0) {
-                    final LLVMAddress minusOneNode = LLVMAddress.fromLong(-1);
+                    final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
                     resolvedNode = runtime.getNodeFactory().createLiteral(runtime, minusOneNode, new PointerType(structureType));
                 } else {
                     final LLVMExpressionNode addressnode = runtime.getNodeFactory().createAlloca(runtime, structureType);
@@ -270,7 +270,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(BlockAddressConstant constant) {
-            final LLVMAddress blockAddress = LLVMAddress.fromLong(constant.getBlockIndex());
+            final LLVMNativePointer blockAddress = LLVMNativePointer.create(constant.getBlockIndex());
             final PointerType type = new PointerType(null);
             resolvedNode = runtime.getNodeFactory().createLiteral(runtime, blockAddress, type);
         }

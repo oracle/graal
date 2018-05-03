@@ -32,12 +32,12 @@ package com.oracle.truffle.llvm.nodes.literals;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
@@ -195,12 +195,12 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        protected LLVMAddressVector doAddressVector(VirtualFrame frame) {
-            LLVMAddress[] vals = new LLVMAddress[toNatives.length];
+        protected LLVMPointerVector doAddressVector(VirtualFrame frame) {
+            LLVMNativePointer[] vals = new LLVMNativePointer[toNatives.length];
             for (int i = 0; i < toNatives.length; i++) {
                 vals[i] = toNatives[i].execute(frame);
             }
-            return LLVMAddressVector.create(vals);
+            return LLVMPointerVector.create(vals);
         }
     }
 

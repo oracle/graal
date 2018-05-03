@@ -30,14 +30,14 @@
 package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 // All methods can be used without @TruffleBoundary
 public class LLVMString {
-    public static byte[] memcpy(LLVMMemory memory, LLVMAddress address, int size) {
+    public static byte[] memcpy(LLVMMemory memory, LLVMNativePointer address, int size) {
         byte[] out = new byte[size];
-        LLVMAddress ptr = address;
+        LLVMNativePointer ptr = address;
         for (int i = 0; i < size; i++) {
             out[i] = memory.getI8(ptr);
             ptr = ptr.increment(1);
@@ -45,12 +45,12 @@ public class LLVMString {
         return out;
     }
 
-    public static void memcpy(LLVMMemory memory, byte[] src, LLVMAddress dst, long size) {
+    public static void memcpy(LLVMMemory memory, byte[] src, LLVMNativePointer dst, long size) {
         int min = src.length;
         if (min > size) {
             min = (int) size;
         }
-        LLVMAddress ptr = dst;
+        LLVMNativePointer ptr = dst;
         for (int i = 0; i < min; i++) {
             memory.putI8(ptr, src[i]);
             ptr = ptr.increment(1);
@@ -67,29 +67,29 @@ public class LLVMString {
         return new String(bytes);
     }
 
-    public static void strcpy(LLVMMemory memory, LLVMAddress dst, String src) {
+    public static void strcpy(LLVMMemory memory, LLVMNativePointer dst, String src) {
         memcpy(memory, getBytes(src), dst, src.length());
-        LLVMAddress zero = dst.increment(src.length());
+        LLVMNativePointer zero = dst.increment(src.length());
         memory.putI8(zero, (byte) 0);
     }
 
-    public static void strncpy(LLVMMemory memory, LLVMAddress dst, String src, long size) {
+    public static void strncpy(LLVMMemory memory, LLVMNativePointer dst, String src, long size) {
         memcpy(memory, getBytes(src), dst, size);
         if (src.length() < size) {
-            LLVMAddress zero = dst.increment(src.length());
+            LLVMNativePointer zero = dst.increment(src.length());
             memory.putI8(zero, (byte) 0);
         }
     }
 
-    public static long strlen(LLVMMemory memory, LLVMAddress address) {
-        LLVMAddress ptr = address;
+    public static long strlen(LLVMMemory memory, LLVMNativePointer address) {
+        LLVMNativePointer ptr = address;
         while (memory.getI8(ptr) != 0) {
             ptr = ptr.increment(1);
         }
-        return ptr.getVal() - address.getVal();
+        return ptr.asNative() - address.asNative();
     }
 
-    public static String cstr(LLVMMemory memory, LLVMAddress address) {
+    public static String cstr(LLVMMemory memory, LLVMNativePointer address) {
         long len = strlen(memory, address);
         byte[] bytes = memcpy(memory, address, (int) len);
         return toString(bytes);

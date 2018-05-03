@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 /**
@@ -148,13 +149,13 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             CompilerAsserts.neverPartOfCompilation();
 
             TruffleObject wrapper = null;
-            LLVMAddress pointer = null;
+            LLVMNativePointer pointer = null;
             NFIContextExtension nfiContextExtension = descriptor.context.getContextExtensionOrNull(NFIContextExtension.class);
             if (nfiContextExtension != null) {
                 wrapper = nfiContextExtension.createNativeWrapper(descriptor);
                 if (wrapper != null) {
                     try {
-                        pointer = LLVMAddress.fromLong(ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), wrapper));
+                        pointer = LLVMNativePointer.create(ForeignAccess.sendAsPointer(Message.AS_POINTER.createNode(), wrapper));
                     } catch (UnsupportedMessageException e) {
                         throw new AssertionError(e);
                     }
@@ -162,7 +163,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             }
 
             if (wrapper == null) {
-                pointer = LLVMAddress.fromLong(tagSulongFunctionPointer(descriptor.functionId));
+                pointer = LLVMNativePointer.create(tagSulongFunctionPointer(descriptor.functionId));
                 wrapper = pointer;
             }
 
@@ -252,7 +253,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     static final class NullFunction extends Function {
         @Override
         TruffleObject createNativeWrapper(LLVMFunctionDescriptor descriptor) {
-            return LLVMAddress.nullPointer();
+            return LLVMNativePointer.createNull();
         }
     }
 

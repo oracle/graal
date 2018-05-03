@@ -32,23 +32,23 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.nodes.memory.store.LLVMAddressStoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMAMD64WriteNode extends Node {
+public abstract class LLVMAMD64WriteNode extends LLVMNode {
     public static final long MASK_16 = 0xFFFFFFFFFFFF0000L;
     public static final long MASK_32 = 0xFFFFFFFF00000000L;
 
     @Child private LLVMAMD64RegisterToLongNode readRegister;
 
-    @Child private LLVMStoreNode storeAddress = LLVMAddressStoreNodeGen.create(null, null);
+    @Child private LLVMStoreNode storeAddress = LLVMPointerStoreNodeGen.create(null, null);
     @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create(null, null);
     @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create(null, null);
     @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create(null, null);
@@ -120,8 +120,8 @@ public abstract class LLVMAMD64WriteNode extends Node {
     }
 
     @Specialization
-    protected void doAddress(VirtualFrame frame, FrameSlot slot, LLVMAddress value) {
-        frame.setLong(slot, value.getVal());
+    protected void doNativePointer(VirtualFrame frame, FrameSlot slot, LLVMNativePointer value) {
+        frame.setLong(slot, value.asNative());
     }
 
     protected static boolean isFrameSlot(Object o) {
