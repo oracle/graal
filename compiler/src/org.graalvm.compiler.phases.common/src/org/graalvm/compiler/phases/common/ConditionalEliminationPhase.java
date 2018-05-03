@@ -986,6 +986,8 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                         StampInverter stampInverter = (StampInverter) value;
                         value = stampInverter.getValue();
                         stamp = stampInverter.invertStamp(stamp);
+                    } else if (value instanceof PiNode) {
+                        value = ((PiNode) value).getOriginalNode();
                     } else {
                         value = null;
                         stamp = null;

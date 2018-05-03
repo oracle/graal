@@ -43,7 +43,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.StampInverter;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -63,7 +62,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * also the scheduling restriction enforced by the guard, will go away.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy, StampInverter {
+public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
 
     public static final NodeClass<PiNode> TYPE = NodeClass.create(PiNode.class);
     @Input ValueNode object;
@@ -286,19 +285,6 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     @NodeIntrinsic
     public static native Object piCast(Object object, @ConstantNodeParameter Class<?> toType, @ConstantNodeParameter boolean exactType, @ConstantNodeParameter boolean nonNull);
-
-    /**
-     * Pis are pass-through, so is stamp inversion for Pis.
-     */
-    @Override
-    public Stamp invertStamp(Stamp outStamp) {
-        return outStamp;
-    }
-
-    @Override
-    public ValueNode getValue() {
-        return getOriginalNode();
-    }
 
     /**
      * A placeholder node in a snippet that will be replaced with a {@link PiNode} when the snippet
