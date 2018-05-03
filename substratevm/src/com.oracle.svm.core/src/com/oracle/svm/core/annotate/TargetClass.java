@@ -119,7 +119,7 @@ public @interface TargetClass {
         }
     }
 
-    /** Marker value for {@link #classNameProvider} that no class name provider should be use. */
+    /** Marker value for {@link #classNameProvider} that no class name provider should be used. */
     interface NoClassNameProvider extends Function<TargetClass, String> {
     }
 }

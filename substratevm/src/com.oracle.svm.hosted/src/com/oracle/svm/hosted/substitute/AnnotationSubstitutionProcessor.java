@@ -738,7 +738,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 throw UserError.abort("Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.");
             }
         } else {
-            guarantee(!target.className().isEmpty(), "Neither class, className, or classNameProvider specified for substitution");
+            guarantee(!target.className().isEmpty(), "Neither class, className, nor classNameProvider specified for substitution");
             className = target.className();
         }
         Class<?> holder = imageClassLoader.findClassByName(className, false);
