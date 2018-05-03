@@ -256,6 +256,11 @@ public abstract class LLVMDirectLoadNode {
             return addr; // we do not actually load the struct into a virtual register
         }
 
+        @Specialization
+        protected LLVMGlobal doGlobal(LLVMGlobal addr) {
+            return addr; // we do not actually load the struct into a virtual register
+        }
+
         @Override
         LLVMForeignReadNode createForeignRead() {
             throw new AssertionError("should not reach here");

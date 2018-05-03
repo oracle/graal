@@ -142,12 +142,17 @@ public abstract class LLVMAddressGetElementPtrNode extends LLVMExpressionNode {
         protected Object executePointee(LLVMGlobal addr, long incr,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readObject,
+                        @Cached("create()") BranchProfile zeroIncr,
                         @Cached("create()") BranchProfile notNativeBranch) {
             Object globalObject = readObject.execute(addr);
             if (globalObject instanceof LLVMTruffleObject) {
                 notNativeBranch.enter();
                 return ((LLVMTruffleObject) globalObject).increment(incr);
             } else {
+                if (incr == 0) {
+                    zeroIncr.enter();
+                    return addr;
+                }
                 return globalAccess.executeWithTarget(addr).increment(incr);
             }
         }

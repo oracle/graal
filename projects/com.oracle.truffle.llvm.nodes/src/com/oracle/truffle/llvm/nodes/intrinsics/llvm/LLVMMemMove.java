@@ -94,6 +94,20 @@ public abstract class LLVMMemMove {
 
         @SuppressWarnings("unused")
         @Specialization
+        protected Object doVoid(LLVMTruffleObject dest, LLVMGlobal source, long length, int align, boolean isVolatile) {
+            memMove.executeWithTarget(dest, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        protected Object doVoid(LLVMGlobal dest, LLVMTruffleObject source, long length, int align, boolean isVolatile) {
+            memMove.executeWithTarget(dest, source, length);
+            return null;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
         protected Object doVoid(LLVMTruffleObject dest, LLVMAddress source, long length, int align, boolean isVolatile) {
             memMove.executeWithTarget(dest, source, length);
             return null;

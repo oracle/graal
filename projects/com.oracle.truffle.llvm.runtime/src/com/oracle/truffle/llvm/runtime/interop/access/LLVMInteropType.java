@@ -276,7 +276,7 @@ public abstract class LLVMInteropType {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
                 LLVMSourceType memberType = member.getElementType();
                 long startOffset = member.getOffset() / 8;
-                long endOffset = startOffset + memberType.getSize() / 8;
+                long endOffset = startOffset + (memberType.getSize() + 7) / 8;
                 ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType));
             }
             return ret;
