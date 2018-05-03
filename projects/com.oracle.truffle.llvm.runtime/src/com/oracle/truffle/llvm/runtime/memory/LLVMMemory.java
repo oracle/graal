@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,16 +43,18 @@ import java.util.function.BinaryOperator;
 import java.util.function.IntBinaryOperator;
 import java.util.function.LongBinaryOperator;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFunctionVector;
@@ -66,8 +68,32 @@ import sun.misc.Unsafe;
 
 @SuppressWarnings("static-method")
 public final class LLVMMemory {
+    /* must be a power of 2 */
+    private static final long DEREF_HANDLE_OBJECT_SIZE = 1L << 20;
+    private static final long DEREF_HANDLE_OBJECT_MASK = (1L << 20) - 1L;
+
+    private static final long DEREF_HANDLE_SPACE_START = 0x0FFFFFFFFFFFFFFFL & ~DEREF_HANDLE_OBJECT_MASK;
+    private static final long DEREF_HANDLE_SPACE_END = 0x0FFF800000000000L & ~DEREF_HANDLE_OBJECT_MASK;
 
     private static final Unsafe unsafe = getUnsafe();
+
+    private final Object freeListLock = new Object();
+    private FreeListNode freeList;
+
+    private final Object derefSpaceTopLock = new Object();
+    private long derefSpaceTop = DEREF_HANDLE_SPACE_START;
+
+    private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle assumption");
+
+    private static final class FreeListNode {
+        protected FreeListNode(long address, FreeListNode next) {
+            this.address = address;
+            this.next = next;
+        }
+
+        private final long address;
+        private final FreeListNode next;
+    }
 
     private static Unsafe getUnsafe() {
         CompilerAsserts.neverPartOfCompilation();
@@ -96,9 +122,9 @@ public final class LLVMMemory {
 
     /** Use {@link com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode} instead. */
     @Deprecated
-    public void memset(LLVMAddress address, long size, byte value) {
+    public void memset(LLVMNativePointer address, long size, byte value) {
         try {
-            unsafe.setMemory(address.getVal(), size, value);
+            unsafe.setMemory(address.asNative(), size, value);
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -112,13 +138,31 @@ public final class LLVMMemory {
         unsafe.copyMemory(sourceAddress, targetAddress, length);
     }
 
-    public void free(LLVMAddress address) {
-        free(address.getVal());
+    public void free(LLVMNativePointer address) {
+        free(address.asNative());
     }
 
     public void free(long address) {
+        if (address <= DEREF_HANDLE_SPACE_START && address > DEREF_HANDLE_SPACE_END) {
+            assert isAllocated(address) : "double-free of " + Long.toHexString(address);
+            synchronized (freeListLock) {
+                // We need to mask because we allow creating handles with an offset.
+                freeList = new FreeListNode(address & ~DEREF_HANDLE_OBJECT_MASK, freeList);
+            }
+        } else {
+            try {
+                unsafe.freeMemory(address);
+            } catch (Throwable e) {
+                // this avoids unnecessary exception edges in the compiled code
+                CompilerDirectives.transferToInterpreter();
+                throw e;
+            }
+        }
+    }
+
+    public LLVMNativePointer allocateMemory(long size) {
         try {
-            unsafe.freeMemory(address);
+            return LLVMNativePointer.create(unsafe.allocateMemory(size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -126,20 +170,10 @@ public final class LLVMMemory {
         }
     }
 
-    public LLVMAddress allocateMemory(long size) {
-        try {
-            return LLVMAddress.fromLong(unsafe.allocateMemory(size));
-        } catch (Throwable e) {
-            // this avoids unnecessary exception edges in the compiled code
-            CompilerDirectives.transferToInterpreter();
-            throw e;
-        }
-    }
-
-    public LLVMAddress reallocateMemory(LLVMAddress addr, long size) {
+    public LLVMNativePointer reallocateMemory(LLVMNativePointer addr, long size) {
         // a null pointer is a valid argument
         try {
-            return LLVMAddress.fromLong(unsafe.reallocateMemory(addr.getVal(), size));
+            return LLVMNativePointer.create(unsafe.reallocateMemory(addr.asNative(), size));
         } catch (Throwable e) {
             // this avoids unnecessary exception edges in the compiled code
             CompilerDirectives.transferToInterpreter();
@@ -147,8 +181,35 @@ public final class LLVMMemory {
         }
     }
 
-    public boolean getI1(LLVMAddress addr) {
-        return getI1(addr.getVal());
+    /**
+     * Allocates {@code #OBJECT_SIZE} bytes in the Kernel space.
+     */
+    public LLVMNativePointer allocateDerefMemory() {
+        noDerefHandleAssumption.invalidate();
+
+        // preferably consume from free list
+        synchronized (freeListLock) {
+            if (freeList != null) {
+                FreeListNode n = freeList;
+                freeList = n.next;
+                return LLVMNativePointer.create(n.address);
+            }
+        }
+
+        synchronized (derefSpaceTopLock) {
+            LLVMNativePointer addr = LLVMNativePointer.create(derefSpaceTop);
+            assert derefSpaceTop > 0L;
+            derefSpaceTop -= DEREF_HANDLE_OBJECT_SIZE;
+            if (derefSpaceTop < DEREF_HANDLE_SPACE_END) {
+                CompilerDirectives.transferToInterpreter();
+                throw new OutOfMemoryError();
+            }
+            return addr;
+        }
+    }
+
+    public boolean getI1(LLVMNativePointer addr) {
+        return getI1(addr.asNative());
     }
 
     public boolean getI1(long ptr) {
@@ -156,8 +217,8 @@ public final class LLVMMemory {
         return unsafe.getByte(ptr) != 0;
     }
 
-    public byte getI8(LLVMAddress addr) {
-        return getI8(addr.getVal());
+    public byte getI8(LLVMNativePointer addr) {
+        return getI8(addr.asNative());
     }
 
     public byte getI8(long ptr) {
@@ -165,8 +226,8 @@ public final class LLVMMemory {
         return unsafe.getByte(ptr);
     }
 
-    public short getI16(LLVMAddress addr) {
-        return getI16(addr.getVal());
+    public short getI16(LLVMNativePointer addr) {
+        return getI16(addr.asNative());
     }
 
     public short getI16(long ptr) {
@@ -174,8 +235,8 @@ public final class LLVMMemory {
         return unsafe.getShort(ptr);
     }
 
-    public int getI32(LLVMAddress addr) {
-        return getI32(addr.getVal());
+    public int getI32(LLVMNativePointer addr) {
+        return getI32(addr.asNative());
     }
 
     public int getI32(long ptr) {
@@ -183,14 +244,14 @@ public final class LLVMMemory {
         return unsafe.getInt(ptr);
     }
 
-    public LLVMIVarBit getIVarBit(LLVMAddress addr, int bitWidth) {
+    public LLVMIVarBit getIVarBit(LLVMNativePointer addr, int bitWidth) {
         if (bitWidth % Byte.SIZE != 0) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError();
         }
         int bytes = bitWidth / Byte.SIZE;
         byte[] loadedBytes = new byte[bytes];
-        long currentAddressPtr = addr.getVal();
+        long currentAddressPtr = addr.asNative();
         for (int i = loadedBytes.length - 1; i >= 0; i--) {
             loadedBytes[i] = getI8(currentAddressPtr);
             currentAddressPtr += Byte.BYTES;
@@ -198,8 +259,8 @@ public final class LLVMMemory {
         return LLVMIVarBit.create(bitWidth, loadedBytes, bitWidth, false);
     }
 
-    public long getI64(LLVMAddress addr) {
-        return getI64(addr.getVal());
+    public long getI64(LLVMNativePointer addr) {
+        return getI64(addr.asNative());
     }
 
     public long getI64(long ptr) {
@@ -207,8 +268,8 @@ public final class LLVMMemory {
         return unsafe.getLong(ptr);
     }
 
-    public float getFloat(LLVMAddress addr) {
-        return getFloat(addr.getVal());
+    public float getFloat(LLVMNativePointer addr) {
+        return getFloat(addr.asNative());
     }
 
     public float getFloat(long ptr) {
@@ -216,8 +277,8 @@ public final class LLVMMemory {
         return unsafe.getFloat(ptr);
     }
 
-    public double getDouble(LLVMAddress addr) {
-        return getDouble(addr.getVal());
+    public double getDouble(LLVMNativePointer addr) {
+        return getDouble(addr.asNative());
     }
 
     public double getDouble(long ptr) {
@@ -225,9 +286,9 @@ public final class LLVMMemory {
         return unsafe.getDouble(ptr);
     }
 
-    public LLVM80BitFloat get80BitFloat(LLVMAddress addr) {
+    public LLVM80BitFloat get80BitFloat(LLVMNativePointer addr) {
         byte[] bytes = new byte[LLVM80BitFloat.BYTE_WIDTH];
-        long currentPtr = addr.getVal();
+        long currentPtr = addr.asNative();
         for (int i = 0; i < bytes.length; i++) {
             bytes[i] = getI8(currentPtr);
             currentPtr += Byte.BYTES;
@@ -235,17 +296,17 @@ public final class LLVMMemory {
         return LLVM80BitFloat.fromBytes(bytes);
     }
 
-    public LLVMAddress getAddress(LLVMAddress addr) {
-        return getAddress(addr.getVal());
+    public LLVMNativePointer getPointer(LLVMNativePointer addr) {
+        return getPointer(addr.asNative());
     }
 
-    public LLVMAddress getAddress(long ptr) {
+    public LLVMNativePointer getPointer(long ptr) {
         assert ptr != 0;
-        return LLVMAddress.fromLong(unsafe.getAddress(ptr));
+        return LLVMNativePointer.create(unsafe.getAddress(ptr));
     }
 
-    public void putI1(LLVMAddress addr, boolean value) {
-        putI1(addr.getVal(), value);
+    public void putI1(LLVMNativePointer addr, boolean value) {
+        putI1(addr.asNative(), value);
     }
 
     public void putI1(long ptr, boolean value) {
@@ -253,8 +314,8 @@ public final class LLVMMemory {
         unsafe.putByte(ptr, (byte) (value ? 1 : 0));
     }
 
-    public void putI8(LLVMAddress addr, byte value) {
-        putI8(addr.getVal(), value);
+    public void putI8(LLVMNativePointer addr, byte value) {
+        putI8(addr.asNative(), value);
     }
 
     public void putI8(long ptr, byte value) {
@@ -262,8 +323,8 @@ public final class LLVMMemory {
         unsafe.putByte(ptr, value);
     }
 
-    public void putI16(LLVMAddress addr, short value) {
-        putI16(addr.getVal(), value);
+    public void putI16(LLVMNativePointer addr, short value) {
+        putI16(addr.asNative(), value);
     }
 
     public void putI16(long ptr, short value) {
@@ -271,8 +332,8 @@ public final class LLVMMemory {
         unsafe.putShort(ptr, value);
     }
 
-    public void putI32(LLVMAddress addr, int value) {
-        putI32(addr.getVal(), value);
+    public void putI32(LLVMNativePointer addr, int value) {
+        putI32(addr.asNative(), value);
     }
 
     public void putI32(long ptr, int value) {
@@ -280,8 +341,8 @@ public final class LLVMMemory {
         unsafe.putInt(ptr, value);
     }
 
-    public void putI64(LLVMAddress addr, long value) {
-        putI64(addr.getVal(), value);
+    public void putI64(LLVMNativePointer addr, long value) {
+        putI64(addr.asNative(), value);
     }
 
     public void putI64(long ptr, long value) {
@@ -289,17 +350,17 @@ public final class LLVMMemory {
         unsafe.putLong(ptr, value);
     }
 
-    public void putIVarBit(LLVMAddress addr, LLVMIVarBit value) {
+    public void putIVarBit(LLVMNativePointer addr, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
-        long currentptr = addr.getVal();
+        long currentptr = addr.asNative();
         for (int i = bytes.length - 1; i >= 0; i--) {
             putI8(currentptr, bytes[i]);
             currentptr += Byte.BYTES;
         }
     }
 
-    private void putByteArray(LLVMAddress addr, byte[] bytes) {
-        putByteArray(addr.getVal(), bytes);
+    private void putByteArray(LLVMNativePointer addr, byte[] bytes) {
+        putByteArray(addr.asNative(), bytes);
     }
 
     private void putByteArray(long ptr, byte[] bytes) {
@@ -310,8 +371,8 @@ public final class LLVMMemory {
         }
     }
 
-    public void putFloat(LLVMAddress addr, float value) {
-        putFloat(addr.getVal(), value);
+    public void putFloat(LLVMNativePointer addr, float value) {
+        putFloat(addr.asNative(), value);
     }
 
     public void putFloat(long ptr, float value) {
@@ -319,8 +380,8 @@ public final class LLVMMemory {
         unsafe.putFloat(ptr, value);
     }
 
-    public void putDouble(LLVMAddress addr, double value) {
-        putDouble(addr.getVal(), value);
+    public void putDouble(LLVMNativePointer addr, double value) {
+        putDouble(addr.asNative(), value);
     }
 
     public void putDouble(long ptr, double value) {
@@ -328,7 +389,7 @@ public final class LLVMMemory {
         unsafe.putDouble(ptr, value);
     }
 
-    public void put80BitFloat(LLVMAddress addr, LLVM80BitFloat value) {
+    public void put80BitFloat(LLVMNativePointer addr, LLVM80BitFloat value) {
         putByteArray(addr, value.getBytes());
     }
 
@@ -336,27 +397,27 @@ public final class LLVMMemory {
         putByteArray(ptr, value.getBytes());
     }
 
-    public void putAddress(LLVMAddress addr, LLVMAddress value) {
-        putAddress(addr.getVal(), value);
+    public void putPointer(LLVMNativePointer addr, LLVMNativePointer value) {
+        putPointer(addr.asNative(), value);
     }
 
-    public void putAddress(LLVMAddress addr, long ptrValue) {
-        putAddress(addr.getVal(), ptrValue);
+    public void putPointer(LLVMNativePointer addr, long ptrValue) {
+        putPointer(addr.asNative(), ptrValue);
     }
 
-    public void putAddress(long ptr, LLVMAddress value) {
-        putAddress(ptr, value.getVal());
+    public void putPointer(long ptr, LLVMNativePointer value) {
+        putPointer(ptr, value.asNative());
     }
 
-    public void putAddress(long ptr, long ptrValue) {
+    public void putPointer(long ptr, long ptrValue) {
         assert ptr != 0;
         unsafe.putAddress(ptr, ptrValue);
     }
 
     @ExplodeLoop
-    public LLVMI32Vector getI32Vector(LLVMAddress address, int vectorLength) {
+    public LLVMI32Vector getI32Vector(LLVMNativePointer address, int vectorLength) {
         int[] vector = new int[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getI32(currentPtr);
             currentPtr += I32_SIZE_IN_BYTES;
@@ -365,9 +426,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMI8Vector getI8Vector(LLVMAddress address, int vectorLength) {
+    public LLVMI8Vector getI8Vector(LLVMNativePointer address, int vectorLength) {
         byte[] vector = new byte[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getI8(currentPtr);
             currentPtr += I8_SIZE_IN_BYTES;
@@ -376,9 +437,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMI1Vector getI1Vector(LLVMAddress address, int vectorLength) {
+    public LLVMI1Vector getI1Vector(LLVMNativePointer address, int vectorLength) {
         boolean[] vector = new boolean[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getI1(currentPtr);
             currentPtr += I1_SIZE_IN_BYTES;
@@ -387,9 +448,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMI16Vector getI16Vector(LLVMAddress address, int vectorLength) {
+    public LLVMI16Vector getI16Vector(LLVMNativePointer address, int vectorLength) {
         short[] vector = new short[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getI16(currentPtr);
             currentPtr += I16_SIZE_IN_BYTES;
@@ -398,9 +459,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMI64Vector getI64Vector(LLVMAddress address, int vectorLength) {
+    public LLVMI64Vector getI64Vector(LLVMNativePointer address, int vectorLength) {
         long[] vector = new long[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getI64(currentPtr);
             currentPtr += I64_SIZE_IN_BYTES;
@@ -409,9 +470,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMFloatVector getFloatVector(LLVMAddress address, int vectorLength) {
+    public LLVMFloatVector getFloatVector(LLVMNativePointer address, int vectorLength) {
         float[] vector = new float[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getFloat(currentPtr);
             currentPtr += FLOAT_SIZE_IN_BYTES;
@@ -420,9 +481,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMDoubleVector getDoubleVector(LLVMAddress address, int vectorLength) {
+    public LLVMDoubleVector getDoubleVector(LLVMNativePointer address, int vectorLength) {
         double[] vector = new double[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             vector[i] = getDouble(currentPtr);
             currentPtr += DOUBLE_SIZE_IN_BYTES;
@@ -431,22 +492,22 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public LLVMAddressVector getAddressVector(LLVMAddress address, int vectorLength) {
-        LLVMAddress[] vector = new LLVMAddress[vectorLength];
-        long currentPtr = address.getVal();
+    public LLVMPointerVector getPointerVector(LLVMNativePointer address, int vectorLength) {
+        LLVMNativePointer[] vector = new LLVMNativePointer[vectorLength];
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getAddress(currentPtr);
+            vector[i] = getPointer(currentPtr);
             currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
-        return LLVMAddressVector.create(vector);
+        return LLVMPointerVector.create(vector);
     }
 
     @ExplodeLoop
-    public LLVMFunctionVector getFunctionVector(LLVMAddress address, int vectorLength) {
+    public LLVMFunctionVector getFunctionVector(LLVMNativePointer address, int vectorLength) {
         long[] vector = new long[vectorLength];
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
-            vector[i] = getAddress(currentPtr).getVal();
+            vector[i] = getPointer(currentPtr).asNative();
             currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
         return LLVMFunctionVector.create(vector);
@@ -455,9 +516,9 @@ public final class LLVMMemory {
     // watch out for casts such as I32* to I32Vector* when changing the way how vectors are
     // implemented
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMDoubleVector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMDoubleVector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putDouble(currentPtr, vector.getValue(i));
             currentPtr += DOUBLE_SIZE_IN_BYTES;
@@ -465,9 +526,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMFloatVector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMFloatVector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putFloat(currentPtr, vector.getValue(i));
             currentPtr += FLOAT_SIZE_IN_BYTES;
@@ -475,9 +536,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMI16Vector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMI16Vector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putI16(currentPtr, vector.getValue(i));
             currentPtr += I16_SIZE_IN_BYTES;
@@ -485,9 +546,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMI1Vector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMI1Vector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putI1(currentPtr, vector.getValue(i));
             currentPtr += I1_SIZE_IN_BYTES;
@@ -495,9 +556,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMI32Vector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMI32Vector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putI32(currentPtr, vector.getValue(i));
             currentPtr += I32_SIZE_IN_BYTES;
@@ -505,9 +566,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMI64Vector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMI64Vector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putI64(currentPtr, vector.getValue(i));
             currentPtr += I64_SIZE_IN_BYTES;
@@ -515,9 +576,9 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMI8Vector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMI8Vector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
             putI8(currentPtr, vector.getValue(i));
             currentPtr += I8_SIZE_IN_BYTES;
@@ -525,41 +586,41 @@ public final class LLVMMemory {
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMAddressVector vector, int vectorLength) {
+    public void putVector(LLVMNativePointer address, LLVMPointerVector vector, int vectorLength) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
-            putAddress(currentPtr, vector.getValue(i));
+            putPointer(currentPtr, vector.getValue(i));
             currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
     }
 
     @ExplodeLoop
-    public void putVector(LLVMAddress address, LLVMFunctionVector vector, int vectorLength, LLVMToNativeNode toNative) {
+    public void putVector(LLVMNativePointer address, LLVMFunctionVector vector, int vectorLength, LLVMToNativeNode toNative) {
         assert vector.getLength() == vectorLength;
-        long currentPtr = address.getVal();
+        long currentPtr = address.asNative();
         for (int i = 0; i < vectorLength; i++) {
-            putAddress(currentPtr, toNative.executeWithTarget(vector.getValue(i)));
+            putPointer(currentPtr, toNative.executeWithTarget(vector.getValue(i)));
             currentPtr += ADDRESS_SIZE_IN_BYTES;
         }
     }
 
-    public LLVMAddress allocateCString(String string) {
-        LLVMAddress baseAddress = allocateMemory(string.length() + 1);
-        long currentAddress = baseAddress.getVal();
+    public LLVMNativePointer allocateCString(String string) {
+        LLVMNativePointer basePointer = allocateMemory(string.length() + 1);
+        long currentPointer = basePointer.asNative();
         for (int i = 0; i < string.length(); i++) {
             byte c = (byte) string.charAt(i);
-            putI8(currentAddress, c);
-            currentAddress++;
+            putI8(currentPointer, c);
+            currentPointer++;
         }
-        putI8(currentAddress, (byte) 0);
-        return baseAddress;
+        putI8(currentPointer, (byte) 0);
+        return basePointer;
     }
 
     // current hack: we cannot directly store the LLVMFunction in the native memory due to GC
     public static final int FUNCTION_PTR_SIZE_BYTE = 8;
 
-    public void putFunctionPointer(LLVMAddress address, long functionIndex) {
+    public void putFunctionPointer(LLVMNativePointer address, long functionIndex) {
         putI64(address, functionIndex);
     }
 
@@ -567,7 +628,7 @@ public final class LLVMMemory {
         putI64(ptr, functionIndex);
     }
 
-    public long getFunctionPointer(LLVMAddress addr) {
+    public long getFunctionPointer(LLVMNativePointer addr) {
         return getI64(addr);
     }
 
@@ -590,13 +651,13 @@ public final class LLVMMemory {
         }
     }
 
-    public CMPXCHGI32 compareAndSwapI32(LLVMAddress p, int comparisonValue, int newValue) {
+    public CMPXCHGI32 compareAndSwapI32(LLVMNativePointer p, int comparisonValue, int newValue) {
         while (true) {
-            boolean b = unsafe.compareAndSwapInt(null, p.getVal(), comparisonValue, newValue);
+            boolean b = unsafe.compareAndSwapInt(null, p.asNative(), comparisonValue, newValue);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
                 return new CMPXCHGI32(comparisonValue, b);
             } else {
-                int t = unsafe.getIntVolatile(null, p.getVal());
+                int t = unsafe.getIntVolatile(null, p.asNative());
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
                     continue;
                 } else {
@@ -625,13 +686,13 @@ public final class LLVMMemory {
         }
     }
 
-    public CMPXCHGI64 compareAndSwapI64(LLVMAddress p, long comparisonValue, long newValue) {
+    public CMPXCHGI64 compareAndSwapI64(LLVMNativePointer p, long comparisonValue, long newValue) {
         while (true) {
-            boolean b = unsafe.compareAndSwapLong(null, p.getVal(), comparisonValue, newValue);
+            boolean b = unsafe.compareAndSwapLong(null, p.asNative(), comparisonValue, newValue);
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, b)) {
                 return new CMPXCHGI64(comparisonValue, b);
             } else {
-                long t = unsafe.getLongVolatile(null, p.getVal());
+                long t = unsafe.getLongVolatile(null, p.asNative());
                 if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, t == comparisonValue)) {
                     continue;
                 } else {
@@ -678,9 +739,9 @@ public final class LLVMMemory {
         return (value & ~(0xFF << (index * 8))) | ((replaceByte & 0xFF) << (index * 8));
     }
 
-    public CMPXCHGI8 compareAndSwapI8(LLVMAddress p, byte comparisonValue, byte newValue) {
-        int byteIndex = getI8Index(p.getVal());
-        long address = alignToI32(p.getVal());
+    public CMPXCHGI8 compareAndSwapI8(LLVMNativePointer p, byte comparisonValue, byte newValue) {
+        int byteIndex = getI8Index(p.asNative());
+        long address = alignToI32(p.asNative());
         while (true) {
             int t = unsafe.getIntVolatile(null, address);
             byte b = getI8At(t, byteIndex);
@@ -730,9 +791,9 @@ public final class LLVMMemory {
         return (value & ~(0xFFFF << (index * 16))) | ((replace & 0xFFFF) << (index * 16));
     }
 
-    public CMPXCHGI16 compareAndSwapI16(LLVMAddress p, short comparisonValue, short newValue) {
-        int idx = getI16Index(p.getVal());
-        long address = alignToI32(p.getVal());
+    public CMPXCHGI16 compareAndSwapI16(LLVMNativePointer p, short comparisonValue, short newValue) {
+        int idx = getI16Index(p.asNative());
+        long address = alignToI32(p.asNative());
         while (true) {
             int t = unsafe.getIntVolatile(null, address);
             short b = getI16At(t, idx);
@@ -750,20 +811,20 @@ public final class LLVMMemory {
         }
     }
 
-    public long getAndSetI64(LLVMAddress address, long value) {
-        return unsafe.getAndSetLong(null, address.getVal(), value);
+    public long getAndSetI64(LLVMNativePointer address, long value) {
+        return unsafe.getAndSetLong(null, address.asNative(), value);
     }
 
-    public long getAndAddI64(LLVMAddress address, long value) {
-        return unsafe.getAndAddLong(null, address.getVal(), value);
+    public long getAndAddI64(LLVMNativePointer address, long value) {
+        return unsafe.getAndAddLong(null, address.asNative(), value);
     }
 
-    public long getAndSubI64(LLVMAddress address, long value) {
-        return unsafe.getAndAddLong(null, address.getVal(), -value);
+    public long getAndSubI64(LLVMNativePointer address, long value) {
+        return unsafe.getAndAddLong(null, address.asNative(), -value);
     }
 
-    public long getAndOpI64(LLVMAddress address, long value, LongBinaryOperator f) {
-        long addr = address.getVal();
+    public long getAndOpI64(LLVMNativePointer address, long value, LongBinaryOperator f) {
+        long addr = address.asNative();
         long old;
         long nevv;
         do {
@@ -773,20 +834,20 @@ public final class LLVMMemory {
         return old;
     }
 
-    public int getAndSetI32(LLVMAddress address, int value) {
-        return unsafe.getAndSetInt(null, address.getVal(), value);
+    public int getAndSetI32(LLVMNativePointer address, int value) {
+        return unsafe.getAndSetInt(null, address.asNative(), value);
     }
 
-    public int getAndAddI32(LLVMAddress address, int value) {
-        return unsafe.getAndAddInt(null, address.getVal(), value);
+    public int getAndAddI32(LLVMNativePointer address, int value) {
+        return unsafe.getAndAddInt(null, address.asNative(), value);
     }
 
-    public int getAndSubI32(LLVMAddress address, int value) {
-        return unsafe.getAndAddInt(null, address.getVal(), -value);
+    public int getAndSubI32(LLVMNativePointer address, int value) {
+        return unsafe.getAndAddInt(null, address.asNative(), -value);
     }
 
-    public int getAndOpI32(LLVMAddress address, int value, IntBinaryOperator f) {
-        long addr = address.getVal();
+    public int getAndOpI32(LLVMNativePointer address, int value, IntBinaryOperator f) {
+        long addr = address.asNative();
         int old;
         int nevv;
         do {
@@ -796,7 +857,7 @@ public final class LLVMMemory {
         return old;
     }
 
-    public short getAndOpI16(LLVMAddress address, short value, BinaryOperator<Short> f) {
+    public short getAndOpI16(LLVMNativePointer address, short value, BinaryOperator<Short> f) {
         short old;
         short nevv;
         do {
@@ -806,7 +867,7 @@ public final class LLVMMemory {
         return old;
     }
 
-    public byte getAndOpI8(LLVMAddress address, byte value, BinaryOperator<Byte> f) {
+    public byte getAndOpI8(LLVMNativePointer address, byte value, BinaryOperator<Byte> f) {
         byte old;
         byte nevv;
         do {
@@ -816,7 +877,7 @@ public final class LLVMMemory {
         return old;
     }
 
-    public boolean getAndOpI1(LLVMAddress address, boolean value, BinaryOperator<Boolean> f) {
+    public boolean getAndOpI1(LLVMNativePointer address, boolean value, BinaryOperator<Boolean> f) {
         byte old;
         boolean nevv;
         do {
@@ -829,4 +890,34 @@ public final class LLVMMemory {
     public void fullFence() {
         unsafe.fullFence();
     }
+
+    public Assumption getNoDerefHandleAssumption() {
+        return noDerefHandleAssumption;
+    }
+
+    public boolean isDerefMemory(LLVMNativePointer addr) {
+        return !noDerefHandleAssumption.isValid() && addr.asNative() > DEREF_HANDLE_SPACE_END;
+    }
+
+    public static long getDerefHandleObjectMask() {
+        return DEREF_HANDLE_OBJECT_SIZE - 1;
+    }
+
+    private boolean isAllocated(long address) {
+        synchronized (derefSpaceTopLock) {
+            if (address <= derefSpaceTop) {
+                return false;
+            }
+        }
+
+        synchronized (freeListLock) {
+            for (FreeListNode cur = freeList; cur != null; cur = cur.next) {
+                if (cur.address == address) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 }

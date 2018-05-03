@@ -140,6 +140,7 @@ public final class DataLayoutConverter {
     }
 
     public static DataSpecConverterImpl getConverter(String layout) {
+        assert layout != null;
         final List<DataTypeSpecification> dataLayout = DataLayoutParser.parseDataLayout(layout);
         return new DataSpecConverterImpl(dataLayout);
     }

@@ -27,38 +27,43 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.interop;
+package com.oracle.truffle.llvm.nodes.memory.load;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-@MessageResolution(receiverType = LLVMAddress.class)
-public class LLVMAddressMessageResolution {
+public class LLVMDerefHandleGetReceiverNode extends LLVMNode {
 
-    @Resolve(message = "IS_POINTER")
-    public abstract static class ForeignIsPointer extends Node {
-        @SuppressWarnings("unused")
-        protected boolean access(VirtualFrame frame, LLVMAddress receiver) {
-            return true;
-        }
+    protected final long mask;
+    @CompilationFinal private ContextReference<LLVMContext> context;
+
+    protected LLVMDerefHandleGetReceiverNode(long mask) {
+        this.mask = mask;
     }
 
-    @Resolve(message = "AS_POINTER")
-    public abstract static class ForeignAsPointer extends Node {
-        @SuppressWarnings("unused")
-        protected long access(VirtualFrame frame, LLVMAddress receiver) {
-            return receiver.getVal();
+    protected LLVMContext getContext() {
+        if (context == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            context = getContextReference();
         }
+        return context.get();
     }
 
-    @Resolve(message = "IS_NULL")
-    public abstract static class ForeignIsNull extends Node {
-        @SuppressWarnings("unused")
-        protected boolean access(VirtualFrame frame, LLVMAddress receiver) {
-            return receiver.getVal() == 0;
-        }
+    public LLVMManagedPointer execute(LLVMNativePointer addr) {
+        LLVMNativePointer objectBaseAddr = LLVMNativePointer.create(addr.asNative() & ~mask);
+        TruffleObject receiver = getContext().getManagedObjectForHandle(objectBaseAddr);
+        LLVMManagedPointer pointerToForeign = LLVMManagedPointer.create(receiver);
+        return pointerToForeign.increment(addr.asNative() & mask);
     }
+
+    public static LLVMDerefHandleGetReceiverNode create(long bitmask) {
+        return new LLVMDerefHandleGetReceiverNode(bitmask);
+    }
+
 }

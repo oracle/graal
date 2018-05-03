@@ -31,10 +31,10 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public class LLVMAMD64UpdateFlagsNode extends Node {
+public class LLVMAMD64UpdateFlagsNode extends LLVMNode {
     public static class LLVMAMD64UpdatePZSFlagsNode extends LLVMAMD64UpdateFlagsNode {
         private final FrameSlot pf;
         private final FrameSlot zf;

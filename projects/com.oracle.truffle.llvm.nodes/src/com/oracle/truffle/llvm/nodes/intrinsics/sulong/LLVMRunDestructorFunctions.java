@@ -52,8 +52,10 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
     private void runDestructorFunctions() {
         // is only executed once per context so it will be executed in the interpreter only
         LLVMContext context = getContextReference().get();
-        RootCallTarget[] targets = context.getDestructorFunctions().toArray(new RootCallTarget[0]);
-        for (RootCallTarget target : targets) {
+        // execute destructors in the reverse order in which the constructors were executed
+        RootCallTarget[] targets = context.getDestructorFunctions();
+        for (int i = targets.length - 1; i >= 0; i--) {
+            RootCallTarget target = targets[i];
             try (StackPointer stackPointer = context.getThreadingStack().getStack().newFrame()) {
                 callNode.call(target, new Object[]{stackPointer});
             }

@@ -1,11 +1,22 @@
-# 1.0
+# Version 1.0.0 RC2
+
+New features:
+
+* Use dynamic linker semantics when loading multiple bitcode files.
+* Support ELF files with embedded LLVM bitcode.
+
+Improvements:
+
+* Unified representation of pointers to native memory and polyglot values.
+
+# Version 1.0.0 RC1
 
 New features:
 
 * New API for conversion of user-defined native structs from and to polyglot
   values.
 
-# 0.33
+# Version 0.33
 
 New features:
 

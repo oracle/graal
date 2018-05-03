@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public class LLVMAMD64WriteBooleanNode extends Node {
+public class LLVMAMD64WriteBooleanNode extends LLVMNode {
     private final FrameSlot slot;
 
     public LLVMAMD64WriteBooleanNode(FrameSlot slot) {

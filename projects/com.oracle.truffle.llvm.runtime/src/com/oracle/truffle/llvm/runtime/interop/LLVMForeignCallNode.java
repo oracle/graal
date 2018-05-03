@@ -38,11 +38,9 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.SlowPathForeignToLLVM;
@@ -50,21 +48,18 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * Used when an LLVM bitcode method is called from another language.
  */
-public abstract class LLVMForeignCallNode extends Node {
+public abstract class LLVMForeignCallNode extends LLVMNode {
 
     @Child protected LLVMDataEscapeNode prepareValueForEscape = LLVMDataEscapeNode.create();
 
-    protected LLVMMemory getLLVMMemory() {
-        return LLVMLanguage.getLanguage().getCapability(LLVMMemory.class);
-    }
-
-    public static class PackForeignArgumentsNode extends Node {
+    public static class PackForeignArgumentsNode extends LLVMNode {
         @Children private final ForeignToLLVM[] toLLVM;
 
         PackForeignArgumentsNode(Type[] parameterTypes, int argumentsLength) {
@@ -94,7 +89,7 @@ public abstract class LLVMForeignCallNode extends Node {
         return new PackForeignArgumentsNode(descriptor.getType().getArgumentTypes(), length);
     }
 
-    protected static class SlowPackForeignArgumentsNode extends Node {
+    protected static class SlowPackForeignArgumentsNode extends LLVMNode {
         @Child private SlowPathForeignToLLVM slowConvert = ForeignToLLVM.createSlowPathNode();
 
         Object[] pack(LLVMFunctionDescriptor function, LLVMMemory memory, Object[] arguments, StackPointer stackPointer) {

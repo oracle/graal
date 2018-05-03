@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.globals;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-import com.oracle.truffle.llvm.parser.model.SymbolTable;
-import com.oracle.truffle.llvm.parser.model.enums.Linkage;
-import com.oracle.truffle.llvm.parser.model.enums.Visibility;
-import com.oracle.truffle.llvm.parser.model.visitors.ModelVisitor;
-import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public final class GlobalConstant extends GlobalValueSymbol {
+@NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
+public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
 
-    private GlobalConstant(Type type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, align, linkage, visibility, symbolTable, value);
-    }
-
-    @Override
-    public void accept(ModelVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    @Override
-    public void accept(SymbolVisitor visitor) {
-        visitor.visit(this);
-    }
-
-    public static GlobalConstant create(Type type, int align, long linkage, long visibility, SymbolTable symbolTable, int value) {
-        return new GlobalConstant(type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value);
+    @Specialization
+    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
+                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
+                    @Cached("getLLVMMemory()") LLVMMemory memory) {
+        LLVMNativePointer handle = context.get().getDerefHandleForManagedObject(memory, value.getObject());
+        if (value.getOffset() != 0) {
+            return handle.increment(value.getOffset());
+        }
+        return handle;
     }
 }

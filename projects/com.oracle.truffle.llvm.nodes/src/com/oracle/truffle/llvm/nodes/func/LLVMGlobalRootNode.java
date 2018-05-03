@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.func;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -37,17 +38,16 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.GuestLanguageRuntimeException;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -69,16 +69,15 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @Override
-    @ExplodeLoop
     public Object execute(VirtualFrame frame) {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
                 TruffleObject appPath = (TruffleObject) ctxRef.get().getEnv().asGuestValue(applicationPath.getBytes());
-                LLVMTruffleObject applicationPathObj = new LLVMTruffleObject(LLVMTypedForeignObject.createUnknown(appPath));
+                LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(LLVMTypedForeignObject.createUnknown(appPath));
                 Object[] realArgs = new Object[]{basePointer, mainFunctionType, applicationPathObj};
                 Object result = startFunction.call(realArgs);
                 getContext().awaitThreadTermination();
-                return result;
+                return (int) result;
             } catch (LLVMExitException e) {
                 LLVMContext context = getContext();
                 // if any variant of exit or abort was called, we know that all the necessary
@@ -105,6 +104,7 @@ public class LLVMGlobalRootNode extends RootNode {
      * main functions.
      */
     private static int getMainFunctionType(LLVMFunctionDescriptor mainFunctionDescriptor) {
+        CompilerAsserts.neverPartOfCompilation();
         Type returnType = mainFunctionDescriptor.getType().getReturnType();
         Type[] argumentTypes = mainFunctionDescriptor.getType().getArgumentTypes();
         if (argumentTypes.length > 0 && argumentTypes[0] instanceof PrimitiveType) {

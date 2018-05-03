@@ -31,6 +31,7 @@ REF_TARGETS:=
 endif
 
 BC_TARGETS:=$(foreach var,$(VARIANTS),$(TESTS:%=%/$(var).bc))
+CXXFLAGS=-std=c++11 -stdlib=libc++ -DLIBCXXABI_SILENT_TERMINATE
 
 .PHONY: default
 default: $(REF_TARGETS) $(BC_TARGETS)

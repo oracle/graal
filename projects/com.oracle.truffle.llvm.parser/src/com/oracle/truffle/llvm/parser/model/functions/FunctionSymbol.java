@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,43 +27,16 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser;
+package com.oracle.truffle.llvm.parser.model.functions;
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.model.ModelModule;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.parser.model.ValueSymbol;
+import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
+public interface FunctionSymbol extends ValueSymbol {
+    @Override
+    FunctionType getType();
 
-public final class BitcodeParserResult {
-    private final ModelModule model;
+    boolean isExported();
 
-    private BitcodeParserResult(ModelModule model) {
-        this.model = model;
-    }
-
-    public ModelModule getModel() {
-        return model;
-    }
-
-    public List<String> getLibraries() {
-        return model.getLibraries();
-    }
-
-    public List<String> getLibraryPaths() {
-        return model.getLibraryPaths();
-    }
-
-    public static BitcodeParserResult getFromSource(Source source, ByteBuffer bytes) throws IOException {
-        assert bytes != null;
-        if (!LLVMScanner.isSupportedFile(bytes)) {
-            throw new IOException("Unsupported file: " + source.toString());
-        }
-
-        final ModelModule model = LLVMScanner.parse(source, bytes);
-
-        return new BitcodeParserResult(model);
-    }
+    boolean isExternal();
 }

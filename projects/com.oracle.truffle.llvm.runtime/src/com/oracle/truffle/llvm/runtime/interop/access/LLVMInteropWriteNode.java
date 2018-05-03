@@ -83,7 +83,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
         }
     }
 
-    abstract static class GetValueSizeNode extends Node {
+    abstract static class GetValueSizeNode extends LLVMNode {
 
         protected abstract int execute(Object value);
 

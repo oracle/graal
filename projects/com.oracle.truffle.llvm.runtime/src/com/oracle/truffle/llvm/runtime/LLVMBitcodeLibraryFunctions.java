@@ -30,17 +30,18 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMBitcodeLibraryFunctions {
 
-    protected abstract static class LibraryFunctionNode extends Node {
+    protected abstract static class LibraryFunctionNode extends LLVMNode {
 
         @Child protected DirectCallNode callNode;
 
         protected LibraryFunctionNode(LLVMContext context, String name) {
-            LLVMFunctionDescriptor descriptor = context.getGlobalScope().getFunctionDescriptor(name);
+            LLVMFunctionDescriptor descriptor = context.getGlobalScope().functions().get(name);
             callNode = DirectCallNode.create(descriptor.getLLVMIRFunction());
         }
 
@@ -55,7 +56,7 @@ public final class LLVMBitcodeLibraryFunctions {
             super(context, "@sulong_eh_canCatch");
         }
 
-        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMAddress catchType) {
+        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
             return (int) execute(stack, unwindHeader, catchType.copy());
         }
     }

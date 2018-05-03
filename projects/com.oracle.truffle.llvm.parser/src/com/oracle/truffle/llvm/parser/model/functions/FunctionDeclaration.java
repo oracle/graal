@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser.model.functions;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.ValueSymbol;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesCodeEntry;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
@@ -40,7 +39,7 @@ import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
-public final class FunctionDeclaration implements Constant, ValueSymbol {
+public final class FunctionDeclaration implements Constant, FunctionSymbol {
 
     private final FunctionType type;
     private String name;
@@ -139,6 +138,16 @@ public final class FunctionDeclaration implements Constant, ValueSymbol {
         } else if (!type.equals(other.type)) {
             return false;
         }
+        return true;
+    }
+
+    @Override
+    public boolean isExported() {
+        return true;
+    }
+
+    @Override
+    public boolean isExternal() {
         return true;
     }
 }

@@ -41,13 +41,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMReadStringNodeGen.ForeignReadStringNodeGen;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNode.LLVMIncrementPointerNode;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAddressGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
+import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
+import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI8LoadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-public abstract class LLVMReadStringNode extends Node {
+public abstract class LLVMReadStringNode extends LLVMNode {
 
     @Child PointerReadStringNode readOther;
 
@@ -59,7 +60,7 @@ public abstract class LLVMReadStringNode extends Node {
     }
 
     @Specialization
-    String readForeign(LLVMTruffleObject foreign,
+    String readForeign(LLVMManagedPointer foreign,
                     @Cached("create()") ForeignReadStringNode read) {
         return read.execute(foreign);
     }
@@ -72,21 +73,21 @@ public abstract class LLVMReadStringNode extends Node {
         return readOther.readPointer(address);
     }
 
-    abstract static class Dummy extends Node {
+    abstract static class Dummy extends LLVMNode {
 
-        protected abstract LLVMTruffleObject execute();
+        protected abstract LLVMManagedPointer execute();
     }
 
     @NodeChild(value = "object", type = Dummy.class)
     @NodeChild(value = "foreign", type = LLVMAsForeignNode.class, executeWith = "object")
-    abstract static class ForeignReadStringNode extends Node {
+    abstract static class ForeignReadStringNode extends LLVMNode {
 
         @Child Node isBoxed = Message.IS_BOXED.createNode();
 
-        protected abstract String execute(LLVMTruffleObject foreign);
+        protected abstract String execute(LLVMManagedPointer foreign);
 
         @Specialization(guards = "isBoxed(foreign)")
-        String readUnbox(@SuppressWarnings("unused") LLVMTruffleObject object, TruffleObject foreign,
+        String readUnbox(@SuppressWarnings("unused") LLVMManagedPointer object, TruffleObject foreign,
                         @Cached("createUnbox()") Node unbox) {
             try {
                 Object unboxed = ForeignAccess.sendUnbox(unbox, foreign);
@@ -97,7 +98,7 @@ public abstract class LLVMReadStringNode extends Node {
         }
 
         @Specialization(guards = "!isBoxed(foreign)")
-        String readOther(LLVMTruffleObject object, @SuppressWarnings("unused") TruffleObject foreign,
+        String readOther(LLVMManagedPointer object, @SuppressWarnings("unused") TruffleObject foreign,
                         @Cached("create()") PointerReadStringNode read) {
             return read.readPointer(object);
         }
@@ -115,7 +116,7 @@ public abstract class LLVMReadStringNode extends Node {
         }
     }
 
-    static class PointerReadStringNode extends Node {
+    static class PointerReadStringNode extends LLVMNode {
 
         @Child private LLVMIncrementPointerNode inc = LLVMIncrementPointerNodeGen.create();
         @Child private LLVMLoadNode read = LLVMI8LoadNodeGen.create(null);

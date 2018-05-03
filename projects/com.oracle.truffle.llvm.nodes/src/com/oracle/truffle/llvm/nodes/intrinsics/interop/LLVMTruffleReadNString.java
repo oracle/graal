@@ -42,24 +42,24 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(LLVMAddress value, int n,
+    protected Object doIntrinsic(LLVMNativePointer value, int n,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return getString(memory, value, n);
+        return getString(memory, value.asNative(), n);
     }
 
     @TruffleBoundary
-    private static Object getString(LLVMMemory memory, LLVMAddress value, int n) {
-        long ptr = value.getVal();
+    private static Object getString(LLVMMemory memory, long start, int n) {
+        long ptr = start;
         int count = n < 0 ? 0 : n;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < count; i++) {
@@ -70,7 +70,7 @@ public abstract class LLVMTruffleReadNString extends LLVMIntrinsic {
     }
 
     @Specialization
-    protected Object interop(LLVMTruffleObject objectWithOffset, int n,
+    protected Object interop(LLVMManagedPointer objectWithOffset, int n,
                     @Cached("createForeignReadNode()") Node foreignRead,
                     @Cached("createToByteNode()") ForeignToLLVM toLLVM) {
         long offset = objectWithOffset.getOffset();

@@ -103,7 +103,7 @@ public final class LLVMDebugTest {
 
     @Before
     public void before() {
-        tester = new DebuggerTester(Context.newBuilder().option(OPTION_ENABLE_LVI, "true"));
+        tester = new DebuggerTester(Context.newBuilder().option(OPTION_ENABLE_LVI, "true").allowAllAccess(true));
     }
 
     @After

@@ -52,6 +52,6 @@ public abstract class GuestLanguageRuntimeException extends RuntimeException {
         super(cause);
     }
 
-    public abstract Object handleExit();
+    public abstract int handleExit();
 
 }

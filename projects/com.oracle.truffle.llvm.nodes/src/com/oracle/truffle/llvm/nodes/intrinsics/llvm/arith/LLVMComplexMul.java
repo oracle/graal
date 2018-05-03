@@ -33,9 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public final class LLVMComplexMul extends LLVMExpressionNode {
 
@@ -78,9 +78,9 @@ public final class LLVMComplexMul extends LLVMExpressionNode {
             double zReal = ac - bd;
             double zImag = ad + bc;
 
-            LLVMAddress allocatedMemory = alloc.executeLLVMAddress(frame);
+            LLVMNativePointer allocatedMemory = alloc.executeLLVMNativePointer(frame);
             getMemory().putDouble(allocatedMemory, zReal);
-            getMemory().putDouble(allocatedMemory.getVal() + LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES, zImag);
+            getMemory().putDouble(allocatedMemory.increment(LLVMExpressionNode.DOUBLE_SIZE_IN_BYTES), zImag);
 
             return allocatedMemory;
         } catch (UnexpectedResultException e) {

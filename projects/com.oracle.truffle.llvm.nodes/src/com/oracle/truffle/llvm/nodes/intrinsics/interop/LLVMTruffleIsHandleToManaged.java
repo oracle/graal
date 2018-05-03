@@ -36,10 +36,10 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
@@ -47,11 +47,11 @@ public abstract class LLVMTruffleIsHandleToManaged extends LLVMIntrinsic {
     @Specialization
     protected boolean doLongCase(long a,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        return doAddressCase(LLVMAddress.fromLong(a), context);
+        return doPointerCase(LLVMNativePointer.create(a), context);
     }
 
     @Specialization
-    protected boolean doAddressCase(LLVMAddress a,
+    protected boolean doPointerCase(LLVMNativePointer a,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         return context.get().isHandle(a);
     }

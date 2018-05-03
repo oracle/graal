@@ -43,12 +43,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
+import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
 public abstract class LLVMNativeDispatchNode extends LLVMNode {
@@ -110,13 +111,13 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         return nativeArgs;
     }
 
-    @Specialization(guards = "function.getVal() == cachedFunction.getVal()")
+    @Specialization(guards = "function.asNative() == cachedFunction.asNative()")
     @SuppressWarnings("unused")
-    protected Object doCached(LLVMAddress function, Object[] arguments,
+    protected Object doCached(LLVMNativePointer function, Object[] arguments,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("function") LLVMAddress cachedFunction,
+                    @Cached("function") LLVMNativePointer cachedFunction,
                     @Cached("identityFunction()") TruffleObject identity,
-                    @Cached("dispatchIdentity(identity, cachedFunction.getVal())") TruffleObject nativeFunctionHandle,
+                    @Cached("dispatchIdentity(identity, cachedFunction.asNative())") TruffleObject nativeFunctionHandle,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
@@ -129,7 +130,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     }
 
     @Specialization
-    protected Object doGeneric(LLVMAddress function, Object[] arguments,
+    protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context,
                     @Cached("identityFunction()") TruffleObject identity,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
@@ -138,7 +139,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
         try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.getVal()), nativeArgs, null);
+            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCallNode, dispatchIdentity(identity, function.asNative()), nativeArgs, null);
         }
         return fromNative.executeConvert(returnValue);
     }

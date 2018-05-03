@@ -36,8 +36,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild("a"), @NodeChild("src"), @NodeChild("dst")})
 public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
@@ -135,10 +135,10 @@ public abstract class LLVMAMD64CmpXchgNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, LLVMAddress a, LLVMAddress src, LLVMAddress dst) {
-            long result = a.getVal() - dst.getVal();
-            boolean carry = Long.compareUnsigned(a.getVal(), dst.getVal()) < 0;
-            boolean adjust = (((a.getVal() ^ dst.getVal()) ^ result) & 0x10) != 0;
+        protected Object doOp(VirtualFrame frame, LLVMNativePointer a, LLVMNativePointer src, LLVMNativePointer dst) {
+            long result = a.asNative() - dst.asNative();
+            boolean carry = Long.compareUnsigned(a.asNative(), dst.asNative()) < 0;
+            boolean adjust = (((a.asNative() ^ dst.asNative()) ^ result) & 0x10) != 0;
             flags.execute(frame, false, carry, adjust, result);
             if (profile.profile(a.equals(dst))) {
                 out1.execute(frame, src);

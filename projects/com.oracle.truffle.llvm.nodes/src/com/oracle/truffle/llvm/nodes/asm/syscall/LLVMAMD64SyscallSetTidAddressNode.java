@@ -31,8 +31,8 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOperationNode {
 
@@ -42,17 +42,17 @@ public abstract class LLVMAMD64SyscallSetTidAddressNode extends LLVMSyscallOpera
     }
 
     @Specialization
-    protected long doOp(LLVMAddress tidptr) {
+    protected long doOp(LLVMNativePointer tidptr) {
         return exec(tidptr);
     }
 
     @Specialization
     protected long doOp(long tidptr) {
-        return doOp(LLVMAddress.fromLong(tidptr));
+        return doOp(LLVMNativePointer.create(tidptr));
     }
 
     @TruffleBoundary
-    private long exec(LLVMAddress tidptr) {
+    private long exec(LLVMNativePointer tidptr) {
         getContextReference().get().setClearChildTid(tidptr);
         return Thread.currentThread().getId();
     }

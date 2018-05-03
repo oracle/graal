@@ -50,7 +50,8 @@ extern char **environ;
 char *__progname;
 static Elf64_auxv_t *__auxv;
 long *__sulong_start_arguments = NULL;
-const size_t _DYNAMIC[1];
+
+__attribute__((visibility("hidden"))) const size_t _DYNAMIC[1];
 
 int main(int argc, char **argv, char **envp);
 

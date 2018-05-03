@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.nodes.asm.support;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
-public abstract class LLVMAMD64WriteTupelNode extends Node {
+public abstract class LLVMAMD64WriteTupelNode extends LLVMNode {
     @Child private LLVMAMD64WriteValueNode write1;
     @Child private LLVMAMD64WriteValueNode write2;
 

@@ -31,7 +31,7 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
-import com.oracle.truffle.llvm.runtime.vector.LLVMAddressVector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
@@ -261,9 +261,9 @@ abstract class LLVMConstantVectorValueProvider extends LLVMConstantValueProvider
 
     static final class Address extends LLVMConstantVectorValueProvider {
 
-        private final LLVMAddressVector value;
+        private final LLVMPointerVector value;
 
-        Address(LLVMAddressVector value) {
+        Address(LLVMPointerVector value) {
             super(LLVMDebugTypeConstants.ADDRESS_SIZE, value.getLength());
             this.value = value;
         }

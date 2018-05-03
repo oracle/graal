@@ -36,12 +36,12 @@ import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.NodeFields;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalReadNode.ReadObjectNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class, value = "source")})
 @NodeFields({@NodeField(name = "length", type = long.class)})
@@ -64,7 +64,7 @@ public abstract class LLVMStructByValueNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object byValue(VirtualFrame frame, LLVMAddress source) {
+    protected Object byValue(VirtualFrame frame, LLVMPointer source) {
         return byValueImp(frame, source);
     }
 

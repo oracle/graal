@@ -34,50 +34,50 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public abstract class LLVMForeignGetElementPointerNode extends Node {
+public abstract class LLVMForeignGetElementPointerNode extends LLVMNode {
 
-    protected abstract LLVMTruffleObject execute(LLVMInteropType type, LLVMTruffleObject object, Object ident);
+    protected abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, Object ident);
 
     @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent.equals(ident)"})
-    LLVMTruffleObject doCachedStruct(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMTruffleObject object, @SuppressWarnings("unused") String ident,
+    LLVMPointer doCachedStruct(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
                     @Cached("ident") @SuppressWarnings("unused") String cachedIdent,
                     @Cached("struct.findMember(cachedIdent)") LLVMInteropType.StructMember cachedMember) {
-        return object.increment(cachedMember.getStartOffset()).export(cachedMember.getType());
+        return pointer.increment(cachedMember.getStartOffset()).export(cachedMember.getType());
     }
 
     @Specialization(replaces = "doCachedStruct")
-    LLVMTruffleObject doGenericStruct(LLVMInteropType.Struct struct, LLVMTruffleObject object, String ident) {
+    LLVMPointer doGenericStruct(LLVMInteropType.Struct struct, LLVMPointer pointer, String ident) {
         LLVMInteropType.StructMember member = struct.findMember(ident);
         if (member == null) {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.raise(ident);
         }
-        return object.increment(member.getStartOffset()).export(member.getType());
+        return pointer.increment(member.getStartOffset()).export(member.getType());
     }
 
     @Specialization(guards = "array.getElementType() == elementType")
-    LLVMTruffleObject doCachedArray(LLVMInteropType.Array array, LLVMTruffleObject object, long idx,
+    LLVMPointer doCachedArray(LLVMInteropType.Array array, LLVMPointer pointer, long idx,
                     @Cached("array.getElementSize()") long elementSize,
                     @Cached("array.getElementType()") LLVMInteropType elementType) {
         if (Long.compareUnsigned(idx, array.getLength()) >= 0) {
             CompilerDirectives.transferToInterpreter();
             throw UnknownIdentifierException.raise(Long.toString(idx));
         }
-        return object.increment(idx * elementSize).export(elementType);
+        return pointer.increment(idx * elementSize).export(elementType);
     }
 
     @Specialization(replaces = "doCachedArray")
-    LLVMTruffleObject doGenericArray(LLVMInteropType.Array array, LLVMTruffleObject object, long idx) {
-        return doCachedArray(array, object, idx, array.getElementSize(), array.getElementType());
+    LLVMPointer doGenericArray(LLVMInteropType.Array array, LLVMPointer pointer, long idx) {
+        return doCachedArray(array, pointer, idx, array.getElementSize(), array.getElementType());
     }
 
     @Fallback
     @SuppressWarnings("unused")
-    LLVMTruffleObject doError(LLVMInteropType type, LLVMTruffleObject object, Object ident) {
+    LLVMPointer doError(LLVMInteropType type, LLVMPointer object, Object ident) {
         CompilerDirectives.transferToInterpreter();
         throw UnknownIdentifierException.raise(ident.toString());
     }

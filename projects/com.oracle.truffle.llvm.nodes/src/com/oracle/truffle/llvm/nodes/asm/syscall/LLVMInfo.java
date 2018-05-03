@@ -38,8 +38,8 @@ import java.nio.file.Paths;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMString;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public class LLVMInfo {
     // See http://man7.org/linux/man-pages/man2/uname.2.html and
@@ -95,8 +95,8 @@ public class LLVMInfo {
         return readFile("/proc/sys/kernel/domainname", null);
     }
 
-    public static long uname(LLVMMemory memory, LLVMAddress name) {
-        LLVMAddress ptr = name;
+    public static long uname(LLVMMemory memory, LLVMNativePointer name) {
+        LLVMNativePointer ptr = name;
         LLVMString.strcpy(memory, ptr, sysname);
         ptr = ptr.increment(UTS_FIELD_LENGTH);
         LLVMString.strcpy(memory, ptr, getHostname());

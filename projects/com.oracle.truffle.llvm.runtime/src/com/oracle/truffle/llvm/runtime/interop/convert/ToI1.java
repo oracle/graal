@@ -102,13 +102,13 @@ abstract class ToI1 extends ForeignToLLVM {
     @Specialization
     protected boolean fromLLVMFunctionDescriptor(LLVMFunctionDescriptor fd,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-        return toNative.executeWithTarget(fd).getVal() != 0;
+        return toNative.executeWithTarget(fd).asNative() != 0;
     }
 
     @Specialization
     protected boolean fromSharedDescriptor(LLVMSharedGlobalVariable shared,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode access) {
-        return access.executeWithTarget(shared.getDescriptor()).getVal() != 0;
+        return access.executeWithTarget(shared.getDescriptor()).asNative() != 0;
     }
 
     @Specialization(guards = "notLLVM(obj)")
@@ -144,7 +144,7 @@ abstract class ToI1 extends ForeignToLLVM {
             return slowPathPrimitiveConvert(memory, thiz, ((LLVMBoxedPrimitive) value).getValue());
         } else if (value instanceof LLVMSharedGlobalVariable) {
             LLVMContext context = LLVMLanguage.getLLVMContextReference().get();
-            return LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).getVal() != 0;
+            return LLVMGlobal.toNative(context, memory, ((LLVMSharedGlobalVariable) value).getDescriptor()).asNative() != 0;
         } else if (value instanceof TruffleObject && notLLVM((TruffleObject) value)) {
             return slowPathPrimitiveConvert(memory, thiz, thiz.fromForeign((TruffleObject) value));
         } else {

@@ -32,9 +32,9 @@ package com.oracle.truffle.llvm.nodes.asm.syscall;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMString;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNode {
 
@@ -44,7 +44,7 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNod
     }
 
     @Specialization
-    protected long doOp(LLVMAddress buf, long size,
+    protected long doOp(LLVMNativePointer buf, long size,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         String cwd = LLVMPath.getcwd();
         if (cwd.length() >= size) {
@@ -58,6 +58,6 @@ public abstract class LLVMAMD64SyscallGetcwdNode extends LLVMSyscallOperationNod
     @Specialization
     protected long doOp(long buf, long size,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return doOp(LLVMAddress.fromLong(buf), size, memory);
+        return doOp(LLVMNativePointer.create(buf), size, memory);
     }
 }

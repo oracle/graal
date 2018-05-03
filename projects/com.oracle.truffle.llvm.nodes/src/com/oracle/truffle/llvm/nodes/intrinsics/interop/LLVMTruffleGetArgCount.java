@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,8 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
-public interface NativeAllocator {
-    LLVMAddress allocate();
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.func.LLVMCallNode;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+
+@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
+public abstract class LLVMTruffleGetArgCount extends LLVMIntrinsic {
+
+    @Override
+    public abstract LLVMSourceLocation getSourceLocation();
+
+    @Specialization
+    protected Object doIntrinsic(VirtualFrame frame) {
+        return frame.getArguments().length - LLVMCallNode.USER_ARGUMENT_OFFSET;
+    }
 }

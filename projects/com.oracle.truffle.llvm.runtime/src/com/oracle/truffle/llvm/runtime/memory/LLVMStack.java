@@ -93,7 +93,7 @@ public final class LLVMStack {
 
     @TruffleBoundary
     private void allocate(LLVMMemory memory) {
-        final long stackAllocation = memory.allocateMemory(stackSize * 1024).getVal();
+        final long stackAllocation = memory.allocateMemory(stackSize * 1024).asNative();
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + stackSize * 1024;
         isAllocated = true;

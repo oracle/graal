@@ -51,6 +51,7 @@ void *truffle_release_handle(void *nativeHandle);
 void *truffle_managed_from_handle(void *nativeHandle);
 bool truffle_is_handle_to_managed(void *nativeHandle);
 void *truffle_assign_managed(void *dst, void *managed);
+void *truffle_deref_handle_for_managed(void *managed);
 
 /*
  * All function below here are deprecated and will be removed in a future release.

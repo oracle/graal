@@ -33,14 +33,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.UnsafeArrayAccess;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class),
                 @NodeChild(type = LLVMExpressionNode.class)})
@@ -54,7 +53,7 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected Object doOp(LLVMAddress address, byte value, int length, int align, boolean isVolatile) {
+    protected Object doOp(LLVMPointer address, byte value, int length, int align, boolean isVolatile) {
         memSet.executeWithTarget(address, value, length);
         return address;
     }
@@ -69,7 +68,7 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
 
     @SuppressWarnings("unused")
     @Specialization
-    protected Object doOp(LLVMAddress address, byte value, long length, int align, boolean isVolatile) {
+    protected Object doOp(LLVMPointer address, byte value, long length, int align, boolean isVolatile) {
         memSet.executeWithTarget(address, value, length);
         return address;
     }
@@ -89,20 +88,6 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
         for (int i = 0; i < length; i++) {
             address.writeI8(memory, value);
         }
-        return address;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doOp(LLVMTruffleObject address, byte value, int length, int align, boolean isVolatile) {
-        memSet.executeWithTarget(address, value, length);
-        return address;
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization
-    protected Object doOp(LLVMTruffleObject address, byte value, long length, int align, boolean isVolatile) {
-        memSet.executeWithTarget(address, value, length);
         return address;
     }
 }

@@ -32,28 +32,28 @@ package com.oracle.truffle.llvm.nodes.func;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeField(name = "index", type = int.class)
 public abstract class LLVMArgNode extends LLVMExpressionNode {
 
     public abstract int getIndex();
 
-    @Specialization(guards = "isAddress(frame)")
-    protected Object doPointee(VirtualFrame frame) {
+    @Specialization(guards = "isPointer(frame)")
+    protected Object doPointer(VirtualFrame frame) {
         /*
          * Copying the address objects prevents that otherwise virtualized objects that are used in
          * a phi together with a materialized passed address object also have to be materialized.
          */
-        return ((LLVMAddress) frame.getArguments()[getIndex()]).copy();
+        return LLVMPointer.cast(frame.getArguments()[getIndex()]).copy();
     }
 
-    public boolean isAddress(VirtualFrame frame) {
-        return frame.getArguments()[getIndex()] instanceof LLVMAddress;
+    public boolean isPointer(VirtualFrame frame) {
+        return LLVMPointer.isInstance(frame.getArguments()[getIndex()]);
     }
 
-    @Specialization(guards = "!isAddress(frame)")
+    @Specialization(guards = "!isPointer(frame)")
     protected Object doObject(VirtualFrame frame) {
         return frame.getArguments()[getIndex()];
     }

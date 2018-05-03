@@ -37,12 +37,12 @@ import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNode;
 import com.oracle.truffle.llvm.nodes.memory.load.LLVMI32LoadNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNode;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren(value = {@NodeChild(type = LLVMExpressionNode.class, value = "pointerNode"), @NodeChild(type = LLVMExpressionNode.class, value = "valueNode")})
 public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
@@ -58,20 +58,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWXchgNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndSetI32(adr, value);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndSetI32(address, value);
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -85,20 +85,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWAddNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndAddI32(adr, value);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndAddI32(address, value);
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -112,20 +112,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWSubNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndSubI32(adr, value);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndSubI32(address, value);
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -139,20 +139,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWAndNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI32(adr, value, (a, b) -> a & b);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI32(address, value, (a, b) -> a & b);
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -166,20 +166,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWNandNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI32(adr, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI32(address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -193,20 +193,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWOrNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI32(adr, value, (a, b) -> a | b);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI32(address, value, (a, b) -> a | b);
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {
@@ -220,20 +220,20 @@ public abstract class LLVMI32RMWNode extends LLVMExpressionNode {
     public abstract static class LLVMI32RMWXorNode extends LLVMI32RMWNode {
         @Specialization
         protected int doOp(LLVMGlobal address, int value,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
-            LLVMAddress adr = globalAccess.executeWithTarget(address);
+            LLVMNativePointer adr = toNative.executeWithTarget(address);
             return memory.getAndOpI32(adr, value, (a, b) -> a ^ b);
         }
 
         @Specialization
-        protected int doOp(LLVMAddress address, int value,
+        protected int doOp(LLVMNativePointer address, int value,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return memory.getAndOpI32(address, value, (a, b) -> a ^ b);
         }
 
         @Specialization
-        protected int doOp(LLVMTruffleObject address, int value,
+        protected int doOp(LLVMManagedPointer address, int value,
                         @Cached("createRead()") LLVMI32LoadNode read,
                         @Cached("createWrite()") LLVMI32StoreNode write) {
             synchronized (address.getObject()) {

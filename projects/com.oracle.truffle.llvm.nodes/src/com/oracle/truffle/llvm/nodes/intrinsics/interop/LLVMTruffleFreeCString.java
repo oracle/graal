@@ -35,15 +35,15 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
 public abstract class LLVMTruffleFreeCString extends LLVMIntrinsic {
 
     @Specialization
-    protected Object doIntrinsic(LLVMAddress value,
+    protected Object doIntrinsic(LLVMNativePointer value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         memory.free(value);
         return null;

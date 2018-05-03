@@ -42,7 +42,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetFrame;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetNativePointer;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.GetSlot;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.IsNative;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal.Native;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteDoubleNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteFloatNodeGen;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteI16NodeGen;
@@ -54,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalWriteNodeFactory.WriteOb
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public abstract class LLVMGlobalWriteNode extends LLVMNode {
@@ -89,8 +89,8 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
     public static void slowPrimitiveWrite(LLVMContext context, LLVMMemory memory, PrimitiveType primitiveType, LLVMGlobal global, Object value) {
         MaterializedFrame frame = context.getGlobalFrame();
         FrameSlot slot = global.getSlot();
-        boolean isNative = frame.getValue(slot) instanceof Native;
-        long address = isNative ? ((Native) frame.getValue(slot)).getPointer() : 0;
+        boolean isNative = LLVMNativePointer.isInstance(frame.getValue(slot));
+        long address = isNative ? LLVMNativePointer.cast(frame.getValue(slot)).asNative() : 0;
         switch (primitiveType.getPrimitiveKind()) {
             case I1:
                 if (isNative) {
@@ -157,7 +157,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
         protected Object doFrame(LLVMGlobal global, Object value,
                         @Cached("create()") GetFrame getFrame,
                         @Cached("create()") GetSlot getSlot) {
-            getFrame.execute(getContext()).setObject(getSlot.execute(global), value);
+            getFrame.execute(getContext()).setObject(getSlot.execute(global), LLVMGlobal.toManagedStore(value));
             return value;
         }
 
@@ -165,7 +165,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
         protected Object doNative(LLVMGlobal global, Object value,
                         @Cached("create()") GetNativePointer getPointer,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
-            getMemory().putAddress(getPointer.execute(getContext(), global), toNative.executeWithTarget(value));
+            getMemory().putPointer(getPointer.execute(getContext(), global), toNative.executeWithTarget(value));
             return value;
         }
     }

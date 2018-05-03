@@ -36,11 +36,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMAddress;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -57,12 +57,12 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
     @Specialization
     protected Object doOp(LLVMGlobal panicLocVar,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("createPanicLocation()") PanicLocType panicLoc,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        LLVMAddress addr = globalAccess.executeWithTarget(panicLocVar);
+        LLVMNativePointer pointer = toNative.executeWithTarget(panicLocVar);
         CompilerDirectives.transferToInterpreter();
-        throw panicLoc.read(memory, addr.getVal());
+        throw panicLoc.read(memory, pointer.asNative());
     }
 
     static final class PanicLocType {
@@ -106,7 +106,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
         @TruffleBoundary
         String read(LLVMMemory memory, long address) {
-            long strAddr = memory.getAddress(address).getVal();
+            long strAddr = memory.getPointer(address).asNative();
             int strLen = memory.getI32(address + lengthOffset);
             StringBuilder strBuilder = new StringBuilder();
             for (int i = 0; i < strLen; i++) {

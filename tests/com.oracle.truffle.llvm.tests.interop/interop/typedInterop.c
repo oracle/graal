@@ -65,3 +65,16 @@ void fillNested(void *arg) {
     nested = nested->next;
   }
 }
+
+struct BitFields {
+  int x : 4;
+  int y : 3;
+  int z;
+};
+
+POLYGLOT_DECLARE_STRUCT(BitFields)
+
+int accessBitFields(void *arg) {
+	struct BitFields *obj = polyglot_as_BitFields(arg);
+	return obj->x + obj->y + obj->z;
+}

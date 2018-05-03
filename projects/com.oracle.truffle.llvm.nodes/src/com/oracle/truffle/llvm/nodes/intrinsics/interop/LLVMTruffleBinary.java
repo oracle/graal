@@ -39,8 +39,8 @@ import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 public final class LLVMTruffleBinary {
     @NodeChildren({@NodeChild(type = LLVMExpressionNode.class)})
@@ -50,7 +50,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsBoxed = Message.IS_BOXED.createNode();
 
         @Specialization
-        protected boolean doIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
             TruffleObject foreign = asForeign.execute(value);
             return foreign != null && ForeignAccess.sendIsBoxed(foreignIsBoxed, foreign);
         }
@@ -68,7 +68,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsExecutable = Message.IS_EXECUTABLE.createNode();
 
         @Specialization
-        protected boolean doIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
             TruffleObject foreign = asForeign.execute(value);
             return foreign != null && ForeignAccess.sendIsExecutable(foreignIsExecutable, foreign);
         }
@@ -86,7 +86,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignIsNull = Message.IS_NULL.createNode();
 
         @Specialization
-        protected boolean doIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
             TruffleObject foreign = asForeign.execute(value);
             return foreign != null && ForeignAccess.sendIsNull(foreignIsNull, foreign);
         }
@@ -104,7 +104,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignHasSize = Message.HAS_SIZE.createNode();
 
         @Specialization
-        protected boolean doIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
             TruffleObject foreign = asForeign.execute(value);
             return foreign != null && ForeignAccess.sendHasSize(foreignHasSize, foreign);
         }
@@ -122,7 +122,7 @@ public final class LLVMTruffleBinary {
         @Child private Node foreignHasKeys = Message.HAS_KEYS.createNode();
 
         @Specialization
-        protected boolean doIntrinsic(LLVMTruffleObject value) {
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
             TruffleObject foreign = asForeign.execute(value);
             return foreign != null && ForeignAccess.sendHasKeys(foreignHasKeys, foreign);
         }

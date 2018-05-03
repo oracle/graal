@@ -46,8 +46,8 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.Floa
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.X86FP80Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
+import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
@@ -164,8 +164,12 @@ final class LLVMRuntimeDebugInformation {
         }
 
         @Override
-        public void visit(GlobalConstant constant) {
-            visitSimpleConstant(constant);
+        public void visit(GlobalVariable global) {
+            if (global.isReadOnly()) {
+                visitSimpleConstant(global);
+            } else {
+                super.visit(global);
+            }
         }
 
         @Override

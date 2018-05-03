@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.export;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.CanResolve;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -42,21 +43,29 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.LLVMTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMTruffleObjectMessageResolutionFactory.AsPointerCachedNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMTruffleObjectMessageResolutionFactory.IsPointerCachedNodeGen;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMTruffleObjectMessageResolutionFactory.ToNativeCachedNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.AsPointerCachedNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.IsPointerCachedNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.ToNativeCachedNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@MessageResolution(receiverType = LLVMTruffleObject.class)
-public class LLVMTruffleObjectMessageResolution {
+@MessageResolution(receiverType = LLVMPointer.class)
+public class LLVMPointerMessageResolution {
+
+    @CanResolve
+    public abstract static class IsInstance extends Node {
+
+        protected boolean test(TruffleObject receiver) {
+            return LLVMPointer.isInstance(receiver);
+        }
+    }
 
     @Resolve(message = "IS_NULL")
     public abstract static class IsNull extends Node {
 
-        protected boolean access(LLVMTruffleObject receiver) {
-            return receiver.getObject() == null && receiver.getOffset() == 0;
+        protected boolean access(LLVMPointer receiver) {
+            return receiver.isNull();
         }
     }
 
@@ -65,7 +74,7 @@ public class LLVMTruffleObjectMessageResolution {
 
         @Child IsPointerCached isPointer = IsPointerCachedNodeGen.create();
 
-        protected boolean access(LLVMTruffleObject receiver) {
+        protected boolean access(LLVMPointer receiver) {
             return isPointer.execute(receiver);
         }
     }
@@ -92,7 +101,7 @@ public class LLVMTruffleObjectMessageResolution {
 
         @Child AsPointerCached asPointer = AsPointerCachedNodeGen.create();
 
-        protected long access(LLVMTruffleObject receiver) {
+        protected long access(LLVMPointer receiver) {
             return asPointer.execute(receiver);
         }
     }
@@ -127,7 +136,7 @@ public class LLVMTruffleObjectMessageResolution {
 
         @Child ToNativeCached toNative = ToNativeCachedNodeGen.create();
 
-        protected Object access(LLVMTruffleObject receiver) {
+        protected Object access(LLVMPointer receiver) {
             return toNative.execute(receiver);
         }
     }
@@ -160,7 +169,7 @@ public class LLVMTruffleObjectMessageResolution {
     @Resolve(message = "HAS_SIZE")
     public abstract static class HasSize extends Node {
 
-        protected boolean access(LLVMTruffleObject receiver) {
+        protected boolean access(LLVMPointer receiver) {
             return receiver.getExportType() instanceof LLVMInteropType.Array;
         }
     }
@@ -168,7 +177,7 @@ public class LLVMTruffleObjectMessageResolution {
     @Resolve(message = "GET_SIZE")
     public abstract static class GetSize extends Node {
 
-        protected long access(LLVMTruffleObject receiver) {
+        protected long access(LLVMPointer receiver) {
             if (!(receiver.getExportType() instanceof LLVMInteropType.Array)) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedMessageException.raise(Message.GET_SIZE);
@@ -182,7 +191,7 @@ public class LLVMTruffleObjectMessageResolution {
     @Resolve(message = "HAS_KEYS")
     public abstract static class HasKeys extends Node {
 
-        protected boolean access(LLVMTruffleObject receiver) {
+        protected boolean access(LLVMPointer receiver) {
             return receiver.getExportType() instanceof LLVMInteropType.Struct;
         }
     }
@@ -190,7 +199,7 @@ public class LLVMTruffleObjectMessageResolution {
     @Resolve(message = "KEYS")
     public abstract static class GetKeys extends Node {
 
-        protected TruffleObject access(LLVMTruffleObject receiver) {
+        protected TruffleObject access(LLVMPointer receiver) {
             if (!(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
                 CompilerDirectives.transferToInterpreter();
                 throw UnsupportedMessageException.raise(Message.KEYS);
@@ -204,7 +213,7 @@ public class LLVMTruffleObjectMessageResolution {
     @Resolve(message = "KEY_INFO")
     public abstract static class GetKeyInfo extends Node {
 
-        protected int access(LLVMTruffleObject receiver, String ident) {
+        protected int access(LLVMPointer receiver, String ident) {
             if (!(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
                 return KeyInfo.NONE;
             }
@@ -224,7 +233,7 @@ public class LLVMTruffleObjectMessageResolution {
             }
         }
 
-        protected int access(LLVMTruffleObject receiver, Number key) {
+        protected int access(LLVMPointer receiver, Number key) {
             if (!(receiver.getExportType() instanceof LLVMInteropType.Array)) {
                 return KeyInfo.NONE;
             }
@@ -251,13 +260,13 @@ public class LLVMTruffleObjectMessageResolution {
         @Child LLVMForeignGetElementPointerNode getElementPointer = LLVMForeignGetElementPointerNodeGen.create();
         @Child LLVMForeignAccessNode.Read read = LLVMForeignAccessNode.createRead();
 
-        protected Object access(LLVMTruffleObject receiver, String ident) {
-            LLVMTruffleObject ptr = getElementPointer.execute(receiver.getExportType(), receiver, ident);
+        protected Object access(LLVMPointer receiver, String ident) {
+            LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), receiver, ident);
             return read.execute(ptr, ptr.getExportType());
         }
 
-        protected Object access(LLVMTruffleObject receiver, Number idx) {
-            LLVMTruffleObject ptr = getElementPointer.execute(receiver.getExportType(), receiver, idx.longValue());
+        protected Object access(LLVMPointer receiver, Number idx) {
+            LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), receiver, idx.longValue());
             return read.execute(ptr, ptr.getExportType());
         }
     }
@@ -268,19 +277,19 @@ public class LLVMTruffleObjectMessageResolution {
         @Child LLVMForeignGetElementPointerNode getElementPointer = LLVMForeignGetElementPointerNodeGen.create();
         @Child LLVMForeignAccessNode.Write write = LLVMForeignAccessNode.createWrite();
 
-        protected Object access(LLVMTruffleObject receiver, String ident, Object value) {
-            LLVMTruffleObject ptr = getElementPointer.execute(receiver.getExportType(), receiver, ident);
+        protected Object access(LLVMPointer receiver, String ident, Object value) {
+            LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), receiver, ident);
             doWrite(ptr, value);
             return value;
         }
 
-        protected Object access(LLVMTruffleObject receiver, Number idx, Object value) {
-            LLVMTruffleObject ptr = getElementPointer.execute(receiver.getExportType(), receiver, idx.longValue());
+        protected Object access(LLVMPointer receiver, Number idx, Object value) {
+            LLVMPointer ptr = getElementPointer.execute(receiver.getExportType(), receiver, idx.longValue());
             doWrite(ptr, value);
             return value;
         }
 
-        private void doWrite(LLVMTruffleObject ptr, Object value) {
+        private void doWrite(LLVMPointer ptr, Object value) {
             LLVMInteropType type = ptr.getExportType();
             if (!(type instanceof LLVMInteropType.Value)) {
                 // embedded structured type, write not possible
