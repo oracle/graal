@@ -787,7 +787,7 @@ def cinterfacetutorial(native_image, args=None):
     mkpath(buildDir)
 
     # Build the shared library from Java code
-    native_image(['-shared', '-H:Path=' + buildDir, '-H:Name=libcinterfacetutorial',
+    native_image(['--shared', '-H:Path=' + buildDir, '-H:Name=libcinterfacetutorial',
                   '-H:CLibraryPath=' + tutorial_proj.dir, '-cp', tutorial_proj.output_dir()] + args)
 
     # Build the C executable
