@@ -28,7 +28,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.unsafeCast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -40,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
@@ -76,13 +73,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(java.lang.Object.class)
@@ -123,84 +120,6 @@ final class Target_java_lang_Object {
     private void notifyAllSubst() {
         ImageSingletons.lookup(MonitorSupport.class).notify(this, true);
     }
-}
-
-@TargetClass(java.lang.ClassLoader.class)
-@Substitute
-@SuppressWarnings("static-method")
-final class Target_java_lang_ClassLoader {
-    /*
-     * Substituting the whole class allows us to have fields of declared type ClassLoader, but still
-     * get an error if anyone tries to access a field or call a method on it that we have not
-     * explicitly substituted below.
-     */
-
-    @Substitute
-    private InputStream getResourceAsStream(String name) {
-        return getSystemResourceAsStream(name);
-    }
-
-    @Substitute
-    private static InputStream getSystemResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
-    }
-
-    @Substitute
-    private URL getResource(String name) {
-        return getSystemResource(name);
-    }
-
-    @Substitute
-    private static URL getSystemResource(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, new ByteArrayInputStream(arr.get(0)));
-    }
-
-    @Substitute
-    private Enumeration<URL> getResources(String name) {
-        return getSystemResources(name);
-    }
-
-    @Substitute
-    private static Enumeration<URL> getSystemResources(String name) {
-        List<byte[]> arr = Resources.get(name);
-        if (arr == null) {
-            return Collections.emptyEnumeration();
-        }
-        List<URL> res = new ArrayList<>(arr.size());
-        for (byte[] data : arr) {
-            res.add(Resources.createURL(name, new ByteArrayInputStream(data)));
-        }
-        return Collections.enumeration(res);
-    }
-
-    @Substitute
-    public static ClassLoader getSystemClassLoader() {
-        /*
-         * ClassLoader.getSystemClassLoader() is used as a parameter for Class.forName(String,
-         * boolean, ClassLoader) which is implemented as ClassForNameSupport.forName(name) and
-         * ignores the class loader.
-         */
-        return null;
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
-        NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
-    }
-
-    @Substitute
-    private Class<?> loadClass(String name) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name);
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
-    }
-
 }
 
 @TargetClass(className = "java.lang.ClassLoaderHelper")
@@ -805,6 +724,13 @@ final class Target_java_lang_Package {
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static class ClassLoaderSupport {
+        public Map<ClassLoader, Target_java_lang_ClassLoader> classloaders = Collections.synchronizedMap(new IdentityHashMap<>());
+    }
+
+
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final class ClassValueSupport {
         final Map<ClassValue<?>, Map<Class<?>, Object>> values;
