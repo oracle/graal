@@ -53,11 +53,11 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
     }
 
     public Stamp getSucceedingStampForValue(boolean negated, Stamp valueStamp) {
-        Stamp stamp = getSucceedingStampForValue(negated);
-        if (stamp != null) {
-            stamp = stamp.join(valueStamp);
+        Stamp succStamp = getSucceedingStampForValue(negated);
+        if (succStamp != null) {
+            succStamp = succStamp.join(valueStamp);
         }
-        return stamp;
+        return succStamp;
     }
 
     public abstract Stamp getSucceedingStampForValue(boolean negated);
