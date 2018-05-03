@@ -35,11 +35,13 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.util.FileUtils;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -66,7 +68,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
-                case EXECUTABLE:
+                case STATIC_EXECUTABLE:
+                    cmd.add("-static");
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
@@ -86,8 +89,8 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         @Override
         protected void setOutputKind(List<String> cmd) {
             switch (kind) {
-                case EXECUTABLE:
-                    break;
+                case STATIC_EXECUTABLE:
+                    throw UserError.abort(OS.getCurrent().name() + " does not support building static executable images.");
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
                     if (Platform.includedIn(Platform.DARWIN.class)) {

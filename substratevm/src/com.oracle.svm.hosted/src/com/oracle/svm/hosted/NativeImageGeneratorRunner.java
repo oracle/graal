@@ -216,10 +216,10 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             JavaMainSupport javaMainSupport = null;
 
             AbstractBootImage.NativeImageKind k = AbstractBootImage.NativeImageKind.valueOf(NativeImageOptions.Kind.getValue(parsedHostedOptions));
-            if (k == AbstractBootImage.NativeImageKind.EXECUTABLE) {
+            if (k.executable) {
                 String className = NativeImageOptions.Class.getValue(parsedHostedOptions);
                 if (className == null || className.length() == 0) {
-                    throw UserError.abort("Must specify main entry point class when building " + AbstractBootImage.NativeImageKind.EXECUTABLE + " native image. " +
+                    throw UserError.abort("Must specify main entry point class when building " + k + " native image. " +
                                     "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Class, "<fully-qualified-class-name>") + "'.");
                 }
                 Class<?> mainClass;
@@ -231,7 +231,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
                 String mainEntryPointName = NativeImageOptions.Method.getValue(parsedHostedOptions);
                 if (mainEntryPointName == null || mainEntryPointName.length() == 0) {
-                    throw UserError.abort("Must specify main entry point method when building " + AbstractBootImage.NativeImageKind.EXECUTABLE + " native image. " +
+                    throw UserError.abort("Must specify main entry point method when building " + k + " native image. " +
                                     "Use '" + SubstrateOptionsParser.commandArgument(NativeImageOptions.Method, "<method-name>") + "'.");
                 }
 

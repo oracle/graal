@@ -53,7 +53,8 @@ public class NativeImageOptions {
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
 
     @APIOption(name = "shared", defaultValue = {"SHARED_LIBRARY"}, defaultValueFinal = true, customHelp = "build shared library")//
-    @Option(help = "Generate a SHARED_LIBRARY or EXECUTABLE image")//
+    @APIOption(name = "static", defaultValue = {"STATIC_EXECUTABLE"}, defaultValueFinal = true, customHelp = "build statically linked executable")//
+    @Option(help = "Generate a SHARED_LIBRARY, EXECUTABLE or STATIC_EXECUTABLE image")//
     public static final HostedOptionKey<String> Kind = new HostedOptionKey<>(AbstractBootImage.NativeImageKind.EXECUTABLE.name());
 
     @Option(help = "Comma separated list of CPU features that will be used for image generation on the AMD64 platform. " +

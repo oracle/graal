@@ -46,7 +46,7 @@ public abstract class AbstractBootImage {
     protected int resultingImageSize; // for statistical output
 
     public enum NativeImageKind {
-        SHARED_LIBRARY {
+        SHARED_LIBRARY(false) {
             @Override
             public String getFilenameSuffix() {
                 switch (ObjectFile.getNativeFormat()) {
@@ -66,21 +66,25 @@ public abstract class AbstractBootImage {
                 return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? "" : "lib";
             }
         },
-        EXECUTABLE {
-            @Override
-            public String getFilenameSuffix() {
+        EXECUTABLE(true),
+        STATIC_EXECUTABLE(true);
+
+        public final boolean executable;
+
+        NativeImageKind(boolean executable) {
+            this.executable = executable;
+        }
+
+        public String getFilenameSuffix() {
+            if (executable) {
                 return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
             }
+            return "";
+        }
 
-            @Override
-            public String getFilenamePrefix() {
-                return "";
-            }
-        };
-
-        public abstract String getFilenameSuffix();
-
-        public abstract String getFilenamePrefix();
+        public String getFilenamePrefix() {
+            return "";
+        }
 
         public String getFilename(String basename) {
             return getFilenamePrefix() + basename + getFilenameSuffix();
@@ -138,10 +142,9 @@ public abstract class AbstractBootImage {
         switch (k) {
             case SHARED_LIBRARY:
                 return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
-            case EXECUTABLE:
-                return new ExecutableViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
+            default:
+                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
         }
-        return null;
     }
 
     public abstract String[] makeLaunchCommand(AbstractBootImage.NativeImageKind k, String imageName, Path binPath, Path workPath, java.lang.reflect.Method method);
