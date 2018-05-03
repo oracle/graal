@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -67,11 +67,8 @@ public final class LLVMParser {
 
     public LLVMParserResult parse(ModelModule module) {
         TargetDataLayout layout = module.getTargetDataLayout();
-        DataLayoutConverter.DataSpecConverterImpl targetDataLayout = DataLayoutConverter.getConverter(layout.getDataLayout());
-        // TODO (chaeubl): GR-9593 - this is dangerous as multiple bitcode files don't necessarily
-        // have the same data layout - we should at least add proper assertions, and we might also
-        // have to merge the layout information
-        runtime.getContext().setDataLayoutConverter(targetDataLayout);
+        DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
+        runtime.getContext().addDataLayout(targetDataLayout);
 
         List<GlobalVariable> externalGlobals = new ArrayList<>();
         List<GlobalVariable> definedGlobals = new ArrayList<>();

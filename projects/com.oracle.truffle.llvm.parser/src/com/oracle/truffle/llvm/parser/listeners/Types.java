@@ -33,9 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.records.Records;
 import com.oracle.truffle.llvm.parser.records.TypesRecord;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
-import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.OpaqueType;
@@ -282,13 +282,13 @@ public final class Types implements ParserListener, Iterable<Type> {
         }
 
         @Override
-        public int getAlignment(DataSpecConverter targetDataLayout) {
+        public int getAlignment(DataLayout targetDataLayout) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Unresolved Forward-Referenced Type!");
         }
 
         @Override
-        public int getSize(DataSpecConverter targetDataLayout) {
+        public int getSize(DataLayout targetDataLayout) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Unresolved Forward-Referenced Type!");
         }

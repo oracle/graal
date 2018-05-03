@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
@@ -50,9 +51,9 @@ public abstract class Type {
 
     public abstract void accept(TypeVisitor visitor);
 
-    public abstract int getAlignment(DataSpecConverter targetDataLayout);
+    public abstract int getAlignment(DataLayout targetDataLayout);
 
-    public abstract int getSize(DataSpecConverter targetDataLayout);
+    public abstract int getSize(DataLayout targetDataLayout);
 
     public abstract Type shallowCopy();
 
@@ -173,7 +174,7 @@ public abstract class Type {
         return (int) (alignment == 0 ? 0 : (alignment - (offset % alignment)) % alignment);
     }
 
-    public static int getPadding(long offset, Type type, DataSpecConverter targetDataLayout) {
+    public static int getPadding(long offset, Type type, DataLayout targetDataLayout) {
         final int alignment = type.getAlignment(targetDataLayout);
         return getPadding(offset, alignment);
     }

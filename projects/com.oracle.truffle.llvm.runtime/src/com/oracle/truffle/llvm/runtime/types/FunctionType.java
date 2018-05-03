@@ -37,6 +37,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class FunctionType extends Type {
@@ -87,7 +88,7 @@ public final class FunctionType extends Type {
     }
 
     @Override
-    public int getAlignment(DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayout targetDataLayout) {
         if (targetDataLayout != null) {
             return targetDataLayout.getBitAlignment(this) / Byte.SIZE;
         } else {
@@ -96,7 +97,7 @@ public final class FunctionType extends Type {
     }
 
     @Override
-    public int getSize(DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayout targetDataLayout) {
         return LLVMNode.ADDRESS_SIZE_IN_BYTES;
     }
 

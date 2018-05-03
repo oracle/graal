@@ -36,12 +36,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 public abstract class LLVMPanic extends LLVMIntrinsic {
 
     protected PanicLocType createPanicLocation() {
-        DataSpecConverter dataSpecConverter = getContextReference().get().getDataSpecConverter();
+        DataLayout dataSpecConverter = getContextReference().get().getDataSpecConverter();
         return PanicLocType.create(dataSpecConverter);
     }
 
@@ -71,7 +71,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         private final long offsetFilename;
         private final long offsetLineNr;
 
-        private PanicLocType(DataSpecConverter dataLayout, Type type, StrSliceType strslice) {
+        private PanicLocType(DataLayout dataLayout, Type type, StrSliceType strslice) {
             this.strslice = strslice;
             StructureType structureType = (StructureType) ((PointerType) type).getElementType(0);
             this.offsetFilename = structureType.getOffsetOf(1, dataLayout);
@@ -86,7 +86,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             return new RustPanicException(desc, filename, linenr);
         }
 
-        static PanicLocType create(DataSpecConverter dataLayout) {
+        static PanicLocType create(DataLayout dataLayout) {
             CompilerAsserts.neverPartOfCompilation();
             StrSliceType strslice = StrSliceType.create(dataLayout);
             Type type = new PointerType((new StructureType(false, new Type[]{strslice.getType(), strslice.getType(), PrimitiveType.I32})));
@@ -99,7 +99,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         private final long lengthOffset;
         private final Type type;
 
-        private StrSliceType(DataSpecConverter dataLayout, Type type) {
+        private StrSliceType(DataLayout dataLayout, Type type) {
             this.lengthOffset = ((StructureType) type).getOffsetOf(1, dataLayout);
             this.type = type;
         }
@@ -120,7 +120,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
             return type;
         }
 
-        static StrSliceType create(DataSpecConverter dataLayout) {
+        static StrSliceType create(DataLayout dataLayout) {
             Type type = new StructureType(false, new Type[]{new PointerType(PrimitiveType.I8), PrimitiveType.I64});
             return new StrSliceType(dataLayout, type);
         }

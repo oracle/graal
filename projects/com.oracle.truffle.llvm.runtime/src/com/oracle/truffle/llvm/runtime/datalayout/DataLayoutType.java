@@ -32,10 +32,6 @@ package com.oracle.truffle.llvm.runtime.datalayout;
 enum DataLayoutType {
     INTEGER,
     FLOAT,
-    VECTOR,
     POINTER,
-    AGGREGATE,
-    STACK,
-    STACK_OBJECT,
     INTEGER_WIDTHS
 }

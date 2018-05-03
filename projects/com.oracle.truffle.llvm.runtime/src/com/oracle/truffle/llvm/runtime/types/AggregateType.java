@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+
 public abstract class AggregateType extends Type {
     public abstract int getNumberOfElements();
 
     public abstract Type getElementType(long index);
 
-    public abstract long getOffsetOf(long index, DataSpecConverter targetDataLayout);
+    public abstract long getOffsetOf(long index, DataLayout targetDataLayout);
 }

@@ -58,7 +58,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.NullFunction;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter.DataSpecConverterImpl;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
@@ -69,7 +69,6 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
-import com.oracle.truffle.llvm.runtime.types.DataSpecConverter;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -79,7 +78,7 @@ public final class LLVMContext {
     private final List<Path> libraryPaths = new ArrayList<>();
     private final List<ExternalLibrary> externalLibraries = new ArrayList<>();
 
-    private DataSpecConverterImpl targetDataLayout;
+    private DataLayout dataLayout;
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     private final LLVMThreadingStack threadingStack;
@@ -207,6 +206,7 @@ public final class LLVMContext {
         this.cleanupNecessary = false;
         this.defaultLibrariesLoaded = false;
 
+        this.dataLayout = new DataLayout();
         this.destructorFunctions = new ArrayList<>();
         this.globalStack = new LLVMGlobalsStack();
         this.nativeCallStatistics = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new HashMap<>() : null;
@@ -342,23 +342,23 @@ public final class LLVMContext {
     }
 
     public int getByteAlignment(Type type) {
-        return type.getAlignment(targetDataLayout);
+        return type.getAlignment(dataLayout);
     }
 
     public int getByteSize(Type type) {
-        return type.getSize(targetDataLayout);
+        return type.getSize(dataLayout);
     }
 
     public int getBytePadding(long offset, Type type) {
-        return Type.getPadding(offset, type, targetDataLayout);
+        return Type.getPadding(offset, type, dataLayout);
     }
 
     public long getIndexOffset(long index, AggregateType type) {
-        return type.getOffsetOf(index, targetDataLayout);
+        return type.getOffsetOf(index, dataLayout);
     }
 
-    public DataSpecConverter getDataSpecConverter() {
-        return targetDataLayout;
+    public DataLayout getDataSpecConverter() {
+        return dataLayout;
     }
 
     public ExternalLibrary addExternalLibrary(String lib, boolean isNative, boolean renameConflictingSymbols) {
@@ -618,8 +618,8 @@ public final class LLVMContext {
         LLVMFunctionDescriptor create(int index);
     }
 
-    public void setDataLayoutConverter(DataSpecConverterImpl layout) {
-        this.targetDataLayout = layout;
+    public void addDataLayout(DataLayout layout) {
+        this.dataLayout = this.dataLayout.merge(layout);
     }
 
     public LLVMSourceContext getSourceContext() {

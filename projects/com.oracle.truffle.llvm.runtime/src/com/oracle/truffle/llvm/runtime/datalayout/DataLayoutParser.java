@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,14 @@ final class DataLayoutParser {
         private final DataLayoutType type;
         private final int[] values;
 
+        private DataTypeSpecification(DataLayoutType type, int size, int abiAlignment, int preferredAlignment) {
+            assert type == DataLayoutType.INTEGER || type == DataLayoutType.POINTER || type == DataLayoutType.FLOAT;
+            this.type = type;
+            this.values = new int[]{size, abiAlignment, preferredAlignment};
+        }
+
         private DataTypeSpecification(DataLayoutType type, int[] values) {
+            assert type == DataLayoutType.INTEGER_WIDTHS;
             this.type = type;
             this.values = values;
         }
@@ -50,18 +57,53 @@ final class DataLayoutParser {
         }
 
         int[] getValues() {
+            assert type == DataLayoutType.INTEGER_WIDTHS;
             return values;
+        }
+
+        int getSize() {
+            assert type == DataLayoutType.INTEGER || type == DataLayoutType.POINTER || type == DataLayoutType.FLOAT;
+            return values[0];
+        }
+
+        int getAbiAlignment() {
+            assert type == DataLayoutType.INTEGER || type == DataLayoutType.POINTER || type == DataLayoutType.FLOAT;
+            return values[1];
+        }
+
+        int getPreferredAlignment() {
+            assert type == DataLayoutType.INTEGER || type == DataLayoutType.POINTER || type == DataLayoutType.FLOAT;
+            return values[2];
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+
+            if (obj instanceof DataTypeSpecification) {
+                DataTypeSpecification other = (DataTypeSpecification) obj;
+                return this.type == other.type && Arrays.equals(this.values, other.values);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return type.hashCode() + Arrays.hashCode(values);
         }
 
         @Override
         public String toString() {
-            return getType() + " " + Arrays.toString(getValues());
+            return getType() + " " + Arrays.toString(values);
         }
     }
 
     private static void addIfMissing(List<DataTypeSpecification> specs, DataTypeSpecification newSpec) {
+        assert newSpec.type == DataLayoutType.INTEGER || newSpec.type == DataLayoutType.POINTER || newSpec.type == DataLayoutType.FLOAT;
         for (DataTypeSpecification spec : specs) {
-            if (spec.type == newSpec.type && spec.values[0] == newSpec.values[0]) {
+            if (spec.type == newSpec.type && spec.getSize() == newSpec.getSize()) {
                 return;
             }
         }
@@ -70,27 +112,30 @@ final class DataLayoutParser {
 
     static List<DataTypeSpecification> parseDataLayout(String layout) {
         String[] layoutSpecs = layout.split("-");
-        assertNoNullElement(layoutSpecs);
         List<DataTypeSpecification> specs = new ArrayList<>();
         for (String spec : layoutSpecs) {
-            if (spec.equals("e") || spec.equals("E") || spec.startsWith("m:")) {
-                // ignore for the moment
-            } else {
-                String type = spec.substring(0, 1);
-                DataLayoutType baseType = getDataType(type);
-                int[] values = getTypeWidths(spec);
-                specs.add(new DataTypeSpecification(baseType, values));
-                if (type.equals("n")) {
-                    for (int value : values) {
-                        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.INTEGER, new int[]{value, value}));
-                    }
+            // at the moment, we are only interested in a small subset of all identifiers
+            DataLayoutType type = getDataType(spec);
+            DataTypeSpecification dataTypeSpec = createDataTypeSpec(type, spec);
+            if (dataTypeSpec != null) {
+                specs.add(dataTypeSpec);
+            }
+        }
+
+        // Add specs for all native integer widths
+        for (int i = 0; i < specs.size(); i++) {
+            DataTypeSpecification spec = specs.get(i);
+            if (spec.getType() == DataLayoutType.INTEGER_WIDTHS) {
+                for (int value : spec.getValues()) {
+                    addIfMissing(specs, new DataTypeSpecification(DataLayoutType.INTEGER, value, value, value));
                 }
             }
         }
+
         // Add specs for 32 bit float and 64 bit double which are supported on all targets
         // http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
-        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, new int[]{Float.SIZE, Float.SIZE}));
-        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, new int[]{Double.SIZE, Double.SIZE}));
+        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, Float.SIZE, Float.SIZE, Float.SIZE));
+        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, Double.SIZE, Double.SIZE, Double.SIZE));
 
         // FIXME:work around to handle pointer type in LLVM 3.9.0 bitcode format
         checkPointerType(specs);
@@ -109,59 +154,71 @@ final class DataLayoutParser {
             // Add a pointer datatype with size = largest integer size
             int largestIntegerTypeSize = -1;
             for (DataTypeSpecification spec : specs) {
-                if (spec.type == DataLayoutType.INTEGER && spec.values[0] > largestIntegerTypeSize) {
-                    largestIntegerTypeSize = spec.values[0];
+                if (spec.type == DataLayoutType.INTEGER && spec.getSize() > largestIntegerTypeSize) {
+                    largestIntegerTypeSize = spec.getSize();
                 }
             }
             if (largestIntegerTypeSize > 0) {
-                specs.add(new DataTypeSpecification(DataLayoutType.POINTER, new int[]{largestIntegerTypeSize, largestIntegerTypeSize}));
+                specs.add(new DataTypeSpecification(DataLayoutType.POINTER, largestIntegerTypeSize, largestIntegerTypeSize, largestIntegerTypeSize));
             }
         }
     }
 
-    private static int[] getTypeWidths(String spec) {
-        String typeWidths = spec.substring(1);
-        if (typeWidths.startsWith(":")) {
-            typeWidths = typeWidths.substring(1);
+    private static DataTypeSpecification createDataTypeSpec(DataLayoutType type, String spec) {
+        String[] components = spec.split(":");
+        // remove the type prefix
+        components[0] = components[0].substring(1);
+
+        if (type == DataLayoutType.INTEGER || type == DataLayoutType.FLOAT) {
+            assert components.length >= 1;
+            int size = convertToInt(components, 0);
+            int abiAlignment = convertToInt(components, 1, size);
+            int preferredAlignment = convertToInt(components, 2, abiAlignment);
+            return new DataTypeSpecification(type, size, abiAlignment, preferredAlignment);
+        } else if (type == DataLayoutType.POINTER) {
+            assert components.length >= 2;
+            int size = convertToInt(components, 1);
+            int abiAlignment = convertToInt(components, 2, size);
+            int preferredAlignment = convertToInt(components, 3, abiAlignment);
+            return new DataTypeSpecification(type, size, abiAlignment, preferredAlignment);
+        } else if (type == DataLayoutType.INTEGER_WIDTHS) {
+            return new DataTypeSpecification(type, convertToInt(components));
+        } else {
+            return null;
         }
-        String[] components = typeWidths.split(":");
-        assertNoNullElement(components);
+    }
+
+    private static int[] convertToInt(String[] components) {
         int[] values = new int[components.length];
         for (int i = 0; i < values.length; i++) {
-            values[i] = Integer.parseInt(components[i]);
+            values[i] = convertToInt(components, i);
         }
         return values;
     }
 
-    private static DataLayoutType getDataType(String string) {
-        switch (string) {
-            case "i":
-                return DataLayoutType.INTEGER;
-            case "f":
-                return DataLayoutType.FLOAT;
-            case "v":
-                return DataLayoutType.VECTOR;
-            case "p":
-                return DataLayoutType.POINTER;
-            case "a":
-                return DataLayoutType.AGGREGATE;
-            case "s":
-                return DataLayoutType.STACK_OBJECT;
-            case "S":
-                return DataLayoutType.STACK;
-            case "n":
-                return DataLayoutType.INTEGER_WIDTHS;
-            default:
-                throw new AssertionError(string);
+    private static int convertToInt(String[] components, int index) {
+        return Integer.parseInt(components[index]);
+    }
+
+    private static int convertToInt(String[] components, int index, int defaultValue) {
+        if (index >= components.length) {
+            return defaultValue;
+        } else {
+            return Integer.parseInt(components[index]);
         }
     }
 
-    private static Object[] assertNoNullElement(Object[] objects) {
-        for (Object o : objects) {
-            if (o == null) {
-                throw new AssertionError(Arrays.toString(objects));
-            }
+    private static DataLayoutType getDataType(String spec) {
+        if (spec.startsWith("i")) {
+            return DataLayoutType.INTEGER;
+        } else if (spec.startsWith("f")) {
+            return DataLayoutType.FLOAT;
+        } else if (spec.startsWith("p")) {
+            return DataLayoutType.POINTER;
+        } else if (spec.startsWith("n") && !spec.startsWith("ni")) {
+            return DataLayoutType.INTEGER_WIDTHS;
+        } else {
+            return null;
         }
-        return objects;
     }
 }
