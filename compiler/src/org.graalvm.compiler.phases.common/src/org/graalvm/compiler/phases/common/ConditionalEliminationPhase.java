@@ -536,10 +536,6 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     // getSucceedingStampForValue doesn't take the (potentially a Pi Node) input
                     // stamp into account, so it can be safely propagated.
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(negated);
-                    if (newStamp != null && !(value instanceof PiNode)) {
-                        // If the input is not a Pi, we can safely mix the input stamp.
-                        newStamp = newStamp.join(value.stamp(NodeView.DEFAULT));
-                    }
                     registerNewStamp(value, newStamp, guard, true);
                 }
             } else if (condition instanceof BinaryOpLogicNode) {
@@ -549,19 +545,11 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (!x.isConstant() && maybeMultipleUsages(x)) {
                     Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getSafeStamp(x), getOtherSafeStamp(y));
                     registerNewStamp(x, newStampX, guard);
-
-                    // Does not depend on Pi stamps, it can be safely propagated.
-                    Stamp safeNewStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getOtherSafeStamp(x), getOtherSafeStamp(y));
-                    registerNewStamp(x, safeNewStampX, guard, true);
                 }
 
                 if (!y.isConstant() && maybeMultipleUsages(y)) {
                     Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getOtherSafeStamp(x), getSafeStamp(y));
                     registerNewStamp(y, newStampY, guard);
-
-                    // Does not depend on Pi stamps, it can be safely propagated.
-                    Stamp safeNewStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getOtherSafeStamp(x), getOtherSafeStamp(y));
-                    registerNewStamp(y, safeNewStampY, guard, true);
                 }
 
                 if (condition instanceof IntegerEqualsNode && guard instanceof DeoptimizingGuard && !negated) {
@@ -960,39 +948,39 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
 
         protected void registerNewStamp(ValueNode maybeProxiedValue, Stamp newStamp, GuardingNode guard) {
             registerNewStamp(maybeProxiedValue, newStamp, guard, false);
-
         }
 
         protected void registerNewStamp(ValueNode maybeProxiedValue, Stamp newStamp, GuardingNode guard, boolean propagateThroughPis) {
             assert maybeProxiedValue != null;
             assert guard != null;
-            if (newStamp != null) {
-                ValueNode value = maybeProxiedValue;
-                Stamp stamp = newStamp;
-                do {
-                    ValueNode proxiedValue = null;
-                    if (value instanceof PiNode) {
-                        proxiedValue = value;
-                    }
-                    counterStampsRegistered.increment(debug);
-                    debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
-                    assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
-                    map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
-                    undoOperations.push(value);
-                    if (propagateThroughPis && value instanceof PiNode) {
-                        PiNode piNode = (PiNode) value;
-                        value = piNode.getOriginalNode();
-                    } else if (value instanceof StampInverter) {
-                        StampInverter stampInverter = (StampInverter) value;
-                        value = stampInverter.getValue();
-                        stamp = stampInverter.invertStamp(stamp);
-                    } else if (value instanceof PiNode) {
-                        value = ((PiNode) value).getOriginalNode();
-                    } else {
-                        value = null;
-                        stamp = null;
-                    }
-                } while (value != null && stamp != null);
+
+            if (newStamp == null || newStamp.isUnrestricted()) {
+                return;
+            }
+
+            ValueNode value = maybeProxiedValue;
+            Stamp stamp = newStamp;
+
+            while (stamp != null && value != null) {
+                ValueNode proxiedValue = null;
+                if (value instanceof PiNode) {
+                    proxiedValue = value;
+                }
+                counterStampsRegistered.increment(debug);
+                debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
+                assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
+                map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
+                undoOperations.push(value);
+                if (propagateThroughPis && value instanceof PiNode) {
+                    PiNode piNode = (PiNode) value;
+                    value = piNode.getOriginalNode();
+                } else if (value instanceof StampInverter) {
+                    StampInverter stampInverter = (StampInverter) value;
+                    value = stampInverter.getValue();
+                    stamp = stampInverter.invertStamp(stamp);
+                } else {
+                    break;
+                }
             }
         }
 

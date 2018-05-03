@@ -52,6 +52,14 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
     public void generate(NodeLIRBuilderTool gen) {
     }
 
+    public Stamp getSucceedingStampForValue(boolean negated, Stamp valueStamp) {
+        Stamp stamp = getSucceedingStampForValue(negated);
+        if (stamp != null) {
+            stamp = stamp.join(valueStamp);
+        }
+        return stamp;
+    }
+
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 
     public abstract TriState tryFold(Stamp valueStamp);
