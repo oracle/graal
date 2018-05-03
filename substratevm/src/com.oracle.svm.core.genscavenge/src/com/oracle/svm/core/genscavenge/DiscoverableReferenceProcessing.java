@@ -26,6 +26,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.heap.DiscoverableReference;
 import com.oracle.svm.core.heap.FeebleReference;
 import com.oracle.svm.core.heap.FeebleReferenceList;
@@ -216,6 +217,7 @@ public class DiscoverableReferenceProcessing {
         private Scatterer() {
         }
 
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during a collection.")
         static void distributeReferences() {
             final Log trace = Log.noopLog().string("[FeebleReferenceScatterer.distributeReferences:").newline();
             /*
