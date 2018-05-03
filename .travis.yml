@@ -54,6 +54,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.9 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -66,6 +67,7 @@ matrix:
           - clang-3.9
           - llvm-3.9
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=4.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -78,6 +80,7 @@ matrix:
           - clang-4.0
           - llvm-4.0
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=5.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -90,6 +93,7 @@ matrix:
           - clang-5.0
           - llvm-5.0
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=6.0 GATE_TAGS='sulongBasic' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -102,6 +106,7 @@ matrix:
           - clang-6.0
           - llvm-6.0
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='style'
     addons:
       apt:
@@ -112,6 +117,7 @@ matrix:
           - llvm-3.8
           - clang-format-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='fullbuild'
     addons:
       apt:
@@ -121,6 +127,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='sulongMisc' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -130,6 +137,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='nwcc' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -139,6 +147,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='llvm' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -148,6 +157,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='parser' COMPILE_COMMAND='mx build'
     addons:
       apt:
@@ -157,6 +167,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='gcc_c' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     addons:
       apt:
@@ -166,6 +177,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 GATE_TAGS='gcc_cpp' COMPILE_COMMAND='mx build --dependencies SULONG_TEST'
     addons:
       apt:
@@ -175,6 +187,7 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
   - env: LLVM_VER=3.8 DOWNSTREAM_REPO='https://github.com/graalvm/graal.git' DOWNSTREAM_SUITE='substratevm' DOWNSTREAM_COMMAND='--dynamicimport sulong gate --tags build,sulong'
     addons:
       apt:
@@ -184,5 +197,6 @@ matrix:
           - clang-3.8
           - llvm-3.8
           - libc++1
+          - libc++-dev
 after_failure:
   - find . -iname "*.log" -print0 | xargs -0 cat
