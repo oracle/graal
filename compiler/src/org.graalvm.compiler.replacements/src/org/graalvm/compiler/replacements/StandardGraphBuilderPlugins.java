@@ -37,8 +37,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.SpeculationLog;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -63,6 +61,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
@@ -107,6 +106,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerMulExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -115,6 +115,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import sun.misc.Unsafe;
 
 /**
@@ -133,8 +134,8 @@ public class StandardGraphBuilderPlugins {
         registerShortPlugins(plugins);
         registerIntegerLongPlugins(plugins, JavaKind.Int);
         registerIntegerLongPlugins(plugins, JavaKind.Long);
-        registerFloatPlugins(plugins, bytecodeProvider);
-        registerDoublePlugins(plugins, bytecodeProvider);
+        registerFloatPlugins(plugins);
+        registerDoublePlugins(plugins);
         registerArraysPlugins(plugins, bytecodeProvider);
         registerArrayPlugins(plugins, bytecodeProvider);
         registerUnsafePlugins(plugins, bytecodeProvider);
@@ -344,13 +345,22 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerFloatPlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, Float.class, bytecodeProvider);
-        r.registerMethodSubstitution(FloatSubstitutions.class, "floatToIntBits", float.class);
+    private static void registerFloatPlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Float.class);
         r.register1("floatToRawIntBits", float.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Int, b.append(ReinterpretNode.create(JavaKind.Int, value, NodeView.DEFAULT)));
+                return true;
+            }
+        });
+        r.register1("floatToIntBits", float.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                LogicNode notNan = b.append(FloatEqualsNode.create(value, value, NodeView.DEFAULT));
+                ValueNode raw = b.append(ReinterpretNode.create(JavaKind.Int, value, NodeView.DEFAULT));
+                ValueNode result = b.append(ConditionalNode.create(notNan, raw, ConstantNode.forInt(0x7fc00000), NodeView.DEFAULT));
+                b.push(JavaKind.Int, result);
                 return true;
             }
         });
@@ -363,13 +373,22 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
-    private static void registerDoublePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
-        Registration r = new Registration(plugins, Double.class, bytecodeProvider);
-        r.registerMethodSubstitution(DoubleSubstitutions.class, "doubleToLongBits", double.class);
+    private static void registerDoublePlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Double.class);
         r.register1("doubleToRawLongBits", double.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Long, b.append(ReinterpretNode.create(JavaKind.Long, value, NodeView.DEFAULT)));
+                return true;
+            }
+        });
+        r.register1("doubleToLongBits", double.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                LogicNode notNan = b.append(FloatEqualsNode.create(value, value, NodeView.DEFAULT));
+                ValueNode raw = b.append(ReinterpretNode.create(JavaKind.Long, value, NodeView.DEFAULT));
+                ValueNode result = b.append(ConditionalNode.create(notNan, raw, ConstantNode.forLong(0x7ff8000000000000L), NodeView.DEFAULT));
+                b.push(JavaKind.Long, result);
                 return true;
             }
         });
