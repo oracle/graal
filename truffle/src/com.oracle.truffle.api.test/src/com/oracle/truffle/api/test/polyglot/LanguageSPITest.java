@@ -1669,6 +1669,21 @@ public class LanguageSPITest {
         }
     }
 
+    static final String INHERITED_VERSION = "SPIInheritedVersionLanguage";
+
+    @TruffleLanguage.Registration(id = INHERITED_VERSION, name = "", mimeType = {INHERITED_VERSION})
+    public static class InheritedVersionLanguage extends LanguageSPIOrderTest.BaseLang {
+    }
+
+    @Test
+    public void testInheritedVersionLanguage() {
+        Context context = Context.create();
+        context.initialize(INHERITED_VERSION);
+        final Engine engine = context.getEngine();
+        assertEquals(engine.getVersion(), engine.getLanguages().get(INHERITED_VERSION).getVersion());
+        context.close();
+    }
+
     private static class SourceHolder implements TruffleObject {
         final Source source;
 
