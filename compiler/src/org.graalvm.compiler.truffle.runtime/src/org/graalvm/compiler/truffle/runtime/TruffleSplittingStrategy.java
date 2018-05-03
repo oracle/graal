@@ -109,7 +109,7 @@ final class TruffleSplittingStrategy {
 
     static void forceSplitting(OptimizedDirectCallNode call, GraalTVMCI tvmci) {
         if (!TruffleCompilerOptions.getValue(TruffleExperimentalSplitting) || TruffleCompilerOptions.getValue(TruffleExperimentalSplittingAllowForcedSplits)) {
-            if (!canSplit(call)) {
+            if (!canSplit(call) || isRecursiveSplit(call)) {
                 return;
             }
             final GraalTVMCI.EngineData engineData = getEngineData(call, tvmci);
@@ -168,14 +168,16 @@ final class TruffleSplittingStrategy {
         if (isMaxSingleCall(call)) {
             return true;
         }
-
         return countPolymorphic(call) >= 1;
     }
 
     private static boolean isRecursiveSplit(OptimizedDirectCallNode call) {
         final OptimizedCallTarget splitCandidateTarget = call.getCallTarget();
-
-        OptimizedCallTarget callRootTarget = (OptimizedCallTarget) call.getRootNode().getCallTarget();
+        final RootNode rootNode = call.getRootNode();
+        if (rootNode == null) {
+            return false;
+        }
+        OptimizedCallTarget callRootTarget = (OptimizedCallTarget) rootNode.getCallTarget();
         OptimizedCallTarget callSourceTarget = callRootTarget.getSourceCallTarget();
         int depth = 0;
         while (callSourceTarget != null) {
