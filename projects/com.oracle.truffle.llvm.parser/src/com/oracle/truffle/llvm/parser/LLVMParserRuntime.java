@@ -30,21 +30,18 @@
 package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public final class LLVMParserRuntime {
-    private final LLVMLanguage language;
     private final LLVMContext context;
     private final NodeFactory nodeFactory;
     private final ExternalLibrary library;
     private final LLVMScope fileScope;
 
-    public LLVMParserRuntime(LLVMLanguage language, LLVMContext context, NodeFactory nodeFactory, ExternalLibrary library, LLVMScope fileScope) {
-        this.language = language;
+    public LLVMParserRuntime(LLVMContext context, NodeFactory nodeFactory, ExternalLibrary library, LLVMScope fileScope) {
         this.context = context;
         this.nodeFactory = nodeFactory;
         this.library = library;
@@ -61,10 +58,6 @@ public final class LLVMParserRuntime {
 
     public NodeFactory getNodeFactory() {
         return nodeFactory;
-    }
-
-    public LLVMLanguage getLanguage() {
-        return language;
     }
 
     public LLVMScope getFileScope() {
