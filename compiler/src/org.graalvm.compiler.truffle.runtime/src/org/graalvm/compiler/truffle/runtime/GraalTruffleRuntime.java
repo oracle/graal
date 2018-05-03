@@ -208,7 +208,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         } else if (compilerConfigurationName.equals("enterprise")) {
             suffix = "EE";
         } else {
-            assert false : "unexpected compiler configuration name";
+            assert false : "unexpected compiler configuration name: " + compilerConfigurationName;
             suffix = compilerConfigurationName;
         }
         return "GraalVM " + suffix;
