@@ -29,20 +29,28 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 import static org.graalvm.compiler.serviceprovider.GraalServices.JAVA_SPECIFICATION_VERSION;
+import static org.graalvm.compiler.serviceprovider.GraalServices.Java8OrEarlier;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import sun.misc.Unsafe;
 
 public class AArch64GraphBuilderPlugins {
 
@@ -56,7 +64,7 @@ public class AArch64GraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins);
                 registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
                 registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
-
+                registerUnsafePlugins(invocationPlugins, bytecodeProvider);
             }
         });
     }
@@ -134,6 +142,33 @@ public class AArch64GraphBuilderPlugins {
             r.setAllowOverwrite(true);
             r.registerMethodSubstitution(AArch64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
             r.registerMethodSubstitution(AArch64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
+        }
+    }
+
+    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
+        Registration r;
+        if (Java8OrEarlier) {
+            r = new Registration(plugins, Unsafe.class);
+        } else {
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
+        }
+
+        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}) {
+            Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
+
+            if (kind != JavaKind.Object) {
+                r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
+                        // Emits a null-check for the otherwise unused receiver
+                        unsafe.get();
+                        AddressNode address = b.add(new OffsetAddressNode(object, offset));
+                        b.addPush(kind, new AtomicReadAndAddNode(address, delta, LocationIdentity.any()));
+                        b.getGraph().markUnsafeAccess();
+                        return true;
+                    }
+                });
+            }
         }
     }
 

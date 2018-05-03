@@ -26,6 +26,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -88,6 +89,57 @@ public class AArch64AtomicMove {
             // if scratch == 0 then write successful, else retry.
             masm.cbnz(32, scratch, retry);
             masm.bind(fail);
+        }
+    }
+
+    /**
+     * Load (Read) and Add instruction. Does the following atomically: <code>
+     *  ATOMIC_READ_AND_ADD(addend, result, address):
+     *    result = *address
+     *    *address = result + addend
+     *    return result
+     * </code>
+     */
+    @Opcode("ATOMIC_READ_AND_ADD")
+    public static final class AtomicReadAndAddOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<AtomicReadAndAddOp> TYPE = LIRInstructionClass.create(AtomicReadAndAddOp.class);
+
+        private final AArch64Kind accessKind;
+
+        @Def protected AllocatableValue resultValue;
+        @Alive protected AllocatableValue addressValue;
+        @Alive protected Value deltaValue;
+        @Temp protected AllocatableValue scratchValue1;
+        @Temp protected AllocatableValue scratchValue2;
+
+        public AtomicReadAndAddOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta, AllocatableValue scratch1, AllocatableValue scratch2) {
+            super(TYPE);
+            this.accessKind = kind;
+            this.resultValue = result;
+            this.addressValue = address;
+            this.deltaValue = delta;
+            this.scratchValue1 = scratch1;
+            this.scratchValue2 = scratch2;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            assert accessKind.isInteger();
+            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+
+            Register address = asRegister(addressValue);
+            Register delta = asRegister(deltaValue);
+            Register scratch1 = asRegister(scratchValue1);
+            Register scratch2 = asRegister(scratchValue2);
+            Register result = asRegister(resultValue);
+
+            Label retry = new Label();
+            masm.bind(retry);
+            masm.ldaxr(size, result, address);
+            masm.add(size, scratch1, result, delta, ShiftType.LSL, 0);
+            masm.stlxr(size, scratch2, scratch1, address);
+            // if scratch2 == 0 then write successful, else retry
+            masm.cbnz(32, scratch2, retry);
         }
     }
 }
