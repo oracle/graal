@@ -82,7 +82,7 @@ public final class SuspendableLocationFinder {
         return boundLine;
     }
 
-    private static Set<Class<? extends Tag>> getElementTags(SourceElement[] sourceElements) {
+    public static Set<Class<? extends Tag>> getElementTags(SourceElement[] sourceElements) {
         if (sourceElements.length == 1) {
             return Collections.singleton(sourceElements[0].getTag());
         }

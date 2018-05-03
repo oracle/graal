@@ -2,6 +2,7 @@ package de.hpi.swa.trufflelsp;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -26,13 +27,25 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 
+import com.oracle.graal.python.PythonLanguage;
+import com.oracle.graal.python.builtins.objects.function.Arity;
+import com.oracle.graal.python.builtins.objects.function.PArguments;
+import com.oracle.graal.python.builtins.objects.function.PythonCallable;
+import com.oracle.graal.python.builtins.objects.object.PythonObject;
+import com.oracle.graal.python.builtins.objects.type.PythonClass;
+import com.oracle.graal.python.nodes.frame.ReadGlobalOrBuiltinNode;
+import com.oracle.graal.python.nodes.frame.ReadLocalVariableNode;
+import com.oracle.graal.python.runtime.exception.PException;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.debug.LocationFinderHelper;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendableLocationFinder;
 import com.oracle.truffle.api.debug.SuspendableLocationFinder.NearestSections;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -49,8 +62,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
+import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 
 public class TruffleAdapter {
@@ -299,8 +317,8 @@ public class TruffleAdapter {
                             MaterializedFrame materializedFrame = this.section2frame.get(nodeForLocalScoping.getSourceSection());
                             if (materializedFrame != null) {
                                 frame = materializedFrame;
-                                fillCompletionsWithObjectProperties(completions, frame, nodeForLocalScoping, langId);
                             }
+                            fillCompletionsWithObjectProperties(completions, frame, nodeForLocalScoping, langId);
                             Iterable<Scope> localScopes = env.findLocalScopes(nodeForLocalScoping, frame);
                             Map<String, Map<Object, Object>> scopesMap = Collections.emptyMap();
                             if (materializedFrame != null) {
@@ -382,21 +400,94 @@ public class TruffleAdapter {
     }
 
     private void fillCompletionsWithObjectProperties(CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId) {
-        if (langId.equals("sl")) {
+        if (langId.equals("sl") && frame != null) {
             if (nodeForLocalScoping instanceof SLReadLocalVariableNode) {
                 Object object = ((SLReadLocalVariableNode) nodeForLocalScoping).executeGeneric(frame);
                 if (object instanceof TruffleObject) {
-                    Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), (TruffleObject) object);
-                    for (Entry<Object, Object> entry : map.entrySet()) {
-                        CompletionItem completion = new CompletionItem(nodeForLocalScoping.getSourceSection().getCharacters() + "." + entry.getKey().toString());
-                        completion.setKind(CompletionItemKind.Property);
-                        completion.setDetail(createCompletionDetail(entry.getValue(), this.getEnv(), langId, true));
-                        completions.getItems().add(completion);
+                    fillCompletionsFromTruffleObject(completions, nodeForLocalScoping.getSourceSection().getCharacters().toString(), langId, (TruffleObject) object);
+                }
+            }
+        } else if (langId.equals("js") && frame != null) {
+            // TODO(ds) for js use getNodeObject()
+            if (nodeForLocalScoping instanceof InstrumentableNode) {
+                Object nodeObject = ((InstrumentableNode) nodeForLocalScoping).getNodeObject();
+                System.out.println(nodeObject);
+            }
+            System.out.println();
+            if (nodeForLocalScoping instanceof JSReadFrameSlotNode) {
+                JSReadFrameSlotNode readFrameSlotNode = (JSReadFrameSlotNode) nodeForLocalScoping;
+                Object object = readFrameSlotNode.execute(frame);
+                if (object instanceof TruffleObject) {
+                    fillCompletionsFromTruffleObject(completions, readFrameSlotNode.getIdentifier().toString(), langId, (TruffleObject) object);
+                }
+            }
+// if (nodeForLocalScoping instanceof PropertyNode) {
+// Object object = ((PropertyNode) nodeForLocalScoping).execute(frame);
+// Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(),
+// (TruffleObject) object);
+// JavaScriptNode target = ((PropertyNode) nodeForLocalScoping).getTarget();
+// if (target instanceof GlobalObjectNode) {
+// DynamicObject globalObj = ((GlobalObjectNode) target).executeDynamicObject();
+// fillCompletionsFromTruffleObject(completions, nodeForLocalScoping, langId, globalObj);
+// }
+// }
+        } else if (langId.equals("python")) {
+            if (nodeForLocalScoping instanceof ReadGlobalOrBuiltinNode) {
+                VirtualFrame vFrame = frame;
+                if (frame == null) {
+                    vFrame = Truffle.getRuntime().createVirtualFrame(PArguments.withGlobals(PythonLanguage.getContext().getMainModule()), new FrameDescriptor());
+                }
+                ReadGlobalOrBuiltinNode readNode = (ReadGlobalOrBuiltinNode) nodeForLocalScoping;
+                try {
+                    Object object = readNode.execute(vFrame);
+                    if (object instanceof TruffleObject) {
+                        fillCompletionsFromTruffleObject(completions, readNode.getAttributeId(), langId, (TruffleObject) object);
                     }
+                } catch (PException e) {
+                }
+            } else if (nodeForLocalScoping instanceof ReadLocalVariableNode && frame != null) {
+                ReadLocalVariableNode readNode = (ReadLocalVariableNode) nodeForLocalScoping;
+                Object object = readNode.execute(frame);
+                if (object instanceof TruffleObject) {
+                    fillCompletionsFromTruffleObject(completions, readNode.getSlot().getIdentifier().toString(), langId, (TruffleObject) object);
                 }
             }
         }
     }
+
+    private void fillCompletionsFromTruffleObject(CompletionList completions, String nodeIdentifier, String langId, TruffleObject object) {
+        Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), object);
+        if (map.isEmpty()) {
+            if (langId.equals("python")) {
+                if (object instanceof PythonObject) {
+                    PythonClass pythonClass = ((PythonObject) object).getPythonClass();
+                    map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), pythonClass);
+                }
+            }
+        }
+        for (Entry<Object, Object> entry : map.entrySet()) {
+            CompletionItem completion = new CompletionItem(nodeIdentifier + "." + entry.getKey().toString());
+            completion.setKind(CompletionItemKind.Property); // TODO check type of value
+            completion.setDetail(createCompletionDetail(entry.getValue(), this.getEnv(), langId, true));
+            completions.getItems().add(completion);
+
+            if (langId.equals("python")) {
+                if (entry.getValue() instanceof PythonCallable) {
+                    completion.setKind(CompletionItemKind.Method);
+                    PythonCallable callable = (PythonCallable) entry.getValue();
+                    Arity arity = callable.getArity();
+                    completion.setDocumentation(arity.getFunctionName() + "(" + arity.getMaxNumOfArgs() + " argument" + (arity.getMaxNumOfArgs() == 1 ? "" : "s") + ")");
+                    if (arity.getParameterIds().length > 0) {
+                        String paramsString = Arrays.toString(arity.getParameterIds());
+                        completion.setDocumentation(arity.getFunctionName() + "(" + paramsString.substring(1, paramsString.length() - 1) + ")");
+                    }
+                }
+
+            }
+        }
+    }
+
+    // TODO(ds) implement a getTypeOfExpression(node) method (use GraalJS annotated stuff)
 
     private static boolean isLineValid(int line, Source source) {
         // line is zero-based, source line is one-based
