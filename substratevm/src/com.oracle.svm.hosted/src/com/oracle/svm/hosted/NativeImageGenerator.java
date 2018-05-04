@@ -180,7 +180,6 @@ import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.os.OSInterface;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -262,29 +261,6 @@ public class NativeImageGenerator {
     private BigBang bigbang;
     private AbstractBootImage image;
     private AtomicBoolean buildStarted = new AtomicBoolean();
-
-    private static OSInterface createOSInterface(ImageClassLoader loader) {
-        List<Class<? extends OSInterface>> osClasses = loader.findSubclasses(OSInterface.class);
-
-        OSInterface result = null;
-        for (Class<? extends OSInterface> osClass : osClasses) {
-            if (!osClass.isInterface() && !Modifier.isAbstract(osClass.getModifiers())) {
-                if (result != null) {
-                    throw VMError.shouldNotReachHere("More than one OSInterface implementation found: " + osClasses);
-                }
-
-                try {
-                    result = osClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException ex) {
-                    throw VMError.shouldNotReachHere(ex);
-                }
-            }
-        }
-        if (result == null) {
-            throw VMError.shouldNotReachHere("No OSInterface implementation found");
-        }
-        return result;
-    }
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider) {
         this.loader = loader;
@@ -456,12 +432,10 @@ public class NativeImageGenerator {
                     Platform platform = defaultPlatform();
 
                     TargetDescription target = createTarget(platform);
-                    OSInterface osInterface = createOSInterface(loader);
                     ObjectLayout objectLayout = new ObjectLayout(target, SubstrateAMD64Backend.getDeoptScatchSpace());
                     CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.UseHeapBaseRegister.getValue() ? 1 : 0, 0);
                     ImageSingletons.add(Platform.class, platform);
                     ImageSingletons.add(TargetDescription.class, target);
-                    ImageSingletons.add(OSInterface.class, osInterface);
                     ImageSingletons.add(ObjectLayout.class, objectLayout);
                     ImageSingletons.add(CompressEncoding.class, compressEncoding);
                     if (javaMainSupport != null) {

@@ -24,8 +24,6 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import java.io.FileDescriptor;
-import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.util.function.Function;
 
@@ -45,10 +43,9 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.os.OSInterface;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
@@ -164,31 +161,20 @@ final class Target_sun_misc_Unsafe {
 @TargetClass(sun.misc.MessageUtils.class)
 final class Target_sun_misc_MessageUtils {
 
+    /*
+     * Low-level logging support in the JDK. Methods must not use char-to-byte conversions (because
+     * they are used to report errors in the converters). We just redirect to the low-level SVM log
+     * infrastructure.
+     */
+
     @Substitute
     private static void toStderr(String msg) {
-        Util_sun_misc_MessageUtils.output(FileDescriptor.err, msg);
+        Log.log().string(msg);
     }
 
     @Substitute
     private static void toStdout(String msg) {
-        Util_sun_misc_MessageUtils.output(FileDescriptor.out, msg);
-    }
-}
-
-final class Util_sun_misc_MessageUtils {
-
-    static void output(FileDescriptor target, String msg) {
-        byte[] bytes = new byte[msg.length()];
-        for (int i = 0; i < msg.length(); i++) {
-            bytes[i] = (byte) msg.charAt(i);
-        }
-
-        OSInterface os = ConfigurationValues.getOSInterface();
-        try {
-            os.writeBytes(target, bytes);
-        } catch (IOException ex) {
-            // Ignore, since we are in low-level debug printing code.
-        }
+        Log.log().string(msg);
     }
 }
 

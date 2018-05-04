@@ -65,7 +65,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.PosixOSInterface.Util_java_io_FileDescriptor;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
@@ -1521,7 +1520,7 @@ final class Target_java_net_SocketInputStream {
             throw new SocketException("Socket closed");
         } else {
             // 075         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
             // 076         /* Bug 4086704 - If the Socket associated with this file descriptor
             // 077          * was closed (sysCloseFD), then the file descriptor is set to -1.
             // 078          */
@@ -1689,7 +1688,7 @@ final class Target_java_net_SocketOutputStream {
             throw new SocketException("socket closed");
         } else {
             // 075         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
             // 076         /* Bug 4086704 - If the Socket associated with this file descriptor
             // 077          * was closed (sysCloseFD), the file descriptor is set to -1.
             // 078          */
@@ -1951,7 +1950,7 @@ final class Target_java_net_PlainSocketImpl {
             }
         }
         // 243 (*env)->SetIntField(env, fdObj, IO_fd_fdID, fd);
-        PosixOSInterface.Util_java_io_FileDescriptor.setFD(fdObj, fd);
+        PosixUtils.setFD(fdObj, fd);
         /* @formatter:on */
     }
 
@@ -1980,7 +1979,7 @@ final class Target_java_net_PlainSocketImpl {
             // 813         return -1;
         } else {
             // 815         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 817     /* JVM_SocketAvailable returns 0 for failure, 1 for success */
         // 818     if (!JVM_SocketAvailable(fd, &ret)){
@@ -2031,7 +2030,7 @@ final class Target_java_net_PlainSocketImpl {
             throw new SocketException("Socket closed");
         } else {
         // 564         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 566     if (IS_NULL(iaObj)) {
         if (iaObj == null) {
@@ -2113,7 +2112,7 @@ final class Target_java_net_PlainSocketImpl {
             // 844         return;
         } else {
             // 846         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 848     if (fd != -1) {
         if (fd != -1) {
@@ -2123,7 +2122,7 @@ final class Target_java_net_PlainSocketImpl {
                 JavaNetNetUtilMD.NET_Dup2(Util_java_net_PlainSocketImpl.marker_fd, fd);
             } else {
                 // 852             (*env)->SetIntField(env, fdObj, IO_fd_fdID, -1);
-                Util_java_io_FileDescriptor.setFD(fdObj, -1);
+                PosixUtils.setFD(fdObj, -1);
                 // 853             NET_SocketClose(fd);
                 JavaNetNetUtilMD.NET_SocketClose(fd);
             }
@@ -2166,7 +2165,7 @@ final class Target_java_net_PlainSocketImpl {
             // 280    return;
         } else {
             // 282    fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 284    if (IS_NULL(iaObj)) {
         if (iaObj == null) {
@@ -2465,7 +2464,7 @@ final class Target_java_net_PlainSocketImpl {
             /* Elided return because the "throw"s above do that. */
         }
         // 517     (*env)->SetIntField(env, fdObj, IO_fd_fdID, fd);
-        Util_java_io_FileDescriptor.setFD(fdObj, fd);
+        PosixUtils.setFD(fdObj, fd);
         // 519     /* set the remote peer address and port */
         // 520     (*env)->SetObjectField(env, this, psi_addressID, iaObj);
         Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).address = iaObj;
@@ -2524,7 +2523,7 @@ final class Target_java_net_PlainSocketImpl {
             throw new SocketException("Socket closed");
         } else {
         // 628         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 631     /*
         // 632      * Workaround for bugid 4101691 in Solaris 2.6. See 4106600.
@@ -2597,7 +2596,7 @@ final class Target_java_net_PlainSocketImpl {
             throw new SocketException("Socket closed");
         } else {
             // 680         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 682     if (IS_NULL(socket)) {
         if (socket == null) {
@@ -2752,7 +2751,7 @@ final class Target_java_net_PlainSocketImpl {
         // 787     socketFdObj = (*env)->GetObjectField(env, socket, psi_fdID);
         socketFdObj = Util_java_net_SocketImpl.from_SocketImpl(socket).fd;
         // 788     (*env)->SetIntField(env, socketFdObj, IO_fd_fdID, newfd);
-        Util_java_io_FileDescriptor.setFD(socketFdObj, newfd);
+        PosixUtils.setFD(socketFdObj, newfd);
         // 789
         // 790     (*env)->SetObjectField(env, socket, psi_addressID, socketAddressObj);
         Util_java_net_SocketImpl.from_SocketImpl(socket).address = socketAddressObj;
@@ -2802,7 +2801,7 @@ final class Target_java_net_PlainSocketImpl {
             /* Unreachable! */
         } else {
             // 880         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 882     JVM_SocketShutdown(fd, howto);
         VmPrimsJVM.JVM_SocketShutdown(fd, howto);
@@ -2848,7 +2847,7 @@ final class Target_java_net_PlainSocketImpl {
         // 903      * Check that socket hasn't been closed
         // 904      */
         // 905     fd = getFD(env, this);
-        fd = Util_java_io_FileDescriptor.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
+        fd = PosixUtils.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
         // 906     if (fd < 0) {
         if (fd < 0) {
         // 907         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",

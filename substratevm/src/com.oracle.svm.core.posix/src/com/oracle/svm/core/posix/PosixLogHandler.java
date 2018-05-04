@@ -24,17 +24,17 @@ package com.oracle.svm.core.posix;
 
 import java.io.FileDescriptor;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.posix.headers.LibC;
 
 @AutomaticFeature
-class DefaultLogHandlerFeature implements Feature {
+class PosixLogHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /* An alternative log handler can be set in Feature.duringSetup(). */
@@ -43,38 +43,36 @@ class DefaultLogHandlerFeature implements Feature {
              * Install the default log handler in ImageSingletons such that if another feature tries
              * to install another log handler at a later point it will get an error.
              */
-            LogHandler logHandler = new DefaultLogHandler();
+            LogHandler logHandler = new PosixLogHandler();
             ImageSingletons.add(LogHandler.class, logHandler);
         }
     }
 }
 
-public class DefaultLogHandler implements LogHandler {
+public class PosixLogHandler implements LogHandler {
 
     @Override
     public void log(CCharPointer bytes, UnsignedWord length) {
-        if (!ConfigurationValues.getOSInterface().writeBytesUninterruptibly(getOutputFile(), bytes, length)) {
+        if (!PosixUtils.writeBytes(getOutputFile(), bytes, length)) {
             /*
              * We are in a low-level log routine and output failed, so there is little we can do.
              */
-            ConfigurationValues.getOSInterface().abort();
+            fatalError();
         }
     }
 
     @Override
     public void flush() {
-        ConfigurationValues.getOSInterface().flush(getOutputFile());
+        PosixUtils.flush(getOutputFile());
         /* ignore error -- they're benign */
     }
 
     @Override
     public void fatalError() {
-        ConfigurationValues.getOSInterface().abort();
+        LibC.abort();
     }
 
-    /* Allow subclasses to customize the file descriptor that we write to. */
     private static FileDescriptor getOutputFile() {
         return FileDescriptor.err;
     }
-
 }

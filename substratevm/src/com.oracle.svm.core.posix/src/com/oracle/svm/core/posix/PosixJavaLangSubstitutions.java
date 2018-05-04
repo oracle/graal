@@ -50,6 +50,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -702,6 +703,12 @@ final class Target_java_lang_System {
         timezone timezone = WordFactory.nullPointer();
         gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
+    }
+
+    @Substitute
+    private static void exit(int status) {
+        JavaMainSupport.executeShutdownHooks();
+        LibC.exit(status);
     }
 }
 
