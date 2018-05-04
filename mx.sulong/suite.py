@@ -404,6 +404,9 @@ suite = {
 
     "SULONG_LIB_SRC" : {
       "native" : True,
+      "overlaps" : [
+        "SULONG_LIBS"
+      ],
       "layout" : {
         "./" : "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong-src.tar.gz",
       },
