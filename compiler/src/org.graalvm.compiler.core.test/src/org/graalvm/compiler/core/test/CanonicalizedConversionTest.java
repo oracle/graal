@@ -23,6 +23,7 @@
 package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
@@ -33,9 +34,9 @@ import org.junit.Test;
 /**
  * Tests that substitutions for {@link Double#doubleToLongBits(double)} and
  * {@link Float#floatToIntBits(float)} produce graphs such that multiple calls to these methods with
- * the same input are commoned out.
+ * the same input are canonicalized.
  */
-public class ConversionTest extends GraalCompilerTest {
+public class CanonicalizedConversionTest extends GraalCompilerTest {
 
     @Override
     protected boolean checkLowTierGraph(StructuredGraph graph) {
@@ -47,6 +48,8 @@ public class ConversionTest extends GraalCompilerTest {
                 reinterpretCount++;
             } else if (node instanceof FloatEqualsNode) {
                 floatEqualsCount++;
+            } else if (node instanceof IfNode) {
+                Assert.fail("Unexpected node: " + node);
             } else if (node instanceof AddNode) {
                 addCount++;
             }
