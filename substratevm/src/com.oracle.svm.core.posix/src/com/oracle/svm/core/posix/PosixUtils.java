@@ -22,7 +22,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import static com.oracle.svm.core.posix.PosixOSInterface.lastErrorString;
 import static com.oracle.svm.core.posix.headers.Fcntl.O_WRONLY;
 import static com.oracle.svm.core.posix.headers.Fcntl.open;
 import static com.oracle.svm.core.posix.headers.Unistd.close;
@@ -51,12 +50,14 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CompilerCommandPlugin;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.posix.PosixOSInterface.Util_java_io_FileDescriptor;
 import com.oracle.svm.core.posix.headers.Dlfcn;
+import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Unistd;
@@ -165,12 +166,35 @@ public class PosixUtils {
         return p > 0 ? path.substring(0, p + 1) : path;
     }
 
+    @TargetClass(java.io.FileDescriptor.class)
+    private static final class Target_java_io_FileDescriptor {
+
+        @Alias int fd;
+    }
+
+    public static int getFD(FileDescriptor descriptor) {
+        return KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd;
+    }
+
+    static void setFD(FileDescriptor descriptor, int fd) {
+        KnownIntrinsics.unsafeCast(descriptor, Target_java_io_FileDescriptor.class).fd = fd;
+    }
+
+    static String lastErrorString(String defaultMsg) {
+        String result = "";
+        int errno = Errno.errno();
+        if (errno != 0) {
+            result = CTypeConversion.toJavaString(Errno.strerror(errno));
+        }
+        return result.length() != 0 ? result : defaultMsg;
+    }
+
     static void fileOpen(String path, FileDescriptor fd, int flags) throws FileNotFoundException {
         try (CCharPointerHolder pathPin = CTypeConversion.toCString(removeTrailingSlashes(path))) {
             CCharPointer pathPtr = pathPin.get();
             int handle = open(pathPtr, flags, 0666);
             if (handle >= 0) {
-                Util_java_io_FileDescriptor.setFD(fd, handle);
+                setFD(fd, handle);
             } else {
                 throw new FileNotFoundException(path);
             }
@@ -178,11 +202,11 @@ public class PosixUtils {
     }
 
     static void fileClose(FileDescriptor fd) throws IOException {
-        int handle = Util_java_io_FileDescriptor.getFD(fd);
+        int handle = getFD(fd);
         if (handle == -1) {
             return;
         }
-        Util_java_io_FileDescriptor.setFD(fd, -1);
+        setFD(fd, -1);
 
         // Do not close file descriptors 0, 1, 2. Instead, redirect to /dev/null.
         if (handle >= 0 && handle <= 2) {
@@ -193,7 +217,7 @@ public class PosixUtils {
                 devnull = open(pathPtr, O_WRONLY(), 0);
             }
             if (devnull < 0) {
-                Util_java_io_FileDescriptor.setFD(fd, handle);
+                setFD(fd, handle);
                 throw new IOException(lastErrorString("open /dev/null failed"));
             } else {
                 dup2(devnull, handle);
@@ -269,7 +293,7 @@ public class PosixUtils {
     @SuppressWarnings("unused")
     static void writeSingle(FileDescriptor fd, int b, boolean append) throws IOException {
         SignedWord n;
-        int handle = Util_java_io_FileDescriptor.getFD(fd);
+        int handle = getFD(fd);
         if (handle == -1) {
             throw new IOException("Stream Closed");
         }
@@ -284,8 +308,68 @@ public class PosixUtils {
         }
     }
 
+    @SuppressWarnings("unused")
+    static void writeBytes(FileDescriptor descriptor, byte[] bytes, int off, int len, boolean append) throws IOException {
+        if (bytes == null) {
+            throw new NullPointerException();
+        } else if (PosixUtils.outOfBounds(off, len, bytes)) {
+            throw new IndexOutOfBoundsException();
+        }
+        if (len == 0) {
+            return;
+        }
+
+        try (PinnedObject bytesPin = PinnedObject.create(bytes)) {
+            CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
+            UnsignedWord curLen = WordFactory.unsigned(len);
+            while (curLen.notEqual(0)) {
+                int fd = getFD(descriptor);
+                if (fd == -1) {
+                    throw new IOException("Stream Closed");
+                }
+
+                SignedWord n = write(fd, curBuf, curLen);
+
+                if (n.equal(-1)) {
+                    throw new IOException(lastErrorString("Write error"));
+                }
+                curBuf = curBuf.addressOf(n);
+                curLen = curLen.subtract((UnsignedWord) n);
+            }
+        }
+    }
+
+    /**
+     * Low-level output of bytes already in native memory. This method is allocation free, so that
+     * it can be used, e.g., in low-level logging routines.
+     */
+    public static boolean writeBytes(FileDescriptor descriptor, CCharPointer bytes, UnsignedWord length) {
+        CCharPointer curBuf = bytes;
+        UnsignedWord curLen = length;
+        while (curLen.notEqual(0)) {
+            int fd = getFD(descriptor);
+            if (fd == -1) {
+                return false;
+            }
+
+            SignedWord n = Unistd.write(fd, curBuf, curLen);
+
+            if (n.equal(-1)) {
+                return false;
+            }
+            curBuf = curBuf.addressOf(n);
+            curLen = curLen.subtract((UnsignedWord) n);
+        }
+        return true;
+    }
+
+    static boolean flush(FileDescriptor descriptor) {
+        int fd = getFD(descriptor);
+        return Unistd.fsync(fd) == 0;
+    }
+
     static int getFDHandle(FileDescriptor fd) throws IOException {
-        int handle = Util_java_io_FileDescriptor.getFD(fd);
+        int handle = getFD(fd);
         if (handle == -1) {
             throw new IOException("Stream Closed");
         }
