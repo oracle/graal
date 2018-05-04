@@ -1548,21 +1548,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
                 return LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-        factories.put("@__sulong_malloc", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
         factories.put("@calloc", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCallocNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        factories.put("@__sulong_calloc", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
@@ -1576,21 +1562,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
                 return LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
-        factories.put("@__sulong_realloc", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
         factories.put("@free", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        factories.put("@__sulong_free", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
