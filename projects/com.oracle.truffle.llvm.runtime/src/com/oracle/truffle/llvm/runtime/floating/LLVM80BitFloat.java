@@ -37,6 +37,7 @@ import javax.xml.bind.DatatypeConverter;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -638,13 +639,13 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
         protected TruffleObject createFunction() {
             LLVMContext context = getContextReference().get();
-            NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
-            return nfiContextExtension.getNativeFunction(context, "@__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
+            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+            return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "@__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }
 
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
 
-        @Specialization
+        @Specialization(guards = "function != null")
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") TruffleObject function,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
@@ -664,6 +665,35 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
             } finally {
                 memory.free(mem);
             }
+        }
+
+        @Specialization
+        @TruffleBoundary
+        protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y) {
+            // imprecise workaround for cases in which NFI isn't available
+            double xDouble = x.getDoubleValue();
+            double yDouble = y.getDoubleValue();
+            double result;
+            switch (name) {
+                case "add":
+                    result = xDouble + yDouble;
+                    break;
+                case "sub":
+                    result = xDouble - yDouble;
+                    break;
+                case "mul":
+                    result = xDouble * yDouble;
+                    break;
+                case "div":
+                    result = xDouble / yDouble;
+                    break;
+                case "mod":
+                    result = xDouble % yDouble;
+                    break;
+                default:
+                    throw new AssertionError("unexpected 80 bit float operation: " + name);
+            }
+            return LLVM80BitFloat.fromDouble(result);
         }
 
         @Override
