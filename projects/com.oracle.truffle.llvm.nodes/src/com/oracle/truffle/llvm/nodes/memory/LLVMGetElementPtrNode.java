@@ -73,6 +73,10 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMIncrementPointerNode extends LLVMNode {
+        public abstract Object executeWithTarget(Object addr, int val);
+
+        public abstract Object executeWithTarget(Object addr, long val);
+
         public abstract Object executeWithTarget(Object addr, Object val);
 
         @Specialization
