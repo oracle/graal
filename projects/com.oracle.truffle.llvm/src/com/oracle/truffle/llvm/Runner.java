@@ -97,7 +97,7 @@ import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
-import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
@@ -506,7 +506,7 @@ public final class Runner {
 
     private void bindUnresolvedFunctions(List<LLVMParserResult> parserResults) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        NativeIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(NativeIntrinsicProvider.class);
+        LLVMIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
         for (LLVMParserResult parserResult : parserResults) {
             for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
                 if (!function.isDefined()) {

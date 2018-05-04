@@ -80,11 +80,11 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     public static final class Intrinsic {
         private final String name;
         private final Map<FunctionType, RootCallTarget> overloadingMap;
-        private final NativeIntrinsicProvider provider;
+        private final LLVMIntrinsicProvider provider;
         private final boolean forceInline;
         private final boolean forceSplit;
 
-        public Intrinsic(NativeIntrinsicProvider provider, String name) {
+        public Intrinsic(LLVMIntrinsicProvider provider, String name) {
             this.name = name;
             this.overloadingMap = new HashMap<>();
             this.provider = provider;
@@ -210,7 +210,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             // libraries could have been loaded in the meantime
             LLVMContext context = descriptor.getContext();
             NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-            NativeIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(NativeIntrinsicProvider.class);
+            LLVMIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
             assert !descriptor.isNullFunction() && (intrinsicProvider == null || !intrinsicProvider.isIntrinsified(descriptor.getName()));
             if (nfiContextExtension != null) {
                 NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, descriptor.getName());
@@ -309,7 +309,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         return getFunction() instanceof LLVMIRFunction || getFunction() instanceof LazyLLVMIRFunction;
     }
 
-    public boolean isNativeIntrinsicFunction() {
+    public boolean isIntrinsicFunction() {
         getFunction().resolve(this);
         return getFunction() instanceof NativeIntrinsicFunction;
     }

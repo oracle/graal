@@ -146,13 +146,13 @@ import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTrace
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextExtension {
+public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextExtension {
     private final ExternalLibrary library = new ExternalLibrary("SulongIntrinsics", false, false);
 
     @Override
@@ -162,7 +162,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
 
     @Override
     public Class<?> extensionClass() {
-        return NativeIntrinsicProvider.class;
+        return LLVMIntrinsicProvider.class;
     }
 
     @Override
@@ -202,7 +202,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
     protected final Demangler demangler = new Demangler();
     protected final TruffleLanguage<?> language;
 
-    public NFIIntrinsicsProvider(TruffleLanguage<?> language) {
+    public BasicIntrinsicsProvider(TruffleLanguage<?> language) {
         this.language = language;
     }
 
@@ -308,7 +308,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
         }
     }
 
-    public NFIIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
+    public BasicIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
         registerTruffleIntrinsics(nodeFactory);
         registerSulongIntrinsics();
         registerAbortIntrinsics();

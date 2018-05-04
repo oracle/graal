@@ -33,7 +33,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public interface NativeIntrinsicProvider {
+public interface LLVMIntrinsicProvider {
     boolean isIntrinsified(String name);
 
     RootCallTarget generateIntrinsic(String name, FunctionType type);

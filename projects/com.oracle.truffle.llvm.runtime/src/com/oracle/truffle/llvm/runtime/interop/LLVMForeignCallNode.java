@@ -162,7 +162,7 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
     protected CallTarget getCallTarget(LLVMFunctionDescriptor function) {
         if (function.isLLVMIRFunction()) {
             return function.getLLVMIRFunction();
-        } else if (function.isNativeIntrinsicFunction()) {
+        } else if (function.isIntrinsicFunction()) {
             return function.getNativeIntrinsic().cachedCallTarget(function.getType());
         } else {
             CompilerDirectives.transferToInterpreter();
