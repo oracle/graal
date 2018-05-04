@@ -60,6 +60,8 @@ import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.NodeAccessHelper;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -400,27 +402,44 @@ public class TruffleAdapter {
     }
 
     private void fillCompletionsWithObjectProperties(CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId) {
+        if (frame != null) {
+            ExecutableNode executableNode = this.getEnv().parseInline(
+                            Source.newBuilder(nodeForLocalScoping.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy eval").build(),
+                            nodeForLocalScoping,
+                            frame.materialize());
+            if (executableNode != null) {
+                NodeAccessHelper.insertNode(nodeForLocalScoping, executableNode);
+                Object object = executableNode.execute(frame);
+                if (object instanceof TruffleObject) {
+                    fillCompletionsFromTruffleObject(completions, nodeForLocalScoping.getEncapsulatingSourceSection().getCharacters().toString().trim(), langId, (TruffleObject) object);
+                }
+            }
+        }
+
         if (langId.equals("sl") && frame != null) {
+            // TODO(ds) SL supports no inline-parsing yet
             if (nodeForLocalScoping instanceof SLReadLocalVariableNode) {
                 Object object = ((SLReadLocalVariableNode) nodeForLocalScoping).executeGeneric(frame);
                 if (object instanceof TruffleObject) {
-                    fillCompletionsFromTruffleObject(completions, nodeForLocalScoping.getSourceSection().getCharacters().toString(), langId, (TruffleObject) object);
+                    fillCompletionsFromTruffleObject(completions,
+                                    nodeForLocalScoping.getSourceSection().getCharacters().toString(), langId, (TruffleObject) object);
                 }
             }
         } else if (langId.equals("js") && frame != null) {
             // TODO(ds) for js use getNodeObject()
-            if (nodeForLocalScoping instanceof InstrumentableNode) {
-                Object nodeObject = ((InstrumentableNode) nodeForLocalScoping).getNodeObject();
-                System.out.println(nodeObject);
-            }
-            System.out.println();
-            if (nodeForLocalScoping instanceof JSReadFrameSlotNode) {
-                JSReadFrameSlotNode readFrameSlotNode = (JSReadFrameSlotNode) nodeForLocalScoping;
-                Object object = readFrameSlotNode.execute(frame);
-                if (object instanceof TruffleObject) {
-                    fillCompletionsFromTruffleObject(completions, readFrameSlotNode.getIdentifier().toString(), langId, (TruffleObject) object);
-                }
-            }
+// if (nodeForLocalScoping instanceof InstrumentableNode) {
+// Object nodeObject = ((InstrumentableNode) nodeForLocalScoping).getNodeObject();
+// System.out.println(nodeObject);
+// }
+// System.out.println();
+// if (nodeForLocalScoping instanceof JSReadFrameSlotNode) {
+// JSReadFrameSlotNode readFrameSlotNode = (JSReadFrameSlotNode) nodeForLocalScoping;
+// Object object = readFrameSlotNode.execute(frame);
+// if (object instanceof TruffleObject) {
+// fillCompletionsFromTruffleObject(completions, readFrameSlotNode.getIdentifier().toString(),
+// langId, (TruffleObject) object);
+// }
+// }
 // if (nodeForLocalScoping instanceof PropertyNode) {
 // Object object = ((PropertyNode) nodeForLocalScoping).execute(frame);
 // Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(),
@@ -432,36 +451,45 @@ public class TruffleAdapter {
 // }
 // }
         } else if (langId.equals("python")) {
-            if (nodeForLocalScoping instanceof ReadGlobalOrBuiltinNode) {
-                VirtualFrame vFrame = frame;
-                if (frame == null) {
-                    vFrame = Truffle.getRuntime().createVirtualFrame(PArguments.withGlobals(PythonLanguage.getContext().getMainModule()), new FrameDescriptor());
-                }
-                ReadGlobalOrBuiltinNode readNode = (ReadGlobalOrBuiltinNode) nodeForLocalScoping;
-                try {
-                    Object object = readNode.execute(vFrame);
-                    if (object instanceof TruffleObject) {
-                        fillCompletionsFromTruffleObject(completions, readNode.getAttributeId(), langId, (TruffleObject) object);
-                    }
-                } catch (PException e) {
-                }
-            } else if (nodeForLocalScoping instanceof ReadLocalVariableNode && frame != null) {
-                ReadLocalVariableNode readNode = (ReadLocalVariableNode) nodeForLocalScoping;
-                Object object = readNode.execute(frame);
-                if (object instanceof TruffleObject) {
-                    fillCompletionsFromTruffleObject(completions, readNode.getSlot().getIdentifier().toString(), langId, (TruffleObject) object);
-                }
-            }
+// if (nodeForLocalScoping instanceof ReadGlobalOrBuiltinNode) {
+// VirtualFrame vFrame = frame;
+// if (frame == null) {
+// vFrame =
+// Truffle.getRuntime().createVirtualFrame(PArguments.withGlobals(PythonLanguage.getContext().getMainModule()),
+// new FrameDescriptor());
+// }
+// ReadGlobalOrBuiltinNode readNode = (ReadGlobalOrBuiltinNode) nodeForLocalScoping;
+// try {
+// Object object = readNode.execute(vFrame);
+// if (object instanceof TruffleObject) {
+// fillCompletionsFromTruffleObject(completions, readNode.getAttributeId(), langId, (TruffleObject)
+// object);
+// }
+// } catch (PException e) {
+// }
+// } else if (nodeForLocalScoping instanceof ReadLocalVariableNode && frame != null) {
+// ReadLocalVariableNode readNode = (ReadLocalVariableNode) nodeForLocalScoping;
+// Object object = readNode.execute(frame);
+// if (object instanceof TruffleObject) {
+// fillCompletionsFromTruffleObject(completions, readNode.getSlot().getIdentifier().toString(),
+// langId, (TruffleObject) object);
+// }
+// }
         }
     }
 
     private void fillCompletionsFromTruffleObject(CompletionList completions, String nodeIdentifier, String langId, TruffleObject object) {
         Map<Object, Object> map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), object);
+
         if (map.isEmpty()) {
-            if (langId.equals("python")) {
-                if (object instanceof PythonObject) {
-                    PythonClass pythonClass = ((PythonObject) object).getPythonClass();
-                    map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), pythonClass);
+            LanguageInfo languageInfo = this.getEnv().findLanguage(object);
+            if (languageInfo == null) {
+                languageInfo = this.getEnv().getLanguages().get(langId);
+            }
+            if (languageInfo != null) {
+                Object metaObject = this.getEnv().findMetaObject(languageInfo, object);
+                if (metaObject instanceof TruffleObject) {
+                    map = ObjectStructures.asMap(new ObjectStructures.MessageNodes(), ((TruffleObject) metaObject));
                 }
             }
         }
