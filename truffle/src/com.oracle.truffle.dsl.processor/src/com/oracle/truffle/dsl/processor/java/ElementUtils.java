@@ -99,12 +99,16 @@ public class ElementUtils {
             }
             return processingEnv.getTypeUtils().getPrimitiveType(typeKind);
         } else {
-            TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(element.getCanonicalName());
+            TypeElement typeElement = getTypeElement(processingEnv, element.getCanonicalName());
             if (typeElement == null) {
                 return null;
             }
             return typeElement.asType();
         }
+    }
+
+    public static TypeElement getTypeElement(final ProcessingEnvironment processingEnv, final CharSequence typeName) {
+        return ModuleCache.getTypeElement(processingEnv, typeName);
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
@@ -939,7 +943,7 @@ public class ElementUtils {
     }
 
     public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, List<? extends AnnotationMirror> mirrors, Class<?> annotationClass) {
-        TypeElement expectedAnnotationType = processingEnv.getElementUtils().getTypeElement(annotationClass.getCanonicalName());
+        TypeElement expectedAnnotationType = getTypeElement(processingEnv, annotationClass.getCanonicalName());
         return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
     }
 
