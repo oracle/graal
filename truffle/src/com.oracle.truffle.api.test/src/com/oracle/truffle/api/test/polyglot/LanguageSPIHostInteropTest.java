@@ -46,6 +46,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.ArrayTruffleObject;
@@ -327,6 +329,115 @@ public class LanguageSPIHostInteropTest {
     }
 
     @Test
+    public void testPrimitiveBoxing() {
+        assertNumberMembers((byte) 1, env.asBoxedGuestValue((byte) 1));
+        assertNumberMembers((short) 1, env.asBoxedGuestValue((short) 1));
+        assertNumberMembers(1, env.asBoxedGuestValue(1));
+        assertNumberMembers(1L, env.asBoxedGuestValue(1L));
+        assertNumberMembers(1F, env.asBoxedGuestValue(1F));
+        assertNumberMembers(1D, env.asBoxedGuestValue(1D));
+
+        assertStringMembers("foobarbaz", env.asBoxedGuestValue("foobarbaz"));
+        assertStringMembers("", env.asBoxedGuestValue(""));
+        assertBooleanMembers(false, env.asBoxedGuestValue(false));
+        assertBooleanMembers(true, env.asBoxedGuestValue(true));
+        assertCharacterMembers('a', env.asBoxedGuestValue('a'));
+
+    }
+
+    private void assertNumberMembers(Object unboxValue, Object numberObject) {
+        Number number = (Number) unbox(numberObject);
+        assertEquals(unboxValue, number);
+        assertInvocable(number.intValue(), numberObject, "intValue");
+        assertInvocable(number.longValue(), numberObject, "longValue");
+        assertInvocable(number.floatValue(), numberObject, "floatValue");
+        assertInvocable(number.doubleValue(), numberObject, "doubleValue");
+        assertInvocable(number.byteValue(), numberObject, "byteValue");
+        assertInvocable(number.shortValue(), numberObject, "shortValue");
+        assertInvocable(true, numberObject, "equals", number);
+        assertInvocable(number.hashCode(), numberObject, "hashCode");
+        assertInvocable(number.toString(), numberObject, "toString");
+
+        assertTrue(env.isHostObject(numberObject));
+        assertEquals(number, env.asHostObject(numberObject));
+    }
+
+    private static void assertInvocable(Object expectedValue, Object receiver, String method, Object... args) {
+        TruffleObject o = (TruffleObject) receiver;
+        int keyInfo = getKeyInfo(o, method);
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInsertable(keyInfo));
+        assertFalse(KeyInfo.isRemovable(keyInfo));
+        assertFalse(KeyInfo.isInternal(keyInfo));
+        assertFalse(KeyInfo.isInsertable(keyInfo));
+
+        Object methodObject = read(o, method);
+        assertEquals(expectedValue, execute(methodObject, args));
+        assertEquals(expectedValue, invoke(receiver, method, args));
+        assertHasKey(o, method);
+    }
+
+    private static void assertHasKey(Object receiver, String key) {
+        TruffleObject o = (TruffleObject) receiver;
+        Object keys = sendKeys(o);
+        int size = getSize(keys);
+        List<String> allKeys = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            String search = (String) read(keys, i);
+            if (search.equals(key)) {
+                return;
+            }
+            allKeys.add(search);
+        }
+        throw new AssertionError("Key not found " + key + ". Keys are " + allKeys);
+    }
+
+    private void assertStringMembers(String unboxValue, Object stringObject) {
+        String string = (String) unbox(stringObject);
+        assertEquals(unboxValue, string);
+
+        assertInvocable(string.length(), stringObject, "length");
+        if (unboxValue.length() > 0) {
+            assertInvocable(string.charAt(0), stringObject, "charAt", 0);
+        }
+        assertInvocable(string.equals(unboxValue), stringObject, "equals", unboxValue);
+        assertInvocable(string.hashCode(), stringObject, "hashCode");
+        assertInvocable(string.toString(), stringObject, "toString");
+        assertTrue(env.isHostObject(stringObject));
+        assertEquals(string, env.asHostObject(stringObject));
+    }
+
+    private void assertBooleanMembers(Object unboxValue, Object booleanObject) {
+        Boolean b = (Boolean) unbox(booleanObject);
+        assertEquals(unboxValue, b);
+
+        assertInvocable(unboxValue, booleanObject, "booleanValue");
+        assertInvocable(b.equals(unboxValue), booleanObject, "equals", unboxValue);
+        assertInvocable(b.compareTo((Boolean) unboxValue), booleanObject, "compareTo", unboxValue);
+        assertInvocable(b.hashCode(), booleanObject, "hashCode");
+        assertInvocable(b.toString(), booleanObject, "toString");
+
+        assertTrue(env.isHostObject(booleanObject));
+        assertEquals(b, env.asHostObject(booleanObject));
+    }
+
+    private void assertCharacterMembers(Character unboxValue, Object charObject) {
+        Character b = (Character) unbox(charObject);
+        assertEquals(unboxValue, b);
+
+        assertInvocable(unboxValue, charObject, "charValue");
+        assertInvocable(b.equals(unboxValue), charObject, "equals", unboxValue);
+        assertInvocable(b.compareTo(unboxValue), charObject, "compareTo", unboxValue);
+        assertInvocable(b.hashCode(), charObject, "hashCode");
+        assertInvocable(b.toString(), charObject, "toString");
+
+        assertTrue(env.isHostObject(charObject));
+        assertEquals(b, env.asHostObject(charObject));
+    }
+
+    @Test
     public void internalKeys() throws ClassCastException, IllegalStateException, PolyglotException, UnsupportedMessageException {
         // All non-internal
         InternalPropertiesObject ipobj = new InternalPropertiesObject(0);
@@ -374,6 +485,30 @@ public class LanguageSPIHostInteropTest {
 
     private static TruffleObject keys(Object value, boolean includeInternal) throws UnsupportedMessageException {
         return ForeignAccess.sendKeys(Message.KEYS.createNode(), (TruffleObject) value, includeInternal);
+    }
+
+    private static Object read(Object value, int nindex) {
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) value, nindex);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object unbox(Object value) {
+        try {
+            return ForeignAccess.sendUnbox(Message.UNBOX.createNode(), (TruffleObject) value);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static int getSize(Object value) {
+        try {
+            return ((Number) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), (TruffleObject) value)).intValue();
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
     }
 
     @Test
@@ -433,6 +568,30 @@ public class LanguageSPIHostInteropTest {
 
     private static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
         return ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
+    }
+
+    private static Object read(TruffleObject foreignObject, Object propertyName) {
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), foreignObject, propertyName);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object invoke(Object foreignObject, String propertyName, Object... args) {
+        try {
+            return ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), (TruffleObject) foreignObject, propertyName, args);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object execute(Object foreignObject, Object... args) {
+        try {
+            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), (TruffleObject) foreignObject, args);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
     }
 
     static final class NoKeysObject implements TruffleObject {

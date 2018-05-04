@@ -251,7 +251,7 @@ public class CountedLoopInfo {
             }
             assert graph.getGuardsStage().allowsFloatingGuards();
             overflowGuard = graph.unique(new GuardNode(cond, AbstractBeginNode.prevBegin(loop.entryPoint()), DeoptimizationReason.LoopLimitCheck, DeoptimizationAction.InvalidateRecompile, true,
-                            JavaConstant.NULL_POINTER)); // TODO gd: use speculation
+                            JavaConstant.NULL_POINTER, null)); // TODO gd: use speculation
             loop.loopBegin().setOverflowGuard(overflowGuard);
             return overflowGuard;
         }

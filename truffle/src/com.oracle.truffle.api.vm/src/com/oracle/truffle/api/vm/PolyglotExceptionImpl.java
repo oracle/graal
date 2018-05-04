@@ -401,11 +401,16 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl implements com.o
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
                 cause = cause.getCause();
             }
-            if (cause.getStackTrace().length == 0) {
-                cause = impl.exception;
+            StackTraceElement[] hostStack;
+            if (VMAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
+                hostStack = VMAccessor.LANGUAGE.getInternalStackTraceElements(cause);
+            } else if (cause.getStackTrace().length == 0) {
+                hostStack = impl.exception.getStackTrace();
+            } else {
+                hostStack = cause.getStackTrace();
             }
             this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
-            this.hostFrames = Arrays.asList(cause.getStackTrace()).listIterator();
+            this.hostFrames = Arrays.asList(hostStack).listIterator();
             // we always start in some host stack frame
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();
         }

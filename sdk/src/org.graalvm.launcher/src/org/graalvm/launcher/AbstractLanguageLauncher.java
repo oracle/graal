@@ -64,7 +64,9 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         }
     }
 
+    // TODO: remove me: both of these are workarounds for other issues
     protected static final boolean IN_GRAALVM = !Boolean.getBoolean("org.graalvm.launcher.standalone");
+    protected static final boolean IS_LIBPOLYGLOT = Boolean.getBoolean("graalvm.libpolyglot");
 
     final void launch(List<String> args, Map<String, String> defaultOptions, boolean doNativeSetup) {
         Map<String, String> polyglotOptions = defaultOptions;
@@ -74,12 +76,12 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
         if (isAOT() && doNativeSetup && IN_GRAALVM) {
             assert nativeAccess != null;
-            nativeAccess.setGraalVMProperties();
+            nativeAccess.setGraalVMProperties(getLanguageId());
         }
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
-        if (isAOT() && doNativeSetup) {
+        if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
             nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType(), IN_GRAALVM);
         }

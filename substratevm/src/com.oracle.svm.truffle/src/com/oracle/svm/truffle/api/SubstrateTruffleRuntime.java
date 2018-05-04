@@ -145,11 +145,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public String getName() {
-        return "Substrate Graal Truffle Runtime";
-    }
-
-    @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     public void lookupCallMethods(MetaAccessProvider metaAccess) {
         super.lookupCallMethods(metaAccess);

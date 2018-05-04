@@ -99,7 +99,7 @@ public final class PolyglotLauncher extends Launcher {
         List<String> arguments = new ArrayList<>(Arrays.asList(args));
         if (isAOT()) {
             nativeAccess.maybeExec(arguments, true, Collections.emptyMap(), VMType.Native, true);
-            nativeAccess.setGraalVMProperties();
+            nativeAccess.setGraalVMProperties(null);
         }
 
         Map<String, String> options = new HashMap<>();

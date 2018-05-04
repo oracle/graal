@@ -130,10 +130,7 @@ final class TextMap {
      * @throws IllegalArgumentException if the offset is outside the string.
      */
     public int offsetToLine(int offset) throws IllegalArgumentException {
-        if (offset < 0 || offset >= textLength) {
-            if (offset == 0 && textLength == 0) {
-                return 1;
-            }
+        if (offset < 0 || offset > textLength) {
             throw new IllegalArgumentException("offset out of bounds");
         }
         return binarySearchLine(nlOffsets, offset) + 1;
@@ -197,9 +194,6 @@ final class TextMap {
      * @throws IllegalArgumentException if there is no such line in the text.
      */
     public int lineStartOffset(int line) throws IllegalArgumentException {
-        if (textLength == 0) {
-            return 0;
-        }
         if (lineOutOfRange(line)) {
             throw new IllegalArgumentException("line out of bounds");
         }
@@ -213,13 +207,10 @@ final class TextMap {
      * @throws IllegalArgumentException if there is no such line in the text.
      */
     public int lineLength(int line) throws IllegalArgumentException {
-        if (textLength == 0) {
-            return 0;
-        }
         if (lineOutOfRange(line)) {
             throw new IllegalArgumentException("line out of bounds");
         }
-        if (line == nlOffsets.length - 1 && !finalNL) {
+        if (line == nlOffsets.length - 1) {
             return textLength - nlOffsets[line - 1];
         }
         return (nlOffsets[line] - nlOffsets[line - 1]) - 1;
@@ -229,7 +220,7 @@ final class TextMap {
      * Is the line number out of range.
      */
     private boolean lineOutOfRange(int line) {
-        return line <= 0 || line >= nlOffsets.length || (line == nlOffsets.length - 1 && finalNL);
+        return line <= 0 || line >= nlOffsets.length;
     }
 
 }

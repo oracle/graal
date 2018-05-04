@@ -47,12 +47,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Queue;
-import java.util.Set;
+import java.util.StringJoiner;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
@@ -161,6 +163,8 @@ class NativeImage {
 
     static final String oHMaxRuntimeCompileMethods = oH(GraalFeature.Options.MaxRuntimeCompileMethods);
     static final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
+    static final String oDPolyglotLauncherClasses = "-Dcom.oracle.graalvm.launcher.launcherclasses=";
+    static final String oDLauncherClasspath = "-Dorg.graalvm.launcher.classpath=";
 
     static final String oXmx = "-Xmx";
     static final String oXms = "-Xms";
@@ -172,6 +176,7 @@ class NativeImage {
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> imageBuilderJavaArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<String> customJavaArgs = new LinkedHashSet<>();
     private final LinkedHashSet<String> customImageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
@@ -187,7 +192,7 @@ class NativeImage {
     private boolean dryRun = false;
 
     final Registry optionRegistry;
-    private final MacroOption truffleOption;
+    private LinkedHashSet<EnabledOption> enabledLanguages;
 
     protected NativeImage() {
         workDir = Paths.get(".").toAbsolutePath().normalize();
@@ -245,7 +250,6 @@ class NativeImage {
 
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
-        truffleOption = optionRegistry.addBuiltin("truffle");
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
@@ -295,7 +299,7 @@ class NativeImage {
     private void prepareImageBuildArgs() {
         Path svmDir = getRootDir().resolve(Paths.get("lib", "svm"));
         getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
-        getJars(svmDir).forEach(this::addImageClasspath);
+        getJars(svmDir).forEach(this::addImageProvidedClasspath);
         Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
         addImageBuilderArg(oHCLibraryPath + clibrariesDir);
         if (Files.isDirectory(svmDir.resolve("inspect"))) {
@@ -320,7 +324,7 @@ class NativeImage {
 
     private void completeOptionArgs() {
         /* Determine if truffle is needed- any MacroOption of kind Language counts */
-        LinkedHashSet<EnabledOption> enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
+        enabledLanguages = optionRegistry.getEnabledOptions(MacroOptionKind.Language);
         for (EnabledOption enabledOption : optionRegistry.getEnabledOptions()) {
             if (!MacroOptionKind.Language.equals(enabledOption.getOption().kind) && enabledOption.getProperty("LauncherClass") != null) {
                 /* Also identify non-Language MacroOptions as Language if LauncherClass is set */
@@ -328,15 +332,8 @@ class NativeImage {
             }
         }
 
-        if (!enabledLanguages.isEmpty() || optionRegistry.getEnabledOption(truffleOption) != null) {
-            enableTruffle();
-        }
-
         /* Create a polyglot image if we have more than one LauncherClass. */
-        Set<String> launcherClasses = enabledLanguages.stream()
-                        .map(lang -> lang.getProperty("LauncherClass"))
-                        .filter(Objects::nonNull).collect(Collectors.toSet());
-        if (launcherClasses.size() > 1) {
+        if (getLauncherClasses().limit(2).count() > 1) {
             /* Use polyglot as image name if not defined on command line */
             if (customImageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
                 replaceArg(imageBuilderArgs, oHName, "polyglot");
@@ -345,8 +342,6 @@ class NativeImage {
                 /* and the PolyglotLauncher as main class if not defined on command line */
                 replaceArg(imageBuilderArgs, oHClass, "org.graalvm.launcher.PolyglotLauncher");
             }
-            /* Collect the launcherClasses for enabledLanguages. */
-            addImageBuilderJavaArgs("-Dcom.oracle.graalvm.launcher.launcherclasses=" + launcherClasses.stream().collect(Collectors.joining(",")));
         }
 
         /* Provide more memory for image building if we have more than one language. */
@@ -356,18 +351,35 @@ class NativeImage {
             /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
             addImageBuilderJavaArgs(oXmx + memRequirements);
         }
+
+        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
     }
 
-    private void enableTruffle() {
-        Path truffleDir = getRootDir().resolve(Paths.get("lib", "truffle"));
-        addImageBuilderBootClasspath(truffleDir.resolve("truffle-api.jar"));
-        addImageBuilderArg(oHFeatures + "com.oracle.svm.truffle.TruffleFeature");
-        addImageBuilderJavaArgs("-Dgraalvm.locatorDisabled=true");
-        addImageBuilderJavaArgs("-Dtruffle.TrustAllTruffleRuntimeProviders=true"); // GR-7046
+    private Stream<String> getLanguageLauncherClasses() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language)
+                        .map(lang -> lang.getProperty("LauncherClass"))
+                        .filter(Objects::nonNull).distinct();
+    }
 
-        Path graalvmDir = getRootDir().resolve(Paths.get("lib", "graalvm"));
-        getJars(graalvmDir).forEach((Consumer<? super Path>) this::addImageClasspath);
-        consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity());
+    private Stream<String> getLauncherClasses() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
+                        .map(lang -> lang.getProperty("LauncherClass"))
+                        .filter(Objects::nonNull).distinct();
+    }
+
+    private Stream<String> getRelativeLauncherClassPath() {
+        return optionRegistry.getEnabledOptionsStream(MacroOptionKind.Language, MacroOptionKind.Tool)
+                        .map(lang -> lang.getProperty("LauncherClassPath"))
+                        .filter(Objects::nonNull).flatMap(Pattern.compile(":", Pattern.LITERAL)::splitAsStream);
+    }
+
+    private Stream<Path> getAbsoluteLauncherClassPath() {
+        return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> getRootDir().resolve(p));
+    }
+
+    protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
+        BiFunction<String, String, String> takeLast = (a, b) -> b;
+        return consolidateArgs(args, argPrefix, Function.identity(), Function.identity(), () -> null, takeLast);
     }
 
     protected static boolean replaceArg(Collection<String> args, String argPrefix, String argSuffix) {
@@ -380,15 +392,18 @@ class NativeImage {
                     Function<String, T> fromSuffix, Function<T, String> toSuffix,
                     Supplier<T> init, BiFunction<T, T, T> combiner) {
         T consolidatedValue = null;
+        boolean needsConsolidate = false;
         for (String arg : args) {
             if (arg.startsWith(argPrefix)) {
                 if (consolidatedValue == null) {
                     consolidatedValue = init.get();
+                } else {
+                    needsConsolidate = true;
                 }
                 consolidatedValue = combiner.apply(consolidatedValue, fromSuffix.apply(arg.substring(argPrefix.length())));
             }
         }
-        if (consolidatedValue != null) {
+        if (consolidatedValue != null && needsConsolidate) {
             replaceArg(args, argPrefix, toSuffix.apply(consolidatedValue));
         }
         return consolidatedValue;
@@ -421,9 +436,10 @@ class NativeImage {
 
         /* If no customImageClasspath was specified put "." on classpath */
         if (customImageClasspath.isEmpty()) {
-            addCustomImageClasspath(Paths.get("."));
+            addImageProvidedClasspath(Paths.get("."));
+        } else {
+            imageClasspath.addAll(customImageClasspath);
         }
-        imageClasspath.addAll(customImageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -450,10 +466,10 @@ class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHFeatures, ",", Function.identity());
 
         BiFunction<String, String, String> takeLast = (a, b) -> b;
-        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), Function.identity(), () -> null, takeLast);
+        consolidateArgs(imageBuilderArgs, oHPath, Function.identity(), canonicalizedPathStr, () -> null, takeLast);
         consolidateArgs(imageBuilderArgs, oHName, Function.identity(), Function.identity(), () -> null, takeLast);
-        String mainClass = consolidateArgs(imageBuilderArgs, oHClass, Function.identity(), Function.identity(), () -> null, takeLast);
-        String imageKind = consolidateArgs(imageBuilderArgs, oHKind, Function.identity(), Function.identity(), () -> null, takeLast);
+        String mainClass = consolidateSingleValueArg(imageBuilderArgs, oHClass);
+        String imageKind = consolidateSingleValueArg(imageBuilderArgs, oHKind);
         boolean buildExecutable = !NativeImageKind.SHARED_LIBRARY.name().equals(imageKind);
         boolean printFlags = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
 
@@ -500,6 +516,29 @@ class NativeImage {
             }
         }
 
+        boolean isGraalVMLauncher = false;
+        if ("org.graalvm.launcher.PolyglotLauncher".equals(mainClass) && consolidateSingleValueArg(imageBuilderJavaArgs, oDPolyglotLauncherClasses) == null) {
+            /* Collect the launcherClasses for enabledLanguages. */
+            addImageBuilderJavaArgs(oDPolyglotLauncherClasses + getLanguageLauncherClasses().collect(Collectors.joining(",")));
+            isGraalVMLauncher = true;
+        }
+
+        if (!isGraalVMLauncher && mainClass != null) {
+            isGraalVMLauncher = getLauncherClasses().anyMatch(mainClass::equals);
+        }
+
+        if (isGraalVMLauncher) {
+            showVerboseMessage(verbose || dryRun, "Automatically appending LauncherClassPath");
+            getAbsoluteLauncherClassPath().forEach(p -> {
+                if (!Files.isRegularFile(p)) {
+                    showWarning(String.format("Ignoring '%s' from LauncherClassPath: it does not exist or is not a regular file", p));
+                } else {
+                    addImageClasspath(p);
+                }
+            });
+            addImageClasspath(getRootDir().resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
+        }
+
         if (!leftoverArgs.isEmpty()) {
             String prefix = "Unrecognized option" + (leftoverArgs.size() == 1 ? ": " : "s: ");
             showError(leftoverArgs.stream().collect(Collectors.joining(", ", prefix, "")));
@@ -507,7 +546,22 @@ class NativeImage {
 
         LinkedHashSet<Path> finalImageClasspath = new LinkedHashSet<>(imageBuilderBootClasspath);
         finalImageClasspath.addAll(imageBuilderClasspath);
+        finalImageClasspath.addAll(imageProvidedClasspath);
         finalImageClasspath.addAll(imageClasspath);
+
+        if (isGraalVMLauncher && collectListArgs(imageBuilderJavaArgs, oDLauncherClasspath, File.pathSeparator).isEmpty()) {
+            StringJoiner sj = new StringJoiner(File.pathSeparator, oDLauncherClasspath, "");
+            for (Path p : imageClasspath) {
+                Path canonical = canonicalize(p);
+                if (!canonical.startsWith(rootDir)) {
+                    System.err.println(String.format("WARNING: ignoring '%s' while building launcher classpath: it does not live under the GraalVM root (%s)", canonical, rootDir));
+                    continue;
+                }
+                sj.add(Paths.get("jre").resolve(rootDir.relativize(canonical)).toString());
+            }
+            addImageBuilderJavaArgs(sj.toString());
+        }
+
         buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
     }
 
@@ -554,11 +608,15 @@ class NativeImage {
             nativeImage.prepareImageBuildArgs();
             nativeImage.completeImageBuildArgs(args);
         } catch (NativeImageError e) {
+            boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
             NativeImage.show(System.err::println, "Error: " + e.getMessage());
             Throwable cause = e.getCause();
             while (cause != null) {
                 NativeImage.show(System.err::println, "Caused by: " + cause);
                 cause = cause.getCause();
+            }
+            if (verbose) {
+                e.printStackTrace();
             }
             System.exit(1);
         }
@@ -628,6 +686,14 @@ class NativeImage {
 
     void addImageClasspath(Path classpath) {
         imageClasspath.add(canonicalize(classpath));
+    }
+
+    /**
+     * For adding classpath elements that are not normally on the classpath in the Java version: svm
+     * jars, truffle jars etc.
+     */
+    void addImageProvidedClasspath(Path classpath) {
+        imageProvidedClasspath.add(canonicalize(classpath));
     }
 
     void addCustomImageClasspath(Path classpath) {
@@ -722,7 +788,24 @@ class NativeImage {
         if (defaultNativeImageArgs != null && !defaultNativeImageArgs.isEmpty()) {
             arguments.addAll(Arrays.asList(defaultNativeImageArgs.split(" ")));
         }
-        arguments.addAll(Arrays.asList(args));
+        for (String arg : args) {
+
+            switch (arg) {
+                case "--language:all":
+                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Language)) {
+                        arguments.add("--language:" + lang);
+                    }
+                    break;
+                case "--tool:all":
+                    for (String lang : optionRegistry.getAvailableOptions(MacroOptionKind.Tool)) {
+                        arguments.add("--tool:" + lang);
+                    }
+                    break;
+                default:
+                    arguments.add(arg);
+                    break;
+            }
+        }
         while (!arguments.isEmpty()) {
             boolean consumed = false;
             for (int index = optionHandlers.size() - 1; index >= 0; --index) {
@@ -771,9 +854,20 @@ class NativeImage {
         return Collections.unmodifiableMap(map);
     }
 
+    private static String deletedFileSuffix = ".deleted";
+
+    protected static boolean isDeletedPath(Path toDelete) {
+        return toDelete.getFileName().toString().endsWith(deletedFileSuffix);
+    }
+
     protected void deleteAllFiles(Path toDelete) {
         try {
-            Files.walk(toDelete).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+            Path deletedPath = toDelete;
+            if (!isDeletedPath(deletedPath)) {
+                deletedPath = toDelete.resolveSibling(toDelete.getFileName() + deletedFileSuffix);
+                Files.move(toDelete, deletedPath);
+            }
+            Files.walk(deletedPath).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
         } catch (IOException e) {
             if (isVerbose()) {
                 showMessage("Could not recursively delete path: " + toDelete);

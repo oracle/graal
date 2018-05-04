@@ -24,8 +24,9 @@ package com.oracle.svm.core.posix.zipfile;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
-@TargetClass(value = java.util.zip.Inflater.class)
+@TargetClass(value = java.util.zip.Inflater.class, onlyWith = JDK8OrEarlier.class)
 public final class Target_java_util_zip_Inflater {
     @Alias
     native boolean ended();

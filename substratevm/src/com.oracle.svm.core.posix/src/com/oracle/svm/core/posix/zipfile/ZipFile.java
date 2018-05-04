@@ -36,6 +36,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 import java.util.zip.ZipException;
+
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.snippets.KnownIntrinsics;import sun.misc.PerfCounter;
 import sun.misc.SharedSecrets;
 import sun.misc.JavaUtilZipFileAccess;
@@ -94,7 +96,7 @@ import static com.oracle.svm.core.posix.zipfile.ZipUtils.*;
  */
 @SuppressWarnings("all")
 @Substitute
-@TargetClass(java.util.zip.ZipFile.class)
+@TargetClass(value = java.util.zip.ZipFile.class, onlyWith = JDK8OrEarlier.class)
 public final class ZipFile implements ZipConstants, Closeable {
 
     @Substitute

@@ -123,12 +123,16 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
 
     @Override
     public VirtualArrayNode duplicate() {
-        return new VirtualArrayNode(componentType, length);
+        VirtualArrayNode node = new VirtualArrayNode(componentType, length);
+        node.setNodeSourcePosition(this.getNodeSourcePosition());
+        return node;
     }
 
     @Override
     public ValueNode getMaterializedRepresentation(FixedNode fixed, ValueNode[] entries, LockState locks) {
-        return new AllocatedObjectNode(this);
+        AllocatedObjectNode node = new AllocatedObjectNode(this);
+        node.setNodeSourcePosition(this.getNodeSourcePosition());
+        return node;
     }
 
     @Override

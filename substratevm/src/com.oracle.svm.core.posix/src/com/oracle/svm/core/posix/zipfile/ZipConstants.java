@@ -30,6 +30,7 @@ package com.oracle.svm.core.posix.zipfile;
 //package java.util.zip;
 
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 /*
  * This interface defines the constants that are used by the classes
@@ -40,7 +41,7 @@ import com.oracle.svm.core.annotate.Substitute;
  */
 @SuppressWarnings("all")
 @Substitute
-@com.oracle.svm.core.annotate.TargetClass(className = "java.util.zip.ZipConstants")
+@com.oracle.svm.core.annotate.TargetClass(className = "java.util.zip.ZipConstants", onlyWith = JDK8OrEarlier.class)
 interface ZipConstants {
     /*
      * Header signatures

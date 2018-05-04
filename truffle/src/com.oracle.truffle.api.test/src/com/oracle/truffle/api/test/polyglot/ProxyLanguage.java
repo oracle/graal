@@ -56,9 +56,10 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     private boolean wrapper = true;
     protected ProxyLanguage languageInstance;
 
-    public static void setDelegate(ProxyLanguage delegate) {
-        delegate.wrapper = false;
+    public static <T extends ProxyLanguage> T setDelegate(T delegate) {
+        ((ProxyLanguage) delegate).wrapper = false;
         ProxyLanguage.delegate = delegate;
+        return delegate;
     }
 
     public static LanguageContext getCurrentContext() {
@@ -159,6 +160,16 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             super.initializeContext(context);
         }
 
+    }
+
+    @Override
+    protected boolean initializeMultiContext() {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.initializeMultiContext();
+        } else {
+            return super.initializeMultiContext();
+        }
     }
 
     @Override

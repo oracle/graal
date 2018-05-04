@@ -27,9 +27,13 @@ package com.oracle.svm.core.jdk;
 import java.io.FileDescriptor;
 import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
+import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -49,7 +53,6 @@ import com.oracle.svm.core.os.OSInterface;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.code.MemoryBarriers;
-import sun.misc.Cleaner;
 import sun.misc.JavaAWTAccess;
 import sun.misc.JavaLangAccess;
 import sun.misc.Unsafe;
@@ -197,24 +200,40 @@ final class Util_sun_misc_MessageUtils {
     }
 }
 
-@TargetClass(sun.misc.Cleaner.class)
-final class Target_sun_misc_Cleaner {
+@Platforms(Platform.HOSTED_ONLY.class)
+class Package_jdk_internal_ref implements Function<TargetClass, String> {
+    @Override
+    public String apply(TargetClass annotation) {
+        if (GraalServices.Java8OrEarlier) {
+            return "sun.misc." + annotation.className();
+        } else {
+            return "jdk.internal.ref." + annotation.className();
+        }
+    }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_ref.class, className = "Cleaner")
+final class Target_jdk_internal_ref_Cleaner {
+
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    private static Cleaner first;
+    static Target_jdk_internal_ref_Cleaner first;
 
     /**
      * Contrary to the comment on {@link sun.misc.Cleaner}.dummyQueue, in SubstrateVM the queue can
-     * have {@link Cleaner} instances on it, because SubstrateVM does not have a ReferenceHandler
-     * thread to clean instances, so SubstrateVM puts them on the queue and drains the queue after
-     * collections in {@link SunMiscSupport#drainCleanerQueue()}.
+     * have Cleaner instances on it, because SubstrateVM does not have a ReferenceHandler thread to
+     * clean instances, so SubstrateVM puts them on the queue and drains the queue after collections
+     * in {@link SunMiscSupport#drainCleanerQueue()}.
      * <p>
-     * {@link Cleaner} instances that do bad things are even worse in SubstrateVM than they are in
-     * the HotSpot VM, because they are run on the thread that started a collection.
+     * Cleaner instances that do bad things are even worse in SubstrateVM than they are in the
+     * HotSpot VM, because they are run on the thread that started a collection.
      * <p>
      * Changing the access from `private` to `protected`, and reinitializing to an empty queue.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    protected static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
+    static ReferenceQueue<Object> dummyQueue = new ReferenceQueue<>();
+
+    @Alias
+    native void clean();
 }
 
 /** PerfCounter methods that access the lb field fail with SIGSEV. */

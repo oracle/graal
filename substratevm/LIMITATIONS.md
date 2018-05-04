@@ -126,6 +126,8 @@ Starting new threads; Support for `java.lang.Thread`
 ### Support Status: Mostly supported
 Nearly full support for `java.lang.Thread`. Only long deprecated methods, such as `Thread.stop()`, will not be supported. However, we discourage explicit usage of threads. Use higher level constructs from `java.util.concurrent` instead.
 
+Starting threads in a static initializer is not allowed. See the *Static Initializers* section bellow for details.
+
 Identity Hash Code
 ------------------
 
@@ -151,7 +153,7 @@ Static Initializers
 Static class initialization blocks, pre-initialized static variables.
 
 ### Support Status: Mostly supported
-All static class initialization is done during native image construction. This has the advantage that possibly expensive initializations do not slow down the startup, and large static data structures are pre-allocated. However, it also means that instance-specific initializations (such as opening and initializing native libraries, opening files or socket connections, ...) cannot be done in static initializers.
+All static class initialization is done during native image construction. This has the advantage that possibly expensive initializations do not slow down the startup, and large static data structures are pre-allocated. However, it also means that instance-specific initializations (such as opening and initializing native libraries, opening files or socket connections, starting threads ...) cannot be done in static initializers.
 
 ### Why:
 Static initializers run in the host VM during native image generation, and it is not possible to prevent or intercept that.

@@ -35,18 +35,22 @@ import tarfile
 import subprocess
 import tempfile
 import shutil
+
 import mx_truffle
+import mx_sdk
 
 import mx
+import mx_gate
 from mx_gate import Task
 
-from mx_unittest import unittest
-from mx_javamodules import as_java_module
-import mx_gate
 import mx_unittest
+from mx_unittest import unittest
+
+from mx_javamodules import as_java_module
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
+
 import argparse
 import shlex
 import glob
@@ -425,7 +429,7 @@ def _gate_java_benchmark(args, successRe):
     try:
         run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
     finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\]hs_err_pid[0-9]+\.log)', out.data)
+        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
@@ -522,7 +526,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             ctw([
                     '--ctwopts', 'Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
+                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
 
@@ -531,25 +535,33 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         b.run(tasks, extraVMarguments)
 
     # run selected DaCapo benchmarks
-    dacapos = {
+    # DaCapo benchmarks that can run with system assertions enabled
+    dacapos_with_sa = {
         'avrora':     1,
-        'batik':      1,
-        'fop':        8,
         'h2':         1,
         'jython':     2,
         'luindex':    1,
         'lusearch':   4,
-        'pmd':        1,
-        'sunflow':    2,
         'xalan':      1,
     }
-    for name, iterations in sorted(dacapos.iteritems()):
+    for name, iterations in sorted(dacapos_with_sa.iteritems()):
+        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
+
+    # DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
+    dacapos_without_sa = {
+        'batik':      1,
+        'fop':        8,
+        'pmd':        1,
+        'sunflow':    2,
+    }
+    for name, iterations in sorted(dacapos_without_sa.iteritems()):
         with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # run selected Scala DaCapo benchmarks
-    scala_dacapos = {
-        'actors':     1,
+    # Scala DaCapo benchmarks that can run with system assertions enabled
+    scala_dacapos_with_sa = {
         'apparat':    1,
         'factorie':   1,
         'kiama':      4,
@@ -561,10 +573,19 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalaxb':    1,
         'tmt':        1
     }
+    for name, iterations in sorted(scala_dacapos_with_sa.iteritems()):
+        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
+
+    # Scala DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
+    scala_dacapos_without_sa = {
+        'actors':     1,
+    }
     if not _jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos['actors']
-    for name, iterations in sorted(scala_dacapos.iteritems()):
+        del scala_dacapos_without_sa['actors']
+
+    for name, iterations in sorted(scala_dacapos_without_sa.iteritems()):
         with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
@@ -679,6 +700,9 @@ def _unittest_config_participant(config):
             # ALL-UNNAMED.
             jvmci = [m for m in jdk.get_modules() if m.name == 'jdk.internal.vm.ci'][0]
             vmArgs.extend(['--add-exports=' + jvmci.name + '/' + p + '=jdk.internal.vm.compiler,ALL-UNNAMED' for p in jvmci.packages])
+
+    vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
+    vmArgs.append('-esa')
 
     if isJDK8:
         # Run the VM in a mode where application/test classes can
@@ -1035,6 +1059,7 @@ def makegraaljdk(args):
         shutil.copytree(srcJdk, dstJdk)
 
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
+        truffleDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'truffle'))
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
@@ -1063,7 +1088,11 @@ def makegraaljdk(args):
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
             src = basename(e.classpath_repr())
-            mx.log('Copying {} to {}'.format(e.classpath_repr(), bootDir))
+            if e.suite.name == 'truffle':
+                dstDir = truffleDir
+            else:
+                dstDir = bootDir
+            mx.log('Copying {} to {}'.format(e.classpath_repr(), dstDir))
             candidate = e.classpath_repr() + '.map'
             if exists(candidate):
                 mapFiles.add(candidate)
@@ -1071,7 +1100,7 @@ def makegraaljdk(args):
             with open(join(dstJdk, 'release'), 'a') as fp:
                 s = e.suite
                 print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
-            shutil.copyfile(e.classpath_repr(), join(bootDir, src))
+            shutil.copyfile(e.classpath_repr(), join(dstDir, src))
 
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
@@ -1275,6 +1304,19 @@ def updategraalinopenjdk(args):
         with open(overwritten_file, 'w') as fp:
             fp.write(overwritten)
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
+    suite=_suite,
+    name='Graal compiler',
+    short_name='cmp',
+    dir_name='graal',
+    license_files=[],
+    third_party_license_files=[],
+    jvmci_jars=['compiler:GRAAL'],
+    graal_compiler='graal',
+))
+
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],
