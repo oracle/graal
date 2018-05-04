@@ -1335,7 +1335,18 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(transferSizeEncoding | instr.encoding | rs2(rs) | rn(rn) | rt(rt));
     }
 
-    /* Compare And Swap */
+    /**
+     * Compare And Swap word or doubleword in memory. This reads a value from an address rn,
+     * compares it against a given value rs, and, if equal, stores the value rt to memory. The value
+     * read from address rn is stored in register rs.
+     *
+     * @param size size of bits read from memory. Must be 32 or 64.
+     * @param rs general purpose register to be compared and loaded. May not be null.
+     * @param rt general purpose register to be conditionally stored. May not be null.
+     * @param rn general purpose register containing the address from which to read.
+     * @param acquire boolean value signifying if the load should use acquire semantics.
+     * @param release boolean value signifying if the store should use release semantics.
+     */
     public void cas(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
         assert size == 32 || size == 64;
         int transferSize = NumUtil.log2Ceil(size / 8);
