@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.nodes.func;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -42,9 +45,6 @@ import com.oracle.truffle.llvm.nodes.base.LLVMFrameNullerUtil;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class LLVMFunctionStartNode extends RootNode {
 

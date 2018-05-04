@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.nodes.base;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -55,51 +56,53 @@ public final class LLVMFrameNullerUtil {
     private LLVMFrameNullerUtil() {
     }
 
-    public static void nullI1(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setBoolean(frameSlot, false);
+    public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot) {
+        FrameSlotKind kind = frameSlot.getKind();
+        CompilerAsserts.partialEvaluationConstant(kind);
+        if (kind == FrameSlotKind.Object) {
+            // object frame slots always need to be nulled (otherwise we would impact GC)
+            nullObject(frame, frameSlot);
+        } else if (CompilerDirectives.inCompiledCode()) {
+            // Nulling primitive frame slots is only necessary in compiled code (otherwise, we would
+            // compute values that are only used in framestates). Tthis code must NOT be moved to a
+            // separate method as it would cause endless deopts (code method might be unresolved
+            // because it was never executed). For the same reason, we also must NOT use a switch
+            // statement.
+            if (kind == FrameSlotKind.Boolean) {
+                frame.setBoolean(frameSlot, false);
+            } else if (kind == FrameSlotKind.Byte) {
+                frame.setByte(frameSlot, (byte) 0);
+            } else if (kind == FrameSlotKind.Int) {
+                frame.setInt(frameSlot, 0);
+            } else if (kind == FrameSlotKind.Long) {
+                frame.setLong(frameSlot, 0L);
+            } else if (kind == FrameSlotKind.Float) {
+                frame.setFloat(frameSlot, 0f);
+            } else if (kind == FrameSlotKind.Double) {
+                frame.setDouble(frameSlot, 0d);
+            } else {
+                throw new UnsupportedOperationException("unexpected frameslot kind");
+            }
+        }
     }
 
-    public static void nullI8(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setByte(frameSlot, (byte) 0);
-    }
-
-    public static void nullI16(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setInt(frameSlot, 0);
-    }
-
-    public static void nullI32(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setInt(frameSlot, 0);
-    }
-
-    public static void nullI64(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setLong(frameSlot, 0L);
-    }
-
-    public static void nullFloat(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setFloat(frameSlot, 0f);
-    }
-
-    public static void nullDouble(VirtualFrame frame, FrameSlot frameSlot) {
-        frame.setDouble(frameSlot, 0d);
-    }
-
-    public static void nullAddress(VirtualFrame frame, FrameSlot frameSlot) {
+    private static void nullAddress(VirtualFrame frame, FrameSlot frameSlot) {
         frame.setObject(frameSlot, LLVMNativePointer.createNull());
     }
 
-    public static void nullIVarBit(VirtualFrame frame, FrameSlot frameSlot) {
+    private static void nullIVarBit(VirtualFrame frame, FrameSlot frameSlot) {
         frame.setObject(frameSlot, LLVMIVarBit.createNull());
     }
 
-    public static void null80BitFloat(VirtualFrame frame, FrameSlot frameSlot) {
+    private static void null80BitFloat(VirtualFrame frame, FrameSlot frameSlot) {
         frame.setObject(frameSlot, new LLVM80BitFloat(false, 0, 0));
     }
 
-    public static void nullFunction(VirtualFrame frame, FrameSlot frameSlot) {
+    private static void nullFunction(VirtualFrame frame, FrameSlot frameSlot) {
         frame.setObject(frameSlot, LLVMNativePointer.createNull());
     }
 
-    public static void nullObject(VirtualFrame frame, FrameSlot frameSlot) {
+    private static void nullObject(VirtualFrame frame, FrameSlot frameSlot) {
         CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo());
         CompilerAsserts.partialEvaluationConstant(frameSlot.getInfo() == null);
         if (frameSlot.getInfo() != null) {
@@ -110,14 +113,19 @@ public final class LLVMFrameNullerUtil {
             CompilerAsserts.partialEvaluationConstant(type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80);
             if (Type.isFunctionOrFunctionPointer(type)) {
                 nullFunction(frame, frameSlot);
+                return;
             } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PrimitiveType) {
                 nullVector(frame, frameSlot, ((PrimitiveType) ((VectorType) type).getElementType()).getPrimitiveKind());
+                return;
             } else if (type instanceof VectorType && ((VectorType) type).getElementType() instanceof PointerType) {
                 frame.setObject(frameSlot, LLVMPointerVector.createNullVector());
+                return;
             } else if (type instanceof VariableBitWidthType) {
                 nullIVarBit(frame, frameSlot);
+                return;
             } else if (type instanceof PrimitiveType && ((PrimitiveType) type).getPrimitiveKind() == PrimitiveKind.X86_FP80) {
                 null80BitFloat(frame, frameSlot);
+                return;
             }
         }
 
@@ -126,37 +134,7 @@ public final class LLVMFrameNullerUtil {
         nullAddress(frame, frameSlot);
     }
 
-    public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot) {
-        CompilerAsserts.partialEvaluationConstant(frameSlot.getKind());
-        switch (frameSlot.getKind()) {
-            case Boolean:
-                nullI1(frame, frameSlot);
-                break;
-            case Byte:
-                nullI8(frame, frameSlot);
-                break;
-            case Int:
-                nullI32(frame, frameSlot);
-                break;
-            case Long:
-                nullI64(frame, frameSlot);
-                break;
-            case Float:
-                nullFloat(frame, frameSlot);
-                break;
-            case Double:
-                nullDouble(frame, frameSlot);
-                break;
-            case Object:
-                nullObject(frame, frameSlot);
-                break;
-            case Illegal:
-            default:
-                throw new UnsupportedOperationException("unexpected frameslot kind");
-        }
-    }
-
-    public static void nullVector(VirtualFrame frame, FrameSlot frameSlot, PrimitiveKind elementType) {
+    private static void nullVector(VirtualFrame frame, FrameSlot frameSlot, PrimitiveKind elementType) {
         CompilerAsserts.partialEvaluationConstant(elementType);
         switch (elementType) {
             case DOUBLE:
