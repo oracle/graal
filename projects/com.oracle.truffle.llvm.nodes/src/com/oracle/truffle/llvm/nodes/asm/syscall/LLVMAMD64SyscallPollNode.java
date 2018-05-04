@@ -48,12 +48,12 @@ public abstract class LLVMAMD64SyscallPollNode extends LLVMSyscallOperationNode 
     }
 
     @Specialization
-    protected long execute(LLVMNativePointer fds, long nfds, long timeout) {
+    protected long op(LLVMNativePointer fds, long nfds, long timeout) {
         return (int) poll.execute(fds.asNative(), nfds, (int) timeout);
     }
 
     @Specialization
-    protected long execute(long fds, long nfds, long timeout) {
-        return execute(LLVMNativePointer.create(fds), nfds, timeout);
+    protected long op(long fds, long nfds, long timeout) {
+        return op(LLVMNativePointer.create(fds), nfds, timeout);
     }
 }

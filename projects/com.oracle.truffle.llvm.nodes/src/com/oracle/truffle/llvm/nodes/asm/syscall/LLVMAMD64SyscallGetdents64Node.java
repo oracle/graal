@@ -48,12 +48,12 @@ public abstract class LLVMAMD64SyscallGetdents64Node extends LLVMSyscallOperatio
     }
 
     @Specialization
-    protected long execute(long fd, LLVMNativePointer dirp, long count) {
+    protected long op(long fd, LLVMNativePointer dirp, long count) {
         return (int) getdents64.execute((int) fd, dirp.asNative(), (int) count);
     }
 
     @Specialization
-    protected long execute(long fd, long dirp, long count) {
-        return execute(fd, LLVMNativePointer.create(dirp), count);
+    protected long op(long fd, long dirp, long count) {
+        return op(fd, LLVMNativePointer.create(dirp), count);
     }
 }

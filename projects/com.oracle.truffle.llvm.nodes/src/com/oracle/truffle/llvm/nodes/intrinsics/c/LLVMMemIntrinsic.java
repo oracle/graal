@@ -47,25 +47,25 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(Object dst, int val, int len) {
+        protected Object op(Object dst, int val, int len) {
             memset.executeWithTarget(dst, (byte) val, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(Object dst, int val, long len) {
+        protected Object op(Object dst, int val, long len) {
             memset.executeWithTarget(dst, (byte) val, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(Object dst, byte val, int len) {
+        protected Object op(Object dst, byte val, int len) {
             memset.executeWithTarget(dst, val, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(Object dst, byte val, long len) {
+        protected Object op(Object dst, byte val, long len) {
             memset.executeWithTarget(dst, val, len);
             return dst;
         }
@@ -80,13 +80,13 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object execute(Object dst, Object src, int len) {
+        protected Object op(Object dst, Object src, int len) {
             memcpy.executeWithTarget(dst, src, len);
             return dst;
         }
 
         @Specialization
-        protected Object execute(Object dst, Object src, long len) {
+        protected Object op(Object dst, Object src, long len) {
             memcpy.executeWithTarget(dst, src, len);
             return dst;
         }

@@ -48,12 +48,12 @@ public abstract class LLVMAMD64SyscallFstatfsNode extends LLVMSyscallOperationNo
     }
 
     @Specialization
-    protected long execute(long fd, LLVMNativePointer buf) {
+    protected long op(long fd, LLVMNativePointer buf) {
         return (int) fstatfs.execute((int) fd, buf.asNative());
     }
 
     @Specialization
-    protected long execute(long fd, long buf) {
-        return execute(fd, LLVMNativePointer.create(buf));
+    protected long op(long fd, long buf) {
+        return op(fd, LLVMNativePointer.create(buf));
     }
 }

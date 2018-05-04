@@ -214,7 +214,7 @@ public class LLVMVectorLiteralNode {
 
         @ExplodeLoop
         @Specialization
-        public LLVMFunctionVector executeFunctionVector(VirtualFrame frame) {
+        public LLVMFunctionVector op(VirtualFrame frame) {
             Object[] vals = new Object[values.length];
             for (int i = 0; i < values.length; i++) {
                 vals[i] = values[i].executeGeneric(frame);

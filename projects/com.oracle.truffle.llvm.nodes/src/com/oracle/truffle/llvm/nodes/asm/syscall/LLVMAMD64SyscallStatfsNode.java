@@ -48,12 +48,12 @@ public abstract class LLVMAMD64SyscallStatfsNode extends LLVMSyscallOperationNod
     }
 
     @Specialization
-    protected long execute(LLVMNativePointer path, LLVMNativePointer buf) {
+    protected long op(LLVMNativePointer path, LLVMNativePointer buf) {
         return (int) statfs.execute(path.asNative(), buf.asNative());
     }
 
     @Specialization
-    protected long execute(long path, long buf) {
-        return execute(LLVMNativePointer.create(path), LLVMNativePointer.create(buf));
+    protected long op(long path, long buf) {
+        return op(LLVMNativePointer.create(path), LLVMNativePointer.create(buf));
     }
 }
