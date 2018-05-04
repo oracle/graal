@@ -56,6 +56,11 @@ public interface VirtualMemoryProvider {
     int tearDown();
 
     /**
+     * Provides the page size that is used by the operating system.
+     */
+    UnsignedWord getPageSize();
+
+    /**
      * Reserve a block of virtual address space.
      *
      * @param size The size of the requested reservation.
