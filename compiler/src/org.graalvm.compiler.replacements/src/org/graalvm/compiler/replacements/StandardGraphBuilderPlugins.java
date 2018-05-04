@@ -906,6 +906,11 @@ public class StandardGraphBuilderPlugins {
                 b.add(new BlackholeNode(value));
                 return true;
             }
+
+            @Override
+            public boolean isDecorator() {
+                return true;
+            }
         };
         String[] names = {"org.openjdk.jmh.infra.Blackhole", "org.openjdk.jmh.logic.BlackHole"};
         for (String name : names) {

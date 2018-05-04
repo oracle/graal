@@ -514,7 +514,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('MakeGraalJDK', tasks, tags=GraalTags.test) as t:
         if t and isJDK8:
             try:
-                makegraaljdk(['-a', 'graaljdk.tar', 'graaljdk'])
+                makegraaljdk(['-a', 'graaljdk.tar', '-b', 'graaljdk'])
             finally:
                 if exists('graaljdk'):
                     shutil.rmtree('graaljdk')
@@ -1045,6 +1045,7 @@ def makegraaljdk(args):
     parser = ArgumentParser(prog='mx makegraaljdk')
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
+    parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1121,8 +1122,9 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
-        with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
-            mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
+        if args.bootstrap:
+            with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
+                mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
         if args.archive:
             mx.log('Archiving {}'.format(args.archive))
             create_archive(dstJdk, args.archive, basename(args.dest) + '/')
