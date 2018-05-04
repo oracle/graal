@@ -537,6 +537,9 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                     // stamp into account, so it can be safely propagated.
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(negated);
                     registerNewStamp(value, newStamp, guard, true);
+
+                    newStamp = unaryLogicNode.getSucceedingStampForValue(negated, value.stamp(NodeView.DEFAULT));
+                    registerNewStamp(value, newStamp, guard);
                 }
             } else if (condition instanceof BinaryOpLogicNode) {
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
@@ -545,11 +548,17 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 if (!x.isConstant() && maybeMultipleUsages(x)) {
                     Stamp newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getSafeStamp(x), getOtherSafeStamp(y));
                     registerNewStamp(x, newStampX, guard);
+
+                    newStampX = binaryOpLogicNode.getSucceedingStampForX(negated, getOtherSafeStamp(x), getOtherSafeStamp(y));
+                    registerNewStamp(x, newStampX, guard, true);
                 }
 
                 if (!y.isConstant() && maybeMultipleUsages(y)) {
                     Stamp newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getOtherSafeStamp(x), getSafeStamp(y));
                     registerNewStamp(y, newStampY, guard);
+
+                    newStampY = binaryOpLogicNode.getSucceedingStampForY(negated, getOtherSafeStamp(x), getOtherSafeStamp(y));
+                    registerNewStamp(y, newStampY, guard, true);
                 }
 
                 if (condition instanceof IntegerEqualsNode && guard instanceof DeoptimizingGuard && !negated) {
