@@ -31,16 +31,33 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+/**
+ * Represent sources that depends on maintaining original bytes read.
+ *
+ * @since X
+ */
 public class BinarySourceImpl extends Content implements Content.CreateURI {
 
     private final String name;
 
+    /**
+     *
+     * @param name name of the source
+     * @param bytes to be preserved
+     * @param code the character sequence representation of the source bytes
+     *
+     * @since X
+     */
     public BinarySourceImpl(String name, ByteBuffer bytes, CharSequence code) {
         this.name = name;
         this.sourceBytes = bytes;
         this.code = enforceCharSequenceContract(code);
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public ByteBuffer getBytes() {
         return sourceBytes;
@@ -51,46 +68,82 @@ public class BinarySourceImpl extends Content implements Content.CreateURI {
         return null;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public Reader getReader() throws IOException {
         return null;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public CharSequence getCharacters() {
         return code;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public String getName() {
         return name;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     Object getHashKey() {
         return code;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public String getPath() {
         return null;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public int hashCode() {
         return Objects.hash(name, code);
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     public URL getURL() {
         return null;
     }
 
+    /**
+     *
+     * @since X
+     */
     @Override
     URI getURI() {
         return createURIOnce(this);
     }
 
+    /**
+     *
+     * @since X
+     */
     public URI createURI() {
         return getNamedURI(name, code.toString().getBytes());
     }

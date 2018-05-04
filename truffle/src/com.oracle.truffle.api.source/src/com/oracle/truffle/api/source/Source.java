@@ -988,12 +988,12 @@ public abstract class Source {
         private Content buildFile(boolean read, boolean preserveBytes) throws IOException {
             final File file = (File) origin;
             File absoluteFile = file.getCanonicalFile();
-            byte[] bytes = Source.read(file);
+            byte[] bytes = read ? Source.read(file) : null;
             FileSourceImpl fileSource = new FileSourceImpl(
-                            read ? new String(bytes, StandardCharsets.UTF_8) : null,
+                            (read && bytes != null) ? new String(bytes, StandardCharsets.UTF_8) : null,
                             absoluteFile,
                             name == null ? file.getName() : name,
-                            path, preserveBytes ? ByteBuffer.wrap(bytes) : null);
+                            path, (preserveBytes && bytes != null) ? ByteBuffer.wrap(bytes) : null);
             return fileSource;
         }
 
