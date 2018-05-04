@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.141.0",
+  "mxversion" : "5.153.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "d1c5d7e2e8ee142dbed239342723c4fa40ac1b8e",
+        "version" : "8ed0b0b53c7e722b0779c29d7e3532fcf27ab3ac",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -454,6 +454,17 @@ suite = {
         ],
         "description": "Sulong documentation, license",
         "license" : "BSD-new",
+    },
+    "SULONG_GRAALVM_DOCS" : {
+      "native" : True,
+      "platformDependent" : True,
+      "description" : "Sulong documentation files for the GraalVM",
+      "layout" : {
+        "./" : [
+          "file:mx.sulong/native-image.properties",
+          "file:README.md",
+        ],
+      },
     },
   }
 }

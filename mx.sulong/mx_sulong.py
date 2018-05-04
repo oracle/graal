@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 
 import mx
 import mx_subst
+import mx_sdk
 import re
 import mx_benchmark
 import mx_sulong_benchmarks
@@ -600,6 +601,27 @@ class SulongDocsProject(ArchiveProject):
 
 mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
 
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Sulong',
+    short_name='slg',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['sulong:SULONG'],
+    support_distributions=[
+        'sulong:SULONG_LIBS',
+        'sulong:SULONG_GRAALVM_DOCS',
+    ],
+    launcher_configs=[
+        mx_sdk.LanguageLauncherConfig(
+            destination='bin/<exe:lli>',
+            jar_distributions=['sulong:SULONG_LAUNCHER'],
+            main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
+            build_args=['--language:llvm']
+        )
+    ],
+))
 
 mx.update_commands(_suite, {
     'lli' : [runLLVM, ''],
