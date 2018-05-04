@@ -201,6 +201,7 @@ GRAALVM_VERSION={version}""".format(
 
             _add(layout, '<jdk_base>/jre/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component)
+            _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component)
             _add(layout, _component_base, ['extracted-dependency:' + d for d in _component.support_distributions], _component)
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent):
                 _add(layout, '<jdk_base>/jre/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component)
@@ -594,7 +595,8 @@ class GraalVmLauncher(GraalVmNativeImage):
 
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
-        if svm_support.is_supported():
+        # TODO fixme: native-image should work as a bash launcher
+        if svm_support.is_supported() and (self.native_image_name == 'native-image' or not mx.get_opts().force_bash_launchers):
             return GraalVmSVMLauncherBuildTask(self, args, svm_support)
         else:
             return GraalVmBashLauncherBuildTask(self, args)
@@ -1041,7 +1043,7 @@ def get_graalvm_distribution():
 def get_lib_polyglot_project():
     global _lib_polyglot_project
     if _lib_polyglot_project == 'uninitialized':
-        if not _get_svm_support().is_supported():
+        if not _get_svm_support().is_supported() or not mx.get_opts().polyglot_lib_project:
             _lib_polyglot_project = None
         else:
             polyglot_lib_build_args = []
@@ -1119,6 +1121,25 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             if truffle_components:
                 register_project(GraalVmNativeProperties(truffle_components))
 
+    if register_project and mx.get_opts().polyglot_launcher_project:
+        register_project(GraalVmPolyglotLauncher(
+            suite=_suite,
+            name='polyglot.launcher',
+            deps=[],
+            workingSets=None,
+            launcherConfig={
+                "build_args": [
+                    "-H:-ParseRuntimeOptions",
+                    "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
+                    "--language:all"
+                ],
+                "jar_distributions": [
+                    "sdk:LAUNCHER_COMMON",
+                ],
+                "main_class": "org.graalvm.launcher.PolyglotLauncher",
+                "destination": "polyglot",
+            }
+        ))
 
 def has_component(name):
     return any((c.short_name == name or c.name == name for c in mx_sdk.graalvm_components()))
@@ -1131,3 +1152,6 @@ def graalvm_output():
 
 
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
+mx.add_argument('--disable-libpolyglot', action='store_false', dest='polyglot_lib_project', help='Disable the \'polyglot\' library project')
+mx.add_argument('--disable-polyglot', action='store_false', dest='polyglot_launcher_project', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--force-bash-launchers', action='store_true', dest='force_bash_launchers', help='Force the use of bash launchers instead of native images')

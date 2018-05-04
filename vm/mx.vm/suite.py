@@ -128,21 +128,6 @@ suite = {
             "checkstyle": "com.oracle.graalvm.locator",
             "license" : "GPLv2-CPE",
         },
-        "polyglot.launcher": {
-            "class": "GraalVmPolyglotLauncher",
-            "launcherConfig": {
-                "build_args": [
-                    "-H:-ParseRuntimeOptions",
-                    "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
-                    "--language:all"
-                ],
-                "jar_distributions": [
-                    "sdk:LAUNCHER_COMMON",
-                ],
-                "main_class": "org.graalvm.launcher.PolyglotLauncher",
-                "destination": "polyglot",
-            }
-        }
     },
 
     "distributions": {
