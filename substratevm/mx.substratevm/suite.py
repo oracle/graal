@@ -161,6 +161,17 @@ suite = {
                         ],
                     },
                 },
+                "windows": {
+                    "amd64": {
+                        "results": [
+                            "windows-amd64/libstrictmath.a",
+                            "windows-amd64/liblibchelper.a",
+                            "windows-amd64/include/cpufeatures.h",
+                            "windows-amd64/include/jni.h",
+                            "windows-amd64/include/jni_md.h",
+                        ],
+                    },
+                },
                 "solaris": {
                     "<others>": {
                         "results": [],
@@ -417,7 +428,23 @@ suite = {
             "subDir" : "src",
             "native" : True,
             "output" : "mxbuild/org.graalvm.polyglot.nativeapi.native",
-            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "results" : ["linux-amd64/polyglot-nativeapi.o"],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "results" : ["darwin-amd64/polyglot-nativeapi.o"],
+                    },
+                },
+                "windows": {
+                    "amd64" : {
+                        "results" : ["windows-amd64/polyglot-nativeapi.obj"],
+                    },
+                },
+            }
         },
 
         "bootstrap.native-image" : {

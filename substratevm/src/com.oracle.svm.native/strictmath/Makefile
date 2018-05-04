@@ -20,17 +20,11 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+LIBRARY_NAME = strictmath
 
 # Some directory names.
 LIBM_SRC_DIR = fdlibm/src
 LIBM_INCLUDE = fdlibm/include
-
-# A list of all the libm function source files.
-LIBM_SRCS = $(wildcard $(LIBM_SRC_DIR)/*.c)
-# A list of all the libm function object files.
-LIBM_OBJS = $(LIBM_SRCS:$(LIBM_SRC_DIR)/%.c=%.o)
-
-LIBRARY_NAME = strictmath
 
 TARGETOS ?= $(shell uname -s)
 ifeq ($(TARGETOS),Linux)
@@ -39,29 +33,43 @@ endif
 ifeq ($(TARGETOS),Darwin)
     OS:=darwin
 endif
+ifeq ($(TARGETOS),CYGWIN_NT-10.0)
+    OS:=windows
+endif
+
+# How to make object files from source files.
+ifeq (${OS},windows)
+CFLAGS := /I $(LIBM_INCLUDE) /O1 /D _LITTLE_ENDIAN
+OBJ_EXT := obj
+CC := CL
+else
+# The flags to be used when compiling C sources.
+CFLAGS := -I$(LIBM_INCLUDE) -fPIC -O1 -D _LITTLE_ENDIAN
+OBJ_EXT := o
+endif
+
+# A list of all the libm function source files.
+LIBM_SRCS = $(wildcard $(LIBM_SRC_DIR)/*.c)
+LIBM_OBJS = $(LIBM_SRCS:$(LIBM_SRC_DIR)/%.c=%.$(OBJ_EXT))
+
 TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 
 # The first target is what gets made by default.
-$(TARGET) : StrictMath.o $(LIBM_OBJS)
+$(TARGET) : StrictMath.$(OBJ_EXT) $(LIBM_OBJS)
 	mkdir -p $(TARGET_DIR)
 	ar -cr $@ $^
 
-# How to make object files from source files.
-
-# The flags to be used when compiling C sources.
-CFLAGS = -I$(LIBM_INCLUDE) -fPIC -O1 -D _LITTLE_ENDIAN
-
-StrictMath.o : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
+StrictMath.$(OBJ_EXT) : StrictMath.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
 	$(CC) -c $(CFLAGS) $<
 
-%.o : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
+%.$(OBJ_EXT) : $(LIBM_SRC_DIR)/%.c $(LIBM_INCLUDE)/fdlibm.h $(LIBM_INCLUDE)/jfdlibm.h
 	$(CC) -c $(CFLAGS) $<
 
 # How to clean up.
 clean :
 	$(RM) $(LIBM_OBJS)
-	$(RM) StrictMath.o
+	$(RM) StrictMath.$(OBJ_EXT)
 	$(RM) $(TARGET)
 
 # Use "make dependencies" to discover all the dependencies.
