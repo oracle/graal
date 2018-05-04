@@ -257,6 +257,7 @@ suite = {
       "vpath" : True,
       "results" : [
         "bin/libsulong.bc",
+        "bin/libsulong-src.tar.gz",
       ],
       "headers" : [
         "include/polyglot.h",
@@ -388,10 +389,30 @@ suite = {
       "native" : True,
       "relpath" : False,
       "platformDependent" : True,
-      "output" : "mxbuild/sulong-libs",
+      "layout" : {
+        "./" : [
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong.bc",
+          "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
+          ]
+      },
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
+      ],
+      "license" : "BSD-new",
+    },
+
+    "SULONG_LIB_SRC" : {
+      "native" : True,
+      "overlaps" : [
+        "SULONG_LIBS"
+      ],
+      "layout" : {
+        "./" : "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/libsulong-src.tar.gz",
+      },
+      "dependencies" : [
+        "com.oracle.truffle.llvm.libraries.bitcode",
       ],
       "license" : "BSD-new",
     },

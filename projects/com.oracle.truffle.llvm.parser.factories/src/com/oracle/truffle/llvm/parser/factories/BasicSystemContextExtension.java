@@ -101,6 +101,13 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
 public class BasicSystemContextExtension extends SystemContextExtension {
 
+    protected static final String LIBSULONG_FILENAME = "libsulong.bc";
+
+    @Override
+    public String[] getSulongDefaultLibraries() {
+        return new String[]{LIBSULONG_FILENAME};
+    }
+
     @Override
     public LLVMSyscallOperationNode createSyscallNode(long index) {
         switch ((int) index) {

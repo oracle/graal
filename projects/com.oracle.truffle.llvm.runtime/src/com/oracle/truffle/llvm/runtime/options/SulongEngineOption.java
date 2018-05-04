@@ -56,8 +56,7 @@ public final class SulongEngineOption {
 
     public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
     public static final String LIBRARY_PATH_NAME = "llvm.libraryPath";
-    public static final String LIBRARY_PATH_INFO = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " +
-                    OPTION_ARRAY_SEPARATOR + " .";
+    public static final String LIBRARY_PATH_INFO = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " + OPTION_ARRAY_SEPARATOR + " .";
 
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     public static final String LIBRARIES_NAME = "llvm.libraries";
@@ -96,37 +95,19 @@ public final class SulongEngineOption {
     public static final String STACKTRACE_ON_ABORT_NAME = "llvm.printStackTraceOnAbort";
     public static final String STACKTRACE_ON_ABORT_INFO = "Prints a C stack trace when abort() is called.";
 
-    public static final OptionKey<String> USE_LIBC_BITCODE = new OptionKey<>(String.valueOf(false));
-    public static final String USE_LIBC_BITCODE_NAME = "llvm.useLibcBitcode";
-    public static final String USE_LIBC_BITCODE_INFO = "Determines if LLVM bitcode should be used for libc functions.";
-
     public static List<OptionDescriptor> describeOptions() {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.CONFIGURATION, SulongEngineOption.CONFIGURATION_NAME).help(SulongEngineOption.CONFIGURATION_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.STACK_SIZE_KB, SulongEngineOption.STACK_SIZE_KB_NAME).help(SulongEngineOption.STACK_SIZE_KB_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.LIBRARIES, SulongEngineOption.LIBRARIES_NAME).help(SulongEngineOption.LIBRARIES_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.LIBRARY_PATH, SulongEngineOption.LIBRARY_PATH_NAME).help(SulongEngineOption.LIBRARY_PATH_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_NFI, SulongEngineOption.ENABLE_NFI_NAME).help(SulongEngineOption.ENABLE_NFI_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.DEBUG_SYSCALLS, SulongEngineOption.DEBUG_SYSCALLS_NAME).help(SulongEngineOption.DEBUG_SYSCALLS_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.NATIVE_CALL_STATS, SulongEngineOption.NATIVE_CALL_STATS_NAME).help(SulongEngineOption.NATIVE_CALL_STATS_INFO).category(
-                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS, SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS_NAME).help(
-                        SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS_INFO).category(
-                                        OptionCategory.USER).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.PARSE_ONLY, SulongEngineOption.PARSE_ONLY_NAME).help(
-                        SulongEngineOption.PARSE_ONLY_INFO).category(
-                                        OptionCategory.EXPERT).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.USE_LIBC_BITCODE, SulongEngineOption.USE_LIBC_BITCODE_NAME).help(SulongEngineOption.USE_LIBC_BITCODE_INFO).category(
-                        OptionCategory.EXPERT).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.ENABLE_LVI, SulongEngineOption.ENABLE_LVI_NAME).help(SulongEngineOption.ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
-        options.add(OptionDescriptor.newBuilder(SulongEngineOption.STACKTRACE_ON_ABORT, SulongEngineOption.STACKTRACE_ON_ABORT_NAME).help(SulongEngineOption.STACKTRACE_ON_ABORT_INFO).category(
-                        OptionCategory.DEBUG).build());
+        options.add(OptionDescriptor.newBuilder(CONFIGURATION, CONFIGURATION_NAME).help(CONFIGURATION_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(STACK_SIZE_KB, STACK_SIZE_KB_NAME).help(STACK_SIZE_KB_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(LIBRARIES, LIBRARIES_NAME).help(LIBRARIES_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(LIBRARY_PATH, LIBRARY_PATH_NAME).help(LIBRARY_PATH_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(ENABLE_NFI, ENABLE_NFI_NAME).help(ENABLE_NFI_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(DEBUG_SYSCALLS, DEBUG_SYSCALLS_NAME).help(DEBUG_SYSCALLS_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(NATIVE_CALL_STATS, NATIVE_CALL_STATS_NAME).help(NATIVE_CALL_STATS_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(PRINT_LIFE_TIME_ANALYSIS_STATS, PRINT_LIFE_TIME_ANALYSIS_STATS_NAME).help(PRINT_LIFE_TIME_ANALYSIS_STATS_INFO).category(OptionCategory.USER).build());
+        options.add(OptionDescriptor.newBuilder(PARSE_ONLY, PARSE_ONLY_NAME).help(PARSE_ONLY_INFO).category(OptionCategory.EXPERT).build());
+        options.add(OptionDescriptor.newBuilder(ENABLE_LVI, ENABLE_LVI_NAME).help(ENABLE_LVI_INFO).category(OptionCategory.DEBUG).build());
+        options.add(OptionDescriptor.newBuilder(STACKTRACE_ON_ABORT, STACKTRACE_ON_ABORT_NAME).help(STACKTRACE_ON_ABORT_INFO).category(OptionCategory.DEBUG).build());
         return options;
     }
 

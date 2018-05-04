@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -97,6 +98,7 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
 import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
@@ -115,9 +117,6 @@ import com.oracle.truffle.nfi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.types.Parser;
 
 public final class Runner {
-    private static final String LIBSULONG_FILENAME = "libsulong.bc";
-    private static final String LIBC_FILENAME = "libc.bc";
-    private static final String LIBSULONG_OVERRIDES_FILENAME = "libsulong-overrides.bc";
 
     private static final String MAIN_METHOD_NAME = "@main";
     private static final String START_METHOD_NAME = "@_start";
@@ -336,21 +335,24 @@ public final class Runner {
             parse(parserResults, dependencyQueue, language, context, source, library, bytes, new LLVMScope());
             assert !library.isNative() && !parserResults.isEmpty();
 
-            parseDependencies(parserResults, dependencyQueue, language, context);
+            ExternalLibrary[] defaultLibraries = parseDependencies(parserResults, dependencyQueue, language, context);
             assert dependencyQueue.isEmpty();
 
             addExternalsToScope(context, parserResults);
             bindUnresolvedGlobals(context, parserResults);
             bindUnresolvedFunctions(context, parserResults);
             registerDynamicLinkChain(context, parserResults);
-            callStructors(context, parserResults);
+            callStructors(context, parserResults, defaultLibraries);
             return createLibraryCallTarget(language, context, parserResults);
         } catch (Throwable t) {
             throw new IOException("Error while parsing " + library, t);
         }
     }
 
-    private void parseDependencies(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context) {
+    /**
+     * @return The sulong default libraries, if any were parsed.
+     */
+    private ExternalLibrary[] parseDependencies(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context) {
         // at first, we are only parsing the direct dependencies of the main bitcode file
         int directDependencies = dependencyQueue.size();
         for (int i = 0; i < directDependencies; i++) {
@@ -359,6 +361,7 @@ public final class Runner {
         }
 
         // then, we are parsing the default libraries
+        ExternalLibrary[] sulongLibs;
         if (!context.areDefaultLibrariesLoaded()) {
             context.setDefaultLibrariesLoaded();
             Env env = context.getEnv();
@@ -366,8 +369,11 @@ public final class Runner {
             // There could be conflicts between Sulong's default libraries and the ones that are
             // passed on the command-line. To resolve that, we add ours first but parse them later
             // on.
-            boolean useLibcBitcode = SulongEngineOption.isTrue(env.getOptions().get(SulongEngineOption.USE_LIBC_BITCODE));
-            ExternalLibrary[] sulongLibs = addSulongDefaultLibraries(context, useLibcBitcode);
+            String[] defaultLibraries = context.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
+            sulongLibs = new ExternalLibrary[defaultLibraries.length];
+            for (int i = 0; i < sulongLibs.length; i++) {
+                sulongLibs[i] = context.addExternalLibrary(defaultLibraries[i], false, i != 0);
+            }
 
             // parse all libraries that were passed on the command-line
             List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(env);
@@ -380,14 +386,11 @@ public final class Runner {
             }
 
             // now parse the default Sulong libraries
-            if (useLibcBitcode) {
-                parseTogether(parserResults, dependencyQueue, language, context, sulongLibs);
-            } else {
-                // TODO (chaeubl): we have an ordering issue here... - the search order for native
-                // code comes last, which is not necessarily correct...
-                assert sulongLibs.length == 1;
-                parse(parserResults, dependencyQueue, language, context, sulongLibs[0], new LLVMScope());
-            }
+            // TODO (chaeubl): we have an ordering issue here... - the search order for native
+            // code comes last, which is not necessarily correct...
+            parseTogether(parserResults, dependencyQueue, language, context, sulongLibs);
+        } else {
+            sulongLibs = new ExternalLibrary[0];
         }
 
         // finally we are dealing with all indirect dependencies
@@ -395,18 +398,7 @@ public final class Runner {
             ExternalLibrary lib = dependencyQueue.removeFirst();
             parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
         }
-    }
-
-    private static ExternalLibrary[] addSulongDefaultLibraries(LLVMContext context, boolean useLibcBitcode) {
-        if (useLibcBitcode) {
-            ExternalLibrary libSulongOverrides = context.addExternalLibrary(LIBSULONG_OVERRIDES_FILENAME, false, false);
-            ExternalLibrary libSulong = context.addExternalLibrary(LIBSULONG_FILENAME, false, true);
-            ExternalLibrary libc = context.addExternalLibrary(LIBC_FILENAME, false, true);
-            return new ExternalLibrary[]{libSulongOverrides, libSulong, libc};
-        } else {
-            ExternalLibrary libSulong = context.addExternalLibrary(LIBSULONG_FILENAME, false, false);
-            return new ExternalLibrary[]{libSulong};
-        }
+        return sulongLibs;
     }
 
     private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context, ExternalLibrary lib, LLVMScope scope) {
@@ -454,7 +446,6 @@ public final class Runner {
 
     private void parseTogether(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context,
                     ExternalLibrary... externalLibraries) {
-        assert externalLibraries.length > 1 : "use the normal parse method instead";
         LLVMScope commonScope = new LLVMScope();
         for (ExternalLibrary lib : externalLibraries) {
             parse(parserResults, dependencyQueue, language, context, lib, commonScope);
@@ -536,13 +527,14 @@ public final class Runner {
         }
     }
 
-    private static InitializationOrder computeInitializationOrder(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private static InitializationOrder computeInitializationOrder(LLVMContext context, List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         // Split libraries into Sulong-specific ones and others, so that we can handle the
         // Sulong-specific ones separately.
         List<LLVMParserResult> sulongLibs = new ArrayList<>();
         List<LLVMParserResult> otherLibs = new ArrayList<>();
+        List<ExternalLibrary> sulongExternalLibraries = Arrays.asList(defaultLibraries);
         for (LLVMParserResult parserResult : parserResults) {
-            if (isSulongLib(parserResult)) {
+            if (sulongExternalLibraries.contains(parserResult.getRuntime().getLibrary())) {
                 sulongLibs.add(parserResult);
             } else {
                 otherLibs.add(parserResult);
@@ -563,11 +555,6 @@ public final class Runner {
 
         assert sulongLibs.size() + otherLibsInitializationOrder.size() == parserResults.size();
         return new InitializationOrder(sulongLibs, otherLibsInitializationOrder);
-    }
-
-    private static boolean isSulongLib(LLVMParserResult parserResult) {
-        Path path = parserResult.getRuntime().getLibrary().getPath();
-        return path != null && (path.endsWith(LIBSULONG_FILENAME) || path.endsWith(LIBSULONG_OVERRIDES_FILENAME) || path.endsWith(LIBC_FILENAME));
     }
 
     private static void addToInitializationOrder(LLVMParserResult current, EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies, List<LLVMParserResult> initializationOrder,
@@ -628,9 +615,9 @@ public final class Runner {
         return map;
     }
 
-    private static void callStructors(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private static void callStructors(LLVMContext context, List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            InitializationOrder initializationOrder = computeInitializationOrder(context, parserResults);
+            InitializationOrder initializationOrder = computeInitializationOrder(context, parserResults, defaultLibraries);
             initialize(context, initializationOrder.sulongLibraries);
             context.initialize();
             initialize(context, initializationOrder.otherLibraries);

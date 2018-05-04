@@ -42,13 +42,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
-import org.junit.Assert;
 
 public abstract class BaseSuiteHarness extends BaseTestHarness {
 

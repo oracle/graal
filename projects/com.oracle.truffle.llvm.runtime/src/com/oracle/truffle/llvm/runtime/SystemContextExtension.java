@@ -33,6 +33,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
 public abstract class SystemContextExtension implements ContextExtension {
 
+    public abstract String[] getSulongDefaultLibraries();
+
     public abstract LLVMSyscallOperationNode createSyscallNode(long index);
 
     @Override

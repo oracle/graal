@@ -24,7 +24,7 @@
 #
 
 .PHONY: default
-default: bin/libsulong.bc
+default: bin/libsulong.bc bin/libsulong-src.tar.gz
 
 C_SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
 CXX_SOURCE_FILES=$(wildcard ${VPATH}/libcxxabi/*.cpp)
@@ -51,6 +51,9 @@ bin/%.noopt.bc: src/%.c deps/%.d
 bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
 	clang++ -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
+
+bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES}
+	tar -czf $@ -C ${VPATH} .
 
 deps/%.d: ;
 .PRECIOUS: deps/%.d

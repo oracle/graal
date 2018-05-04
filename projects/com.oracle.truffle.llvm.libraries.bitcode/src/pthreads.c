@@ -128,9 +128,12 @@ int pthread_create(pthread_t *restrict thread, const pthread_attr_t *restrict at
 int pthread_detach(pthread_t thread) {
   ERR_UNSUPPORTED(pthread_detach);
 }
+// this function might be defined as a macro
+#ifndef pthread_equal
 int pthread_equal(pthread_t t1, pthread_t t2) {
   ERR_UNSUPPORTED(pthread_equal);
 }
+#endif
 void pthread_exit(void *value_ptr) {
   ERR_UNSUPPORTED(pthread_exit);
 }
