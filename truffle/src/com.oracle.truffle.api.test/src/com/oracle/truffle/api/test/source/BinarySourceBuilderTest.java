@@ -94,7 +94,7 @@ public class BinarySourceBuilderTest {
         File file = File.createTempFile("Hello", ".java");
         file.deleteOnExit();
         Source.Builder<IOException, RuntimeException, RuntimeException> builder2 = Source.newBuilder(file.toURI().toURL()).name("Hello.java");
-        Source s2 = builder.build();
+        Source s2 = builder2.build();
         assertNull("No source preserved for URL sources", s2.getBytes());
     }
 }
