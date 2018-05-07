@@ -50,7 +50,8 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyLLVMIRFunction;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayoutConverter;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -166,7 +167,7 @@ public final class LLVMParser {
                         model.getFunctionProcessor());
         Function function = new LazyLLVMIRFunction(lazyConverter);
         defineFunction(descriptor, functionSymbol.getName(), functionSymbol.getType(), function);
-        if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
+        if (!runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
             RootCallTarget resolved = descriptor.getLLVMIRFunction();
             assert resolved != null;
         }
@@ -284,13 +285,13 @@ public final class LLVMParser {
 
             model.getSourceGlobals().forEach((symbol, irValue) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(irValue);
-                final LLVMDebugValue value = runtime.getNodeFactory().createDebugStaticValue(node);
+                final LLVMDebugObjectBuilder value = runtime.getNodeFactory().createDebugStaticValue(node);
                 sourceContext.registerStatic(symbol, value);
             });
 
             model.getSourceStaticMembers().forEach(((type, symbol) -> {
                 final LLVMExpressionNode node = symbolResolver.resolve(symbol);
-                final LLVMDebugValue value = runtime.getNodeFactory().createDebugStaticValue(node);
+                final LLVMDebugObjectBuilder value = runtime.getNodeFactory().createDebugStaticValue(node);
                 type.setValue(value);
             }));
         }
