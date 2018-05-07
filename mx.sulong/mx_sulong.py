@@ -133,7 +133,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:
@@ -163,9 +163,10 @@ def _test_llvm_image(args):
 # routine for AOT downstream tests
 def runLLVMUnittests(unittest_runner):
     """runs the interop unit tests with a different unittest runner (e.g. AOT-based)"""
-    libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>:<path:SULONG_TEST_NATIVE>')
+    langhome = mx_subst.path_substitutions.substitute('-Dllvm.home=<path:SULONG_LIBS>')
+    libpath = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_TEST_NATIVE>')
     libs = mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraries=<lib:sulongtest>')
-    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[libpath, libs])
+    unittest_runner(unittest_args=['com.oracle.truffle.llvm.test.interop'], run_args=[langhome, libpath, libs])
 
 
 def clangformatcheck(args=None):
@@ -405,8 +406,6 @@ def runLLVM(args=None, out=None):
 def getCommonOptions(withAssertion, lib_args=None):
     options = ['-Dgraal.TruffleCompilationExceptionsArePrinted=true',
         '-Dgraal.ExitVMOnException=true']
-
-    options.append(mx_subst.path_substitutions.substitute('-Dpolyglot.llvm.libraryPath=<path:SULONG_LIBS>'))
 
     if lib_args is not None:
         options.append('-Dpolyglot.llvm.libraries=' + ':'.join(lib_args))

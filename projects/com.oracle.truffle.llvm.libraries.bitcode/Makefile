@@ -52,7 +52,7 @@ bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
 	clang++ -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi -I${VPATH}/libcxx -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
-bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES}
+bin/libsulong-src.tar.gz: ${C_SOURCE_FILES} ${CXX_SOURCE_FILES} include/polyglot.h
 	tar -czf $@ -C ${VPATH} .
 
 deps/%.d: ;

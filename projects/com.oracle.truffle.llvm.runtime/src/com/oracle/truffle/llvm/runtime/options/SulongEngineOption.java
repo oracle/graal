@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.options;
 
 import java.io.PrintStream;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -124,18 +123,9 @@ public final class SulongEngineOption {
     }
 
     public static List<String> getPolyglotOptionSearchPaths(TruffleLanguage.Env env) {
-        String graalHome = System.getProperty("graalvm.home");
         String libraryPathOption = env.getOptions().get(LIBRARY_PATH);
         String[] libraryPath = libraryPathOption.equals("") ? new String[0] : libraryPathOption.split(OPTION_ARRAY_SEPARATOR);
-
-        List<String> path = new ArrayList<>();
-        path.addAll(Arrays.asList(libraryPath));
-
-        if (graalHome != null && !graalHome.equals("")) {
-            String[] graalHomePath = new String[]{Paths.get(graalHome).toString(), Paths.get(graalHome, "jre", "languages", "llvm").toString()};
-            path.addAll(Arrays.asList(graalHomePath));
-        }
-        return path;
+        return Arrays.asList(libraryPath);
     }
 
     public static List<String> getPolyglotOptionExternalLibraries(TruffleLanguage.Env env) {

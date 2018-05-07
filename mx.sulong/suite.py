@@ -363,15 +363,16 @@ suite = {
 
   "distributions" : {
     "SULONG" : {
-      "path" : "build/sulong.jar",
       "subDir" : "projects",
-      "sourcesPath" : "build/sulong.src.zip",
       "dependencies" : ["com.oracle.truffle.llvm"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
         "SULONG_LIBS",
       ],
+      "javaProperties" : {
+        "llvm.home": "<path:SULONG_LIBS>",
+      },
       "license" : "BSD-new",
     },
 
@@ -442,7 +443,7 @@ suite = {
     "SULONG_TEST_NATIVE" : {
       "native" : True,
       "platformDependent" : True,
-      "output" : "mxbuild/sulong-test-native",
+      "output" : "mxbuild/<os>-<arch>/sulong-test-native",
       "dependencies" : [
         "com.oracle.truffle.llvm.pipe.native",
         "com.oracle.truffle.llvm.test.native",
@@ -455,7 +456,7 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
-      "output" : "mxbuild/sulong-test-suites",
+      "output" : "mxbuild/<os>-<arch>/sulong-test-suites",
       "dependencies" : [
         "com.oracle.truffle.llvm.tests.debug",
         "com.oracle.truffle.llvm.tests.interop",
