@@ -88,6 +88,19 @@ void polyglot_export(const char *name, void *value);
 void *polyglot_eval(const char *id, const char *code);
 
 /**
+ * Evaluate a file containing source of another language.
+ *
+ * The filename argument can be absolute or relative to the current working
+ * directory.
+ *
+ * @param id the language identifier
+ * @param filename the file to be evaluated
+ * @return the result of the evaluation
+ * @see org::graalvm::polyglot::Context::eval
+ */
+void *polyglot_eval_file(const char *id, const char *filename);
+
+/**
  * Access an argument of the current function.
  *
  * This function can be used to access arguments of the current function by

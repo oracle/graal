@@ -4,6 +4,7 @@ New features:
 
 * Use dynamic linker semantics when loading multiple bitcode files.
 * Support ELF files with embedded LLVM bitcode.
+* New builtin polyglot_eval_file.
 
 Improvements:
 

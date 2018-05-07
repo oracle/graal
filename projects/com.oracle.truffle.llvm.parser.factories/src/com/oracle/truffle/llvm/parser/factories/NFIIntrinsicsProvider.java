@@ -394,6 +394,13 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             }
         });
 
+        factories.put("@polyglot_eval_file", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotEval.createFile(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
         //
 
         factories.put("@polyglot_is_value", new LLVMNativeIntrinsicFactory(true, true) {
