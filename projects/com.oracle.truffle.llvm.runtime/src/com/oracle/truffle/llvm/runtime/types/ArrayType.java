@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class ArrayType extends AggregateType {
@@ -83,12 +84,12 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
-    public int getAlignment(DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayout targetDataLayout) {
         return getElementType().getAlignment(targetDataLayout);
     }
 
     @Override
-    public int getSize(DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayout targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * length;
     }
 
@@ -100,7 +101,7 @@ public final class ArrayType extends AggregateType {
     }
 
     @Override
-    public long getOffsetOf(long index, DataSpecConverter targetDataLayout) {
+    public long getOffsetOf(long index, DataLayout targetDataLayout) {
         return getElementType().getSize(targetDataLayout) * index;
     }
 

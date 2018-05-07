@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -93,12 +94,12 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
-    public int getAlignment(DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayout targetDataLayout) {
         return isPacked ? 1 : getLargestAlignment(targetDataLayout);
     }
 
     @Override
-    public int getSize(DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayout targetDataLayout) {
         int sumByte = 0;
         for (final Type elementType : types) {
             if (!isPacked) {
@@ -123,7 +124,7 @@ public final class StructureType extends AggregateType {
     }
 
     @Override
-    public long getOffsetOf(long index, DataSpecConverter targetDataLayout) {
+    public long getOffsetOf(long index, DataLayout targetDataLayout) {
         int offset = 0;
         for (int i = 0; i < index; i++) {
             final Type elementType = types[i];
@@ -139,7 +140,7 @@ public final class StructureType extends AggregateType {
         return offset;
     }
 
-    private int getLargestAlignment(DataSpecConverter targetDataLayout) {
+    private int getLargestAlignment(DataLayout targetDataLayout) {
         int largestAlignment = 0;
         for (final Type elementType : types) {
             largestAlignment = Math.max(largestAlignment, elementType.getAlignment(targetDataLayout));

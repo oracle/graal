@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.types;
 
 import java.util.Objects;
 
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
@@ -61,12 +62,12 @@ public final class OpaqueType extends Type {
     }
 
     @Override
-    public int getAlignment(DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayout targetDataLayout) {
         return Long.BYTES;
     }
 
     @Override
-    public int getSize(DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayout targetDataLayout) {
         return 0;
     }
 

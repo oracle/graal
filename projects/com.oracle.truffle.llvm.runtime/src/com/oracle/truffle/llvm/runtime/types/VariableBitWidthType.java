@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.types;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VariableBitWidthType extends Type {
@@ -99,7 +100,7 @@ public final class VariableBitWidthType extends Type {
     }
 
     @Override
-    public int getAlignment(DataSpecConverter targetDataLayout) {
+    public int getAlignment(DataLayout targetDataLayout) {
         if (targetDataLayout != null) {
             return targetDataLayout.getBitAlignment(this) / Byte.SIZE;
 
@@ -118,7 +119,7 @@ public final class VariableBitWidthType extends Type {
     }
 
     @Override
-    public int getSize(DataSpecConverter targetDataLayout) {
+    public int getSize(DataLayout targetDataLayout) {
         return targetDataLayout.getSize(this);
     }
 
