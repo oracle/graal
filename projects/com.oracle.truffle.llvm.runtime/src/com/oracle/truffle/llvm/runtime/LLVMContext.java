@@ -93,6 +93,7 @@ public final class LLVMContext {
     private final LLVMSourceContext sourceContext;
     private final LLVMGlobalsStack globalStack;
 
+    private final LLVMLanguage language;
     private final Env env;
     private final LLVMScope globalScope;
     private final DynamicLinkChain dynamicLinkChain;
@@ -200,7 +201,8 @@ public final class LLVMContext {
         }
     }
 
-    public LLVMContext(Env env, List<ContextExtension> contextExtensions, InteropNodeFactory interopNodeFactory, String languageHome) {
+    public LLVMContext(LLVMLanguage language, Env env, List<ContextExtension> contextExtensions, InteropNodeFactory interopNodeFactory, String languageHome) {
+        this.language = language;
         this.env = env;
         this.contextExtensions = contextExtensions;
         this.initialized = false;
@@ -419,6 +421,10 @@ public final class LLVMContext {
         }
 
         return libPath;
+    }
+
+    public LLVMLanguage getLanguage() {
+        return language;
     }
 
     public Env getEnv() {

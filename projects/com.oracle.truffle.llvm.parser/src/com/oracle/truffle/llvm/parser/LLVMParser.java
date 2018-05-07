@@ -59,10 +59,14 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 public final class LLVMParser {
     private final Source source;
     private final LLVMParserRuntime runtime;
+    private final LLVMContext context;
+    private final ExternalLibrary library;
 
     public LLVMParser(Source source, LLVMParserRuntime runtime) {
         this.source = source;
         this.runtime = runtime;
+        this.context = runtime.getContext();
+        this.library = runtime.getLibrary();
     }
 
     public LLVMParserResult parse(ModelModule module) {
@@ -133,24 +137,23 @@ public final class LLVMParser {
 
     private void defineGlobal(GlobalVariable global, List<String> importedGlobals) {
         assert !global.isExternal();
-        LLVMContext context = runtime.getContext();
         if (global.isExported()) {
             LLVMGlobal exportedDescriptor = runtime.getGlobalScope().globals().getOrCreate(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
             if (exportedDescriptor.isDefined()) {
                 // use a global variable and define a shadowed one with the same name
                 importedGlobals.add(global.getName());
                 LLVMGlobal descriptor = runtime.getFileScope().globals().getOrCreate(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
-                descriptor.define(global.getType(), runtime.getLibrary());
+                descriptor.define(global.getType(), library);
             } else {
                 // define a global variable
                 assert !exportedDescriptor.isDefined();
-                exportedDescriptor.define(global.getType(), runtime.getLibrary());
+                exportedDescriptor.define(global.getType(), library);
                 runtime.getFileScope().globals().register(exportedDescriptor);
             }
         } else {
             // define a not exported global
             LLVMGlobal descriptor = runtime.getFileScope().globals().getOrCreate(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
-            descriptor.define(global.getType(), runtime.getLibrary());
+            descriptor.define(global.getType(), library);
         }
     }
 
@@ -166,7 +169,6 @@ public final class LLVMParser {
 
     private void defineFunction(LLVMFunctionDescriptor descriptor, String functionName, FunctionType functionType, Function function) {
         LLVMFunctionDescriptor finalDescriptor = descriptor;
-        ExternalLibrary library = runtime.getLibrary();
         if (descriptor.isDefined() && library.renameConflictingSymbols()) {
             assert !descriptor.getLibrary().equals(library) : "two symbols with the same name can't be in one bitcode file";
             /*
@@ -182,7 +184,6 @@ public final class LLVMParser {
 
     private LLVMFunctionDescriptor createFunctionDescriptor(String functionName, FunctionType functionType, boolean exported, boolean external, List<String> importedFunctions) {
         assert !external;
-        LLVMContext context = runtime.getContext();
         if (exported) {
             LLVMFunctionDescriptor exportedDescriptor = runtime.getGlobalScope().functions().getOrCreate(context, functionName, functionType);
             if (exportedDescriptor.isDefined()) {
@@ -204,7 +205,7 @@ public final class LLVMParser {
 
     private String getRenamedSymbol(String functionName) {
         assert functionName.charAt(0) == '@';
-        return "@__" + runtime.getLibrary().getName() + "_" + functionName.substring(1);
+        return "@__" + library.getName() + "_" + functionName.substring(1);
     }
 
     private void defineAlias(GlobalAlias alias, List<String> importedFunctions, List<String> importedGlobals) {
@@ -228,7 +229,6 @@ public final class LLVMParser {
 
     private void defineFunctionAlias(String existingName, boolean existingExported, String newName, boolean newExported, List<String> importedFunctions) {
         LLVMFunctionDescriptor existingDescriptor = runtime.lookupFunction(existingName, existingExported);
-        ExternalLibrary library = runtime.getLibrary();
         if (existingExported && existingDescriptor.getLibrary() != library) {
             importedFunctions.add(existingDescriptor.getName());
         }
@@ -252,7 +252,6 @@ public final class LLVMParser {
 
     private void defineGlobalVariableAlias(GlobalVariable global, String newName, boolean newExported, List<String> importedGlobals) {
         LLVMGlobal existingDescriptor = runtime.lookupGlobal(global.getName(), global.isExported());
-        ExternalLibrary library = runtime.getLibrary();
         if (global.isExported() && existingDescriptor.getLibrary() != library) {
             importedGlobals.add(existingDescriptor.getName());
         }
@@ -275,7 +274,6 @@ public final class LLVMParser {
     }
 
     private void createDebugInfo(ModelModule model, LLVMSymbolReadResolver symbolResolver) {
-        LLVMContext context = runtime.getContext();
         if (context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             final LLVMSourceContext sourceContext = context.getSourceContext();
 

@@ -76,17 +76,15 @@ final class LLVMRuntimeDebugInformation {
     private final LLVMContext context;
     private final List<FrameSlot> notNullableSlots;
     private final LLVMSymbolReadResolver symbols;
-    private final LLVMParserRuntime runtime;
     private final boolean isEnabled;
     private final StaticValueAccessVisitor staticValueAccessVisitor;
 
-    LLVMRuntimeDebugInformation(FrameDescriptor frame, NodeFactory factory, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols, LLVMParserRuntime runtime) {
+    LLVMRuntimeDebugInformation(FrameDescriptor frame, NodeFactory factory, LLVMContext context, List<FrameSlot> notNullableSlots, LLVMSymbolReadResolver symbols) {
         this.frame = frame;
         this.factory = factory;
         this.context = context;
         this.notNullableSlots = notNullableSlots;
         this.symbols = symbols;
-        this.runtime = runtime;
         this.isEnabled = context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI);
         this.staticValueAccessVisitor = new StaticValueAccessVisitor();
     }
@@ -322,7 +320,7 @@ final class LLVMRuntimeDebugInformation {
         final boolean mustDereference = isDeclaration || mustDereferenceValue(expression, variable.getSourceType(), value);
 
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
-        final LLVMExpressionNode containerRead = factory.createFrameRead(runtime, MetaType.DEBUG, targetSlot);
+        final LLVMExpressionNode containerRead = factory.createFrameRead(MetaType.DEBUG, targetSlot);
         return factory.createDebugWrite(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
 

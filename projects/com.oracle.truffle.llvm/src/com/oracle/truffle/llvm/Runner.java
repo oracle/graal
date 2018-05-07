@@ -128,8 +128,6 @@ public final class Runner {
     private static final Comparator<Pair<Integer, ?>> ASCENDING_PRIORITY = (p1, p2) -> p1.getFirst() - p2.getFirst();
     private static final Comparator<Pair<Integer, ?>> DESCENDING_PRIORITY = (p1, p2) -> p2.getFirst() - p1.getFirst();
 
-    private final NodeFactory nodeFactory;
-
     /**
      * Object that is returned when a bitcode library is parsed.
      */
@@ -286,22 +284,26 @@ public final class Runner {
         }
     }
 
-    public Runner(NodeFactory nodeFactory) {
+    private final LLVMContext context;
+    private final NodeFactory nodeFactory;
+
+    public Runner(LLVMContext context, NodeFactory nodeFactory) {
+        this.context = context;
         this.nodeFactory = nodeFactory;
     }
 
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
-    public CallTarget parse(LLVMLanguage language, LLVMContext context, Source source) throws IOException {
+    public CallTarget parse(Source source) throws IOException {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
-            ParserData parserData = getParserData(source);
-            return parse(language, context, source, parserData.bytes, parserData.library);
+            ParserInput input = getParserData(source);
+            return parse(source, input.bytes, input.library);
         }
     }
 
-    private static ParserData getParserData(Source source) throws IOException {
+    private static ParserInput getParserData(Source source) throws IOException {
         ByteBuffer bytes;
         ExternalLibrary library;
         try {
@@ -322,28 +324,28 @@ public final class Runner {
         } catch (Throwable t) {
             throw new IOException("Error while preparing data for parsing: " + source.getName(), t);
         }
-        return new ParserData(bytes, library);
+        return new ParserInput(bytes, library);
     }
 
-    private CallTarget parse(LLVMLanguage language, LLVMContext context, Source source, ByteBuffer bytes, ExternalLibrary library) throws IOException {
+    private CallTarget parse(Source source, ByteBuffer bytes, ExternalLibrary library) throws IOException {
         // process the bitcode file and its dependencies in the dynamic linking order
         // (breadth-first)
         try {
             List<LLVMParserResult> parserResults = new ArrayList<>();
             ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
 
-            parse(parserResults, dependencyQueue, language, context, source, library, bytes, new LLVMScope());
+            parse(parserResults, dependencyQueue, source, library, bytes, new LLVMScope());
             assert !library.isNative() && !parserResults.isEmpty();
 
-            ExternalLibrary[] defaultLibraries = parseDependencies(parserResults, dependencyQueue, language, context);
+            ExternalLibrary[] defaultLibraries = parseDependencies(parserResults, dependencyQueue);
             assert dependencyQueue.isEmpty();
 
-            addExternalsToScope(context, parserResults);
-            bindUnresolvedGlobals(context, parserResults);
-            bindUnresolvedFunctions(context, parserResults);
-            registerDynamicLinkChain(context, parserResults);
-            callStructors(context, parserResults, defaultLibraries);
-            return createLibraryCallTarget(language, context, parserResults);
+            addExternalsToScope(parserResults);
+            bindUnresolvedGlobals(parserResults);
+            bindUnresolvedFunctions(parserResults);
+            registerDynamicLinkChain(parserResults);
+            callStructors(parserResults, defaultLibraries);
+            return createLibraryCallTarget(parserResults);
         } catch (Throwable t) {
             throw new IOException("Error while parsing " + library, t);
         }
@@ -352,12 +354,12 @@ public final class Runner {
     /**
      * @return The sulong default libraries, if any were parsed.
      */
-    private ExternalLibrary[] parseDependencies(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context) {
+    private ExternalLibrary[] parseDependencies(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue) {
         // at first, we are only parsing the direct dependencies of the main bitcode file
         int directDependencies = dependencyQueue.size();
         for (int i = 0; i < directDependencies; i++) {
             ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
+            parse(parserResults, dependencyQueue, lib, new LLVMScope());
         }
 
         // then, we are parsing the default libraries
@@ -381,14 +383,14 @@ public final class Runner {
                 // assume that the library is a native one until we parsed it and can say for sure
                 ExternalLibrary lib = context.addExternalLibrary(external, true, false);
                 if (lib != null) {
-                    parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
+                    parse(parserResults, dependencyQueue, lib, new LLVMScope());
                 }
             }
 
             // now parse the default Sulong libraries
             // TODO (chaeubl): we have an ordering issue here... - the search order for native
             // code comes last, which is not necessarily correct...
-            parseTogether(parserResults, dependencyQueue, language, context, sulongLibs);
+            parseTogether(parserResults, dependencyQueue, sulongLibs);
         } else {
             sulongLibs = new ExternalLibrary[0];
         }
@@ -396,12 +398,12 @@ public final class Runner {
         // finally we are dealing with all indirect dependencies
         while (!dependencyQueue.isEmpty()) {
             ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, language, context, lib, new LLVMScope());
+            parse(parserResults, dependencyQueue, lib, new LLVMScope());
         }
         return sulongLibs;
     }
 
-    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context, ExternalLibrary lib, LLVMScope scope) {
+    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib, LLVMScope scope) {
         if (lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
                 throw new RuntimeException("'" + lib.getPath() + "' is not a file or does not exist.");
@@ -416,13 +418,13 @@ public final class Runner {
             byte[] bytes = Files.readAllBytes(path);
             // at the moment, we don't need the bitcode as the content of the source
             Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
-            parse(parserResults, dependencyQueue, language, context, source, lib, ByteBuffer.wrap(bytes), scope);
+            parse(parserResults, dependencyQueue, source, lib, ByteBuffer.wrap(bytes), scope);
         } catch (Throwable t) {
             throw new RuntimeException("Error while trying to parse " + lib.getName(), t);
         }
     }
 
-    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context, Source source,
+    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
                     ExternalLibrary library, ByteBuffer bytes, LLVMScope scope) {
         ModelModule module = LLVMScanner.parse(source, bytes);
         if (module != null) {
@@ -435,7 +437,7 @@ public final class Runner {
                     dependencyQueue.addLast(dependency);
                 }
             }
-            LLVMParserRuntime runtime = new LLVMParserRuntime(language, context, nodeFactory, library, scope);
+            LLVMParserRuntime runtime = new LLVMParserRuntime(context, nodeFactory, library, scope);
             LLVMParser parser = new LLVMParser(source, runtime);
             LLVMParserResult parserResult = parser.parse(module);
             parserResults.add(parserResult);
@@ -444,15 +446,14 @@ public final class Runner {
         }
     }
 
-    private void parseTogether(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, LLVMLanguage language, LLVMContext context,
-                    ExternalLibrary... externalLibraries) {
+    private void parseTogether(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary... externalLibraries) {
         LLVMScope commonScope = new LLVMScope();
         for (ExternalLibrary lib : externalLibraries) {
-            parse(parserResults, dependencyQueue, language, context, lib, commonScope);
+            parse(parserResults, dependencyQueue, lib, commonScope);
         }
     }
 
-    private static void addExternalsToScope(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private void addExternalsToScope(List<LLVMParserResult> parserResults) {
         // TODO (chaeubl): in here, we should validate if the return types/argument types/global
         // types match
         LLVMScope globalScope = context.getGlobalScope();
@@ -476,7 +477,7 @@ public final class Runner {
         }
     }
 
-    private static void bindUnresolvedGlobals(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private void bindUnresolvedGlobals(List<LLVMParserResult> parserResults) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         for (LLVMParserResult parserResult : parserResults) {
             for (LLVMGlobal global : parserResult.getRuntime().getFileScope().globals().toArray()) {
@@ -498,7 +499,7 @@ public final class Runner {
         }
     }
 
-    private static void bindUnresolvedFunctions(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private void bindUnresolvedFunctions(List<LLVMParserResult> parserResults) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         NativeIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(NativeIntrinsicProvider.class);
         for (LLVMParserResult parserResult : parserResults) {
@@ -521,13 +522,13 @@ public final class Runner {
         }
     }
 
-    private static void registerDynamicLinkChain(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private void registerDynamicLinkChain(List<LLVMParserResult> parserResults) {
         for (LLVMParserResult parserResult : parserResults) {
             context.registerScope(parserResult.getRuntime().getFileScope());
         }
     }
 
-    private static InitializationOrder computeInitializationOrder(LLVMContext context, List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
+    private InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         // Split libraries into Sulong-specific ones and others, so that we can handle the
         // Sulong-specific ones separately.
         List<LLVMParserResult> sulongLibs = new ArrayList<>();
@@ -545,7 +546,7 @@ public final class Runner {
         // only want to change the order when it is really necessary.
         List<LLVMParserResult> otherLibsInitializationOrder = new ArrayList<>();
         EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
-        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = computeDependencies(context, otherLibs);
+        EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = computeDependencies(otherLibs);
         for (int i = otherLibs.size() - 1; i >= 0; i--) {
             LLVMParserResult parserResult = otherLibs.get(i);
             if (!visited.contains(parserResult)) {
@@ -569,7 +570,7 @@ public final class Runner {
         initializationOrder.add(current);
     }
 
-    private static EconomicMap<LLVMParserResult, List<LLVMParserResult>> computeDependencies(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private EconomicMap<LLVMParserResult, List<LLVMParserResult>> computeDependencies(List<LLVMParserResult> parserResults) {
         EconomicMap<LLVMParserResult, List<LLVMParserResult>> dependencies = EconomicMap.create(Equivalence.IDENTITY);
         Map<ExternalLibrary, LLVMParserResult> libsToParserResults = mapLibsToParserResults(parserResults);
         LLVMScope globalScope = context.getGlobalScope();
@@ -615,16 +616,16 @@ public final class Runner {
         return map;
     }
 
-    private static void callStructors(LLVMContext context, List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
+    private void callStructors(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
         if (!context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            InitializationOrder initializationOrder = computeInitializationOrder(context, parserResults, defaultLibraries);
-            initialize(context, initializationOrder.sulongLibraries);
+            InitializationOrder initializationOrder = computeInitializationOrder(parserResults, defaultLibraries);
+            initialize(initializationOrder.sulongLibraries);
             context.initialize();
-            initialize(context, initializationOrder.otherLibraries);
+            initialize(initializationOrder.otherLibraries);
         }
     }
 
-    private static void initialize(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private void initialize(List<LLVMParserResult> parserResults) {
         for (LLVMParserResult parserResult : parserResults) {
             // register destructor function so that we can execute it when exit is called
             RootCallTarget destructor = createDestructor(parserResult);
@@ -650,12 +651,12 @@ public final class Runner {
         }
     }
 
-    private static RootCallTarget createGlobalVariableInitializer(LLVMParserResult parserResult) {
+    private RootCallTarget createGlobalVariableInitializer(LLVMParserResult parserResult) {
         FrameDescriptor rootFrame = StackManager.createRootFrame();
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(parserResult.getRuntime(), rootFrame);
         final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
         for (GlobalVariable global : parserResult.getDefinedGlobals()) {
-            final LLVMExpressionNode store = createGlobalInitialization(parserResult.getRuntime(), symbolResolver, global);
+            final LLVMExpressionNode store = createGlobalInitialization(symbolResolver, global);
             if (store != null) {
                 globalNodes.add(store);
             }
@@ -663,13 +664,13 @@ public final class Runner {
 
         if (!globalNodes.isEmpty()) {
             LLVMExpressionNode[] initNodes = globalNodes.toArray(new LLVMExpressionNode[globalNodes.size()]);
-            RootNode globalVarInits = new LLVMStaticInitsBlockNode(parserResult.getRuntime().getLanguage(), initNodes, rootFrame);
+            RootNode globalVarInits = new LLVMStaticInitsBlockNode(context.getLanguage(), initNodes, rootFrame);
             return Truffle.getRuntime().createCallTarget(globalVarInits);
         }
         return null;
     }
 
-    private static LLVMExpressionNode createGlobalInitialization(LLVMParserRuntime runtime, LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
+    private LLVMExpressionNode createGlobalInitialization(LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -677,15 +678,15 @@ public final class Runner {
         LLVMExpressionNode constant = symbolResolver.resolve(global.getValue());
         if (constant != null) {
             final Type type = global.getType().getPointeeType();
-            final int size = runtime.getContext().getByteSize(type);
+            final int size = context.getByteSize(type);
 
             final LLVMExpressionNode globalVarAddress = symbolResolver.resolve(global);
             if (size != 0) {
                 if (type instanceof ArrayType || type instanceof StructureType) {
-                    return runtime.getNodeFactory().createStore(runtime, globalVarAddress, constant, type, null);
+                    return nodeFactory.createStore(context, globalVarAddress, constant, type, null);
                 } else {
                     Type t = global.getValue().getType();
-                    return runtime.getNodeFactory().createStore(runtime, globalVarAddress, constant, t, null);
+                    return nodeFactory.createStore(context, globalVarAddress, constant, t, null);
                 }
             }
         }
@@ -693,20 +694,20 @@ public final class Runner {
         return null;
     }
 
-    private static RootCallTarget createConstructor(LLVMParserResult parserResult) {
+    private RootCallTarget createConstructor(LLVMParserResult parserResult) {
         return createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY);
     }
 
-    private static RootCallTarget createDestructor(LLVMParserResult parserResult) {
+    private RootCallTarget createDestructor(LLVMParserResult parserResult) {
         return createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
     }
 
-    private static RootCallTarget createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
+    private RootCallTarget createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
         for (GlobalVariable globalVariable : parserResult.getDefinedGlobals()) {
             if (globalVariable.getName().equals(name)) {
-                LLVMExpressionNode[] targets = resolveStructor(parserResult.getRuntime(), globalVariable, priorityComparator);
+                LLVMExpressionNode[] targets = resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator);
                 if (targets.length > 0) {
-                    return Truffle.getRuntime().createCallTarget(new LLVMStaticInitsBlockNode(parserResult.getRuntime().getLanguage(), targets, StackManager.createRootFrame()));
+                    return Truffle.getRuntime().createCallTarget(new LLVMStaticInitsBlockNode(context.getLanguage(), targets, StackManager.createRootFrame()));
                 } else {
                     return null;
                 }
@@ -715,36 +716,36 @@ public final class Runner {
         return null;
     }
 
-    private static LLVMExpressionNode[] resolveStructor(LLVMParserRuntime runtime, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator) {
+    private LLVMExpressionNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
             return LLVMExpressionNode.NO_EXPRESSIONS;
         }
 
-        final LLVMGlobal global = runtime.getFileScope().globals().get(globalSymbol.getName());
+        final LLVMGlobal global = fileScope.globals().get(globalSymbol.getName());
         final ArrayConstant arrayConstant = (ArrayConstant) globalSymbol.getValue();
         final int elemCount = arrayConstant.getElementCount();
 
         final StructureType elementType = (StructureType) arrayConstant.getType().getElementType();
-        final int elementSize = runtime.getContext().getByteSize(elementType);
+        final int elementSize = context.getByteSize(elementType);
 
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
-        final int indexedTypeLength = runtime.getContext().getByteAlignment(functionType);
+        final int indexedTypeLength = context.getByteAlignment(functionType);
 
         final ArrayList<Pair<Integer, LLVMExpressionNode>> structors = new ArrayList<>(elemCount);
         FrameDescriptor rootFrame = StackManager.createRootFrame();
         for (int i = 0; i < elemCount; i++) {
-            final LLVMExpressionNode globalVarAddress = runtime.getNodeFactory().createLiteral(runtime, global, new PointerType(globalSymbol.getType()));
-            final LLVMExpressionNode iNode = runtime.getNodeFactory().createLiteral(runtime, i, PrimitiveType.I32);
-            final LLVMExpressionNode structPointer = runtime.getNodeFactory().createTypedElementPointer(runtime, globalVarAddress, iNode, elementSize, elementType);
-            final LLVMExpressionNode loadedStruct = runtime.getNodeFactory().createLoad(runtime, elementType, structPointer);
+            final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
+            final LLVMExpressionNode iNode = nodeFactory.createLiteral(i, PrimitiveType.I32);
+            final LLVMExpressionNode structPointer = nodeFactory.createTypedElementPointer(globalVarAddress, iNode, elementSize, elementType);
+            final LLVMExpressionNode loadedStruct = nodeFactory.createLoad(elementType, structPointer);
 
-            final LLVMExpressionNode oneLiteralNode = runtime.getNodeFactory().createLiteral(runtime, 1, PrimitiveType.I32);
-            final LLVMExpressionNode functionLoadTarget = runtime.getNodeFactory().createTypedElementPointer(runtime, loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
-            final LLVMExpressionNode loadedFunction = runtime.getNodeFactory().createLoad(runtime, functionType, functionLoadTarget);
+            final LLVMExpressionNode oneLiteralNode = nodeFactory.createLiteral(1, PrimitiveType.I32);
+            final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(loadedStruct, oneLiteralNode, indexedTypeLength, functionType);
+            final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                            runtime.getNodeFactory().createFrameRead(runtime, PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
-            final LLVMExpressionNode functionCall = runtime.getNodeFactory().createFunctionCall(runtime, loadedFunction, argNodes, functionType, null);
+                            nodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+            final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(loadedFunction, argNodes, functionType, null);
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
@@ -777,14 +778,14 @@ public final class Runner {
         }
     }
 
-    private static CallTarget createLibraryCallTarget(LLVMLanguage language, LLVMContext context, List<LLVMParserResult> parserResults) {
+    private CallTarget createLibraryCallTarget(List<LLVMParserResult> parserResults) {
         RootCallTarget mainFunctionCallTarget = null;
-        LLVMFunctionDescriptor mainFunctionDescriptor = findMainMethod(context, parserResults);
-        LLVMFunctionDescriptor startFunctionDescriptor = findStartMethod(context);
+        LLVMFunctionDescriptor mainFunctionDescriptor = findMainMethod(parserResults);
+        LLVMFunctionDescriptor startFunctionDescriptor = findStartMethod();
         if (mainFunctionDescriptor != null && startFunctionDescriptor != null) {
             RootCallTarget startCallTarget = startFunctionDescriptor.getLLVMIRFunction();
             Path applicationPath = mainFunctionDescriptor.getLibrary().getPath();
-            RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunctionDescriptor, startCallTarget, Objects.toString(applicationPath, ""));
+            RootNode rootNode = new LLVMGlobalRootNode(context.getLanguage(), StackManager.createRootFrame(), mainFunctionDescriptor, startCallTarget, Objects.toString(applicationPath, ""));
             mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
         }
 
@@ -797,7 +798,7 @@ public final class Runner {
         }
     }
 
-    private static LLVMFunctionDescriptor findMainMethod(LLVMContext context, List<LLVMParserResult> parserResults) {
+    private LLVMFunctionDescriptor findMainMethod(List<LLVMParserResult> parserResults) {
         // check if the freshly parsed code exports a main method
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
@@ -811,7 +812,7 @@ public final class Runner {
         return null;
     }
 
-    private static LLVMFunctionDescriptor findStartMethod(LLVMContext context) {
+    private LLVMFunctionDescriptor findStartMethod() {
         // the start method just needs to be present in the global scope, we don't care when it was
         // parsed.
         if (context.getGlobalScope().functions().contains(START_METHOD_NAME)) {
@@ -842,11 +843,11 @@ public final class Runner {
         }
     }
 
-    private static final class ParserData {
+    private static final class ParserInput {
         private final ByteBuffer bytes;
         private final ExternalLibrary library;
 
-        private ParserData(ByteBuffer bytes, ExternalLibrary library) {
+        private ParserInput(ByteBuffer bytes, ExternalLibrary library) {
             this.bytes = bytes;
             this.library = library;
         }
