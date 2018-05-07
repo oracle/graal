@@ -29,6 +29,7 @@ import os
 import pprint
 import json
 from abc import abstractmethod, ABCMeta
+from argparse import ArgumentParser
 from contextlib import contextmanager
 from os.path import relpath, join, dirname, basename, exists, isfile
 from collections import OrderedDict
@@ -1159,7 +1160,20 @@ def graalvm_output():
     return join(_output_root, _graalvm.jdk_base)
 
 
+def graalvm_dist_name(args):
+    """print the name of the GraalVM distribution"""
+    parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
+    args = parser.parse_args(args)
+
+    mx.log(get_graalvm_distribution().name)
+
+
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_false', dest='polyglot_lib_project', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_false', dest='polyglot_launcher_project', help='Disable the \'polyglot\' launcher project')
 mx.add_argument('--force-bash-launchers', action='store_true', dest='force_bash_launchers', help='Force the use of bash launchers instead of native images')
+
+
+mx.update_commands(_suite, {
+    'graalvm-dist-name': [graalvm_dist_name, ''],
+})
