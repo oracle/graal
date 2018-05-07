@@ -31,9 +31,9 @@ import static com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFor
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.Collections;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
@@ -61,7 +61,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
-import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -201,7 +200,7 @@ public class JavaMainWrapper {
                 JavaMainSupport.executeShutdownHooks();
             }
         } catch (Throwable ex) {
-            SnippetRuntime.reportUnhandledExceptionJava(ex);
+            JavaThreads.dispatchUncaughtException(Thread.currentThread(), ex);
         }
 
         JavaThreads.singleton().joinAllNonDaemons();
