@@ -468,13 +468,13 @@ suite = {
       "testDistribution" : True,
     },
     "SULONG_DOC": {
-        "native": True, # Not Java
-        "relpath": True,
-        "dependencies": [
-            "sulong-doc",
-        ],
-        "description": "Sulong documentation, license",
-        "license" : "BSD-new",
+      "native": True, # Not Java
+      "relpath": True,
+      "dependencies": [
+        "sulong-doc",
+      ],
+      "description": "Sulong documentation, license",
+      "license" : "BSD-new",
     },
     "SULONG_GRAALVM_DOCS" : {
       "native" : True,
@@ -486,6 +486,7 @@ suite = {
           "file:README.md",
         ],
       },
+      "license" : "BSD-new",
     },
   }
 }
