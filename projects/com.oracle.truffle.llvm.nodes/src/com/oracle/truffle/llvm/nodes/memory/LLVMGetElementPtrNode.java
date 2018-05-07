@@ -140,7 +140,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
         protected Object doPointee(LLVMGlobal addr, long incr,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                         @Cached("create()") LLVMGlobalReadNode.ReadObjectNode readObject,
-                        @Cached("create()") BranchProfile zeroIncr,
                         @Cached("create()") BranchProfile notNativeBranch) {
             /*
              * TODO(rs): avoid TO_NATIVE transformation
@@ -150,10 +149,6 @@ public abstract class LLVMGetElementPtrNode extends LLVMExpressionNode {
                 notNativeBranch.enter();
                 return LLVMManagedPointer.cast(globalObject).increment(incr);
             } else {
-                if (incr == 0) {
-                    zeroIncr.enter();
-                    return addr;
-                }
                 return globalAccess.executeWithTarget(addr).increment(incr);
             }
         }

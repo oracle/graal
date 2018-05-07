@@ -117,10 +117,6 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return library;
     }
 
-    public LLVMSourceType getSourceType() {
-        return sourceSymbol != null ? sourceSymbol.getType() : null;
-    }
-
     public LLVMNativePointer bindToNativeAddress(LLVMContext context, long nativeAddress) {
         LLVMNativePointer n = LLVMNativePointer.create(nativeAddress);
         context.getGlobalFrame().setObject(slot, n);
@@ -130,12 +126,8 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
     public LLVMInteropType getInteropType() {
         if (!interopTypeCached) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            LLVMSourceType sourceType = getSourceType();
-            if (sourceType == null) {
-                interopType = LLVMInteropType.UNKNOWN;
-            } else {
-                interopType = LLVMInteropType.fromSourceType(sourceType);
-            }
+            LLVMSourceType sourceType = sourceSymbol != null ? sourceSymbol.getType() : null;
+            interopType = sourceType == null ? LLVMInteropType.UNKNOWN : LLVMInteropType.fromSourceType(sourceType);
             interopTypeCached = true;
         }
         return interopType;
