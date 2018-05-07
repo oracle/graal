@@ -24,44 +24,78 @@
  */
 package org.graalvm.component.installer;
 
-import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
-
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
+import static org.graalvm.component.installer.BundleConstants.GRAALVM_CAPABILITY;
+import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
+import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.persist.ComponentPackageLoader;
+import org.graalvm.component.installer.persist.FileDownloader;
 
+/**
+ *
+ * @author sdedic
+ */
 public final class GenerateCatalog {
-    private List<String> archives;
-    private final String graalVersionPrefix;
-    private final String urlPrefix;
-    private final String label;
-    private final StringBuilder catalogS = new StringBuilder();
+    private List<String> params = new ArrayList<>();
+    private List<String> locations = new ArrayList<>();
+    private String graalVersionPrefix;
+    private String graalVersionName;
+    private String forceVersion;
+    private String forceOS;
+    private String forceArch;
+    private String urlPrefix;
+    private final StringBuilder catalogContents = new StringBuilder();
+    private final StringBuilder catalogHeader = new StringBuilder();
+    private Environment env;
+    private String graalNameFormatString = "GraalVM %1s %2s/%3s";
+    private String graalVersionFormatString = "%s_%s_%s";
+
+    private static final Map<String, String> OPTIONS = new HashMap<>();
+
+    static {
+        OPTIONS.put("v", "");  // verbose
+        OPTIONS.put("g", "s");
+        OPTIONS.put("e", "s");
+        OPTIONS.put("o", "s");
+        OPTIONS.put("f", "s");
+        OPTIONS.put("n", "s");
+        OPTIONS.put("a", "s");
+        OPTIONS.put("n", "");  // GraalVM release name
+        OPTIONS.put("b", "");  // URL Base
+        OPTIONS.put("p", "s");  // path base
+    }
+
+    private Map<String, GraalVersion> graalVMReleases = new LinkedHashMap<>();
 
     public static void main(String[] args) throws IOException {
-        if (args.length < 4) {
-            System.err.println("Invalid arguments");
-            System.err.println("Usage: GenerateCatalog <version prefix> <label> <url prefix> file [ file...]");
-            return;
-        }
         new GenerateCatalog(args).run();
+        System.exit(0);
     }
 
     private GenerateCatalog(String[] args) {
-        graalVersionPrefix = args[0];
-        label = args[1];
-        urlPrefix = args[2].trim();
-        this.archives = Arrays.asList(args).subList(3, args.length);
+        this.params = new ArrayList<>(Arrays.asList(args));
     }
 
     private static byte[] computeHash(File f) throws IOException {
@@ -98,16 +132,173 @@ public final class GenerateCatalog {
         return sb.toString();
     }
 
+    static class Spec {
+        File f;
+        URL u;
+        String relativePath;
+
+        Spec(File f, URL u) {
+            this.f = f;
+            this.u = u;
+        }
+    }
+
+    static class GraalVersion {
+        String version;
+        String os;
+        String arch;
+
+        GraalVersion(String version, String os, String arch) {
+            this.version = version;
+            this.os = os;
+            this.arch = arch;
+        }
+
+    }
+
+    private List<Spec> componentSpecs = new ArrayList<>();
+
+    private Path pathBase = null;
+
     public void run() throws IOException {
-        catalogS.append(MessageFormat.format(
-                        "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY));
-        for (String spec : archives) {
-            File f = new File(spec);
-            if (!f.exists()) {
-                throw new IOException("File does not exist: " + f);
+        readCommandLine();
+        downloadFiles();
+        generateCatalog();
+        generateReleases();
+
+        System.out.println(catalogHeader);
+        System.out.println(catalogContents);
+    }
+
+    private void readCommandLine() throws IOException {
+        SimpleGetopt getopt = new SimpleGetopt(OPTIONS).ignoreUnknownCommands(true);
+        getopt.setParameters(new LinkedList<>(params));
+        getopt.process();
+        this.env = new Environment(null, null, getopt.getPositionalParameters(), getopt.getOptValues());
+        this.env.setAllOutputToErr(true);
+
+        String pb = env.optValue("p");
+        if (pb != null) {
+            pathBase = Paths.get(pb).toAbsolutePath();
+        }
+        urlPrefix = env.optValue("u");
+        graalVersionPrefix = env.optValue("g");
+        if (graalVersionPrefix != null) {
+            graalVersionName = env.optValue("n");
+            if (graalVersionName == null) {
+                throw new IOException("Graal prefix specified, but no human-readable name");
             }
+        }
+        forceVersion = env.optValue("e");
+        forceOS = env.optValue("o");
+        forceArch = env.optValue("a");
+        String s = env.optValue("f");
+        if (s != null) {
+            graalNameFormatString = s;
+        }
+
+        // catalogContents.append(MessageFormat.format(
+        // "{2}.{0}={1}\n", graalVersionPrefix, label, GRAALVM_CAPABILITY
+        // ));
+
+        while (env.hasParameter()) {
+            locations.add(env.nextParameter());
+        }
+        /*
+         * try (BufferedReader rr = new BufferedReader(new InputStreamReader(System.in))) { String
+         * l;
+         * 
+         * while ((l = rr.readLine()) != null) { locations.add(l); } }
+         */
+        for (String spec : locations) {
+            File f = null;
+            URL u = null;
+
+            int eq = spec.indexOf('=');
+            if (eq != -1) {
+                f = new File(spec.substring(0, eq));
+                if (!f.exists()) {
+                    throw new FileNotFoundException(f.toString());
+                }
+                u = new URL(spec.substring(eq + 1));
+            } else {
+                f = new File(spec);
+                if (!f.exists()) {
+                    f = null;
+                    u = new URL(spec);
+                    if (u.getProtocol() == null) {
+                        throw new FileNotFoundException(spec);
+                    }
+                }
+            }
+            Spec spc = new Spec(f, u);
+            if (f != null) {
+                if (pathBase != null) {
+                    spc.relativePath = pathBase.relativize(f.toPath().toAbsolutePath()).toString();
+                }
+            }
+            componentSpecs.add(spc);
+        }
+    }
+
+    private void downloadFiles() throws IOException {
+        for (Spec spec : componentSpecs) {
+            if (spec.f == null) {
+                FileDownloader dn = new FileDownloader(spec.u.toString(), spec.u, env);
+                dn.setDisplayProgress(true);
+                dn.download();
+                spec.f = dn.getLocalFile();
+            }
+        }
+    }
+
+    private String os;
+    private String arch;
+    private String version;
+
+    private String findComponentPrefix(ComponentInfo info) {
+        Map<String, String> m = info.getRequiredGraalValues();
+        if (graalVersionPrefix != null) {
+            arch = os = null;
+            version = graalVersionPrefix;
+            return graalVersionPrefix;
+        }
+        return String.format("%s_%s_%s",
+                        version = forceVersion != null ? forceVersion : m.get(CAP_GRAALVM_VERSION),
+                        os = forceOS != null ? forceOS : m.get(CommonConstants.CAP_OS_NAME),
+                        arch = forceArch != null ? forceArch : m.get(CommonConstants.CAP_OS_ARCH));
+    }
+
+    private void generateReleases() {
+        for (String prefix : graalVMReleases.keySet()) {
+            GraalVersion ver = graalVMReleases.get(prefix);
+            String vprefix;
+            String n;
+            if (ver.os == null) {
+                vprefix = graalVersionPrefix;
+                n = graalVersionName;
+            } else {
+                vprefix = String.format(graalVersionFormatString, ver.version, ver.os, ver.arch);
+                n = String.format(graalNameFormatString, ver.version, ver.os, ver.arch);
+            }
+            catalogHeader.append(GRAALVM_CAPABILITY).append('.').append(vprefix).append('=').append(n).append('\n');
+            if (ver.os == null) {
+                break;
+            }
+        }
+    }
+
+    private void generateCatalog() throws IOException {
+        for (Spec spec : componentSpecs) {
+            File f = spec.f;
             byte[] hash = computeHash(f);
             try (JarFile jf = new JarFile(f)) {
+                ComponentPackageLoader ldr = new ComponentPackageLoader(jf, env);
+                ComponentInfo info = ldr.createComponentInfo();
+                String prefix = findComponentPrefix(info);
+                if (!graalVMReleases.containsKey(prefix)) {
+                    graalVMReleases.put(prefix, new GraalVersion(version, os, arch));
+                }
                 Attributes atts = jf.getManifest().getMainAttributes();
                 String bid = atts.getValue(BundleConstants.BUNDLE_ID).toLowerCase();
                 String bl = atts.getValue(BundleConstants.BUNDLE_NAME);
@@ -118,20 +309,26 @@ public final class GenerateCatalog {
                 if (bl == null) {
                     throw new IOException("Missing bundle name in " + spec);
                 }
-                String url = (urlPrefix.isEmpty()) ? f.getName() : urlPrefix + "/" + f.getName();
-                catalogS.append(MessageFormat.format(
-                                "Component.{0}.{1}={2}\n", graalVersionPrefix, bid, url));
-                catalogS.append(MessageFormat.format(
-                                "Component.{0}.{1}-hash={2}\n", graalVersionPrefix, bid, digest2String(hash)));
+                String name;
+
+                if (spec.u != null) {
+                    name = spec.u.toString();
+                } else {
+                    name = spec.relativePath != null ? spec.relativePath : f.getName();
+                }
+                String url = (urlPrefix == null || urlPrefix.isEmpty()) ? name : urlPrefix + "/" + name;
+                catalogContents.append(MessageFormat.format(
+                                "Component.{0}.{1}={2}\n", prefix, bid, url));
+                catalogContents.append(MessageFormat.format(
+                                "Component.{0}.{1}-hash={2}\n", prefix, bid, digest2String(hash)));
                 for (Object a : atts.keySet()) {
                     String key = a.toString();
                     String val = atts.getValue(key);
 
-                    catalogS.append(MessageFormat.format(
-                                    "Component.{0}.{1}-{2}={3}\n", graalVersionPrefix, bid, key, val));
+                    catalogContents.append(MessageFormat.format(
+                                    "Component.{0}.{1}-{2}={3}\n", prefix, bid, key, val));
                 }
             }
         }
-        System.out.println(catalogS);
     }
 }

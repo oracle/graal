@@ -102,6 +102,16 @@ public class SimpleGetoptTest extends TestBase {
     }
 
     @Test
+    public void testUnknownOptionIgnoredBecauseOfHelp() {
+        setParams("install -h -s");
+        getopt.process();
+
+        assertNotNull(getopt.getOptValues().get("h"));
+        // not processex
+        assertNull(getopt.getOptValues().get("s"));
+    }
+
+    @Test
     public void testCommandWithSeparateOptions() {
         setParams("-e -v install -h");
 
@@ -193,13 +203,13 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testMergedOptions() {
-        setParams("list param1 -veh param2");
+        setParams("list param1 -vel param2");
         getopt.process();
 
         Map<String, String> opts = getopt.getOptValues();
         assertNotNull(opts.get("e"));
         assertNotNull(opts.get("v"));
-        assertNotNull(opts.get("h"));
+        assertNotNull(opts.get("l"));
         assertEquals(Arrays.asList("param1", "param2"), getopt.getPositionalParameters());
     }
 
@@ -255,7 +265,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testDoubleDashOption() {
-        setParams("--e --v install --h param1");
+        setParams("--e --v install --x param1");
 
         getopt.process();
 
@@ -264,14 +274,14 @@ public class SimpleGetoptTest extends TestBase {
 
         assertNotNull(opts.get("e"));
         assertNotNull(opts.get("v"));
-        assertNotNull(opts.get("h"));
+        assertNotNull(opts.get("x"));
         assertEquals("install", cmd);
         assertEquals(Arrays.asList("param1"), getopt.getPositionalParameters());
     }
 
     @Test
     public void testDoubleDashParamOption() {
-        setParams("--e --v install --C catalog --h param1");
+        setParams("--e --v install --C catalog --x param1");
 
         getopt.process();
 
@@ -280,11 +290,79 @@ public class SimpleGetoptTest extends TestBase {
 
         assertNotNull(opts.get("e"));
         assertNotNull(opts.get("v"));
-        assertNotNull(opts.get("h"));
+        assertNotNull(opts.get("x"));
         assertNotNull(opts.get("C"));
         assertEquals("catalog", opts.get("C"));
 
         assertEquals("install", cmd);
         assertEquals(Arrays.asList("param1"), getopt.getPositionalParameters());
     }
+
+    @Test
+    public void testLongOption() {
+        setParams("--help");
+        getopt.process();
+
+        Map<String, String> opts = getopt.getOptValues();
+        assertNotNull(opts.get("h"));
+
+        // should not be interpreted as a series of single options:
+        assertNull(opts.get("e"));
+        assertNull(opts.get("l"));
+        assertNull(opts.get("p"));
+    }
+
+    @Test
+    public void testLongOptionAppendedParameter() {
+        setParams("--catalogbubu");
+
+        exception.expect(FailedOperationException.class);
+        exception.expectMessage("ERROR_UnsupportedGlobalOption");
+        getopt.process();
+    }
+
+    @Test
+    public void testLongOptionWithParameterBeforeCommand() {
+        setParams("--user-catalog bubu install");
+
+        getopt.process();
+
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals("bubu", opts.get("C"));
+    }
+
+    @Test
+    public void testLongOptionWithParameterAfterCommand() {
+        setParams("install --user-catalog bubu ");
+
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals("bubu", opts.get("C"));
+    }
+
+    @Test
+    public void testComputeAbbreviations() {
+        setParams("install --user bubu");
+        Map<String, String> abbrevs = getopt.computeAbbreviations(Arrays.asList("list", "list-files", "file-list", "force", "replace", "rewrite", "verify", "signature"));
+
+        assertEquals(null, abbrevs.get("list"));
+        assertEquals("list-files", abbrevs.get("list-"));
+        assertEquals("list-files", abbrevs.get("list-file"));
+
+        assertEquals("force", abbrevs.get("fo"));
+
+        assertEquals(null, abbrevs.get("re"));
+        assertEquals("rewrite", abbrevs.get("rew"));
+        assertEquals("replace", abbrevs.get("rep"));
+    }
+
+    @Test
+    public void testLongOptionAbbreviation() {
+        setParams("install --user bubu");
+
+        getopt.process();
+        Map<String, String> opts = getopt.getOptValues();
+        assertEquals("bubu", opts.get("C"));
+    }
+
 }

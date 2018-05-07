@@ -61,7 +61,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadCatalogBadGraalVersion() throws Exception {
         URL clu = getClass().getResource("catalog");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
 
@@ -74,7 +74,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadCatalogCorrupted() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
 
@@ -86,7 +86,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
 
     private void loadRegistry() throws Exception {
         URL clu = getClass().getResource("catalog");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
@@ -112,7 +112,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadCorruptedCatalog() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         clu);
 
@@ -125,7 +125,7 @@ public class RemoteCatalogDownloaderTest extends NetworkTestBase {
     @Test
     public void testCannotConnectCatalog() throws Exception {
         URL clu = getClass().getResource("catalogCorrupted");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         Handler.bind(u.toString(),
                         new MockURLConnection(clu.openConnection(), u, new ConnectException()));
 

@@ -88,6 +88,14 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.OPTION_FOREIGN_CATALOG, "s");
         globalOptions.put(Commands.OPTION_URLS, "");
         globalOptions.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
+
+        globalOptions.put(Commands.LONG_OPTION_VERBOSE, Commands.OPTION_VERBOSE);
+        globalOptions.put(Commands.LONG_OPTION_DEBUG, Commands.OPTION_DEBUG);
+        globalOptions.put(Commands.LONG_OPTION_HELP, Commands.OPTION_HELP);
+        globalOptions.put(Commands.LONG_OPTION_CATALOG, Commands.OPTION_CATALOG);
+        globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
+        globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
+        globalOptions.put(Commands.LONG_OPTION_NO_DOWNLOAD_PROGRESS, Commands.OPTION_NO_DOWNLOAD_PROGRESS);
     }
 
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
@@ -128,12 +136,17 @@ public final class ComponentInstaller {
         for (String s : commands.keySet()) {
             go.addCommandOptions(s, commands.get(s).supportedOptions());
         }
+        go.ignoreUnknownCommands(true);
         go.process();
         cmdHandler = commands.get(go.getCommand());
+        Map<String, String> optValues = go.getOptValues();
         if (cmdHandler == null) {
+            if (optValues.containsKey(Commands.OPTION_HELP)) {
+                printUsage();
+                return 0;
+            }
             err("ERROR_MissingCommand"); // NOI18N
         }
-        Map<String, String> optValues = go.getOptValues();
         parameters = go.getPositionalParameters();
 
         try {
