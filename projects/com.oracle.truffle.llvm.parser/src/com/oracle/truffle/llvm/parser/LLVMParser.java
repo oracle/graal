@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -165,6 +166,10 @@ public final class LLVMParser {
                         model.getFunctionProcessor());
         Function function = new LazyLLVMIRFunction(lazyConverter);
         defineFunction(descriptor, functionSymbol.getName(), functionSymbol.getType(), function);
+        if (runtime.getContext().getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
+            RootCallTarget resolved = descriptor.getLLVMIRFunction();
+            assert resolved != null;
+        }
     }
 
     private void defineFunction(LLVMFunctionDescriptor descriptor, String functionName, FunctionType functionType, Function function) {
