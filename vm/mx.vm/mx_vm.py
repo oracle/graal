@@ -265,7 +265,13 @@ GRAALVM_VERSION={version}""".format(
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
     def __init__(self, base_name, base_layout, theLicense=None, **kw_args):
         components = mx_sdk.graalvm_components()
-        name = base_name + "_" + '_'.join(sorted((component.short_name.upper() for component in components)))
+        name = base_name + '_' + '_'.join(sorted((component.short_name.upper() for component in components)))
+        if mx.get_opts().polyglot_lib_project:
+            name += '_LIBPOLY'
+        if mx.get_opts().polyglot_launcher_project:
+            name += '_POLY'
+        if mx.get_opts().force_bash_launchers:
+            name += '_BASH'
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
@@ -984,6 +990,8 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             other_involved_components += [c for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
+        if mx.get_opts().force_bash_launchers:
+            name += '_BASH'
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
         super(GraalVmInstallableComponent, self).__init__(
