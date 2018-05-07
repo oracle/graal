@@ -193,7 +193,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testDefaultId() {
         Instrument descriptor1 = engine.getInstruments().get(MetadataInstrument2.class.getSimpleName());
         Assert.assertEquals("", descriptor1.getName());
-        Assert.assertEquals("", descriptor1.getVersion());
+        Assert.assertEquals(engine.getVersion(), descriptor1.getVersion());
         Assert.assertEquals(MetadataInstrument2.class.getSimpleName(), descriptor1.getId());
         Assert.assertFalse(isInitialized(descriptor1));
     }
