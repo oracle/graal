@@ -52,8 +52,8 @@ public class NativeImageOptions {
     @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
 
-    @APIOption(name = "shared", defaultValue = {"SHARED_LIBRARY"}, defaultValueFinal = true, customHelp = "build shared library")//
-    @APIOption(name = "static", defaultValue = {"STATIC_EXECUTABLE"}, defaultValueFinal = true, customHelp = "build statically linked executable (requires static libc & zlib)")//
+    @APIOption(name = "shared", fixedValue = {"SHARED_LIBRARY"}, customHelp = "build shared library")//
+    @APIOption(name = "static", fixedValue = {"STATIC_EXECUTABLE"}, customHelp = "build statically linked executable (requires static libc & zlib)")//
     @Option(help = "Generate a SHARED_LIBRARY, EXECUTABLE or STATIC_EXECUTABLE image")//
     public static final HostedOptionKey<String> Kind = new HostedOptionKey<>(AbstractBootImage.NativeImageKind.EXECUTABLE.name());
 
