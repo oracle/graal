@@ -1670,6 +1670,7 @@ public class BasicNodeFactory implements NodeFactory {
                 return LLVMI64ObjectSizeNodeGen.create(args[1], args[2], sourceSection);
             case "@llvm.copysign.f32":
             case "@llvm.copysign.f64":
+            case "@llvm.copysign.f80":
                 return LLVMCMathsIntrinsicsFactory.LLVMCopySignNodeGen.create(args[1], args[2], sourceSection);
 
             case "@llvm.uadd.with.overflow.i8":
