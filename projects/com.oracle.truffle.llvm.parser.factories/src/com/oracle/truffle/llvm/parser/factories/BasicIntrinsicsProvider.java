@@ -152,6 +152,11 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
+/**
+ * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
+ * native code. The intrinsic is also preferred over LLVM bitcode that is part of a Sulong-internal
+ * library.
+ */
 public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextExtension {
     private final ExternalLibrary library = new ExternalLibrary("SulongIntrinsics", false, false);
 
@@ -1153,21 +1158,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMAbortNodeGen.create();
-            }
-        });
-        factories.put("@abort", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMAbortNodeGen.create();
-            }
-        });
-
-        factories.put("@exit", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMExitNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
         factories.put("@signal", new LLVMNativeIntrinsicFactory(true, false) {
