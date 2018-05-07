@@ -87,7 +87,7 @@ public class LinuxDlfcn extends Dlfcn {
     /**
      * Get information about the shared object HANDLE refers to. REQUEST is from among the values
      * below, and determines the use of ARG.
-     * 
+     *
      * On success, returns zero. On failure, returns -1 and records an error message to be fetched
      * with `dlerror'.
      */
@@ -165,7 +165,7 @@ public class LinuxDlfcn extends Dlfcn {
 
         /** Indicates where this directory came from. */
         @CField
-        /* unsigned */int dls_flags();
+                        /* unsigned */int dls_flags();
     }
 
     /**
@@ -180,7 +180,7 @@ public class LinuxDlfcn extends Dlfcn {
 
         /** Number of elements in `dls_serpath'. */
         @CField
-        /* unsigned */int dls_cnt();
+                        /* unsigned */int dls_cnt();
 
         /** Actually longer, dls_cnt elements. */
         @CFieldAddress

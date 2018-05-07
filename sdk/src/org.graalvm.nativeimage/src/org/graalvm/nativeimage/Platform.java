@@ -75,7 +75,7 @@ public interface Platform {
     }
 
     /**
-     * Supported operating system: Darwin (MacOS).
+     * Supported operating system: Windows.
      *
      * @since 1.0
      */
