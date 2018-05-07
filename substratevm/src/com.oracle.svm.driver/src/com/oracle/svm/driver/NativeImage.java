@@ -580,6 +580,10 @@ class NativeImage {
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
         if (OS.getCurrent().hasProcFS) {
+            /*
+             * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
+             * (e.g. using CTRL-C in Gradle daemon mode)
+             */
             command.addAll(Arrays.asList("-watchpid", "" + PosixUtils.getpid()));
         }
         command.addAll(imageArgs);
