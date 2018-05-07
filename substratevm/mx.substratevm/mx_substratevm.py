@@ -74,7 +74,7 @@ def build(args, vm=None):
     mx.log('build: Checking SubstrateVM requirements for building ...')
 
     if not _host_os_supported():
-        mx.abort('build: SubstrateVM can be built only on Darwin and Linux platforms')
+        mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
 
     global allow_native_image_build
     if '--warning-as-error' in args and '--force-javac' not in args:
@@ -86,7 +86,7 @@ def build(args, vm=None):
     orig_command_build(args, vm)
 
 def _host_os_supported():
-    return mx.get_os() == 'linux' or mx.get_os() == 'darwin'
+    return mx.get_os() == 'linux' or mx.get_os() == 'darwin' or mx.get_os() == 'windows'
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config

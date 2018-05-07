@@ -36,6 +36,8 @@ OBJECTS=api.o \
 	lookup.o \
 	signature.o
 
+ifneq (${OS},windows)
+
 default: bin/${LIBTRUFFLENFI}
 
 OBJECTFILES=${OBJECTS:%.o=bin/%.o}
@@ -82,3 +84,10 @@ bin/%.d: ;
 .PRECIOUS: bin/%.d
 
 -include ${OBJECTS:%.o=bin/%.d}
+
+else
+all:
+	echo "Building libffi on Windows is not currently supported"
+	$(shell mkdir -p bin/ >/dev/null)
+	$(shell touch bin/${LIBTRUFFLENFI} >/dev/null)
+endif

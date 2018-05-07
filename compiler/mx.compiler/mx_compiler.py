@@ -139,7 +139,7 @@ def add_jvmci_classpath_entry(entry):
     """
     _jvmci_classpath.append(entry)
 
-if jdk.javaCompliance != '9' and jdk.javaCompliance != '10':
+if jdk.javaCompliance != '9' and jdk.javaCompliance != '10' and mx.get_os() != 'windows':
     # The jdk.internal.vm.compiler.management module is
     # not available in 9 nor upgradeable in 10
     add_jvmci_classpath_entry(JVMCIClasspathEntry('GRAAL_MANAGEMENT'))
@@ -1064,8 +1064,10 @@ def makegraaljdk(args):
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
-        if mx.get_os() == 'darwin' or mx.get_os() == 'windows':
+        if mx.get_os() == 'darwin':
             jvmlibDir = join(dstJdk, 'jre', 'lib', 'server')
+        if mx.get_os() == 'windows':
+            jvmlibDir = join(dstJdk, 'jre', 'bin', 'server')
         else:
             jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
         jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))

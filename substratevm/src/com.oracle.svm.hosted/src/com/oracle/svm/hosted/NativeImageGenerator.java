@@ -282,6 +282,8 @@ public class NativeImageGenerator {
                 return new Platform.LINUX_AMD64();
             } else if (OS.getCurrent() == OS.DARWIN) {
                 return new Platform.DARWIN_AMD64();
+            } else if (OS.getCurrent() == OS.WINDOWS) {
+                return new Platform.WINDOWS_AMD64();
             } else {
                 throw VMError.shouldNotReachHere("Unsupported operating system: " + osName);
             }

@@ -54,6 +54,8 @@ public abstract class AbstractBootImage {
                         return ".so";
                     case MACH_O:
                         return ".dylib";
+                    case PECOFF:
+                        return ".dll";
                     default:
                         throw new AssertionError("unreachable");
                 }
@@ -61,13 +63,13 @@ public abstract class AbstractBootImage {
 
             @Override
             public String getFilenamePrefix() {
-                return "lib";
+                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? "" : "lib";
             }
         },
         EXECUTABLE {
             @Override
             public String getFilenameSuffix() {
-                return "";
+                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
             }
 
             @Override
