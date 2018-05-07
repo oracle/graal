@@ -62,11 +62,13 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixExecutableName;
+import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
@@ -577,6 +579,9 @@ class NativeImage {
         command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
+        if (OS.getCurrent().hasProcFS) {
+            command.addAll(Arrays.asList("-watchpid", "" + PosixUtils.getpid()));
+        }
         command.addAll(imageArgs);
 
         showVerboseMessage(verbose || dryRun, "Executing [");
