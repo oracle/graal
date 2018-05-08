@@ -344,12 +344,12 @@ public final class Runner {
             bindUnresolvedGlobals(parserResults);
             bindUnresolvedFunctions(parserResults);
             registerDynamicLinkChain(parserResults);
-            callStructors(parserResults, defaultLibraries);
 
             if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
                 resolveLazyLLVMIRFunctions(parserResults);
             }
 
+            callStructors(parserResults, defaultLibraries);
             return createLibraryCallTarget(parserResults);
         } catch (Throwable t) {
             throw new IOException("Error while parsing " + library, t);
