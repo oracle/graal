@@ -41,23 +41,17 @@ public class PELangLoopTest extends PELangTest {
         // @formatter:off
         RootNode rootNode = b.root(
             b.block(
-                b.write(0, "flag"),
                 b.write(0, "counter"),
                 b.loop(
-                    b.read("flag"),
-                    b.block(
-                        b.increment(1, "counter"),
-                        b.branch(
-                            b.equals(10, "counter"),
-                            b.write(1, "flag")))),
-                b.ret(
-                    b.read("counter"))
-                )
+                    b.lessThan(b.read("counter"), b.literal(10L)),
+                    b.increment(1, "counter")),
+                b.ret(b.read("counter"))
+            )
         );
         // @formatter:on
 
-        // warm up compiler to avoid code installation failures
         try {
+            // do a first compilation to load compiler classes and ignore exceptions
             compileHelper(rootNode.toString(), rootNode, new Object[0]);
         } catch (Exception e) {
             // swallow exception
@@ -71,25 +65,21 @@ public class PELangLoopTest extends PELangTest {
         // @formatter:off
         RootNode rootNode = b.root(
             b.block(
-                b.write(0, "flag"),
                 b.write(0, "counter"),
                 b.loop(
-                    b.read("flag"),
-                    b.block(
-                        b.increment(1, "counter"),
-                        b.branch(
-                            b.equals(10, "counter"),
-                            b.write(1, "flag")))),
+                    b.lessThan(
+                        b.read("counter"),
+                        b.literal(10L)),
+                    b.increment(1, "counter")),
                 b.ret(
-                    b.read("counter"))
+                    b.read("counter")
                 )
+            )
         );
         // @formatter:on
 
         assertCallResult(10L, rootNode);
-
-        // TODO: some assertions about PE should be done here
-        // assertPartialEvalEquals("constant10", rootNode);
+        assertPartialEvalEquals("constant10", rootNode);
     }
 
 }
