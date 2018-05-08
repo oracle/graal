@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNodeGen.LLVMObjectToNativeNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
@@ -70,32 +71,51 @@ public abstract class LLVMToNativeNode extends LLVMNode {
         }
     }
 
-    @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
-    protected LLVMNativePointer handlePointerCached(Object pointer,
-                    @Cached("createCached(pointer)") LLVMObjectNativeLibrary lib) {
-        return handlePointer(pointer, lib);
+    // this is a workaround because @Fallback does not support @Cached
+    @Specialization(guards = "isOther(pointer)")
+    protected LLVMNativePointer doOther(Object pointer,
+                    @Cached("createLLVMObjectToNative()") LLVMObjectToNativeNode toNative) {
+        return toNative.executeWithTarget(pointer);
     }
 
-    @Specialization(replaces = "handlePointerCached", guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
-    protected LLVMNativePointer handlePointer(Object pointer,
-                    @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-        try {
-            return LLVMNativePointer.create(lib.asPointer(pointer));
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot convert " + pointer + " to LLVMNativePointer", e);
+    protected static boolean isOther(Object pointer) {
+        return !(pointer instanceof Long || LLVMNativePointer.isInstance(pointer) || pointer instanceof LLVMBoxedPrimitive);
+    }
+
+    protected LLVMObjectToNativeNode createLLVMObjectToNative() {
+        return LLVMObjectToNativeNodeGen.create();
+    }
+
+    abstract static class LLVMObjectToNativeNode extends LLVMNode {
+        public abstract LLVMNativePointer executeWithTarget(Object pointer);
+
+        @Specialization(guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
+        protected LLVMNativePointer handlePointerCached(Object pointer,
+                        @Cached("createCached(pointer)") LLVMObjectNativeLibrary lib) {
+            return handlePointer(pointer, lib);
         }
-    }
 
-    @Specialization(replaces = {"handlePointer", "handlePointerCached"}, guards = {"lib.guard(pointer)"})
-    protected LLVMNativePointer transitionToNative(Object pointer,
-                    @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
-        try {
-            Object n = lib.toNative(pointer);
-            return LLVMNativePointer.create(lib.asPointer(n));
-        } catch (InteropException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException("Cannot convert " + pointer + " to LLVMNativePointer", e);
+        @Specialization(replaces = "handlePointerCached", guards = {"lib.guard(pointer)", "lib.isPointer(pointer)"})
+        protected LLVMNativePointer handlePointer(Object pointer,
+                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
+            try {
+                return LLVMNativePointer.create(lib.asPointer(pointer));
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Cannot convert " + pointer + " to LLVMNativePointer", e);
+            }
+        }
+
+        @Specialization(replaces = {"handlePointer", "handlePointerCached"}, guards = {"lib.guard(pointer)"})
+        protected LLVMNativePointer transitionToNative(Object pointer,
+                        @Cached("createGeneric()") LLVMObjectNativeLibrary lib) {
+            try {
+                Object n = lib.toNative(pointer);
+                return LLVMNativePointer.create(lib.asPointer(n));
+            } catch (InteropException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Cannot convert " + pointer + " to LLVMNativePointer", e);
+            }
         }
     }
 }

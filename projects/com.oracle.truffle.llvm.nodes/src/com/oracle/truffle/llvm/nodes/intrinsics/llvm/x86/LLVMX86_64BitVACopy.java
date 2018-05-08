@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.llvm.x86;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.NodeField;
@@ -124,7 +125,7 @@ public abstract class LLVMX86_64BitVACopy extends LLVMBuiltin {
         return doVoid(globalAccess1.executeWithTarget(dest), globalAccess2.executeWithTarget(source));
     }
 
-    @Specialization
+    @Fallback
     protected Object doVoid(Object dest, Object source) {
 
         /*

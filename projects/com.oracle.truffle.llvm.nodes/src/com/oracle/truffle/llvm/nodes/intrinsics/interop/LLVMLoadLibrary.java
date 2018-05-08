@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,11 +39,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMLoadLibrary extends LLVMIntrinsic {
-
-    @Specialization
-    protected Object doIntrinsic(String value) {
-        return value;
-    }
 
     @Specialization
     protected Object doIntrinsic(Object value,

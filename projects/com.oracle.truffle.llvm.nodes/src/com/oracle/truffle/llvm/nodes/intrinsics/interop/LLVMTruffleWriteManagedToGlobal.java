@@ -53,7 +53,7 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
     @Child AttachInteropTypeNode attachType = AttachInteropTypeNodeGen.create();
 
     @Specialization
-    protected LLVMManagedPointer doIntrinsic(LLVMGlobal address, LLVMManagedPointer value,
+    protected LLVMManagedPointer doGlobal(LLVMGlobal address, LLVMManagedPointer value,
                     @Cached("create()") LLVMGlobal.GetFrame getFrameNode,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         LLVMManagedPointer typedValue = LLVMManagedPointer.cast(attachType.execute(value, address.getInteropType()));
@@ -62,9 +62,10 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
         return typedValue;
     }
 
-    @Specialization
+    // this is a workaround because @Fallback does not support @Cached
     @TruffleBoundary
-    protected Object doIntrinsic(Object address, Object value,
+    @Specialization(guards = "isOther(address)")
+    protected Object doOther(Object address, Object value,
                     @Cached("create()") LLVMGlobal.GetFrame getFrameNode,
                     @Cached("getContextReference()") ContextReference<LLVMContext> context) {
         // TODO: (timfel) This is so slow :(
@@ -82,5 +83,9 @@ public abstract class LLVMTruffleWriteManagedToGlobal extends LLVMIntrinsic {
             }
         }
         return address;
+    }
+
+    protected static boolean isOther(Object address) {
+        return !(address instanceof LLVMGlobal);
     }
 }
