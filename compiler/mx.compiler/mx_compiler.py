@@ -1066,7 +1066,7 @@ def makegraaljdk(args):
 
         if mx.get_os() == 'darwin':
             jvmlibDir = join(dstJdk, 'jre', 'lib', 'server')
-        if mx.get_os() == 'windows':
+        elif mx.get_os() == 'windows':
             jvmlibDir = join(dstJdk, 'jre', 'bin', 'server')
         else:
             jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
