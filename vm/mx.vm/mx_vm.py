@@ -146,6 +146,11 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, "<jdk_base>/jre/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jdk_base>/jre/lib/<arch>/server/vm.properties", "string:name=GraalVM <version>")
 
+            # Add Polyglot launcher
+            if mx.get_opts().polyglot_launcher_project:
+                _add(layout, "<jdk_base>/jre/bin/polyglot", "dependency:polyglot.launcher")
+                _add(layout, "<jdk_base>/bin/polyglot", "link:../jre/bin/polyglot")
+
             # Add Polyglot library
             lib_polyglot_project = get_lib_polyglot_project()
             if lib_polyglot_project:
@@ -1014,29 +1019,27 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 _graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _base_graalvm_layout = {
-   "<jdk_base>/": [
+    "<jdk_base>/": [
        "file:GRAALVM-README.md",
-   ],
-   "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
-   "<jdk_base>/jre/bin/polyglot": "dependency:polyglot.launcher",
-   "<jdk_base>/bin/polyglot": "link:../jre/bin/polyglot",
-   "<jdk_base>/jre/lib/boot/": [
+    ],
+    "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
+    "<jdk_base>/jre/lib/boot/": [
        "dependency:sdk:GRAAL_SDK",
-   ],
-   "<jdk_base>/jre/lib/graalvm/": [
+    ],
+    "<jdk_base>/jre/lib/graalvm/": [
        "dependency:sdk:LAUNCHER_COMMON",
-   ],
-   "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
+    ],
+    "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
        "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
-   ],
-   "<jdk_base>/jre/lib/truffle/": [
+    ],
+    "<jdk_base>/jre/lib/truffle/": [
        "dependency:truffle:TRUFFLE_API",
        "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
        "dependency:truffle:TRUFFLE_NFI",
        "dependency:truffle:TRUFFLE_TCK",
        "dependency:LOCATOR",
        "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
-   ],
+    ],
 }
 
 
