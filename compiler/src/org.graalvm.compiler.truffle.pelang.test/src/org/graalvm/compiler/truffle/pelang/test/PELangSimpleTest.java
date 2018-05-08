@@ -1,7 +1,7 @@
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.PELangBuilder;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
@@ -18,12 +18,7 @@ public class PELangSimpleTest extends PELangTest {
 
         // @formatter:off
         RootNode rootNode = b.root(
-            b.ret(
-                b.add(
-                    b.literal(5),
-                    b.literal(5)
-                )
-            )
+            b.ret(b.add(5L, 5L))
         );
         // @formatter:on
 
@@ -38,14 +33,9 @@ public class PELangSimpleTest extends PELangTest {
         // @formatter:off
         RootNode rootNode = b.root(
             b.dispatch(
-                b.basicBlock(
-                    b.ret(
-                        b.add(
-                            b.literal(5),
-                            b.literal(5)
-                        )
-                    ),
-                    PELangBasicBlockNode.NO_SUCCESSOR)));
+                /* block 0 */ b.basicBlock(b.ret(b.add(5L, 5L)), PELangBasicBlockNode.NO_SUCCESSOR)
+            )
+        );
         // @formatter:on
 
         assertCallResult(10L, rootNode);

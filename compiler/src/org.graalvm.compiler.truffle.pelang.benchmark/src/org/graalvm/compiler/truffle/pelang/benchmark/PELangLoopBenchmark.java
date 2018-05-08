@@ -37,18 +37,11 @@ public class PELangLoopBenchmark extends PartialEvaluationBenchmark {
         // @formatter:off
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(b.root(
             b.block(
-                b.write(0, "flag"),
                 b.write(0, "counter"),
                 b.loop(
-                    b.read("flag"),
-                    b.block(
-                        b.increment(1, "counter"),
-                        b.branch(
-                            b.equals(10, "counter"),
-                            b.write(1, "flag")))),
-                b.ret(
-                    b.read("counter")
-                )
+                    b.lessThan(b.read("counter"), b.literal(10L)),
+                    b.increment(1, "counter")),
+                b.ret(b.read("counter"))
             )
         ));
         // @formatter:on

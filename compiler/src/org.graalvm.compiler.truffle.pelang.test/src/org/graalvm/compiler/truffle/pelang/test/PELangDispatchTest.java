@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.PELangBuilder;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
@@ -41,22 +41,14 @@ public class PELangDispatchTest extends PELangTest {
         // @formatter:off
         RootNode rootNode = b.root(
             b.dispatch(
-                b.basicBlock(b.write(0, "flag"), 1),                                         // block 0
-                b.basicBlock(b.write(0, "counter"), 2),                                      // block 1
-                b.basicBlock(b.read("flag"), 3, 6),                                          // block 2
-                b.basicBlock(b.increment(1, "counter"), 4),                                  // block 3
-                b.basicBlock(b.equals(10, "counter"), 5, 2),                                 // block 4
-                b.basicBlock(b.write(1, "flag"), 2),                                         // block 5
-                b.basicBlock(b.ret(b.read("counter")), PELangBasicBlockNode.NO_SUCCESSOR))); // block 6
+                /* block 0 */ b.basicBlock(b.write(0, "counter"), 1),
+                /* block 1 */ b.basicBlock(b.lessThan(b.read("counter"), b.literal(10L)), 2, 3),
+                /* block 2 */ b.basicBlock(b.increment(1, "counter"), 1),
+                /* block 3 */ b.basicBlock(b.ret(b.read("counter")), PELangBasicBlockNode.NO_SUCCESSOR)));
         // @formatter:on
 
         assertCallResult(10L, rootNode);
-
-        // TODO: some assertions about PE should be done here
-        // assertPartialEvalEquals("constant10", rootNode);
-        // StructuredGraph g = prepareGraphPE(rootNode.toString(), rootNode, new Object[]{});
-        // new LoopFullUnrollPhase(new CanonicalizerPhase(), new DefaultLoopPolicies()).apply(g,
-        // getDefaultHighTierContext());
+        assertPartialEvalEquals("constant10", rootNode);
     }
 
 }
