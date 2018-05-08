@@ -45,15 +45,27 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode add(long left, long right) {
-        return PELangAddNodeGen.create(literal(left), literal(right));
+        return add(literal(left), literal(right));
     }
 
     public PELangExpressionNode add(String left, String right) {
-        return PELangAddNodeGen.create(literal(left), literal(right));
+        return add(literal(left), literal(right));
     }
 
-    public PELangExpressionNode equals(long value, String identifier) {
-        return add(literal(-value), read(identifier));
+    public PELangExpressionNode equals(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangEqualsNodeGen.create(leftNode, rightNode);
+    }
+
+    public PELangExpressionNode not(PELangExpressionNode bodyNode) {
+        return new PELangNotNode(bodyNode);
+    }
+
+    public PELangExpressionNode lessThan(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangLessThanNodeGen.create(leftNode, rightNode);
+    }
+
+    public PELangExpressionNode greaterThan(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangGreaterThanNodeGen.create(leftNode, rightNode);
     }
 
     public PELangStatementNode block(PELangStatementNode... bodyNodes) {
@@ -93,7 +105,7 @@ public class PELangBuilder {
         return write(add(literal(value), read(identifier)), identifier);
     }
 
-    public PELangExpressionNode increment(String value, String identifier) {
+    public PELangExpressionNode append(String value, String identifier) {
         return write(add(literal(value), read(identifier)), identifier);
     }
 
