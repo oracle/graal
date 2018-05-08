@@ -22,13 +22,11 @@
  */
 package org.graalvm.compiler.truffle.pelang;
 
-import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public final class PELangRootNode extends RootNode {
+public abstract class PELangRootNode extends RootNode {
 
     @Child private PELangStatementNode bodyNode;
 

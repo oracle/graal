@@ -22,14 +22,15 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
+import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
-public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
+public final class PELangBasicBlockDispatchNode extends RootNode {
 
     @Children private final PELangBasicBlockNode[] blockNodes;
 
