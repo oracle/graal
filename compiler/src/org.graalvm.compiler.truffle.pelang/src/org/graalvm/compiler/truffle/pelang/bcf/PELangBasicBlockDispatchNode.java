@@ -27,10 +27,9 @@ import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
-public final class PELangBasicBlockDispatchNode extends RootNode {
+public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
 
     @Children private final PELangBasicBlockNode[] blockNodes;
 

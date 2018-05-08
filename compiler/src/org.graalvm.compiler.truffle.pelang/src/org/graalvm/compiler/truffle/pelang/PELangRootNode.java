@@ -26,7 +26,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public abstract class PELangRootNode extends RootNode {
+public final class PELangRootNode extends RootNode {
 
     @Child private PELangStatementNode bodyNode;
 
