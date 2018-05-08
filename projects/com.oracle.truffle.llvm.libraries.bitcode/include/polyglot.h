@@ -101,6 +101,14 @@ void *polyglot_eval(const char *id, const char *code);
 void *polyglot_eval_file(const char *id, const char *filename);
 
 /**
+ * Access a Java class via host interop.
+ *
+ * @param classname the name of the Java class
+ * @return the Java class, as polyglot value
+ */
+void *polyglot_java_type(const char *classname);
+
+/**
  * Access an argument of the current function.
  *
  * This function can be used to access arguments of the current function by
