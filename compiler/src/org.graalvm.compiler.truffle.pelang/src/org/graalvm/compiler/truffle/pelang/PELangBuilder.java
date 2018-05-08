@@ -38,9 +38,8 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangLocalWriteNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
-import org.graalvm.compiler.truffle.pelang.stmt.PELangReturnNode;
-import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 

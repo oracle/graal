@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.stmt.PELangReturnNode;
-import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
+import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
 
 public final class PELangSingleSuccessorNode extends PELangBasicBlockNode {
 
