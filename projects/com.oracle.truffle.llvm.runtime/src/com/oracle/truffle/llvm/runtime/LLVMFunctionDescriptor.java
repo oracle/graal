@@ -298,6 +298,13 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         LLVMSourceFunctionType getSourceType();
     }
 
+    public void resolveIfLazyLLVMIRFunction() {
+        if (getFunction() instanceof LazyLLVMIRFunction) {
+            getFunction().resolve(this);
+            assert getFunction() instanceof LLVMIRFunction;
+        }
+    }
+
     public boolean isLLVMIRFunction() {
         return getFunction() instanceof LLVMIRFunction || getFunction() instanceof LazyLLVMIRFunction;
     }

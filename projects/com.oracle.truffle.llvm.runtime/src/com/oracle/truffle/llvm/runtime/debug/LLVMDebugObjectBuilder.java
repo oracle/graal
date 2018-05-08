@@ -27,43 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm.arith;
+package com.oracle.truffle.llvm.runtime.debug;
 
-import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeChildren;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.NodeField;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-public abstract class LLVMCopySign {
+public abstract class LLVMDebugObjectBuilder {
 
-    @NodeField(name = "sourceSection", type = SourceSection.class)
-    @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
-    @GenerateNodeFactory
-    public abstract static class LLVMCopySignFloat extends LLVMExpressionNode {
+    public static final LLVMDebugObjectBuilder UNAVAILABLE = new LLVMDebugObjectBuilder() {
 
         @Override
-        public abstract SourceSection getSourceSection();
+        public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
+            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
+        }
 
-        @Specialization
-        protected float doFloat(float magnitude, float sign) {
-            return Math.copySign(magnitude, sign);
+    };
+
+    protected LLVMDebugObjectBuilder() {
+    }
+
+    public LLVMDebugObject getValue(LLVMSourceSymbol symbol) {
+        if (symbol != null) {
+            return getValue(symbol.getType(), symbol.getLocation());
+        } else {
+            return getValue(LLVMSourceType.UNKNOWN, null);
         }
     }
 
-    @NodeField(name = "sourceSection", type = SourceSection.class)
-    @NodeChildren({@NodeChild(value = "magnitude", type = LLVMExpressionNode.class), @NodeChild(value = "sign", type = LLVMExpressionNode.class)})
-    @GenerateNodeFactory
-    public abstract static class LLVMCopySignDouble extends LLVMExpressionNode {
-
-        @Override
-        public abstract SourceSection getSourceSection();
-
-        @Specialization
-        protected double doDouble(double magnitude, double sign) {
-            return Math.copySign(magnitude, sign);
-        }
-    }
+    public abstract LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration);
 }

@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.parser.model.enums.ReadModifyWriteOperator;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -193,7 +193,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
-    LLVMDebugValue createDebugStaticValue(LLVMExpressionNode valueNode);
+    LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode);
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 

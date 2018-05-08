@@ -31,23 +31,23 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMFrameValueAccess;
 
 public final class LLVMFrameValueAccessImpl implements LLVMFrameValueAccess {
 
     private final FrameSlot slot;
-    private final LLVMDebugValueProvider.Builder builder;
+    private final LLVMDebugValue.Builder builder;
 
-    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValueProvider.Builder builder) {
+    public LLVMFrameValueAccessImpl(FrameSlot slot, LLVMDebugValue.Builder builder) {
         this.slot = slot;
         this.builder = builder;
     }
 
     @Override
-    public LLVMDebugValue getValue(Frame frame) {
+    public LLVMDebugObjectBuilder getValue(Frame frame) {
         final Object addr = frame.getValue(slot);
-        return LLVMDebugSimpleValue.create(builder, addr);
+        return LLVMDebugSimpleObjectBuilder.create(builder, addr);
     }
 }

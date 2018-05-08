@@ -64,7 +64,7 @@ public final class LLVMSourceStaticMemberType extends LLVMSourceType {
             return members.stream().map(LLVMSourceStaticMemberType::getName).collect(Collectors.toList()).toArray(new Object[members.size()]);
         }
 
-        LLVMDebugValue getMemberValue(String name) {
+        LLVMDebugObjectBuilder getMemberValue(String name) {
             final LLVMSourceStaticMemberType member = getMember(name);
             return member != null ? member.getValue() : DEFAULT_VALUE;
         }
@@ -132,27 +132,27 @@ public final class LLVMSourceStaticMemberType extends LLVMSourceType {
         }
     }
 
-    private static final LLVMDebugValue DEFAULT_VALUE = new LLVMDebugValue() {
+    private static final LLVMDebugObjectBuilder DEFAULT_VALUE = new LLVMDebugObjectBuilder() {
         @Override
         public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValueProvider.UNAVAILABLE, declaration);
+            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
         }
     };
 
     @CompilationFinal private LLVMSourceType elementType = null;
 
-    @CompilationFinal private LLVMDebugValue value = DEFAULT_VALUE;
+    @CompilationFinal private LLVMDebugObjectBuilder value = DEFAULT_VALUE;
 
     public LLVMSourceStaticMemberType(String name, long size, long align, LLVMSourceLocation location) {
         super(() -> name, size, align, 0L, location);
     }
 
-    public LLVMDebugValue getValue() {
+    public LLVMDebugObjectBuilder getValue() {
         CompilerAsserts.neverPartOfCompilation();
         return value;
     }
 
-    public void setValue(LLVMDebugValue value) {
+    public void setValue(LLVMDebugObjectBuilder value) {
         CompilerAsserts.neverPartOfCompilation();
         this.value = value;
     }

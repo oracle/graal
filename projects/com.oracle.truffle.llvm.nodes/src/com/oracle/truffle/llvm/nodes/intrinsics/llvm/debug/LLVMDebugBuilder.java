@@ -31,20 +31,20 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 
 public abstract class LLVMDebugBuilder {
 
     public static final LLVMDebugBuilder NATIVE_DECLARATION = new LLVMDebugBuilder() {
         @Override
-        public LLVMDebugValueProvider.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef) {
+        public LLVMDebugValue.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef) {
             return LLVMToDebugDeclarationNodeGen.create(contextRef);
         }
     };
 
     public static final LLVMDebugBuilder NATIVE_VALUE = new LLVMDebugBuilder() {
         @Override
-        public LLVMDebugValueProvider.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef) {
+        public LLVMDebugValue.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef) {
             return LLVMToDebugValueNodeGen.create(contextRef);
         }
     };
@@ -52,6 +52,6 @@ public abstract class LLVMDebugBuilder {
     protected LLVMDebugBuilder() {
     }
 
-    public abstract LLVMDebugValueProvider.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef);
+    public abstract LLVMDebugValue.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef);
 
 }

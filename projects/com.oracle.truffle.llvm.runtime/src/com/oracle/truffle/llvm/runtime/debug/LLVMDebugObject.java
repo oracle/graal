@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.debug;
 
+import java.math.BigInteger;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-
-import java.math.BigInteger;
-import java.util.Objects;
 
 /**
  * This class describes a source-level variable. Debuggers can use it to display the original
@@ -57,13 +57,13 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     protected final long offset;
 
-    protected final LLVMDebugValueProvider value;
+    protected final LLVMDebugValue value;
 
     private final LLVMSourceType type;
 
     private final LLVMSourceLocation location;
 
-    LLVMDebugObject(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation location) {
+    LLVMDebugObject(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation location) {
         this.value = value;
         this.offset = offset;
         this.type = type;
@@ -160,7 +160,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Enum extends LLVMDebugObject {
 
-        Enum(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
+        Enum(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
         }
 
@@ -177,11 +177,11 @@ public abstract class LLVMDebugObject implements TruffleObject {
             }
 
             if (size >= Long.SIZE) {
-                return LLVMDebugValueProvider.toHexString(id);
+                return LLVMDebugValue.toHexString(id);
             }
 
             final Object enumVal = getType().getElementName(id.longValue());
-            return enumVal != null ? enumVal : LLVMDebugValueProvider.toHexString(id);
+            return enumVal != null ? enumVal : LLVMDebugValue.toHexString(id);
         }
 
         @Override
@@ -202,7 +202,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         // in the order of their actual declaration in the containing type
         private final Object[] memberIdentifiers;
 
-        Structured(LLVMDebugValueProvider value, long offset, LLVMSourceType type, Object[] memberIdentifiers, LLVMSourceLocation declaration) {
+        Structured(LLVMDebugValue value, long offset, LLVMSourceType type, Object[] memberIdentifiers, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
             this.memberIdentifiers = memberIdentifiers;
         }
@@ -292,7 +292,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Primitive extends LLVMDebugObject {
 
-        Primitive(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
+        Primitive(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
         }
 
@@ -384,7 +384,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
         private final LLVMSourcePointerType pointerType;
 
-        Pointer(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
+        Pointer(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
 
             LLVMSourceType actualType = getType().getActualType();
@@ -423,7 +423,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
                 return null;
             }
 
-            final LLVMDebugValueProvider targetValue = value.dereferencePointer(offset);
+            final LLVMDebugValue targetValue = value.dereferencePointer(offset);
             if (targetValue == null) {
                 return null;
             }
@@ -434,7 +434,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
     private static final class StaticMembers extends LLVMDebugObject {
 
         StaticMembers(LLVMSourceStaticMemberType.CollectionType type) {
-            super(LLVMDebugValueProvider.UNAVAILABLE, 0L, type, null);
+            super(LLVMDebugValue.UNAVAILABLE, 0L, type, null);
         }
 
         @Override
@@ -447,7 +447,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
             if (key instanceof String) {
                 final LLVMSourceType elementType = getType().getElementType((String) key);
                 final LLVMSourceLocation declaration = getType().getElementDeclaration((String) key);
-                final LLVMDebugValue debugValue = ((LLVMSourceStaticMemberType.CollectionType) getType()).getMemberValue((String) key);
+                final LLVMDebugObjectBuilder debugValue = ((LLVMSourceStaticMemberType.CollectionType) getType()).getMemberValue((String) key);
                 return debugValue.getValue(elementType, declaration);
             }
             return null;
@@ -461,7 +461,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final class Unsupported extends LLVMDebugObject {
 
-        Unsupported(LLVMDebugValueProvider value, long offset, LLVMSourceType type, LLVMSourceLocation location) {
+        Unsupported(LLVMDebugValue value, long offset, LLVMSourceType type, LLVMSourceLocation location) {
             super(value, offset, type, location);
         }
 
@@ -481,7 +481,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
-    public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValueProvider value, LLVMSourceLocation declaration) {
+    public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValue value, LLVMSourceLocation declaration) {
         if (type.getActualType() == LLVMSourceType.UNKNOWN || type.getActualType() == LLVMSourceType.UNSUPPORTED) {
             return new Unsupported(value, baseOffset, LLVMSourceType.UNSUPPORTED, declaration);
 

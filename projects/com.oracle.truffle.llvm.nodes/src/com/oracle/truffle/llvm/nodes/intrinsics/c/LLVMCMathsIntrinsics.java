@@ -452,5 +452,14 @@ public abstract class LLVMCMathsIntrinsics {
         protected double doDouble(double magnitude, double sign) {
             return Math.copySign(magnitude, sign);
         }
+
+        @Specialization
+        protected LLVM80BitFloat doLLVM80BitFloat(LLVM80BitFloat magnitude, LLVM80BitFloat sign) {
+            if (magnitude.getSign() != sign.getSign()) {
+                return magnitude.negate();
+            } else {
+                return magnitude;
+            }
+        }
     }
 }

@@ -123,7 +123,6 @@ compile/cmpsi386.c
 compile/dimove.c
 compile/20010118-1.c
 compile/20021015-2.c
-compile/pr55921.c
 compile/20000923-1.c
 compile/pr52891-1.c
 compile/20021205-1.c
@@ -363,7 +362,6 @@ compile/20040817-1.c
 compile/20060217-1.c
 compile/uns.c
 compile/BUG25.c
-compile/pr38789.c
 compile/20030917-1.c
 compile/pr34448.c
 compile/pr37991.c
@@ -465,7 +463,6 @@ compile/const.c
 compile/20000609-1.c
 compile/20001121-1.c
 compile/pr59102.c
-compile/920521-1.c
 compile/20031231-1.c
 compile/920808-1.c
 compile/signext.c
@@ -1223,7 +1220,6 @@ compile/pr59569-1.c
 compile/920502-2.c
 compile/20070906-1.c
 compile/pr40026.c
-compile/920520-1.c
 compile/bfx.c
 compile/pr60502.c
 compile/xneg.c
@@ -1333,7 +1329,6 @@ compile/920729-1.c
 compile/pr47967.c
 compile/labels-3.c
 compile/pr20539-1.c
-compile/20000804-1.c
 compile/jmp.c
 compile/pr56745.c
 compile/20120830-1.c

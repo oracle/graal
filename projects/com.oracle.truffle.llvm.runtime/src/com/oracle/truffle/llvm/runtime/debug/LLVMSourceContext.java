@@ -36,7 +36,7 @@ import java.util.HashMap;
 
 public final class LLVMSourceContext {
 
-    private final HashMap<LLVMSourceSymbol, LLVMDebugValue> staticValues;
+    private final HashMap<LLVMSourceSymbol, LLVMDebugObjectBuilder> staticValues;
     private final HashMap<LLVMSourceSymbol, LLVMFrameValueAccess> frameValues;
 
     @TruffleBoundary
@@ -46,12 +46,12 @@ public final class LLVMSourceContext {
     }
 
     @TruffleBoundary
-    public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugValue value) {
+    public void registerStatic(LLVMSourceSymbol symbol, LLVMDebugObjectBuilder value) {
         staticValues.put(symbol, value);
     }
 
     @TruffleBoundary
-    public LLVMDebugValue getStatic(LLVMSourceSymbol symbol) {
+    public LLVMDebugObjectBuilder getStatic(LLVMSourceSymbol symbol) {
         return staticValues.get(symbol);
     }
 

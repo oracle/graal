@@ -35,12 +35,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
+abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
     @Override
     public Object readBoolean(long bitOffset) {
@@ -83,7 +83,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
     }
 
     @Override
-    public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+    public LLVMDebugValue dereferencePointer(long bitOffset) {
         return null;
     }
 
@@ -301,7 +301,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValueProvider {
         }
 
         @Override
-        public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+        public LLVMDebugValue dereferencePointer(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
                 return new LLVMAllocationValueProvider(memory, address);
             } else {

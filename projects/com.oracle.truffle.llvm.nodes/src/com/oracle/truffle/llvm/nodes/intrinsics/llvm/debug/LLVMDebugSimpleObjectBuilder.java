@@ -32,34 +32,34 @@ package com.oracle.truffle.llvm.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 @ValueType
-public final class LLVMDebugSimpleValue extends LLVMDebugValue {
+public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
 
-    public static LLVMDebugValue create(LLVMDebugValueProvider.Builder builder, Object value) {
-        return new LLVMDebugSimpleValue(builder, value);
+    public static LLVMDebugObjectBuilder create(LLVMDebugValue.Builder builder, Object value) {
+        return new LLVMDebugSimpleObjectBuilder(builder, value);
     }
 
-    private final LLVMDebugValueProvider.Builder builder;
+    private final LLVMDebugValue.Builder builder;
     private final Object value;
 
-    LLVMDebugSimpleValue(LLVMDebugValueProvider.Builder builder, Object value) {
+    LLVMDebugSimpleObjectBuilder(LLVMDebugValue.Builder builder, Object value) {
         this.builder = builder;
         this.value = value;
     }
 
-    private LLVMDebugValueProvider getProvider() {
-        return builder != null ? builder.build(value) : LLVMDebugValueProvider.UNAVAILABLE;
+    private LLVMDebugValue getProvider() {
+        return builder != null ? builder.build(value) : LLVMDebugValue.UNAVAILABLE;
     }
 
     @Override
     @TruffleBoundary
     public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-        final LLVMDebugValueProvider valueProvider = getProvider();
+        final LLVMDebugValue valueProvider = getProvider();
         return LLVMDebugObject.instantiate(type, 0L, valueProvider, declaration);
     }
 }

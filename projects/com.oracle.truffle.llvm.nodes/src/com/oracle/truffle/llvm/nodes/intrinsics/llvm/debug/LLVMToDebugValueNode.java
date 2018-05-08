@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -54,7 +54,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
-public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValueProvider.Builder {
+public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValue.Builder {
 
     private final ContextReference<LLVMContext> contextRef;
 
@@ -62,133 +62,133 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         this.contextRef = contextRef;
     }
 
-    public abstract LLVMDebugValueProvider executeWithTarget(Object target);
+    public abstract LLVMDebugValue executeWithTarget(Object target);
 
     @Override
-    public LLVMDebugValueProvider build(Object irValue) {
+    public LLVMDebugValue build(Object irValue) {
         return executeWithTarget(irValue);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromBoolean(boolean value) {
+    protected LLVMDebugValue fromBoolean(boolean value) {
         return new LLVMConstantValueProvider.Integer(LLVMDebugTypeConstants.BOOLEAN_SIZE, value ? 1L : 0L);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromByte(byte value) {
+    protected LLVMDebugValue fromByte(byte value) {
         return new LLVMConstantValueProvider.Integer(Byte.SIZE, value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromShort(short value) {
+    protected LLVMDebugValue fromShort(short value) {
         return new LLVMConstantValueProvider.Integer(Short.SIZE, value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromInt(int value) {
+    protected LLVMDebugValue fromInt(int value) {
         return new LLVMConstantValueProvider.Integer(Integer.SIZE, value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromLong(long value) {
+    protected LLVMDebugValue fromLong(long value) {
         return new LLVMConstantValueProvider.Integer(Long.SIZE, value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromIVarBit(LLVMIVarBit value) {
+    protected LLVMDebugValue fromIVarBit(LLVMIVarBit value) {
         return new LLVMConstantValueProvider.IVarBit(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromBoxedPrimitive(LLVMBoxedPrimitive value) {
+    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive value) {
         return executeWithTarget(value.getValue());
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromAddress(LLVMNativePointer value,
+    protected LLVMDebugValue fromAddress(LLVMNativePointer value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return new LLVMConstantValueProvider.Pointer(memory, value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromFunctionHandle(LLVMFunctionDescriptor value) {
+    protected LLVMDebugValue fromFunctionHandle(LLVMFunctionDescriptor value) {
         return new LLVMConstantValueProvider.Function(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromFloat(float value) {
+    protected LLVMDebugValue fromFloat(float value) {
         return new LLVMConstantValueProvider.Float(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromDouble(double value) {
+    protected LLVMDebugValue fromDouble(double value) {
         return new LLVMConstantValueProvider.Double(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider from80BitFloat(LLVM80BitFloat value) {
+    protected LLVMDebugValue from80BitFloat(LLVM80BitFloat value) {
         return new LLVMConstantValueProvider.BigFloat(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value,
+    protected LLVMDebugValue fromGlobal(LLVMGlobal value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return new LLVMConstantGlobalValueProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.create(contextRef));
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value,
+    protected LLVMDebugValue fromSharedGlobal(LLVMSharedGlobalVariable value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return fromGlobal(value.getDescriptor(), memory);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromI1Vector(LLVMI1Vector value) {
+    protected LLVMDebugValue fromI1Vector(LLVMI1Vector value) {
         return new LLVMConstantVectorValueProvider.I1(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromI8Vector(LLVMI8Vector value) {
+    protected LLVMDebugValue fromI8Vector(LLVMI8Vector value) {
         return new LLVMConstantVectorValueProvider.I8(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromI16Vector(LLVMI16Vector value) {
+    protected LLVMDebugValue fromI16Vector(LLVMI16Vector value) {
         return new LLVMConstantVectorValueProvider.I16(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromI32Vector(LLVMI32Vector value) {
+    protected LLVMDebugValue fromI32Vector(LLVMI32Vector value) {
         return new LLVMConstantVectorValueProvider.I32(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromI64Vector(LLVMI64Vector value) {
+    protected LLVMDebugValue fromI64Vector(LLVMI64Vector value) {
         return new LLVMConstantVectorValueProvider.I64(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromFloatVector(LLVMFloatVector value) {
+    protected LLVMDebugValue fromFloatVector(LLVMFloatVector value) {
         return new LLVMConstantVectorValueProvider.Float(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromDoubleVector(LLVMDoubleVector value) {
+    protected LLVMDebugValue fromDoubleVector(LLVMDoubleVector value) {
         return new LLVMConstantVectorValueProvider.Double(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromAddressVector(LLVMPointerVector value) {
+    protected LLVMDebugValue fromAddressVector(LLVMPointerVector value) {
         return new LLVMConstantVectorValueProvider.Address(value);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromManagedPointer(LLVMManagedPointer value) {
+    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer value) {
         return new LLVMConstantValueProvider.InteropValue(value.getObject(), value.getOffset());
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object value) {
-        return LLVMDebugValueProvider.UNAVAILABLE;
+    protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object value) {
+        return LLVMDebugValue.UNAVAILABLE;
     }
 }

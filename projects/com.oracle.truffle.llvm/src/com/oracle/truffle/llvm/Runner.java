@@ -344,6 +344,11 @@ public final class Runner {
             bindUnresolvedGlobals(parserResults);
             bindUnresolvedFunctions(parserResults);
             registerDynamicLinkChain(parserResults);
+
+            if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
+                resolveLazyLLVMIRFunctions(parserResults);
+            }
+
             callStructors(parserResults, defaultLibraries);
             return createLibraryCallTarget(parserResults);
         } catch (Throwable t) {
@@ -525,6 +530,14 @@ public final class Runner {
     private void registerDynamicLinkChain(List<LLVMParserResult> parserResults) {
         for (LLVMParserResult parserResult : parserResults) {
             context.registerScope(parserResult.getRuntime().getFileScope());
+        }
+    }
+
+    private static void resolveLazyLLVMIRFunctions(List<LLVMParserResult> parserResults) {
+        for (LLVMParserResult parserResult : parserResults) {
+            for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
+                function.resolveIfLazyLLVMIRFunction();
+            }
         }
     }
 

@@ -33,28 +33,28 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-final class LLVMDebugAggregateValue extends LLVMDebugValue {
+final class LLVMDebugAggregateObjectBuilder extends LLVMDebugObjectBuilder {
 
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] lengths;
 
-    private final LLVMDebugValueProvider.Builder[] partBuilders;
+    private final LLVMDebugValue.Builder[] partBuilders;
     private final Object[] partValues;
 
-    LLVMDebugAggregateValue(int[] offsets, int[] lengths) {
+    LLVMDebugAggregateObjectBuilder(int[] offsets, int[] lengths) {
         super();
         this.offsets = offsets;
         this.lengths = lengths;
-        this.partBuilders = new LLVMDebugValueProvider.Builder[offsets.length];
+        this.partBuilders = new LLVMDebugValue.Builder[offsets.length];
         this.partValues = new Object[offsets.length];
     }
 
-    void setPart(int partIndex, LLVMDebugValueProvider.Builder builder, Object value) {
+    void setPart(int partIndex, LLVMDebugValue.Builder builder, Object value) {
         partBuilders[partIndex] = builder;
         partValues[partIndex] = value;
     }
@@ -67,16 +67,16 @@ final class LLVMDebugAggregateValue extends LLVMDebugValue {
     @Override
     @TruffleBoundary
     public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-        final LLVMDebugValueProvider provider = new FragmentValueProvider(offsets, lengths, partBuilders, partValues);
+        final LLVMDebugValue provider = new FragmentValueProvider(offsets, lengths, partBuilders, partValues);
         return LLVMDebugObject.instantiate(type, 0, provider, declaration);
     }
 
-    private static final class FragmentValueProvider implements LLVMDebugValueProvider {
+    private static final class FragmentValueProvider implements LLVMDebugValue {
 
         private final int[] offsets;
         private final int[] lengths;
 
-        private final LLVMDebugValueProvider.Builder[] partBuilders;
+        private final LLVMDebugValue.Builder[] partBuilders;
         private final Object[] partValues;
 
         private FragmentValueProvider(int[] offsets, int[] lengths, Builder[] partBuilders, Object[] partValues) {
@@ -86,7 +86,7 @@ final class LLVMDebugAggregateValue extends LLVMDebugValue {
             this.partValues = partValues;
         }
 
-        private LLVMDebugValueProvider getProvider(long bitOffset, int bitSize) {
+        private LLVMDebugValue getProvider(long bitOffset, int bitSize) {
             int start = (int) bitOffset;
             int end = start + bitSize;
 
@@ -106,11 +106,11 @@ final class LLVMDebugAggregateValue extends LLVMDebugValue {
             }
 
             if (bestFitIndex >= 0) {
-                final LLVMDebugValueProvider provider = partBuilders[bestFitIndex].build(partValues[bestFitIndex]);
+                final LLVMDebugValue provider = partBuilders[bestFitIndex].build(partValues[bestFitIndex]);
                 return new OffsetValueProvider(provider, offsets[bestFitIndex]);
             }
 
-            return LLVMDebugValueProvider.UNAVAILABLE;
+            return LLVMDebugValue.UNAVAILABLE;
         }
 
         private int getSlack(int partIndex, int start, int end) {
@@ -170,7 +170,7 @@ final class LLVMDebugAggregateValue extends LLVMDebugValue {
         }
 
         @Override
-        public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+        public LLVMDebugValue dereferencePointer(long bitOffset) {
             return getProvider(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE).dereferencePointer(bitOffset);
         }
 
@@ -185,12 +185,12 @@ final class LLVMDebugAggregateValue extends LLVMDebugValue {
         }
     }
 
-    private static final class OffsetValueProvider implements LLVMDebugValueProvider {
+    private static final class OffsetValueProvider implements LLVMDebugValue {
 
-        private final LLVMDebugValueProvider baseProvider;
+        private final LLVMDebugValue baseProvider;
         private final long offset;
 
-        private OffsetValueProvider(LLVMDebugValueProvider baseProvider, long offset) {
+        private OffsetValueProvider(LLVMDebugValue baseProvider, long offset) {
             this.baseProvider = baseProvider;
             this.offset = offset;
         }
@@ -250,7 +250,7 @@ final class LLVMDebugAggregateValue extends LLVMDebugValue {
         }
 
         @Override
-        public LLVMDebugValueProvider dereferencePointer(long bitOffset) {
+        public LLVMDebugValue dereferencePointer(long bitOffset) {
             return baseProvider.dereferencePointer(getOffset(bitOffset));
         }
 

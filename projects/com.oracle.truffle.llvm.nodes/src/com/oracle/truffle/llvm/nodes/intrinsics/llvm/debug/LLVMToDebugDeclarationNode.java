@@ -41,7 +41,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMBoxedPrimitive;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSharedGlobalVariable;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValueProvider;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -49,7 +49,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
-public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValueProvider.Builder {
+public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLVMDebugValue.Builder {
 
     private final ContextReference<LLVMContext> contextRef;
 
@@ -64,28 +64,28 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
         return LLVMExpressionNode.notLLVM(object);
     }
 
-    private static LLVMDebugValueProvider unavailable() {
+    private static LLVMDebugValue unavailable() {
         // @llvm.dbg.declare is supposed to tell us the location of the variable in memory, there
         // should never be a case where this cannot be resolved to a pointer. If it happens anyhow
         // this is a safe default.
-        return LLVMDebugValueProvider.UNAVAILABLE;
+        return LLVMDebugValue.UNAVAILABLE;
     }
 
-    public abstract LLVMDebugValueProvider executeWithTarget(Object value);
+    public abstract LLVMDebugValue executeWithTarget(Object value);
 
     @Override
-    public LLVMDebugValueProvider build(Object irValue) {
+    public LLVMDebugValue build(Object irValue) {
         return executeWithTarget(irValue);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromNativePointer(LLVMNativePointer address,
+    protected LLVMDebugValue fromNativePointer(LLVMNativePointer address,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return new LLVMAllocationValueProvider(memory, address);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive,
+    protected LLVMDebugValue fromBoxedPrimitive(LLVMBoxedPrimitive boxedPrimitive,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (boxedPrimitive.getValue() instanceof Long) {
             return fromNativePointer(LLVMNativePointer.create((long) boxedPrimitive.getValue()), memory);
@@ -95,19 +95,19 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGlobal(LLVMGlobal value,
+    protected LLVMDebugValue fromGlobal(LLVMGlobal value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return new LLVMConstantGlobalValueProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.create(contextRef));
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromSharedGlobal(LLVMSharedGlobalVariable value,
+    protected LLVMDebugValue fromSharedGlobal(LLVMSharedGlobalVariable value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return fromGlobal(value.getDescriptor(), memory);
     }
 
     @Specialization(guards = "notLLVM(obj)")
-    protected LLVMDebugValueProvider fromTruffleObject(TruffleObject obj,
+    protected LLVMDebugValue fromTruffleObject(TruffleObject obj,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         try {
             if (ForeignAccess.sendIsPointer(isPointer, obj)) {
@@ -121,13 +121,13 @@ public abstract class LLVMToDebugDeclarationNode extends LLVMNode implements LLV
     }
 
     @Specialization(guards = {"obj.getOffset() == 0", "notLLVM(obj.getObject())"})
-    protected LLVMDebugValueProvider fromManagedPointer(LLVMManagedPointer obj,
+    protected LLVMDebugValue fromManagedPointer(LLVMManagedPointer obj,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         return fromTruffleObject(obj.getObject(), memory);
     }
 
     @Specialization
-    protected LLVMDebugValueProvider fromGenericObject(@SuppressWarnings("unused") Object object) {
+    protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object object) {
         return unavailable();
     }
 }
