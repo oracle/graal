@@ -22,9 +22,7 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 
 public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
 
@@ -39,9 +37,16 @@ public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
         this.falseSuccessor = falseSuccessor;
     }
 
-    @Override
-    public int executeBlock(VirtualFrame frame) {
-        return (bodyNode.evaluateCondition(frame) == 0L) ? trueSuccessor : falseSuccessor;
+    public PELangExpressionNode getBodyNode() {
+        return bodyNode;
+    }
+
+    public int getTrueSuccessor() {
+        return trueSuccessor;
+    }
+
+    public int getFalseSuccessor() {
+        return falseSuccessor;
     }
 
 }

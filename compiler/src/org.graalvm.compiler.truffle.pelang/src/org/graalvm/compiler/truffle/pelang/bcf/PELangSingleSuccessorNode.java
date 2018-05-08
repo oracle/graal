@@ -22,10 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.PELangReturnNode;
-import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
-
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.compiler.truffle.pelang.stmt.PELangReturnNode;
+import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
 
 public final class PELangSingleSuccessorNode extends PELangBasicBlockNode {
 
@@ -41,9 +39,11 @@ public final class PELangSingleSuccessorNode extends PELangBasicBlockNode {
         this.successor = successor;
     }
 
-    @Override
-    public int executeBlock(VirtualFrame frame) {
-        bodyNode.executeVoid(frame);
+    public PELangStatementNode getBodyNode() {
+        return bodyNode;
+    }
+
+    public int getSuccessor() {
         return successor;
     }
 

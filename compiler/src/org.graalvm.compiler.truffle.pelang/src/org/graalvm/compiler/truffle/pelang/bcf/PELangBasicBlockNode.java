@@ -22,13 +22,10 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 
 public abstract class PELangBasicBlockNode extends Node {
 
     public static final int NO_SUCCESSOR = -1;
-
-    public abstract int executeBlock(VirtualFrame frame);
 
 }

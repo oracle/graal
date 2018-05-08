@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
+import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -45,7 +45,18 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
 
         while (blockIndex != PELangBasicBlockNode.NO_SUCCESSOR) {
             CompilerAsserts.partialEvaluationConstant(blockIndex);
-            blockIndex = blockNodes[blockIndex].executeBlock(frame);
+            PELangBasicBlockNode blockNode = blockNodes[blockIndex];
+
+            // basic block execution has to be inlined here in order to prevent a bailout exception
+            // this is especially the case for the double successor node
+            if (blockNode instanceof PELangSingleSuccessorNode) {
+                PELangSingleSuccessorNode node = (PELangSingleSuccessorNode) blockNode;
+                node.getBodyNode().executeVoid(frame);
+                blockIndex = node.getSuccessor();
+            } else if (blockNode instanceof PELangDoubleSuccessorNode) {
+                PELangDoubleSuccessorNode node = (PELangDoubleSuccessorNode) blockNode;
+                blockIndex = (node.getBodyNode().evaluateCondition(frame) == 0L) ? node.getTrueSuccessor() : node.getFalseSuccessor();
+            }
         }
     }
 
