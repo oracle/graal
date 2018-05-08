@@ -538,9 +538,6 @@ public final class Runner {
             for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
                 function.resolveIfLazyLLVMIRFunction();
             }
-            for (LLVMFunctionDescriptor function : parserResult.getRuntime().getGlobalScope().functions().toArray()) {
-                function.resolveIfLazyLLVMIRFunction();
-            }
         }
     }
 
