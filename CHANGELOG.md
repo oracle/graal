@@ -4,7 +4,13 @@ New features:
 
 * Use dynamic linker semantics when loading multiple bitcode files.
 * Support ELF files with embedded LLVM bitcode.
-* New builtins `polyglot_eval_file` and `polyglot_java_type`.
+
+New polyglot builtins:
+
+* `polyglot_eval_file`
+* `polyglot_java_type`
+* `polyglot_remove_member`
+* `polyglot_remove_array_element`
 
 Improvements:
 

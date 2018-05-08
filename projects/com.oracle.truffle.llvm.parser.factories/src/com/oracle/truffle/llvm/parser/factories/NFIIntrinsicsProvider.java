@@ -101,6 +101,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSiz
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotIsValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotJavaTypeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveArrayElementNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveMemberNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMSulongFunctionToNativePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleAddressToFunctionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleHasKeysNodeGen;
@@ -677,6 +679,22 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
                 return LLVMTruffleReadFromIndexNodeGen.create(ForeignToLLVM.create(ForeignToLLVMType.I1), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        factories.put("@polyglot_remove_member", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotRemoveMemberNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        factories.put("@polyglot_remove_array_element", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotRemoveArrayElementNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
 

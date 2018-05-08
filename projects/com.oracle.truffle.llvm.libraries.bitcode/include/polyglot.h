@@ -362,6 +362,15 @@ void *polyglot_get_member(const void *object, const char *name);
 void polyglot_put_member(void *object, const char *name, ...);
 
 /**
+ * Remove a named member from a polyglot object.
+ *
+ * @param object the polyglot value to modify
+ * @param name the name of the member to be removed
+ * @return true if the member was successfully removed, false otherwise
+ */
+bool polyglot_remove_member(void *object, const char *name);
+
+/**
  * Check whether a polyglot value has array elements.
  *
  * Returns false for pointers that do not point to a polyglot value (see
@@ -398,6 +407,15 @@ void *polyglot_get_array_element(const void *array, int idx);
  * @param ... the written value
  */
 void polyglot_set_array_element(void *array, int idx, ...);
+
+/**
+ * Remove an array element from a polyglot array.
+ *
+ * @param array the polyglot array to modify
+ * @param idx the index of the removed array element
+ * @return true if the array element was successfully removed, false otherwise
+ */
+bool polyglot_remove_array_element(void *array, int idx);
 
 /** @} */
 
