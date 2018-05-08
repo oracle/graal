@@ -81,7 +81,7 @@ public class GroupBoundaries implements JsonConvertible {
     /**
      * Merge this GroupBoundaries object with another.
      *
-     * @param o other GroupBoundaries object. Assumed to be disjoint with this.
+     * @param o other GroupBoundaries object.
      */
     public void addAll(GroupBoundaries o) {
         if (updateIndices == null) {

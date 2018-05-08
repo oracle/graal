@@ -598,7 +598,12 @@ public final class DFAGenerator implements JsonConvertible {
         if (groupBoundaries.hasIndexClears()) {
             indexClears = new byte[][]{DFACaptureGroupTransitionBuilder.createIndexManipulationArray(0, groupBoundaries.getClearIndices())};
         }
-        return DFACaptureGroupPartialTransitionNode.create(null, DFACaptureGroupPartialTransitionNode.EMPTY_ARRAY_COPIES, indexUpdates, indexClears);
+        return DFACaptureGroupPartialTransitionNode.create(
+                        DFACaptureGroupPartialTransitionNode.EMPTY_REORDER_SWAPS,
+                        DFACaptureGroupPartialTransitionNode.EMPTY_ARRAY_COPIES,
+                        indexUpdates,
+                        indexClears,
+                        (byte) DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX);
     }
 
     private DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {

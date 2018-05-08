@@ -362,7 +362,7 @@ public final class TRegexDFAExecutorNode extends Node {
     private void initResultOrder(VirtualFrame frame) {
         DFACaptureGroupTrackingData cgData = getCGData(frame);
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
-            cgData.currentResultOrder[i] = i;
+            cgData.currentResultOrder[i] = i * props.getNumberOfCaptureGroups() * 2;
         }
     }
 

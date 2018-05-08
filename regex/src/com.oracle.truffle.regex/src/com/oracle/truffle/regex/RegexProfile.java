@@ -77,7 +77,7 @@ public final class RegexProfile {
      * Check if the profiling information gathered so far is sufficient for making a decision.
      * 
      * @return <code>true</code> if the number of times the regular expression was called is
-     *         divisible by 4096.
+     *         divisible by 800.
      */
     public boolean atEvaluationTripPoint() {
         // evaluate profile after every 800 calls

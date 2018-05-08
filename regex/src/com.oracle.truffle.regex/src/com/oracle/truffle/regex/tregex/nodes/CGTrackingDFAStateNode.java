@@ -25,7 +25,7 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 
@@ -34,9 +34,9 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     private final DFACaptureGroupPartialTransitionNode anchoredFinalStateTransition;
     private final DFACaptureGroupPartialTransitionNode unAnchoredFinalStateTransition;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] captureGroupTransitions;
+    @CompilationFinal(dimensions = 1) private final short[] captureGroupTransitions;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] precedingCaptureGroupTransitions;
+    @CompilationFinal(dimensions = 1) private final short[] precedingCaptureGroupTransitions;
 
     @Child private DFACaptureGroupPartialTransitionDispatchNode transitionDispatchNode;
 
@@ -223,10 +223,9 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
 
     private void storeResult(VirtualFrame frame, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (executor.isSearching()) {
-            executor.setResultObject(frame, executor.getCGData(frame).currentResult);
-        } else {
-            executor.setResultObject(frame, executor.getCGData(frame).results[executor.getCGData(frame).currentResultOrder[DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX]]);
+        if (!executor.isSearching()) {
+            executor.getCGData(frame).exportResult((byte) DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX);
         }
+        executor.setResultObject(frame, executor.getCGData(frame).currentResult);
     }
 }

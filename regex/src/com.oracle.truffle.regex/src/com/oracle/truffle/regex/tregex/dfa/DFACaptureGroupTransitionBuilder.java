@@ -108,27 +108,41 @@ public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
                 newOrder[i] = order++;
             }
         }
-        int nChanged = newOrder.length;
-        for (int i = newOrder.length - 1; i >= 0; i--) {
-            if (newOrder[i] == i) {
-                nChanged = i;
-            } else {
-                break;
-            }
-        }
-        byte[] byteNewOrder;
-        if (nChanged == 0 || isInitialTransition) {
-            byteNewOrder = null;
-        } else {
-            byteNewOrder = new byte[nChanged];
-            for (int i = 0; i < byteNewOrder.length; i++) {
-                byteNewOrder[i] = (byte) newOrder[i];
-            }
-        }
+        byte preReorderFinalStateResultIndex = (byte) newOrder[DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX];
+        // important: don't change the order, because newOrderToSequenceOfSwaps() reuses
+        // CompilationBuffer#getByteArrayBuffer()
         byte[] byteArrayCopies = arrayCopies.size() == 0 ? DFACaptureGroupPartialTransitionNode.EMPTY_ARRAY_COPIES : arrayCopies.toArray();
-        return DFACaptureGroupPartialTransitionNode.create(byteNewOrder, byteArrayCopies,
+        byte[] reorderSwaps = isInitialTransition ? DFACaptureGroupPartialTransitionNode.EMPTY_REORDER_SWAPS : newOrderToSequenceOfSwaps(newOrder, compilationBuffer);
+        return DFACaptureGroupPartialTransitionNode.create(reorderSwaps, byteArrayCopies,
                         indexUpdates.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_UPDATES),
-                        indexClears.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS));
+                        indexClears.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS),
+                        preReorderFinalStateResultIndex);
+    }
+
+    /**
+     * Converts the ordering given by <code>newOrder</code> to a sequence of swap operations as
+     * needed by {@link DFACaptureGroupPartialTransitionNode}. The number of swap operations is
+     * guaranteed to be smaller than <code>newOrder.length</code>. Caution: this method uses
+     * {@link CompilationBuffer#getByteArrayBuffer()}.
+     */
+    private static byte[] newOrderToSequenceOfSwaps(int[] newOrder, CompilationBuffer compilationBuffer) {
+        ByteArrayBuffer swaps = compilationBuffer.getByteArrayBuffer();
+        for (int i = 0; i < newOrder.length; i++) {
+            int swapSource = newOrder[i];
+            int swapTarget = swapSource;
+            if (swapSource == i) {
+                continue;
+            }
+            do {
+                swapSource = swapTarget;
+                swapTarget = newOrder[swapTarget];
+                swaps.add((byte) swapSource);
+                swaps.add((byte) swapTarget);
+                newOrder[swapSource] = swapSource;
+            } while (swapTarget != i);
+        }
+        assert swaps.size() / 2 < newOrder.length;
+        return swaps.size() == 0 ? DFACaptureGroupPartialTransitionNode.EMPTY_REORDER_SWAPS : swaps.toArray();
     }
 
     public static byte[] createIndexManipulationArray(int targetIndex, CompilationFinalBitSet groupBoundaryIndices) {
