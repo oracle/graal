@@ -1,4 +1,4 @@
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.stmt;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;

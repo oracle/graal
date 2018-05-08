@@ -28,6 +28,7 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangAddNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
@@ -38,6 +39,8 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
+import org.graalvm.compiler.truffle.pelang.stmt.PELangReturnNode;
+import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 

@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang;
 
+import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -40,7 +42,7 @@ public final class PELangRootNode extends RootNode {
         try {
             bodyNode.executeVoid(frame);
             return PELangNull.Instance;
-        } catch (PELangReturnException e) {
+        } catch (PELangResultException e) {
             return e.getResult();
         }
     }

@@ -1,4 +1,7 @@
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.stmt;
+
+import org.graalvm.compiler.truffle.pelang.PELangResultException;
+import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -13,7 +16,7 @@ public final class PELangReturnNode extends PELangStatementNode {
     @Override
     public void executeVoid(VirtualFrame frame) {
         Object result = bodyNode.executeGeneric(frame);
-        throw new PELangReturnException(result);
+        throw new PELangResultException(result);
     }
 
 }
