@@ -27,6 +27,8 @@ import java.io.FileDescriptor;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -34,6 +36,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.posix.headers.LibC;
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixLogHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

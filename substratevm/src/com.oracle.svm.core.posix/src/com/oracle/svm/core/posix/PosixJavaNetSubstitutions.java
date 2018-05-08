@@ -47,8 +47,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -87,6 +86,7 @@ public final class PosixJavaNetSubstitutions {
 }
 
 @TargetClass(className = "java.net.PlainDatagramSocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainDatagramSocketImpl {
 
     @Substitute
@@ -170,6 +170,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
 }
 
 @TargetClass(java.net.DatagramSocket.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_DatagramSocket {
 
     @Substitute
@@ -191,7 +192,7 @@ final class Target_java_net_DatagramSocket {
 }
 
 @TargetClass(java.net.ServerSocket.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_ServerSocket {
 
     @Alias boolean oldImpl;
@@ -207,6 +208,7 @@ final class Target_java_net_ServerSocket {
 // Allow methods with non-standard names: Checkstyle: stop
 
 @TargetClass(className = "java.net.InetAddress")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress {
 
     /*
@@ -246,6 +248,7 @@ final class Target_java_net_InetAddress {
 }
 
 @TargetClass(className = "java.net.InetAddress", innerClass = "Cache")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_Cache {
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = LinkedHashMap.class)//
@@ -296,6 +299,7 @@ class Util_java_net_InetAddress {
 }
 
 @TargetClass(className = "java.net.InterfaceAddress")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InterfaceAddress {
 
     @Alias InetAddress address;
@@ -327,6 +331,7 @@ final class Util_java_net_InterfaceAddress {
  */
 /** Aliases to get visibility to fields. */
 @TargetClass(className = "java.net.InetAddress", innerClass = "InetAddressHolder")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_InetAddressHolder {
 
     /* Aliases to get visibility. */
@@ -347,6 +352,7 @@ final class Target_java_net_InetAddress_InetAddressHolder {
 }
 
 @TargetClass(className = "java.net.Inet4Address")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet4Address {
 
     @Alias
@@ -418,7 +424,7 @@ class Util_java_net_Inet4Address {
 /* branch */
 /** Substitutions for the code from src/solaris/native/java/net/Inet4AddressImpl.c?v=Java_1.8.0_40_b10 */
 @TargetClass(className = "java.net.Inet4AddressImpl")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet4AddressImpl {
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
@@ -784,6 +790,7 @@ final class Util_java_net_Inet4AddressImpl {
 
 /** Aliases to get visibility to fields. */
 @TargetClass(className = "java.net.Inet6Address")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet6Address {
 
     @Alias static int INADDRSZ;
@@ -857,6 +864,7 @@ class Util_java_net_Inet6Address {
 
 /** Aliases to get visibility to fields. */
 @TargetClass(className = "java.net.Inet6Address", innerClass = "Inet6AddressHolder")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet6Address_Inet6AddressHolder {
 
     // Aliases to get visibility for substituted methods.
@@ -877,7 +885,7 @@ final class Target_java_net_Inet6Address_Inet6AddressHolder {
 }
 
 @TargetClass(className = "java.net.Inet6AddressImpl")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet6AddressImpl {
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
@@ -1208,7 +1216,6 @@ final class Target_java_net_Inet6AddressImpl {
 
 }
 
-@Platforms({LINUX.class, DARWIN.class})
 final class Util_java_net_Inet6AddressImpl {
 
     static InetAddress[] lookupIfLocalhost(CCharPointer hostname, boolean includeV6) throws SocketException, InterruptedException {
@@ -1324,7 +1331,7 @@ final class Util_java_net_Inet6AddressImpl {
 }
 
 @TargetClass(java.net.NetworkInterface.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_NetworkInterface {
 
     /* Aliases to get visibility to fields. */
@@ -1469,7 +1476,7 @@ class Util_java_net_NetworkInterface {
 }
 
 @TargetClass(java.net.Socket.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Socket {
 
     @Alias boolean oldImpl;
@@ -1487,7 +1494,7 @@ final class Target_java_net_Socket {
  * class.
  */
 @TargetClass(className = "java.net.SocketInputStream")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketInputStream {
 
     /* Do not re-format commeted-out code: @formatter:off
@@ -1653,7 +1660,7 @@ final class Target_java_net_SocketInputStream {
 
 /** Translations from src/solaris/native/java/net/SocketOutputStream.c. */
 @TargetClass(className = "java.net.SocketOutputStream")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketOutputStream {
 
     /* Do not re-format commented-out code: @formatter:off */
@@ -1789,6 +1796,7 @@ final class Target_java_net_SocketOutputStream {
 }
 
 @TargetClass(className = "java.net.SocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketImpl {
 
     /* Aliases to get visibility for substituted methods. */
@@ -1822,6 +1830,7 @@ class Util_java_net_SocketImpl {
 
 // 044 abstract class AbstractPlainSocketImpl extends SocketImpl
 @TargetClass(className = "java.net.AbstractPlainSocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_AbstractPlainSocketImpl {
 
     /* Aliases to get visibility for substituted methods. */
@@ -1835,8 +1844,8 @@ final class Target_java_net_AbstractPlainSocketImpl {
 }
 
 /** Translations from jdk/src/solaris/native/java/net/PlainSocketImpl.c */
-@Platforms({LINUX.class, DARWIN.class})
 @TargetClass(className = "java.net.PlainSocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainSocketImpl {
 
     /* Substitutions for native methods. */
@@ -3026,7 +3035,7 @@ final class Util_java_net_PlainSocketImpl {
 }
 
 @TargetClass(sun.net.spi.DefaultProxySelector.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_net_spi_DefaultProxySelector {
 
     /** Private constructor: No instances. */
@@ -3043,7 +3052,7 @@ final class Target_sun_net_spi_DefaultProxySelector {
 }
 
 @TargetClass(sun.net.sdp.SdpSupport.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_net_sdp_SdpSupport {
 
     /** Private constructor: No instances. */
@@ -3123,7 +3132,7 @@ final class Util_sun_net_sdp_SdpSupport {
     // 036 #define AF_INET_SDP 27
     // 037 #endif
     // 038 #endif
-    @Platforms({LINUX.class})
+    @Platforms({Platform.LINUX.class})
     static int AF_INET_SDP() {
         return 27;
     }

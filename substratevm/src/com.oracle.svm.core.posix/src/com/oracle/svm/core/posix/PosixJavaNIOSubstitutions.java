@@ -202,6 +202,7 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.ch.IOStatus")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_IOStatus {
         @Alias @TargetElement(name = "EOF")//
         protected static int IOS_EOF;
@@ -218,6 +219,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.FileDispatcher")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_FileDispatcher {
         @Alias @TargetElement(name = "NO_LOCK")//
         protected static int FD_NO_LOCK;
@@ -317,6 +319,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.Cancellable")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_Cancellable {
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Manual)//
         private long pollingAddress;
@@ -1134,6 +1137,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.ServerSocketChannelImpl")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_ServerSocketChannelImpl {
         // jdk/src/share/classes/sun/nio/ch/ServerSocketChannelImpl.java?v=Java_1.8.0_40_b10
         // 415     // Accepts a new connection, setting the given file descriptor to refer to
@@ -1539,6 +1543,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixException")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     @SuppressWarnings({"unused"})
     static final class Target_sun_nio_fs_UnixException {
         @Alias
@@ -1548,6 +1553,7 @@ public final class PosixJavaNIOSubstitutions {
 
     // Checkstyle: stop
     @TargetClass(className = "sun.nio.fs.UnixFileAttributes")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileAttributes {
         @Alias int st_mode;
         @Alias long st_ino;
@@ -1568,6 +1574,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileStoreAttributes")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileStoreAttributes {
         @Alias long f_frsize;
         @Alias long f_blocks;
@@ -1576,6 +1583,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixMountEntry")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixMountEntry {
         @Alias byte[] name;
         @Alias byte[] dir;
@@ -2996,6 +3004,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "java.nio.Bits")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_java_nio_Bits {
 
         @Substitute
@@ -3060,6 +3069,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.ch.SocketChannelImpl")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_ch_SocketChannelImpl {
         // /jdk/src/share/classes/sun/nio/ch/SocketChannelImpl.java?v=Java_1.8.0_40_b10
         // 1027 private static native int checkConnect(FileDescriptor fd,
@@ -3141,10 +3151,12 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileSystem")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileSystem {
     }
 
     @TargetClass(className = "sun.nio.fs.UnixFileSystemProvider")
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_sun_nio_fs_UnixFileSystemProvider {
         @Alias
         native Target_sun_nio_fs_UnixFileSystem newFileSystem(String s);
@@ -3156,6 +3168,7 @@ public final class PosixJavaNIOSubstitutions {
     }
 
     @TargetClass(FileSystems.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     static final class Target_java_nio_file_FileSystems {
         @Substitute
         static FileSystem getDefault() {

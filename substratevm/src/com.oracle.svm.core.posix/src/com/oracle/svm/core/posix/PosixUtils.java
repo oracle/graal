@@ -39,6 +39,7 @@ import java.util.List;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -67,6 +68,7 @@ import com.oracle.svm.core.util.VMError;
 public class PosixUtils {
 
     @AutomaticFeature
+    @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
     public static class ExposeSetLocaleFeature implements Feature {
         @Override
         public List<Class<? extends Feature>> getRequiredFeatures() {

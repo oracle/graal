@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
@@ -57,7 +58,13 @@ public class CAnnotationProcessor extends CCompilerInvoker {
     public CAnnotationProcessor(NativeLibraries nativeLibs, NativeCodeContext codeCtx, Path tempDirectory) {
         super(nativeLibs, tempDirectory);
         this.codeCtx = codeCtx;
-        this.posixHeaders = new PosixDirectives().getHeaderFiles();
+
+        PosixDirectives posixDirectives = new PosixDirectives();
+        if (posixDirectives.isInConfiguration()) {
+            this.posixHeaders = posixDirectives.getHeaderFiles();
+        } else {
+            this.posixHeaders = Collections.emptyList();
+        }
     }
 
     public NativeCodeInfo process(CAnnotationProcessorCache cache) {

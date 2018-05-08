@@ -24,6 +24,8 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
@@ -34,6 +36,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixNativeLibraryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

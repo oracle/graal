@@ -39,6 +39,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -63,6 +64,7 @@ import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

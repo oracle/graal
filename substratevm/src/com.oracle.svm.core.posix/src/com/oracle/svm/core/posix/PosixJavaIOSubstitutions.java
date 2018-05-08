@@ -118,6 +118,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.io.ExpiringCache")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_ExpiringCache {
 }
 

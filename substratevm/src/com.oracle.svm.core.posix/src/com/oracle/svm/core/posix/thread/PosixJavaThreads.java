@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -252,6 +253,7 @@ public final class PosixJavaThreads extends JavaThreads {
 }
 
 @TargetClass(Thread.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean hasPthreadIdentifier;
@@ -408,6 +410,7 @@ class PosixParkEventFactory implements ParkEventFactory {
 }
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
