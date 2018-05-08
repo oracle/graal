@@ -20,33 +20,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.expr;
 
-import com.oracle.truffle.api.dsl.NodeChild;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-@NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
-public abstract class PELangLocalWriteNode extends PELangExpressionNode {
+public abstract class PELangLocalReadNode extends PELangExpressionNode {
 
     protected abstract FrameSlot getSlot();
 
-    @Specialization(guards = "isLongOrIllegal(frame)")
-    protected long writeLong(VirtualFrame frame, long value) {
-        getSlot().setKind(FrameSlotKind.Long);
-        frame.setLong(getSlot(), value);
-        return value;
+    @Specialization(guards = "isLong(frame)")
+    protected long readLong(VirtualFrame frame) {
+        return FrameUtil.getLongSafe(frame, getSlot());
     }
 
-    @Specialization(replaces = {"writeLong"})
-    protected Object write(VirtualFrame frame, Object value) {
-        getSlot().setKind(FrameSlotKind.Object);
-        frame.setObject(getSlot(), value);
-        return value;
+    @Specialization(replaces = {"readLong"})
+    protected Object readObject(VirtualFrame frame) {
+        if (!frame.isObject(getSlot())) {
+            /*
+             * The FrameSlotKind has been set to Object, so from now on all writes to the local
+             * variable will be Object writes. However, now we are in a frame that still has an old
+             * non-Object value. This is a slow-path operation: we read the non-Object value, and
+             * write it immediately as an Object value so that we do not hit this path again
+             * multiple times for the same variable of the same frame.
+             */
+            CompilerDirectives.transferToInterpreter();
+            Object result = frame.getValue(getSlot());
+            frame.setObject(getSlot(), result);
+            return result;
+        }
+        return FrameUtil.getObjectSafe(frame, getSlot());
     }
 
     /**
@@ -57,8 +68,8 @@ public abstract class PELangLocalWriteNode extends PELangExpressionNode {
      *            Guards without parameters are assumed to be pure, but our guard depends on the
      *            slot kind which can change.
      */
-    protected boolean isLongOrIllegal(VirtualFrame frame) {
-        return getSlot().getKind() == FrameSlotKind.Long || getSlot().getKind() == FrameSlotKind.Illegal;
+    protected boolean isLong(VirtualFrame frame) {
+        return getSlot().getKind() == FrameSlotKind.Long;
     }
 
 }

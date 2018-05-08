@@ -20,15 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.expr;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-public abstract class PELangBasicBlockNode extends Node {
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
+import com.oracle.truffle.api.dsl.Specialization;
 
-    public static final int NO_SUCCESSOR = -1;
+@NodeChildren({@NodeChild("leftNode"), @NodeChild("rightNode")})
+public abstract class PELangAddNode extends PELangExpressionNode {
 
-    public abstract int executeBlock(VirtualFrame frame);
+    @Specialization
+    public long add(long left, long right) {
+        return left + right;
+    }
+
+    @Specialization
+    public String add(String left, String right) {
+        return left + right;
+    }
 
 }

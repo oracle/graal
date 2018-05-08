@@ -20,27 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.bcf;
+
+import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
-public final class PELangBlockNode extends PELangStatementNode {
+public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
 
-    @Children private final PELangStatementNode[] bodyNodes;
+    @Children private final PELangBasicBlockNode[] blockNodes;
 
-    public PELangBlockNode(PELangStatementNode[] bodyNodes) {
-        this.bodyNodes = bodyNodes;
+    public PELangBasicBlockDispatchNode(PELangBasicBlockNode[] blockNodes) {
+        this.blockNodes = blockNodes;
     }
 
     @Override
-    @ExplodeLoop
+    @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public void executeVoid(VirtualFrame frame) {
-        CompilerAsserts.compilationConstant(bodyNodes.length);
+        CompilerAsserts.compilationConstant(blockNodes.length);
+        int blockIndex = (blockNodes.length == 0) ? PELangBasicBlockNode.NO_SUCCESSOR : 0;
 
-        for (PELangStatementNode bodyNode : bodyNodes) {
-            bodyNode.executeVoid(frame);
+        while (blockIndex != PELangBasicBlockNode.NO_SUCCESSOR) {
+            CompilerAsserts.partialEvaluationConstant(blockIndex);
+            blockIndex = blockNodes[blockIndex].executeBlock(frame);
         }
     }
 

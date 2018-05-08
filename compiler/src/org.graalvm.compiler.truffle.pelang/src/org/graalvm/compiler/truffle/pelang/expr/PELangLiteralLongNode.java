@@ -20,26 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.expr;
+
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
-public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
+public final class PELangLiteralLongNode extends PELangExpressionNode {
 
-    @Child private PELangExpressionNode bodyNode;
+    private final long value;
 
-    private final int trueSuccessor;
-    private final int falseSuccessor;
-
-    public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
-        this.bodyNode = bodyNode;
-        this.trueSuccessor = trueSuccessor;
-        this.falseSuccessor = falseSuccessor;
+    public PELangLiteralLongNode(long value) {
+        this.value = value;
     }
 
     @Override
-    public int executeBlock(VirtualFrame frame) {
-        return (bodyNode.evaluateCondition(frame) == 0L) ? trueSuccessor : falseSuccessor;
+    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+        return value;
+    }
+
+    @Override
+    public Object executeGeneric(VirtualFrame frame) {
+        return value;
     }
 
 }

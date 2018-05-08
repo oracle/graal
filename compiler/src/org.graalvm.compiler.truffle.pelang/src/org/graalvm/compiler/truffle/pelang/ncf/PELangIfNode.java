@@ -20,23 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.ncf;
 
-import com.oracle.truffle.api.Truffle;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.LoopNode;
 
-public final class PELangWhileNode extends PELangStatementNode {
+public final class PELangIfNode extends PELangStatementNode {
 
-    @Child private LoopNode loopNode;
+    @Child private PELangExpressionNode conditionNode;
+    @Child private PELangStatementNode thenNode;
+    @Child private PELangStatementNode elseNode;
 
-    public PELangWhileNode(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
-        loopNode = Truffle.getRuntime().createLoopNode(new PELangWhileRepeatingNode(conditionNode, bodyNode));
+    public PELangIfNode(PELangExpressionNode conditionNode, PELangStatementNode thenNode, PELangStatementNode elseNode) {
+        this.conditionNode = conditionNode;
+        this.thenNode = thenNode;
+        this.elseNode = elseNode;
     }
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        loopNode.executeLoop(frame);
+        if (conditionNode.evaluateCondition(frame) == 0L) {
+            thenNode.executeVoid(frame);
+        } else {
+            elseNode.executeVoid(frame);
+        }
     }
 
 }

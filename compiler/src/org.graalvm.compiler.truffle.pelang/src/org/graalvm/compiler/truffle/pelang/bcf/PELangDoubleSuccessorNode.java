@@ -20,21 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.bcf;
+
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-public final class PELangLiteralStringNode extends PELangExpressionNode {
+public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
 
-    private final String value;
+    @Child private PELangExpressionNode bodyNode;
 
-    public PELangLiteralStringNode(String value) {
-        this.value = value;
+    private final int trueSuccessor;
+    private final int falseSuccessor;
+
+    public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
+        this.bodyNode = bodyNode;
+        this.trueSuccessor = trueSuccessor;
+        this.falseSuccessor = falseSuccessor;
     }
 
     @Override
-    public String executeGeneric(VirtualFrame frame) {
-        return value;
+    public int executeBlock(VirtualFrame frame) {
+        return (bodyNode.evaluateCondition(frame) == 0L) ? trueSuccessor : falseSuccessor;
     }
 
 }
