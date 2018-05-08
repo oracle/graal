@@ -11,6 +11,8 @@ New polyglot builtins:
 * `polyglot_java_type`
 * `polyglot_remove_member`
 * `polyglot_remove_array_element`
+* `polyglot_can_instantiate`
+* `polyglot_new_instance`
 
 Improvements:
 

@@ -101,6 +101,8 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSiz
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotIsValueNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotJavaTypeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotNewInstanceNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotPredicateFactory.LLVMPolyglotCanInstantiateNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveArrayElementNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveMemberNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMSulongFunctionToNativePointerNodeGen;
@@ -769,6 +771,14 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
 
         //
 
+        factories.put("@polyglot_new_instance", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+            }
+        });
+
         LLVMNativeIntrinsicFactory polyglotInvoke = new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
@@ -911,6 +921,14 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
         };
         factories.put("@polyglot_can_execute", polyglotCanExecute);
         factories.put("@truffle_is_executable", polyglotCanExecute);
+
+        factories.put("@polyglot_can_instantiate", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotCanInstantiateNodeGen.create(LLVMArgNodeGen.create(1));
+            }
+        });
 
         LLVMNativeIntrinsicFactory polyglotIsNull = new LLVMNativeIntrinsicFactory(true, true) {
 

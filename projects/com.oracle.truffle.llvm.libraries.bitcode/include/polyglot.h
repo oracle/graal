@@ -317,6 +317,23 @@ bool polyglot_can_execute(const void *value);
  */
 void *polyglot_invoke(void *object, const char *name, ...);
 
+/**
+ * Check whether a polyglot value can be instantiated.
+ *
+ * Returns false for pointers that do not point to a polyglot value (see
+ * {@link polyglot_is_value}).
+ */
+bool polyglot_can_instantiate(const void *object);
+
+/**
+ * Instantiate a polyglot value.
+ *
+ * @param object the polyglot value that should be instantiated
+ * @param ... the arguments of the constructor
+ * @return the new object, as polyglot value
+ */
+void *polyglot_new_instance(const void *object, ...);
+
 /** @} */
 
 /**
