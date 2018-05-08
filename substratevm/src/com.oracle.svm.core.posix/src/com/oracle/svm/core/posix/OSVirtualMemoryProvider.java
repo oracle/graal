@@ -24,23 +24,11 @@ package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.posix.PosixIsolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.posix.PosixIsolates.IMAGE_HEAP_WRITABLE_END;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_ANON;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
-import static com.oracle.svm.core.posix.headers.Mman.MAP_PRIVATE;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_EXEC;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
-import static com.oracle.svm.core.posix.headers.Mman.mmap;
-import static com.oracle.svm.core.posix.headers.Mman.munmap;
-import static com.oracle.svm.core.posix.headers.Unistd._SC_PAGE_SIZE;
-import static com.oracle.svm.core.posix.headers.UnistdNoTransitions.sysconf;
+import static org.graalvm.word.WordFactory.nullPointer;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
@@ -51,32 +39,27 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.VirtualMemory;
+import com.oracle.svm.core.os.VirtualMemory.Access;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.posix.headers.Mman;
-import com.oracle.svm.core.posix.linux.LinuxOSVirtualMemoryProvider;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-class PosixVirtualMemoryProviderFeature implements Feature {
+class OSVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
-            VirtualMemoryProvider provider = Platform.includedIn(LINUX.class) ? new LinuxOSVirtualMemoryProvider() : new PosixOSVirtualMemoryProvider();
-            ImageSingletons.add(VirtualMemoryProvider.class, provider);
+            ImageSingletons.add(VirtualMemoryProvider.class, new OSVirtualMemoryProvider());
         }
     }
 }
 
-public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
-    private static final CGlobalData<WordPointer> CACHED_PAGE_SIZE = CGlobalDataFactory.createWord();
+public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Still being initialized.")
@@ -89,24 +72,25 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
         Word begin = PosixIsolates.IMAGE_HEAP_BEGIN.get();
         Word size = PosixIsolates.IMAGE_HEAP_END.get().subtract(begin);
 
-        Pointer heap = Mman.NoTransitions.mmap(WordFactory.nullPointer(), size, PROT_READ() | PROT_WRITE(), MAP_ANON() | MAP_PRIVATE(), -1, 0);
-        if (heap.equal(MAP_FAILED())) {
+        Pointer heap = VirtualMemory.get().commit(nullPointer(), size, Access.READ | Access.WRITE);
+        if (heap.isNull()) {
             return PosixCEntryPointErrors.MAP_HEAP_FAILED;
         }
 
         LibC.memcpy(heap, begin, size);
 
         UnsignedWord pageSize = getPageSize();
-        UnsignedWord pageMask = pageSize.subtract(1).not();
-        Word writableBeginPageOffset = IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(begin).and(pageMask);
+        UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(begin), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
-            if (Mman.NoTransitions.mprotect(heap, writableBeginPageOffset, PROT_READ()) != 0) {
+            if (VirtualMemory.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
                 return PosixCEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
-        Word writableEndPageOffset = IMAGE_HEAP_WRITABLE_END.get().subtract(begin).add(pageSize.subtract(1)).and(pageMask);
+        UnsignedWord writableEndPageOffset = UnsignedUtils.roundUp(IMAGE_HEAP_WRITABLE_END.get().subtract(begin), pageSize);
         if (writableEndPageOffset.belowThan(size)) {
-            if (Mman.NoTransitions.mprotect(heap.add(writableEndPageOffset), size.subtract(writableEndPageOffset), PROT_READ()) != 0) {
+            Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
+            Word afterWritableSize = size.subtract(writableEndPageOffset);
+            if (VirtualMemory.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
                 return PosixCEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
@@ -124,7 +108,7 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
 
         PointerBase heapBase = PosixIsolates.getHeapBase(CEntryPointContext.getCurrentIsolate());
         Word size = PosixIsolates.IMAGE_HEAP_END.get().subtract(PosixIsolates.IMAGE_HEAP_BEGIN.get());
-        if (Mman.NoTransitions.munmap(heapBase, size) != 0) {
+        if (VirtualMemory.get().free(heapBase, size) != 0) {
             return PosixCEntryPointErrors.MAP_HEAP_FAILED;
         }
         return PosixCEntryPointErrors.NO_ERROR;
@@ -132,13 +116,7 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord queryPageSize() {
-        Word value = CACHED_PAGE_SIZE.get().read();
-        if (value.equal(WordFactory.zero())) {
-            long queried = sysconf(_SC_PAGE_SIZE());
-            value = WordFactory.unsigned(queried);
-            CACHED_PAGE_SIZE.get().write(value);
-        }
-        return value;
+        return VirtualMemory.get().getGranularity();
     }
 
     @Override
@@ -150,20 +128,14 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     public Pointer allocateVirtualMemory(UnsignedWord size, boolean executable) {
         trackVirtualMemory(size);
-        int protect = PROT_READ() | PROT_WRITE() | (executable ? PROT_EXEC() : 0);
-        int flags = MAP_ANON() | MAP_PRIVATE();
-        final Pointer result = mmap(WordFactory.nullPointer(), size, protect, flags, -1, 0);
-        if (result.equal(MAP_FAILED())) {
-            return WordFactory.nullPointer();
-        }
-        return result;
+        int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
+        return VirtualMemory.get().commit(nullPointer(), size, access);
     }
 
     @Override
     public boolean freeVirtualMemory(PointerBase start, UnsignedWord size) {
         untrackVirtualMemory(size);
-        final int unmapResult = munmap(start, size);
-        return (unmapResult == 0);
+        return (VirtualMemory.get().free(start, size) == 0);
     }
 
     /**
@@ -188,7 +160,7 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
         final Pointer containerStart = allocateVirtualMemory(pagedContainerSize, false);
         if (containerStart.isNull()) {
             // No exception is needed: this is just a failure to reserve the virtual address space.
-            return WordFactory.nullPointer();
+            return nullPointer();
         }
         final Pointer containerEnd = containerStart.add(pagedContainerSize);
         // (2) Locate the result at the requested alignment within the container.
@@ -215,7 +187,7 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
                 // Throwing an exception would be better.
                 // If this unmap fails, I will have reserved virtual address space
                 // that I won't be able to give back.
-                return WordFactory.nullPointer();
+                return nullPointer();
             }
         }
         // - The suffix occupies [pagedEnd .. containerEnd).
@@ -232,7 +204,7 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
                 // Throwing an exception would be better.
                 // If this unmap fails, I will have reserved virtual address space
                 // that I won't be able to give back.
-                return WordFactory.nullPointer();
+                return nullPointer();
             }
         }
         return start;

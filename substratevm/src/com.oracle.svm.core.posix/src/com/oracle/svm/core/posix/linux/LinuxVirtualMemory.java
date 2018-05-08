@@ -26,45 +26,32 @@ import static com.oracle.svm.core.posix.headers.Mman.MAP_32BIT;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_ANON;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_PRIVATE;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_EXEC;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
-import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
-import static com.oracle.svm.core.posix.headers.Mman.mmap;
+import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mmap;
+import static org.graalvm.word.WordFactory.nullPointer;
 
-import org.graalvm.nativeimage.Platform.LINUX;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.posix.PosixOSVirtualMemoryProvider;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.posix.PosixVirtualMemory;
 
-@Platforms(LINUX.class)
-public class LinuxOSVirtualMemoryProvider extends PosixOSVirtualMemoryProvider {
-
+public class LinuxVirtualMemory extends PosixVirtualMemory {
     @Override
-    public Pointer allocateVirtualMemory(UnsignedWord size, boolean executable) {
-        trackVirtualMemory(size);
-        int protect = PROT_READ() | PROT_WRITE();
-        int flags = MAP_ANON() | MAP_PRIVATE();
-        if (executable) {
-            protect |= PROT_EXEC();
-
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
+        if (start.isNull() && (access & Access.EXECUTE) != 0) {
             /*
-             * First try to allocate executable memory in the 32 bit address space (which is not
-             * done by default on linux!). This is to get 32-bit displacements for calls in runtime
+             * First try to allocate executable memory in the 32-bit address space (which is not
+             * done by default on Linux!). This is to get 32-bit displacements for calls in runtime
              * compiled code to image compiled code.
              */
-            final Pointer result = mmap(WordFactory.nullPointer(), size, protect, flags | MAP_32BIT(), -1, 0);
-            if (!result.equal(MAP_FAILED())) {
+            int flags = MAP_ANON() | MAP_PRIVATE() | MAP_32BIT();
+            final Pointer result = mmap(nullPointer(), nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
+            if (result.notEqual(MAP_FAILED())) {
                 return result;
             }
         }
-        final Pointer result = mmap(WordFactory.nullPointer(), size, protect, flags, -1, 0);
-        if (result.equal(MAP_FAILED())) {
-            // Turn the mmap failure into a null Pointer.
-            return WordFactory.nullPointer();
-        }
-        return result;
+        return super.commit(start, nbytes, access);
     }
 }
