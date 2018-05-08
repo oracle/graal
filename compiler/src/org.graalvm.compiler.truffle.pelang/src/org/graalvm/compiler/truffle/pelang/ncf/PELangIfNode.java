@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.ncf;
 
-import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
-import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.stmt.PELangStatementNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -37,6 +37,18 @@ public final class PELangIfNode extends PELangStatementNode {
         this.conditionNode = conditionNode;
         this.thenNode = thenNode;
         this.elseNode = elseNode;
+    }
+
+    public PELangExpressionNode getConditionNode() {
+        return conditionNode;
+    }
+
+    public PELangStatementNode getThenNode() {
+        return thenNode;
+    }
+
+    public PELangStatementNode getElseNode() {
+        return elseNode;
     }
 
     @Override
