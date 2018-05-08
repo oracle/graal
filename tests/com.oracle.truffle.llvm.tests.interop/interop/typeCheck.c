@@ -26,6 +26,9 @@ int check_types(void *value) {
     if (polyglot_has_members(value)) {
         ret |= 128;
     }
+    if (polyglot_can_instantiate(value)) {
+        ret |= 256;
+    }
     return ret;
 }
 

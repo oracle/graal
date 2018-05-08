@@ -64,7 +64,7 @@ public class TestCallback implements TruffleObject {
     }
 
     static boolean isInstance(TruffleObject object) {
-        return object instanceof ArrayObject;
+        return object instanceof TestCallback;
     }
 
     @Override

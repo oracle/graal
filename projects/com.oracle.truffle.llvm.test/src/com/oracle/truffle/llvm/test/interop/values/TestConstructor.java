@@ -29,64 +29,51 @@
  */
 package com.oracle.truffle.llvm.test.interop.values;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.test.interop.values.TestCallback.Function;
 
-@MessageResolution(receiverType = ArrayObject.class)
-public final class ArrayObject implements TruffleObject {
+@MessageResolution(receiverType = TestConstructor.class)
+public class TestConstructor implements TruffleObject {
 
-    final Object[] array;
+    private final int arity;
+    private final Function constructor;
 
-    public ArrayObject(Object... array) {
-        this.array = array;
+    public TestConstructor(int arity, Function constructor) {
+        this.arity = arity;
+        this.constructor = constructor;
     }
 
-    public Object get(int i) {
-        return array[i];
+    @TruffleBoundary
+    Object call(Object... args) {
+        if (args.length == arity) {
+            Object ret = constructor.call(args);
+            return ret;
+        } else {
+            throw ArityException.raise(arity, args.length);
+        }
     }
 
     static boolean isInstance(TruffleObject object) {
-        return object instanceof ArrayObject;
-    }
-
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-
-        Object access(ArrayObject obj, Number idx) {
-            return obj.array[(int) idx.longValue()];
-        }
-    }
-
-    @Resolve(message = "WRITE")
-    abstract static class WriteNode extends Node {
-
-        Object access(ArrayObject obj, Number idx, Object value) {
-            return obj.array[(int) idx.longValue()] = value;
-        }
-    }
-
-    @Resolve(message = "REMOVE")
-    abstract static class RemoveNode extends Node {
-
-        boolean access(ArrayObject obj, Number idx) {
-            obj.array[(int) idx.longValue()] = "<removed>";
-            return true;
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class SizeNode extends Node {
-
-        int access(ArrayObject obj) {
-            return obj.array.length;
-        }
+        return object instanceof TestConstructor;
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
-        return ArrayObjectForeign.ACCESS;
+        return TestConstructorForeign.ACCESS;
+    }
+
+    @Resolve(message = "NEW")
+    abstract static class NewNode extends Node {
+
+        Object access(TestConstructor constructor, Object[] arguments) {
+            Object res = constructor.call(arguments);
+            return res == null ? new NullValue() : res;
+        }
     }
 }
