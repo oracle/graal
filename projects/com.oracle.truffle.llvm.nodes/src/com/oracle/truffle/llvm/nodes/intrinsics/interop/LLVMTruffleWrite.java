@@ -102,8 +102,8 @@ public final class LLVMTruffleWrite {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id, Object v) {
-            System.err.println("Invalid arguments to write-builtin.");
-            throw new IllegalArgumentException();
+            String message = "Invalid arguments to polyglot_put_member(), the receiver is " + value + " (" + value.getClass().getName() + ") and not a LLVMManagedPointer";
+            throw new IllegalArgumentException(message);
         }
     }
 
@@ -129,8 +129,8 @@ public final class LLVMTruffleWrite {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id, Object v) {
-            System.err.println("Invalid arguments to write-builtin.");
-            throw new IllegalArgumentException();
+            String message = "Invalid arguments to polyglot_set_array_element(), the receiver is " + value + " (" + value.getClass().getName() + ") and not a LLVMManagedPointer";
+            throw new IllegalArgumentException(message);
         }
     }
 }
