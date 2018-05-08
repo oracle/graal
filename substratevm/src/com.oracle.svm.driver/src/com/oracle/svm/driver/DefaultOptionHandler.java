@@ -23,11 +23,11 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Queue;
 import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
@@ -95,7 +95,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (jarFilePathStr == null) {
                     NativeImage.showError("-jar requires jar file specification");
                 }
-                handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)).toFile());
+                handleJarFileArg(nativeImage.canonicalize(Paths.get(jarFilePathStr)));
                 return true;
             case "--verbose":
                 args.poll();
@@ -167,28 +167,27 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return false;
     }
 
-    private void handleJarFileArg(File file) {
-        try {
-            Manifest manifest = null;
-            for (FastJar.Entry entry : FastJar.list(file)) {
-                if ("META-INF/MANIFEST.MF".equals(entry.name)) {
-                    manifest = new Manifest(FastJar.getInputStream(file, entry));
-                }
-            }
-            if (manifest == null) {
-                return;
-            }
+    private void handleJarFileArg(Path filePath) {
+        try (JarFile jarFile = new JarFile(filePath.toFile())) {
+            Manifest manifest = jarFile.getManifest();
             Attributes mainAttributes = manifest.getMainAttributes();
             String mainClass = mainAttributes.getValue("Main-Class");
             if (mainClass == null) {
-                return;
+                NativeImage.showError("No main manifest attribute, in " + filePath);
             }
-            nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
-            String jarFileName = file.getName();
-            String jarFileNameBase = jarFileName.substring(0, jarFileName.length() - 4);
-            nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
-            Path filePath = file.toPath();
             nativeImage.addImageClasspath(filePath);
+            nativeImage.addImageBuilderArg(NativeImage.oHClass + mainClass);
+            String jarFileName = filePath.getFileName().toString();
+            String jarSuffix = ".jar";
+            String jarFileNameBase;
+            if (jarFileName.endsWith(jarSuffix)) {
+                jarFileNameBase = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+            } else {
+                jarFileNameBase = jarFileName;
+            }
+            if (!jarFileNameBase.isEmpty()) {
+                nativeImage.addImageBuilderArg(NativeImage.oHName + jarFileNameBase);
+            }
             String classPath = mainAttributes.getValue("Class-Path");
             /* Missing Class-Path Attribute is tolerable */
             if (classPath != null) {
@@ -201,8 +200,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     nativeImage.addImageProvidedClasspath(manifestClassPath);
                 }
             }
-        } catch (IOException e) {
-            NativeImage.showError("Given file does not appear to be a jar-file: " + file, e);
+        } catch (NativeImage.NativeImageError ex) {
+            throw ex;
+        } catch (Throwable ex) {
+            throw NativeImage.showError("Invalid or corrupt jarfile " + filePath);
         }
     }
 }
