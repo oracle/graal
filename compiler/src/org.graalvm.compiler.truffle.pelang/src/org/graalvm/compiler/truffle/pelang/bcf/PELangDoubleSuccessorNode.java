@@ -24,12 +24,18 @@ package org.graalvm.compiler.truffle.pelang.bcf;
 
 import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
 
     @Child private PELangExpressionNode bodyNode;
 
-    private final int trueSuccessor;
-    private final int falseSuccessor;
+    @CompilationFinal private int trueSuccessor;
+    @CompilationFinal private int falseSuccessor;
+
+    public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode) {
+        this(bodyNode, PELangBasicBlockNode.NO_SUCCESSOR, PELangBasicBlockNode.NO_SUCCESSOR);
+    }
 
     public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
         this.bodyNode = bodyNode;
@@ -47,6 +53,14 @@ public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
 
     public int getFalseSuccessor() {
         return falseSuccessor;
+    }
+
+    public void setTrueSuccessor(int trueSuccessor) {
+        this.trueSuccessor = trueSuccessor;
+    }
+
+    public void setFalseSuccessor(int falseSuccessor) {
+        this.falseSuccessor = falseSuccessor;
     }
 
 }

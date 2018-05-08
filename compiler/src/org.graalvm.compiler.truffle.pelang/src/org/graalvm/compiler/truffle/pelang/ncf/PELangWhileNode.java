@@ -33,8 +33,21 @@ public final class PELangWhileNode extends PELangStatementNode {
 
     @Child private LoopNode loopNode;
 
+    private final PELangExpressionNode conditionNode;
+    private final PELangStatementNode bodyNode;
+
     public PELangWhileNode(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
+        this.conditionNode = conditionNode;
+        this.bodyNode = bodyNode;
         loopNode = Truffle.getRuntime().createLoopNode(new PELangWhileRepeatingNode(conditionNode, bodyNode));
+    }
+
+    public PELangExpressionNode getConditionNode() {
+        return conditionNode;
+    }
+
+    public PELangStatementNode getBodyNode() {
+        return bodyNode;
     }
 
     @Override

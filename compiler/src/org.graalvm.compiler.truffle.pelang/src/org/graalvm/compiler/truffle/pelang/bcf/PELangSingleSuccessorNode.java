@@ -23,18 +23,20 @@
 package org.graalvm.compiler.truffle.pelang.bcf;
 
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
-import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 public final class PELangSingleSuccessorNode extends PELangBasicBlockNode {
 
     @Child private PELangStatementNode bodyNode;
 
-    private final int successor;
+    @CompilationFinal private int successor;
+
+    public PELangSingleSuccessorNode(PELangStatementNode bodyNode) {
+        this(bodyNode, PELangBasicBlockNode.NO_SUCCESSOR);
+    }
 
     public PELangSingleSuccessorNode(PELangStatementNode bodyNode, int successor) {
-        if (bodyNode instanceof PELangReturnNode && successor != PELangBasicBlockNode.NO_SUCCESSOR) {
-            throw new IllegalArgumentException("basic block with return node must not have a successor");
-        }
         this.bodyNode = bodyNode;
         this.successor = successor;
     }
@@ -45,6 +47,10 @@ public final class PELangSingleSuccessorNode extends PELangBasicBlockNode {
 
     public int getSuccessor() {
         return successor;
+    }
+
+    public void setSuccessor(int successor) {
+        this.successor = successor;
     }
 
 }
