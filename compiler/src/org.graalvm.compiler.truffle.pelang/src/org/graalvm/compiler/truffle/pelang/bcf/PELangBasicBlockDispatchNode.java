@@ -37,10 +37,6 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
         this.blockNodes = blockNodes;
     }
 
-    public PELangBasicBlockNode[] getBlockNodes() {
-        return blockNodes;
-    }
-
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public void executeVoid(VirtualFrame frame) {
@@ -49,18 +45,7 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
 
         while (blockIndex != PELangBasicBlockNode.NO_SUCCESSOR) {
             CompilerAsserts.partialEvaluationConstant(blockIndex);
-            PELangBasicBlockNode blockNode = blockNodes[blockIndex];
-
-            // basic block execution has to be inlined here in order to prevent a bailout exception
-            // this is especially the case for the double successor node
-            if (blockNode instanceof PELangSingleSuccessorNode) {
-                PELangSingleSuccessorNode node = (PELangSingleSuccessorNode) blockNode;
-                node.getBodyNode().executeVoid(frame);
-                blockIndex = node.getSuccessor();
-            } else if (blockNode instanceof PELangDoubleSuccessorNode) {
-                PELangDoubleSuccessorNode node = (PELangDoubleSuccessorNode) blockNode;
-                blockIndex = (node.getBodyNode().evaluateCondition(frame) == 0L) ? node.getTrueSuccessor() : node.getFalseSuccessor();
-            }
+            blockIndex = blockNodes[blockIndex].executeBlock(frame);
         }
     }
 

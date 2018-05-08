@@ -22,6 +22,23 @@
  */
 package org.graalvm.compiler.truffle.pelang;
 
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangAddNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLocalReadNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLocalWriteNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 
 public class PELangBuilder {

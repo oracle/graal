@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.ncf;
 
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -33,21 +33,8 @@ public final class PELangWhileNode extends PELangStatementNode {
 
     @Child private LoopNode loopNode;
 
-    private final PELangExpressionNode conditionNode;
-    private final PELangStatementNode bodyNode;
-
     public PELangWhileNode(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
-        this.conditionNode = conditionNode;
-        this.bodyNode = bodyNode;
         loopNode = Truffle.getRuntime().createLoopNode(new PELangWhileRepeatingNode(conditionNode, bodyNode));
-    }
-
-    public PELangExpressionNode getConditionNode() {
-        return conditionNode;
-    }
-
-    public PELangStatementNode getBodyNode() {
-        return bodyNode;
     }
 
     @Override

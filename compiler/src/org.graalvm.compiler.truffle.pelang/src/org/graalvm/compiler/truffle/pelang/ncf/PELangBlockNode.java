@@ -36,10 +36,6 @@ public final class PELangBlockNode extends PELangStatementNode {
         this.bodyNodes = bodyNodes;
     }
 
-    public PELangStatementNode[] getBodyNodes() {
-        return bodyNodes;
-    }
-
     @Override
     @ExplodeLoop
     public void executeVoid(VirtualFrame frame) {

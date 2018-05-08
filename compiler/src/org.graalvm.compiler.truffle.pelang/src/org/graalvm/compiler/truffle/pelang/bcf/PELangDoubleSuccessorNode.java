@@ -22,20 +22,16 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
 
     @Child private PELangExpressionNode bodyNode;
 
-    @CompilationFinal private int trueSuccessor;
-    @CompilationFinal private int falseSuccessor;
-
-    public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode) {
-        this(bodyNode, PELangBasicBlockNode.NO_SUCCESSOR, PELangBasicBlockNode.NO_SUCCESSOR);
-    }
+    private final int trueSuccessor;
+    private final int falseSuccessor;
 
     public PELangDoubleSuccessorNode(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
         this.bodyNode = bodyNode;
@@ -43,24 +39,9 @@ public final class PELangDoubleSuccessorNode extends PELangBasicBlockNode {
         this.falseSuccessor = falseSuccessor;
     }
 
-    public PELangExpressionNode getBodyNode() {
-        return bodyNode;
-    }
-
-    public int getTrueSuccessor() {
-        return trueSuccessor;
-    }
-
-    public int getFalseSuccessor() {
-        return falseSuccessor;
-    }
-
-    public void setTrueSuccessor(int trueSuccessor) {
-        this.trueSuccessor = trueSuccessor;
-    }
-
-    public void setFalseSuccessor(int falseSuccessor) {
-        this.falseSuccessor = falseSuccessor;
+    @Override
+    public int executeBlock(VirtualFrame frame) {
+        return (bodyNode.evaluateCondition(frame) == 0L) ? trueSuccessor : falseSuccessor;
     }
 
 }
