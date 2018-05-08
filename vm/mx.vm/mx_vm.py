@@ -354,6 +354,8 @@ class SvmSupport(object):
             self.native_image(['-g', "Dummy"], "dummy", out=out, err=err, nonZeroIsFatal=False)
             if "Could not find option" in err.data:
                 SvmSupport._debug_supported = False
+            elif "Error: Unrecognized option: -g" in err.data:
+                SvmSupport._debug_supported = False
             elif "Main entry point class 'Dummy' not found" in err.data:
                 SvmSupport._debug_supported = True
             else:

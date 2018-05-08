@@ -32,8 +32,6 @@ import java.util.jar.Manifest;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
-
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
@@ -106,19 +104,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--dry-run":
                 args.poll();
                 nativeImage.setDryRun(true);
-                return true;
-            case "-shared":
-            case "--shared":
-                args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oHKind + NativeImageKind.SHARED_LIBRARY.name());
-                return true;
-            case "-ea":
-                args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oH + NativeImage.enableRuntimeAssertions);
-                return true;
-            case "-g":
-                args.poll();
-                nativeImage.addImageBuilderArg(NativeImage.oHDebug + 2);
                 return true;
             case "--expert-options":
                 args.poll();

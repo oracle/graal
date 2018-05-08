@@ -137,7 +137,6 @@ class NativeImage {
     static final String oH = "-H:";
     static final String oR = "-R:";
 
-    static final String enableRuntimeAssertions = "+" + SubstrateOptions.RuntimeAssertions.getName();
     static final String enablePrintFlags = SubstrateOptions.PrintFlags.getName() + "=";
 
     private static <T> String oH(OptionKey<T> option) {
@@ -150,7 +149,6 @@ class NativeImage {
     static final String oHKind = oH(NativeImageOptions.Kind);
     static final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
     static final String oHOptimize = oH(SubstrateOptions.Optimize);
-    static final String oHDebug = oH + "Debug=";
 
     /* List arguments */
     static final String oHFeatures = oH(FeatureHandler.Options.Features);
