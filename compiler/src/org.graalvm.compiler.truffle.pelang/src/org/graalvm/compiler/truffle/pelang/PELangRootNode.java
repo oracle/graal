@@ -30,9 +30,13 @@ public final class PELangRootNode extends RootNode {
 
     @Child private PELangStatementNode bodyNode;
 
-    protected PELangRootNode(PELangStatementNode bodyNode, FrameDescriptor frameDescriptor) {
+    public PELangRootNode(PELangStatementNode bodyNode, FrameDescriptor frameDescriptor) {
         super(null, frameDescriptor);
         this.bodyNode = bodyNode;
+    }
+
+    public PELangStatementNode getBodyNode() {
+        return bodyNode;
     }
 
     @Override

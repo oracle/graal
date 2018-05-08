@@ -37,6 +37,10 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
         this.blockNodes = blockNodes;
     }
 
+    public PELangBasicBlockNode[] getBlockNodes() {
+        return blockNodes;
+    }
+
     @Override
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     public void executeVoid(VirtualFrame frame) {
