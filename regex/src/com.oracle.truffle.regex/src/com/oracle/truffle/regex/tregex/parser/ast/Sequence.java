@@ -80,7 +80,7 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
      * Returns the list of terms that constitute this {@link Sequence}.
      * <p>
      * Note that elements should not be added or removed from this list. Use the methods
-     * {@link #add(Term)} and {@link #removeLast()} instead.
+     * {@link #add(Term)} and {@link #removeLastTerm()} instead.
      */
     public ArrayList<Term> getTerms() {
         return terms;
@@ -88,6 +88,10 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
 
     public boolean isEmpty() {
         return terms.isEmpty();
+    }
+
+    public int size() {
+        return terms.size();
     }
 
     public Term getFirstTerm() {
@@ -135,7 +139,7 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
     /**
      * Removes the last {@link Term} from this {@link Sequence}.
      */
-    public void removeLast() {
+    public void removeLastTerm() {
         terms.remove(terms.size() - 1);
     }
 
@@ -149,6 +153,10 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
             }
         }
         return true;
+    }
+
+    public boolean isSingleCharClass() {
+        return size() == 1 && isLiteral();
     }
 
     @Override

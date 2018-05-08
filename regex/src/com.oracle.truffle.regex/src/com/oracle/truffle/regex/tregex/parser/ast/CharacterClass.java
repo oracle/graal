@@ -53,7 +53,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  */
 public class CharacterClass extends Term {
 
-    private final MatcherBuilder matcherBuilder;
+    private MatcherBuilder matcherBuilder;
     // look-behind groups which might match the same character as this CharacterClass node
     private ASTNodeSet<Group> lookBehindEntries;
 
@@ -81,6 +81,10 @@ public class CharacterClass extends Term {
      */
     public MatcherBuilder getMatcherBuilder() {
         return matcherBuilder;
+    }
+
+    public void setMatcherBuilder(MatcherBuilder matcherBuilder) {
+        this.matcherBuilder = matcherBuilder;
     }
 
     public void addLookBehindEntry(RegexAST ast, Group lookBehindEntry) {

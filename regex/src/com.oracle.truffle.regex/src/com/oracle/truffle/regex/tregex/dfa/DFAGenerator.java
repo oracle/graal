@@ -645,7 +645,9 @@ public final class DFAGenerator implements JsonConvertible {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        nfa.setInitialLoopBack(forward && executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
+        if (forward) {
+            nfa.setInitialLoopBack(executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
+        }
         DFAStateTransitionBuilder[] transitionList = new DFAStateTransitionBuilder[transitionIDCounter.getCount()];
         for (DFAStateNodeBuilder s : getStateIndexMap()) {
             if (s == null) {

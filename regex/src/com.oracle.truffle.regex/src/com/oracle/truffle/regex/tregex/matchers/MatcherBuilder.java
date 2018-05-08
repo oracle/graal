@@ -622,14 +622,21 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonCon
         }
     }
 
+    public MatcherBuilder union(MatcherBuilder o) {
+        return union(o, new RangesArrayBuffer());
+    }
+
     public MatcherBuilder union(MatcherBuilder o, CompilationBuffer compilationBuffer) {
+        return union(o, compilationBuffer.getRangesArrayBuffer1());
+    }
+
+    public MatcherBuilder union(MatcherBuilder o, RangesArrayBuffer unionRanges) {
         if (matchesNothing() || o.matchesEverything()) {
             return o;
         }
         if (matchesEverything() || o.matchesNothing()) {
             return this;
         }
-        RangesArrayBuffer unionRanges = compilationBuffer.getRangesArrayBuffer1();
         char tmpLo;
         char tmpHi;
         int ia = 0;
