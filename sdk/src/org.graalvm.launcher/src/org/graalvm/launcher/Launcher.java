@@ -434,6 +434,10 @@ public abstract class Launcher {
         return verbose;
     }
 
+    protected boolean isGraalVMAvailable() {
+        return System.getProperty("org.graalvm.home") != null;
+    }
+
     @SuppressWarnings("fallthrough")
     final boolean runPolyglotAction() {
         OptionCategory helpCategory = helpDebug ? OptionCategory.DEBUG : (helpExpert ? OptionCategory.EXPERT : OptionCategory.USER);
@@ -454,11 +458,15 @@ public abstract class Launcher {
             // @formatter:off
             System.out.println();
             System.out.println("Runtime options:");
-            printOption("--polyglot",                   "Run with all other guest languages accessible.");
-            printOption("--native",                     "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
-            printOption("--native.[option]",            "Pass options to the native image. To see available options, use '--native.help'.");
-            printOption("--jvm",                        "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
-            printOption("--jvm.[option]",               "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
+            if (isGraalVMAvailable()) {
+                printOption("--polyglot", "Run with all other guest languages accessible.");
+            }
+            printOption("--native", "Run using the native launcher with limited Java access" + (this.getDefaultVMType() == VMType.Native ? " (default)" : "") + ".");
+            printOption("--native.[option]", "Pass options to the native image. To see available options, use '--native.help'.");
+            if (isGraalVMAvailable()) {
+                printOption("--jvm", "Run on the Java Virtual Machine with Java access" + (this.getDefaultVMType() == VMType.JVM ? " (default)" : "") + ".");
+                printOption("--jvm.[option]", "Pass options to the JVM; for example, '--jvm.classpath=myapp.jar'. To see available options. use '--jvm.help'.");
+            }
             printOption("--help",                       "Print this help message.");
             printOption("--help:languages",             "Print options for all installed languages.");
             printOption("--help:tools",                 "Print options for all installed tools.");
@@ -659,9 +667,11 @@ public abstract class Launcher {
         Engine engine = getTempEngine();
         Set<String> options = new LinkedHashSet<>();
         collectArguments(options);
-        options.add("--polylgot");
+        if (isGraalVMAvailable()) {
+            options.add("--polylgot");
+            options.add("--jvm");
+        }
         options.add("--native");
-        options.add("--jvm");
         options.add("--help");
         options.add("--help:languages");
         options.add("--help:tools");
@@ -938,7 +948,7 @@ public abstract class Launcher {
     }
 
     class Native {
-        void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType, boolean allowExec) {
+        void maybeExec(List<String> args, boolean isPolyglot, Map<String, String> polyglotOptions, VMType defaultVmType) {
             assert isAOT();
             VMType vmType = null;
             boolean polyglot = false;
@@ -965,6 +975,9 @@ public abstract class Launcher {
                 if ((arg.startsWith("--jvm.") && arg.length() > "--jvm.".length()) || arg.equals("--jvm")) {
                     if (vmType == VMType.Native) {
                         throw abort("`--jvm` and `--native` options can not be used together.");
+                    }
+                    if (!isGraalVMAvailable()) {
+                        throw abort("--jvm.* options are only supported when this launcher is part of a GraalVM.");
                     }
                     if (arg.equals("--jvm.help")) {
                         printJvmHelp();
@@ -1014,14 +1027,12 @@ public abstract class Launcher {
                 if (!isPolyglot && polyglot) {
                     remainingArgs.add(0, "--polyglot");
                 }
-                if (!allowExec) {
-                    abort("--jvm.* options not supported");
-                }
+                assert isGraalVMAvailable();
                 execJVM(jvmArgs, remainingArgs, polyglotOptions);
             } else if (!isPolyglot && polyglot) {
                 assert jvmArgs.isEmpty();
-                if (!allowExec) {
-                    abort("--polyglot option not supported");
+                if (!isGraalVMAvailable()) {
+                    throw abort("--polyglot option is only supported when this launcher is part of a GraalVM.");
                 }
                 execNativePolyglot(remainingArgs, polyglotOptions);
             }
