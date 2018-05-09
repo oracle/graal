@@ -146,13 +146,18 @@ import com.oracle.truffle.llvm.nodes.intrinsics.sulong.LLVMShouldPrintStackTrace
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.NativeIntrinsicProvider;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
-public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextExtension {
+/**
+ * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
+ * native code. The intrinsic is also preferred over LLVM bitcode that is part of a Sulong-internal
+ * library.
+ */
+public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextExtension {
     private final ExternalLibrary library = new ExternalLibrary("SulongIntrinsics", false, false);
 
     @Override
@@ -162,7 +167,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
 
     @Override
     public Class<?> extensionClass() {
-        return NativeIntrinsicProvider.class;
+        return LLVMIntrinsicProvider.class;
     }
 
     @Override
@@ -202,7 +207,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
     protected final Demangler demangler = new Demangler();
     protected final TruffleLanguage<?> language;
 
-    public NFIIntrinsicsProvider(TruffleLanguage<?> language) {
+    public BasicIntrinsicsProvider(TruffleLanguage<?> language) {
         this.language = language;
     }
 
@@ -308,7 +313,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
         }
     }
 
-    public NFIIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
+    public BasicIntrinsicsProvider collectIntrinsics(NodeFactory nodeFactory) {
         registerTruffleIntrinsics(nodeFactory);
         registerSulongIntrinsics();
         registerAbortIntrinsics();
@@ -1155,21 +1160,6 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return LLVMAbortNodeGen.create();
             }
         });
-        factories.put("@abort", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMAbortNodeGen.create();
-            }
-        });
-
-        factories.put("@exit", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMExitNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
         factories.put("@signal", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
@@ -1548,21 +1538,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1));
             }
         });
-        factories.put("@__sulong_malloc", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMMallocNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
         factories.put("@calloc", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMCallocNodeGen.create(factory.createMemSet(), LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
-        factories.put("@__sulong_calloc", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
@@ -1576,21 +1552,7 @@ public class NFIIntrinsicsProvider implements NativeIntrinsicProvider, ContextEx
                 return LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
             }
         });
-        factories.put("@__sulong_realloc", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMReallocNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
-            }
-        });
         factories.put("@free", new LLVMNativeIntrinsicFactory(true, false) {
-
-            @Override
-            protected LLVMExpressionNode generate(FunctionType type) {
-                return LLVMFreeNodeGen.create(LLVMArgNodeGen.create(1));
-            }
-        });
-        factories.put("@__sulong_free", new LLVMNativeIntrinsicFactory(true, false) {
 
             @Override
             protected LLVMExpressionNode generate(FunctionType type) {
