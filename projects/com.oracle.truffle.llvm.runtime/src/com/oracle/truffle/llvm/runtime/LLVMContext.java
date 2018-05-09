@@ -239,9 +239,11 @@ public final class LLVMContext {
     }
 
     private LLVMScope createGlobalScope() {
+        LLVMFunctionDescriptor nullFunction = functionPointerRegistry.create("<nullFunction>", new FunctionType(MetaType.UNKNOWN, new Type[0], false));
+        nullFunction.define(new ExternalLibrary("Default", false), new NullFunction());
+
         LLVMScope scope = new LLVMScope();
-        LLVMFunctionDescriptor nullFunction = scope.functions().getOrCreate(this, "<nullFunction>", new FunctionType(MetaType.UNKNOWN, new Type[0], false));
-        nullFunction.define(new ExternalLibrary("Default", false, false), new NullFunction());
+        scope.register(nullFunction);
         return scope;
     }
 
@@ -250,11 +252,11 @@ public final class LLVMContext {
         // Sulong.createContext() because Truffle is not properly initialized there. So, we need to
         // do it in a delayed way.
         if (!initialized) {
-            assert !cleanupNecessary && globalScope.functions().contains("@__sulong_init_context");
+            assert !cleanupNecessary;
             initialized = true;
             cleanupNecessary = true;
 
-            LLVMFunctionDescriptor initContextDescriptor = globalScope.functions().get("@__sulong_init_context");
+            LLVMFunctionDescriptor initContextDescriptor = globalScope.getFunction("@__sulong_init_context");
             RootCallTarget initContextFunction = initContextDescriptor.getLLVMIRFunction();
             try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
                 Object[] args = new Object[]{stackPointer, toTruffleObjects(getApplicationArguments()), toTruffleObjects(getEnvironmentVariables())};
@@ -304,7 +306,7 @@ public final class LLVMContext {
         // - _exit(), _Exit(), or abort(): no cleanup necessary
         if (cleanupNecessary) {
             try {
-                RootCallTarget disposeContext = globalScope.functions().get("@__sulong_dispose_context").getLLVMIRFunction();
+                RootCallTarget disposeContext = globalScope.getFunction("@__sulong_dispose_context").getLLVMIRFunction();
                 try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
                     disposeContext.call(stackPointer);
                 }
@@ -367,10 +369,10 @@ public final class LLVMContext {
         return dataLayout;
     }
 
-    public ExternalLibrary addExternalLibrary(String lib, boolean isNative, boolean renameConflictingSymbols) {
+    public ExternalLibrary addExternalLibrary(String lib, boolean isNative) {
         CompilerAsserts.neverPartOfCompilation();
         Path path = locateExternalLibrary(lib);
-        ExternalLibrary externalLib = new ExternalLibrary(path, isNative, renameConflictingSymbols);
+        ExternalLibrary externalLib = new ExternalLibrary(path, isNative);
         int index = externalLibraries.indexOf(externalLib);
         if (index < 0) {
             externalLibraries.add(externalLib);
@@ -583,8 +585,8 @@ public final class LLVMContext {
         destructorFunctions.add(destructor);
     }
 
-    public void registerScope(LLVMScope scope) {
-        dynamicLinkChain.addScope(scope);
+    public void registerScopes(LLVMScope[] scopes) {
+        dynamicLinkChain.addScopes(scopes);
     }
 
     public synchronized void registerThread(LLVMThread thread) {
@@ -694,23 +696,21 @@ public final class LLVMContext {
     public static class ExternalLibrary {
         private final String name;
         private final Path path;
-        private final boolean renameConflictingSymbols;
 
         @CompilationFinal private boolean isNative;
 
-        public ExternalLibrary(String name, boolean isNative, boolean renameConflictingSymbols) {
-            this(name, null, isNative, renameConflictingSymbols);
+        public ExternalLibrary(String name, boolean isNative) {
+            this(name, null, isNative);
         }
 
-        public ExternalLibrary(Path path, boolean isNative, boolean renameConflictingSymbols) {
-            this(extractName(path), path, isNative, renameConflictingSymbols);
+        public ExternalLibrary(Path path, boolean isNative) {
+            this(extractName(path), path, isNative);
         }
 
-        private ExternalLibrary(String name, Path path, boolean isNative, boolean renameConflictingSymbols) {
+        private ExternalLibrary(String name, Path path, boolean isNative) {
             this.name = name;
             this.path = path;
             this.isNative = isNative;
-            this.renameConflictingSymbols = renameConflictingSymbols;
         }
 
         public Path getPath() {
@@ -723,10 +723,6 @@ public final class LLVMContext {
 
         public void setIsNative(boolean isNative) {
             this.isNative = isNative;
-        }
-
-        public boolean renameConflictingSymbols() {
-            return renameConflictingSymbols;
         }
 
         public String getName() {
@@ -777,10 +773,15 @@ public final class LLVMContext {
             this.scopes = new ArrayList<>();
         }
 
-        public void addScope(LLVMScope scope) {
-            // TODO (chaeubl): we should have an assertion that the same scope is not contained
-            // multiple times
-            scopes.add(scope);
+        public void addScopes(LLVMScope[] newScopes) {
+            for (LLVMScope newScope : newScopes) {
+                addScope(newScope);
+            }
+        }
+
+        private void addScope(LLVMScope newScope) {
+            assert !scopes.contains(newScope);
+            scopes.add(newScope);
         }
     }
 }

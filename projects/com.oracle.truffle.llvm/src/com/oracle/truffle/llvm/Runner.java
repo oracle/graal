@@ -88,12 +88,14 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.parser.util.Pair;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
@@ -141,8 +143,9 @@ public final class Runner {
         }
 
         private LLVMFunctionDescriptor lookup(String name) {
-            if (scope.functions().contains(name)) {
-                return scope.functions().get(name);
+            LLVMSymbol symbol = scope.get(name);
+            if (symbol != null && symbol.isFunction()) {
+                return symbol.asFunction();
             }
             return null;
         }
@@ -316,15 +319,15 @@ public final class Runner {
         try {
             if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
                 bytes = ByteBuffer.wrap(decodeBase64(source.getCharacters()));
-                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false, false);
+                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
             } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
                 NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
                 String filename = descriptor.getFilename();
                 bytes = read(filename);
-                library = new ExternalLibrary(Paths.get(filename), false, false);
+                library = new ExternalLibrary(Paths.get(filename), false);
             } else if (source.getPath() != null) {
                 bytes = read(source.getPath());
-                library = new ExternalLibrary(Paths.get(source.getPath()), false, false);
+                library = new ExternalLibrary(Paths.get(source.getPath()), false);
             } else {
                 throw new IllegalStateException("Neither a valid path nor a valid mime-type were specified.");
             }
@@ -341,17 +344,16 @@ public final class Runner {
             List<LLVMParserResult> parserResults = new ArrayList<>();
             ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
 
-            parse(parserResults, dependencyQueue, source, library, bytes, new LLVMScope());
+            parse(parserResults, dependencyQueue, source, library, bytes);
             assert !library.isNative() && !parserResults.isEmpty();
 
-            ExternalLibrary[] defaultLibraries = parseDependencies(parserResults, dependencyQueue);
+            ExternalLibrary[] sulongLibraries = parseDependencies(parserResults, dependencyQueue);
             assert dependencyQueue.isEmpty();
 
-            addExternalsToScope(parserResults);
-            bindUnresolvedGlobals(parserResults);
-            bindUnresolvedFunctions(parserResults);
+            addExternalSymbolsToScopes(parserResults);
+            bindUnresolvedSymbols(parserResults);
 
-            InitializationOrder initializationOrder = computeInitializationOrder(parserResults, defaultLibraries);
+            InitializationOrder initializationOrder = computeInitializationOrder(parserResults, sulongLibraries);
             overrideSulongLibraryFunctionsWithIntrinsics(initializationOrder.sulongLibraries);
 
             parseFunctionsEagerly(parserResults);
@@ -371,11 +373,11 @@ public final class Runner {
         int directDependencies = dependencyQueue.size();
         for (int i = 0; i < directDependencies; i++) {
             ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, lib, new LLVMScope());
+            parse(parserResults, dependencyQueue, lib);
         }
 
         // then, we are parsing the default libraries
-        ExternalLibrary[] sulongLibs;
+        ExternalLibrary[] sulongLibraries;
         if (!context.areDefaultLibrariesLoaded()) {
             context.setDefaultLibrariesLoaded();
             Env env = context.getEnv();
@@ -383,45 +385,135 @@ public final class Runner {
             // There could be conflicts between Sulong's default libraries and the ones that are
             // passed on the command-line. To resolve that, we add ours first but parse them later
             // on.
-            String[] defaultLibraries = context.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
-            sulongLibs = new ExternalLibrary[defaultLibraries.length];
-            for (int i = 0; i < sulongLibs.length; i++) {
-                sulongLibs[i] = context.addExternalLibrary(defaultLibraries[i], false, i != 0);
+            String[] sulongLibraryNames = context.getContextExtension(SystemContextExtension.class).getSulongDefaultLibraries();
+            sulongLibraries = new ExternalLibrary[sulongLibraryNames.length];
+            for (int i = 0; i < sulongLibraries.length; i++) {
+                sulongLibraries[i] = context.addExternalLibrary(sulongLibraryNames[i], false);
             }
 
             // parse all libraries that were passed on the command-line
             List<String> externals = SulongEngineOption.getPolyglotOptionExternalLibraries(env);
             for (String external : externals) {
                 // assume that the library is a native one until we parsed it and can say for sure
-                ExternalLibrary lib = context.addExternalLibrary(external, true, false);
+                ExternalLibrary lib = context.addExternalLibrary(external, true);
                 if (lib != null) {
-                    parse(parserResults, dependencyQueue, lib, new LLVMScope());
+                    parse(parserResults, dependencyQueue, lib);
                 }
             }
 
             // now parse the default Sulong libraries
             // TODO (chaeubl): we have an ordering issue here... - the search order for native
             // code comes last, which is not necessarily correct...
-            parseTogether(parserResults, dependencyQueue, sulongLibs);
+            LLVMParserResult[] sulongLibraryResults = new LLVMParserResult[sulongLibraries.length];
+            for (int i = 0; i < sulongLibraries.length; i++) {
+                sulongLibraryResults[i] = parse(parserResults, dependencyQueue, sulongLibraries[i]);
+            }
+            combineSulongLibraries(sulongLibraryResults);
         } else {
-            sulongLibs = new ExternalLibrary[0];
+            sulongLibraries = new ExternalLibrary[0];
         }
 
         // finally we are dealing with all indirect dependencies
         while (!dependencyQueue.isEmpty()) {
             ExternalLibrary lib = dependencyQueue.removeFirst();
-            parse(parserResults, dependencyQueue, lib, new LLVMScope());
+            parse(parserResults, dependencyQueue, lib);
         }
-        return sulongLibs;
+        return sulongLibraries;
     }
 
-    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib, LLVMScope scope) {
+    private void combineSulongLibraries(LLVMParserResult[] sulongLibraryResults) {
+        if (sulongLibraryResults.length > 1) {
+            EconomicMap<LLVMSymbol, List<LLVMAlias>> usagesInAliases = computeUsagesInAliases(sulongLibraryResults);
+
+            // the array elements are sorted from strong to weak
+            LLVMParserResult strongerLib = sulongLibraryResults[0];
+            for (int i = 1; i < sulongLibraryResults.length; i++) {
+                LLVMParserResult weakerLib = sulongLibraryResults[i];
+                renameConflictingSymbols(weakerLib, strongerLib, usagesInAliases);
+                weakerLib.getRuntime().getFileScope().addMissingEntries(strongerLib.getRuntime().getFileScope());
+                strongerLib = weakerLib;
+            }
+        }
+    }
+
+    private static EconomicMap<LLVMSymbol, List<LLVMAlias>> computeUsagesInAliases(LLVMParserResult[] sulongLibraryResults) {
+        EconomicMap<LLVMSymbol, List<LLVMAlias>> usages = EconomicMap.create();
+        for (LLVMParserResult parserResult : sulongLibraryResults) {
+            for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
+                if (symbol instanceof LLVMAlias) {
+                    LLVMAlias alias = (LLVMAlias) symbol;
+                    LLVMSymbol target = alias.getTarget();
+
+                    List<LLVMAlias> aliases = usages.get(target);
+                    if (aliases == null) {
+                        aliases = new ArrayList<>();
+                        usages.put(target, aliases);
+                    }
+                    aliases.add(alias);
+                }
+            }
+        }
+        return usages;
+    }
+
+    private void renameConflictingSymbols(LLVMParserResult currentLib, LLVMParserResult strongerLib, EconomicMap<LLVMSymbol, List<LLVMAlias>> usagesInAliases) {
+        LLVMScope globalScope = context.getGlobalScope();
+        LLVMScope weakerScope = currentLib.getRuntime().getFileScope();
+        LLVMScope strongerScope = strongerLib.getRuntime().getFileScope();
+        String weakerLibName = currentLib.getRuntime().getLibrary().getName();
+
+        for (LLVMSymbol strongerSymbol : strongerScope.values()) {
+            String name = strongerSymbol.getName();
+            LLVMSymbol weakerSymbol = weakerScope.get(name);
+            if (weakerSymbol != null) {
+                boolean shouldRename = strongerSymbol.isFunction() || strongerSymbol.isGlobalVariable() && !strongerSymbol.asGlobalVariable().isReadOnly();
+                if (shouldRename) {
+                    /*
+                     * We already have a function with the same name in another (more important)
+                     * library. We rename the already existing symbol by prefixing it with
+                     * "__libName_", e.g., "@__clock_gettime" would be renamed to
+                     * "@__libc___clock_gettime".
+                     */
+                    String renamedName = getRenamedSymbol(name, weakerLibName);
+                    if (globalScope.contains(renamedName) || weakerScope.contains(renamedName)) {
+                        throw new IllegalStateException("There is a conflict between a user defined function and an automatically renamed function: " + renamedName);
+                    } else if (!(weakerSymbol.isFunction() && strongerSymbol.isFunction() || weakerSymbol.isGlobalVariable() && strongerSymbol.isGlobalVariable())) {
+                        throw new IllegalStateException("Can't replace a function with a global variable or vice versa: " + name);
+                    }
+
+                    // rename and export the renamed symbol
+                    weakerSymbol.setName(renamedName);
+                    weakerScope.rename(name, weakerSymbol);
+                    if (globalScope.get(name) == weakerSymbol) {
+                        globalScope.rename(name, weakerSymbol);
+                    } else {
+                        globalScope.register(weakerSymbol);
+                    }
+
+                    // modify all aliases that use this symbol
+                    List<LLVMAlias> affectedAliases = usagesInAliases.get(weakerSymbol);
+                    if (affectedAliases != null) {
+                        for (LLVMAlias alias : affectedAliases) {
+                            alias.setTarget(strongerSymbol);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static String getRenamedSymbol(String functionName, String libraryName) {
+        assert functionName.charAt(0) == '@';
+        return "@__" + libraryName + "_" + functionName.substring(1);
+    }
+
+    private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {
         if (lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
                 throw new RuntimeException("'" + lib.getPath() + "' is not a file or does not exist.");
             } else {
                 // lets assume that this is not a bitcode file and the NFI is going to handle it
-                return;
+                return null;
             }
         }
 
@@ -430,113 +522,133 @@ public final class Runner {
             byte[] bytes = Files.readAllBytes(path);
             // at the moment, we don't need the bitcode as the content of the source
             Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
-            parse(parserResults, dependencyQueue, source, lib, ByteBuffer.wrap(bytes), scope);
+            return parse(parserResults, dependencyQueue, source, lib, ByteBuffer.wrap(bytes));
         } catch (Throwable t) {
             throw new RuntimeException("Error while trying to parse " + lib.getName(), t);
         }
     }
 
-    private void parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
-                    ExternalLibrary library, ByteBuffer bytes, LLVMScope scope) {
+    private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
+                    ExternalLibrary library, ByteBuffer bytes) {
         ModelModule module = LLVMScanner.parse(source, bytes);
         if (module != null) {
             library.setIsNative(false);
             context.addLibraryPaths(module.getLibraryPaths());
             List<String> libraries = module.getLibraries();
             for (String lib : libraries) {
-                ExternalLibrary dependency = context.addExternalLibrary(lib, true, false);
+                ExternalLibrary dependency = context.addExternalLibrary(lib, true);
                 if (dependency != null) {
                     dependencyQueue.addLast(dependency);
                 }
             }
-            LLVMParserRuntime runtime = new LLVMParserRuntime(context, nodeFactory, library, scope);
+            LLVMScope fileScope = new LLVMScope();
+            LLVMParserRuntime runtime = new LLVMParserRuntime(context, nodeFactory, library, fileScope);
             LLVMParser parser = new LLVMParser(source, runtime);
             LLVMParserResult parserResult = parser.parse(module);
             parserResults.add(parserResult);
+            return parserResult;
         } else if (!library.isNative()) {
             throw new RuntimeException("The file is not a bitcode file nor an ELF File with a .llvmbc section.");
+        } else {
+            return null;
         }
     }
 
-    private void parseTogether(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary... externalLibraries) {
-        LLVMScope commonScope = new LLVMScope();
-        for (ExternalLibrary lib : externalLibraries) {
-            parse(parserResults, dependencyQueue, lib, commonScope);
-        }
-    }
-
-    private void addExternalsToScope(List<LLVMParserResult> parserResults) {
+    private void addExternalSymbolsToScopes(List<LLVMParserResult> parserResults) {
         // TODO (chaeubl): in here, we should validate if the return types/argument types/global
         // types match
         LLVMScope globalScope = context.getGlobalScope();
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
             for (FunctionSymbol function : parserResult.getExternalFunctions()) {
-                LLVMFunctionDescriptor descriptor = globalScope.functions().getOrCreate(context, function.getName(), function.getType());
-                if (!fileScope.functions().contains(function.getName())) {
-                    // there can already be a different local entry in the file scope
-                    fileScope.functions().register(descriptor);
+                LLVMSymbol globalSymbol = globalScope.get(function.getName());
+                if (globalSymbol == null) {
+                    globalSymbol = context.createFunctionDescriptor(function.getName(), function.getType());
+                    globalScope.register(globalSymbol);
+                } else if (!globalSymbol.isFunction()) {
+                    assert globalSymbol.isGlobalVariable();
+                    throw new LinkageError("The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
+                }
+
+                // there can already be a different local entry in the file scope
+                if (!fileScope.contains(function.getName())) {
+                    fileScope.register(globalSymbol);
                 }
             }
 
             for (GlobalVariable global : parserResult.getExternalGlobals()) {
-                LLVMGlobal descriptor = globalScope.globals().getOrCreate(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
-                if (!fileScope.globals().contains(global.getName())) {
-                    // there can already be a different local entry in the file scope
-                    fileScope.globals().register(descriptor);
+                LLVMSymbol globalSymbol = globalScope.get(global.getName());
+                if (globalSymbol == null) {
+                    globalSymbol = LLVMGlobal.create(context, global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly());
+                    globalScope.register(globalSymbol);
+                } else if (!globalSymbol.isGlobalVariable()) {
+                    assert globalSymbol.isFunction();
+                    throw new LinkageError("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
+                }
+
+                // there can already be a different local entry in the file scope
+                if (!fileScope.contains(global.getName())) {
+                    fileScope.register(globalSymbol);
                 }
             }
         }
     }
 
-    private void bindUnresolvedGlobals(List<LLVMParserResult> parserResults) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        for (LLVMParserResult parserResult : parserResults) {
-            for (LLVMGlobal global : parserResult.getRuntime().getFileScope().globals().toArray()) {
-                if (!global.isDefined()) {
-                    assert context.getGlobalScope().globals().contains(global);
-                    if (nfiContextExtension != null) {
-                        NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(context, global.getName());
-                        if (pointerIntoLibrary != null) {
-                            global.define(pointerIntoLibrary.getLibrary());
-                            global.bindToNativeAddress(context, pointerIntoLibrary.getAddress());
-                        }
-                    }
-
-                    if (!global.isDefined() && !context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-                        throw new LinkageError("Global variable " + global.getName() + " is declared but not defined.");
-                    }
-                }
-            }
-        }
-    }
-
-    private void bindUnresolvedFunctions(List<LLVMParserResult> parserResults) {
+    private void bindUnresolvedSymbols(List<LLVMParserResult> parserResults) {
         NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
         LLVMIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
         for (LLVMParserResult parserResult : parserResults) {
-            for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
-                if (!function.isDefined()) {
-                    assert context.getGlobalScope().functions().contains(function);
-                    if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(function.getName())) {
-                        function.define(intrinsicProvider);
-                    } else if (nfiContextExtension != null) {
-                        NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, function.getName());
-                        if (nativeFunction != null) {
-                            function.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
-                        }
+            for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
+                if (!symbol.isDefined()) {
+                    if (symbol instanceof LLVMGlobal) {
+                        LLVMGlobal global = (LLVMGlobal) symbol;
+                        bindGlobal(global, nfiContextExtension);
+                    } else if (symbol instanceof LLVMFunctionDescriptor) {
+                        LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
+                        bindUnresolvedFunction(function, nfiContextExtension, intrinsicProvider);
+                    } else if (symbol instanceof LLVMAlias) {
+                        // nothing to do
+                    } else {
+                        throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
                     }
-                    // if we were unable to bind the function, then we will try another lookup when
-                    // someone tries to execute the function
                 }
             }
         }
     }
 
-    private void registerDynamicLinkChain(List<LLVMParserResult> parserResults) {
-        for (LLVMParserResult parserResult : parserResults) {
-            context.registerScope(parserResult.getRuntime().getFileScope());
+    private void bindGlobal(LLVMGlobal global, NFIContextExtension nfiContextExtension) {
+        if (nfiContextExtension != null) {
+            NativePointerIntoLibrary pointerIntoLibrary = nfiContextExtension.getNativeHandle(context, global.getName());
+            if (pointerIntoLibrary != null) {
+                global.define(pointerIntoLibrary.getLibrary());
+                global.bindToNativeAddress(context, pointerIntoLibrary.getAddress());
+            }
         }
+
+        if (!global.isDefined() && !context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
+            throw new LinkageError("Global variable " + global.getName() + " is declared but not defined.");
+        }
+    }
+
+    private void bindUnresolvedFunction(LLVMFunctionDescriptor function, NFIContextExtension nfiContextExtension, LLVMIntrinsicProvider intrinsicProvider) {
+        if (intrinsicProvider != null && intrinsicProvider.isIntrinsified(function.getName())) {
+            function.define(intrinsicProvider);
+        } else if (nfiContextExtension != null) {
+            NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, function.getName());
+            if (nativeFunction != null) {
+                function.define(nativeFunction.getLibrary(), new LLVMFunctionDescriptor.NativeFunction(nativeFunction.getObject()));
+            }
+        }
+        // if we were unable to bind the function, then we will try another lookup when
+        // someone tries to execute the function
+    }
+
+    private void registerDynamicLinkChain(List<LLVMParserResult> parserResults) {
+        LLVMScope[] fileScopes = new LLVMScope[parserResults.size()];
+        for (int i = 0; i < parserResults.size(); i++) {
+            fileScopes[i] = parserResults.get(i).getRuntime().getFileScope();
+        }
+        context.registerScopes(fileScopes);
     }
 
     private InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
@@ -603,15 +715,8 @@ public final class Runner {
 
     private static EconomicSet<ExternalLibrary> getImportedLibraries(LLVMScope globalScope, LLVMParserResult parserResult) {
         EconomicSet<ExternalLibrary> importedLibs = EconomicSet.create(Equivalence.IDENTITY);
-        for (String imported : parserResult.getImportedFunctions()) {
-            ExternalLibrary lib = globalScope.functions().get(imported).getLibrary();
-            if (lib != null) {
-                importedLibs.add(lib);
-            }
-        }
-
-        for (String imported : parserResult.getImportedGlobals()) {
-            ExternalLibrary lib = globalScope.globals().get(imported).getLibrary();
+        for (String imported : parserResult.getImportedSymbols()) {
+            ExternalLibrary lib = globalScope.get(imported).getLibrary();
             if (lib != null) {
                 importedLibs.add(lib);
             }
@@ -732,7 +837,7 @@ public final class Runner {
             return LLVMExpressionNode.NO_EXPRESSIONS;
         }
 
-        final LLVMGlobal global = fileScope.globals().get(globalSymbol.getName());
+        final LLVMGlobal global = (LLVMGlobal) fileScope.get(globalSymbol.getName());
         final ArrayConstant arrayConstant = (ArrayConstant) globalSymbol.getValue();
         final int elemCount = arrayConstant.getElementCount();
 
@@ -812,10 +917,10 @@ public final class Runner {
         // check if the freshly parsed code exports a main method
         for (LLVMParserResult parserResult : parserResults) {
             LLVMScope fileScope = parserResult.getRuntime().getFileScope();
-            if (fileScope.functions().exports(context, MAIN_METHOD_NAME)) {
-                LLVMFunctionDescriptor mainMethod = fileScope.functions().get(MAIN_METHOD_NAME);
-                if (mainMethod.isDefined()) {
-                    return mainMethod;
+            if (fileScope.exports(context, MAIN_METHOD_NAME)) {
+                LLVMSymbol mainMethod = fileScope.get(MAIN_METHOD_NAME);
+                if (mainMethod.isFunction() && mainMethod.isDefined()) {
+                    return mainMethod.asFunction();
                 }
             }
         }
@@ -825,11 +930,9 @@ public final class Runner {
     private LLVMFunctionDescriptor findStartMethod() {
         // the start method just needs to be present in the global scope, we don't care when it was
         // parsed.
-        if (context.getGlobalScope().functions().contains(START_METHOD_NAME)) {
-            LLVMFunctionDescriptor startMethod = context.getGlobalScope().functions().get(START_METHOD_NAME);
-            if (startMethod.isDefined()) {
-                return startMethod;
-            }
+        LLVMSymbol startMethod = context.getGlobalScope().get(START_METHOD_NAME);
+        if (startMethod != null && startMethod.isFunction() && startMethod.isDefined()) {
+            return startMethod.asFunction();
         }
         return null;
     }
@@ -847,9 +950,16 @@ public final class Runner {
         LLVMIntrinsicProvider intrinsicProvider = context.getContextExtensionOrNull(LLVMIntrinsicProvider.class);
         if (intrinsicProvider != null) {
             for (LLVMParserResult parserResult : sulongLibraries) {
-                for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
-                    if (intrinsicProvider.isIntrinsified(function.getName())) {
-                        function.define(intrinsicProvider);
+                for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
+                    if (symbol.isFunction() && intrinsicProvider.isIntrinsified(symbol.getName())) {
+                        if (symbol instanceof LLVMAlias) {
+                            throw new UnsupportedOperationException("Replacing an alias with an intrinsic is not supported at the moment");
+                        } else if (symbol instanceof LLVMFunctionDescriptor) {
+                            LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
+                            function.define(intrinsicProvider);
+                        } else {
+                            throw new IllegalStateException("Unknown symbol: " + symbol.getClass());
+                        }
                     }
                 }
             }
@@ -859,8 +969,15 @@ public final class Runner {
     private void parseFunctionsEagerly(List<LLVMParserResult> parserResults) {
         if (!context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING)) {
             for (LLVMParserResult parserResult : parserResults) {
-                for (LLVMFunctionDescriptor function : parserResult.getRuntime().getFileScope().functions().toArray()) {
-                    function.resolveIfLazyLLVMIRFunction();
+                for (LLVMSymbol symbol : parserResult.getRuntime().getFileScope().values()) {
+                    if (symbol instanceof LLVMFunctionDescriptor) {
+                        LLVMFunctionDescriptor function = (LLVMFunctionDescriptor) symbol;
+                        function.resolveIfLazyLLVMIRFunction();
+                    } else if (symbol instanceof LLVMGlobal || symbol instanceof LLVMAlias) {
+                        // nothing to do
+                    } else {
+                        throw new RuntimeException("Unknown symbol: " + symbol.getClass());
+                    }
                 }
             }
         }

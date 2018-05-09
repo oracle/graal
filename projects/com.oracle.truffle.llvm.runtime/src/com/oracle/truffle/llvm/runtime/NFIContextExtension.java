@@ -66,7 +66,7 @@ public final class NFIContextExtension implements ContextExtension {
     public NFIContextExtension(Env env) {
         this.env = env;
         this.defaultLibraryHandle = loadDefaultLibrary();
-        this.defaultLibrary = new ExternalLibrary("NativeDefault", true, false);
+        this.defaultLibrary = new ExternalLibrary("NativeDefault", true);
         this.nativeFunctions = new LLVMNativeFunctions(this);
     }
 
@@ -124,9 +124,9 @@ public final class NFIContextExtension implements ContextExtension {
 
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        context.addExternalLibrary("libsulong." + getNativeLibrarySuffix(), true, false);
+        context.addExternalLibrary("libsulong." + getNativeLibrarySuffix(), true);
         // dummy library for C++, see {@link #handleSpecialLibraries}
-        context.addExternalLibrary("libsulong++." + getNativeLibrarySuffix(), true, false);
+        context.addExternalLibrary("libsulong++." + getNativeLibrarySuffix(), true);
         List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
         for (ExternalLibrary l : libraries) {
             addLibrary(l);

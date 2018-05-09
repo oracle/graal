@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
@@ -57,16 +58,16 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
  * Our implementation assumes that there is a 1:1 relationship between callable functions and
  * {@link LLVMFunctionDescriptor}s.
  */
-public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
+public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTruffleObject, Comparable<LLVMFunctionDescriptor>, LLVMObjectNativeLibrary.Provider {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xDEAD_FACE_0000_0000L;
 
-    private final String functionName;
     private final FunctionType type;
     private final LLVMContext context;
     private final int functionId;
 
     private ExternalLibrary library;
 
+    @CompilationFinal private String name;
     @CompilationFinal private Function function;
     @CompilationFinal private Assumption functionAssumption;
 
@@ -78,14 +79,14 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     }
 
     public static final class Intrinsic {
-        private final String name;
+        private final String intrinsicName;
         private final Map<FunctionType, RootCallTarget> overloadingMap;
         private final LLVMIntrinsicProvider provider;
         private final boolean forceInline;
         private final boolean forceSplit;
 
         public Intrinsic(LLVMIntrinsicProvider provider, String name) {
-            this.name = name;
+            this.intrinsicName = name;
             this.overloadingMap = new HashMap<>();
             this.provider = provider;
             this.forceInline = provider.forceInline(name);
@@ -124,7 +125,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
 
         private RootCallTarget generate(FunctionType type) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            RootCallTarget newTarget = provider.generateIntrinsic(name, type);
+            RootCallTarget newTarget = provider.generateIntrinsic(intrinsicName, type);
             assert newTarget != null;
             overloadingMap.put(type, newTarget);
             return newTarget;
@@ -274,7 +275,7 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     private LLVMFunctionDescriptor(LLVMContext context, String name, FunctionType type, int functionId, Function function) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
-        this.functionName = name;
+        this.name = name;
         this.type = type;
         this.functionId = functionId;
         this.functionAssumption = Truffle.getRuntime().createAssumption("LLVMFunctionDescriptor.functionAssumption");
@@ -319,13 +320,14 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         return getFunction() instanceof NativeFunction;
     }
 
+    @Override
     public boolean isDefined() {
         return !(function instanceof UnresolvedFunction);
     }
 
     public void define(LLVMIntrinsicProvider intrinsicProvider) {
-        assert intrinsicProvider != null && intrinsicProvider.isIntrinsified(functionName);
-        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, functionName);
+        assert intrinsicProvider != null && intrinsicProvider.isIntrinsified(name);
+        Intrinsic intrinsification = new Intrinsic(intrinsicProvider, name);
         define(intrinsicProvider.getLibrary(), new LLVMFunctionDescriptor.IntrinsicFunction(intrinsification), true);
     }
 
@@ -366,10 +368,17 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
         return nativeFunction;
     }
 
+    @Override
     public String getName() {
-        return functionName;
+        return name;
     }
 
+    @Override
+    public void setName(String value) {
+        this.name = value;
+    }
+
+    @Override
     public ExternalLibrary getLibrary() {
         return library;
     }
@@ -384,8 +393,8 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
 
     @Override
     public String toString() {
-        if (functionName != null) {
-            return String.format("function@%d '%s'", functionId, functionName);
+        if (name != null) {
+            return String.format("function@%d '%s'", functionId, name);
         } else {
             return String.format("function@%d (anonymous)", functionId);
         }
@@ -394,21 +403,6 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
         return Long.compare(functionId, o.functionId);
-    }
-
-    @Override
-    public int hashCode() {
-        return functionId;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof LLVMFunctionDescriptor)) {
-            return false;
-        } else {
-            LLVMFunctionDescriptor other = (LLVMFunctionDescriptor) obj;
-            return functionId == other.functionId;
-        }
     }
 
     public static boolean isInstance(TruffleObject object) {
@@ -496,5 +490,25 @@ public final class LLVMFunctionDescriptor implements LLVMInternalTruffleObject, 
             }
         }
         return this;
+    }
+
+    @Override
+    public boolean isFunction() {
+        return true;
+    }
+
+    @Override
+    public boolean isGlobalVariable() {
+        return false;
+    }
+
+    @Override
+    public LLVMFunctionDescriptor asFunction() {
+        return this;
+    }
+
+    @Override
+    public LLVMGlobal asGlobalVariable() {
+        throw new IllegalStateException("Function " + name + " is not a global variable.");
     }
 }

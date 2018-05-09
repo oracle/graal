@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMVirtualAllocationAddress;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
@@ -66,13 +67,13 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
+public final class LLVMGlobal implements LLVMSymbol, LLVMObjectNativeLibrary.Provider {
 
-    private final String name;
     private final LLVMSourceSymbol sourceSymbol;
     private final FrameSlot slot;
     private final boolean readOnly;
 
+    @CompilationFinal private String name;
     @CompilationFinal private PointerType type;
     @CompilationFinal private ExternalLibrary library;
     @CompilationFinal private boolean interopTypeCached;
@@ -105,14 +106,21 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         this.interopType = null;
     }
 
+    @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public void setName(String name) {
+        this.name = name;
     }
 
     public FrameSlot getSlot() {
         return slot;
     }
 
+    @Override
     public ExternalLibrary getLibrary() {
         return library;
     }
@@ -494,6 +502,7 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         return type.getPointeeType();
     }
 
+    @Override
     public boolean isDefined() {
         return library != null;
     }
@@ -502,12 +511,16 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
         define(type, newLibrary);
     }
 
-    // TEMP (chaeubl): overwriting the type is a workaround to avoid type mismatches that occur for
+    // TODO (chaeubl): overwriting the type is a workaround to avoid type mismatches that occur for
     // C++ code
     public void define(PointerType newType, ExternalLibrary newLibrary) {
         assert newType != null && newLibrary != null;
-        this.type = newType;
-        this.library = newLibrary;
+        if (!isDefined()) {
+            this.type = newType;
+            this.library = newLibrary;
+        } else {
+            throw new AssertionError("Found multiple definitions of global " + getName() + ".");
+        }
     }
 
     public boolean isReadOnly() {
@@ -516,5 +529,25 @@ public final class LLVMGlobal implements LLVMObjectNativeLibrary.Provider {
 
     public static boolean isObjectStore(Type globalType, Object value) {
         return !(globalType instanceof PrimitiveType || LLVMNativePointer.isInstance(value) || value instanceof Managed);
+    }
+
+    @Override
+    public boolean isFunction() {
+        return false;
+    }
+
+    @Override
+    public boolean isGlobalVariable() {
+        return true;
+    }
+
+    @Override
+    public LLVMFunctionDescriptor asFunction() {
+        throw new IllegalStateException("Global " + name + " is not a function.");
+    }
+
+    @Override
+    public LLVMGlobal asGlobalVariable() {
+        return this;
     }
 }

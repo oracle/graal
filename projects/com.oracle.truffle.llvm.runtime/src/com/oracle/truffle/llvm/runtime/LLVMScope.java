@@ -30,8 +30,8 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Map.Entry;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -43,208 +43,117 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class LLVMScope implements TruffleObject {
 
-    private final LLVMFunctionRegistry functionRegistry;
-    private final LLVMGlobalRegistry globalVariableRegistry;
+    private final HashMap<String, LLVMSymbol> symbols;
+    private final ArrayList<String> functionKeys;
 
     public LLVMScope() {
-        this.functionRegistry = new LLVMFunctionRegistry();
-        this.globalVariableRegistry = new LLVMGlobalRegistry();
+        this.symbols = new HashMap<>();
+        this.functionKeys = new ArrayList<>();
     }
 
-    public LLVMFunctionRegistry functions() {
-        return functionRegistry;
+    @TruffleBoundary
+    public LLVMSymbol get(String name) {
+        return symbols.get(name);
     }
 
-    public LLVMGlobalRegistry globals() {
-        return globalVariableRegistry;
+    @TruffleBoundary
+    public LLVMFunctionDescriptor getFunction(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isFunction()) {
+            return symbol.asFunction();
+        }
+        throw new IllegalStateException("Unknown function: " + name);
+    }
+
+    @TruffleBoundary
+    public LLVMGlobal getGlobalVariable(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isGlobalVariable()) {
+            return symbol.asGlobalVariable();
+        }
+        throw new IllegalStateException("Unknown global: " + name);
+    }
+
+    @TruffleBoundary
+    public void register(LLVMSymbol symbol) {
+        LLVMSymbol existing = symbols.get(symbol.getName());
+        if (existing == null) {
+            put(symbol.getName(), symbol);
+        } else {
+            assert existing == symbol;
+        }
+    }
+
+    @TruffleBoundary
+    public boolean contains(String name) {
+        return symbols.containsKey(name);
+    }
+
+    @TruffleBoundary
+    public boolean exports(LLVMContext context, String name) {
+        LLVMSymbol localSymbol = get(name);
+        LLVMSymbol globalSymbol = context.getGlobalScope().get(name);
+        return localSymbol != null && localSymbol == globalSymbol;
     }
 
     public boolean isEmpty() {
-        return functions().isEmpty() && globals().isEmpty();
+        return symbols.isEmpty();
     }
 
+    @TruffleBoundary
     public void addMissingEntries(LLVMScope other) {
-        for (Entry<String, LLVMFunctionDescriptor> entry : other.functionRegistry.functions.entrySet()) {
-            if (!this.functions().contains(entry.getKey())) {
-                this.functions().put(entry.getKey(), entry.getValue());
-            }
-        }
-
-        for (Entry<String, LLVMGlobal> entry : other.globalVariableRegistry.globals.entrySet()) {
-            if (!this.globals().contains(entry.getKey())) {
-                this.globals().put(entry.getKey(), entry.getValue());
-            }
+        for (Entry<String, LLVMSymbol> entry : other.symbols.entrySet()) {
+            symbols.putIfAbsent(entry.getKey(), entry.getValue());
         }
     }
 
-    public static final class LLVMFunctionRegistry {
-        private final HashMap<String, LLVMFunctionDescriptor> functions;
-        private final ArrayList<String> functionKeys;
-
-        private LLVMFunctionRegistry() {
-            this.functions = new HashMap<>();
-            this.functionKeys = new ArrayList<>();
-        }
-
-        @TruffleBoundary
-        public LLVMFunctionDescriptor get(String name) {
-            LLVMFunctionDescriptor functionDescriptor = functions.get(name);
-            if (functionDescriptor != null) {
-                return functionDescriptor;
-            }
-            throw new IllegalStateException("Unknown function: " + name);
-        }
-
-        @TruffleBoundary
-        public LLVMFunctionDescriptor getOrCreate(LLVMContext context, String name, FunctionType type) {
-            if (functions.containsKey(name)) {
-                return functions.get(name);
-            } else {
-                LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(name, type);
-                put(descriptor.getName(), descriptor);
-                return descriptor;
-            }
-        }
-
-        @TruffleBoundary
-        public void register(LLVMFunctionDescriptor descriptor) {
-            register(descriptor.getName(), descriptor);
-        }
-
-        @TruffleBoundary
-        public void registerAlias(String name, LLVMFunctionDescriptor descriptor) {
-            register(name, descriptor);
-        }
-
-        @TruffleBoundary
-        public boolean contains(String name) {
-            return functions.containsKey(name);
-        }
-
-        @TruffleBoundary
-        public boolean contains(LLVMFunctionDescriptor descriptor) {
-            return functions.get(descriptor.getName()) == descriptor;
-        }
-
-        @TruffleBoundary
-        public boolean exports(LLVMContext context, String name) {
-            if (contains(name) && context.getGlobalScope().functions().contains(name)) {
-                LLVMFunctionDescriptor localMainFunctionDescriptor = get(name);
-                LLVMFunctionDescriptor globalMainFunctionDescriptor = context.getGlobalScope().functions().get(name);
-                return localMainFunctionDescriptor == globalMainFunctionDescriptor;
-            }
-            return false;
-        }
-
-        @TruffleBoundary
-        public LLVMFunctionDescriptor[] toArray() {
-            return functions.values().toArray(new LLVMFunctionDescriptor[functions.size()]);
-        }
-
-        public boolean isEmpty() {
-            return functions.isEmpty();
-        }
-
-        private void register(String name, LLVMFunctionDescriptor descriptor) {
-            LLVMFunctionDescriptor existing = functions.get(name);
-            assert existing == null || existing == descriptor;
-            if (existing == null) {
-                put(name, descriptor);
-            }
-        }
-
-        private void put(String name, LLVMFunctionDescriptor descriptor) {
-            String realName = name;
-            if (realName.charAt(0) == '@') {
-                realName = realName.substring(1);
-            }
-            assert !functions.containsKey(name) && !functionKeys.contains(realName);
-            assert functionKeys.size() == functions.size();
-            functions.put(name, descriptor);
-            functionKeys.add(realName);
-        }
+    @TruffleBoundary
+    public Collection<LLVMSymbol> values() {
+        return symbols.values();
     }
 
-    public static final class LLVMGlobalRegistry {
-        private final Map<String, LLVMGlobal> globals;
+    @TruffleBoundary
+    public void rename(String oldName, LLVMSymbol symbol) {
+        remove(oldName);
+        register(symbol);
+    }
 
-        private LLVMGlobalRegistry() {
-            globals = new HashMap<>();
-        }
-
-        @TruffleBoundary
-        public LLVMGlobal get(String name) {
-            LLVMGlobal global = globals.get(name);
-            if (global != null) {
-                return global;
-            }
-            throw new IllegalStateException("Unknown global: " + name);
-        }
-
-        @TruffleBoundary
-        public LLVMGlobal getOrCreate(LLVMContext context, String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
-            if (globals.containsKey(name)) {
-                return globals.get(name);
-            } else {
-                LLVMGlobal global = LLVMGlobal.create(context, name, type, sourceSymbol, readOnly);
-                put(name, global);
-                return global;
-            }
-        }
-
-        @TruffleBoundary
-        public void register(LLVMGlobal global) {
-            register(global.getName(), global);
-        }
-
-        @TruffleBoundary
-        public void registerAlias(String name, LLVMGlobal global) {
-            register(name, global);
-        }
-
-        private void register(String name, LLVMGlobal global) {
-            LLVMGlobal existing = globals.get(name);
-            assert existing == null || existing == global;
-            if (existing == null) {
-                put(name, global);
-            }
-        }
-
-        @TruffleBoundary
-        public boolean contains(String name) {
-            return globals.containsKey(name);
-        }
-
-        @TruffleBoundary
-        public boolean contains(LLVMGlobal global) {
-            return globals.get(global.getName()) == global;
-        }
-
-        @TruffleBoundary
-        public LLVMGlobal[] toArray() {
-            return globals.values().toArray(new LLVMGlobal[globals.size()]);
-        }
-
-        public boolean isEmpty() {
-            return globals.isEmpty();
-        }
-
-        private void put(String name, LLVMGlobal global) {
-            globals.put(name, global);
-        }
-
+    public TruffleObject getKeys() {
+        return new Keys(this);
     }
 
     @Override
     public ForeignAccess getForeignAccess() {
         return LLVMGlobalScopeMessageResolutionForeign.ACCESS;
+    }
+
+    private void put(String name, LLVMSymbol symbol) {
+        assert !symbols.containsKey(name);
+        symbols.put(name, symbol);
+
+        if (symbol.isFunction()) {
+            assert !functionKeys.contains(name);
+            assert functionKeys.size() < symbols.size();
+            functionKeys.add(stripAtCharacter(name));
+        }
+    }
+
+    private void remove(String name) {
+        assert symbols.containsKey(name);
+        LLVMSymbol removedSymbol = symbols.remove(name);
+
+        if (removedSymbol.isFunction()) {
+            assert functionKeys.contains(stripAtCharacter(name));
+            functionKeys.remove(stripAtCharacter(name));
+        }
+    }
+
+    private static String stripAtCharacter(String name) {
+        return name.charAt(0) == '@' ? name.substring(1) : name;
     }
 
     @MessageResolution(receiverType = LLVMScope.class)
@@ -271,19 +180,15 @@ public final class LLVMScope implements TruffleObject {
 
             protected Object access(LLVMScope scope, String globalName) {
                 String atname = "@" + globalName; // for interop
-                if (scope.functions().contains(atname)) {
-                    return scope.functions().get(atname);
+                if (scope.contains(atname)) {
+                    return scope.get(atname);
                 }
-                if (scope.globals().contains(globalName)) {
-                    return scope.globals().get(globalName);
+                if (scope.contains(globalName)) {
+                    return scope.get(globalName);
                 }
                 return null;
             }
         }
-    }
-
-    public TruffleObject getKeys() {
-        return new Keys(this);
     }
 
     @MessageResolution(receiverType = Keys.class)
@@ -308,7 +213,7 @@ public final class LLVMScope implements TruffleObject {
         abstract static class GetSize extends Node {
 
             int access(Keys receiver) {
-                return receiver.scope.functions().functionKeys.size();
+                return receiver.scope.functionKeys.size();
             }
         }
 
@@ -317,7 +222,7 @@ public final class LLVMScope implements TruffleObject {
 
             Object access(Keys receiver, int index) {
                 try {
-                    return receiver.scope.functions().functionKeys.get(index);
+                    return receiver.scope.functionKeys.get(index);
                 } catch (IndexOutOfBoundsException ex) {
                     CompilerDirectives.transferToInterpreter();
                     throw UnknownIdentifierException.raise(Integer.toString(index));
