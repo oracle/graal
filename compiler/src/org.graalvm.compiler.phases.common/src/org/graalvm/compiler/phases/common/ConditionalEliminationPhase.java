@@ -763,11 +763,15 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected InfoElement getInfoElements(ValueNode proxiedValue) {
-            ValueNode value = GraphUtil.skipPi(proxiedValue);
+            ValueNode value = proxiedValue;
             if (value == null) {
                 return null;
             }
-            return map.getAndGrow(value);
+            InfoElement infoElement = map.getAndGrow(value);
+            if (infoElement == null) {
+                infoElement = map.getAndGrow(GraphUtil.skipPi(value));
+            }
+            return infoElement;
         }
 
         protected boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
