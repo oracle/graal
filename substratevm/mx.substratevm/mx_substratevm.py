@@ -293,6 +293,9 @@ def native_image_symlink_path(native_image_root, platform_specific=True):
         symlink_path += '-' + platform_subdir()
     return symlink_path
 
+def native_image_on_jvm(args):
+    run_java(['-jar', join(suite_native_image_root(), 'lib', 'graalvm', 'svm-driver.jar')] + args)
+
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
     if not allow_native_image_build:
         mx.logv('Detected building with ejc + --warning-as-error -> suppress bootstrap_native_image')
@@ -302,6 +305,7 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     bootstrap_command += locale_US_args()
     bootstrap_command += substratevm_version_args()
     bootstrap_command += ['-Dgraalvm.version=dev']
+    bootstrap_command += ['-Dcom.oracle.graalvm.isaot=true']
 
     builder_classpath = classpath(svmDistribution)
     imagecp_classpath = classpath(svmDistribution + ['substratevm:SVM_DRIVER'])
@@ -322,8 +326,11 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     if mx._opts.strip_jars:
         bootstrap_command += ['-H:-VerifyNamingConventions']
 
-    run_java(bootstrap_command)
-    mx.logv('Built ' + native_image_path(native_image_root))
+    if mx.get_os() == 'windows':
+        mx.log('Skip building native-image executable on Windows for now')
+    else:
+        run_java(bootstrap_command)
+        mx.logv('Built ' + native_image_path(native_image_root))
 
     def names_to_dists(dist_names):
         return [mx.dependency(dist_name) for dist_name in dist_names]
@@ -337,6 +344,7 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     # Create native-image layout for sdk parts
     native_image_layout_dists(join('lib', 'boot'), ['sdk:GRAAL_SDK'])
     native_image_layout_dists(join('lib', 'graalvm'), ['sdk:LAUNCHER_COMMON'])
+    copy2(mx.dependency('substratevm:SVM_DRIVER').path, join(native_image_root, 'lib', 'graalvm'))
 
     # Create native-image layout for compiler & jvmci parts
     native_image_layout_dists(join('lib', 'jvmci'), graalDistribution)
@@ -925,4 +933,5 @@ mx.update_commands(suite, {
     'cinterfacetutorial' : [lambda args: native_image_context_run(cinterfacetutorial, args), ''],
     'fetch-languages': [lambda args: fetch_languages(args, early_exit=False), ''],
     'benchmark': [benchmark, '--vmargs [vmargs] --runargs [runargs] suite:benchname'],
+    'native-image': [native_image_on_jvm, ''],
 })
