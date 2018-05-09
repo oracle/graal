@@ -319,20 +319,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected double getProfileProbability(boolean negate) {
-            double probability = super.getProfileProbability(negate);
-            if (negate && HostedConfiguration.instance().isUsingAOTProfiles()) {
-                /*
-                 * Probabilities from AOT profiles are about canonical conditions as they are coming
-                 * from Graal IR, but since `BytecodeParser` assumes that probabilities are about
-                 * original conditions, it will negate them when negating original conditions during
-                 * conversion to Graal IR. Therefore, we have to negate probabilities back to their
-                 * initial value in case of AOT profiles, as otherwise they would be applied to a
-                 * wrong branch.
-                 */
-                return 1 - probability;
-            }
-            return probability;
+        protected boolean shouldComplementProbability() {
+            /*
+             * Probabilities from AOT profiles are about canonical conditions as they are coming
+             * from Graal IR. That is, they are collected after `BytecodeParser` has done conversion
+             * to Graal IR. Unfortunately, `BytecodeParser` assumes that probabilities are about
+             * original conditions and loads them before conversion to Graal IR.
+             *
+             * Therefore, in order to maintain correct probabilities we need to prevent
+             * `BytecodeParser` from complementing probability during transformations such as
+             * negation of a condition, or elimination of logical negation.
+             */
+            return !HostedConfiguration.instance().isUsingAOTProfiles();
         }
 
         @Override
