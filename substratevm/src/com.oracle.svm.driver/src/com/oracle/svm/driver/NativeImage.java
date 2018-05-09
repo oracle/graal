@@ -86,7 +86,7 @@ class NativeImage {
     static final String platform = getPlatform();
 
     private static String getPlatform() {
-        com.sun.management.OperatingSystemMXBean osMXBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         return (osMXBean.getName() + "-" + osMXBean.getArch()).toLowerCase();
     }
 
@@ -193,8 +193,16 @@ class NativeImage {
             }
             rootDir = rootDirCandidate;
         } else {
-            String selfJarPath = NativeImage.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-            rootDir = Paths.get(selfJarPath).getParent().getParent().getParent();
+            String graalvmHomePropertyName = "graalvm.home";
+            String graalvmHomeString = System.getProperty(graalvmHomePropertyName);
+            if (graalvmHomeString == null) {
+                throw showError("Running on JVM requires setting " + graalvmHomePropertyName + " system property");
+            }
+            try {
+                rootDir = canonicalize(Paths.get(graalvmHomeString).resolve("jre"));
+            } catch (NativeImageError e) {
+                throw showError("Invalid " + graalvmHomePropertyName + " setting " + graalvmHomeString + "\n" + e.getMessage());
+            }
         }
         assert rootDir != null;
         String homeDirString = System.getProperty("user.home");

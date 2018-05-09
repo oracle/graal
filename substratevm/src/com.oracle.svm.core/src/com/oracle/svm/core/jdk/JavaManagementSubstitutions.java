@@ -23,6 +23,7 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.RuntimeMXBean;
@@ -41,7 +42,6 @@ import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
@@ -50,6 +50,10 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
+
+//Checkstyle: stop
+import sun.management.Util;
+//Checkstyle: resume
 
 @TargetClass(java.lang.management.ManagementFactory.class)
 final class Target_java_lang_management_ManagementFactory {
@@ -401,6 +405,43 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 }
 
 final class SubstrateOperatingSystemMXBean implements com.sun.management.OperatingSystemMXBean {
+    private static final ObjectName objectName = Util.newObjectName(ManagementFactory.OPERATING_SYSTEM_MXBEAN_NAME);
+
+    @Override
+    public ObjectName getObjectName() {
+        return objectName;
+    }
+
+    @Override
+    public String getName() {
+        return System.getProperty("os.name");
+    }
+
+    @Override
+    public String getArch() {
+        return SubstrateUtil.getArchitectureName();
+    }
+
+    @Override
+    public String getVersion() {
+        return System.getProperty("os.version");
+    }
+
+    @Override
+    public int getAvailableProcessors() {
+        return Runtime.getRuntime().availableProcessors();
+    }
+
+    @Override
+    public long getTotalPhysicalMemorySize() {
+        return PhysicalMemory.size().rawValue();
+    }
+
+    @Override
+    public double getSystemLoadAverage() {
+        return -1;
+    }
+
     private static final String MSG = "OperatingSystemMXBean methods";
 
     @Override
@@ -429,47 +470,12 @@ final class SubstrateOperatingSystemMXBean implements com.sun.management.Operati
     }
 
     @Override
-    public long getTotalPhysicalMemorySize() {
-        return PhysicalMemory.size().rawValue();
-    }
-
-    @Override
     public double getSystemCpuLoad() {
         throw VMError.unsupportedFeature(MSG);
     }
 
     @Override
     public double getProcessCpuLoad() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public String getName() {
-        return OS.getCurrent().className;
-    }
-
-    @Override
-    public String getArch() {
-        return SubstrateUtil.getArchitectureName();
-    }
-
-    @Override
-    public String getVersion() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public int getAvailableProcessors() {
-        return Runtime.getRuntime().availableProcessors();
-    }
-
-    @Override
-    public double getSystemLoadAverage() {
-        throw VMError.unsupportedFeature(MSG);
-    }
-
-    @Override
-    public ObjectName getObjectName() {
         throw VMError.unsupportedFeature(MSG);
     }
 }
