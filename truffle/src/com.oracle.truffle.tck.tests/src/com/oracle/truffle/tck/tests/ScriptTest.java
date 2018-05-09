@@ -49,7 +49,7 @@ public class ScriptTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<TestRun> createScriptTests() {
-        context = new TestContext();
+        context = new TestContext(ScriptTest.class);
         final Collection<TestRun> res = new LinkedHashSet<>();
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (Snippet script : context.getScripts(null, lang)) {
