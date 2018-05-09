@@ -763,13 +763,12 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected InfoElement getInfoElements(ValueNode proxiedValue) {
-            ValueNode value = proxiedValue;
-            if (value == null) {
+            if (proxiedValue == null) {
                 return null;
             }
-            InfoElement infoElement = map.getAndGrow(value);
+            InfoElement infoElement = map.getAndGrow(proxiedValue);
             if (infoElement == null) {
-                infoElement = map.getAndGrow(GraphUtil.skipPi(value));
+                infoElement = map.getAndGrow(GraphUtil.skipPi(proxiedValue));
             }
             return infoElement;
         }
