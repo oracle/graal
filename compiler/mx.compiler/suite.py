@@ -848,6 +848,22 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.compiler.replacements.test.jdk9" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.test"
+      ],
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "imports" : [
+        # All other internal packages are exported dynamically -
+        # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
+        "jdk.internal.misc",
+      ],
+    },
+
     "org.graalvm.compiler.replacements.verifier" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1557,6 +1573,7 @@ suite = {
         "org.graalvm.compiler.truffle.test",
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
+        "org.graalvm.compiler.replacements.test.jdk9",
       ],
       "distDependencies" : [
         "GRAAL_HOTSPOT",

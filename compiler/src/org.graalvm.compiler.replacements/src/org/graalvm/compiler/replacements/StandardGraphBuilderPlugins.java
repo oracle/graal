@@ -250,7 +250,13 @@ public class StandardGraphBuilderPlugins {
         r.register2("getAddress", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Long, false));
         r.register3("putAddress", Receiver.class, long.class, long.class, new UnsafePutPlugin(JavaKind.Long, false));
 
-        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}) {
+        JavaKind[] compareAndSwapTypes;
+        if (Java8OrEarlier) {
+            compareAndSwapTypes = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
+        } else {
+            compareAndSwapTypes = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double};
+        }
+        for (JavaKind kind : compareAndSwapTypes) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
             String casName;
             if (Java8OrEarlier) {
