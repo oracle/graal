@@ -5,9 +5,18 @@ New features:
 * Use dynamic linker semantics when loading multiple bitcode files.
 * Support ELF files with embedded LLVM bitcode.
 
+New polyglot builtins:
+
+* `polyglot_eval_file`
+* `polyglot_java_type`
+* `polyglot_remove_member`
+* `polyglot_remove_array_element`
+* `polyglot_can_instantiate`
+* `polyglot_new_instance`
+
 Improvements:
 
-* Unified representation of pointers to native memory and polyglot values.
+* Support polyglot values in all pointer operations.
 
 # Version 1.0.0 RC1
 

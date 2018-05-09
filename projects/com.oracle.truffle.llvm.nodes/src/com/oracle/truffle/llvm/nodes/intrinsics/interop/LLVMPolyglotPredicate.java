@@ -27,66 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.test.interop.values;
+package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
+import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.MessageResolution;
-import com.oracle.truffle.api.interop.Resolve;
+import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-@MessageResolution(receiverType = ArrayObject.class)
-public final class ArrayObject implements TruffleObject {
+public abstract class LLVMPolyglotPredicate extends LLVMIntrinsic {
 
-    final Object[] array;
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPolyglotCanInstantiate extends LLVMIntrinsic {
 
-    public ArrayObject(Object... array) {
-        this.array = array;
-    }
+        @Child private LLVMAsForeignNode asForeign = LLVMAsForeignNode.createOptional();
+        @Child private Node foreignIsInstantiable = Message.IS_INSTANTIABLE.createNode();
 
-    public Object get(int i) {
-        return array[i];
-    }
-
-    static boolean isInstance(TruffleObject object) {
-        return object instanceof ArrayObject;
-    }
-
-    @Resolve(message = "READ")
-    abstract static class ReadNode extends Node {
-
-        Object access(ArrayObject obj, Number idx) {
-            return obj.array[(int) idx.longValue()];
+        @Specialization
+        protected boolean doIntrinsic(LLVMManagedPointer value) {
+            TruffleObject foreign = asForeign.execute(value);
+            return foreign != null && ForeignAccess.sendIsInstantiable(foreignIsInstantiable, foreign);
         }
-    }
 
-    @Resolve(message = "WRITE")
-    abstract static class WriteNode extends Node {
-
-        Object access(ArrayObject obj, Number idx, Object value) {
-            return obj.array[(int) idx.longValue()] = value;
+        @Fallback
+        public Object fallback(@SuppressWarnings("unused") Object value) {
+            return false;
         }
-    }
-
-    @Resolve(message = "REMOVE")
-    abstract static class RemoveNode extends Node {
-
-        boolean access(ArrayObject obj, Number idx) {
-            obj.array[(int) idx.longValue()] = "<removed>";
-            return true;
-        }
-    }
-
-    @Resolve(message = "GET_SIZE")
-    abstract static class SizeNode extends Node {
-
-        int access(ArrayObject obj) {
-            return obj.array.length;
-        }
-    }
-
-    @Override
-    public ForeignAccess getForeignAccess() {
-        return ArrayObjectForeign.ACCESS;
     }
 }

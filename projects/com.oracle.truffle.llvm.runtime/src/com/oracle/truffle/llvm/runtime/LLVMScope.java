@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -161,10 +161,14 @@ public final class LLVMScope implements TruffleObject {
         }
 
         private void put(String name, LLVMFunctionDescriptor descriptor) {
-            assert !functions.containsKey(name) && !functionKeys.contains(name);
+            String realName = name;
+            if (realName.charAt(0) == '@') {
+                realName = realName.substring(1);
+            }
+            assert !functions.containsKey(name) && !functionKeys.contains(realName);
             assert functionKeys.size() == functions.size();
             functions.put(name, descriptor);
-            functionKeys.add(name);
+            functionKeys.add(realName);
         }
     }
 
@@ -258,12 +262,7 @@ public final class LLVMScope implements TruffleObject {
         public abstract static class KeysOfLLVMScope extends Node {
 
             protected Object access(LLVMScope receiver) {
-                return getKeys(receiver);
-            }
-
-            @TruffleBoundary
-            private static TruffleObject getKeys(LLVMScope scope) {
-                return new Keys(scope);
+                return receiver.getKeys();
             }
         }
 
@@ -281,6 +280,10 @@ public final class LLVMScope implements TruffleObject {
                 return null;
             }
         }
+    }
+
+    public TruffleObject getKeys() {
+        return new Keys(this);
     }
 
     @MessageResolution(receiverType = Keys.class)

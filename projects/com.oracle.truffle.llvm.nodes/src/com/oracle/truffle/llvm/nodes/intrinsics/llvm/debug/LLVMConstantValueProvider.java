@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -564,6 +565,9 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         public Object asInteropValue() {
+            if (value instanceof LLVMTypedForeignObject) {
+                return ((LLVMTypedForeignObject) value).getForeign();
+            }
             return value;
         }
     }

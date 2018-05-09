@@ -82,6 +82,19 @@ public final class StructObject implements TruffleObject {
         }
     }
 
+    @Resolve(message = "REMOVE")
+    abstract static class RemoveNode extends Node {
+
+        @CompilerDirectives.TruffleBoundary
+        boolean access(StructObject obj, String name) {
+            if (!obj.properties.containsKey(name)) {
+                throw UnknownIdentifierException.raise(name);
+            }
+            obj.properties.remove(name);
+            return true;
+        }
+    }
+
     @Resolve(message = "KEYS")
     abstract static class KeysNode extends Node {
 
@@ -99,7 +112,7 @@ public final class StructObject implements TruffleObject {
             if (!obj.properties.containsKey(name)) {
                 return KeyInfo.NONE;
             }
-            return KeyInfo.READABLE | KeyInfo.MODIFIABLE;
+            return KeyInfo.READABLE | KeyInfo.MODIFIABLE | KeyInfo.REMOVABLE;
         }
     }
 

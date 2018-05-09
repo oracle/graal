@@ -88,6 +88,27 @@ void polyglot_export(const char *name, void *value);
 void *polyglot_eval(const char *id, const char *code);
 
 /**
+ * Evaluate a file containing source of another language.
+ *
+ * The filename argument can be absolute or relative to the current working
+ * directory.
+ *
+ * @param id the language identifier
+ * @param filename the file to be evaluated
+ * @return the result of the evaluation
+ * @see org::graalvm::polyglot::Context::eval
+ */
+void *polyglot_eval_file(const char *id, const char *filename);
+
+/**
+ * Access a Java class via host interop.
+ *
+ * @param classname the name of the Java class
+ * @return the Java class, as polyglot value
+ */
+void *polyglot_java_type(const char *classname);
+
+/**
  * Access an argument of the current function.
  *
  * This function can be used to access arguments of the current function by
@@ -296,6 +317,23 @@ bool polyglot_can_execute(const void *value);
  */
 void *polyglot_invoke(void *object, const char *name, ...);
 
+/**
+ * Check whether a polyglot value can be instantiated.
+ *
+ * Returns false for pointers that do not point to a polyglot value (see
+ * {@link polyglot_is_value}).
+ */
+bool polyglot_can_instantiate(const void *object);
+
+/**
+ * Instantiate a polyglot value.
+ *
+ * @param object the polyglot value that should be instantiated
+ * @param ... the arguments of the constructor
+ * @return the new object, as polyglot value
+ */
+void *polyglot_new_instance(const void *object, ...);
+
 /** @} */
 
 /**
@@ -341,6 +379,15 @@ void *polyglot_get_member(const void *object, const char *name);
 void polyglot_put_member(void *object, const char *name, ...);
 
 /**
+ * Remove a named member from a polyglot object.
+ *
+ * @param object the polyglot value to modify
+ * @param name the name of the member to be removed
+ * @return true if the member was successfully removed, false otherwise
+ */
+bool polyglot_remove_member(void *object, const char *name);
+
+/**
  * Check whether a polyglot value has array elements.
  *
  * Returns false for pointers that do not point to a polyglot value (see
@@ -377,6 +424,15 @@ void *polyglot_get_array_element(const void *array, int idx);
  * @param ... the written value
  */
 void polyglot_set_array_element(void *array, int idx, ...);
+
+/**
+ * Remove an array element from a polyglot array.
+ *
+ * @param array the polyglot array to modify
+ * @param idx the index of the removed array element
+ * @return true if the array element was successfully removed, false otherwise
+ */
+bool polyglot_remove_array_element(void *array, int idx);
 
 /** @} */
 

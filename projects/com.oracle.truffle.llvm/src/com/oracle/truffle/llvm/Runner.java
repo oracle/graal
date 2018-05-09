@@ -218,6 +218,14 @@ public final class Runner {
             }
         }
 
+        @Resolve(message = "KEYS")
+        abstract static class KeysNode extends Node {
+
+            TruffleObject access(SulongLibrary library) {
+                return library.scope.getKeys();
+            }
+        }
+
         @Resolve(message = "KEY_INFO")
         abstract static class KeyInfoNode extends Node {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,62 +36,100 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceFileNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceStringNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import java.io.File;
+import java.io.IOException;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
 
-    private final boolean legacyMimeTypeEval;
-
+    @Child GetSourceNode getSource;
     @Child ForeignToLLVM toLLVM = ForeignToLLVM.create(ForeignToLLVMType.POINTER);
 
     public static LLVMPolyglotEval create(LLVMExpressionNode id, LLVMExpressionNode code) {
-        return LLVMPolyglotEvalNodeGen.create(false, id, code);
+        return LLVMPolyglotEvalNodeGen.create(GetSourceStringNodeGen.create(false), id, code);
+    }
+
+    public static LLVMPolyglotEval createFile(LLVMExpressionNode id, LLVMExpressionNode filename) {
+        return LLVMPolyglotEvalNodeGen.create(GetSourceFileNodeGen.create(), id, filename);
     }
 
     public static LLVMPolyglotEval createLegacy(LLVMExpressionNode mime, LLVMExpressionNode code) {
-        return LLVMPolyglotEvalNodeGen.create(true, mime, code);
+        return LLVMPolyglotEvalNodeGen.create(GetSourceStringNodeGen.create(true), mime, code);
     }
 
-    protected LLVMPolyglotEval(boolean legacyMimeTypeEval) {
-        this.legacyMimeTypeEval = legacyMimeTypeEval;
+    LLVMPolyglotEval(GetSourceNode getSource) {
+        this.getSource = getSource;
     }
 
-    @TruffleBoundary
-    protected CallTarget getCallTarget(String id, String code, ContextReference<LLVMContext> context) {
-        Source sourceObject;
-        if (legacyMimeTypeEval) {
-            sourceObject = Source.newBuilder(code).name("<eval>").mimeType(id).build();
-        } else {
-            sourceObject = Source.newBuilder(code).name("<eval>").language(id).build();
-        }
-        return context.get().getEnv().parse(sourceObject);
-    }
-
-    @SuppressWarnings("unused")
-    @Specialization(limit = "2", guards = {"id.equals(readId.executeWithTarget(idPointer))", "src.equals(readSrc.executeWithTarget(srcPointer))"})
-    protected Object doCached(Object idPointer, Object srcPointer,
+    @Specialization
+    protected Object doEval(Object idPointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readId,
-                    @Cached("createReadString()") LLVMReadStringNode readSrc,
-                    @Cached("readId.executeWithTarget(idPointer)") String id,
-                    @Cached("readSrc.executeWithTarget(srcPointer)") String src,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context,
-                    @Cached("getCallTarget(id, src, context)") CallTarget callTarget) {
+                    @Cached("createReadString()") LLVMReadStringNode readSrc) {
+        CallTarget callTarget = getSource.execute(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer));
         Object foreign = callTarget.call();
         return toLLVM.executeWithTarget(foreign);
     }
 
-    @Specialization(replaces = "doCached")
-    protected Object uncached(Object idPointer, Object srcPointer,
-                    @Cached("createReadString()") LLVMReadStringNode readId,
-                    @Cached("createReadString()") LLVMReadStringNode readSrc,
-                    @Cached("getContextReference()") ContextReference<LLVMContext> context) {
-        Object foreign = getCallTarget(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer), context).call();
-        return toLLVM.executeWithTarget(foreign);
+    abstract static class GetSourceNode extends LLVMNode {
+
+        abstract CallTarget execute(String languageId, String source);
+    }
+
+    abstract static class GetSourceStringNode extends GetSourceNode {
+
+        private final boolean legacyMimeTypeEval;
+
+        protected GetSourceStringNode(boolean legacyMimeTypeEval) {
+            this.legacyMimeTypeEval = legacyMimeTypeEval;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(limit = "2", guards = {"id.equals(cachedId)", "code.equals(cachedCode)"})
+        CallTarget doCached(String id, String code,
+                        @Cached("id") String cachedId,
+                        @Cached("code") String cachedCode,
+                        @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef,
+                        @Cached("uncached(cachedId, cachedCode, ctxRef)") CallTarget callTarget) {
+            return callTarget;
+        }
+
+        @TruffleBoundary
+        @Specialization(replaces = "doCached")
+        CallTarget uncached(String id, String code,
+                        @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
+            Source sourceObject;
+            if (legacyMimeTypeEval) {
+                sourceObject = Source.newBuilder(code).name("<eval>").mimeType(id).build();
+            } else {
+                sourceObject = Source.newBuilder(code).name("<eval>").language(id).build();
+            }
+            return ctxRef.get().getEnv().parse(sourceObject);
+        }
+    }
+
+    abstract static class GetSourceFileNode extends GetSourceNode {
+
+        @TruffleBoundary
+        @Specialization
+        CallTarget uncached(String id, String filename,
+                        @Cached("getContextReference()") ContextReference<LLVMContext> ctxRef) {
+            try {
+                // never cache, since the file content could change between invocations
+                Source sourceObject = Source.newBuilder(new File(filename)).name("<eval>").language(id).build();
+                return ctxRef.get().getEnv().parse(sourceObject);
+            } catch (IOException ex) {
+                // TODO proper sulong exception
+                throw new IllegalStateException(ex);
+            }
+        }
     }
 }

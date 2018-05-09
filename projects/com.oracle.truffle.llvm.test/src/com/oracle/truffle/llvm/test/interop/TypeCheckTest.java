@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.test.interop;
 
 import com.oracle.truffle.llvm.test.interop.values.BoxedTestValue;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -82,6 +83,7 @@ public final class TypeCheckTest extends InteropTestBase {
                 return null;
             }
         }});
+        tests.add(new Object[]{"class", BigInteger.class});
         return tests;
     }
 
@@ -101,5 +103,6 @@ public final class TypeCheckTest extends InteropTestBase {
         Assert.assertEquals("can_execute", v.canExecute(), (ret & 32) != 0);
         Assert.assertEquals("has_array_elements", v.hasArrayElements(), (ret & 64) != 0);
         Assert.assertEquals("has_members", v.hasMembers(), (ret & 128) != 0);
+        Assert.assertEquals("can_instantiate", v.canInstantiate(), (ret & 256) != 0);
     }
 }

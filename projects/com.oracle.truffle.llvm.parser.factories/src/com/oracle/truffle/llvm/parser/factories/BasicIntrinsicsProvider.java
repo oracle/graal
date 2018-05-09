@@ -100,6 +100,11 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotFromString;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotImportNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotIsValueNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotJavaTypeNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotNewInstanceNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotPredicateFactory.LLVMPolyglotCanInstantiateNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveArrayElementNodeGen;
+import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveMemberNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMSulongFunctionToNativePointerNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleAddressToFunctionNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMTruffleBinaryFactory.LLVMTruffleHasKeysNodeGen;
@@ -399,6 +404,20 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             }
         });
 
+        factories.put("@polyglot_eval_file", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotEval.createFile(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        factories.put("@polyglot_java_type", new LLVMNativeIntrinsicFactory(true, true) {
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotJavaTypeNodeGen.create(LLVMArgNodeGen.create(1));
+            }
+        });
+
         //
 
         factories.put("@polyglot_is_value", new LLVMNativeIntrinsicFactory(true, true) {
@@ -670,6 +689,22 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
             }
         });
 
+        factories.put("@polyglot_remove_member", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotRemoveMemberNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
+        factories.put("@polyglot_remove_array_element", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotRemoveArrayElementNodeGen.create(LLVMArgNodeGen.create(1), LLVMArgNodeGen.create(2));
+            }
+        });
+
         LLVMNativeIntrinsicFactory polyglotAsI8 = new LLVMNativeIntrinsicFactory(true, true) {
 
             @Override
@@ -740,6 +775,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         factories.put("@truffle_unbox_b", polyglotAsBoolean);
 
         //
+
+        factories.put("@polyglot_new_instance", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(2, type.getArgumentTypes().length - 2), LLVMArgNodeGen.create(1));
+            }
+        });
 
         LLVMNativeIntrinsicFactory polyglotInvoke = new LLVMNativeIntrinsicFactory(true, true) {
 
@@ -883,6 +926,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider, ContextEx
         };
         factories.put("@polyglot_can_execute", polyglotCanExecute);
         factories.put("@truffle_is_executable", polyglotCanExecute);
+
+        factories.put("@polyglot_can_instantiate", new LLVMNativeIntrinsicFactory(true, true) {
+
+            @Override
+            protected LLVMExpressionNode generate(FunctionType type) {
+                return LLVMPolyglotCanInstantiateNodeGen.create(LLVMArgNodeGen.create(1));
+            }
+        });
 
         LLVMNativeIntrinsicFactory polyglotIsNull = new LLVMNativeIntrinsicFactory(true, true) {
 

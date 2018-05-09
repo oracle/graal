@@ -45,6 +45,10 @@ public final class BoxedTestValue implements TruffleObject {
         this.value = value;
     }
 
+    public Object getValue() {
+        return value;
+    }
+
     @Override
     public ForeignAccess getForeignAccess() {
         return ForeignAccess.create(BoxedTestValue.class, new StandardFactory() {
