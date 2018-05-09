@@ -557,7 +557,7 @@ suite = {
         "SVM_DRIVER": {
             "subDir": "src",
             "mainClass": "com.oracle.svm.driver.NativeImage",
-            "classPath": [
+            "manifestClassPath": [
                 "../boot/graal-sdk.jar",
                 "../jvmci/graal.jar",
                 "../svm/builder/svm.jar",
