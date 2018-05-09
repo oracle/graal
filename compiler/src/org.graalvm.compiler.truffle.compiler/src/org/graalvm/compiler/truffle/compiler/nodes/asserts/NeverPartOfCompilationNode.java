@@ -26,6 +26,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.core.common.GraalBailoutException;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
@@ -73,7 +74,21 @@ public final class NeverPartOfCompilationNode extends ControlSinkNode implements
     public static void verifyNotFoundIn(final StructuredGraph graph) {
         for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
             Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
-            throw GraphUtil.approxSourceException(neverPartOfCompilationNode, exception);
+            throw new NeverPartOfCompilationException(GraphUtil.approxSourceException(neverPartOfCompilationNode, exception));
+        }
+    }
+
+    private static class NeverPartOfCompilationException extends GraalBailoutException {
+
+        private static final long serialVersionUID = 0L;
+
+        NeverPartOfCompilationException(Throwable cause) {
+            super(cause, "", new Object[]{});
+        }
+
+        @Override
+        public boolean isCausedByCompilerAssert() {
+            return true;
         }
     }
 }

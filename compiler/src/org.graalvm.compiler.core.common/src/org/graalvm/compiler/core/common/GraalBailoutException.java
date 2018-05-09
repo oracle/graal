@@ -22,19 +22,27 @@
  */
 package org.graalvm.compiler.core.common;
 
-public class PermanentBailoutException extends GraalBailoutException {
+import jdk.vm.ci.code.BailoutException;
+import org.graalvm.compiler.debug.CausableByCompilerAssert;
 
-    private static final long serialVersionUID = -2683649650135362549L;
+public class GraalBailoutException extends BailoutException implements CausableByCompilerAssert {
 
-    public PermanentBailoutException(String format, Object... args) {
-        super(true, format, args);
+    private static final long serialVersionUID = 0L;
+
+    public GraalBailoutException(String format, Object... args) {
+        super(format, args);
     }
 
-    public PermanentBailoutException(String reason) {
-        super(true, "%s", reason);
-    }
-
-    public PermanentBailoutException(Throwable cause, String format, Object... args) {
+    public GraalBailoutException(Throwable cause, String format, Object... args) {
         super(cause, format, args);
+    }
+
+    public GraalBailoutException(boolean permanent, String format, Object... args) {
+        super(permanent, format, args);
+    }
+
+    @Override
+    public boolean isCausedByCompilerAssert() {
+        return false;
     }
 }
