@@ -78,6 +78,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.ComputeInExecutor.Info;
 import com.oracle.truffle.api.vm.PolyglotRootNode.EvalRootNode;
+import java.util.logging.Handler;
 import org.graalvm.polyglot.io.FileSystem;
 
 /**
@@ -1508,6 +1509,11 @@ public class PolyglotEngine {
         @Override
         public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
             return false;
+        }
+
+        @Override
+        public Handler getPolyglotLogHandler() {
+            return PolyglotLogHandler.INSTANCE;
         }
     }
 }

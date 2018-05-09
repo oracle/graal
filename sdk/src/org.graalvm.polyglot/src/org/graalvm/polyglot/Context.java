@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.logging.Handler;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -680,6 +681,7 @@ public final class Context implements AutoCloseable {
         private Boolean allowIO;
         private Boolean allowHostClassLoading;
         private FileSystem customFileSystem;
+        private Handler customLogHandler;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -935,6 +937,18 @@ public final class Context implements AutoCloseable {
             return this;
         }
 
+        public Builder logHandler(final Handler logHandler) {
+            Objects.requireNonNull(logHandler, "Hanlder must be non null.");
+            this.customLogHandler = logHandler;
+            return this;
+        }
+
+        public Builder logOut(final OutputStream out) {
+            Objects.requireNonNull(out, "out must be non null.");
+            this.customLogHandler = new PolyglotStreamHandler(out);
+            return this;
+        }
+
         /**
          * Creates a new context instance from the configuration provided in the builder. The same
          * context builder can be used to create multiple context instances.
@@ -972,15 +986,19 @@ public final class Context implements AutoCloseable {
                 if (in != null) {
                     engineBuilder.in(in);
                 }
+                if (customLogHandler != null) {
+                    engineBuilder.logHandler(customLogHandler);
+                }
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
                 return engine.impl.createContext(null, null, null, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
-                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
+                                hostClassFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem, null);
             } else {
                 return engine.impl.createContext(out, err, in, allowHostAccess, allowNativeAccess, allowCreateThread, allowIO,
                                 allowHostClassLoading,
-                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem);
+                                hostClassFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments, onlyLanguages, customFileSystem,
+                                customLogHandler);
             }
         }
 

@@ -35,6 +35,7 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
+import java.util.logging.Handler;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -316,6 +317,8 @@ public abstract class Accessor {
         public abstract boolean isInstrumentExceptionsAreThrown(Object vmObject);
 
         public abstract Object asBoxedGuestValue(Object guestObject, Object vmObject);
+
+        public abstract Handler getPolyglotLogHandler();
 
     }
 

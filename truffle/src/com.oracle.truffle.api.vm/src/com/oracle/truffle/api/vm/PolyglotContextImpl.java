@@ -63,6 +63,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
+import java.util.logging.Handler;
 
 @SuppressWarnings("deprecation")
 final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -132,6 +133,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
     FileSystem fileSystem;  // effectively final
+    Handler logHandler;     // effectively final
 
     /* Constructor for testing. */
     private PolyglotContextImpl() {
@@ -158,12 +160,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     Map<String, String> options,
                     Map<String, String[]> applicationArguments,
                     Set<String> allowedPublicLanguages,
-                    FileSystem fileSystem) {
+                    FileSystem fileSystem,
+                    Handler logHandler) {
         super(engine.impl);
         this.parent = null;
         this.engine = engine;
         this.fileSystem = fileSystem;
-        patchInstance(out, err, in, hostAccessAllowed, nativeAccessAllowed, createThreadAllowed, hostClassLoadingAllowed, classFilter, applicationArguments, allowedPublicLanguages);
+        patchInstance(out, err, in, hostAccessAllowed, nativeAccessAllowed, createThreadAllowed, hostClassLoadingAllowed, classFilter, applicationArguments, allowedPublicLanguages, logHandler);
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         this.contexts = new PolyglotLanguageContext[languages.size() + 1];
         PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage, null, applicationArguments.get(PolyglotEngineImpl.HOST_LANGUAGE_ID),
@@ -1043,10 +1046,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     boolean patch(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
                     boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
-                    Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem) {
+                    Map<String, String> newOptions, Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, FileSystem newFileSystem, Handler newLogHandler) {
         CompilerAsserts.neverPartOfCompilation();
         patchInstance(newOut, newErr, newIn, newHostAccessAllowed, newNativeAccessAllowed, newCreateThreadAllowed, newHostClassLoadingAllowed, newClassFilter, newApplicationArguments,
-                        newAllowedPublicLanguages);
+                        newAllowedPublicLanguages, newLogHandler);
         ((FileSystems.PreInitializeContextFileSystem) fileSystem).patchDelegate(newFileSystem);
         final Map<String, Map<String, String>> optionsByLanguage = new HashMap<>();
         for (String optionKey : newOptions.keySet()) {
@@ -1075,7 +1078,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     private void patchInstance(OutputStream newOut, OutputStream newErr, InputStream newIn, boolean newHostAccessAllowed,
                     boolean newNativeAccessAllowed, boolean newCreateThreadAllowed, boolean newHostClassLoadingAllowed, Predicate<String> newClassFilter,
-                    Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages) {
+                    Map<String, String[]> newApplicationArguments, Set<String> newAllowedPublicLanguages, Handler newLogHandler) {
         this.hostAccessAllowed = newHostAccessAllowed;
         this.nativeAccessAllowed = newNativeAccessAllowed;
         this.createThreadAllowed = newCreateThreadAllowed;
@@ -1095,6 +1098,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         this.in = newIn == null ? engine.in : newIn;
         this.allowedPublicLanguages = newAllowedPublicLanguages;
+        this.logHandler = newLogHandler == null ? engine.logHandler : newLogHandler;
     }
 
     private PolyglotLanguage findLanguageForOption(final String optionKey) {
@@ -1132,7 +1136,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         Collections.emptyMap(),
                         Collections.emptyMap(),
                         engine.getLanguages().keySet(),
-                        fs);
+                        fs,
+                        null);  // Todo: Shouldn't we have a log handler for pre-initialization?
         final String optionValue = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
         if (optionValue != null && !optionValue.isEmpty()) {
             final Set<String> languagesToPreinitialize = new HashSet<>();

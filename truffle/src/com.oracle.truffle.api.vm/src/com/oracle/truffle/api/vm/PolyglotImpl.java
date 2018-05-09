@@ -73,6 +73,10 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.vm.HostLanguage.HostContext;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.api.vm.PolyglotLanguageContext.ToGuestValuesNode;
+import java.util.logging.Handler;
+import java.util.logging.LogManager;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 import org.graalvm.polyglot.io.FileSystem;
 
 /*
@@ -153,7 +157,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
-                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine) {
+                    long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean boundEngine, Handler logHandler) {
         ensureInitialized();
         if (TruffleOptions.AOT) {
             VMAccessor.SPI.initializeNativeImageTruffleLocator();
@@ -168,14 +172,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         PolyglotEngineImpl impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;
         if (impl != null) {
-            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine)) {
+            if (!impl.patch(dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties, contextClassLoader, boundEngine, logHandler)) {
                 impl.ensureClosed(false, true);
                 impl = null;
             }
         }
         if (impl == null) {
             impl = new PolyglotEngineImpl(this, dispatchOut, dispatchErr, resolvedIn, arguments, timeout, timeoutUnit, sandbox, useSystemProperties,
-                            contextClassLoader, boundEngine);
+                            contextClassLoader, boundEngine, logHandler);
         }
         Engine engine = getAPIAccess().newEngine(impl);
         impl.creatorApi = engine;
@@ -928,6 +932,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         @Override
         public boolean isInstrumentExceptionsAreThrown(Object vmObject) {
             return getEngine(vmObject).engineOptionValues.get(PolyglotEngineOptions.InstrumentExceptionsAreThrown);
+        }
+
+        @Override
+        public Handler getPolyglotLogHandler() {
+            return PolyglotLogHandler.INSTANCE;
         }
     }
 }
