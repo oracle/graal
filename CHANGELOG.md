@@ -16,7 +16,7 @@ New polyglot builtins:
 
 Improvements:
 
-* Unified representation of pointers to native memory and polyglot values.
+* Support polyglot values in all pointer operations.
 
 # Version 1.0.0 RC1
 
