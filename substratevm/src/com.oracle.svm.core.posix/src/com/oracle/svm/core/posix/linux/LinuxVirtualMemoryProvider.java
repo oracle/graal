@@ -34,9 +34,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.posix.PosixVirtualMemory;
+import com.oracle.svm.core.posix.PosixVirtualMemoryProvider;
 
-public class LinuxVirtualMemory extends PosixVirtualMemory {
+public class LinuxVirtualMemoryProvider extends PosixVirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {

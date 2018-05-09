@@ -34,7 +34,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 public class PosixIsolates {
     public static final String IMAGE_HEAP_BEGIN_SYMBOL_NAME = "__svm_heap_begin";
@@ -64,7 +64,7 @@ public class PosixIsolates {
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
-        int result = VirtualMemoryProvider.get().initialize(isolatePointer, parameters);
+        int result = CommittedMemoryProvider.get().initialize(isolatePointer, parameters);
         if (result == PosixCEntryPointErrors.NO_ERROR && checkSanity(isolatePointer.read()) != PosixCEntryPointErrors.NO_ERROR) {
             result = PosixCEntryPointErrors.UNSPECIFIED;
             isolatePointer.write(WordFactory.nullPointer());
@@ -82,6 +82,6 @@ public class PosixIsolates {
 
     @Uninterruptible(reason = "Tear-down in progress.")
     public static int tearDownCurrent() {
-        return VirtualMemoryProvider.get().tearDown();
+        return CommittedMemoryProvider.get().tearDown();
     }
 }

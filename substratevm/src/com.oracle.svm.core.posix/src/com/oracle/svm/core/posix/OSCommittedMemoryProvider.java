@@ -42,24 +42,24 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.VirtualMemory;
-import com.oracle.svm.core.os.VirtualMemory.Access;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
-class OSVirtualMemoryProviderFeature implements Feature {
+class OSCommittedMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
-            ImageSingletons.add(VirtualMemoryProvider.class, new OSVirtualMemoryProvider());
+        if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
+            ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
         }
     }
 }
 
-public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
+public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Still being initialized.")
@@ -72,17 +72,17 @@ public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
         Word begin = PosixIsolates.IMAGE_HEAP_BEGIN.get();
         Word size = PosixIsolates.IMAGE_HEAP_END.get().subtract(begin);
 
-        Pointer heap = VirtualMemory.get().commit(nullPointer(), size, Access.READ | Access.WRITE);
+        Pointer heap = VirtualMemoryProvider.get().commit(nullPointer(), size, Access.READ | Access.WRITE);
         if (heap.isNull()) {
             return PosixCEntryPointErrors.MAP_HEAP_FAILED;
         }
 
         LibC.memcpy(heap, begin, size);
 
-        UnsignedWord pageSize = getPageSize();
+        UnsignedWord pageSize = getGranularity();
         UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(begin), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemory.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
+            if (VirtualMemoryProvider.get().protect(heap, writableBeginPageOffset, Access.READ) != 0) {
                 return PosixCEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
@@ -90,7 +90,7 @@ public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
         if (writableEndPageOffset.belowThan(size)) {
             Pointer afterWritableBoundary = heap.add(writableEndPageOffset);
             Word afterWritableSize = size.subtract(writableEndPageOffset);
-            if (VirtualMemory.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
+            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
                 return PosixCEntryPointErrors.PROTECT_HEAP_FAILED;
             }
         }
@@ -108,34 +108,29 @@ public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
 
         PointerBase heapBase = PosixIsolates.getHeapBase(CEntryPointContext.getCurrentIsolate());
         Word size = PosixIsolates.IMAGE_HEAP_END.get().subtract(PosixIsolates.IMAGE_HEAP_BEGIN.get());
-        if (VirtualMemory.get().free(heapBase, size) != 0) {
+        if (VirtualMemoryProvider.get().free(heapBase, size) != 0) {
             return PosixCEntryPointErrors.MAP_HEAP_FAILED;
         }
         return PosixCEntryPointErrors.NO_ERROR;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord queryPageSize() {
-        return VirtualMemory.get().getGranularity();
-    }
-
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public UnsignedWord getPageSize() {
-        return queryPageSize();
+    public UnsignedWord getGranularity() {
+        return VirtualMemoryProvider.get().getGranularity();
     }
 
     @Override
     public Pointer allocateVirtualMemory(UnsignedWord size, boolean executable) {
         trackVirtualMemory(size);
         int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
-        return VirtualMemory.get().commit(nullPointer(), size, access);
+        return VirtualMemoryProvider.get().commit(nullPointer(), size, access);
     }
 
     @Override
     public boolean freeVirtualMemory(PointerBase start, UnsignedWord size) {
         untrackVirtualMemory(size);
-        return (VirtualMemory.get().free(start, size) == 0);
+        return (VirtualMemoryProvider.get().free(start, size) == 0);
     }
 
     /**
@@ -151,7 +146,7 @@ public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
         // (3) Clean up any over-allocated prefix and suffix pages.
 
         // All communication with mmap and munmap happen in terms of page_sized objects.
-        final UnsignedWord pageSize = getPageSize();
+        final UnsignedWord pageSize = getGranularity();
         // (1) Reserve a container that is large enough for the requested size *and* the alignment.
         // - The container occupies the open-right interval [containerStart .. containerEnd).
         // - This will be too big, but I'll give back the extra later.
@@ -212,7 +207,7 @@ public class OSVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     public boolean freeVirtualMemoryAligned(PointerBase start, UnsignedWord size, UnsignedWord alignment) {
-        final UnsignedWord pageSize = getPageSize();
+        final UnsignedWord pageSize = getGranularity();
         // Re-discover the paged-aligned ends of the memory region.
         final Pointer end = ((Pointer) start).add(size);
         final Pointer pagedStart = PointerUtils.roundDown(start, pageSize);

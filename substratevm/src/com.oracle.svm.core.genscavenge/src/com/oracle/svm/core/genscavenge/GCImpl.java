@@ -62,7 +62,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.SunMiscSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMOperation;
@@ -284,7 +284,7 @@ public class GCImpl implements GC {
                 HeapImpl.getHeapImpl().verifyBeforeGC(cause, getCollectionEpoch());
             }
 
-            VirtualMemoryProvider.get().beforeGarbageCollection();
+            CommittedMemoryProvider.get().beforeGarbageCollection();
 
             getAccounting().beforeCollection();
 
@@ -305,7 +305,7 @@ public class GCImpl implements GC {
                 }
             }
 
-            VirtualMemoryProvider.get().afterGarbageCollection(completeCollection);
+            CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
         }
 
         getAccounting().afterCollection(completeCollection, collectionTimer);

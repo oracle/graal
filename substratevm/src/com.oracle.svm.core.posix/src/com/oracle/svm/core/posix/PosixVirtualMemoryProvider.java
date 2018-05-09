@@ -54,21 +54,21 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.os.VirtualMemory;
-import com.oracle.svm.core.posix.linux.LinuxVirtualMemory;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.posix.linux.LinuxVirtualMemoryProvider;
 
 @AutomaticFeature
-class PosixVirtualMemoryPrimitivesFeature implements Feature {
+class PosixVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(VirtualMemory.class)) {
-            VirtualMemory provider = Platform.includedIn(LINUX.class) ? new LinuxVirtualMemory() : new PosixVirtualMemory();
-            ImageSingletons.add(VirtualMemory.class, provider);
+        if (!ImageSingletons.contains(VirtualMemoryProvider.class)) {
+            VirtualMemoryProvider provider = Platform.includedIn(LINUX.class) ? new LinuxVirtualMemoryProvider() : new PosixVirtualMemoryProvider();
+            ImageSingletons.add(VirtualMemoryProvider.class, provider);
         }
     }
 }
 
-public class PosixVirtualMemory implements VirtualMemory {
+public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     protected static final int NO_FD = -1;
     protected static final int NO_FD_OFFSET = 0;
 
