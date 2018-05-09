@@ -348,6 +348,19 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @Alias//
     private final ConcurrentMap<Locale, LocaleResources> localeResourcesMap = new ConcurrentHashMap<>();
+
+    @Alias static Boolean isNonENSupported;
+
+    @Substitute
+    private static boolean isNonENLangSupported() {
+        /*
+         * The original implementation performs lazily initialization that looks at the file system
+         * (a certain .jar file being present). That cannot work in a native image, and even worse
+         * it makes file access methods reachable in very basic images.
+         */
+        VMError.guarantee(isNonENSupported != null, "isNonENSupported must be initialized during image generation");
+        return isNonENSupported;
+    }
 }
 
 final class Util_java_text_BreakIterator {
