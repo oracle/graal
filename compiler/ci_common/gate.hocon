@@ -2,6 +2,9 @@ gateCmdSuffix : ["-v", "--kill-with-sigquit", "gate", "--strict-mode", "--extra-
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 gateCmdLenient : ["mx"] ${gateCmdSuffix}
 
+graalWeekly: ${graal-weekly-notifications} {
+  targets: ["weekly"]
+}
 gateTest : {
   environment : {
     EXTRA_VM_ARGS : ""
