@@ -105,7 +105,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
             if (predicate == null || canRunAt(context.getInstrumentedSourceSection())) {
                 return new InlineScriptNode(context);
             } else {
-                return null;
+                return new DummyNode();
             }
         }
 
@@ -176,6 +176,10 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
                 resultVerifier.verify(result);
             }
         }
+
+        private class DummyNode extends ExecutionEventNode {
+            // dummy node placed where we can not run the inline script
+        }
     }
 
     private static class RootFrameChecker implements ExecutionEventListener {
@@ -187,7 +191,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
 
         @TruffleBoundary
         private void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
-            if (!hasParentRootTag(context.getInstrumentedNode())) {
+            Node node = context.getInstrumentedNode();
+            if (!hasParentRootTag(node) &&
+                            node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 // Top-most nodes tagged with RootTag should have clean frames.
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
                 for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
