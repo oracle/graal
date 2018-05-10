@@ -47,7 +47,7 @@ public class InvalidSyntaxTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> createInvalidSyntaxTests() {
-        context = new TestContext();
+        context = new TestContext(InvalidSyntaxTest.class);
         final Collection<Object[]> result = new ArrayList<>();
         for (String language : TestUtil.getRequiredLanguages(context)) {
             for (Source src : context.getInstalledProviders().get(language).createInvalidSyntaxScripts(context.getContext())) {
