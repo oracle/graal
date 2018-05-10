@@ -1236,6 +1236,36 @@ suite = {
       "testProject" : True,
     },
 
+    # ------------- JDK AOT -------------
+
+    "jdk.tools.jaotc" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JVMCI_HOTSPOT",
+        "jdk.tools.jaotc.binformat",
+        "org.graalvm.compiler.asm.amd64",
+        "org.graalvm.compiler.hotspot",
+      ],
+
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,HotSpot",
+    },
+    
+    "jdk.tools.jaotc.binformat" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JVMCI_HOTSPOT",
+        "org.graalvm.compiler.hotspot",
+      ],
+
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,HotSpot",
+    },
+    
     # ------------- GraalTruffle -------------
 
     "org.graalvm.compiler.truffle.common" : {
