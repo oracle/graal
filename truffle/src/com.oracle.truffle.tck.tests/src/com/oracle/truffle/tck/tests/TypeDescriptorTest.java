@@ -281,6 +281,9 @@ public class TypeDescriptorTest {
         final TypeDescriptor exeAnyNumNum = TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER, TypeDescriptor.NUMBER);
         Assert.assertTrue(exeAnyNum.isAssignable(exeStrictAnyAny));
         Assert.assertFalse(exeAnyNumNum.isAssignable(exeStrictAnyAny));
+
+        final TypeDescriptor exeStrictAny = TypeDescriptor.executable(TypeDescriptor.ANY, false);
+        Assert.assertFalse(exeAnyNum.isAssignable(exeStrictAny));
     }
 
     @Test
