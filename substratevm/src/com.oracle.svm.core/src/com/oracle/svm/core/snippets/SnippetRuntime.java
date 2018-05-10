@@ -456,13 +456,6 @@ public class SnippetRuntime {
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
-    public static void reportUnhandledExceptionJava(Throwable exception) {
-        // Checkstyle: stop (printStackTrace below is going to write to System.err too)
-        System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
-        // Checkstyle: resume
-        exception.printStackTrace();
-    }
-
     /** Foreign call: {@link #REGISTER_FINALIZER}. */
     @SubstrateForeignCallTarget
     private static void registerFinalizer(@SuppressWarnings("unused") Object obj) {
