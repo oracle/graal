@@ -175,7 +175,8 @@ final class TRegexCompilationRequest {
         return !(properties.hasBackReferences() ||
                         properties.hasLargeCountedRepetitions() ||
                         properties.hasNegativeLookAheadAssertions() ||
-                        properties.hasComplexLookBehindAssertions());
+                        properties.hasComplexLookBehindAssertions() ||
+                        properties.hasNegativeLookBehindAssertions());
     }
 
     private void createAST() throws RegexSyntaxException {

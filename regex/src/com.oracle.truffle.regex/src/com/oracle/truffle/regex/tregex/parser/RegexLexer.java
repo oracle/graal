@@ -330,11 +330,13 @@ public final class RegexLexer {
 
     private Token parseGroupBegin() throws RegexSyntaxException {
         if (consumingLookahead("?=")) {
-            return Token.create(Token.Kind.lookAheadAssertionBegin);
+            return Token.createLookAheadAssertionBegin(false);
         } else if (consumingLookahead("?!")) {
-            return Token.create(Token.Kind.negativeLookAheadAssertionBegin);
+            return Token.createLookAheadAssertionBegin(true);
         } else if (consumingLookahead("?<=")) {
-            return Token.create(Token.Kind.lookBehindAssertionBegin);
+            return Token.createLookBehindAssertionBegin(false);
+        } else if (consumingLookahead("?<!")) {
+            return Token.createLookBehindAssertionBegin(true);
         } else if (consumingLookahead("?:")) {
             return Token.create(Token.Kind.nonCaptureGroupBegin);
         } else if (consumingLookahead("?<")) {

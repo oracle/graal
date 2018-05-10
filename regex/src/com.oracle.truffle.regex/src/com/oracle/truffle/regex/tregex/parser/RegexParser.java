@@ -251,8 +251,8 @@ public final class RegexParser {
         curTerm = term;
     }
 
-    private void addLookBehindAssertion(Token token) {
-        LookBehindAssertion lookBehind = ast.createLookBehindAssertion();
+    private void addLookBehindAssertion(Token token, boolean negate) {
+        LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
         addTerm(lookBehind);
         createGroup(token, false, false, lookBehind);
     }
@@ -517,13 +517,10 @@ public final class RegexParser {
                     createGroup(token);
                     break;
                 case lookAheadAssertionBegin:
-                    addLookAheadAssertion(token, false);
+                    addLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
                     break;
                 case lookBehindAssertionBegin:
-                    addLookBehindAssertion(token);
-                    break;
-                case negativeLookAheadAssertionBegin:
-                    addLookAheadAssertion(token, true);
+                    addLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
                     break;
                 case groupEnd:
                     popGroup(token);
@@ -651,7 +648,6 @@ public final class RegexParser {
                     break;
                 case lookAheadAssertionBegin:
                 case lookBehindAssertionBegin:
-                case negativeLookAheadAssertionBegin:
                     syntaxStack.add(RegexStackElem.LookAroundAssertion);
                     curTermState = CurTermState.Null;
                     break;

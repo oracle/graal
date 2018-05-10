@@ -49,6 +49,14 @@ public class Token implements JsonConvertible {
         return new CharacterClass(codePointSet);
     }
 
+    public static Token createLookAheadAssertionBegin(boolean negated) {
+        return new LookAheadAssertionBegin(negated);
+    }
+
+    public static Token createLookBehindAssertionBegin(boolean negated) {
+        return new LookBehindAssertionBegin(negated);
+    }
+
     public enum Kind {
         caret,
         dollar,
@@ -61,7 +69,6 @@ public class Token implements JsonConvertible {
         nonCaptureGroupBegin,
         lookAheadAssertionBegin,
         lookBehindAssertionBegin,
-        negativeLookAheadAssertionBegin,
         groupEnd,
         charClass
     }
@@ -169,6 +176,34 @@ public class Token implements JsonConvertible {
 
         public int getGroupNr() {
             return groupNr;
+        }
+    }
+
+    public static class LookAroundAssertionBegin extends Token {
+
+        private final boolean negated;
+
+        protected LookAroundAssertionBegin(Token.Kind kind, boolean negated) {
+            super(kind);
+            this.negated = negated;
+        }
+
+        public boolean isNegated() {
+            return negated;
+        }
+    }
+
+    public static final class LookAheadAssertionBegin extends LookAroundAssertionBegin {
+
+        public LookAheadAssertionBegin(boolean negated) {
+            super(Token.Kind.lookAheadAssertionBegin, negated);
+        }
+    }
+
+    public static final class LookBehindAssertionBegin extends LookAroundAssertionBegin {
+
+        public LookBehindAssertionBegin(boolean negated) {
+            super(Token.Kind.lookBehindAssertionBegin, negated);
         }
     }
 }

@@ -38,9 +38,10 @@ public class RegexProperties implements JsonConvertible {
     private boolean charClasses = false;
     private boolean lookAheadAssertions = false;
     private boolean complexLookAheadAssertions = false;
+    private boolean negativeLookAheadAssertions = false;
     private boolean lookBehindAssertions = false;
     private boolean complexLookBehindAssertions = false;
-    private boolean negativeLookAheadAssertions = false;
+    private boolean negativeLookBehindAssertions = false;
     private boolean loops = false;
     private boolean largeCountedRepetitions = false;
 
@@ -96,6 +97,14 @@ public class RegexProperties implements JsonConvertible {
         complexLookAheadAssertions = true;
     }
 
+    public boolean hasNegativeLookAheadAssertions() {
+        return negativeLookAheadAssertions;
+    }
+
+    public void setNegativeLookAheadAssertions() {
+        negativeLookAheadAssertions = true;
+    }
+
     public boolean hasLookBehindAssertions() {
         return lookBehindAssertions;
     }
@@ -112,12 +121,12 @@ public class RegexProperties implements JsonConvertible {
         complexLookBehindAssertions = true;
     }
 
-    public boolean hasNegativeLookAheadAssertions() {
-        return negativeLookAheadAssertions;
+    public boolean hasNegativeLookBehindAssertions() {
+        return negativeLookBehindAssertions;
     }
 
-    public void setNegativeLookAheadAssertions() {
-        negativeLookAheadAssertions = true;
+    public void setNegativeLookBehindAssertions() {
+        negativeLookBehindAssertions = true;
     }
 
     public boolean hasLoops() {
@@ -145,9 +154,10 @@ public class RegexProperties implements JsonConvertible {
                         Json.prop("captureGroups", captureGroups),
                         Json.prop("lookAheadAssertions", lookAheadAssertions),
                         Json.prop("complexLookAheadAssertions", complexLookAheadAssertions),
+                        Json.prop("negativeLookAheadAssertions", negativeLookAheadAssertions),
                         Json.prop("lookBehindAssertions", lookBehindAssertions),
                         Json.prop("complexLookBehindAssertions", complexLookBehindAssertions),
-                        Json.prop("negativeLookAheadAssertions", negativeLookAheadAssertions),
+                        Json.prop("negativeLookBehindAssertions", negativeLookBehindAssertions),
                         Json.prop("loops", loops),
                         Json.prop("largeCountedRepetitions", largeCountedRepetitions));
     }
