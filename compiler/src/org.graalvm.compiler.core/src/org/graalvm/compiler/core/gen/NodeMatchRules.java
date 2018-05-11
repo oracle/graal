@@ -22,8 +22,6 @@
  */
 package org.graalvm.compiler.core.gen;
 
-import jdk.vm.ci.meta.Value;
-
 import org.graalvm.compiler.core.match.MatchableNode;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -61,6 +59,8 @@ import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
+
+import jdk.vm.ci.meta.Value;
 
 @MatchableNode(nodeClass = ConstantNode.class, shareable = true)
 @MatchableNode(nodeClass = FloatConvertNode.class, inputs = {"value"})

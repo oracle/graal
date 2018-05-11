@@ -20,26 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.verifier;
+package org.graalvm.compiler.replacements.processor;
+
+import static org.graalvm.compiler.replacements.processor.NodeIntrinsicHandler.CONSTANT_NODE_PARAMETER_CLASS_NAME;
+import static org.graalvm.compiler.replacements.processor.NodeIntrinsicHandler.INJECTED_NODE_PARAMETER_CLASS_NAME;
+import static org.graalvm.compiler.replacements.processor.NodeIntrinsicHandler.VALUE_NODE_CLASS_NAME;
 
 import java.io.PrintWriter;
-import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Set;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.InjectedNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.processor.AbstractProcessor;
 
 /**
- * Create graph builder plugins for {@link NodeIntrinsic} methods.
+ * Create graph builder plugins for {@code NodeIntrinsic} methods.
  */
 public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
 
@@ -51,20 +52,16 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     }
 
     @Override
-    protected Class<? extends Annotation> getAnnotationClass() {
-        return NodeIntrinsic.class;
-    }
-
-    private static TypeMirror valueNodeType(ProcessingEnvironment env) {
-        return env.getElementUtils().getTypeElement("org.graalvm.compiler.nodes.ValueNode").asType();
+    protected TypeElement getAnnotationClass(AbstractProcessor processor) {
+        return processor.getTypeElement(NodeIntrinsicHandler.NODE_INTRINSIC_CLASS_NAME);
     }
 
     protected abstract List<? extends VariableElement> getParameters();
 
-    protected abstract void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount);
+    protected abstract void factoryCall(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps, int argCount);
 
     @Override
-    protected InjectedDependencies createExecute(ProcessingEnvironment env, PrintWriter out) {
+    protected InjectedDependencies createExecute(AbstractProcessor processor, PrintWriter out) {
         InjectedDependencies deps = new InjectedDependencies();
 
         List<? extends VariableElement> params = getParameters();
@@ -72,18 +69,18 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
         int idx = 0;
         for (; idx < params.size(); idx++) {
             VariableElement param = params.get(idx);
-            if (param.getAnnotation(InjectedNodeParameter.class) == null) {
+            if (processor.getAnnotation(param, processor.getType(INJECTED_NODE_PARAMETER_CLASS_NAME)) == null) {
                 break;
             }
 
-            out.printf("            %s arg%d = %s;\n", param.asType(), idx, deps.use(env, (DeclaredType) param.asType()));
+            out.printf("            %s arg%d = %s;\n", param.asType(), idx, deps.use(processor, (DeclaredType) param.asType()));
         }
 
         for (int i = 0; i < signature.length; i++, idx++) {
-            if (intrinsicMethod.getParameters().get(i).getAnnotation(ConstantNodeParameter.class) != null) {
-                constantArgument(env, out, deps, idx, signature[i], i);
+            if (processor.getAnnotation(intrinsicMethod.getParameters().get(i), processor.getType(CONSTANT_NODE_PARAMETER_CLASS_NAME)) != null) {
+                constantArgument(processor, out, deps, idx, signature[i], i);
             } else {
-                if (signature[i].equals(valueNodeType(env))) {
+                if (signature[i].equals(processor.getType(VALUE_NODE_CLASS_NAME))) {
                     out.printf("            ValueNode arg%d = args[%d];\n", idx, i);
                 } else {
                     out.printf("            %s arg%d = (%s) args[%d];\n", signature[i], idx, signature[i], i);
@@ -91,7 +88,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
             }
         }
 
-        factoryCall(env, out, deps, idx);
+        factoryCall(processor, out, deps, idx);
 
         return deps;
     }
@@ -118,7 +115,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
         }
 
         @Override
-        protected void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount) {
+        protected void factoryCall(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps, int argCount) {
             out.printf("            %s node = new %s(", constructor.getEnclosingElement(), constructor.getEnclosingElement());
             if (argCount > 0) {
                 out.printf("arg0");
@@ -158,7 +155,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
         }
 
         @Override
-        protected void factoryCall(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argCount) {
+        protected void factoryCall(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps, int argCount) {
             out.printf("            return %s.%s(b, targetMethod", customFactory.getEnclosingElement(), customFactory.getSimpleName());
             for (int i = 0; i < argCount; i++) {
                 out.printf(", arg%d", i);

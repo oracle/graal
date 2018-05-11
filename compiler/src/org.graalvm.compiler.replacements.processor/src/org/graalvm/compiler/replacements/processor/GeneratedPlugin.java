@@ -20,13 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.verifier;
+package org.graalvm.compiler.replacements.processor;
 
 import java.io.PrintWriter;
-import java.lang.annotation.Annotation;
 import java.util.Set;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -37,8 +35,9 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 
-import org.graalvm.compiler.replacements.verifier.InjectedDependencies.Dependency;
-import org.graalvm.compiler.replacements.verifier.InjectedDependencies.WellKnownDependency;
+import org.graalvm.compiler.processor.AbstractProcessor;
+import org.graalvm.compiler.replacements.processor.InjectedDependencies.Dependency;
+import org.graalvm.compiler.replacements.processor.InjectedDependencies.WellKnownDependency;
 
 public abstract class GeneratedPlugin {
 
@@ -53,7 +52,7 @@ public abstract class GeneratedPlugin {
         this.pluginName = intrinsicMethod.getEnclosingElement().getSimpleName() + "_" + intrinsicMethod.getSimpleName();
     }
 
-    protected abstract Class<? extends Annotation> getAnnotationClass();
+    protected abstract TypeElement getAnnotationClass(AbstractProcessor processor);
 
     public String getPluginName() {
         return pluginName;
@@ -63,7 +62,7 @@ public abstract class GeneratedPlugin {
         this.pluginName = pluginName;
     }
 
-    public void generate(ProcessingEnvironment env, PrintWriter out) {
+    public void generate(AbstractProcessor processor, PrintWriter out) {
         out.printf("    //        class: %s\n", intrinsicMethod.getEnclosingElement());
         out.printf("    //       method: %s\n", intrinsicMethod);
         out.printf("    // generated-by: %s\n", getClass().getName());
@@ -71,14 +70,14 @@ public abstract class GeneratedPlugin {
         out.printf("\n");
         out.printf("        @Override\n");
         out.printf("        public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {\n");
-        InjectedDependencies deps = createExecute(env, out);
+        InjectedDependencies deps = createExecute(processor, out);
         out.printf("        }\n");
         out.printf("        @Override\n");
         out.printf("        public Class<? extends Annotation> getSource() {\n");
-        out.printf("            return %s.class;\n", getAnnotationClass().getName().replace('$', '.'));
+        out.printf("            return %s.class;\n", getAnnotationClass(processor).getQualifiedName().toString().replace('$', '.'));
         out.printf("        }\n");
 
-        createPrivateMembers(out, deps);
+        createPrivateMembers(processor, out, deps);
 
         out.printf("    }\n");
     }
@@ -100,11 +99,7 @@ public abstract class GeneratedPlugin {
 
     public abstract void extraImports(Set<String> imports);
 
-    protected abstract InjectedDependencies createExecute(ProcessingEnvironment env, PrintWriter out);
-
-    private static TypeMirror resolvedJavaTypeType(ProcessingEnvironment env) {
-        return env.getElementUtils().getTypeElement("jdk.vm.ci.meta.ResolvedJavaType").asType();
-    }
+    protected abstract InjectedDependencies createExecute(AbstractProcessor processor, PrintWriter out);
 
     static String getErasedType(TypeMirror type) {
         switch (type.getKind()) {
@@ -160,7 +155,7 @@ public abstract class GeneratedPlugin {
         }
     }
 
-    private void createPrivateMembers(PrintWriter out, InjectedDependencies deps) {
+    private void createPrivateMembers(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps) {
         if (!deps.isEmpty()) {
             out.printf("\n");
             for (Dependency dep : deps) {
@@ -170,7 +165,7 @@ public abstract class GeneratedPlugin {
             out.printf("\n");
             out.printf("        private %s(InjectionProvider injection) {\n", pluginName);
             for (Dependency dep : deps) {
-                out.printf("            this.%s = %s;\n", dep.name, dep.inject(intrinsicMethod));
+                out.printf("            this.%s = %s;\n", dep.name, dep.inject(processor, intrinsicMethod));
             }
             out.printf("        }\n");
 
@@ -203,13 +198,13 @@ public abstract class GeneratedPlugin {
         }
     }
 
-    protected static void constantArgument(ProcessingEnvironment env, PrintWriter out, InjectedDependencies deps, int argIdx, TypeMirror type, int nodeIdx) {
+    protected static void constantArgument(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps, int argIdx, TypeMirror type, int nodeIdx) {
         if (hasRawtypeWarning(type)) {
             out.printf("            @SuppressWarnings({\"rawtypes\"})\n");
         }
         out.printf("            %s arg%d;\n", getErasedType(type), argIdx);
         out.printf("            if (args[%d].isConstant()) {\n", nodeIdx);
-        if (type.equals(resolvedJavaTypeType(env))) {
+        if (type.equals(processor.getType("jdk.vm.ci.meta.ResolvedJavaType"))) {
             out.printf("                arg%d = %s.asJavaType(args[%d].asConstant());\n", argIdx, deps.use(WellKnownDependency.CONSTANT_REFLECTION), nodeIdx);
         } else {
             switch (type.getKind()) {

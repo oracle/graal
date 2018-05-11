@@ -20,16 +20,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.verifier;
+package org.graalvm.compiler.replacements.processor;
 
-import java.lang.annotation.Annotation;
+import static org.graalvm.compiler.processor.AbstractProcessor.getAnnotationValue;
+import static org.graalvm.compiler.processor.AbstractProcessor.getSimpleName;
+import static org.graalvm.compiler.replacements.processor.ClassSubstitutionHandler.CLASS_SUBSTITUTION_CLASS_NAME;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.Messager;
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -42,10 +44,14 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.processor.AbstractProcessor;
 
-public final class MethodSubstitutionVerifier extends AbstractVerifier {
+/**
+ * Handler for the {@value #METHOD_SUBSTITUTION_CLASS_NAME} annotation.
+ */
+public final class MethodSubstitutionHandler extends AnnotationHandler {
+
+    private static final String METHOD_SUBSTITUTION_CLASS_NAME = "org.graalvm.compiler.api.replacements.MethodSubstitution";
 
     private static final boolean DEBUG = false;
 
@@ -56,18 +62,13 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
     private static final String ORIGINAL_METHOD_NAME_DEFAULT = "";
     private static final String ORIGINAL_SIGNATURE_DEFAULT = "";
 
-    public MethodSubstitutionVerifier(ProcessingEnvironment env) {
-        super(env);
-    }
-
-    @Override
-    public Class<? extends Annotation> getAnnotationClass() {
-        return MethodSubstitution.class;
+    public MethodSubstitutionHandler(AbstractProcessor processor) {
+        super(processor, METHOD_SUBSTITUTION_CLASS_NAME);
     }
 
     @SuppressWarnings("unused")
     @Override
-    public void verify(Element element, AnnotationMirror annotation, PluginGenerator generator) {
+    public void process(Element element, AnnotationMirror annotation, PluginGenerator generator) {
         if (element.getKind() != ElementKind.METHOD) {
             assert false : "Element is guaranteed to be a method.";
             return;
@@ -76,59 +77,60 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         TypeElement substitutionType = findEnclosingClass(substitutionMethod);
         assert substitutionType != null;
 
-        AnnotationMirror substitutionClassAnnotation = VerifierAnnotationProcessor.findAnnotationMirror(env, substitutionType.getAnnotationMirrors(), ClassSubstitution.class);
+        Messager messager = processor.env().getMessager();
+        AnnotationMirror substitutionClassAnnotation = processor.getAnnotation(substitutionType, processor.getType(CLASS_SUBSTITUTION_CLASS_NAME));
         if (substitutionClassAnnotation == null) {
-            env.getMessager().printMessage(Kind.ERROR, String.format("A @%s annotation is required on the enclosing class.", ClassSubstitution.class.getSimpleName()), element, annotation);
+            messager.printMessage(Kind.ERROR, String.format("A @%s annotation is required on the enclosing class.", getSimpleName(CLASS_SUBSTITUTION_CLASS_NAME)), element, annotation);
             return;
         }
-        boolean optional = resolveAnnotationValue(Boolean.class, findAnnotationValue(substitutionClassAnnotation, "optional"));
+        boolean optional = getAnnotationValue(substitutionClassAnnotation, "optional", Boolean.class);
         if (optional) {
             return;
         }
 
-        TypeElement originalType = ClassSubstitutionVerifier.resolveOriginalType(env, substitutionType, substitutionClassAnnotation);
+        TypeElement originalType = ClassSubstitutionHandler.resolveOriginalType(processor, substitutionType, substitutionClassAnnotation);
         if (originalType == null) {
-            env.getMessager().printMessage(Kind.ERROR, String.format("The @%s annotation is invalid on the enclosing class.", ClassSubstitution.class.getSimpleName()), element, annotation);
+            messager.printMessage(Kind.ERROR, String.format("The @%s annotation is invalid on the enclosing class.", getSimpleName(CLASS_SUBSTITUTION_CLASS_NAME)), element, annotation);
             return;
         }
 
         if (!substitutionMethod.getModifiers().contains(Modifier.STATIC)) {
-            env.getMessager().printMessage(Kind.ERROR, String.format("A @%s method must be static.", MethodSubstitution.class.getSimpleName()), element, annotation);
+            messager.printMessage(Kind.ERROR, String.format("A @%s method must be static.", getSimpleName(METHOD_SUBSTITUTION_CLASS_NAME)), element, annotation);
         }
 
         if (substitutionMethod.getModifiers().contains(Modifier.ABSTRACT) || substitutionMethod.getModifiers().contains(Modifier.NATIVE)) {
-            env.getMessager().printMessage(Kind.ERROR, String.format("A @%s method must not be native or abstract.", MethodSubstitution.class.getSimpleName()), element, annotation);
+            messager.printMessage(Kind.ERROR, String.format("A @%s method must not be native or abstract.", getSimpleName(METHOD_SUBSTITUTION_CLASS_NAME)), element, annotation);
         }
 
         String originalName = originalName(substitutionMethod, annotation);
-        boolean isStatic = resolveAnnotationValue(Boolean.class, findAnnotationValue(annotation, ORIGINAL_IS_STATIC));
+        boolean isStatic = getAnnotationValue(annotation, ORIGINAL_IS_STATIC, Boolean.class);
         TypeMirror[] originalSignature = originalSignature(originalType, substitutionMethod, annotation, isStatic);
         if (originalSignature == null) {
             return;
         }
         ExecutableElement originalMethod = originalMethod(substitutionMethod, annotation, originalType, originalName, originalSignature, isStatic);
         if (DEBUG && originalMethod != null) {
-            env.getMessager().printMessage(Kind.NOTE, String.format("Found original method %s in type %s.", originalMethod, findEnclosingClass(originalMethod)));
+            messager.printMessage(Kind.NOTE, String.format("Found original method %s in type %s.", originalMethod, findEnclosingClass(originalMethod)));
         }
     }
 
     private TypeMirror[] originalSignature(TypeElement originalType, ExecutableElement method, AnnotationMirror annotation, boolean isStatic) {
-        AnnotationValue signatureValue = findAnnotationValue(annotation, ORIGINAL_SIGNATURE);
-        String signatureString = resolveAnnotationValue(String.class, signatureValue);
+        String signatureString = getAnnotationValue(annotation, ORIGINAL_SIGNATURE, String.class);
         List<TypeMirror> parameters = new ArrayList<>();
+        Messager messager = processor.env().getMessager();
         if (signatureString.equals(ORIGINAL_SIGNATURE_DEFAULT)) {
             for (int i = 0; i < method.getParameters().size(); i++) {
                 parameters.add(method.getParameters().get(i).asType());
             }
             if (!isStatic) {
                 if (parameters.isEmpty()) {
-                    env.getMessager().printMessage(Kind.ERROR, "Method signature must be a static method with the 'this' object as its first parameter", method, annotation);
+                    messager.printMessage(Kind.ERROR, "Method signature must be a static method with the 'this' object as its first parameter", method, annotation);
                     return null;
                 } else {
                     TypeMirror thisParam = parameters.remove(0);
                     if (!isSubtype(originalType.asType(), thisParam)) {
                         Name thisName = method.getParameters().get(0).getSimpleName();
-                        env.getMessager().printMessage(Kind.ERROR, String.format("The type of %s must assignable from %s", thisName, originalType), method, annotation);
+                        messager.printMessage(Kind.ERROR, String.format("The type of %s must assignable from %s", thisName, originalType), method, annotation);
                     }
                 }
             }
@@ -136,17 +138,16 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         } else {
             try {
                 APHotSpotSignature signature = new APHotSpotSignature(signatureString);
-                parameters.add(signature.getReturnType(env));
+                parameters.add(signature.getReturnType(processor.env()));
                 for (int i = 0; i < signature.getParameterCount(false); i++) {
-                    parameters.add(signature.getParameterType(env, i));
+                    parameters.add(signature.getParameterType(processor.env(), i));
                 }
             } catch (Exception e) {
                 /*
                  * That's not good practice and should be changed after APHotSpotSignature has
                  * received a cleanup.
                  */
-                env.getMessager().printMessage(Kind.ERROR, String.format("Parsing the signature failed: %s", e.getMessage() != null ? e.getMessage() : e.toString()), method, annotation,
-                                signatureValue);
+                messager.printMessage(Kind.ERROR, String.format("Parsing the signature failed: %s", e.getMessage() != null ? e.getMessage() : e.toString()), method, annotation);
                 return null;
             }
         }
@@ -154,7 +155,7 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
     }
 
     private static String originalName(ExecutableElement substituteMethod, AnnotationMirror substitution) {
-        String originalMethodName = resolveAnnotationValue(String.class, findAnnotationValue(substitution, ORIGINAL_METHOD_NAME));
+        String originalMethodName = getAnnotationValue(substitution, ORIGINAL_METHOD_NAME, String.class);
         if (originalMethodName.equals(ORIGINAL_METHOD_NAME_DEFAULT)) {
             originalMethodName = substituteMethod.getSimpleName().toString();
         }
@@ -172,6 +173,7 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
             searchElements = ElementFilter.methodsIn(originalType.getEnclosedElements());
         }
 
+        Messager messager = processor.env().getMessager();
         ExecutableElement originalMethod = null;
         outer: for (ExecutableElement searchElement : searchElements) {
             if (searchElement.getSimpleName().toString().equals(originalName) && searchElement.getParameters().size() == signatureParameters.length) {
@@ -186,24 +188,25 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
             }
         }
         if (originalMethod == null) {
-            boolean optional = resolveAnnotationValue(Boolean.class, findAnnotationValue(substitutionAnnotation, "optional"));
+            boolean optional = getAnnotationValue(substitutionAnnotation, "optional", Boolean.class);
             if (!optional) {
-                env.getMessager().printMessage(Kind.ERROR, String.format("Could not find the original method with name '%s' and parameters '%s'.", originalName, Arrays.toString(signatureParameters)),
+                messager.printMessage(Kind.ERROR,
+                                String.format("Could not find the original method with name '%s' and parameters '%s'.", originalName, Arrays.toString(signatureParameters)),
                                 substitutionMethod, substitutionAnnotation);
             }
             return null;
         }
 
         if (originalMethod.getModifiers().contains(Modifier.STATIC) != isStatic) {
-            boolean optional = resolveAnnotationValue(Boolean.class, findAnnotationValue(substitutionAnnotation, "optional"));
+            boolean optional = getAnnotationValue(substitutionAnnotation, "optional", Boolean.class);
             if (!optional) {
-                env.getMessager().printMessage(Kind.ERROR, String.format("The %s element must be set to %s.", ORIGINAL_IS_STATIC, !isStatic), substitutionMethod, substitutionAnnotation);
+                messager.printMessage(Kind.ERROR, String.format("The %s element must be set to %s.", ORIGINAL_IS_STATIC, !isStatic), substitutionMethod, substitutionAnnotation);
             }
             return null;
         }
 
         if (!isTypeCompatible(originalMethod.getReturnType(), signatureReturnType)) {
-            env.getMessager().printMessage(
+            messager.printMessage(
                             Kind.ERROR,
                             String.format("The return type of the substitution method '%s' must match with the return type of the original method '%s'.", signatureReturnType,
                                             originalMethod.getReturnType()),
@@ -218,12 +221,12 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         TypeMirror original = originalType;
         TypeMirror substitution = substitutionType;
         if (needsErasure(original)) {
-            original = env.getTypeUtils().erasure(original);
+            original = processor.env().getTypeUtils().erasure(original);
         }
         if (needsErasure(substitution)) {
-            substitution = env.getTypeUtils().erasure(substitution);
+            substitution = processor.env().getTypeUtils().erasure(substitution);
         }
-        return env.getTypeUtils().isSameType(original, substitution);
+        return processor.env().getTypeUtils().isSameType(original, substitution);
     }
 
     /**
@@ -238,12 +241,12 @@ public final class MethodSubstitutionVerifier extends AbstractVerifier {
         TypeMirror t1Erased = t1;
         TypeMirror t2Erased = t2;
         if (needsErasure(t1Erased)) {
-            t1Erased = env.getTypeUtils().erasure(t1Erased);
+            t1Erased = processor.env().getTypeUtils().erasure(t1Erased);
         }
         if (needsErasure(t2Erased)) {
-            t2Erased = env.getTypeUtils().erasure(t2Erased);
+            t2Erased = processor.env().getTypeUtils().erasure(t2Erased);
         }
-        return env.getTypeUtils().isSubtype(t1Erased, t2Erased);
+        return processor.env().getTypeUtils().isSubtype(t1Erased, t2Erased);
     }
 
     private static boolean needsErasure(TypeMirror typeMirror) {
