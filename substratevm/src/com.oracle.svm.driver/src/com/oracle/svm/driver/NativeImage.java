@@ -204,6 +204,9 @@ class NativeImage {
         if (rootDirCandidate.endsWith(platform)) {
             rootDirCandidate = rootDirCandidate.getParent();
         }
+        if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
+            rootDirCandidate = rootDirCandidate.getParent().getParent();
+        }
         rootDir = rootDirCandidate;
         assert rootDir != null;
         String homeDirString = System.getProperty("user.home");

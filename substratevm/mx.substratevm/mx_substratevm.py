@@ -873,7 +873,13 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     short_name='svm',
     license_files=[],
     third_party_license_files=[],
-    support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],  # TODO needs support? or could be jars?
+    jar_distributions=['substratevm:LIBRARY_SUPPORT'],
+    builder_jar_distributions=[
+        'substratevm:SVM',
+        'substratevm:OBJECTFILE',
+        'substratevm:POINTSTO',
+    ],
+    support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk.LauncherConfig(
             destination="bin/native-image",
@@ -894,7 +900,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     dir_name='polyglot',
     license_files=[],
     third_party_license_files=[],
-    support_distributions=['substratevm:POLYGLOT_NATIVE_API_SUPPORT'],  # TODO only support? or could be jars?
+    jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
+    support_distributions=['substratevm:POLYGLOT_NATIVE_API_SUPPORT'],
     polyglot_lib_build_args=[
         "-H:Features=org.graalvm.polyglot.nativeapi.PolyglotNativeAPIFeature",
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=<path:POLYGLOT_NATIVE_API_HEADERS>",

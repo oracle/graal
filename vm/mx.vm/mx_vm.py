@@ -31,6 +31,7 @@ import os
 import pprint
 import json
 from abc import abstractmethod, ABCMeta
+from argparse import ArgumentParser
 from contextlib import contextmanager
 from os.path import relpath, join, dirname, basename, exists, isfile
 from collections import OrderedDict
@@ -147,6 +148,11 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, "<jdk_base>/jre/lib/<arch>/", "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/bin/<lib:trufflenfi>")
                 _add(layout, "<jdk_base>/jre/lib/<arch>/server/vm.properties", "string:name=GraalVM <version>")
 
+            # Add Polyglot launcher
+            if _polyglot_launcher_project():
+                _add(layout, "<jdk_base>/jre/bin/polyglot", "dependency:polyglot.launcher")
+                _add(layout, "<jdk_base>/bin/polyglot", "link:../jre/bin/polyglot")
+
             # Add Polyglot library
             lib_polyglot_project = get_lib_polyglot_project()
             if lib_polyglot_project:
@@ -203,6 +209,7 @@ GRAALVM_VERSION={version}""".format(
 
             _add(layout, '<jdk_base>/jre/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component)
             _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component)
+            _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component)
             _add(layout, _component_base, ['extracted-dependency:' + d for d in _component.support_distributions], _component)
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent):
                 _add(layout, '<jdk_base>/jre/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component)
@@ -266,7 +273,13 @@ GRAALVM_VERSION={version}""".format(
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
     def __init__(self, base_name, base_layout, theLicense=None, **kw_args):
         components = mx_sdk.graalvm_components()
-        name = base_name + "_" + '_'.join(sorted((component.short_name.upper() for component in components)))
+        name = base_name + '_' + '_'.join(sorted((component.short_name.upper() for component in components)))
+        if _polyglot_lib_project():
+            name += '_LIBPOLY'
+        if _polyglot_launcher_project():
+            name += '_POLY'
+        if _force_bash_launchers():
+            name += '_BASH'
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
@@ -283,6 +296,47 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             layout=layout,
             path=None,
             **kw_args)
+
+    def getBuildTask(self, args):
+        return GraalVmLayoutDistributionTask(args, self, join(_suite.dir, 'latest_graalvm'))
+
+
+class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
+    def __init__(self, args, dist, link_path):
+        self._link_path = link_path
+        super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
+
+    def _add_link(self):
+        self._rm_link()
+        os.symlink(self._link_target(), self._link_path)
+
+    def _link_target(self):
+        return relpath(self.subject.output, _suite.dir)
+
+    def _rm_link(self):
+        if os.path.lexists(self._link_path):
+            os.unlink(self._link_path)
+
+    def needsBuild(self, newestInput):
+        sup = super(GraalVmLayoutDistributionTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+        if not os.path.lexists(self._link_path):
+            return True, '{} does not exist'.format(self._link_path)
+        link_file = mx.TimeStampFile(self._link_path, False)
+        if link_file.isOlderThan(self.subject.output):
+            return True, '{} is older than {}'.format(link_file, newestInput)
+        if self._link_target() != os.readlink(self._link_path):
+            return True, '{} is pointing to the wrong directory'.format(link_file)
+        return False, None
+
+    def build(self):
+        super(GraalVmLayoutDistributionTask, self).build()
+        self._add_link()
+
+    def clean(self, forBuild=False):
+        super(GraalVmLayoutDistributionTask, self).clean(forBuild)
+        self._rm_link()
 
 
 def _get_jdk_dir():
@@ -598,7 +652,8 @@ class GraalVmLauncher(GraalVmNativeImage):
 
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
-        if svm_support.is_supported():
+        # TODO fixme: native-image should work as a bash launcher
+        if svm_support.is_supported() and (self.native_image_name == 'native-image' or not _force_bash_launchers()):
             return GraalVmSVMLauncherBuildTask(self, args, svm_support)
         else:
             return GraalVmBashLauncherBuildTask(self, args)
@@ -986,6 +1041,8 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             other_involved_components += [c for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
+        if _force_bash_launchers():
+            name += '_BASH'
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
         super(GraalVmInstallableComponent, self).__init__(
@@ -1007,29 +1064,27 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 _graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _base_graalvm_layout = {
-   "<jdk_base>/": [
+    "<jdk_base>/": [
        "file:GRAALVM-README.md",
-   ],
-   "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
-   "<jdk_base>/jre/bin/polyglot": "dependency:polyglot.launcher",
-   "<jdk_base>/bin/polyglot": "link:../jre/bin/polyglot",
-   "<jdk_base>/jre/lib/boot/": [
+    ],
+    "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
+    "<jdk_base>/jre/lib/boot/": [
        "dependency:sdk:GRAAL_SDK",
-   ],
-   "<jdk_base>/jre/lib/graalvm/": [
+    ],
+    "<jdk_base>/jre/lib/graalvm/": [
        "dependency:sdk:LAUNCHER_COMMON",
-   ],
-   "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
+    ],
+    "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
        "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
-   ],
-   "<jdk_base>/jre/lib/truffle/": [
+    ],
+    "<jdk_base>/jre/lib/truffle/": [
        "dependency:truffle:TRUFFLE_API",
        "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
        "dependency:truffle:TRUFFLE_NFI",
        "dependency:truffle:TRUFFLE_TCK",
        "dependency:LOCATOR",
        "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
-   ],
+    ],
 }
 
 
@@ -1045,7 +1100,7 @@ def get_graalvm_distribution():
 def get_lib_polyglot_project():
     global _lib_polyglot_project
     if _lib_polyglot_project == 'uninitialized':
-        if not _get_svm_support().is_supported():
+        if not _get_svm_support().is_supported() or not _polyglot_lib_project():
             _lib_polyglot_project = None
         else:
             polyglot_lib_build_args = []
@@ -1123,6 +1178,25 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             if truffle_components:
                 register_project(GraalVmNativeProperties(truffle_components))
 
+    if register_project and _polyglot_launcher_project():
+        register_project(GraalVmPolyglotLauncher(
+            suite=_suite,
+            name='polyglot.launcher',
+            deps=[],
+            workingSets=None,
+            launcherConfig={
+                "build_args": [
+                    "-H:-ParseRuntimeOptions",
+                    "-H:Features=org.graalvm.launcher.PolyglotLauncherFeature",
+                    "--language:all"
+                ],
+                "jar_distributions": [
+                    "sdk:LAUNCHER_COMMON",
+                ],
+                "main_class": "org.graalvm.launcher.PolyglotLauncher",
+                "destination": "polyglot",
+            }
+        ))
 
 def has_component(name):
     return any((c.short_name == name or c.name == name for c in mx_sdk.graalvm_components()))
@@ -1134,4 +1208,39 @@ def graalvm_output():
     return join(_output_root, _graalvm.jdk_base)
 
 
+def graalvm_dist_name(args):
+    """print the name of the GraalVM distribution"""
+    parser = ArgumentParser(prog='mx graalvm-dist-name', description='Print the name of the GraalVM distribution')
+    args = parser.parse_args(args)
+
+    mx.log(get_graalvm_distribution().name)
+
+
+def _env_var_to_bool(name, default='false'):
+    val = mx.get_env(name, default).lower()
+    if val in ('false', '0', 'no'):
+        return False
+    elif val in ('true', '1', 'yes'):
+        return True
+    raise mx.abort("Invalid boolean env var value {}={}; expected: <true | false>".format(name, val))
+
+
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
+mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
+mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--force-bash-launchers', action='store_true', help='Force the use of bash launchers instead of native images')
+
+
+def _polyglot_lib_project():
+    return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
+
+def _polyglot_launcher_project():
+    return not (mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'))
+
+def _force_bash_launchers():
+    return mx.get_opts().force_bash_launchers or _env_var_to_bool('FORCE_BASH_LAUNCHERS')
+
+
+mx.update_commands(_suite, {
+    'graalvm-dist-name': [graalvm_dist_name, ''],
+})

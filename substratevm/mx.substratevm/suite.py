@@ -612,7 +612,6 @@ suite = {
             "layout" : {
                 "./" : [
                     "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                    "dependency:POLYGLOT_NATIVE_API",
                 ],
             },
         },
@@ -622,13 +621,7 @@ suite = {
             "platformDependent" : True,
             "description" : "SubstrateVM support distribution for the GraalVM",
             "layout" : {
-                "./" : "dependency:substratevm:LIBRARY_SUPPORT",
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
-                "builder/" : [
-                    "dependency:substratevm:SVM",
-                    "dependency:substratevm:OBJECTFILE",
-                    "dependency:substratevm:POINTSTO",
-                ],
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
             },
