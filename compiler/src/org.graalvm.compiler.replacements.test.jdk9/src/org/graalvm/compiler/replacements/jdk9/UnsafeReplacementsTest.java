@@ -23,10 +23,12 @@
 package org.graalvm.compiler.replacements.jdk9;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.replacements.test.SnippetsTest;
+import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
-public class UnsafeReplacementsTest extends SnippetsTest {
+@AddExports("java.base/jdk.internal.misc")
+public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
 
     // See GR-9819.
     @SuppressWarnings("unused")
@@ -36,15 +38,25 @@ public class UnsafeReplacementsTest extends SnippetsTest {
         public volatile boolean booleanField;
     }
 
+    static jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
+    static long booleanOffset;
+
+    static {
+        try {
+            booleanOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("booleanField"));
+        } catch (NoSuchFieldException e) {
+          throw new RuntimeException(e);
+        }
+    }
+
     public static boolean unsafeCompareAndSetBoolean() throws NoSuchFieldException {
-        jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
         Container container = new Container();
-        long booleanOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("booleanField"));
         return unsafe.compareAndSetBoolean(container, booleanOffset, false, true);
     }
 
     @Test
     public void testCompareAndSet() {
+        testGraph("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetBoolean");
     }
 }
