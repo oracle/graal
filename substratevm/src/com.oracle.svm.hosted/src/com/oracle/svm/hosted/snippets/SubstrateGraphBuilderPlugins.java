@@ -23,7 +23,11 @@
 package com.oracle.svm.hosted.snippets;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -57,6 +61,7 @@ import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.RuntimeReflection;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -65,6 +70,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionStoreNode;
@@ -109,6 +115,7 @@ public class SubstrateGraphBuilderPlugins {
                     SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, BytecodeProvider bytecodeProvider, boolean analysis) {
 
         // register the substratevm plugins
+        registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, analysis);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(plugins);
         registerKnownIntrinsicsPlugins(plugins, analysis);
@@ -123,6 +130,70 @@ public class SubstrateGraphBuilderPlugins {
         registerVMConfigurationPlugins(snippetReflection, plugins);
         registerPlatformPlugins(snippetReflection, plugins);
         registerSizeOfPlugins(snippetReflection, plugins);
+    }
+
+    private static void registerAtomicUpdaterPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis) {
+        Registration referenceUpdaterRegistration = new Registration(plugins, AtomicReferenceFieldUpdater.class);
+        referenceUpdaterRegistration.register3("newUpdater", Class.class, Class.class, String.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode vclassNode, ValueNode fieldNameNode) {
+                interceptUpdaterInvoke(metaAccess, snippetReflection, analysis, tclassNode, fieldNameNode);
+                /* Always return false; the call is not replaced. */
+                return false;
+            }
+        });
+
+        Registration integerUpdaterRegistration = new Registration(plugins, AtomicIntegerFieldUpdater.class);
+        integerUpdaterRegistration.register2("newUpdater", Class.class, String.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
+                interceptUpdaterInvoke(metaAccess, snippetReflection, analysis, tclassNode, fieldNameNode);
+                /* Always return false; the call is not replaced. */
+                return false;
+            }
+        });
+
+        Registration longUpdaterRegistration = new Registration(plugins, AtomicLongFieldUpdater.class);
+        longUpdaterRegistration.register2("newUpdater", Class.class, String.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
+                interceptUpdaterInvoke(metaAccess, snippetReflection, analysis, tclassNode, fieldNameNode);
+                /* Always return false; the call is not replaced. */
+                return false;
+            }
+        });
+    }
+
+    /**
+     * Intercept the invoke to newUpdater. If the holder class and field name are constant register
+     * them for reflection/unsafe access.
+     */
+    private static void interceptUpdaterInvoke(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, boolean analysis, ValueNode tclassNode, ValueNode fieldNameNode) {
+        if (analysis) {
+            if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
+                Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
+                String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
+                try {
+                    Field field = tclass.getDeclaredField(fieldName);
+                    // register the holder class and the field for reflection
+                    RuntimeReflection.register(tclass);
+                    RuntimeReflection.register(field);
+
+                    // register the field for unsafe access
+                    AnalysisField targetField = (AnalysisField) metaAccess.lookupJavaField(field);
+                    targetField.registerAsAccessed();
+                    targetField.registerAsUnsafeAccessed();
+                } catch (NoSuchFieldException e) {
+                    /*
+                     * Ignore the exception. : If the field does not exist, there will be an error
+                     * at run time. That is then the same behavior as on HotSpot. The allocation of
+                     * the AtomicReferenceFieldUpdater could be in a never-executed path, in which
+                     * case, if we threw the exception during image building, we would wrongly
+                     * prohibit image generation.
+                     */
+                }
+            }
+        }
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
