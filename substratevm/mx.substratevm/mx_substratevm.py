@@ -43,6 +43,8 @@ import time
 # } GR-8964
 import functools
 import collections
+import itertools
+import glob
 
 import mx
 import mx_compiler
@@ -295,8 +297,9 @@ def native_image_symlink_path(native_image_root, platform_specific=True):
 
 def native_image_on_jvm(args):
     graalvm_home = join(suite_native_image_root(), '..')
-    driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*') for subdir in ['boot', 'jvmci', 'graalvm']]
-    driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*', join('builder', '*')]]
+    driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
+    driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
+    driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
     run_java(['-Dgraalvm.home=' + graalvm_home, '-cp', ":".join(driver_cp), mx.dependency('substratevm:SVM_DRIVER').mainClass] + args)
 
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
@@ -330,7 +333,7 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
         bootstrap_command += ['-H:-VerifyNamingConventions']
 
     if mx.get_os() == 'windows':
-        mx.log('Skip building native-image executable on Windows for now')
+        mx.log('Skip building native-image executable on ' + mx.get_os())
     else:
         run_java(bootstrap_command)
         mx.logv('Built ' + native_image_path(native_image_root))
