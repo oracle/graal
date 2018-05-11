@@ -29,6 +29,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
@@ -37,6 +38,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.FieldDeclaredAnnotationsComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
+import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
 
 import sun.reflect.FieldAccessor;
 
@@ -50,7 +52,10 @@ public final class Target_java_lang_reflect_Field {
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
     @Alias //
-    private Target_java_lang_reflect_Field root;
+    Target_java_lang_reflect_Field root;
+
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
+    int offset;
 
     @Substitute
     FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {

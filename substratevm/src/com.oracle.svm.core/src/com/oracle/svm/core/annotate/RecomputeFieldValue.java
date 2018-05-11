@@ -27,6 +27,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
@@ -117,7 +118,7 @@ public @interface RecomputeFieldValue {
          *            fields.
          * @return The new field value.
          */
-        Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver);
+        Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver);
     }
 
     /**

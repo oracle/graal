@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,43 +24,33 @@ package com.oracle.svm.reflect.hosted;
 
 // Checkstyle: allow reflection
 
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public abstract class DeclaredAnnotationsComputer implements CustomFieldValueComputer {
-
-    protected abstract Class<?> getDeclaringClass();
+public class FieldOffsetComputer implements CustomFieldValueComputer {
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        try {
-            Method declaredAnnotationsMethod = getDeclaringClass().getDeclaredMethod("declaredAnnotations");
-            declaredAnnotationsMethod.setAccessible(true);
-            return declaredAnnotationsMethod.invoke(receiver);
-        } catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
+        VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offset computation must be done during compilation.");
 
-    public static class FieldDeclaredAnnotationsComputer extends DeclaredAnnotationsComputer {
-        @Override
-        protected Class<?> getDeclaringClass() {
-            return Field.class;
-        }
-    }
+        Field reflectionField = (Field) receiver;
+        HostedField hostedField = ((HostedMetaAccess) metaAccess).lookupJavaField(reflectionField);
 
-    public static class ExecutableDeclaredAnnotationsComputer extends DeclaredAnnotationsComputer {
-        @Override
-        protected Class<?> getDeclaringClass() {
-            return Executable.class;
+        if (hostedField.wrapped.isUnsafeAccessed()) {
+            int location = hostedField.getLocation();
+            if (location <= 0) {
+                VMError.shouldNotReachHere("Incorrect field location: " + location + " for " + hostedField.format("%H.%n"));
+            }
+            return location;
         }
+        // a value of -1 signals that the field was not marked as unsafe accessed
+        return -1;
     }
 }

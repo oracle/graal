@@ -154,6 +154,8 @@ public interface Feature {
         void registerAsAccessed(Field field);
 
         /**
+         * This method is now @Deprecated. Please use registerAsUnsafeAccessed instead.
+         * 
          * Registers the provided field as written by {@link sun.misc.Unsafe}, i.e., the static
          * analysis merges together all values of unsafe accessed fields of a specific type.
          * <p>
@@ -161,7 +163,20 @@ public interface Feature {
          *
          * @since 1.0
          */
-        void registerAsUnsafeWritten(Field field);
+        @Deprecated
+        default void registerAsUnsafeWritten(Field field) {
+            registerAsUnsafeAccessed(field);
+        }
+
+        /**
+         * Registers the provided field as written or read by {@link sun.misc.Unsafe}, i.e., the
+         * static analysis merges together all values of unsafe accessed fields of a specific type.
+         * <p>
+         * This implies that the field is also marked as {@link #registerAsAccessed accessed}.
+         *
+         * @since 1.0
+         */
+        void registerAsUnsafeAccessed(Field field);
     }
 
     /**

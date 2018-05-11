@@ -236,7 +236,7 @@ public class ComputedValueField implements ReadableJavaField, ComputedValue {
                     CustomFieldValueComputer computer = (CustomFieldValueComputer) constructor.newInstance(constructorArgs);
 
                     Object receiverValue = receiver == null ? null : originalSnippetReflection.asObject(Object.class, receiver);
-                    result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), computer.compute(original, annotated, receiverValue));
+                    result = originalSnippetReflection.forBoxed(annotated.getJavaKind(), computer.compute(hMetaAccess, original, annotated, receiverValue));
                     assert result.getJavaKind() == annotated.getJavaKind();
                 } catch (InvocationTargetException | InstantiationException | IllegalAccessException ex) {
                     throw shouldNotReachHere("Error performing field recomputation for alias " + annotated.format("%H.%n"), ex);
