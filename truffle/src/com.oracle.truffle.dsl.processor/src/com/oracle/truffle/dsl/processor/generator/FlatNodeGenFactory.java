@@ -1865,7 +1865,9 @@ class FlatNodeGenFactory {
         List<CodeTree> values = new ArrayList<>();
         if (method.getFrameParameter() != null) {
             LocalVariable frameLocal = frameState.get(FRAME_VALUE);
-            assert frameLocal != null;
+            if (frameLocal == null) {
+                throw new AssertionError(method.getName() + " requires a frame parameter.");
+            }
             values.add(createParameterReference(frameLocal, method.getMethod(), 0));
         }
 

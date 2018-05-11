@@ -23,9 +23,11 @@
 package com.oracle.truffle.api.dsl.test;
 
 import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class ChildExecutionTest {
 
@@ -37,6 +39,7 @@ public class ChildExecutionTest {
         }
     }
 
+    @ExpectError("Child execution method: Object ChildExecutionChildNode::execute(VirtualFrame) called from method: Object TestNode::execute() requires a frame parameter.")
     @NodeChild(value = "foo", type = ChildExecutionChildNode.class)
     public abstract static class TestNode extends Node {
 
@@ -44,12 +47,70 @@ public class ChildExecutionTest {
 
         public abstract Object executeObject(VirtualFrame frame);
 
-        @ExpectError("Child execution requires a frame parameter.")
         public abstract Object execute();
 
         @Specialization
         protected Object doIt(Object a) {
             return a;
+        }
+    }
+
+    public static class ChildExecutionChildNode2 extends Node {
+
+        public String executeString(VirtualFrame frame) {
+            assert frame != null;
+            return null;
+        }
+    }
+
+    @ExpectError("Child execution method: String ChildExecutionChildNode2::executeString(VirtualFrame) called from method: boolean TestNode2::executeBool(boolean) requires a frame parameter.")
+    @NodeChildren({
+                    @NodeChild(value = "first", type = ChildExecutionChildNode2.class),
+                    @NodeChild(value = "second", type = ChildExecutionChildNode2.class)
+    })
+    public abstract static class TestNode2 extends Node {
+
+        public abstract Object execute(VirtualFrame frame);
+
+        public abstract Object execute(Object arg1, Object arg2);
+
+        public boolean executeBool(boolean arg) throws UnexpectedResultException {
+            final Object res = execute(arg, arg);
+            if (res instanceof Boolean) {
+                return (Boolean) res;
+            } else {
+                throw new UnexpectedResultException(res);
+            }
+        }
+
+        @Specialization
+        protected boolean doIt(String a, String b) {
+            return a.isEmpty() && b.isEmpty();
+        }
+    }
+
+    @NodeChildren({
+                    @NodeChild(value = "first", type = ChildExecutionChildNode2.class),
+                    @NodeChild(value = "second", type = ChildExecutionChildNode2.class)
+    })
+    public abstract static class TestNode3 extends Node {
+
+        public abstract Object execute(VirtualFrame frame);
+
+        public abstract Object execute(Object arg1, Object arg2);
+
+        public final boolean executeBool(boolean arg) throws UnexpectedResultException {
+            final Object res = execute(arg, arg);
+            if (res instanceof Boolean) {
+                return (Boolean) res;
+            } else {
+                throw new UnexpectedResultException(res);
+            }
+        }
+
+        @Specialization
+        protected boolean doIt(String a, String b) {
+            return a.isEmpty() && b.isEmpty();
         }
     }
 }
