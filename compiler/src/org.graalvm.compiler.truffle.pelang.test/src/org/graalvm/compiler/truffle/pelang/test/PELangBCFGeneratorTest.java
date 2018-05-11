@@ -26,23 +26,24 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertThat;
 
+import org.graalvm.compiler.truffle.pelang.PELangBCFGenerator;
 import org.graalvm.compiler.truffle.pelang.PELangBuilder;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
-import org.graalvm.compiler.truffle.pelang.PELangUtil;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.junit.Test;
 
-public class PELangUtilTest extends PELangTest {
+public class PELangBCFGeneratorTest extends PELangTest {
 
     @Test
     public void testNestedBlocks() {
         PELangBuilder b = new PELangBuilder();
+        PELangBCFGenerator g = new PELangBCFGenerator();
 
         // @formatter:off
-        PELangRootNode rootNode = PELangUtil.toBCF(
+        PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
                     b.write(0, "counter"),
@@ -74,9 +75,10 @@ public class PELangUtilTest extends PELangTest {
     @Test
     public void testLoop() {
         PELangBuilder b = new PELangBuilder();
+        PELangBCFGenerator g = new PELangBCFGenerator();
 
         // @formatter:off
-        PELangRootNode rootNode = PELangUtil.toBCF(
+        PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
                     b.write(0, "counter"),
@@ -109,21 +111,22 @@ public class PELangUtilTest extends PELangTest {
     @Test
     public void testNestedLoop() {
         PELangBuilder b = new PELangBuilder();
+        PELangBCFGenerator g = new PELangBCFGenerator();
 
         // @formatter:off
-        PELangRootNode rootNode = PELangUtil.toBCF(
+        PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
                     b.write(0, "i"),
                     b.write(0, "j"),
                     b.loop(
-                        b.lessThan(b.read("i"), b.literal(10L)),
-                        b.block(
-                            b.loop(
-                                b.lessThan(b.read("j"), b.literal(10L)),
+                        b.lessThan(b.read("i"), b.literal(5L)),
+                        b.loop(
+                            b.lessThan(b.read("j"), b.literal(10L)),
+                            b.block(
+                                b.increment(1, "i"),
                                 b.increment(1, "j")
-                            ),
-                            b.increment(1, "i")
+                            )
                         )
                     ),
                     b.ret(
@@ -143,13 +146,90 @@ public class PELangUtilTest extends PELangTest {
         PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
         PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
 
-        assertThat(basicBlocks.length, equalTo(6));
+        assertThat(basicBlocks.length, equalTo(5));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[1], instanceOf(PELangDoubleSuccessorNode.class));
+        assertThat(basicBlocks[2], instanceOf(PELangDoubleSuccessorNode.class));
+        assertThat(basicBlocks[3], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[4], instanceOf(PELangSingleSuccessorNode.class));
+    }
+
+    @Test
+    public void testBranch() {
+        PELangBuilder b = new PELangBuilder();
+        PELangBCFGenerator g = new PELangBCFGenerator();
+
+        // @formatter:off
+        PELangRootNode rootNode = g.generate(
+            b.root(
+                b.block(
+                    b.write(0, "i"),
+                    b.branch(
+                        b.lessThan(b.read("i"), b.literal(10L)),
+                        b.write(10, "i"),
+                        b.write(5L, "i")),
+                    b.ret(
+                        b.read("i")
+                    )
+                )
+            )
+        );
+        // @formatter:on
+
+        assertCallResult(10L, rootNode);
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(5));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[1], instanceOf(PELangDoubleSuccessorNode.class));
+        assertThat(basicBlocks[2], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[3], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[4], instanceOf(PELangSingleSuccessorNode.class));
+    }
+
+    @Test
+    public void testNestedBranch() {
+        PELangBuilder b = new PELangBuilder();
+        PELangBCFGenerator g = new PELangBCFGenerator();
+
+        // @formatter:off
+        PELangRootNode rootNode = g.generate(
+            b.root(
+                b.block(
+                    b.write(0L, "i"),
+                    b.branch(
+                        b.lessThan(b.read("i"), b.literal(10L)),
+                        b.branch(
+                            b.equals(b.read("i"), b.literal(0L)),
+                            b.write(10L, "i"),
+                            b.write(5L, "i")
+                        ),
+                        b.write(5L, "i")),
+                    b.ret(
+                        b.read("i")
+                    )
+                )
+            )
+        );
+        // @formatter:on
+
+        assertCallResult(10L, rootNode);
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(7));
         assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
         assertThat(basicBlocks[1], instanceOf(PELangDoubleSuccessorNode.class));
         assertThat(basicBlocks[2], instanceOf(PELangDoubleSuccessorNode.class));
         assertThat(basicBlocks[3], instanceOf(PELangSingleSuccessorNode.class));
         assertThat(basicBlocks[4], instanceOf(PELangSingleSuccessorNode.class));
         assertThat(basicBlocks[5], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[6], instanceOf(PELangSingleSuccessorNode.class));
     }
 
 }
