@@ -307,7 +307,7 @@ class SvmSupport(object):
             self.suite_native_image_root = svm_suite.extensions.suite_native_image_root
             self.fetch_languages = svm_suite.extensions.fetch_languages
             self.native_image_path = svm_suite.extensions.native_image_path
-            self.get_native_image_distribution = svm_suite.extensions.native_image_distribution
+            self.get_native_image_distributions = svm_suite.extensions.native_image_distributions
             self.extract_target_name = svm_suite.extensions.extract_target_name
             self.flag_suitename_map = svm_suite.extensions.flag_suitename_map
             self._svm_supported = True
@@ -315,7 +315,7 @@ class SvmSupport(object):
             self.suite_native_image_root = None
             self.fetch_languages = None
             self.native_image_path = None
-            self.get_native_image_distribution = None
+            self.get_native_image_distributions = None
             self.extract_target_name = None
             self.flag_suitename_map = None
             self._svm_supported = False
@@ -566,9 +566,7 @@ class GraalVmNativeImage(mx.Project):
         if svm_support.is_supported():
             if not hasattr(self, 'buildDependencies'):
                 self.buildDependencies = []
-            native_image = svm_support.get_native_image_distribution()
-            assert isinstance(native_image, mx.Dependency)
-            self.buildDependencies += [native_image]
+            self.buildDependencies += svm_support.get_native_image_distributions()
 
 
 class GraalVmLauncher(GraalVmNativeImage):
