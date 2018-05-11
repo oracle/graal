@@ -298,6 +298,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
     def getBuildTask(self, args):
         return GraalVmLayoutDistributionTask(args, self, join(_suite.dir, 'latest_graalvm'))
 
+
 class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
     def __init__(self, args, dist, link_path):
         self._link_path = link_path
@@ -305,7 +306,10 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
 
     def _add_link(self):
         self._rm_link()
-        os.symlink(relpath(self.subject.output, _suite.dir), self._link_path)
+        os.symlink(self._link_target(), self._link_path)
+
+    def _link_target(self):
+        return relpath(self.subject.output, _suite.dir)
 
     def _rm_link(self):
         if os.path.lexists(self._link_path):
@@ -315,11 +319,13 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
         sup = super(GraalVmLayoutDistributionTask, self).needsBuild(newestInput)
         if sup[0]:
             return sup
-        link_file = mx.TimeStampFile(self._link_path)
         if not os.path.lexists(self._link_path):
             return True, '{} does not exist'.format(self._link_path)
-        if newestInput and link_file.isOlderThan(newestInput):
+        link_file = mx.TimeStampFile(self._link_path, False)
+        if link_file.isOlderThan(self.subject.output):
             return True, '{} is older than {}'.format(link_file, newestInput)
+        if self._link_target() != os.readlink(self._link_path):
+            return True, '{} is pointing to the wrong directory'.format(link_file)
         return False, None
 
     def build(self):
@@ -329,6 +335,7 @@ class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
     def clean(self, forBuild=False):
         super(GraalVmLayoutDistributionTask, self).clean(forBuild)
         self._rm_link()
+
 
 def _get_jdk_dir():
     java_home = mx.get_jdk(tag='default').home
@@ -1205,20 +1212,29 @@ def graalvm_dist_name(args):
     mx.log(get_graalvm_distribution().name)
 
 
+def _env_var_to_bool(name, default='false'):
+    val = mx.get_env(name, default).lower()
+    if val in ('false', '0', 'no'):
+        return False
+    elif val in ('true', '1', 'yes'):
+        return True
+    raise mx.abort("Invalid boolean env var value {}={}; expected: <true | false>".format(name, val))
+
+
 mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
-mx.add_argument('--disable-libpolyglot', action='store_false', dest='polyglot_lib_project', help='Disable the \'polyglot\' library project')
-mx.add_argument('--disable-polyglot', action='store_false', dest='polyglot_launcher_project', help='Disable the \'polyglot\' launcher project')
-mx.add_argument('--force-bash-launchers', action='store_true', dest='force_bash_launchers', help='Force the use of bash launchers instead of native images')
+mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
+mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
+mx.add_argument('--force-bash-launchers', action='store_true', help='Force the use of bash launchers instead of native images')
 
 
 def _polyglot_lib_project():
-    return mx.get_opts().polyglot_lib_project and mx.get_env('DISABLE_LIBPOLYGLOT') is None
+    return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
 
 def _polyglot_launcher_project():
-    return mx.get_opts().polyglot_launcher_project and mx.get_env('DISABLE_POLYGLOT') is None
+    return not (mx.get_opts().disable_polyglot or _env_var_to_bool('DISABLE_POLYGLOT'))
 
 def _force_bash_launchers():
-    return mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS') is not None
+    return mx.get_opts().force_bash_launchers or _env_var_to_bool('FORCE_BASH_LAUNCHERS')
 
 
 mx.update_commands(_suite, {
