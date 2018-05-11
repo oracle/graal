@@ -295,6 +295,40 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             path=None,
             **kw_args)
 
+    def getBuildTask(self, args):
+        return GraalVmLayoutDistributionTask(args, self, join(_suite.dir, 'latest_graalvm'))
+
+class GraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
+    def __init__(self, args, dist, link_path):
+        self._link_path = link_path
+        super(GraalVmLayoutDistributionTask, self).__init__(args, dist)
+
+    def _add_link(self):
+        self._rm_link()
+        os.symlink(relpath(self.subject.output, _suite.dir), self._link_path)
+
+    def _rm_link(self):
+        if os.path.lexists(self._link_path):
+            os.unlink(self._link_path)
+
+    def needsBuild(self, newestInput):
+        sup = super(GraalVmLayoutDistributionTask, self).needsBuild(newestInput)
+        if sup[0]:
+            return sup
+        link_file = mx.TimeStampFile(self._link_path)
+        if not os.path.lexists(self._link_path):
+            return True, '{} does not exist'.format(self._link_path)
+        if newestInput and link_file.isOlderThan(newestInput):
+            return True, '{} is older than {}'.format(link_file, newestInput)
+        return False, None
+
+    def build(self):
+        super(GraalVmLayoutDistributionTask, self).build()
+        self._add_link()
+
+    def clean(self, forBuild=False):
+        super(GraalVmLayoutDistributionTask, self).clean(forBuild)
+        self._rm_link()
 
 def _get_jdk_dir():
     java_home = mx.get_jdk(tag='default').home
