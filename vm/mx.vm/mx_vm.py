@@ -147,7 +147,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                 _add(layout, "<jdk_base>/jre/lib/<arch>/server/vm.properties", "string:name=GraalVM <version>")
 
             # Add Polyglot launcher
-            if mx.get_opts().polyglot_launcher_project:
+            if _polyglot_launcher_project():
                 _add(layout, "<jdk_base>/jre/bin/polyglot", "dependency:polyglot.launcher")
                 _add(layout, "<jdk_base>/bin/polyglot", "link:../jre/bin/polyglot")
 
@@ -272,11 +272,11 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
     def __init__(self, base_name, base_layout, theLicense=None, **kw_args):
         components = mx_sdk.graalvm_components()
         name = base_name + '_' + '_'.join(sorted((component.short_name.upper() for component in components)))
-        if mx.get_opts().polyglot_lib_project:
+        if _polyglot_lib_project():
             name += '_LIBPOLY'
-        if mx.get_opts().polyglot_launcher_project:
+        if _polyglot_launcher_project():
             name += '_POLY'
-        if mx.get_opts().force_bash_launchers:
+        if _force_bash_launchers():
             name += '_BASH'
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
@@ -608,7 +608,7 @@ class GraalVmLauncher(GraalVmNativeImage):
     def getBuildTask(self, args):
         svm_support = _get_svm_support()
         # TODO fixme: native-image should work as a bash launcher
-        if svm_support.is_supported() and (self.native_image_name == 'native-image' or not mx.get_opts().force_bash_launchers):
+        if svm_support.is_supported() and (self.native_image_name == 'native-image' or not _force_bash_launchers()):
             return GraalVmSVMLauncherBuildTask(self, args, svm_support)
         else:
             return GraalVmBashLauncherBuildTask(self, args)
@@ -996,7 +996,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             other_involved_components += [c for c in mx_sdk.graalvm_components() if c.dir_name == 'svm']
 
         name = '{}_INSTALLABLE'.format(component.dir_name.upper())
-        if mx.get_opts().force_bash_launchers:
+        if _force_bash_launchers():
             name += '_BASH'
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
@@ -1055,7 +1055,7 @@ def get_graalvm_distribution():
 def get_lib_polyglot_project():
     global _lib_polyglot_project
     if _lib_polyglot_project == 'uninitialized':
-        if not _get_svm_support().is_supported() or not mx.get_opts().polyglot_lib_project:
+        if not _get_svm_support().is_supported() or not _polyglot_lib_project():
             _lib_polyglot_project = None
         else:
             polyglot_lib_build_args = []
@@ -1133,7 +1133,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             if truffle_components:
                 register_project(GraalVmNativeProperties(truffle_components))
 
-    if register_project and mx.get_opts().polyglot_launcher_project:
+    if register_project and _polyglot_launcher_project():
         register_project(GraalVmPolyglotLauncher(
             suite=_suite,
             name='polyglot.launcher',
@@ -1175,6 +1175,16 @@ mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_false', dest='polyglot_lib_project', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_false', dest='polyglot_launcher_project', help='Disable the \'polyglot\' launcher project')
 mx.add_argument('--force-bash-launchers', action='store_true', dest='force_bash_launchers', help='Force the use of bash launchers instead of native images')
+
+
+def _polyglot_lib_project():
+    return mx.get_opts().polyglot_lib_project and mx.get_env('DISABLE_LIBPOLYGLOT') is None
+
+def _polyglot_launcher_project():
+    return mx.get_opts().polyglot_launcher_project and mx.get_env('DISABLE_POLYGLOT') is None
+
+def _force_bash_launchers():
+    return mx.get_opts().force_bash_launchers or mx.get_env('FORCE_BASH_LAUNCHERS') is not None
 
 
 mx.update_commands(_suite, {
