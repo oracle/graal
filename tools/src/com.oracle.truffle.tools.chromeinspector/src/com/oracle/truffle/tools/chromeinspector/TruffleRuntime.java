@@ -36,11 +36,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.source.Source;
 
-import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.GuestLanguageException;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext.NoSuspendedThreadException;
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.domains.RuntimeDomain;
@@ -112,7 +112,7 @@ public final class TruffleRuntime extends RuntimeDomain {
             throw new CommandProcessException("An expression required.");
         }
         JSONObject ret = new JSONObject();
-        ScriptsHandler sh = context.getScriptsHandler();
+        ScriptsHandler sh = context.acquireScriptsHandler();
         try {
             if (sh != null) {
                 Source source = createSource(expression, sourceURL);
@@ -132,9 +132,13 @@ public final class TruffleRuntime extends RuntimeDomain {
                                     return false;
                                 }
                             }
+
+                            @Override
+                            public Boolean processException(DebugException ex) {
+                                fillExceptionDetails(ret, ex);
+                                return false;
+                            }
                         });
-                    } catch (GuestLanguageException ex) {
-                        fillExceptionDetails(ret, ex);
                     } catch (NoSuspendedThreadException ex) {
                         exceptionText[0] = ex.getLocalizedMessage();
                     }
@@ -184,13 +188,17 @@ public final class TruffleRuntime extends RuntimeDomain {
                         json.put("result", result);
                         return null;
                     }
+
+                    @Override
+                    public Void processException(DebugException ex) {
+                        fillExceptionDetails(json, ex);
+                        return null;
+                    }
                 });
             } catch (NoSuspendedThreadException ex) {
                 JSONObject exceptionDetails = new JSONObject();
                 exceptionDetails.put("text", ex.getLocalizedMessage());
                 json.put("exceptionDetails", exceptionDetails);
-            } catch (GuestLanguageException ex) {
-                fillExceptionDetails(json, ex);
             }
         } else {
             JSONObject exceptionDetails = new JSONObject();
@@ -217,6 +225,12 @@ public final class TruffleRuntime extends RuntimeDomain {
                             putResultProperties(json, value.getProperties(), value.isArray() ? value.getArray() : Collections.emptyList());
                             return null;
                         }
+
+                        @Override
+                        public Void processException(DebugException ex) {
+                            fillExceptionDetails(json, ex);
+                            return null;
+                        }
                     });
                 } else {
                     final DebugScope scope = object.getScope();
@@ -230,13 +244,17 @@ public final class TruffleRuntime extends RuntimeDomain {
                             putResultProperties(json, properties, Collections.emptyList());
                             return null;
                         }
+
+                        @Override
+                        public Void processException(DebugException ex) {
+                            fillExceptionDetails(json, ex);
+                            return null;
+                        }
                     });
                 }
             } catch (NoSuspendedThreadException ex) {
                 // Not suspended, no properties
                 json.put("result", new JSONArray());
-            } catch (GuestLanguageException ex) {
-                fillExceptionDetails(json, ex);
             }
         }
         return new Params(json);
@@ -299,11 +317,15 @@ public final class TruffleRuntime extends RuntimeDomain {
                             json.put("result", result);
                             return null;
                         }
+
+                        @Override
+                        public Void processException(DebugException ex) {
+                            fillExceptionDetails(json, ex);
+                            return null;
+                        }
                     });
                 } catch (NoSuspendedThreadException ex) {
                     json.put("result", new JSONObject());
-                } catch (GuestLanguageException ex) {
-                    fillExceptionDetails(json, ex);
                 }
             }
         }
@@ -337,12 +359,12 @@ public final class TruffleRuntime extends RuntimeDomain {
         return result;
     }
 
-    private void fillExceptionDetails(JSONObject obj, GuestLanguageException ex) {
+    private void fillExceptionDetails(JSONObject obj, DebugException ex) {
         fillExceptionDetails(obj, ex, context);
     }
 
-    static void fillExceptionDetails(JSONObject obj, GuestLanguageException ex, TruffleExecutionContext context) {
-        ExceptionDetails exceptionDetails = new ExceptionDetails(ex.getDebugException());
+    static void fillExceptionDetails(JSONObject obj, DebugException ex, TruffleExecutionContext context) {
+        ExceptionDetails exceptionDetails = new ExceptionDetails(ex);
         obj.put("exceptionDetails", exceptionDetails.createJSON(context));
     }
 
