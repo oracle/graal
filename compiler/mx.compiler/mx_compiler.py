@@ -1319,7 +1319,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
-    jvmci_jars=['compiler:GRAAL'],
+    jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))
 

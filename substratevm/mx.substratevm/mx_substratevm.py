@@ -126,15 +126,16 @@ def suite_native_image_root(suite=None):
         suite = svm_suite()
     return join(svmbuild_dir(suite), 'native-image-root')
 
-def native_image_distribution():
+def native_image_distributions():
+    deps = [mx.distribution('GRAAL_MANAGEMENT')]
     for d in svm_suite().dists:
         if isinstance(d, str):
             name = d
         else:
             name = d.name
         if name.startswith("NATIVE_IMAGE"):
-            return d
-    return None
+            deps.append(d)
+    return deps
 
 def remove_existing_symlink(target_path):
     if islink(target_path):
@@ -913,6 +914,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     ],
     polyglot_lib_build_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API_SUPPORT",
+        "substratevm:POLYGLOT_NATIVE_API_HEADERS"
     ],
     has_polyglot_lib_entrypoints=True,
 ))
