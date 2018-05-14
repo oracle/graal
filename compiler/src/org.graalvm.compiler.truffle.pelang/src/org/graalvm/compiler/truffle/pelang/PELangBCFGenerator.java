@@ -22,7 +22,7 @@ public class PELangBCFGenerator {
 
     private final List<PELangBasicBlockNode> basicBlocks = new ArrayList<>();
     private final Deque<Integer> labelStack = new ArrayDeque<>();
-    private final List<PELangStatementNode> delayedBodyNodes = new ArrayList<>();
+    private final List<DelayedTuple> delayedTuples = new ArrayList<>();
 
     public PELangRootNode generate(PELangRootNode node) {
         // start in label mode with first label as PELangBasicBlockNode.NO_SUCCESSOR
@@ -61,33 +61,40 @@ public class PELangBCFGenerator {
 
             if (bodyNode instanceof PELangIfNode) {
                 PELangIfNode ifNode = (PELangIfNode) bodyNode;
-                generateSingleDelayed(bodyMode);
+                generateDelayed();
                 generateBranch(ifNode, bodyMode);
             } else if (bodyNode instanceof PELangWhileNode) {
                 PELangWhileNode whileNode = (PELangWhileNode) bodyNode;
-                generateSingleDelayed(bodyMode);
+                generateDelayed();
                 generateLoop(whileNode, bodyMode);
             } else if (bodyNode instanceof PELangBlockNode) {
                 PELangBlockNode innerBlock = (PELangBlockNode) bodyNode;
                 generateBlock(innerBlock, bodyMode);
             } else {
-                delayedBodyNodes.add(bodyNode);
+                DelayedTuple tuple = new DelayedTuple(bodyNode, bodyMode);
+                delayedTuples.add(tuple);
             }
         }
-        generateSingleDelayed(mode);
+        generateDelayed();
     }
 
-    private void generateSingleDelayed(Mode mode) {
-        if (delayedBodyNodes.size() > 0) {
+    private void generateDelayed() {
+        if (delayedTuples.size() > 0) {
             PELangStatementNode bodyNode = null;
+            Mode mode = null;
 
-            if (delayedBodyNodes.size() == 1) {
-                bodyNode = delayedBodyNodes.get(0);
+            if (delayedTuples.size() == 1) {
+                DelayedTuple tuple = delayedTuples.get(0);
+                bodyNode = tuple.node;
+                mode = tuple.mode;
             } else {
-                PELangStatementNode[] bodyNodes = delayedBodyNodes.stream().toArray(PELangStatementNode[]::new);
+                PELangStatementNode[] bodyNodes = delayedTuples.stream().map(DelayedTuple::getNode).toArray(PELangStatementNode[]::new);
                 bodyNode = new PELangBlockNode(bodyNodes);
+
+                // use mode of last delayed tuple
+                mode = delayedTuples.get(delayedTuples.size() - 1).getMode();
             }
-            delayedBodyNodes.clear();
+            delayedTuples.clear();
             generateSingle(bodyNode, mode);
         }
     }
@@ -210,6 +217,25 @@ public class PELangBCFGenerator {
     static enum Mode {
         LABEL,
         COUNTER
+    }
+
+    static class DelayedTuple {
+        final PELangStatementNode node;
+        final Mode mode;
+
+        public DelayedTuple(PELangStatementNode node, Mode mode) {
+            this.node = node;
+            this.mode = mode;
+        }
+
+        public PELangStatementNode getNode() {
+            return node;
+        }
+
+        public Mode getMode() {
+            return mode;
+        }
+
     }
 
 }
