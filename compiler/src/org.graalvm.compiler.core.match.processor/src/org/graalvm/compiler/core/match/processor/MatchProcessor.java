@@ -90,8 +90,8 @@ public class MatchProcessor extends AbstractProcessor {
         return SourceVersion.latest();
     }
 
-    private final Set<Element> processedMatchRule = new HashSet<>();
-    private final Set<Element> processedMatchableNode = new HashSet<>();
+    private final Set<Element> processedMatchRules = new HashSet<>();
+    private final Set<Element> processedMatchableNodes = new HashSet<>();
 
     private static class RuleParseError extends RuntimeException {
         private static final long serialVersionUID = 6456128283609257490L;
@@ -243,9 +243,8 @@ public class MatchProcessor extends AbstractProcessor {
     }
 
     /**
-     * Set to true to enable logging to a local file during annotation processing. There's no normal
-     * channel for any debug messages and debugging annotation processors requires some special
-     * setup.
+     * Set to true to enable logging during annotation processing. There's no normal channel for any
+     * debug messages and debugging annotation processors requires some special setup.
      */
     private static final boolean DEBUG = false;
 
@@ -257,14 +256,21 @@ public class MatchProcessor extends AbstractProcessor {
 
     private PrintWriter getLog() {
         if (log == null) {
-            try {
-                // Create the log file within the generated source directory so it's easy to find.
-                // /tmp isn't platform independent and java.io.tmpdir can map anywhere, particularly
-                // on the mac.
-                FileObject file = processingEnv.getFiler().createResource(StandardLocation.SOURCE_OUTPUT, "", getClass().getSimpleName() + "log");
-                log = new PrintWriter(new FileWriter(file.toUri().getPath(), true));
-            } catch (IOException e) {
-                // Do nothing
+            if (processingEnv.getClass().getName().contains(".javac.")) {
+                // For javac, just log to System.err
+                log = new PrintWriter(System.err);
+            } else {
+                try {
+                    // Create the log file within the generated source directory so it's easy to
+                    // find.
+                    // /tmp isn't platform independent and java.io.tmpdir can map anywhere,
+                    // particularly
+                    // on the mac.
+                    FileObject file = processingEnv.getFiler().createResource(StandardLocation.SOURCE_OUTPUT, "", getClass().getSimpleName() + "log");
+                    log = new PrintWriter(new FileWriter(file.toUri().getPath(), true));
+                } catch (IOException e) {
+                    // Do nothing
+                }
             }
         }
         return log;
@@ -301,7 +307,7 @@ public class MatchProcessor extends AbstractProcessor {
             logMessage("throw for %s:\n", element);
         }
         logException(t);
-        errorMessage(element, "Exception throw during processing: %s %s", t, Arrays.toString(Arrays.copyOf(t.getStackTrace(), 4)));
+        printError(element, "Exception throw during processing: %s %s", t, Arrays.toString(Arrays.copyOf(t.getStackTrace(), 4)));
     }
 
     static class TypeDescriptor {
@@ -360,14 +366,6 @@ public class MatchProcessor extends AbstractProcessor {
     Map<String, TypeDescriptor> knownTypes = new HashMap<>();
 
     private TypeDescriptor valueType;
-
-    private TypeMirror matchRulesTypeMirror;
-
-    private TypeMirror matchRuleTypeMirror;
-
-    private TypeMirror matchableNodeTypeMirror;
-
-    private TypeMirror matchableNodesTypeMirror;
 
     private void declareType(TypeMirror mirror, String shortName, String nodeClass, String nodePackage, List<String> inputs, boolean commutative, boolean shareable, Element element) {
         TypeDescriptor descriptor = new TypeDescriptor(mirror, shortName, nodeClass, nodePackage, inputs, commutative, shareable);
@@ -681,6 +679,16 @@ public class MatchProcessor extends AbstractProcessor {
         return topDeclaringType(enclosing);
     }
 
+    /**
+     * The element currently being processed.
+     */
+    private Element currentElement;
+
+    /**
+     * The current processing round.
+     */
+    private RoundEnvironment currentRound;
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
@@ -689,31 +697,30 @@ public class MatchProcessor extends AbstractProcessor {
 
         logMessage("Starting round %s\n", roundEnv);
 
-        TypeElement matchRulesTypeElement = processingEnv.getElementUtils().getTypeElement(MATCH_RULES_CLASS_NAME);
-        TypeElement matchRuleTypeElement = processingEnv.getElementUtils().getTypeElement(MATCH_RULE_CLASS_NAME);
+        TypeElement matchRulesTypeElement = getTypeElement(MATCH_RULES_CLASS_NAME);
+        TypeElement matchRuleTypeElement = getTypeElement(MATCH_RULE_CLASS_NAME);
 
-        matchRulesTypeMirror = matchRulesTypeElement.asType();
-        matchRuleTypeMirror = matchRuleTypeElement.asType();
+        TypeMirror matchRulesTypeMirror = matchRulesTypeElement.asType();
+        TypeMirror matchRuleTypeMirror = matchRuleTypeElement.asType();
 
-        TypeElement matchableNodeTypeElement = processingEnv.getElementUtils().getTypeElement(MATCHABLE_NODE_CLASS_NAME);
-        TypeElement matchableNodesTypeElement = processingEnv.getElementUtils().getTypeElement(MATCHABLE_NODES_CLASS_NAME);
+        TypeElement matchableNodeTypeElement = getTypeElement(MATCHABLE_NODE_CLASS_NAME);
+        TypeElement matchableNodesTypeElement = getTypeElement(MATCHABLE_NODES_CLASS_NAME);
 
-        matchableNodeTypeMirror = matchableNodeTypeElement.asType();
-        matchableNodesTypeMirror = matchableNodesTypeElement.asType();
-
-        Element currentElement = null;
+        currentRound = roundEnv;
         try {
             for (Element element : roundEnv.getElementsAnnotatedWith(matchableNodeTypeElement)) {
+                currentElement = element;
                 logMessage("%s\n", element);
                 processMatchableNodes(element);
             }
             for (Element element : roundEnv.getElementsAnnotatedWith(matchableNodesTypeElement)) {
+                currentElement = element;
                 logMessage("%s\n", element);
                 processMatchableNodes(element);
             }
             // Define a TypeDescriptor for the generic node but don't enter it into the nodeTypes
             // table since it shouldn't be mentioned in match rules.
-            TypeMirror valueTypeMirror = processingEnv.getElementUtils().getTypeElement(VALUE_NODE_CLASS_NAME).asType();
+            TypeMirror valueTypeMirror = getTypeElement(VALUE_NODE_CLASS_NAME).asType();
             valueType = new TypeDescriptor(valueTypeMirror, "Value", "ValueNode", "org.graalvm.compiler.nodes", Collections.emptyList(), false, false);
 
             Map<TypeElement, MatchRuleDescriptor> map = new HashMap<>();
@@ -738,6 +745,9 @@ public class MatchProcessor extends AbstractProcessor {
 
         } catch (Throwable t) {
             reportExceptionThrow(currentElement, t);
+        } finally {
+            currentElement = null;
+            currentRound = null;
         }
 
         return true;
@@ -747,16 +757,16 @@ public class MatchProcessor extends AbstractProcessor {
      * Build up the type table to be used during parsing of the MatchRule.
      */
     private void processMatchableNodes(Element element) {
-        if (!processedMatchableNode.contains(element)) {
+        if (!processedMatchableNodes.contains(element)) {
             try {
-                processedMatchableNode.add(element);
+                processedMatchableNodes.add(element);
 
                 List<AnnotationMirror> matchableNodeAnnotations;
-                AnnotationMirror mirror = getAnnotation(element, matchableNodesTypeMirror);
+                AnnotationMirror mirror = getAnnotation(element, getType(MATCHABLE_NODES_CLASS_NAME));
                 if (mirror != null) {
                     matchableNodeAnnotations = getAnnotationValueList(mirror, "value", AnnotationMirror.class);
                 } else {
-                    mirror = getAnnotation(element, matchableNodeTypeMirror);
+                    mirror = getAnnotation(element, getType(MATCHABLE_NODES_CLASS_NAME));
                     if (mirror != null) {
                         matchableNodeAnnotations = Collections.singletonList(mirror);
                     } else {
@@ -789,7 +799,7 @@ public class MatchProcessor extends AbstractProcessor {
         }
         TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(nodeClass);
         if (typeElement == null) {
-            errorMessage(element, "Class \"%s\" cannot be resolved to a type", nodeClass);
+            printError(element, matchable, "Class \"%s\" cannot be resolved to a type", nodeClass);
             return;
         }
         nodePackage = findPackage(typeElement);
@@ -815,7 +825,7 @@ public class MatchProcessor extends AbstractProcessor {
                 current = (TypeElement) typeUtils.asElement(theSuper);
             }
             if (!ok) {
-                errorMessage(element, "Input named \"%s\" doesn't exist in %s", input, nodeClassElement.getSimpleName());
+                printError(element, matchable, "Input named \"%s\" doesn't exist in %s", input, nodeClassElement.getSimpleName());
             }
         }
 
@@ -825,9 +835,9 @@ public class MatchProcessor extends AbstractProcessor {
     }
 
     private void processMatchRules(Map<TypeElement, MatchRuleDescriptor> map, Element element, List<AnnotationMirror> matchRules) {
-        if (!processedMatchRule.contains(element)) {
+        if (!processedMatchRules.contains(element)) {
             try {
-                processedMatchRule.add(element);
+                processedMatchRules.add(element);
 
                 // The annotation element type should ensure this is true.
                 assert element instanceof ExecutableElement;
@@ -841,7 +851,7 @@ public class MatchProcessor extends AbstractProcessor {
                     map.put(topDeclaringType, info);
                 }
                 for (AnnotationMirror matchRule : matchRules) {
-                    processMethodMatchRule((ExecutableElement) element, info, matchRule);
+                    processMatchRule((ExecutableElement) element, info, matchRule);
                 }
             } catch (Throwable t) {
                 reportExceptionThrow(element, t);
@@ -881,24 +891,24 @@ public class MatchProcessor extends AbstractProcessor {
         return processingEnv.getTypeUtils();
     }
 
-    private void processMethodMatchRule(ExecutableElement method, MatchRuleDescriptor info, AnnotationMirror matchRule) {
-        logMessage("processMethodMatchRule %s\n", method);
+    private void processMatchRule(ExecutableElement method, MatchRuleDescriptor info, AnnotationMirror matchRule) {
+        logMessage("processMatchRule %s\n", method);
 
         Types typeUtils = typeUtils();
 
         if (!method.getModifiers().contains(Modifier.PUBLIC)) {
-            errorMessage(method, "MatchRule method %s must be public", method.getSimpleName());
+            printError(method, "MatchRule method %s must be public", method.getSimpleName());
             return;
         }
         if (method.getModifiers().contains(Modifier.STATIC)) {
-            errorMessage(method, "MatchRule method %s must be non-static", method.getSimpleName());
+            printError(method, "MatchRule method %s must be non-static", method.getSimpleName());
             return;
         }
 
         try {
             TypeMirror returnType = method.getReturnType();
             if (!typeUtils.isSameType(returnType, processingEnv.getElementUtils().getTypeElement(COMPLEX_MATCH_RESULT_CLASS_NAME).asType())) {
-                errorMessage(method, "MatchRule method return type must be %s", COMPLEX_MATCH_RESULT_CLASS_NAME);
+                printError(method, "MatchRule method return type must be %s", COMPLEX_MATCH_RESULT_CLASS_NAME);
                 return;
             }
 
@@ -908,7 +918,7 @@ public class MatchProcessor extends AbstractProcessor {
             ArrayList<String> expectedNames = parser.capturedNames();
             List<? extends VariableElement> actualParameters = method.getParameters();
             if (expectedTypes.size() + 1 < actualParameters.size()) {
-                errorMessage(method, "Too many arguments for match method %s != %s", expectedTypes.size() + 1, actualParameters.size());
+                printError(method, "Too many arguments for match method %s != %s", expectedTypes.size() + 1, actualParameters.size());
                 return;
             }
 
@@ -919,12 +929,12 @@ public class MatchProcessor extends AbstractProcessor {
                 String name = parameter.getSimpleName().toString();
                 int nameIndex = expectedNames.indexOf(name);
                 if (nameIndex == -1) {
-                    errorMessage(method, "Argument \"%s\" isn't captured in the match rule", name);
+                    printError(method, "Argument \"%s\" isn't captured in the match rule", name);
                     return;
                 }
                 TypeMirror type = parameter.asType();
                 if (!typeUtils.isAssignable(expectedTypes.get(nameIndex).mirror, type)) {
-                    errorMessage(method, "Captured value \"%s\" of type %s is not assignable to argument of type %s", name, expectedTypes.get(nameIndex).mirror, type);
+                    printError(method, "Captured value \"%s\" of type %s is not assignable to argument of type %s", name, expectedTypes.get(nameIndex).mirror, type);
                     return;
                 }
             }
@@ -937,7 +947,7 @@ public class MatchProcessor extends AbstractProcessor {
             } else if (invoker.method != method) {
                 // This could be supported but it's easier if they are unique since the names
                 // are used in log output and snippet counters.
-                errorMessage(method, "Use unique method names for match methods: %s.%s != %s.%s", method.getReceiverType(), method.getSimpleName(), invoker.method.getReceiverType(),
+                printError(method, "Use unique method names for match methods: %s.%s != %s.%s", method.getReceiverType(), method.getSimpleName(), invoker.method.getReceiverType(),
                                 invoker.method.getSimpleName());
                 return;
             }
@@ -950,7 +960,7 @@ public class MatchProcessor extends AbstractProcessor {
             while (enclosing != null) {
                 if (enclosing.getKind() == ElementKind.CLASS || enclosing.getKind() == ElementKind.INTERFACE) {
                     if (enclosing.getModifiers().contains(Modifier.PRIVATE)) {
-                        errorMessage(method, "MatchRule cannot be declared in a private %s %s", enclosing.getKind().name().toLowerCase(), enclosing);
+                        printError(method, "MatchRule cannot be declared in a private %s %s", enclosing.getKind().name().toLowerCase(), enclosing);
                         return;
                     }
                     originatingElementsList.add(enclosing);
@@ -973,11 +983,26 @@ public class MatchProcessor extends AbstractProcessor {
                 info.matchRules.add(new MatchRuleItem(match, invoker));
             }
         } catch (RuleParseError e) {
-            errorMessage(method, e.getMessage());
+            printError(method, matchRule, e.getMessage());
         }
     }
 
-    private void errorMessage(Element element, String format, Object... args) {
-        processingEnv.getMessager().printMessage(Kind.ERROR, String.format(format, args), element);
+    private Element elementForMessage(Element e) {
+        if (currentRound != null && !currentRound.getRootElements().contains(e) && currentElement != null) {
+            return currentElement;
+        }
+        return e;
+    }
+
+    private void printError(Element annotatedElement, String format, Object... args) {
+        Element e = elementForMessage(annotatedElement);
+        String prefix = e == annotatedElement ? "" : annotatedElement + ": ";
+        processingEnv.getMessager().printMessage(Kind.ERROR, prefix + String.format(format, args), e);
+    }
+
+    private void printError(Element annotatedElement, AnnotationMirror annotation, String format, Object... args) {
+        Element e = elementForMessage(annotatedElement);
+        String prefix = e == annotatedElement ? "" : annotation + " on " + annotatedElement + ": ";
+        processingEnv.getMessager().printMessage(Kind.ERROR, prefix + String.format(format, args), e, annotation);
     }
 }
