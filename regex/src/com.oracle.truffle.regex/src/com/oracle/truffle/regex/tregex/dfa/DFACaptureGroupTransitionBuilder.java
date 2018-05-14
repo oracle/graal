@@ -36,7 +36,6 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
 
@@ -92,10 +91,10 @@ public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
                     arrayCopies.add((byte) targetIndex);
                 }
                 if (nfaTransition.getGroupBoundaries().hasIndexUpdates()) {
-                    indexUpdates.add(createIndexManipulationArray(targetIndex, nfaTransition.getGroupBoundaries().getUpdateIndices()));
+                    indexUpdates.add(nfaTransition.getGroupBoundaries().updatesToPartialTransitionArray(targetIndex));
                 }
                 if (nfaTransition.getGroupBoundaries().hasIndexClears()) {
-                    indexClears.add(createIndexManipulationArray(targetIndex, nfaTransition.getGroupBoundaries().getClearIndices()));
+                    indexClears.add(nfaTransition.getGroupBoundaries().clearsToPartialTransitionArray(targetIndex));
                 }
             }
         }
@@ -143,17 +142,6 @@ public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
         }
         assert swaps.size() / 2 < newOrder.length;
         return swaps.size() == 0 ? DFACaptureGroupPartialTransitionNode.EMPTY_REORDER_SWAPS : swaps.toArray();
-    }
-
-    public static byte[] createIndexManipulationArray(int targetIndex, CompilationFinalBitSet groupBoundaryIndices) {
-        final byte[] indexUpdate = new byte[groupBoundaryIndices.numberOfSetBits() + 1];
-        indexUpdate[0] = (byte) targetIndex;
-        int i = 1;
-        for (int j : groupBoundaryIndices) {
-            assert j < 256;
-            indexUpdate[i++] = (byte) j;
-        }
-        return indexUpdate;
     }
 
     public DFACaptureGroupLazyTransitionNode toLazyTransition(CompilationBuffer compilationBuffer) {
