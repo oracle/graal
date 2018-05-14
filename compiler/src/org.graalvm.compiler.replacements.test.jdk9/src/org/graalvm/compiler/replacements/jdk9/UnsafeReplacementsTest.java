@@ -36,14 +36,21 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
 
     static class Container {
         public volatile boolean booleanField;
+        public volatile byte byteField = 17;
+        public volatile char charField = 1025;
+        public volatile short shortField = 2232;
     }
 
     static jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
     static long booleanOffset;
+    static long byteOffset;
+    static long charOffset;
 
     static {
         try {
             booleanOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("booleanField"));
+            byteOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("byteField"));
+            charOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("charField"));
         } catch (NoSuchFieldException e) {
           throw new RuntimeException(e);
         }
@@ -54,9 +61,16 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
         return unsafe.compareAndSetBoolean(container, booleanOffset, false, true);
     }
 
+    public static boolean unsafeCompareAndSetChar() throws NoSuchFieldException {
+        Container container = new Container();
+        return unsafe.compareAndSetChar(container, charOffset, (char) 1025, (char) 1777);
+    }
+
     @Test
     public void testCompareAndSet() {
         testGraph("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetBoolean");
+        testGraph("unsafeCompareAndSetChar");
+        test("unsafeCompareAndSetChar");
     }
 }

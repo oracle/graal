@@ -431,6 +431,12 @@ public class AMD64Move {
                 masm.lock();
             }
             switch (accessKind) {
+                case BYTE:
+                    masm.cmpxchgb(asRegister(newValue), address.toAddress());
+                    break;
+                case WORD:
+                    masm.cmpxchgw(asRegister(newValue), address.toAddress());
+                    break;
                 case DWORD:
                     masm.cmpxchgl(asRegister(newValue), address.toAddress());
                     break;
