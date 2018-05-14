@@ -126,7 +126,7 @@ def svmbuild_dir(suite=None):
 def suite_native_image_root(suite=None):
     if not suite:
         suite = svm_suite()
-    return join(svmbuild_dir(suite), 'native-image-root', 'jre')
+    return join(svmbuild_dir(suite), 'native-image-root')
 
 def native_image_distributions():
     deps = [mx.distribution('GRAAL_MANAGEMENT')]
@@ -296,11 +296,10 @@ def native_image_symlink_path(native_image_root, platform_specific=True):
     return symlink_path
 
 def native_image_on_jvm(args):
-    graalvm_home = join(suite_native_image_root(), '..')
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
     driver_cp = list(itertools.chain.from_iterable(glob.glob(cp) for cp in driver_cp))
-    run_java(['-Dgraalvm.home=' + graalvm_home, '-cp', ":".join(driver_cp), mx.dependency('substratevm:SVM_DRIVER').mainClass] + args)
+    run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp), mx.dependency('substratevm:SVM_DRIVER').mainClass] + args)
 
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
     if not allow_native_image_build:

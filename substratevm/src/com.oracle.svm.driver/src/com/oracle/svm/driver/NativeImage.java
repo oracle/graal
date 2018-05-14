@@ -193,15 +193,15 @@ class NativeImage {
             }
             rootDir = rootDirCandidate;
         } else {
-            String graalvmHomePropertyName = "graalvm.home";
-            String graalvmHomeString = System.getProperty(graalvmHomePropertyName);
-            if (graalvmHomeString == null) {
-                throw showError("Running on JVM requires setting " + graalvmHomePropertyName + " system property");
+            String rootDirProperty = "native-image.root";
+            String rootDirString = System.getProperty(rootDirProperty);
+            if (rootDirString == null) {
+                throw showError("Running on JVM requires setting " + rootDirProperty + " system property");
             }
             try {
-                rootDir = canonicalize(Paths.get(graalvmHomeString).resolve("jre"));
+                rootDir = canonicalize(Paths.get(rootDirString));
             } catch (NativeImageError e) {
-                throw showError("Invalid " + graalvmHomePropertyName + " setting " + graalvmHomeString + "\n" + e.getMessage());
+                throw showError("Invalid " + rootDirProperty + " setting " + rootDirString + "\n" + e.getMessage());
             }
         }
         assert rootDir != null;
