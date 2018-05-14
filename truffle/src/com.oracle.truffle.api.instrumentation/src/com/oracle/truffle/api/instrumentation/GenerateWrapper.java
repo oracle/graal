@@ -77,7 +77,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * </pre>
  *
  * <p>
- * <b>Example that ignores return values:</b>
+ * <b>Example that converts incoming byte values to int.</b>
  *
  * <pre>
  * &#64;GenerateWrapper
@@ -90,12 +90,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *         return new ExpressionNodeWrapper(this, probeNode);
  *     }
  *
- *     &#64;GenerateWrapper.IncomingConveter
+ *     &#64;GenerateWrapper.IncomingConverter
  *     final Object convertIncoming(Object incomingValue) {
  *         if (incomingValue instanceof Byte) {
  *             return (int) ((byte) incomingValue);
  *         }
- *         // more conversions
  *         return incomingValue;
  *     }
  * }
@@ -112,12 +111,12 @@ public @interface GenerateWrapper {
 
     /**
      * Annotates a method to be used as incoming value converter. The annotated method can be used
-     * to to convert incoming values that were introduced by instruments. Instruments may introduce
-     * new values to the interpreter using the {@link EventContext#createUnwind(Object) unwind}
-     * feature. Introduced values are Interop values. If the language only supports a subset of
-     * interop values or requires them to be wrapped then the incoming converter can be used to
-     * perform the necessary conversion. The incoming converter is only invoked if a wrapper is
-     * currently inserted.
+     * to convert incoming values that were introduced by instruments. Instruments may introduce new
+     * values to the interpreter using the {@link EventContext#createUnwind(Object) unwind} feature.
+     * Introduced values are Interop values. If the language only supports a subset of interop
+     * values or requires them to be wrapped then the incoming converter can be used to perform the
+     * necessary conversion. The incoming converter is only invoked if a wrapper is currently
+     * inserted.
      * <p>
      * The return type and the single parameter of the annotated method must be of type
      * {@link Object}. The annotated method must have at least package-protected visibility. There
@@ -134,11 +133,11 @@ public @interface GenerateWrapper {
 
     /**
      * Annotates a method to be used as outgoing value converter. The annotated method can be used
-     * to to convert outgoing return values of instrumentable nodes to instruments. This may be used
-     * to convert internal non-interop capable values to interop values before instruments can
-     * access it. The outgoing converter can also be used to just return <code>null</code> to
-     * indicate that return value should be ignored from this wrapped node. The outgoing converter
-     * is only invoked if a wrapper is currently inserted.
+     * to convert outgoing return values of instrumentable nodes to instruments. This may be used to
+     * convert internal non-interop capable values to interop values before instruments can access
+     * it. The outgoing converter can also be used to just return <code>null</code> to indicate that
+     * return value should be ignored from this wrapped node. The outgoing converter is only invoked
+     * if a wrapper is currently inserted.
      * <p>
      * The annotated method is used to convert an guest language value to a format that can be read
      * by other guest languages and tools. The return type and the single parameter of the annotated
