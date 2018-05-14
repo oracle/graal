@@ -2040,6 +2040,11 @@ public abstract class TruffleLanguage<C> {
         }
 
         @Override
+        public void materializeHostFrames(Throwable original) {
+            TruffleStackTrace.materializeHostFrames(original);
+        }
+
+        @Override
         public InstrumentInfo createInstrument(Object vmObject, String id, String name, String version) {
             return new InstrumentInfo(vmObject, id, name, version);
         }
