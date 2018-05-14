@@ -63,6 +63,7 @@ import org.graalvm.compiler.options.OptionKey;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixExecutableName;
@@ -86,8 +87,7 @@ class NativeImage {
     static final String platform = getPlatform();
 
     private static String getPlatform() {
-        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        return (osMXBean.getName() + "-" + osMXBean.getArch()).toLowerCase();
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
     static final String svmVersion = System.getProperty("substratevm.version", "dev");
