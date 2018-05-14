@@ -63,7 +63,7 @@ final class TruffleStackTrace extends Exception {
      * TruffleException internal error then the exception (e.g. NullPointerException) has already
      * captured the host stack trace and this host exception stack trace is not used.
      */
-    void materializeHostException() {
+    private void materializeHostException() {
         if (this.materializedHostException == null) {
             this.materializedHostException = new Exception();
         }
