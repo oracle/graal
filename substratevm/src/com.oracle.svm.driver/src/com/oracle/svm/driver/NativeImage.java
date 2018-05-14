@@ -28,6 +28,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -57,14 +59,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.LocalizationSupport;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.PosixExecutableName;
@@ -83,31 +82,16 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
 class NativeImage {
 
-    private static String getPlatform() {
-        if (Platform.includedIn(Platform.DARWIN_AMD64.class)) {
-            return "darwin-amd64";
-        }
-        if (Platform.includedIn(Platform.LINUX_AMD64.class)) {
-            return "linux-amd64";
-        }
-        throw VMError.shouldNotReachHere();
-    }
+    static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
 
     static final String platform = getPlatform();
-    static final String svmVersion = System.getProperty("substratevm.version");
 
-    private static String getGraalVMVersion() {
-        String tmpGraalVmVersion = System.getProperty("org.graalvm.version");
-        if (tmpGraalVmVersion == null) {
-            tmpGraalVmVersion = System.getProperty("graalvm.version");
-        }
-        if (tmpGraalVmVersion == null) {
-            throw new RuntimeException("Could not find GraalVM version in graalvm.version or org.graalvm.version");
-        }
-        return tmpGraalVmVersion;
+    private static String getPlatform() {
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String graalvmVersion = getGraalVMVersion();
+    static final String svmVersion = System.getProperty("substratevm.version", "dev");
+    static final String graalvmVersion = System.getProperty("org.graalvm.version", System.getProperty("graalvm.version", "dev"));
 
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
@@ -182,7 +166,6 @@ class NativeImage {
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
     private final ArrayList<OptionHandler<? extends NativeImage>> optionHandlers = new ArrayList<>();
 
-    private final Path executablePath;
     private final Path workDir;
     private final Path rootDir;
     private final Path homeDir;
@@ -197,17 +180,30 @@ class NativeImage {
     protected NativeImage() {
         workDir = Paths.get(".").toAbsolutePath().normalize();
         assert workDir != null;
-        executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
-        assert executablePath != null;
-        Path binDir = executablePath.getParent();
-        Path rootDirCandidate = binDir.getParent();
-        if (rootDirCandidate.endsWith(platform)) {
-            rootDirCandidate = rootDirCandidate.getParent();
+        if (IS_AOT) {
+            Path executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
+            assert executablePath != null;
+            Path binDir = executablePath.getParent();
+            Path rootDirCandidate = binDir.getParent();
+            if (rootDirCandidate.endsWith(platform)) {
+                rootDirCandidate = rootDirCandidate.getParent();
+            }
+            if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
+                rootDirCandidate = rootDirCandidate.getParent().getParent();
+            }
+            rootDir = rootDirCandidate;
+        } else {
+            String rootDirProperty = "native-image.root";
+            String rootDirString = System.getProperty(rootDirProperty);
+            if (rootDirString == null) {
+                throw showError("Running on JVM requires setting " + rootDirProperty + " system property");
+            }
+            try {
+                rootDir = canonicalize(Paths.get(rootDirString));
+            } catch (NativeImageError e) {
+                throw showError("Invalid " + rootDirProperty + " setting " + rootDirString + "\n" + e.getMessage());
+            }
         }
-        if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
-            rootDirCandidate = rootDirCandidate.getParent().getParent();
-        }
-        rootDir = rootDirCandidate;
         assert rootDir != null;
         String homeDirString = System.getProperty("user.home");
         homeDir = Paths.get(homeDirString);
@@ -241,10 +237,8 @@ class NativeImage {
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
 
         addImageBuilderJavaArgs("-Dsubstratevm.version=" + svmVersion);
-        if (graalvmVersion != null) {
-            addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
-            addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
-        }
+        addImageBuilderJavaArgs("-Dgraalvm.version=" + graalvmVersion);
+        addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
 
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
 
@@ -447,7 +441,7 @@ class NativeImage {
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
         Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
-        if (WordFactory.unsigned(xmsValue).aboveThan(WordFactory.unsigned(xmxValue))) {
+        if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
             replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
         }
 
@@ -580,7 +574,7 @@ class NativeImage {
         command.addAll(javaArgs);
         command.add("com.oracle.svm.hosted.NativeImageGeneratorRunner");
         command.addAll(Arrays.asList("-imagecp", imagecp.stream().map(Path::toString).collect(Collectors.joining(":"))));
-        if (OS.getCurrent().hasProcFS) {
+        if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
@@ -608,7 +602,7 @@ class NativeImage {
 
     public static void main(String[] args) {
         try {
-            NativeImage nativeImage = new NativeImageServer();
+            NativeImage nativeImage = IS_AOT ? new NativeImageServer() : new NativeImage();
 
             if (args.length == 0) {
                 nativeImage.showMessage(usageText);
@@ -838,13 +832,19 @@ class NativeImage {
         return "1g";
     }
 
+    private static long getPhysicalMemorySize() {
+        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
+        long totalPhysicalMemorySize = ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();
+        return totalPhysicalMemorySize;
+    }
+
     protected String getXmxValue(int maxInstances) {
-        UnsignedWord memMax = PhysicalMemory.size().unsignedDivide(10).multiply(8).unsignedDivide(maxInstances);
+        Long memMax = Long.divideUnsigned(Long.divideUnsigned(getPhysicalMemorySize(), 10) * 8, maxInstances);
         String maxXmx = "14g";
-        if (memMax.aboveOrEqual(WordFactory.unsigned(SubstrateOptionsParser.parseLong(maxXmx)))) {
+        if (Long.compareUnsigned(memMax, SubstrateOptionsParser.parseLong(maxXmx)) >= 0) {
             return maxXmx;
         }
-        return Long.toUnsignedString(memMax.rawValue());
+        return Long.toUnsignedString(memMax);
     }
 
     static Map<String, String> loadProperties(Path propertiesPath) {

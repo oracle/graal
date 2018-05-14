@@ -556,6 +556,7 @@ suite = {
         #
         "SVM_DRIVER": {
             "subDir": "src",
+            "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
             ],

@@ -24,7 +24,9 @@ package com.oracle.svm.driver;
 
 import java.lang.reflect.Field;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Queue;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -32,6 +34,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionDescriptor;
+import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -67,66 +71,28 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
-        apiOptions = ImageSingletons.lookup(APIOptionCollector.class).options;
-    }
-
-    @Override
-    boolean consume(Queue<String> args) {
-        String headArg = args.peek();
-        String[] optionParts = headArg.split("=", 2);
-        OptionInfo option = apiOptions.get(optionParts[0]);
-        if (option != null) {
-            args.poll();
-            String builderOption = option.builderOption;
-            String optionValue = option.defaultValue;
-            if (optionParts.length == 2) {
-                if (option.defaultFinal) {
-                    NativeImage.showError("Passing values to option " + optionParts[0] + " is not supported.");
-                }
-                optionValue = optionParts[1];
+        if (NativeImage.IS_AOT) {
+            apiOptions = ImageSingletons.lookup(APIOptionCollector.class).options;
+        } else {
+            List<Class<? extends OptionDescriptors>> optionsClasses = new ArrayList<>();
+            for (OptionDescriptors set : OptionsParser.getOptionsLoader()) {
+                optionsClasses.add(set.getClass());
             }
-            if (optionValue != null) {
-                if (option.hasPathArguments) {
-                    optionValue = Arrays.stream(optionValue.split(","))
-                                    .filter(s -> !s.isEmpty())
-                                    .map(s -> nativeImage.canonicalize(Paths.get(s)).toString())
-                                    .collect(Collectors.joining(","));
-                }
-                builderOption += optionValue;
-            }
-            nativeImage.addImageBuilderArg(builderOption);
-            return true;
+            apiOptions = extractOptions(optionsClasses);
         }
-        return false;
     }
 
-    void printOptions(Consumer<String> println) {
-        apiOptions.forEach((optionName, optionInfo) -> {
-            SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66);
-        });
-    }
-}
-
-@AutomaticFeature
-final class APIOptionCollector implements Feature {
-
-    final SortedMap<String, APIOptionHandler.OptionInfo> options = new TreeMap<>();
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    APIOptionCollector() {
-    }
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
+    static SortedMap<String, OptionInfo> extractOptions(List<Class<? extends OptionDescriptors>> optionsClasses) {
         SortedMap<String, OptionDescriptor> hostedOptions = new TreeMap<>();
         SortedMap<String, OptionDescriptor> runtimeOptions = new TreeMap<>();
-        HostedOptionParser.collectOptions(accessImpl.getImageClassLoader(), hostedOptions, runtimeOptions);
-        hostedOptions.values().forEach(o -> extractOption(NativeImage.oH, o));
-        runtimeOptions.values().forEach(o -> extractOption(NativeImage.oR, o));
+        HostedOptionParser.collectOptions(optionsClasses, hostedOptions, runtimeOptions);
+        SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
+        hostedOptions.values().forEach(o -> extractOption(NativeImage.oH, o, apiOptions));
+        runtimeOptions.values().forEach(o -> extractOption(NativeImage.oR, o, apiOptions));
+        return apiOptions;
     }
 
-    private void extractOption(String optionPrefix, OptionDescriptor optionDescriptor) {
+    private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions) {
         try {
             Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
@@ -178,12 +144,65 @@ final class APIOptionCollector implements Feature {
                     defaultValue = apiAnnotation.fixedValue()[0];
                 }
 
-                options.put(apiOptionName,
+                apiOptions.put(apiOptionName,
                                 new APIOptionHandler.OptionInfo(builderOption, defaultValue, helpText, apiAnnotation.kind().equals(APIOptionKind.Paths),
                                                 booleanOption || apiAnnotation.fixedValue().length > 0));
             }
         } catch (NoSuchFieldException e) {
             /* Does not qualify as APIOption */
         }
+    }
+
+    @Override
+    boolean consume(Queue<String> args) {
+        String headArg = args.peek();
+        String[] optionParts = headArg.split("=", 2);
+        OptionInfo option = apiOptions.get(optionParts[0]);
+        if (option != null) {
+            args.poll();
+            String builderOption = option.builderOption;
+            String optionValue = option.defaultValue;
+            if (optionParts.length == 2) {
+                if (option.defaultFinal) {
+                    NativeImage.showError("Passing values to option " + optionParts[0] + " is not supported.");
+                }
+                optionValue = optionParts[1];
+            }
+            if (optionValue != null) {
+                if (option.hasPathArguments) {
+                    optionValue = Arrays.stream(optionValue.split(","))
+                                    .filter(s -> !s.isEmpty())
+                                    .map(s -> nativeImage.canonicalize(Paths.get(s)).toString())
+                                    .collect(Collectors.joining(","));
+                }
+                builderOption += optionValue;
+            }
+            nativeImage.addImageBuilderArg(builderOption);
+            return true;
+        }
+        return false;
+    }
+
+    void printOptions(Consumer<String> println) {
+        apiOptions.forEach((optionName, optionInfo) -> {
+            SubstrateOptionsParser.printOption(println, optionName, optionInfo.helpText, 4, 22, 66);
+        });
+    }
+}
+
+@AutomaticFeature
+final class APIOptionCollector implements Feature {
+
+    SortedMap<String, APIOptionHandler.OptionInfo> options;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    APIOptionCollector() {
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
+        List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class);
+        options = APIOptionHandler.extractOptions(optionClasses);
     }
 }
