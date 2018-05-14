@@ -136,7 +136,6 @@ public final class ComponentInstaller {
         for (String s : commands.keySet()) {
             go.addCommandOptions(s, commands.get(s).supportedOptions());
         }
-        go.ignoreUnknownCommands(true);
         go.process();
         cmdHandler = commands.get(go.getCommand());
         Map<String, String> optValues = go.getOptValues();
