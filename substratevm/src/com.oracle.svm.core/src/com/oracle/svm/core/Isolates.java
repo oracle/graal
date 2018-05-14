@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
@@ -28,15 +28,15 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
-public class PosixIsolates {
+public class Isolates {
     public static final String IMAGE_HEAP_BEGIN_SYMBOL_NAME = "__svm_heap_begin";
     public static final String IMAGE_HEAP_END_SYMBOL_NAME = "__svm_heap_end";
     public static final String IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME = "__svm_heap_relocatable_begin";
@@ -56,17 +56,17 @@ public class PosixIsolates {
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int checkSanity(Isolate isolate) {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            return isolate.isNull() ? PosixCEntryPointErrors.NULL_ARGUMENT : PosixCEntryPointErrors.NO_ERROR;
+            return isolate.isNull() ? CEntryPointErrors.NULL_ARGUMENT : CEntryPointErrors.NO_ERROR;
         } else {
-            return isolate.equal(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL) ? PosixCEntryPointErrors.NO_ERROR : PosixCEntryPointErrors.UNINITIALIZED_ISOLATE;
+            return isolate.equal(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL) ? CEntryPointErrors.NO_ERROR : CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
         int result = CommittedMemoryProvider.get().initialize(isolatePointer, parameters);
-        if (result == PosixCEntryPointErrors.NO_ERROR && checkSanity(isolatePointer.read()) != PosixCEntryPointErrors.NO_ERROR) {
-            result = PosixCEntryPointErrors.UNSPECIFIED;
+        if (result == CEntryPointErrors.NO_ERROR && checkSanity(isolatePointer.read()) != CEntryPointErrors.NO_ERROR) {
+            result = CEntryPointErrors.UNSPECIFIED;
             isolatePointer.write(WordFactory.nullPointer());
         }
         return result;

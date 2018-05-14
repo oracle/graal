@@ -65,12 +65,14 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -83,8 +85,6 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.posix.PosixCEntryPointErrors;
-import com.oracle.svm.core.posix.PosixIsolates;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Stdio.FILE;
 import com.oracle.svm.core.posix.thread.PosixVMThreads;
@@ -165,12 +165,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
         WordPointer isolate = StackValue.get(SizeOf.get(WordPointer.class));
         isolate.write(WordFactory.nullPointer());
-        int error = PosixIsolates.create(isolate, parameters);
-        if (error != PosixCEntryPointErrors.NO_ERROR) {
+        int error = Isolates.create(isolate, parameters);
+        if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
         if (UseHeapBaseRegister.getValue()) {
-            setHeapBase(PosixIsolates.getHeapBase(isolate.read()));
+            setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
         if (MultiThreaded.getValue()) {
             PosixVMThreads.ensureInitialized();
@@ -184,7 +184,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             writeCurrentVMThread(VMThreads.nullThread());
         }
         int result = runtimeCall(ATTACH_THREAD, isolate, vmThreadSize);
-        if (MultiThreaded.getValue() && result == PosixCEntryPointErrors.NO_ERROR) {
+        if (MultiThreaded.getValue() && result == CEntryPointErrors.NO_ERROR) {
             Safepoint.transitionNativeToJava();
         }
         return result;
@@ -193,16 +193,16 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget
     private static int attachThread(Isolate isolate, int vmThreadSize) {
-        int sanityError = PosixIsolates.checkSanity(isolate);
-        if (sanityError != PosixCEntryPointErrors.NO_ERROR) {
+        int sanityError = Isolates.checkSanity(isolate);
+        if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
         }
         if (UseHeapBaseRegister.getValue()) {
-            setHeapBase(PosixIsolates.getHeapBase(isolate));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
             if (!PosixVMThreads.isInitialized()) {
-                return PosixCEntryPointErrors.UNINITIALIZED_ISOLATE;
+                return CEntryPointErrors.UNINITIALIZED_ISOLATE;
             }
             IsolateThread thread = PosixVMThreads.VMThreadTL.get();
             if (VMThreads.isNullThread(thread)) { // not attached
@@ -214,12 +214,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             }
             writeCurrentVMThread(thread);
         }
-        return PosixCEntryPointErrors.NO_ERROR;
+        return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet
     public static int detachThreadSnippet() {
-        int result = PosixCEntryPointErrors.NO_ERROR;
+        int result = CEntryPointErrors.NO_ERROR;
         if (MultiThreaded.getValue()) {
             IsolateThread thread = CEntryPointContext.getCurrentIsolateThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
@@ -234,7 +234,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state going away.")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not (thread-local) allocate while detaching a thread.")
     private static int detachThreadMT(IsolateThread thread) {
-        int result = PosixCEntryPointErrors.NO_ERROR;
+        int result = CEntryPointErrors.NO_ERROR;
         /*
          * Make me immune to safepoints (the safepoint mechanism ignores me). We are calling
          * functions that are not marked as @Uninterruptible during the detach process. We hold the
@@ -255,7 +255,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
 
             VMThreads.detachThread(thread);
         } catch (Throwable t) {
-            result = PosixCEntryPointErrors.UNSPECIFIED;
+            result = CEntryPointErrors.UNSPECIFIED;
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
             LibC.free(thread);
@@ -277,10 +277,10 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     private static int tearDownIsolate() {
         boolean success = JavaThreads.singleton().tearDownVM();
         if (!success) {
-            return PosixCEntryPointErrors.UNSPECIFIED;
+            return CEntryPointErrors.UNSPECIFIED;
         }
         PosixVMThreads.finishTearDown();
-        return PosixIsolates.tearDownCurrent();
+        return Isolates.tearDownCurrent();
     }
 
     @Snippet
@@ -289,13 +289,13 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         if (MultiThreaded.getValue()) {
             writeCurrentVMThread(VMThreads.nullThread());
             result = runtimeCall(ENTER_ISOLATE_MT, isolate);
-            if (result == PosixCEntryPointErrors.NO_ERROR) {
+            if (result == CEntryPointErrors.NO_ERROR) {
                 Safepoint.transitionNativeToJava();
             }
         } else {
-            result = PosixIsolates.checkSanity(isolate);
-            if (result == PosixCEntryPointErrors.NO_ERROR && UseHeapBaseRegister.getValue()) {
-                setHeapBase(PosixIsolates.getHeapBase(isolate));
+            result = Isolates.checkSanity(isolate);
+            if (result == CEntryPointErrors.NO_ERROR && UseHeapBaseRegister.getValue()) {
+                setHeapBase(Isolates.getHeapBase(isolate));
             }
         }
         return result;
@@ -304,22 +304,22 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @Uninterruptible(reason = "Thread state not set up yet")
     @SubstrateForeignCallTarget
     private static int enterIsolateMT(Isolate isolate) {
-        int sanityError = PosixIsolates.checkSanity(isolate);
-        if (sanityError != PosixCEntryPointErrors.NO_ERROR) {
+        int sanityError = Isolates.checkSanity(isolate);
+        if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
         }
         if (UseHeapBaseRegister.getValue()) {
-            setHeapBase(PosixIsolates.getHeapBase(isolate));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (!PosixVMThreads.isInitialized()) {
-            return PosixCEntryPointErrors.UNINITIALIZED_ISOLATE;
+            return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
         IsolateThread thread = PosixVMThreads.VMThreadTL.get();
         if (VMThreads.isNullThread(thread)) {
-            return PosixCEntryPointErrors.UNATTACHED_THREAD;
+            return CEntryPointErrors.UNATTACHED_THREAD;
         }
         writeCurrentVMThread(thread);
-        return PosixCEntryPointErrors.NO_ERROR;
+        return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet
@@ -327,27 +327,27 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         Isolate isolate;
         if (MultiThreaded.getValue()) {
             if (thread.isNull()) {
-                return PosixCEntryPointErrors.NULL_ARGUMENT;
+                return CEntryPointErrors.NULL_ARGUMENT;
             }
             writeCurrentVMThread(thread);
             isolate = PosixVMThreads.IsolateTL.get(thread);
         } else { // single-threaded
             if (SpawnIsolates.getValue()) {
                 if (thread.isNull()) {
-                    return PosixCEntryPointErrors.NULL_ARGUMENT;
+                    return CEntryPointErrors.NULL_ARGUMENT;
                 }
             } else if (!thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
-                return PosixCEntryPointErrors.UNATTACHED_THREAD;
+                return CEntryPointErrors.UNATTACHED_THREAD;
             }
             isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
         if (UseHeapBaseRegister.getValue()) {
-            setHeapBase(PosixIsolates.getHeapBase(isolate));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
         if (MultiThreaded.getValue()) {
             Safepoint.transitionNativeToJava();
         }
-        return PosixCEntryPointErrors.NO_ERROR;
+        return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet
@@ -366,7 +366,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
         }
         Log.log().newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
-        return PosixCEntryPointErrors.UNSPECIFIED; // unreachable
+        return CEntryPointErrors.UNSPECIFIED; // unreachable
     }
 
     @Snippet
@@ -375,12 +375,12 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
             assert VMThreads.StatusSupport.isStatusJava() : "Should be coming from Java to native.";
             VMThreads.StatusSupport.setStatusNative();
         }
-        return PosixCEntryPointErrors.NO_ERROR;
+        return CEntryPointErrors.NO_ERROR;
     }
 
     @Snippet
     public static boolean isAttachedSnippet(Isolate isolate) {
-        return PosixIsolates.checkSanity(isolate) == PosixCEntryPointErrors.NO_ERROR &&
+        return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
                         (!MultiThreaded.getValue() || runtimeCallIsAttached(IS_ATTACHED_MT, isolate));
     }
 
@@ -388,7 +388,7 @@ public final class PosixCEntryPointSnippets extends SubstrateTemplates implement
     @SubstrateForeignCallTarget
     private static boolean isAttachedMT(Isolate isolate) {
         if (UseHeapBaseRegister.getValue()) {
-            setHeapBase(PosixIsolates.getHeapBase(isolate));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
         return PosixVMThreads.isInitialized() && PosixVMThreads.VMThreadTL.get().isNonNull();
     }
