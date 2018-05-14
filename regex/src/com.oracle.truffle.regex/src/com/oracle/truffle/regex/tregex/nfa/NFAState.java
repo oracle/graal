@@ -84,8 +84,7 @@ public class NFAState implements IndexedState, JsonConvertible {
                         new ArrayList<>(), new ArrayList<>(), null, matcherBuilder, finishedLookBehinds);
     }
 
-    private NFAState(
-                    short id,
+    private NFAState(short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
                     byte flags,
                     MatcherBuilder matcherBuilder,
@@ -93,8 +92,7 @@ public class NFAState implements IndexedState, JsonConvertible {
         this(id, stateSet, flags, new ArrayList<>(), new ArrayList<>(), null, matcherBuilder, finishedLookBehinds);
     }
 
-    private NFAState(
-                    short id,
+    private NFAState(short id,
                     ASTNodeSet<? extends RegexASTNode> stateSet,
                     byte flags,
                     List<NFAStateTransition> next,

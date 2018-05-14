@@ -28,8 +28,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
-import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -45,11 +43,6 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
     private DFACaptureGroupTransitionBuilder captureGroupTransition;
-
-    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFAStateTransition transition, NFA nfa, boolean forward, boolean prioritySensitive) {
-        this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transition);
-        this.matcherBuilder = matcherBuilder;
-    }
 
     DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitions) {
         this.transitions = transitions;
