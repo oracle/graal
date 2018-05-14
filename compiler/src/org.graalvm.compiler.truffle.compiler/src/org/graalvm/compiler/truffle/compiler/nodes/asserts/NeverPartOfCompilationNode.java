@@ -73,8 +73,9 @@ public final class NeverPartOfCompilationNode extends ControlSinkNode implements
 
     public static void verifyNotFoundIn(final StructuredGraph graph) {
         for (NeverPartOfCompilationNode neverPartOfCompilationNode : graph.getNodes(NeverPartOfCompilationNode.TYPE)) {
-            Throwable exception = new VerificationError(neverPartOfCompilationNode.getMessage());
-            throw new NeverPartOfCompilationException(GraphUtil.approxSourceException(neverPartOfCompilationNode, exception));
+            final NeverPartOfCompilationException neverPartOfCompilationException = new NeverPartOfCompilationException(neverPartOfCompilationNode.getMessage());
+            neverPartOfCompilationException.setStackTrace(GraphUtil.approxSourceStackTraceElement(neverPartOfCompilationNode));
+            throw neverPartOfCompilationException;
         }
     }
 
@@ -82,8 +83,8 @@ public final class NeverPartOfCompilationNode extends ControlSinkNode implements
 
         private static final long serialVersionUID = 0L;
 
-        NeverPartOfCompilationException(Throwable cause) {
-            super(cause, "", new Object[]{});
+        NeverPartOfCompilationException(String message) {
+            super(null, message, new Object[]{});
         }
 
         @Override
