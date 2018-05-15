@@ -276,7 +276,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
         if (frameSlotsToNull != null) {
             assert frameSlotsToNull.length > 0;
             for (int i = 0; i < frameSlotsToNull.length; i++) {
-                LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlotsToNull[i]);
+                LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlotsToNull[i], false);
             }
         }
     }
