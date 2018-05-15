@@ -73,49 +73,54 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
         }
     }
 
-    public static boolean unsafeCompareAndSetBoolean() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetBoolean() {
         Container container = new Container();
         return unsafe.compareAndSetBoolean(container, booleanOffset, false, true);
     }
 
-    public static boolean unsafeCompareAndSetByte() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetByte() {
         Container container = new Container();
         return unsafe.compareAndSetByte(container, booleanOffset, (byte) 17, (byte) 121);
     }
 
-    public static boolean unsafeCompareAndSetChar() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetChar() {
         Container container = new Container();
         return unsafe.compareAndSetChar(container, charOffset, (char) 1025, (char) 1777);
     }
 
-    public static boolean unsafeCompareAndSetShort() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetShort() {
         Container container = new Container();
         return unsafe.compareAndSetShort(container, shortOffset, (short) 2232, (short) 12111);
     }
 
-    public static boolean unsafeCompareAndSetInt() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetInt() {
         Container container = new Container();
         return unsafe.compareAndSetInt(container, intOffset, 101532, 102123);
     }
 
-    public static boolean unsafeCompareAndSetLong() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetLong() {
         Container container = new Container();
         return unsafe.compareAndSetLong(container, longOffset, 0x0123456789abcdefL, 0xfedcba9876543210L);
     }
 
-    public static boolean unsafeCompareAndSetFloat() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetFloat() {
         Container container = new Container();
         return unsafe.compareAndSetFloat(container, floatOffset, 0.125f, 0.25f);
     }
 
-    public static boolean unsafeCompareAndSetDouble() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetDouble() {
         Container container = new Container();
         return unsafe.compareAndSetDouble(container, doubleOffset, 0.125, 0.25);
     }
 
-    public static boolean unsafeCompareAndSetObject() throws NoSuchFieldException {
+    public static boolean unsafeCompareAndSetObject() {
         Container container = new Container();
         return unsafe.compareAndSetObject(container, objectOffset, container, new Object() {});
+    }
+
+    public static byte unsafeCompareAndExchangeByte() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeByte(container, objectOffset, (byte) 17, (byte) 31);
     }
 
     @Test
@@ -138,5 +143,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
         test("unsafeCompareAndSetDouble");
         testGraph("unsafeCompareAndSetObject");
         test("unsafeCompareAndSetObject");
+        testGraph("unsafeCompareAndExchangeByte");
+        test("unsafeCompareAndExchangeByte");
     }
 }
