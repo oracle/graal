@@ -187,7 +187,9 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
 
         @TruffleBoundary
         private void checkFrameIsEmpty(EventContext context, MaterializedFrame frame) {
-            if (!hasParentRootTag(context.getInstrumentedNode())) {
+            Node node = context.getInstrumentedNode();
+            if (!hasParentRootTag(node) &&
+                            node.getRootNode().getFrameDescriptor() == frame.getFrameDescriptor()) {
                 // Top-most nodes tagged with RootTag should have clean frames.
                 Object defaultValue = frame.getFrameDescriptor().getDefaultValue();
                 for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
