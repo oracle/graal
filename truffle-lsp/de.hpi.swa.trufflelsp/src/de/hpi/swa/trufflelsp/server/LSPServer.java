@@ -1,11 +1,19 @@
-package de.hpi.swa.trufflelsp;
+package de.hpi.swa.trufflelsp.server;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.eclipse.lsp4j.CodeActionParams;
 import org.eclipse.lsp4j.CodeLens;
@@ -47,27 +55,43 @@ import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
+import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
 
-public class Server implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService {
-    private int shutdown = 1;
-    private LanguageClient client;
-    private TruffleAdapter truffle;
-    private Map<String, String> openedFileUri2LangId;
-    private String trace_server = "off";
+import de.hpi.swa.trufflelsp.TruffleAdapter;
 
-    public Server() {
-        this.openedFileUri2LangId = new HashMap<>();
-        this.truffle = new TruffleAdapter();
+public class LSPServer implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
+    private final TruffleAdapter truffle;
+    private final PrintWriter err;
+    private final PrintWriter info;
+// private int shutdown = 1;
+    private LanguageClient client;
+    private Map<String, String> openedFileUri2LangId = new HashMap<>();
+    private String trace_server = "off";
+    private List<Diagnostic> diagnostics = new ArrayList<>();
+    private ExecutorService executor;
+    private ServerSocket serverSocket;
+
+    private LSPServer(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
+        this.truffle = adapter;
+        this.info = info;
+        this.err = err;
+    }
+
+    public static LSPServer create(TruffleAdapter adapter, PrintWriter info, PrintWriter err) {
+        LSPServer server = new LSPServer(adapter, info, err);
+        adapter.setDiagnosticsPublisher(server);
+        return server;
     }
 
     public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
-        List<String> triggerCharacters = Arrays.asList("=");
+        List<String> triggerCharacters = Arrays.asList("=", ".");
 // final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(triggerCharacters);
 
         ServerCapabilities capabilities = new ServerCapabilities();
@@ -88,11 +112,6 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         capabilities.setExecuteCommandProvider(new ExecuteCommandOptions(Arrays.asList("harvest_types")));
 
         final InitializeResult res = new InitializeResult(capabilities);
-
-        if (this.isVerbose()) {
-            ServerLauncher.logMsg(params.toString());
-        }
-
         return CompletableFuture.supplyAsync(() -> res);
     }
 
@@ -111,12 +130,20 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 // }
 
     public CompletableFuture<Object> shutdown() {
-        shutdown = 0; // regular shutdown
-        return CompletableFuture.supplyAsync(Object::new);
+        info.println("[Truffle LSP] Shutting down server...");
+        info.flush();
+        return CompletableFuture.completedFuture(null);
     }
 
     public void exit() {
-        System.exit(shutdown);
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            err.println("[Truffle LSP] Error while closing socket: " + e.getLocalizedMessage());
+        }
+        this.executor.shutdownNow();
+        info.println("[Truffle LSP] Server shutdown done.");
+        info.flush();
     }
 
     public TextDocumentService getTextDocumentService() {
@@ -130,15 +157,19 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     @Override
     public void connect(@SuppressWarnings("hiding") LanguageClient client) {
         this.client = client;
-        this.truffle.connect(this);
     }
 
-    public void reportDiagnostics(final List<Diagnostic> diagnostics, final String documentUri) {
-        if (diagnostics != null) {
+    public void addDiagnostics(@SuppressWarnings("hiding") List<Diagnostic> diagnostics) {
+        this.diagnostics.addAll(diagnostics);
+    }
+
+    public void reportCollectedDiagnostics(final String documentUri) {
+        if (!this.diagnostics.isEmpty()) {
             PublishDiagnosticsParams result = new PublishDiagnosticsParams();
-            result.setDiagnostics(diagnostics);
+            result.setDiagnostics(this.diagnostics);
             result.setUri(documentUri);
             this.client.publishDiagnostics(result);
+            this.diagnostics.clear();
         }
     }
 
@@ -149,8 +180,12 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
         // som.getCompletions(position.getTextDocument().getUri(),
         // position.getPosition().getLine(), position.getPosition().getCharacter());
         // return CompletableFuture.completedFuture(Either.forRight(result));
-        CompletionList result = this.truffle.getCompletions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
-        return CompletableFuture.supplyAsync(() -> Either.forRight(result));
+        try {
+            CompletionList result = this.truffle.getCompletions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+            return CompletableFuture.supplyAsync(() -> Either.forRight(result));
+        } finally {
+            reportCollectedDiagnostics(position.getTextDocument().getUri());
+        }
     }
 
     @Override
@@ -202,9 +237,9 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 
     @Override
     public CompletableFuture<List<? extends Command>> codeAction(CodeActionParams params) {
-        List<Diagnostic> diagnostics = params.getContext().getDiagnostics();
+        List<Diagnostic> currentDiagnostics = params.getContext().getDiagnostics();
         List<Command> commands = new ArrayList<>();
-        if (diagnostics.stream().anyMatch(diag -> TruffleAdapter.NO_TYPES_HARVESTED.equals(diag.getCode()))) {
+        if (currentDiagnostics.stream().anyMatch(diag -> TruffleAdapter.NO_TYPES_HARVESTED.equals(diag.getCode()))) {
             Command command = new Command("Harvest types (exec this code)", "harvest_types");
             command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
             commands.add(command);
@@ -276,9 +311,7 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     private void validateTextDocument(final String documentUri,
                     final List<? extends TextDocumentContentChangeEvent> list) {
         String langId = this.openedFileUri2LangId.get(documentUri);
-        if (langId == null) {
-            ServerLauncher.logErr("langId should not be null for opened documents, uri: " + documentUri);
-        }
+        assert langId != null : documentUri;
 
         // Only need the first element, as long as sync mode is
         // TextDocumentSyncKind.Full
@@ -288,23 +321,14 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
     }
 
     private void parseDocument(String documentUri, final String langId, final String text) {
-        if (this.isVerbose()) {
-            ServerLauncher.logMsg("URI: " + documentUri);
-            ServerLauncher.logMsg("langId: " + langId);
-            // ServerLauncher.logMsg("Text: " + text);
-        }
-
-        List<Diagnostic> diagnostics = truffle.parse(text, langId, documentUri);
-        this.reportDiagnostics(diagnostics, documentUri);
+        this.truffle.parse(text, langId, documentUri);
+        reportCollectedDiagnostics(documentUri);
     }
 
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
-        if (this.openedFileUri2LangId.remove(params.getTextDocument().getUri()) == null) {
-            ServerLauncher.logErr(
-                            params.getTextDocument().getUri() + " should be closed, but was not in map of opened files.");
-        }
-
+        String removed = this.openedFileUri2LangId.remove(params.getTextDocument().getUri());
+        assert removed != null : params.getTextDocument().getUri();
     }
 
     @Override
@@ -337,19 +361,47 @@ public class Server implements LanguageServer, LanguageClientAware, TextDocument
 
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
-// System.out.println(params);
     }
 
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
         if ("harvest_types".equals(params.getCommand())) {
             String uri = (String) params.getArguments().get(0);
-            this.truffle.exec(uri);
+            try {
+                this.truffle.exec(uri);
+            } finally {
+                reportCollectedDiagnostics(uri);
+            }
         }
+
         return CompletableFuture.completedFuture(new Object());
     }
 
     public boolean isVerbose() {
         return "verbose".equals(this.trace_server);
+    }
+
+    public void start(@SuppressWarnings("hiding") final ServerSocket serverSocket) {
+        this.serverSocket = serverSocket;
+        this.executor = Executors.newSingleThreadExecutor();
+        this.executor.execute(new Runnable() {
+
+            public void run() {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(LSPServer.this,
+                                    clientSocket.getInputStream(), clientSocket.getOutputStream());
+                    LSPServer.this.connect(launcher.getRemoteProxy());
+                    Future<?> future = launcher.startListening();
+                    try {
+                        future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        err.println("[Truffle LSP] Error: " + e.getLocalizedMessage());
+                    }
+                } catch (IOException e) {
+                    err.println("[Truffle LSP] Error while connecting to client: " + e.getLocalizedMessage());
+                }
+            }
+        });
     }
 
 }

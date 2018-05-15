@@ -22,46 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.debug;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+package de.hpi.swa.trufflelsp;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * This class searches for a suspendable location (SourceSection tagged with one of the element
- * tags) in a Source file.
- *
- * We can verify whether the initial suspended location is accurate and if yes, no language
- * adjustment is necessary.
- *
- * We find one of following three nodes:
- * <ul>
- * <li>node whose source section contains the location,
- * <li>node before the location,
- * <li>node after the location
- * </ul>
- * Using this context node, the language determines the nearest tagged node.
- */
-public final class SuspendableLocationFinder {
+public final class NearestSectionsFinder {
 
-    private SuspendableLocationFinder() {
-    }
-
-    public static Node findNearest(Source source, SourceElement[] sourceElements, int line, int column, TruffleInstrument.Env env) {
-        int boundLine = fixLine(source, line);
-        int boundColumn = fixColumn(source, column, boundLine);
-        return findNearestBound(source, getElementTags(sourceElements), boundLine, boundColumn, env);
+    private NearestSectionsFinder() {
     }
 
     private static int fixColumn(Source source, int column, int boundLine) {
@@ -80,39 +54,6 @@ public final class SuspendableLocationFinder {
             boundLine = maxLine;
         }
         return boundLine;
-    }
-
-    public static Set<Class<? extends Tag>> getElementTags(SourceElement[] sourceElements) {
-        if (sourceElements.length == 1) {
-            return Collections.singleton(sourceElements[0].getTag());
-        }
-        Set<Class<? extends Tag>> elementTags = new HashSet<>();
-        for (int i = 0; i < sourceElements.length; i++) {
-            elementTags.add(sourceElements[i].getTag());
-        }
-        return elementTags;
-    }
-
-    private static Node findNearestBound(Source source, Set<Class<? extends Tag>> elementTags,
-                    int line, int column, TruffleInstrument.Env env) {
-        int offset = convertLineAndColumnToOffset(source, line, column);
-        NearestSections sectionsCollector = getNearestSections(source, env, offset);
-
-        InstrumentableNode contextNode = sectionsCollector.getContainsNode();
-        if (contextNode == null) {
-            contextNode = sectionsCollector.getNextNode();
-        }
-        if (contextNode == null) {
-            contextNode = sectionsCollector.getPreviousNode();
-        }
-        if (contextNode == null) {
-            return null;
-        }
-        Node node = contextNode.findNearestNodeAt(offset, elementTags);
-        if (node == null) {
-            return null;
-        }
-        return node;
     }
 
     public static NearestSections getNearestSections(Source source, TruffleInstrument.Env env, int line, int column) {
