@@ -58,8 +58,10 @@ public interface Feedback {
     /**
      * Formats a verbosePart-level message on stderr. Returns a flag indicating the verbosePart
      * level is on - use to bypass verbosePart messages.
+     * <p/>
+     * {code null} bundle key can be used to test verbose flag
      * 
-     * @param bundleKey key into the bundle
+     * @param bundleKey key into the bundle, or {@code null} to just return the verbose flag
      * @param params optional positional arguments for the message
      * @return {@code true}, if the verbosePart message level is on.
      */
@@ -68,8 +70,10 @@ public interface Feedback {
     /**
      * Formats a verbosePart-level message on stdout. Returns a flag indicating the verbosePart
      * level is on - use to bypass verbosePart messages.
+     * <p/>
+     * {code null} bundle key can be used to test verbose flag
      * 
-     * @param bundleKey key into the bundle
+     * @param bundleKey key into the bundle, or {@code null} to just return the verbose flag
      * @param params optional positional arguments for the message
      * @return {@code true}, if the verbosePart message level is on.
      */

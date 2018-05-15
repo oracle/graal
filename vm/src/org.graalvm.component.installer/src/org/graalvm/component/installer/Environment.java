@@ -154,7 +154,9 @@ final class Environment implements Feedback, CommandInput {
 
     @Override
     public boolean verbosePart(String bundleKey, Object... args) {
-        print(true, false, bundle, out, bundleKey, args);
+        if (bundleKey != null) {
+            print(true, false, bundle, out, bundleKey, args);
+        }
         return verbose;
     }
 
@@ -170,7 +172,9 @@ final class Environment implements Feedback, CommandInput {
 
     @Override
     public boolean verboseOutput(String bundleKey, Object... args) {
-        print(true, bundle, out, bundleKey, args);
+        if (bundleKey != null) {
+            print(true, bundle, out, bundleKey, args);
+        }
         return verbose;
     }
 
@@ -223,13 +227,17 @@ final class Environment implements Feedback, CommandInput {
 
             @Override
             public boolean verbosePart(String bundleKey, Object... params) {
-                print(true, false, localBundle, out, bundleKey, params);
+                if (bundleKey != null) {
+                    print(true, false, localBundle, out, bundleKey, params);
+                }
                 return verbose;
             }
 
             @Override
             public boolean verboseOutput(String bundleKey, Object... params) {
-                print(true, localBundle, out, bundleKey, params);
+                if (bundleKey != null) {
+                    print(true, localBundle, out, bundleKey, params);
+                }
                 return verbose;
             }
 

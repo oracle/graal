@@ -33,6 +33,7 @@ import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.component.installer.persist.test.Handler;
+import org.junit.Assert;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -103,7 +104,7 @@ public class FileDownloaderTest extends NetworkTestBase {
 
     class Check extends FA {
         int state;
-
+        boolean verbose = true;
         int cnt = 0;
         StringBuilder bar = new StringBuilder("[                    ]");
         String bcksp = "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
@@ -121,8 +122,18 @@ public class FileDownloaderTest extends NetworkTestBase {
         }
 
         @Override
+        public void output(String bundleKey, Object... params) {
+            if (state == 0 && verbose) {
+                Assert.assertNotEquals("MSG_Downloading", bundleKey);
+            }
+        }
+
+        @Override
         public boolean verboseOutput(String bundleKey, Object... params) {
             switch (state) {
+                case 0:
+                    assertEquals("MSG_DownloadingVerbose", bundleKey);
+                    break;
                 case 5:
                     if ("MSG_DownloadingDone".equals(bundleKey)) {
                         state++;
@@ -203,6 +214,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         };
         Handler.bind(u.toString(), conn);
         Check check = new Check();
+        check.verbose = false;
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
                         u, this);
@@ -231,6 +243,7 @@ public class FileDownloaderTest extends NetworkTestBase {
                         clu.openConnection());
         Handler.bind(u.toString(), conn);
         Check check = new Check();
+        check.verbose = false;
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
                         u, this);
