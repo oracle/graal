@@ -42,7 +42,7 @@ public class LLVMFrameNuller extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot);
+        LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot, false);
         return null;
     }
 }
