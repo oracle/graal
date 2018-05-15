@@ -238,6 +238,10 @@ final class Target_java_lang_Runtime {
         load0(null, filename);
     }
 
+    @Substitute
+    public void runFinalization() {
+    }
+
     // Checkstyle: stop
     @Alias
     synchronized native void loadLibrary0(Class<?> fromClass, String libname);
@@ -729,7 +733,6 @@ public final class JavaLangSubstitutions {
     public static class ClassLoaderSupport {
         public Map<ClassLoader, Target_java_lang_ClassLoader> classloaders = Collections.synchronizedMap(new IdentityHashMap<>());
     }
-
 
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final class ClassValueSupport {

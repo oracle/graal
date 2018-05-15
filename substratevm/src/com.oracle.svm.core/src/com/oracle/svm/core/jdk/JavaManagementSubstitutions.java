@@ -49,8 +49,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-
 //Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
@@ -104,6 +104,34 @@ final class ManagementFactoryFeature implements Feature {
             return ImageSingletons.lookup(SubstrateThreadMXBean.class);
         } else if (source instanceof RuntimeMXBean) {
             return ImageSingletons.lookup(SubstrateRuntimeMXBean.class);
+        } else if (source instanceof MemoryMXBean) {
+            return Heap.getHeap().getMemoryMXBean();
+        } else if (source instanceof GarbageCollectorMXBean) {
+            /*
+             * Happens that the JVM has only two GC beans that are implemented with the same class.
+             * For different GC implementation they have different names so that can't be used to
+             * distinguish them.
+             *
+             * What is constant across all GCs in the JVM is the number of memory pools they operate
+             * on. The GC that operates on two pools is equivalent to our incremental GC and the on
+             * that operates on three is equivalent to our full GC.
+             */
+            if (source.getClass().getName().equals("sun.management.GarbageCollectorImpl")) {
+                if (((GarbageCollectorMXBean) source).getMemoryPoolNames().length == 2) {
+                    GarbageCollectorMXBean incrementalBean = Heap.getHeap().getGC().getGarbageCollectorMXBeanList().get(0);
+                    assert incrementalBean.getName().equals("young generation scavenger");
+                    return incrementalBean;
+                } else if (((GarbageCollectorMXBean) source).getMemoryPoolNames().length == 3) {
+                    GarbageCollectorMXBean completeBean = Heap.getHeap().getGC().getGarbageCollectorMXBeanList().get(1);
+                    assert completeBean.getName().equals("complete scavenger");
+                    return completeBean;
+                } else {
+                    throw UserError.abort("Found " + source + " in image heap. Don't know to which Substrate VM GC bean to map.");
+                }
+            } else {
+                /* already an Substrate VM bean */
+                return source;
+            }
         }
         return source;
     }
