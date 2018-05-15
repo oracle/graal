@@ -29,17 +29,20 @@
  */
 package com.oracle.truffle.llvm.nodes.asm.support;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteNodeGen.LLVMAMD64MemWriteNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI16StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMPointerStoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMAMD64WriteNode extends LLVMNode {
@@ -47,12 +50,6 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
     public static final long MASK_32 = 0xFFFFFFFF00000000L;
 
     @Child private LLVMAMD64RegisterToLongNode readRegister;
-
-    @Child private LLVMStoreNode storeAddress = LLVMPointerStoreNodeGen.create(null, null);
-    @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create(null, null);
-    @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create(null, null);
-    @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create(null, null);
-    @Child private LLVMStoreNode storeI64 = LLVMI64StoreNodeGen.create(null, null);
 
     private final int shift;
     private final long mask;
@@ -67,31 +64,6 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
         this.shift = shift;
         this.mask = ~((long) LLVMExpressionNode.I8_MASK << shift);
         readRegister = LLVMAMD64RegisterToLongNodeGen.create();
-    }
-
-    @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI8(Object addr, byte value) {
-        storeI8.executeWithTarget(addr, value);
-    }
-
-    @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI16(Object addr, short value) {
-        storeI16.executeWithTarget(addr, value);
-    }
-
-    @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI32(Object addr, int value) {
-        storeI32.executeWithTarget(addr, value);
-    }
-
-    @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doI64(Object addr, long value) {
-        storeI64.executeWithTarget(addr, value);
-    }
-
-    @Specialization(guards = "!isFrameSlot(addr)")
-    protected void doObject(Object addr, Object value) {
-        storeAddress.executeWithTarget(addr, value);
     }
 
     @Specialization
@@ -124,7 +96,52 @@ public abstract class LLVMAMD64WriteNode extends LLVMNode {
         frame.setLong(slot, value.asNative());
     }
 
+    @Specialization(guards = "!isFrameSlot(addr)")
+    protected void doMemoryWrite(Object addr, Object value,
+                    @Cached("createMemoryWriteNode()") LLVMAMD64MemWriteNode writeNode) {
+        writeNode.executeWithTarget(addr, value);
+    }
+
     protected static boolean isFrameSlot(Object o) {
         return o instanceof FrameSlot;
+    }
+
+    protected static LLVMAMD64MemWriteNode createMemoryWriteNode() {
+        return LLVMAMD64MemWriteNodeGen.create();
+    }
+
+    abstract static class LLVMAMD64MemWriteNode extends LLVMNode {
+        @Child private LLVMStoreNode storeAddress = LLVMPointerStoreNodeGen.create(null, null);
+        @Child private LLVMStoreNode storeI8 = LLVMI8StoreNodeGen.create(null, null);
+        @Child private LLVMStoreNode storeI16 = LLVMI16StoreNodeGen.create(null, null);
+        @Child private LLVMStoreNode storeI32 = LLVMI32StoreNodeGen.create(null, null);
+        @Child private LLVMStoreNode storeI64 = LLVMI64StoreNodeGen.create(null, null);
+
+        public abstract void executeWithTarget(Object addr, Object value);
+
+        @Specialization
+        protected void doI8(Object addr, byte value) {
+            storeI8.executeWithTarget(addr, value);
+        }
+
+        @Specialization
+        protected void doI16(Object addr, short value) {
+            storeI16.executeWithTarget(addr, value);
+        }
+
+        @Specialization
+        protected void doI32(Object addr, int value) {
+            storeI32.executeWithTarget(addr, value);
+        }
+
+        @Specialization
+        protected void doI64(Object addr, long value) {
+            storeI64.executeWithTarget(addr, value);
+        }
+
+        @Fallback
+        protected void doObject(Object addr, Object value) {
+            storeAddress.executeWithTarget(addr, value);
+        }
     }
 }

@@ -73,6 +73,8 @@ abstract class ToVoidLLVM extends ForeignToLLVM {
         return value;
     }
 
+    // this specialization overlaps with the ones above, but this does not cause any issues as all
+    // implementations are the same anyways
     @Specialization
     protected Object fromString(Object obj) {
         return obj;

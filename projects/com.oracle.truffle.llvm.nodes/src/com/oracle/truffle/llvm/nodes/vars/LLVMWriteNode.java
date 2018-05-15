@@ -127,7 +127,7 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
             return null;
         }
 
-        @Specialization
+        @Specialization(replaces = "writeI64")
         protected Object writePointer(VirtualFrame frame, Object value) {
             if (getSlot().getKind() == FrameSlotKind.Long) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -171,12 +171,6 @@ public abstract class LLVMWriteNode extends LLVMExpressionNode {
     }
 
     public abstract static class LLVMWritePointerNode extends LLVMWriteNode {
-        @Specialization
-        protected Object writeAddress(VirtualFrame frame, LLVMPointer value) {
-            frame.setObject(getSlot(), value);
-            return null;
-        }
-
         @Specialization
         protected Object writeAddress(VirtualFrame frame, long value) {
             frame.setObject(getSlot(), LLVMNativePointer.create(value));
