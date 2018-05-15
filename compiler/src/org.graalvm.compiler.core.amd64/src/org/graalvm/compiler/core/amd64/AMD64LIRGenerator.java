@@ -208,15 +208,27 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(ValueKind<?> accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());
-        AMD64Kind memKind = (AMD64Kind) accessKind.getPlatformKind();
 
         AMD64AddressValue addressValue = asAddressValue(address);
-        RegisterValue aRes = AMD64.rax.asValue(accessKind);
-        AllocatableValue allocatableNewValue = asAllocatable(newValue, accessKind);
-        emitMove(aRes, expectedValue);
+        LIRKind integralAccessKind = accessKind;
+        Value reinterpretedExpectedValue = expectedValue;
+        Value reinterpretedNewValue = newValue;
+        if (((AMD64Kind) accessKind.getPlatformKind()).isXMM()) {
+            if (accessKind.getPlatformKind().equals(AMD64Kind.SINGLE)) {
+                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
+            } else {
+                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
+            }
+            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, expectedValue);
+            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, newValue);
+        }
+        AMD64Kind memKind = (AMD64Kind) integralAccessKind.getPlatformKind();
+        RegisterValue aRes = AMD64.rax.asValue(integralAccessKind);
+        AllocatableValue allocatableNewValue = asAllocatable(reinterpretedNewValue, integralAccessKind);
+        emitMove(aRes, reinterpretedExpectedValue);
         append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, allocatableNewValue));
 
         assert trueValue.getValueKind().equals(falseValue.getValueKind());
