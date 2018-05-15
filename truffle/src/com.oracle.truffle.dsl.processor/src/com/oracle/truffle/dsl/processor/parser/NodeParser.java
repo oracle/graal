@@ -1774,8 +1774,8 @@ public class NodeParser extends AbstractParser<NodeData> {
                         if (requiresFrameParameter[executionIndex] != null) {
                             node.addError(String.format(
                                             "Child execution method: %s called from method: %s requires a frame parameter.",
-                                            printMethodSignature(requiresFrameParameter[executionIndex].getMethod()),
-                                            printMethodSignature(executable.getMethod())));
+                                            createMethodSignature(requiresFrameParameter[executionIndex].getMethod()),
+                                            createMethodSignature(executable.getMethod())));
                         }
                     }
                 }
@@ -1783,7 +1783,7 @@ public class NodeParser extends AbstractParser<NodeData> {
         }
     }
 
-    private static String printMethodSignature(final ExecutableElement method) {
+    private static String createMethodSignature(final ExecutableElement method) {
         final StringBuilder result = new StringBuilder();
         result.append(ElementUtils.getSimpleName(method.getReturnType())).append(' ').append(ElementUtils.getSimpleName((TypeElement) method.getEnclosingElement())).append("::").append(
                         method.getSimpleName()).append('(');
