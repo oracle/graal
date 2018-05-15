@@ -120,26 +120,23 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
-    @Override
-    public Pointer allocateVirtualMemory(UnsignedWord size, boolean executable) {
-        trackVirtualMemory(size);
-        int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
-        return VirtualMemoryProvider.get().commit(nullPointer(), size, access);
-    }
-
-    @Override
-    public boolean freeVirtualMemory(PointerBase start, UnsignedWord size) {
-        untrackVirtualMemory(size);
-        return (VirtualMemoryProvider.get().free(start, size) == 0);
-    }
-
     /**
      * Allocate the requested amount of virtual memory at the requested alignment.
      *
      * @return A Pointer to the aligned memory, or a null Pointer.
      */
     @Override
-    public Pointer allocateVirtualMemoryAligned(UnsignedWord size, UnsignedWord alignment) {
+    public Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+        final int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
+
+        if (alignment.equal(UNALIGNED)) {
+            Pointer start = VirtualMemoryProvider.get().commit(nullPointer(), size, access);
+            if (start.isNonNull()) {
+                trackVirtualMemory(size);
+            }
+            return start;
+        }
+
         // This happens in stages:
         // (1) Reserve a container that is large enough for the requested size *and* the alignment.
         // (2) Locate the result at the requested alignment within the container.
@@ -152,18 +149,19 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         // - This will be too big, but I'll give back the extra later.
         final UnsignedWord containerSize = alignment.add(size);
         final UnsignedWord pagedContainerSize = UnsignedUtils.roundUp(containerSize, pageSize);
-        final Pointer containerStart = allocateVirtualMemory(pagedContainerSize, false);
+        final Pointer containerStart = VirtualMemoryProvider.get().commit(nullPointer(), pagedContainerSize, access);
         if (containerStart.isNull()) {
             // No exception is needed: this is just a failure to reserve the virtual address space.
             return nullPointer();
         }
+        trackVirtualMemory(pagedContainerSize);
         final Pointer containerEnd = containerStart.add(pagedContainerSize);
         // (2) Locate the result at the requested alignment within the container.
         // - The result occupies [start .. end).
         final Pointer start = PointerUtils.roundUp(containerStart, alignment);
         final Pointer end = start.add(size);
         if (virtualMemoryVerboseDebugging) {
-            Log.log().string("allocateVirtualMemoryAligned(size: ").unsigned(size).string(" ").hex(size).string(", alignment: ").unsigned(alignment).string(" ").hex(alignment).string(")").newline();
+            Log.log().string("allocate(size: ").unsigned(size).string(" ").hex(size).string(", alignment: ").unsigned(alignment).string(" ").hex(alignment).string(")").newline();
             Log.log().string("  container:   [").hex(containerStart).string(" .. ").hex(containerEnd).string(")").newline();
             Log.log().string("  result:      [").hex(start).string(" .. ").hex(end).string(")").newline();
         }
@@ -177,13 +175,14 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             if (virtualMemoryVerboseDebugging) {
                 Log.log().string("  prefix:      [").hex(prefixStart).string(" .. ").hex(prefixEnd).string(")").newline();
             }
-            final boolean prefixUnmap = freeVirtualMemory(prefixStart, prefixSize);
+            final boolean prefixUnmap = (VirtualMemoryProvider.get().free(prefixStart, prefixSize) == 0);
             if (!prefixUnmap) {
                 // Throwing an exception would be better.
                 // If this unmap fails, I will have reserved virtual address space
                 // that I won't be able to give back.
                 return nullPointer();
             }
+            untrackVirtualMemory(prefixSize);
         }
         // - The suffix occupies [pagedEnd .. containerEnd).
         final Pointer pagedEnd = PointerUtils.roundUp(end, pageSize);
@@ -194,35 +193,29 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             if (virtualMemoryVerboseDebugging) {
                 Log.log().string("  suffix:      [").hex(suffixStart).string(" .. ").hex(suffixEnd).string(")").newline();
             }
-            final boolean suffixUnmap = freeVirtualMemory(suffixStart, suffixSize);
+            final boolean suffixUnmap = (VirtualMemoryProvider.get().free(suffixStart, suffixSize) == 0);
             if (!suffixUnmap) {
                 // Throwing an exception would be better.
                 // If this unmap fails, I will have reserved virtual address space
                 // that I won't be able to give back.
                 return nullPointer();
             }
+            untrackVirtualMemory(suffixSize);
         }
         return start;
     }
 
     @Override
-    public boolean freeVirtualMemoryAligned(PointerBase start, UnsignedWord size, UnsignedWord alignment) {
+    public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         final UnsignedWord pageSize = getGranularity();
         // Re-discover the paged-aligned ends of the memory region.
-        final Pointer end = ((Pointer) start).add(size);
+        final Pointer end = ((Pointer) start).add(nbytes);
         final Pointer pagedStart = PointerUtils.roundDown(start, pageSize);
         final Pointer pagedEnd = PointerUtils.roundUp(end, pageSize);
         final UnsignedWord pagedSize = pagedEnd.subtract(pagedStart);
         // Return that virtual address space to the operating system.
-        return freeVirtualMemory(pagedStart, pagedSize);
-    }
-
-    @Override
-    public void beforeGarbageCollection() {
-    }
-
-    @Override
-    public void afterGarbageCollection(boolean completeCollection) {
+        untrackVirtualMemory(pagedSize);
+        return (VirtualMemoryProvider.get().free(pagedStart, pagedSize) == 0);
     }
 
     protected void trackVirtualMemory(UnsignedWord size) {

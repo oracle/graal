@@ -33,7 +33,17 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 
+/**
+ * A provider of ranges of committed memory, which is virtual memory that is backed by physical
+ * memory or swap space.
+ */
 public interface CommittedMemoryProvider {
+    /**
+     * Value for alignment parameters that indicates that no specific alignment is required (other
+     * than the {@linkplain #getGranularity() granularity} usually).
+     */
+    UnsignedWord UNALIGNED = WordFactory.zero();
+
     @Fold
     static CommittedMemoryProvider get() {
         return ImageSingletons.lookup(CommittedMemoryProvider.class);
@@ -43,7 +53,7 @@ public interface CommittedMemoryProvider {
      * Performs initializations <em>for the current isolate</em>, before any other methods of this
      * interface may be called.
      *
-     * @return initialization result code, non-zero in case of an error.
+     * @return zero in case of success, non-zero in case of an error.
      */
     @Uninterruptible(reason = "Still being initialized.")
     int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters);
@@ -51,62 +61,48 @@ public interface CommittedMemoryProvider {
     /**
      * Tear down <em>for the current isolate</em>. This must be the last method of this interface
      * that is called in an isolate.
+     *
+     * @return zero in case of success, non-zero in case of an error.
      */
     @Uninterruptible(reason = "Tear-down in progress.")
     int tearDown();
 
     /**
-     * Returns the granularity of virtual memory management, which is generally the operating
-     * system's page size or a multiple thereof.
+     * Returns the granularity of committed memory management, which is typically the same as that
+     * of {@linkplain VirtualMemoryProvider#getGranularity() virtual memory management}.
      */
     UnsignedWord getGranularity();
 
     /**
-     * Reserve a block of virtual address space.
+     * Allocate a block of committed memory.
      *
-     * @param size The size of the requested reservation.
-     * @param executable If true, the space is allocated with execute permissions.
-     * @return A pointer to the reserved space if successful, or {@link WordFactory#nullPointer()}
-     *         otherwise.
+     * @param nbytes The number of bytes to allocate, which is rounded up to the next multiple of
+     *            the {@linkplain #getGranularity() granularity} if required.
+     * @param alignment The required alignment of the block start, which should be a multiple of the
+     *            {@linkplain #getGranularity() granularity}, or {@link #UNALIGNED}.
+     * @param executable Whether the block must be executable.
+     * @return the start of the allocated block.
      */
-    Pointer allocateVirtualMemory(UnsignedWord size, boolean executable);
+    Pointer allocate(UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
 
     /**
-     * Delete the mapping for the specified range of virtual addresses.
+     * Release a block of committed memory that was allocated with {@link #allocate}, requiring the
+     * exact same parameter values that were originally passed to {@link #allocate}.
      *
-     * @param start A pointer returned by
-     *            {@link CommittedMemoryProvider#allocateVirtualMemory(UnsignedWord, boolean)}
-     * @param size The size of the allocation.
-     * @return true on success, false otherwise.
-     */
-    boolean freeVirtualMemory(PointerBase start, UnsignedWord size);
-
-    /**
-     * Reserve a block of virtual address space at a given alignment.
-     *
-     * @param size The size of the requested reservation.
-     * @param alignment The requested alignment.
-     * @return A pointer to the reserved space if successful, or {@link WordFactory#nullPointer()}
-     *         otherwise.
-     */
-    Pointer allocateVirtualMemoryAligned(UnsignedWord size, UnsignedWord alignment);
-
-    /**
-     * Release a reservation for a block of virtual address space at a given alignment.
-     *
-     * @param start A pointer returned by
-     *            {@link CommittedMemoryProvider#allocateVirtualMemoryAligned(UnsignedWord, UnsignedWord)}
-     * @param size The size of the allocation.
-     * @param alignment The alignment of the allocation.
+     * @param start The start of the memory block, as returned by {@link #allocate}.
+     * @param nbytes The originally requested size in bytes.
+     * @param alignment The originally requested alignment.
+     * @param executable Whether the block was requested to be executable.
      * @return true on success, or false otherwise.
      */
-    boolean freeVirtualMemoryAligned(PointerBase start, UnsignedWord size, UnsignedWord alignment);
+    boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable);
 
     /**
      * Called by the garbage collector before a collection is started, as an opportunity to perform
      * lazy operations, sanity checks or clean-ups.
      */
-    void beforeGarbageCollection();
+    default void beforeGarbageCollection() {
+    }
 
     /**
      * Called by the garbage collector after a collection has ended, as an opportunity to perform
@@ -114,5 +110,6 @@ public interface CommittedMemoryProvider {
      *
      * @param completeCollection Whether the garbage collector has performed a full collection.
      */
-    void afterGarbageCollection(boolean completeCollection);
+    default void afterGarbageCollection(boolean completeCollection) {
+    }
 }

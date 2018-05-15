@@ -129,7 +129,7 @@ class HeapChunkProvider {
         if (result.isNull()) {
             /* Unused list was empty, need to allocate memory. */
             noteFirstAllocationTime();
-            result = (AlignedHeader) CommittedMemoryProvider.get().allocateVirtualMemoryAligned(chunkSize, HeapPolicy.getAlignedHeapChunkAlignment());
+            result = (AlignedHeader) CommittedMemoryProvider.get().allocate(chunkSize, HeapPolicy.getAlignedHeapChunkAlignment(), false);
             if (result.isNull()) {
                 throw AllocatorOutOfMemoryError.throwError("No virtual memory for aligned chunk");
             }
@@ -161,7 +161,7 @@ class HeapChunkProvider {
             pushUnusedAlignedChunk(chunk);
         } else {
             log().string("  release memory to the OS").newline();
-            CommittedMemoryProvider.get().freeVirtualMemoryAligned(chunk, HeapPolicy.getAlignedHeapChunkSize(), HeapPolicy.getAlignedHeapChunkAlignment());
+            CommittedMemoryProvider.get().free(chunk, HeapPolicy.getAlignedHeapChunkSize(), HeapPolicy.getAlignedHeapChunkAlignment(), false);
         }
         log().string("  ]").newline();
     }
@@ -274,7 +274,7 @@ class HeapChunkProvider {
         log().string("[HeapChunkProvider.produceUnalignedChunk  objectSize: ").unsigned(objectSize).string("  chunkSize: ").hex(chunkSize).newline();
 
         noteFirstAllocationTime();
-        UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocateVirtualMemory(chunkSize, false);
+        UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocate(chunkSize, CommittedMemoryProvider.UNALIGNED, false);
         if (result.isNull()) {
             throw AllocatorOutOfMemoryError.throwError("No virtual memory for unaligned chunk");
         }
@@ -301,7 +301,7 @@ class HeapChunkProvider {
         final UnsignedWord chunkSize = chunk.getEnd().subtract(HeapChunk.asPointer(chunk));
         log().string("[HeapChunkProvider.consumeUnalignedChunk  chunk: ").hex(chunk).string("  chunkSize: ").hex(chunkSize).newline();
 
-        CommittedMemoryProvider.get().freeVirtualMemory(chunk, chunkSize);
+        CommittedMemoryProvider.get().free(chunk, chunkSize, CommittedMemoryProvider.UNALIGNED, false);
 
         log().string(" ]").newline();
     }

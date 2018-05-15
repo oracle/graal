@@ -264,7 +264,7 @@ public class RuntimeCodeInfo {
         }
 
         methodInfo.allocator.release();
-        CommittedMemoryProvider.get().freeVirtualMemory(methodInfo.getCodeStart(), methodInfo.getCodeSize());
+        CommittedMemoryProvider.get().free(methodInfo.getCodeStart(), methodInfo.getCodeSize(), CommittedMemoryProvider.UNALIGNED, true);
 
         if (Options.TraceCodeCache.getValue()) {
             logTable();

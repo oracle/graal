@@ -478,25 +478,23 @@ public class InstalledCodeBuilder {
         return callTargetStart;
     }
 
-    /** A tracing wrapper around getOSInterface().allocateVirtualMemory. */
     protected Pointer allocateOSMemory(final UnsignedWord size, final boolean executable) {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.allocateAlignedMemory:");
         trace.string("  size: ").unsigned(size);
         trace.string("  executable: ").bool(executable);
-        final Pointer result = CommittedMemoryProvider.get().allocateVirtualMemory(size, executable);
+        final Pointer result = CommittedMemoryProvider.get().allocate(size, CommittedMemoryProvider.UNALIGNED, executable);
         trace.string("  returns: ").hex(result);
         trace.string("]").newline();
         return result;
     }
 
-    /** A tracing wrapper around getOSInterface().freeVirtualMemory. */
     protected void freeOSMemory(final Pointer start, final UnsignedWord size) {
         final Log trace = Log.noopLog();
         trace.string("[SubstrateInstalledCode.freeOSMemory:");
         trace.string("  start: ").hex(start);
         trace.string("  size: ").unsigned(size);
-        CommittedMemoryProvider.get().freeVirtualMemory(start, size);
+        CommittedMemoryProvider.get().free(start, size, CommittedMemoryProvider.UNALIGNED, false);
         trace.string("]").newline();
     }
 }
