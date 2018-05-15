@@ -49,7 +49,6 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     static {
         BASE_OPTIONS.put(OPTION_LIST_FILES, ""); // NOI18N
-
         BASE_OPTIONS.put(LONG_OPTION_LIST_FILES, OPTION_LIST_FILES); // NOI18N
     }
 
@@ -98,11 +97,20 @@ public abstract class QueryCommandBase implements InstallerCommand {
     public void setVerbose(boolean verbose) {
         this.verbose = verbose;
     }
+    
+    protected ComponentRegistry initRegistry() {
+        if (input.optValue(Commands.OPTION_CATALOG) != null ||
+            input.optValue(Commands.OPTION_FOREIGN_CATALOG) != null) {
+            return input.getRegistry();
+        } else {
+            return input.getLocalRegistry();
+        }
+    }
 
     @Override
     public void init(CommandInput commandInput, Feedback feedBack) {
         this.input = commandInput;
-        this.registry = commandInput.getRegistry();
+        this.registry = initRegistry();
         this.feedback = feedBack;
         listFiles = commandInput.optValue(OPTION_LIST_FILES) != null;
         verbose = commandInput.optValue(Commands.OPTION_VERBOSE) != null;
