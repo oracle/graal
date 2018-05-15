@@ -81,7 +81,9 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     }
 
     private DFACaptureGroupPartialTransitionNode createPartialTransition(NFAStateSet targetStates, CompilationBuffer compilationBuffer) {
-        int[] newOrder = new int[Math.max(getRequiredStates().size(), targetStates.size())];
+        int numberOfNFAStates = Math.max(getRequiredStates().size(), targetStates.size());
+        dfaGen.updateMaxNumberOfNFAStatesInOneTransition(numberOfNFAStates);
+        int[] newOrder = new int[numberOfNFAStates];
         Arrays.fill(newOrder, -1);
         boolean[] used = new boolean[newOrder.length];
         int[] copySource = new int[getRequiredStates().size()];

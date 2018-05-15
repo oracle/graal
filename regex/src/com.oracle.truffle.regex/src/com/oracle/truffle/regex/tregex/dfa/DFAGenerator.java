@@ -92,7 +92,7 @@ public final class DFAGenerator implements JsonConvertible {
     private final DFAStateNodeBuilder lookupDummyState = new DFAStateNodeBuilder((short) -1, null, false);
     private final Counter transitionIDCounter = new Counter.ThresholdCounter(Integer.MAX_VALUE, "too many transitions");
     private final Counter cgTransitionIDCounter = new Counter.ThresholdCounter(Short.MAX_VALUE, "too many capture group transitions");
-    private int maxNumberOfNfaStates = 0;
+    private int maxNumberOfNfaStates = 1;
 
     private DFAStateNodeBuilder[] entryStates;
     private final DFACaptureGroupTransitionBuilder initialCGTransition;
@@ -461,12 +461,6 @@ public final class DFAGenerator implements JsonConvertible {
 
     private DFAStateNodeBuilder createState(NFATransitionSet transitionSet, boolean isBackwardPrefixState) {
         assert stateIndexMap == null : "state index map created before dfa generation!";
-        if (transitionSet.size() > maxNumberOfNfaStates) {
-            maxNumberOfNfaStates = transitionSet.size();
-            if (maxNumberOfNfaStates > TRegexOptions.TRegexMaxNumberOfNFAStatesInOneDFAState) {
-                throw new UnsupportedRegexException("DFA state size explosion");
-            }
-        }
         DFAStateNodeBuilder dfaState = new DFAStateNodeBuilder(nextID++, transitionSet, isBackwardPrefixState);
         stateMap.put(dfaState, dfaState);
         if (stateMap.size() + (forward ? expansionQueue.size() : 0) > TRegexOptions.TRegexMaxDFASize) {
@@ -630,6 +624,15 @@ public final class DFAGenerator implements JsonConvertible {
                         indexUpdates,
                         indexClears,
                         (byte) DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX);
+    }
+
+    void updateMaxNumberOfNFAStatesInOneTransition(int value) {
+        if (value > maxNumberOfNfaStates) {
+            maxNumberOfNfaStates = value;
+            if (maxNumberOfNfaStates > TRegexOptions.TRegexMaxNumberOfNFAStatesInOneDFATransition) {
+                throw new UnsupportedRegexException("DFA transition size explosion");
+            }
+        }
     }
 
     private DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {

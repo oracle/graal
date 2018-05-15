@@ -71,7 +71,7 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
      * {@link DFACaptureGroupTrackingData#results} and are stored as <code>byte</code> to save
      * space. This is OK since the dimensions of {@link DFACaptureGroupTrackingData#results} are
      * capped by
-     * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfNFAStatesInOneDFAState}
+     * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfNFAStatesInOneDFATransition}
      * (1st dimension) and
      * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfCaptureGroups}
      * <code>* 2</code> (2nd dimension, times two because we need two array slots per capture group,
