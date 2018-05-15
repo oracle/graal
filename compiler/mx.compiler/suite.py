@@ -146,10 +146,18 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.compiler.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "1.8",
+      "workingSets" : "Graal,Codegen",
+    },
+
     "org.graalvm.compiler.serviceprovider.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : ["org.graalvm.compiler.serviceprovider"],
+      "dependencies" : ["org.graalvm.compiler.processor"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Codegen",
@@ -173,9 +181,7 @@ suite = {
     "org.graalvm.compiler.options.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.options",
-      ],
+      "dependencies" : ["org.graalvm.compiler.processor"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Codegen",
@@ -333,17 +339,12 @@ suite = {
       "uses" : [
         "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
       ],
-      "imports" : [
-        # All other internal packages are exported dynamically -
-        # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
-        "jdk.internal.module",
-      ],
 
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
         "GRAAL_COMPILER_MATCH_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
         "GRAAL_OPTIONS_PROCESSOR",
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
@@ -524,10 +525,8 @@ suite = {
     "org.graalvm.compiler.nodeinfo.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.processor"],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "dependencies" : [
-        "org.graalvm.compiler.nodeinfo",
-      ],
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Graph",
     },
@@ -782,7 +781,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_OPTIONS_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
         "GRAAL_NODEINFO_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements",
@@ -799,7 +798,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements,AArch64",
     },
@@ -815,7 +814,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
       ],
       "workingSets" : "Graal,Replacements,AMD64",
     },
@@ -840,7 +839,7 @@ suite = {
       ],
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER"
+        "GRAAL_REPLACEMENTS_PROCESSOR"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
@@ -848,13 +847,10 @@ suite = {
       "jacoco" : "exclude",
     },
 
-    "org.graalvm.compiler.replacements.verifier" : {
+    "org.graalvm.compiler.replacements.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.api.replacements",
-        "org.graalvm.compiler.graph",
-      ],
+      "dependencies" : ["org.graalvm.compiler.processor"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Replacements",
@@ -871,7 +867,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
         "GRAAL_OPTIONS_PROCESSOR"
       ],
       "workingSets" : "Graal,Graph",
@@ -1015,6 +1011,7 @@ suite = {
       "javaCompliance" : "1.8",
       "annotationProcessors" : [
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
+        "GRAAL_COMPILER_MATCH_PROCESSOR",
         "GRAAL_OPTIONS_PROCESSOR",
       ],
       "workingSets" : "Graal",
@@ -1023,9 +1020,7 @@ suite = {
     "org.graalvm.compiler.core.match.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.core",
-      ],
+      "dependencies" : ["org.graalvm.compiler.processor"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "1.8",
       "workingSets" : "Graal,Codegen",
@@ -1233,7 +1228,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
         "GRAAL_OPTIONS_PROCESSOR",
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
@@ -1256,7 +1251,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_NODEINFO_PROCESSOR",
-        "GRAAL_REPLACEMENTS_VERIFIER",
+        "GRAAL_REPLACEMENTS_PROCESSOR",
         "GRAAL_OPTIONS_PROCESSOR",
         "GRAAL_SERVICEPROVIDER_PROCESSOR",
       ],
@@ -1448,9 +1443,7 @@ suite = {
     "GRAAL_OPTIONS_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.options.processor"],
-      "distDependencies" : [
-        "GRAAL_OPTIONS",
-      ],
+      "overlaps" : ["GRAAL_SERVICEPROVIDER_PROCESSOR"]
     },
 
     "GRAAL_NODEINFO" : {
@@ -1464,7 +1457,6 @@ suite = {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.serviceprovider"],
       "distDependencies" : [
-        "GRAAL_NODEINFO",
         "JVMCI_SERVICES"
       ],
     },
@@ -1650,36 +1642,24 @@ suite = {
     "GRAAL_SERVICEPROVIDER_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.serviceprovider.processor"],
-      "distDependencies" : [
-        "GRAAL_SERVICEPROVIDER",
-      ],
+      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR"]
     },
 
     "GRAAL_NODEINFO_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.nodeinfo.processor"],
-      "distDependencies" : [
-        "GRAAL_NODEINFO",
-      ],
+      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR"]
     },
 
-    "GRAAL_REPLACEMENTS_VERIFIER" : {
+    "GRAAL_REPLACEMENTS_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["org.graalvm.compiler.replacements.verifier"],
-      "distDependencies" : [
-        "GRAAL_API",
-        "GRAAL_SERVICEPROVIDER",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-      ]
+      "dependencies" : ["org.graalvm.compiler.replacements.processor"],
+      "overlaps" : ["GRAAL_OPTIONS_PROCESSOR"],
     },
 
     "GRAAL_COMPILER_MATCH_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["org.graalvm.compiler.core.match.processor"],
-      "distDependencies" : [
-        "GRAAL_COMPILER",
-        "GRAAL_SERVICEPROVIDER_PROCESSOR",
-      ]
     },
 
     "GRAAL" : {

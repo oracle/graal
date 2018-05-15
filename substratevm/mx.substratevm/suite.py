@@ -40,7 +40,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -58,7 +58,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -75,7 +75,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -89,7 +89,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -107,7 +107,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -125,7 +125,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -190,7 +190,7 @@ suite = {
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "1.8",
@@ -213,7 +213,7 @@ suite = {
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "1.8",
@@ -259,7 +259,7 @@ suite = {
             "javaCompliance" : "1.8",
             "annotationProcessors" : [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
@@ -289,7 +289,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
         },
@@ -304,7 +304,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -320,8 +320,9 @@ suite = {
             "javaCompliance": "1.8",
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
+                "compiler:GRAAL_SERVICEPROVIDER_PROCESSOR",
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -375,7 +376,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -392,7 +393,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -417,7 +418,7 @@ suite = {
             "javaCompliance" : "1.8",
             "annotationProcessors" : [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",

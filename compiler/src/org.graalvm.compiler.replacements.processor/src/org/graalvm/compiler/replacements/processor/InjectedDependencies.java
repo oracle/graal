@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.verifier;
+package org.graalvm.compiler.replacements.processor;
+
+import static org.graalvm.compiler.processor.AbstractProcessor.getAnnotationValue;
+import static org.graalvm.compiler.replacements.processor.NodeIntrinsicHandler.NODE_INTRINSIC_CLASS_NAME;
 
 import java.util.HashMap;
 import java.util.Iterator;
 
-import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.replacements.verifier.InjectedDependencies.Dependency;
+import org.graalvm.compiler.processor.AbstractProcessor;
+import org.graalvm.compiler.replacements.processor.InjectedDependencies.Dependency;
 
 public class InjectedDependencies implements Iterable<Dependency> {
 
@@ -45,7 +48,7 @@ public class InjectedDependencies implements Iterable<Dependency> {
             this.type = type;
         }
 
-        public abstract String inject(ExecutableElement inject);
+        public abstract String inject(AbstractProcessor processor, ExecutableElement inject);
     }
 
     private static final class InjectedDependency extends Dependency {
@@ -55,7 +58,7 @@ public class InjectedDependencies implements Iterable<Dependency> {
         }
 
         @Override
-        public String inject(ExecutableElement inject) {
+        public String inject(AbstractProcessor processor, ExecutableElement inject) {
             return String.format("injection.getInjectedArgument(%s.class)", type);
         }
     }
@@ -67,9 +70,9 @@ public class InjectedDependencies implements Iterable<Dependency> {
         }
 
         @Override
-        public String inject(ExecutableElement inject) {
-            NodeIntrinsic nodeIntrinsic = inject.getAnnotation(NodeIntrinsic.class);
-            boolean nonNull = nodeIntrinsic != null && nodeIntrinsic.injectedStampIsNonNull();
+        public String inject(AbstractProcessor processor, ExecutableElement inject) {
+            AnnotationMirror nodeIntrinsic = processor.getAnnotation(inject, processor.getType(NODE_INTRINSIC_CLASS_NAME));
+            boolean nonNull = nodeIntrinsic != null && getAnnotationValue(nodeIntrinsic, "injectedStampIsNonNull", Boolean.class);
             return String.format("injection.getInjectedStamp(%s.class, %s)", GeneratedPlugin.getErasedType(inject.getReturnType()), nonNull);
         }
     }
@@ -98,8 +101,8 @@ public class InjectedDependencies implements Iterable<Dependency> {
             this.generateMember = generateMember;
         }
 
-        private TypeMirror getType(ProcessingEnvironment env) {
-            return env.getElementUtils().getTypeElement(type).asType();
+        private TypeMirror getType(AbstractProcessor processor) {
+            return processor.getType(type);
         }
     }
 
@@ -116,9 +119,9 @@ public class InjectedDependencies implements Iterable<Dependency> {
         return wellKnown.expr;
     }
 
-    public String use(ProcessingEnvironment env, DeclaredType type) {
+    public String use(AbstractProcessor processor, DeclaredType type) {
         for (WellKnownDependency wellKnown : WellKnownDependency.values()) {
-            if (env.getTypeUtils().isAssignable(wellKnown.getType(env), type)) {
+            if (processor.env().getTypeUtils().isAssignable(wellKnown.getType(processor), type)) {
                 return use(wellKnown);
             }
         }

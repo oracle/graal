@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.verifier;
+package org.graalvm.compiler.replacements.processor;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -33,7 +33,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.PackageElement;
@@ -46,6 +45,8 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.type.WildcardType;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
+
+import org.graalvm.compiler.processor.AbstractProcessor;
 
 public class PluginGenerator {
 
@@ -65,10 +66,10 @@ public class PluginGenerator {
         list.add(plugin);
     }
 
-    public void generateAll(ProcessingEnvironment env) {
+    public void generateAll(AbstractProcessor processor) {
         for (Entry<Element, List<GeneratedPlugin>> entry : plugins.entrySet()) {
             disambiguateNames(entry.getValue());
-            createPluginFactory(env, entry.getKey(), entry.getValue());
+            createPluginFactory(processor, entry.getKey(), entry.getValue());
         }
     }
 
@@ -148,40 +149,40 @@ public class PluginGenerator {
         });
     }
 
-    private static void createPluginFactory(ProcessingEnvironment env, Element topLevelClass, List<GeneratedPlugin> plugins) {
+    private static void createPluginFactory(AbstractProcessor processor, Element topLevelClass, List<GeneratedPlugin> plugins) {
         PackageElement pkg = (PackageElement) topLevelClass.getEnclosingElement();
 
         String genClassName = "PluginFactory_" + topLevelClass.getSimpleName();
 
+        String qualifiedGenClassName = pkg.getQualifiedName() + "." + genClassName;
         try {
-            JavaFileObject factory = env.getFiler().createSourceFile(pkg.getQualifiedName() + "." + genClassName, topLevelClass);
+            JavaFileObject factory = processor.env().getFiler().createSourceFile(qualifiedGenClassName, topLevelClass);
             try (PrintWriter out = new PrintWriter(factory.openWriter())) {
                 out.printf("// CheckStyle: stop header check\n");
                 out.printf("// CheckStyle: stop line length check\n");
                 out.printf("// GENERATED CONTENT - DO NOT EDIT\n");
-                out.printf("// GENERATORS: %s, %s\n", VerifierAnnotationProcessor.class.getName(), PluginGenerator.class.getName());
+                out.printf("// GENERATORS: %s, %s\n", ReplacementsAnnotationProcessor.class.getName(), PluginGenerator.class.getName());
                 out.printf("package %s;\n", pkg.getQualifiedName());
                 out.printf("\n");
                 createImports(out, plugins);
                 out.printf("\n");
-                out.printf("@ServiceProvider(NodeIntrinsicPluginFactory.class)\n");
                 out.printf("public class %s implements NodeIntrinsicPluginFactory {\n", genClassName);
                 for (GeneratedPlugin plugin : plugins) {
                     out.printf("\n");
-                    plugin.generate(env, out);
+                    plugin.generate(processor, out);
                 }
                 out.printf("\n");
                 createPluginFactoryMethod(out, plugins);
                 out.printf("}\n");
             }
         } catch (IOException e) {
-            env.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage());
+            processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage());
         }
+        processor.createProviderFile(qualifiedGenClassName, "org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory", topLevelClass);
     }
 
     protected static void createImports(PrintWriter out, List<GeneratedPlugin> plugins) {
         out.printf("import jdk.vm.ci.meta.ResolvedJavaMethod;\n");
-        out.printf("import org.graalvm.compiler.serviceprovider.ServiceProvider;\n");
         out.printf("\n");
         out.printf("import java.lang.annotation.Annotation;\n");
         out.printf("import org.graalvm.compiler.nodes.ValueNode;\n");

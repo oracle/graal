@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,15 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.verifier;
+package org.graalvm.compiler.replacements.processor;
+
+import static org.graalvm.compiler.replacements.processor.FoldHandler.FOLD_CLASS_NAME;
+import static org.graalvm.compiler.replacements.processor.FoldHandler.INJECTED_PARAMETER_CLASS_NAME;
 
 import java.io.PrintWriter;
-import java.lang.annotation.Annotation;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -36,12 +37,11 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
-import org.graalvm.compiler.replacements.verifier.InjectedDependencies.WellKnownDependency;
+import org.graalvm.compiler.processor.AbstractProcessor;
+import org.graalvm.compiler.replacements.processor.InjectedDependencies.WellKnownDependency;
 
 /**
- * Create graph builder plugins for {@link Fold} methods.
+ * Create graph builder plugins for {@code Fold} methods.
  */
 public class GeneratedFoldPlugin extends GeneratedPlugin {
 
@@ -50,12 +50,8 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
     }
 
     @Override
-    protected Class<? extends Annotation> getAnnotationClass() {
-        return Fold.class;
-    }
-
-    private static TypeMirror stringType(ProcessingEnvironment env) {
-        return env.getElementUtils().getTypeElement("java.lang.String").asType();
+    protected TypeElement getAnnotationClass(AbstractProcessor processor) {
+        return processor.getTypeElement(FOLD_CLASS_NAME);
     }
 
     @Override
@@ -66,7 +62,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
     }
 
     @Override
-    protected InjectedDependencies createExecute(ProcessingEnvironment env, PrintWriter out) {
+    protected InjectedDependencies createExecute(AbstractProcessor processor, PrintWriter out) {
         InjectedDependencies deps = new InjectedDependencies();
         List<? extends VariableElement> params = intrinsicMethod.getParameters();
 
@@ -77,17 +73,17 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
         } else {
             receiver = "arg0";
             TypeElement type = (TypeElement) intrinsicMethod.getEnclosingElement();
-            constantArgument(env, out, deps, argCount, type.asType(), argCount);
+            constantArgument(processor, out, deps, argCount, type.asType(), argCount);
             argCount++;
         }
 
         int firstArg = argCount;
         for (VariableElement param : params) {
-            if (param.getAnnotation(InjectedParameter.class) == null) {
-                constantArgument(env, out, deps, argCount, param.asType(), argCount);
+            if (processor.getAnnotation(param, processor.getType(INJECTED_PARAMETER_CLASS_NAME)) == null) {
+                constantArgument(processor, out, deps, argCount, param.asType(), argCount);
             } else {
                 out.printf("            assert checkInjectedArgument(b, args[%d], targetMethod);\n", argCount);
-                out.printf("            %s arg%d = %s;\n", param.asType(), argCount, deps.use(env, (DeclaredType) param.asType()));
+                out.printf("            %s arg%d = %s;\n", param.asType(), argCount, deps.use(processor, (DeclaredType) param.asType()));
             }
             argCount++;
         }
@@ -146,7 +142,7 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
             case ARRAY:
             case TYPEVAR:
             case DECLARED:
-                if (returnType.equals(stringType(env))) {
+                if (returnType.equals(processor.getType("java.lang.String"))) {
                     out.printf("            JavaConstant constant = %s.forString(result);\n", deps.use(WellKnownDependency.CONSTANT_REFLECTION));
                 } else {
                     out.printf("            JavaConstant constant = %s.forObject(result);\n", deps.use(WellKnownDependency.SNIPPET_REFLECTION));
