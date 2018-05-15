@@ -33,6 +33,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public final class LLVMParserRuntime {
@@ -69,11 +70,19 @@ public final class LLVMParserRuntime {
     }
 
     public LLVMFunctionDescriptor lookupFunction(String name, boolean isExported) {
-        return getScope(isExported).functions().get(name);
+        return getScope(isExported).getFunction(name);
     }
 
     public LLVMGlobal lookupGlobal(String name, boolean isExported) {
-        return getScope(isExported).globals().get(name);
+        return getScope(isExported).getGlobalVariable(name);
+    }
+
+    public LLVMSymbol lookupSymbol(String name, boolean isExported) {
+        LLVMSymbol symbol = getScope(isExported).get(name);
+        if (symbol != null) {
+            return symbol;
+        }
+        throw new IllegalStateException("Unknown symbol: " + name);
     }
 
     private LLVMScope getScope(boolean isExported) {

@@ -29,35 +29,23 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
-public final class LLVMBitcodeLibraryFunctions {
+public interface LLVMSymbol {
+    String getName();
 
-    protected abstract static class LibraryFunctionNode extends LLVMNode {
+    void setName(String name);
 
-        @Child protected DirectCallNode callNode;
+    ExternalLibrary getLibrary();
 
-        protected LibraryFunctionNode(LLVMContext context, String name) {
-            LLVMFunctionDescriptor descriptor = context.getGlobalScope().getFunction(name);
-            callNode = DirectCallNode.create(descriptor.getLLVMIRFunction());
-        }
+    boolean isDefined();
 
-        protected Object execute(Object... args) {
-            return callNode.call(args);
-        }
-    }
+    boolean isGlobalVariable();
 
-    public static final class SulongCanCatchNode extends LibraryFunctionNode {
+    boolean isFunction();
 
-        public SulongCanCatchNode(LLVMContext context) {
-            super(context, "@sulong_eh_canCatch");
-        }
+    LLVMFunctionDescriptor asFunction();
 
-        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
-            return (int) execute(stack, unwindHeader, catchType.copy());
-        }
-    }
+    LLVMGlobal asGlobalVariable();
 }

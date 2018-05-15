@@ -40,21 +40,18 @@ public final class LLVMParserResult {
     private final List<FunctionSymbol> externalFunctions;
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
-    private final List<String> importedFunctions;
-    private final List<String> importedGlobals;
+    private final List<String> importedSymbols;
 
     LLVMParserResult(LLVMParserRuntime runtime,
                     List<FunctionSymbol> externalFunctions,
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
-                    List<String> importedFunctions,
-                    List<String> importedGlobals) {
+                    List<String> importedSymbols) {
         this.runtime = runtime;
         this.externalFunctions = externalFunctions;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
-        this.importedFunctions = importedFunctions;
-        this.importedGlobals = importedGlobals;
+        this.importedSymbols = importedSymbols;
     }
 
     public LLVMParserRuntime getRuntime() {
@@ -73,11 +70,7 @@ public final class LLVMParserResult {
         return externalGlobals;
     }
 
-    public List<String> getImportedFunctions() {
-        return importedFunctions;
-    }
-
-    public List<String> getImportedGlobals() {
-        return importedGlobals;
+    public List<String> getImportedSymbols() {
+        return importedSymbols;
     }
 }
