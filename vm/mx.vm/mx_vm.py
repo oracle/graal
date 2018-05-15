@@ -91,7 +91,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
         _layout_provenance = {}
 
-        def _add(_layout, dest, src, component=None):
+        def _add(_layout, dest, src, component=None, with_sources=False):
             """
             :type _layout: dict[str, list[str] | str]
             :type dest: str
@@ -120,6 +120,18 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             mx.logvv("'Adding '{}: {}' to the layout'".format(dest, src))
             _layout_provenance[dest] = component
+            if with_sources:
+                for _src in list(src):
+                    src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
+                    if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
+                        src_src_dict = {
+                            'source_type': 'dependency',
+                            'dependency': src_dict['dependency'],
+                            'path': '*.src.zip',
+                            'optional': True,
+                            'if_stripped': 'exclude',
+                        }
+                        src.append(src_src_dict)
             _layout.setdefault(dest, []).extend(src)
 
         if is_graalvm:
@@ -207,12 +219,12 @@ GRAALVM_VERSION={version}""".format(
             else:
                 _component_base = _component_type_base
 
-            _add(layout, '<jdk_base>/jre/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component)
-            _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component)
-            _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component)
+            _add(layout, '<jdk_base>/jre/lib/boot/', ['dependency:' + d for d in _component.boot_jars], _component, with_sources=True)
+            _add(layout, _component_base, ['dependency:' + d for d in _component.jar_distributions], _component, with_sources=True)
+            _add(layout, _component_base + 'builder/', ['dependency:' + d for d in _component.builder_jar_distributions], _component, with_sources=True)
             _add(layout, _component_base, ['extracted-dependency:' + d for d in _component.support_distributions], _component)
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent):
-                _add(layout, '<jdk_base>/jre/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component)
+                _add(layout, '<jdk_base>/jre/lib/jvmci/', ['dependency:' + d for d in _component.jvmci_jars], _component, with_sources=True)
 
             if isinstance(_component, mx_sdk.GraalVmJdkComponent):
                 _jdk_jre_bin = '<jdk_base>/bin/'
@@ -231,7 +243,7 @@ GRAALVM_VERSION={version}""".format(
             _jre_bin_names = []
 
             for _launcher_config in _component.launcher_configs:
-                _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component)
+                _add(layout, '<jdk_base>/jre/lib/graalvm/', ['dependency:' + d for d in _launcher_config.jar_distributions], _component, with_sources=True)
                 _launcher_dest = _component_base + _launcher_config.destination
                 # add `LauncherConfig.destination` to the layout
                 _add(layout, _launcher_dest, 'dependency:' + GraalVmNativeImage.project_name(_launcher_config), _component)
@@ -1063,25 +1075,32 @@ _graalvm_distribution = 'uninitialized'
 _lib_polyglot_project = 'uninitialized'
 _base_graalvm_layout = {
     "<jdk_base>/": [
-       "file:GRAALVM-README.md",
+        "file:GRAALVM-README.md",
     ],
     "<jdk_base>/jre/lib/": ["extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include"],
     "<jdk_base>/jre/lib/boot/": [
-       "dependency:sdk:GRAAL_SDK",
+        "dependency:sdk:GRAAL_SDK",
+        "dependency:sdk:GRAAL_SDK/*.src.zip",
     ],
     "<jdk_base>/jre/lib/graalvm/": [
-       "dependency:sdk:LAUNCHER_COMMON",
+        "dependency:sdk:LAUNCHER_COMMON",
+        "dependency:sdk:LAUNCHER_COMMON/*.src.zip",
     ],
     "<jdk_base>/jre/lib/jvmci/parentClassLoader.classpath": [
-       "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
+        "string:../truffle/truffle-api.jar:../truffle/locator.jar:../truffle/truffle-nfi.jar",
     ],
     "<jdk_base>/jre/lib/truffle/": [
-       "dependency:truffle:TRUFFLE_API",
-       "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
-       "dependency:truffle:TRUFFLE_NFI",
-       "dependency:truffle:TRUFFLE_TCK",
-       "dependency:LOCATOR",
-       "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
+        "dependency:truffle:TRUFFLE_API",
+        "dependency:truffle:TRUFFLE_API/*.src.zip",
+        "dependency:truffle:TRUFFLE_DSL_PROCESSOR",
+        "dependency:truffle:TRUFFLE_DSL_PROCESSOR/*.src.zip",
+        "dependency:truffle:TRUFFLE_NFI",
+        "dependency:truffle:TRUFFLE_NFI/*.src.zip",
+        "dependency:truffle:TRUFFLE_TCK",
+        "dependency:truffle:TRUFFLE_TCK/*.src.zip",
+        "dependency:LOCATOR",
+        "dependency:LOCATOR/*.src.zip",
+        "extracted-dependency:truffle:TRUFFLE_NFI_NATIVE/include",
     ],
 }
 
