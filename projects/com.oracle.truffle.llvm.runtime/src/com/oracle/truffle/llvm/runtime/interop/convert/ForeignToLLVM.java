@@ -60,6 +60,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
     @Child protected Node asPointer = Message.AS_POINTER.createNode();
     @Child protected Node isBoxed = Message.IS_BOXED.createNode();
     @Child protected Node unbox = Message.UNBOX.createNode();
+    @Child protected Node toNative = Message.TO_NATIVE.createNode();
 
     public Object fromForeign(TruffleObject value) {
         try {
@@ -68,8 +69,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
             } else if (ForeignAccess.sendIsBoxed(isBoxed, value)) {
                 return ForeignAccess.sendUnbox(unbox, value);
             } else {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.raise(new Object[]{value});
+                return ForeignAccess.sendAsPointer(asPointer, (TruffleObject) ForeignAccess.sendToNative(toNative, value));
             }
         } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
