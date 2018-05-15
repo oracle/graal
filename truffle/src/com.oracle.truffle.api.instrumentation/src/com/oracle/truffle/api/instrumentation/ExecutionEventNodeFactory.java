@@ -49,7 +49,7 @@ public interface ExecutionEventNodeFactory {
      * accordingly.
      *
      * @param context the current context where this event node should get created.
-     * @return a new event node instance
+     * @return a new event node instance, or <code>null</code> for no event node at the location
      * @since 0.12
      */
     ExecutionEventNode create(EventContext context);
