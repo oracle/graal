@@ -95,22 +95,18 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         @Specialization
         @SuppressWarnings("unused")
         protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMGlobal vtable, long argc, LLVMPointer argv,
-                        @Cached("createLangStartVtable(vtable.getPointeeType())") LangStartVtableType langStartVtable,
                         @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
-                        @Cached("getLLVMMemory()") LLVMMemory memory,
-                        @Cached("toNative(toNative, vtable)") LLVMNativePointer vtablePointer,
-                        @Cached("readFn(memory, vtablePointer, langStartVtable)") LLVMNativePointer fn,
                         @Cached("getClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
-                        @Cached("readDropInPlace(memory, vtablePointer, langStartVtable)") LLVMNativePointer dropInPlace,
-                        @Cached("getClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode,
-                        @Cached("derefMain(memory, mainPointer)") LLVMNativePointer main) {
+                        @Cached("getClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
+            LLVMMemory memory = getLLVMMemory();
+            LangStartVtableType langStartVtable = createLangStartVtable(vtable.getPointeeType());
+            LLVMNativePointer vtablePointer = toNative.executeWithTarget(vtable);
+            LLVMNativePointer fn = readFn(memory, vtablePointer, langStartVtable);
+            LLVMNativePointer dropInPlace = readDropInPlace(memory, vtablePointer, langStartVtable);
+            LLVMNativePointer main = derefMain(memory, mainPointer);
             Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stackPointer, main});
             dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stackPointer, mainPointer});
             return exitCode.longValue();
-        }
-
-        protected LLVMNativePointer toNative(LLVMToNativeNode toNative, LLVMGlobal vtable) {
-            return toNative.executeWithTarget(vtable);
         }
 
         protected LLVMNativePointer readFn(LLVMMemory memory, LLVMNativePointer vtablePointer, LangStartVtableType langStartVtable) {
