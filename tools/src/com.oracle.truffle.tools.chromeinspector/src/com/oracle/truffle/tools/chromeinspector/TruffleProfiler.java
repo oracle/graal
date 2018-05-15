@@ -83,7 +83,7 @@ public final class TruffleProfiler extends ProfilerDomain {
     }
 
     private void doEnable() {
-        slh = context.getScriptsHandler();
+        slh = context.acquireScriptsHandler();
         sampler = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUSamplerInstrument.ID), CPUSampler.class);
         tracer = context.getEnv().lookup(context.getEnv().getInstruments().get(CPUTracerInstrument.ID), CPUTracer.class);
         InstrumentInfo instrumentInfo = context.getEnv().getInstruments().get(TypeProfileInstrument.ID);
