@@ -37,7 +37,7 @@ import java.util.Set;
 public class Handler extends URLStreamHandler {
     private static Map<String, URL> bindings = Collections.synchronizedMap(new HashMap<>());
     private static Map<String, URLConnection> connections = Collections.synchronizedMap(new HashMap<>());
-    private static Set<URL> visitedURLs = Collections.synchronizedSet(new HashSet<>());
+    private static Set<String> visitedURLs = Collections.synchronizedSet(new HashSet<>());
 
     public Handler() {
     }
@@ -61,13 +61,13 @@ public class Handler extends URLStreamHandler {
     }
 
     public static boolean isVisited(URL u) {
-        return visitedURLs.contains(u);
+        return visitedURLs.contains(u.toString());
     }
 
     @Override
     protected URLConnection openConnection(URL u) throws IOException {
         URLConnection c = connections.get(u.toString());
-        visitedURLs.add(u);
+        visitedURLs.add(u.toString());
         if (c != null) {
             return c;
         }

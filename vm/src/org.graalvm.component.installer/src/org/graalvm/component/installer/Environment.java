@@ -54,6 +54,7 @@ final class Environment implements Feedback, CommandInput {
     private boolean stacktraces;
     private Iterable<ComponentParam> fileIterable;
     private Map<Path, String> fileMap = new HashMap<>();
+    private boolean allOutputToErr;
 
     private Path graalHome;
 
@@ -72,6 +73,19 @@ final class Environment implements Feedback, CommandInput {
         }
 
         this.fileIterable = new FileIterable(this, this);
+    }
+
+    public boolean isAllOutputToErr() {
+        return allOutputToErr;
+    }
+
+    public void setAllOutputToErr(boolean allOutputToErr) {
+        this.allOutputToErr = allOutputToErr;
+        if (allOutputToErr) {
+            out = err;
+        } else {
+            out = System.out;
+        }
     }
 
     public void setFileIterable(Iterable<ComponentParam> fileIterable) {

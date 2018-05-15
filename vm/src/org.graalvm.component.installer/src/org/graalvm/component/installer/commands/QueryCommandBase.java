@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
+import static org.graalvm.component.installer.Commands.LONG_OPTION_LIST_FILES;
 import static org.graalvm.component.installer.Commands.OPTION_LIST_FILES;
 import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
 import org.graalvm.component.installer.ComponentParam;
@@ -48,6 +49,8 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     static {
         BASE_OPTIONS.put(OPTION_LIST_FILES, ""); // NOI18N
+
+        BASE_OPTIONS.put(LONG_OPTION_LIST_FILES, OPTION_LIST_FILES); // NOI18N
     }
 
     @Override

@@ -67,6 +67,7 @@ public class FileDownloader {
     private static volatile File tempDir;
     private boolean displayProgress;
     private byte[] shaDigest;
+    long sizeThreshold = MIN_PROGRESS_THRESHOLD;
 
     public FileDownloader(String fileDescription, URL sourceURL, Feedback feedback) {
         this.fileDescription = fileDescription;
@@ -240,6 +241,7 @@ public class FileDownloader {
                         Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
                         URLConnection test = url.openConnection(proxy);
                         test.connect();
+                        test.getHeaderField("bogusHeader");
                         conn[0] = test;
                         connected.countDown();
                     } catch (IOException ex) {
@@ -259,10 +261,11 @@ public class FileDownloader {
                         Proxy proxy = new Proxy(Proxy.Type.HTTP, address);
                         URLConnection test = url.openConnection(proxy);
                         test.connect();
+                        test.getHeaderField("bogusHeader");
                         conn[0] = test;
                         connected.countDown();
                     } catch (IOException ex) {
-                        ex2.set(ex);
+                        ex3.set(ex);
                     } catch (URISyntaxException ex) {
                     }
                 }
@@ -274,16 +277,20 @@ public class FileDownloader {
                 try {
                     URLConnection test = url.openConnection();
                     test.connect();
+                    test.getHeaderField("bogusHeader");
                     conn[0] = test;
                     connected.countDown();
                 } catch (IOException ex) {
-                    ex2.set(ex);
+                    ex3.set(ex);
                 }
 
             }
         });
         try {
             if (!connected.await(5, TimeUnit.SECONDS)) {
+                if (ex3.get() != null) {
+                    throw ex3.get();
+                }
                 throw new ConnectException("Timeout while connecting to " + url);
             }
             if (conn[0] == null) {
@@ -312,7 +319,7 @@ public class FileDownloader {
         if (verbose) {
             displayProgress = true;
         }
-        if (size < MIN_PROGRESS_THRESHOLD) {
+        if (size < sizeThreshold) {
             displayProgress = false;
         }
 

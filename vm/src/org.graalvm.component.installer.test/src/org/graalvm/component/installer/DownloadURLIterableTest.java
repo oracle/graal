@@ -43,17 +43,17 @@ public class DownloadURLIterableTest extends CommandTestBase {
 
     @Test
     public void testConstructComponentParam() throws Exception {
-        initURLComponent("persist/data/truffleruby2.jar", "test://graal.us.oracle.com/download/truffleruby.zip");
-        assertEquals("test://graal.us.oracle.com/download/truffleruby.zip", param.getSpecification());
-        assertEquals("test://graal.us.oracle.com/download/truffleruby.zip", param.getDisplayName());
+        initURLComponent("persist/data/truffleruby2.jar", "test://graalvm.io/download/truffleruby.zip");
+        assertEquals("test://graalvm.io/download/truffleruby.zip", param.getSpecification());
+        assertEquals("test://graalvm.io/download/truffleruby.zip", param.getDisplayName());
         assertFalse(param.isComplete());
         assertFalse(Handler.isVisited(url));
     }
 
     @Test
     public void testURLParameter() throws Exception {
-        initURLComponent("persist/data/truffleruby3.jar", "test://graal.us.oracle.com/download/truffleruby.zip");
-        this.textParams.add("test://graal.us.oracle.com/download/truffleruby.zip");
+        initURLComponent("persist/data/truffleruby3.jar", "test://graalvm.io/download/truffleruby.zip");
+        this.textParams.add("test://graalvm.io/download/truffleruby.zip");
 
         DownloadURLIterable iterable = new DownloadURLIterable(this, this);
         Iterator<ComponentParam> it = iterable.iterator();
@@ -61,7 +61,7 @@ public class DownloadURLIterableTest extends CommandTestBase {
 
         ComponentParam p = it.next();
 
-        assertEquals("test://graal.us.oracle.com/download/truffleruby.zip", p.getSpecification());
+        assertEquals("test://graalvm.io/download/truffleruby.zip", p.getSpecification());
         MetadataLoader ldr = p.createMetaLoader();
         assertFalse(p.isComplete());
 
@@ -79,7 +79,7 @@ public class DownloadURLIterableTest extends CommandTestBase {
 
     @Test
     public void testMalformedURL() throws Exception {
-        this.textParams.add("testx://graal.us.oracle.com/download/truffleruby.zip");
+        this.textParams.add("testx://graalvm.io/download/truffleruby.zip");
 
         DownloadURLIterable iterable = new DownloadURLIterable(this, this);
         Iterator<ComponentParam> it = iterable.iterator();
@@ -93,7 +93,7 @@ public class DownloadURLIterableTest extends CommandTestBase {
 
     @Test
     public void testInstallFromURL() throws Exception {
-        initURLComponent("persist/data/truffleruby2.jar", "test://graal.us.oracle.com/download/truffleruby.zip");
+        initURLComponent("persist/data/truffleruby2.jar", "test://graalvm.io/download/truffleruby.zip");
 
         components.add(rparam);
 
