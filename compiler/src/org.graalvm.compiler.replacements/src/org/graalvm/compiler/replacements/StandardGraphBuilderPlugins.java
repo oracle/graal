@@ -220,7 +220,7 @@ public class StandardGraphBuilderPlugins {
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode expected, ValueNode x) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
-                        b.addPush(JavaKind.Int, createNode(object, offset, expected, x, kind, LocationIdentity.any()));
+                        b.addPush(returnKind(kind), createNode(object, offset, expected, x, kind, LocationIdentity.any()));
                         b.getGraph().markUnsafeAccess();
                         return true;
                     }

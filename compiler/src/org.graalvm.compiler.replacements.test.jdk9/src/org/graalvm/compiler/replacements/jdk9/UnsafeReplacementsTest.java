@@ -39,14 +39,15 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
         public volatile byte byteField = 17;
         public volatile char charField = 1025;
         public volatile short shortField = 2232;
-        public volatile int intField = 101532;
-        public volatile long longField = 0x0123456789abcdefL;
+        public volatile int intField = 0xcafebabe;
+        public volatile long longField = 0xdedababafafaL;
         public volatile float floatField = 0.125f;
         public volatile double doubleField = 0.125;
         public volatile Object objectField = this;
     }
 
     static jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
+    static Container dummyValue = new Container();
     static long booleanOffset;
     static long byteOffset;
     static long charOffset;
@@ -95,12 +96,12 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
 
     public static boolean unsafeCompareAndSetInt() {
         Container container = new Container();
-        return unsafe.compareAndSetInt(container, intOffset, 101532, 102123);
+        return unsafe.compareAndSetInt(container, intOffset, 0xcafebabe, 0xbabefafa);
     }
 
     public static boolean unsafeCompareAndSetLong() {
         Container container = new Container();
-        return unsafe.compareAndSetLong(container, longOffset, 0x0123456789abcdefL, 0xfedcba9876543210L);
+        return unsafe.compareAndSetLong(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
     }
 
     public static boolean unsafeCompareAndSetFloat() {
@@ -118,9 +119,49 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
         return unsafe.compareAndSetObject(container, objectOffset, container, new Object() {});
     }
 
+    public static boolean unsafeCompareAndExchangeBoolean() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeBoolean(container, booleanOffset, false, true);
+    }
+
     public static byte unsafeCompareAndExchangeByte() {
         Container container = new Container();
-        return unsafe.compareAndExchangeByte(container, objectOffset, (byte) 17, (byte) 31);
+        return unsafe.compareAndExchangeByte(container, byteOffset, (byte) 17, (byte) 31);
+    }
+
+    public static char unsafeCompareAndExchangeChar() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeChar(container, charOffset, (char) 1025, (char) 4502);
+    }
+
+    public static short unsafeCompareAndExchangeShort() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeShort(container, shortOffset, (short) 2232, (short) 8121);
+    }
+
+    public static int unsafeCompareAndExchangeInt() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeInt(container, intOffset, 0xcafebabe, 0xbabefafa);
+    }
+
+    public static long unsafeCompareAndExchangeLong() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeLong(container, longOffset, 0xdedababafafaL, 0xfafacecafafadedaL);
+    }
+
+    public static float unsafeCompareAndExchangeFloat() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeFloat(container, floatOffset, 0.125f, 0.25f);
+    }
+
+    public static double unsafeCompareAndExchangeDouble() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeDouble(container, doubleOffset, 0.125, 0.25);
+    }
+
+    public static Object unsafeCompareAndExchangeObject() {
+        Container container = new Container();
+        return unsafe.compareAndExchangeObject(container, doubleOffset, container, dummyValue);
     }
 
     @Test
@@ -143,7 +184,23 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest  {
         test("unsafeCompareAndSetDouble");
         testGraph("unsafeCompareAndSetObject");
         test("unsafeCompareAndSetObject");
+        testGraph("unsafeCompareAndExchangeBoolean");
+        test("unsafeCompareAndExchangeBoolean");
         testGraph("unsafeCompareAndExchangeByte");
         test("unsafeCompareAndExchangeByte");
+        testGraph("unsafeCompareAndExchangeChar");
+        test("unsafeCompareAndExchangeChar");
+        testGraph("unsafeCompareAndExchangeShort");
+        test("unsafeCompareAndExchangeShort");
+        testGraph("unsafeCompareAndExchangeInt");
+        test("unsafeCompareAndExchangeInt");
+        testGraph("unsafeCompareAndExchangeLong");
+        test("unsafeCompareAndExchangeLong");
+        testGraph("unsafeCompareAndExchangeFloat");
+        test("unsafeCompareAndExchangeFloat");
+        testGraph("unsafeCompareAndExchangeDouble");
+        test("unsafeCompareAndExchangeDouble");
+        testGraph("unsafeCompareAndExchangeObject");
+        test("unsafeCompareAndExchangeObject");
     }
 }

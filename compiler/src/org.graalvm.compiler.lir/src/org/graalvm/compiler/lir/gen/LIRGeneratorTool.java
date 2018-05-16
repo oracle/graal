@@ -144,7 +144,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
 
-    Value emitValueCompareAndSwap(ValueKind<?> accessKind, Value address, Value expectedValue, Value newValue);
+    Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue);
 
     /**
      * Emit an atomic read-and-add instruction.

@@ -138,7 +138,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(ValueKind<?> accessKind, Value address, Value expectedValue, Value newValue) {
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
         Variable result = newVariable(newValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
         append(new CompareAndSwapOp(result, loadNonCompareConst(expectedValue), loadReg(newValue), asAllocatable(address), scratch));

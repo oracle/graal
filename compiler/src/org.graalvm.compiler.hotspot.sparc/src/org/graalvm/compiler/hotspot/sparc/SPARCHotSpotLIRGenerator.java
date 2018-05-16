@@ -246,7 +246,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(ValueKind<?> accessKind, Value address, Value expectedValue, Value newValue) {
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());
         Variable result = newVariable(newValue.getValueKind());
