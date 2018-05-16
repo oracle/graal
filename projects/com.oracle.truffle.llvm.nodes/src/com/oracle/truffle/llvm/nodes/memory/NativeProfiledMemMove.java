@@ -48,11 +48,6 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
-    protected Object doInt(Object target, Object source, int length) {
-        return memmove(convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
-    }
-
-    @Specialization
     protected Object doLong(Object target, Object source, long length) {
         return memmove(convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
     }
