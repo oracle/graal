@@ -689,6 +689,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "TRUFFLE_API",
+        "ANTLR4"
       ],
       "javaCompliance" : "1.8",
       "checkstyleVersion" : "8.8",
