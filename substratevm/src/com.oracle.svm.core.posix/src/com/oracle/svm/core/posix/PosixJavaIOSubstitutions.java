@@ -23,7 +23,6 @@
 package com.oracle.svm.core.posix;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.NewInstance;
-import static com.oracle.svm.core.posix.PosixOSInterface.lastErrorString;
 import static com.oracle.svm.core.posix.headers.Dirent.closedir;
 import static com.oracle.svm.core.posix.headers.Dirent.opendir;
 import static com.oracle.svm.core.posix.headers.Dirent.readdir_r;
@@ -108,8 +107,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.posix.PosixOSInterface.Util_java_io_FileDescriptor;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
 import com.oracle.svm.core.posix.headers.Dirent.direntPointer;
@@ -121,6 +118,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.io.ExpiringCache")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_ExpiringCache {
 }
 
@@ -271,7 +269,7 @@ final class Target_java_io_UnixFileSystem {
                 // Other I/O problems cause an error return.
                 continue;
             } else {
-                throw new IOException(lastErrorString("Bad pathname"));
+                throw new IOException(PosixUtils.lastErrorString("Bad pathname"));
             }
         }
 
@@ -279,7 +277,7 @@ final class Target_java_io_UnixFileSystem {
             // append unresolved subpath to resolved subpath
             String rs = CTypeConversion.toJavaString(r);
             if (rs.length() + 1 + unresolvedPart.length() > maxPathLen) {
-                throw new IOException(lastErrorString("Bad pathname"));
+                throw new IOException(PosixUtils.lastErrorString("Bad pathname"));
             }
             return PosixUtils.collapse(rs + "/" + unresolvedPart);
         } else {
@@ -300,8 +298,10 @@ final class Target_java_io_UnixFileSystem {
     @Substitute
     public boolean checkAccess(File f, int access) {
         // can't use a switch because fields are aliased
-        int mode = access == Target_java_io_FileSystem.ACCESS_READ ? R_OK() : access == Target_java_io_FileSystem.ACCESS_WRITE ? W_OK() : access == Target_java_io_FileSystem.ACCESS_EXECUTE ? X_OK()
-                        : -1;
+        int mode = access == Target_java_io_FileSystem.ACCESS_READ ? R_OK()
+                        : access == Target_java_io_FileSystem.ACCESS_WRITE ? W_OK()
+                                        : access == Target_java_io_FileSystem.ACCESS_EXECUTE ? X_OK()
+                                                        : -1;
         if (mode == -1) {
             throw VMError.shouldNotReachHere("illegal access mode");
         }
@@ -392,7 +392,7 @@ final class Target_java_io_UnixFileSystem {
         }
         if (fd < 0) {
             if (fd != EEXIST()) {
-                throw new IOException(lastErrorString(path));
+                throw new IOException(PosixUtils.lastErrorString(path));
             }
         } else {
             close(fd);
@@ -506,7 +506,7 @@ final class Target_java_io_FileInputStream {
             }
             return (int) r;
         }
-        throw new IOException(lastErrorString(""));
+        throw new IOException(PosixUtils.lastErrorString(""));
     }
 
     @Substitute
@@ -516,9 +516,9 @@ final class Target_java_io_FileInputStream {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek error"));
+            throw new IOException(PosixUtils.lastErrorString("Seek error"));
         } else if ((end = lseek(handle, WordFactory.signed(n), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek error"));
+            throw new IOException(PosixUtils.lastErrorString("Seek error"));
         }
 
         return end.subtract(cur).rawValue();
@@ -546,17 +546,7 @@ final class Target_java_io_FileOutputStream {
 
     @Substitute
     protected void writeBytes(byte[] bytes, int off, int len, boolean append) throws IOException {
-        if (bytes == null) {
-            throw new NullPointerException();
-        } else if (PosixUtils.outOfBounds(off, len, bytes)) {
-            throw new IndexOutOfBoundsException();
-        }
-        if (len != 0) {
-            final PosixOSInterface os = (PosixOSInterface) ConfigurationValues.getOSInterface();
-            if (!os.writeBytes0(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append)) {
-                throw new IOException("Write failed");
-            }
-        }
+        PosixUtils.writeBytes(SubstrateUtil.getFileDescriptor(KnownIntrinsics.unsafeCast(this, FileOutputStream.class)), bytes, off, len, append);
     }
 
     @Substitute
@@ -606,10 +596,7 @@ final class Target_java_io_RandomAccessFile {
 
     @Substitute
     private void writeBytes(byte[] b, int off, int len) throws IOException {
-        final PosixOSInterface os = (PosixOSInterface) ConfigurationValues.getOSInterface();
-        if (!os.writeBytes0(fd, b, off, len, false)) {
-            throw new IOException("Write failed");
-        }
+        PosixUtils.writeBytes(fd, b, off, len, false);
     }
 
     @Substitute
@@ -618,7 +605,7 @@ final class Target_java_io_RandomAccessFile {
         if (pos < 0L) {
             throw new IOException("Negative seek offset");
         } else if (lseek(handle, WordFactory.signed(pos), SEEK_SET()).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         }
 
     }
@@ -628,7 +615,7 @@ final class Target_java_io_RandomAccessFile {
         SignedWord ret;
         int handle = PosixUtils.getFDHandle(fd);
         if ((ret = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         }
         return ret.rawValue();
     }
@@ -662,11 +649,11 @@ final class Target_java_io_RandomAccessFile {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         } else if ((end = lseek(handle, WordFactory.zero(), SEEK_END())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         } else if (lseek(handle, cur, SEEK_SET()).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("Seek failed"));
+            throw new IOException(PosixUtils.lastErrorString("Seek failed"));
         }
         return end.rawValue();
     }
@@ -677,18 +664,18 @@ final class Target_java_io_RandomAccessFile {
         int handle = PosixUtils.getFDHandle(fd);
 
         if ((cur = lseek(handle, WordFactory.zero(), SEEK_CUR())).equal(WordFactory.signed(-1))) {
-            throw new IOException(lastErrorString("setLength failed"));
+            throw new IOException(PosixUtils.lastErrorString("setLength failed"));
         }
         if (ftruncate(handle, newLength) == -1) {
-            throw new IOException(lastErrorString("setLength failed"));
+            throw new IOException(PosixUtils.lastErrorString("setLength failed"));
         }
         if (cur.greaterThan(WordFactory.signed(newLength))) {
             if (lseek(handle, WordFactory.zero(), SEEK_END()).equal(WordFactory.signed(-1))) {
-                throw new IOException(lastErrorString("setLength failed"));
+                throw new IOException(PosixUtils.lastErrorString("setLength failed"));
             }
         } else {
             if (lseek(handle, cur, SEEK_SET()).equal(WordFactory.signed(-1))) {
-                throw new IOException(lastErrorString("setLength failed"));
+                throw new IOException(PosixUtils.lastErrorString("setLength failed"));
             }
         }
     }
@@ -717,7 +704,7 @@ final class Target_java_io_Console {
 
     @Substitute
     static boolean istty() {
-        return Unistd.isatty(Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.in)) == 1 && Unistd.isatty(Util_java_io_FileDescriptor.getFD(java.io.FileDescriptor.out)) == 1;
+        return Unistd.isatty(PosixUtils.getFD(java.io.FileDescriptor.in)) == 1 && Unistd.isatty(PosixUtils.getFD(java.io.FileDescriptor.out)) == 1;
     }
 
     /* { Do not re-format commented out C code: @formatter:off */

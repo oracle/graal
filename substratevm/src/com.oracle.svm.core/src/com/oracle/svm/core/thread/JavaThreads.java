@@ -28,6 +28,7 @@ import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
@@ -467,6 +468,31 @@ public abstract class JavaThreads {
             StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
             JavaStackWalker.walkThread(thread, stackTraceBuilder);
             return stackTraceBuilder.getTrace();
+        }
+    }
+
+    /** If there is an uncaught exception handler, call it. */
+    public static void dispatchUncaughtException(Thread thread, Throwable throwable) {
+        /* Get the uncaught exception handler for the Thread, or the default one. */
+        UncaughtExceptionHandler handler = thread.getUncaughtExceptionHandler();
+        if (handler == null) {
+            handler = Thread.getDefaultUncaughtExceptionHandler();
+        }
+        if (handler != null) {
+            try {
+                handler.uncaughtException(thread, throwable);
+            } catch (Throwable t) {
+                /*
+                 * The JavaDoc for {@code Thread.UncaughtExceptionHandler.uncaughtException} says
+                 * the VM ignores any exceptions thrown.
+                 */
+            }
+        } else {
+            /* If no uncaught exception handler is present, then just report the throwable. */
+            /* Checkstyle: stop (printStackTrace below is going to write to System.err too). */
+            System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
+            // Checkstyle: resume
+            throwable.printStackTrace();
         }
     }
 

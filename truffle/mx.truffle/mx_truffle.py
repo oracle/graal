@@ -3,12 +3,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -45,6 +47,7 @@ from urlparse import urljoin
 import mx_gate
 import mx_unittest
 import mx_benchmark
+import mx_sdk
 
 _suite = mx.suite('truffle')
 
@@ -445,9 +448,11 @@ def _tck(args):
             mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
         unittest(unitTestOptions + ["--"] + jvmOptions + ["-Dgraal.TruffleCompileImmediately=true", "-Dgraal.TruffleCompilationExceptionsAreThrown=true"] + tests)
 
+
 mx.update_commands(_suite, {
-    'tck' : [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
+    'tck': [_tck, "[--tck-configuration {default|debugger}] [unittest options] [--] [VM options] [filters...]", _debuggertestHelpSuffix]
 })
+
 
 def check_filename_length(args):
     """check that all file name lengths are short enough for eCryptfs"""
@@ -465,6 +470,21 @@ def check_filename_length(args):
         for x in too_long:
             mx.log_error(x)
         mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='Truffle NFI',
+    short_name='tfl',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=[],
+    support_distributions=[
+        'truffle:TRUFFLE_GRAALVM_SUPPORT',
+        'truffle:TRUFFLE_NFI_NATIVE',
+    ]
+))
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],

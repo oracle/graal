@@ -58,7 +58,7 @@ public class ErrorTypeTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<? extends TestRun> createErrorTypeTests() {
-        context = new TestContext();
+        context = new TestContext(ErrorTypeTest.class);
         final Set<? extends String> requiredLanguages = TestUtil.getRequiredLanguages(context);
         final Collection<TestRun> testRuns = new LinkedHashSet<>();
         for (String snippetLanguage : requiredLanguages) {

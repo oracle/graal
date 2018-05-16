@@ -82,13 +82,14 @@ final class SingleThreadedVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public VMMutex lockNoTransition() {
-        return lock();
+        locked = true;
+        return this;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void unlock() {
         locked = false;
     }

@@ -3,6 +3,25 @@ Substrate VM Java Limitations
 
 Substrate VM does not support all features of Java to keep the implementation small and concise, and also to allow aggressive ahead-of-time optimizations. This page documents the limitations. If you are not sure if a feature is supported, ask christian.wimmer@oracle.com so that this list can be updated.
 
+| What | Support Status|
+| ---------- | ----------|
+| [Dynamic Class Loading / Unloading](#dynamic-class-loading--unloading) | Not supported|
+| [Reflection](#reflection) | Partially supported|
+| [Implicit Exceptions](#implicit-exceptions) | Mostly supported|
+| [Stacktrace Printing](#stacktrace-printing) | Supported|
+| [InvokeDynamic Bytecode and Method Handles](#invokedynamic-bytecode-and-method-handles) | Not supported|
+| [Lambda Expressions](#lambda-expressions) | Supported|
+| [Java Native Interface (JNI)](#jni) | Partially supported|
+| [Synchronized, wait, and notify](#synchronized-wait-and-notify) | Mostly supported|
+| [Finalizers](#finalizers) | Not supported|
+| [Weak references](#weak-references) | Supported|
+| [Threads](#threads) | Mostly supported|
+| [Identity Hash Code](#identity-hash-code) | Supported|
+| [Annotations](#annotations) | Mostly supported|
+| [Static Initializers](#static-initializers) | Mostly supported|
+| [JVMTI, JMX, other native VM interfaces](#jvmti-jmx-other-native-vm-interfaces) | Not supported|
+| [Shutdown Hooks](#shutdown-hooks) | Mostly supported|
+
 Dynamic Class Loading / Unloading
 ---------------------------------
 
@@ -126,6 +145,8 @@ Starting new threads; Support for `java.lang.Thread`
 ### Support Status: Mostly supported
 Nearly full support for `java.lang.Thread`. Only long deprecated methods, such as `Thread.stop()`, will not be supported. However, we discourage explicit usage of threads. Use higher level constructs from `java.util.concurrent` instead.
 
+Starting threads in a static initializer is not allowed. See the *Static Initializers* section bellow for details.
+
 Identity Hash Code
 ------------------
 
@@ -151,7 +172,7 @@ Static Initializers
 Static class initialization blocks, pre-initialized static variables.
 
 ### Support Status: Mostly supported
-All static class initialization is done during native image construction. This has the advantage that possibly expensive initializations do not slow down the startup, and large static data structures are pre-allocated. However, it also means that instance-specific initializations (such as opening and initializing native libraries, opening files or socket connections, ...) cannot be done in static initializers.
+All static class initialization is done during native image construction. This has the advantage that possibly expensive initializations do not slow down the startup, and large static data structures are pre-allocated. However, it also means that instance-specific initializations (such as opening and initializing native libraries, opening files or socket connections, starting threads ...) cannot be done in static initializers.
 
 ### Why:
 Static initializers run in the host VM during native image generation, and it is not possible to prevent or intercept that.

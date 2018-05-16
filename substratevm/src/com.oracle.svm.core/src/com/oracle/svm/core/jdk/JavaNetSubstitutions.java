@@ -66,31 +66,27 @@ class JavaNetFeature implements Feature {
             return;
         }
         String[] protocols = optionValue.split(",");
-        boolean printProtocols = false;
-        String warningMessage = "";
         for (String protocol : protocols) {
             if (JavaNetSubstitutions.defaultProtocols.contains(protocol)) {
-                warningMessage += "The URL protocol " + protocol + " is enabled by default. " +
-                                "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed." + System.lineSeparator();
+                printWarning("The URL protocol " + protocol + " is enabled by default. " +
+                                "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");
             } else if (JavaNetSubstitutions.supportedProtocols.contains(protocol)) {
                 JavaNetSubstitutions.addURLStreamHandler(protocol);
             } else if (JavaNetSubstitutions.unsupportedProtocols.contains(protocol)) {
-                warningMessage += "The URL protocol " + protocol + " is not currently supported." + System.lineSeparator();
-                printProtocols = true;
+                printWarning("The URL protocol " + protocol + " is not currently supported." +
+                                System.lineSeparator() + JavaNetSubstitutions.supportedProtocols());
             } else {
-                warningMessage += "The URL protocol " + protocol + " is not tested and might not work as expected." + System.lineSeparator();
+                printWarning("The URL protocol " + protocol + " is not tested and might not work as expected." +
+                                System.lineSeparator() + JavaNetSubstitutions.supportedProtocols());
                 JavaNetSubstitutions.addURLStreamHandler(protocol);
-                printProtocols = true;
             }
         }
+    }
 
-        if (printProtocols) {
-            warningMessage += JavaNetSubstitutions.supportedProtocols() + System.lineSeparator();
-        }
-
+    private static void printWarning(String warningMessage) {
         // Checkstyle: stop
-        System.out.print(warningMessage);
-        // Checkstyle: resume
+        System.out.println(warningMessage);
+        // Checkstyle: resume}
     }
 }
 
@@ -126,19 +122,23 @@ public final class JavaNetSubstitutions {
     static URLStreamHandler getURLStreamHandler(String protocol) {
         URLStreamHandler result = JavaNetSubstitutions.imageHandlers.get(protocol);
         if (result == null) {
-            String errorMessage = "Accessing an URL protocol that was not enabled. ";
             if (supportedProtocols.contains(protocol)) {
-                errorMessage += "The URL protocol " + protocol + " is supported but not enabled by default. It must be enabled using " + enableProtocolsOption + protocol + ".";
+                unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
+                                " is supported but not enabled by default. It must be enabled by adding the " + enableProtocolsOption + protocol +
+                                " option to the native-image command.");
             } else if (JavaNetSubstitutions.unsupportedProtocols.contains(protocol)) {
-                errorMessage += "The URL protocol " + protocol + " is not currently supported. It can still be enabled using " + enableProtocolsOption + protocol + ". ";
-                errorMessage += supportedProtocols();
+                unsupported("The URL protocol " + protocol + " is not currently supported. " + supportedProtocols());
             } else {
-                errorMessage += "The URL protocol " + protocol + " is not tested and might not work as expected. It can still be enabled using " + enableProtocolsOption + protocol + ". ";
-                errorMessage += supportedProtocols();
+                unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
+                                " is not tested and might not work as expected. It can be enabled by adding the " + enableProtocolsOption + protocol +
+                                " option to the native-image command.");
             }
-            throw VMError.unsupportedFeature(errorMessage);
         }
         return result;
+    }
+
+    private static void unsupported(String message) {
+        throw VMError.unsupportedFeature(message);
     }
 
     static String supportedProtocols() {

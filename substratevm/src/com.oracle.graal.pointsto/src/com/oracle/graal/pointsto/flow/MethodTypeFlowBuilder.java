@@ -1011,7 +1011,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> loadBuilder;
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe load from an array object is essentially an array load since we
                          * don't have separate type flows for different array elements.
@@ -1045,7 +1045,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
                     TypeFlowBuilder<?> storeBuilder;
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe store to an array object is essentially an array store since we
                          * don't have separate type flows for different array elements.
@@ -1078,7 +1078,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> newValueBuilder = state.lookup(node.newValue());
                     TypeFlowBuilder<?> storeBuilder;
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe compare and swap is essentially unsafe store and unsafe store to
                          * an array object is essentially an array store since we don't have
@@ -1117,7 +1117,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> storeBuilder;
                     TypeFlowBuilder<?> loadBuilder;
 
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Atomic read and write is essentially unsafe store and unsafe store to an
                          * array object is essentially an array store since we don't have separate

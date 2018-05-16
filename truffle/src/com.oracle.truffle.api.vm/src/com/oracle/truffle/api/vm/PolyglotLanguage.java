@@ -210,7 +210,12 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     @Override
     public String getVersion() {
-        return cache.getVersion();
+        final String version = cache.getVersion();
+        if (version.equals("inherit")) {
+            return engine.getVersion();
+        } else {
+            return version;
+        }
     }
 
     @Override

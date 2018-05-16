@@ -32,11 +32,14 @@ import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
 import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
 import static com.oracle.svm.core.posix.headers.Mman.mmap;
 import static com.oracle.svm.core.posix.headers.Mman.munmap;
+import static com.oracle.svm.core.posix.headers.Unistd._SC_PAGE_SIZE;
+import static com.oracle.svm.core.posix.headers.UnistdNoTransitions.sysconf;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Platform.LINUX;
 import org.graalvm.nativeimage.c.function.CEntryPointContext;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -46,9 +49,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.log.Log;
@@ -60,6 +64,7 @@ import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixVirtualMemoryProviderFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -71,6 +76,8 @@ class PosixVirtualMemoryProviderFeature implements Feature {
 }
 
 public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
+    private static final CGlobalData<WordPointer> CACHED_PAGE_SIZE = CGlobalDataFactory.createWord();
+
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
@@ -123,8 +130,21 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
         return PosixCEntryPointErrors.NO_ERROR;
     }
 
-    private static UnsignedWord getPageSize() {
-        return WordFactory.unsigned(UnsafeAccess.UNSAFE.pageSize());
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord queryPageSize() {
+        Word value = CACHED_PAGE_SIZE.get().read();
+        if (value.equal(WordFactory.zero())) {
+            long queried = sysconf(_SC_PAGE_SIZE());
+            value = WordFactory.unsigned(queried);
+            CACHED_PAGE_SIZE.get().write(value);
+        }
+        return value;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getPageSize() {
+        return queryPageSize();
     }
 
     @Override
@@ -228,6 +248,14 @@ public class PosixOSVirtualMemoryProvider implements VirtualMemoryProvider {
         final UnsignedWord pagedSize = pagedEnd.subtract(pagedStart);
         // Return that virtual address space to the operating system.
         return freeVirtualMemory(pagedStart, pagedSize);
+    }
+
+    @Override
+    public void beforeGarbageCollection() {
+    }
+
+    @Override
+    public void afterGarbageCollection(boolean completeCollection) {
     }
 
     protected void trackVirtualMemory(UnsignedWord size) {

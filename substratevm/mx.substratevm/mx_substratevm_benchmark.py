@@ -1,12 +1,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
-
-# Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+#
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -225,7 +227,7 @@ def bench_jsimage(bench_conf, out, err, extra_options=None):
         with _timedelta('IMAGEBUILD: ', out=out):
             out('INFO: EXECUTE IMAGEBUILD: svmimage-%s\n' % bench_conf)
             _, image_building_options = _bench_configs[bench_conf]
-            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--Language:js', '-H:Path=' + image_dir,
+            command = [mx_substratevm.native_image_path(mx_substratevm.suite_native_image_root()), '--language:js', '-H:Path=' + image_dir,
                        '-H:Name=' + js_image_name] + image_building_options + extra_options
             # Print out the command.
             print(' '.join(command))

@@ -25,6 +25,7 @@ package com.oracle.svm.core.jdk;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -57,7 +58,7 @@ class ReferenceWrapper extends FeebleReference<Object> {
 @Platforms(Platform.HOSTED_ONLY.class)
 class ComputeReferenceValue implements CustomFieldValueComputer {
     @Override
-    public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         if (receiver instanceof PhantomReference) {
             /*
              * PhantomReference does not allow access to its object, so it is mostly useless to have

@@ -52,6 +52,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -232,12 +233,13 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Unique string identifying the language version. This name will be exposed to users via
-         * the {@link org.graalvm.polyglot.Language#getVersion()} getter.
+         * the {@link org.graalvm.polyglot.Language#getVersion()} getter. It inherits from
+         * {@link org.graalvm.polyglot.Engine#getVersion()} by default.
          *
          * @return version of your language
          * @since 0.8 or earlier
          */
-        String version();
+        String version() default "inherit";
 
         /**
          * List of MIME types associated with your language.
@@ -2021,6 +2023,26 @@ public abstract class TruffleLanguage<C> {
     }
 
     static final class LanguageImpl extends Accessor.LanguageSupport {
+
+        @Override
+        public boolean isTruffleStackTrace(Throwable t) {
+            return t instanceof LazyStackTrace;
+        }
+
+        @Override
+        public StackTraceElement[] getInternalStackTraceElements(Throwable t) {
+            TruffleStackTrace trace = ((LazyStackTrace) t).getInternalStackTrace();
+            if (trace == null) {
+                return new StackTraceElement[0];
+            } else {
+                return trace.getInternalStackTrace();
+            }
+        }
+
+        @Override
+        public void materializeHostFrames(Throwable original) {
+            TruffleStackTrace.materializeHostFrames(original);
+        }
 
         @Override
         public InstrumentInfo createInstrument(Object vmObject, String id, String name, String version) {

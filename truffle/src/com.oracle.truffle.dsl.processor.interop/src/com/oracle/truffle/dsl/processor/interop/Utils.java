@@ -55,8 +55,8 @@ final class Utils {
         try {
             currentMessage = Message.valueOf(messageName);
         } catch (IllegalArgumentException ex) {
-            TypeElement typeElement = processingEnv.getElementUtils().getTypeElement(messageName);
-            TypeElement messageElement = processingEnv.getElementUtils().getTypeElement(Message.class.getName());
+            TypeElement typeElement = ElementUtils.getTypeElement(processingEnv, messageName);
+            TypeElement messageElement = ElementUtils.getTypeElement(processingEnv, Message.class.getName());
             if (typeElement != null && processingEnv.getTypeUtils().isAssignable(typeElement.asType(), messageElement.asType())) {
                 currentMessage = messageName;
             }
@@ -66,7 +66,7 @@ final class Utils {
 
     static TypeMirror getTypeMirror(ProcessingEnvironment env, Class<?> clazz) {
         String name = clazz.getName();
-        TypeElement elem = env.getElementUtils().getTypeElement(name);
+        TypeElement elem = ElementUtils.getTypeElement(env, name);
         return elem.asType();
     }
 

@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class DeclaredAnnotationsComputer implements CustomFieldValueComputer {
@@ -39,7 +40,7 @@ public abstract class DeclaredAnnotationsComputer implements CustomFieldValueCom
     protected abstract Class<?> getDeclaringClass();
 
     @Override
-    public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         try {
             Method declaredAnnotationsMethod = getDeclaringClass().getDeclaredMethod("declaredAnnotations");
             declaredAnnotationsMethod.setAccessible(true);

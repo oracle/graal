@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.ServiceConfigurationError;
@@ -82,7 +83,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public String getName() {
-        return "Default Truffle Runtime";
+        return "Interpreted";
     }
 
     @SuppressWarnings("deprecation")
@@ -195,6 +196,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
         }
     }
 
+    @Override
     public <T> T getCapability(Class<T> capability) {
         if (capability == TVMCI.Test.class) {
             return capability.cast(testTvmci);
@@ -202,11 +204,38 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
             return capability.cast(tvmci);
         }
 
-        final Iterator<T> it = ServiceLoader.load(capability).iterator();
+        final Iterator<T> it = Loader.load(capability).iterator();
         try {
             return it.hasNext() ? it.next() : null;
         } catch (ServiceConfigurationError e) {
             return null;
+        }
+    }
+
+    private static final class Loader {
+        private static final Method LOAD_METHOD;
+        static {
+            Method loadMethod = null;
+            try {
+                Class<?> servicesClass = Class.forName("jdk.vm.ci.services.Services");
+                loadMethod = servicesClass.getMethod("load", Class.class);
+            } catch (ClassNotFoundException | NoSuchMethodException e) {
+                // Services.load is not available
+            }
+            LOAD_METHOD = loadMethod;
+        }
+
+        @SuppressWarnings("unchecked")
+        static <S> Iterable<S> load(Class<S> service) {
+            if (LOAD_METHOD != null) {
+                try {
+                    return (Iterable<S>) LOAD_METHOD.invoke(null, service);
+                } catch (Exception e) {
+                    throw new InternalError(e);
+                }
+            } else {
+                return ServiceLoader.load(service);
+            }
         }
     }
 

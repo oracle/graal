@@ -3,12 +3,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -39,6 +41,7 @@ from urlparse import urljoin
 import mx_gate
 import mx_unittest
 import mx_benchmark
+import mx_sdk
 
 _suite = mx.suite('tools')
 
@@ -144,6 +147,30 @@ def _tools_gate_runner(args, tasks):
         if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Chrome Inspector',
+    short_name='ins',
+    dir_name='chromeinspector',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['tools:CHROMEINSPECTOR'],
+    support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Profiler',
+    short_name='pro',
+    dir_name='profiler',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['tools:TRUFFLE_PROFILER'],
+    support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],

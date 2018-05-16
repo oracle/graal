@@ -38,6 +38,7 @@ DEPLOYED_HEADERS=ffi.h ffitarget.h svm_libffi.h trufflenfi.h
 
 HEADERFILES=${DEPLOYED_HEADERS:%.h=${TARGET}/include/%.h}
 
+ifneq (${OS},windows)
 
 default: ${TARGET}/libffi.a ${HEADERFILES}
 
@@ -83,3 +84,12 @@ libffi-build/Makefile: libffi-3.2.1/configure
 libffi-3.2.1/configure: ${LIBFFI_SRC}
 	$(QUIETLY) tar xzf ${LIBFFI_SRC}
 	$(QUIETLY) touch $@
+
+else
+all:
+	echo "Building libffi on Windows is not currently supported"
+	$(shell mkdir -p ${TARGET})
+	$(shell touch ${TARGET}/libffi.a)
+	$(shell mkdir -p `dirname ${HEADERFILES}`)
+	$(shell touch ${HEADERFILES})
+endif

@@ -385,6 +385,12 @@ public abstract class Accessor {
 
         public abstract boolean initializeMultiContext(LanguageInfo info);
 
+        public abstract boolean isTruffleStackTrace(Throwable t);
+
+        public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
+
+        public abstract void materializeHostFrames(Throwable original);
+
     }
 
     public abstract static class InstrumentSupport {

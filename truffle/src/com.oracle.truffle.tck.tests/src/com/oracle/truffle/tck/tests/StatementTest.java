@@ -49,7 +49,7 @@ public class StatementTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<? extends TestRun> createControlFlowTests() {
-        context = new TestContext();
+        context = new TestContext(StatementTest.class);
         final Collection<? extends TestRun> testRuns = TestUtil.createTestRuns(
                         TestUtil.getRequiredLanguages(context),
                         TestUtil.getRequiredValueLanguages(context),

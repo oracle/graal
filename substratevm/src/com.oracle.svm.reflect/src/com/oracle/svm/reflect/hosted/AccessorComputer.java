@@ -28,13 +28,15 @@ import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.util.VMError;
 import java.lang.reflect.Member;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public final class AccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
 
     @Override
-    public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         Member member = (Member) receiver;
         ReflectionSubstitution subst = ImageSingletons.lookup(ReflectionSubstitution.class);
         Class<?> proxyClass = subst.getProxyClass(member);

@@ -1,11 +1,11 @@
 # Reporting Polymorphic Specializations to the Runtime
 
 This document gives a short overview of what is required of language
-implementers in order to leverage the new experimental splitting strategy. More
-information on how it works can be found in the [Experimental
-Splitting](ExperimentalSplitting.md) file.
+implementers in order to leverage the new experimental monomorphization
+(splitting) strategy. More information on how it works can be found in the
+[Experimental Splitting](ExperimentalSplitting.md) file.
 
-In simple terms, the experimental splitting heuristic relies on the language
+In simple terms, the experimental monomorphization heuristic relies on the language
 reporting polymorphic specializations for each node that could potentially be
 returned to a monomorphic state through splitting. In this context a polymorphic
 specialization is any node rewriting which results in the node changing "how
@@ -69,7 +69,7 @@ InstrumentableNode {
 ### Controlling Automated Reporting of Polymorphic Specializations
 
 Applying the `ReportPolymorphism` annotation to all nodes of a language is the
-simplest way to facilitate the experimental splitting, but it could cause
+simplest way to facilitate the experimental monomorphization, but it could cause
 reporting of polymorphic specializations in cases where that does not
 necessarily make sense. In order to give the language developer more control
 over which nodes and which specializations are taken into consideration for

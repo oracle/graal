@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -51,7 +52,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -63,6 +63,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.LibC;
@@ -71,7 +72,6 @@ import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
 import com.oracle.svm.core.posix.headers.Sched;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.pthread.PthreadConditionUtils;
-import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
@@ -115,7 +115,7 @@ public final class PosixJavaThreads extends JavaThreads {
         }
 
         PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_setguardsize(attributes, WordFactory.unsigned(UnsafeAccess.UNSAFE.pageSize())),
+                        Pthread.pthread_attr_setguardsize(attributes, VirtualMemoryProvider.get().getPageSize()),
                         "PosixJavaThreads.start0: pthread_attr_setguardsize");
 
         ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));
@@ -221,7 +221,7 @@ public final class PosixJavaThreads extends JavaThreads {
         try {
             thread.run();
         } catch (Throwable ex) {
-            SnippetRuntime.reportUnhandledExceptionJava(ex);
+            dispatchUncaughtException(thread, ex);
         } finally {
             exit(thread);
             singleton().noteThreadFinish(thread);
@@ -252,6 +252,7 @@ public final class PosixJavaThreads extends JavaThreads {
 }
 
 @TargetClass(Thread.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean hasPthreadIdentifier;
@@ -408,6 +409,7 @@ class PosixParkEventFactory implements ParkEventFactory {
 }
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class PosixThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

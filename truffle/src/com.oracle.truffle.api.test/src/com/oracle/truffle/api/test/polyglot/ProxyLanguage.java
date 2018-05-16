@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.util.function.Consumer;
+
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
@@ -56,10 +58,16 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     private boolean wrapper = true;
     protected ProxyLanguage languageInstance;
 
+    private Consumer<LanguageContext> onCreate;
+
     public static <T extends ProxyLanguage> T setDelegate(T delegate) {
         ((ProxyLanguage) delegate).wrapper = false;
         ProxyLanguage.delegate = delegate;
         return delegate;
+    }
+
+    public void setOnCreate(Consumer<LanguageContext> onCreate) {
+        this.onCreate = onCreate;
     }
 
     public static LanguageContext getCurrentContext() {
@@ -76,7 +84,11 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
             delegate.languageInstance = this;
             return delegate.createContext(env);
         } else {
-            return new LanguageContext(env);
+            LanguageContext c = new LanguageContext(env);
+            if (onCreate != null) {
+                onCreate.accept(c);
+            }
+            return c;
         }
     }
 

@@ -51,6 +51,7 @@ import javax.tools.StandardLocation;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes("com.oracle.truffle.api.TruffleLanguage.Registration")
 public final class LanguageRegistrationProcessor extends AbstractProcessor {
@@ -129,7 +130,7 @@ public final class LanguageRegistrationProcessor extends AbstractProcessor {
                     emitError("Registered language inner-class must be static", e);
                     continue;
                 }
-                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(processingEnv.getElementUtils().getTypeElement(TruffleLanguage.class.getName()).asType());
+                TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(ElementUtils.getTypeElement(processingEnv, TruffleLanguage.class.getName()).asType());
                 if (!processingEnv.getTypeUtils().isAssignable(e.asType(), truffleLang)) {
                     emitError("Registered language class must subclass TruffleLanguage", e);
                     continue;

@@ -67,6 +67,11 @@ public interface TruffleCompiler {
                     TruffleCompilerListener listener);
 
     /**
+     * Returns a unique name for the configuration in use by this compiler.
+     */
+    String getCompilerConfigurationName();
+
+    /**
      * Notifies this object that it will no longer being used and should thus perform all relevant
      * finalization tasks.
      */

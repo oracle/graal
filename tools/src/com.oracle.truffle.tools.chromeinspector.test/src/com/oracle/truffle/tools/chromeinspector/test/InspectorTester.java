@@ -140,6 +140,52 @@ public final class InspectorTester {
         return true;
     }
 
+    public String receiveMessages(String... messageParts) throws InterruptedException {
+        int part = 0;
+        int pos = 0;
+        StringBuilder allMessages = new StringBuilder();
+        synchronized (exec.receivedMessages) {
+            do {
+                String messages;
+                do {
+                    messages = exec.receivedMessages.toString();
+                    if (messages.isEmpty()) {
+                        exec.receivedMessages.wait();
+                    } else {
+                        break;
+                    }
+                } while (true);
+                allMessages.append(messages);
+                if (part == 0) {
+                    int l = messageParts[0].length();
+                    if (allMessages.length() < l) {
+                        continue;
+                    }
+                    assertEquals(messageParts[0], allMessages.substring(0, l));
+                    pos = l;
+                    part++;
+                }
+                while (part < messageParts.length) {
+                    int index = allMessages.indexOf(messageParts[part], pos);
+                    if (index >= pos) {
+                        pos = index + messageParts[part].length();
+                        part++;
+                    } else {
+                        break;
+                    }
+                }
+                if (part < messageParts.length) {
+                    continue;
+                }
+                int end = pos - allMessages.length() + messages.length();
+                exec.receivedMessages.delete(0, end);
+                allMessages.delete(pos, allMessages.length());
+                break;
+            } while (exec.receivedMessages.delete(0, exec.receivedMessages.length()) != null);
+        }
+        return allMessages.toString();
+    }
+
     private static class InspectExecThread extends Thread implements InspectServerSession.MessageListener {
 
         private final boolean suspend;

@@ -533,8 +533,10 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
                 UnaryOpLogicNode unaryLogicNode = (UnaryOpLogicNode) condition;
                 ValueNode value = unaryLogicNode.getValue();
                 if (maybeMultipleUsages(value)) {
+                    // getSucceedingStampForValue doesn't take the (potentially a Pi Node) input
+                    // stamp into account, so it can be safely propagated.
                     Stamp newStamp = unaryLogicNode.getSucceedingStampForValue(negated);
-                    registerNewStamp(value, newStamp, guard);
+                    registerNewStamp(value, newStamp, guard, true);
                 }
             } else if (condition instanceof BinaryOpLogicNode) {
                 BinaryOpLogicNode binaryOpLogicNode = (BinaryOpLogicNode) condition;
@@ -755,17 +757,20 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void registerCondition(LogicNode condition, boolean negated, GuardingNode guard) {
-            if (condition.getUsageCount() > 1) {
+            if (condition.hasMoreThanOneUsage()) {
                 registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology(), guard);
             }
         }
 
         protected InfoElement getInfoElements(ValueNode proxiedValue) {
-            ValueNode value = GraphUtil.skipPi(proxiedValue);
-            if (value == null) {
+            if (proxiedValue == null) {
                 return null;
             }
-            return map.getAndGrow(value);
+            InfoElement infoElement = map.getAndGrow(proxiedValue);
+            if (infoElement == null) {
+                infoElement = map.getAndGrow(GraphUtil.skipPi(proxiedValue));
+            }
+            return infoElement;
         }
 
         protected boolean rewireGuards(GuardingNode guard, boolean result, ValueNode proxifiedInput, Stamp guardedValueStamp, GuardRewirer rewireGuardFunction) {
@@ -945,30 +950,40 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         }
 
         protected void registerNewStamp(ValueNode maybeProxiedValue, Stamp newStamp, GuardingNode guard) {
+            registerNewStamp(maybeProxiedValue, newStamp, guard, false);
+        }
+
+        protected void registerNewStamp(ValueNode maybeProxiedValue, Stamp newStamp, GuardingNode guard, boolean propagateThroughPis) {
             assert maybeProxiedValue != null;
             assert guard != null;
-            if (newStamp != null) {
-                ValueNode value = maybeProxiedValue;
-                Stamp stamp = newStamp;
+
+            if (newStamp == null || newStamp.isUnrestricted()) {
+                return;
+            }
+
+            ValueNode value = maybeProxiedValue;
+            Stamp stamp = newStamp;
+
+            while (stamp != null && value != null) {
                 ValueNode proxiedValue = null;
                 if (value instanceof PiNode) {
                     proxiedValue = value;
                 }
-                do {
-                    counterStampsRegistered.increment(debug);
-                    debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
-                    assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
-                    map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
-                    undoOperations.push(value);
-                    if (value instanceof StampInverter) {
-                        StampInverter stampInverter = (StampInverter) value;
-                        value = stampInverter.getValue();
-                        stamp = stampInverter.invertStamp(stamp);
-                    } else {
-                        value = null;
-                        stamp = null;
-                    }
-                } while (value != null && stamp != null);
+                counterStampsRegistered.increment(debug);
+                debug.log("\t Saving stamp for node %s stamp %s guarded by %s", value, stamp, guard);
+                assert value instanceof LogicNode || stamp.isCompatible(value.stamp(NodeView.DEFAULT)) : stamp + " vs. " + value.stamp(NodeView.DEFAULT) + " (" + value + ")";
+                map.setAndGrow(value, new InfoElement(stamp, guard, proxiedValue, map.getAndGrow(value)));
+                undoOperations.push(value);
+                if (propagateThroughPis && value instanceof PiNode) {
+                    PiNode piNode = (PiNode) value;
+                    value = piNode.getOriginalNode();
+                } else if (value instanceof StampInverter) {
+                    StampInverter stampInverter = (StampInverter) value;
+                    value = stampInverter.getValue();
+                    stamp = stampInverter.invertStamp(stamp);
+                } else {
+                    break;
+                }
             }
         }
 
@@ -992,7 +1007,9 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
             if (value.hasMoreThanOneUsage()) {
                 return true;
             } else {
-                return value instanceof ProxyNode;
+                return value instanceof ProxyNode ||
+                                value instanceof PiNode ||
+                                value instanceof StampInverter;
             }
         }
 

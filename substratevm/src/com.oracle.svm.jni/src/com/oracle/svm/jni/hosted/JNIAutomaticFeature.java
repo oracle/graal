@@ -37,7 +37,7 @@ import com.oracle.svm.jni.hosted.JNIFeature.Options;
 public class JNIAutomaticFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Options.JNI.getValue() || !Options.JNIConfigurationFiles.getValue().isEmpty();
+        return Options.JNI.getValue() || !Options.JNIConfigurationFiles.getValue().isEmpty() || !Options.JNIConfigurationResources.getValue().isEmpty();
     }
 
     @Override

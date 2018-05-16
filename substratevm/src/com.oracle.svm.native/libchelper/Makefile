@@ -23,8 +23,6 @@
 
 # A list of all the libchelper source files.
 LIBC_HELPER_SRCS = $(wildcard *.c)
-# A list of all the libchelper object files.
-LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:%.c=%.o)
 
 LIBRARY_NAME = libchelper
 
@@ -38,14 +36,34 @@ endif
 ifeq ($(TARGETOS),Darwin)
     OS:=darwin
 endif
+ifeq ($(TARGETOS),CYGWIN_NT-10.0)
+    OS:=windows
+endif
 TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET_LIB = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 TARGET_HEADERS = $(patsubst %,$(TARGET_DIR)/%,$(HEADER_FILES))
+
+# The flags and optinos to be used when compiling C sources.
+ifeq (${OS},windows)
+# The flags to be used when compiling C sources.
+CFLAGS = /I $(INCLUDE_DIR) /Zi /O2 /D _LITTLE_ENDIAN
+# A list of all the libchelper object files.
+LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:%.c=%.obj)
+CC := CL
+else
+# The flags to be used when compiling C sources.
+CFLAGS = -I$(INCLUDE_DIR) -g -fPIC -O2 -D _LITTLE_ENDIAN
+# A list of all the libchelper object files.
+LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:%.c=%.o)
+endif
+
 
 all : $(TARGET_LIB) $(TARGET_HEADERS)
 
 $(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR):
 	mkdir -p $@
+
+ifneq (${OS},windows)
 
 $(TARGET_LIB) : $(LIBC_HELPER_OBJS) | $(TARGET_DIR)
 	$(AR) -cr $@ $(LIBC_HELPER_OBJS)
@@ -53,11 +71,17 @@ $(TARGET_LIB) : $(LIBC_HELPER_OBJS) | $(TARGET_DIR)
 $(TARGET_DIR)/$(INCLUDE_DIR)/%.h : $(INCLUDE_DIR)/%.h | $(TARGET_DIR)/$(INCLUDE_DIR)
 	cp $< $@
 
-# The flags to be used when compiling C sources.
-CFLAGS = -fPIC -O2 -g
-
 %.o : %.c
-	$(CC) -c $(CFLAGS) -I $(INCLUDE_DIR) $<
+	$(CC) -c $(CFLAGS) $<
+
+else
+
+# For now just create empty files for Windows
+$(TARGET_LIB) $(TARGET_HEADERS):  $(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR)
+	echo "libchelpers not imlemented on Windows"
+	$(shell touch $(TARGET_LIB) $(TARGET_HEADERS))
+
+endif
 
 clean :
 	$(RM) $(LIBC_HELPER_OBJS)

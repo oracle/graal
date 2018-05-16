@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1342,7 +1342,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected void emitExplicitBoundsCheck(ValueNode index, ValueNode length) {
         AbstractBeginNode trueSucc = graph.add(new BeginNode());
-        BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index));
+        BytecodeExceptionNode exception = graph.add(new BytecodeExceptionNode(metaAccess, ArrayIndexOutOfBoundsException.class, index, length));
         append(new IfNode(genUnique(IntegerBelowNode.create(constantReflection, metaAccess, options, null, index, length, NodeView.DEFAULT)), trueSucc, exception, FAST_PATH_PROBABILITY));
         lastInstr = trueSucc;
 
@@ -1910,8 +1910,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
     /**
      * Weaves a test of the receiver type to ensure the dispatch will select {@code targetMethod}
-     * and not another method that overrides it. This should only be called if there is an intrinsic
-     * (i.e., an {@link InvocationPlugin}) for {@code targetMethod} and the invocation is indirect.
+     * and not another method that overrides it. This should only be called if there is an
+     * {@link InvocationPlugin} for {@code targetMethod} and the invocation is indirect.
      *
      * The control flow woven around the intrinsic is as follows:
      *
@@ -2066,9 +2066,7 @@ public class BytecodeParser implements GraphBuilderContext {
         if (plugin != null) {
 
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
-                // Self recursive intrinsic means the original
-                // method should be called.
-                assert !targetMethod.hasBytecodes() : "TODO: when does this happen?";
+                // Self recursive intrinsic means the original method should be called.
                 return false;
             }
 
@@ -2088,7 +2086,7 @@ public class BytecodeParser implements GraphBuilderContext {
             try (DebugCloseable context = openNodeContext(targetMethod)) {
                 if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
                     afterInvocationPluginExecution(true, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
-                    return true;
+                    return !plugin.isDecorator();
                 } else {
                     afterInvocationPluginExecution(false, assertions, intrinsicGuard, invokeKind, args, targetMethod, resultType, returnType);
                 }
@@ -3232,22 +3230,22 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     protected double getProfileProbability(boolean negate) {
-        double probability;
         if (profilingInfo == null) {
-            probability = 0.5;
-        } else {
-            assert assertAtIfBytecode();
-            probability = profilingInfo.getBranchTakenProbability(bci());
-            if (probability < 0) {
-                assert probability == -1 : "invalid probability";
-                debug.log("missing probability in %s at bci %d", code, bci());
-                probability = 0.5;
-            } else {
-                if (negate) {
-                    // the probability coming from profile is about the original condition
-                    probability = 1 - probability;
-                }
-            }
+            return 0.5;
+        }
+
+        assert assertAtIfBytecode();
+        double probability = profilingInfo.getBranchTakenProbability(bci());
+
+        if (probability < 0) {
+            assert probability == -1 : "invalid probability";
+            debug.log("missing probability in %s at bci %d", code, bci());
+            return 0.5;
+        }
+
+        if (negate && shouldComplementProbability()) {
+            // the probability coming from profile is about the original condition
+            probability = 1 - probability;
         }
         return probability;
     }
@@ -3289,7 +3287,10 @@ public class BytecodeParser implements GraphBuilderContext {
             BciBlock tmpBlock = trueBlock;
             trueBlock = falseBlock;
             falseBlock = tmpBlock;
-            probability = 1 - probability;
+            if (shouldComplementProbability()) {
+                // the probability coming from profile is about the original condition
+                probability = 1 - probability;
+            }
             condition = logicNegationNode.getValue();
         }
 
@@ -3304,7 +3305,8 @@ public class BytecodeParser implements GraphBuilderContext {
             if (isNeverExecutedCode(probability)) {
                 if (!graph.isOSR() || getParent() != null || graph.getEntryBCI() != trueBlock.startBci) {
                     NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                                    ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci) : null;
+                                    ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), falseBlock.startBci)
+                                    : null;
                     append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, true, survivingSuccessorPosition));
                     if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
                         profilingPlugin.profileGoto(this, method, bci(), falseBlock.startBci, stateBefore);
@@ -3315,7 +3317,8 @@ public class BytecodeParser implements GraphBuilderContext {
             } else if (isNeverExecutedCode(1 - probability)) {
                 if (!graph.isOSR() || getParent() != null || graph.getEntryBCI() != falseBlock.startBci) {
                     NodeSourcePosition survivingSuccessorPosition = graph.trackNodeSourcePosition()
-                                    ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci) : null;
+                                    ? new NodeSourcePosition(currentPosition.getCaller(), currentPosition.getMethod(), trueBlock.startBci)
+                                    : null;
                     append(new FixedGuardNode(condition, UnreachedCode, InvalidateReprofile, false, survivingSuccessorPosition));
                     if (profilingPlugin != null && profilingPlugin.shouldProfile(this, method)) {
                         profilingPlugin.profileGoto(this, method, bci(), trueBlock.startBci, stateBefore);
@@ -3347,6 +3350,14 @@ public class BytecodeParser implements GraphBuilderContext {
             postProcessIfNode(ifNode);
             append(ifNode);
         }
+    }
+
+    /**
+     * Hook for subclasses to decide whether the IfNode probability should be complemented during
+     * conversion to Graal IR.
+     */
+    protected boolean shouldComplementProbability() {
+        return true;
     }
 
     /**

@@ -47,25 +47,52 @@ final class TruffleStackTrace extends Exception {
     private List<TruffleStackTraceElement> frames;
     private final int lazyFrames;
 
+    // contains host exception frames
+    private Exception materializedHostException;
+
     private TruffleStackTrace(List<TruffleStackTraceElement> frames, int lazyFrames) {
         this.frames = frames;
         this.lazyFrames = lazyFrames;
     }
 
-    /**
-     * Preprocesses the stacktrace by adding "null" elements, which are treated like guest language
-     * calls.
+    /*
+     * Called when an exception leaves the guest boundary and is passed to the host language. This
+     * requires us to capture the host stack frames to build a polyglot stack trace. This can be
+     * done lazily because if an exception stays inside a guest language (is thrown and caught in
+     * the guest language) there is no need to pay the price for host frames. If the error is a non
+     * TruffleException internal error then the exception (e.g. NullPointerException) has already
+     * captured the host stack trace and this host exception stack trace is not used.
      */
+    private void materializeHostException() {
+        if (this.materializedHostException == null) {
+            this.materializedHostException = new Exception();
+        }
+    }
+
+    @SuppressWarnings("sync-override")
     @Override
-    public StackTraceElement[] getStackTrace() {
-        StackTraceElement[] stackTrace = super.getStackTrace();
+    public Throwable fillInStackTrace() {
+        return this;
+    }
+
+    StackTraceElement[] getInternalStackTrace() {
+        Throwable hostException = this.materializedHostException;
+        if (hostException == null) {
+            hostException = this;
+        }
+        StackTraceElement[] hostFrames = hostException.getStackTrace();
         if (lazyFrames == 0) {
-            return stackTrace;
+            return hostFrames;
         } else {
-            StackTraceElement[] extended = new StackTraceElement[stackTrace.length + lazyFrames];
-            System.arraycopy(stackTrace, 0, extended, lazyFrames, stackTrace.length);
+            StackTraceElement[] extended = new StackTraceElement[hostFrames.length + lazyFrames];
+            System.arraycopy(hostFrames, 0, extended, lazyFrames, hostFrames.length);
             return extended;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "Attached Guest Language Frames (" + frames.size() + ")";
     }
 
     @TruffleBoundary
@@ -75,6 +102,13 @@ final class TruffleStackTrace extends Exception {
             return stack.frames;
         }
         return null;
+    }
+
+    static void materializeHostFrames(Throwable t) {
+        TruffleStackTrace stack = fillIn(t);
+        if (stack != null) {
+            stack.materializeHostException();
+        }
     }
 
     private static LazyStackTrace findImpl(Throwable t) {
@@ -185,7 +219,7 @@ final class TruffleStackTrace extends Exception {
         }
     }
 
-    private static final class LazyStackTrace extends Throwable {
+    static final class LazyStackTrace extends Throwable {
 
         /**
          * The root of a linked list of pieces of information about the stack trace of the
@@ -210,9 +244,7 @@ final class TruffleStackTrace extends Exception {
             return null;
         }
 
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable getCause() {
+        public TruffleStackTrace getInternalStackTrace() {
             return stackTrace;
         }
 
@@ -220,6 +252,11 @@ final class TruffleStackTrace extends Exception {
         @Override
         public Throwable initCause(Throwable cause) {
             throw new IllegalAccessError("cannot change cause of TruffleException stacktrace");
+        }
+
+        @Override
+        public String toString() {
+            return "Attached Guest Language Frames (" + (frameCount + (stackTrace != null ? stackTrace.frames.size() : 0)) + ")";
         }
     }
 
@@ -309,4 +346,5 @@ final class TruffleStackTrace extends Exception {
             }
         });
     }
+
 }

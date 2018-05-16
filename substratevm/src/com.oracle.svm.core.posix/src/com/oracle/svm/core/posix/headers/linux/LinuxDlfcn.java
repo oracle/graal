@@ -87,7 +87,7 @@ public class LinuxDlfcn extends Dlfcn {
     /**
      * Get information about the shared object HANDLE refers to. REQUEST is from among the values
      * below, and determines the use of ARG.
-     * 
+     *
      * On success, returns zero. On failure, returns -1 and records an error message to be fetched
      * with `dlerror'.
      */

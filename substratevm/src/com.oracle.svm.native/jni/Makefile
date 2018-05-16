@@ -31,6 +31,9 @@ endif
 ifeq ($(TARGETOS),Darwin)
     OS:=darwin
 endif
+ifeq ($(TARGETOS),CYGWIN_NT-10.0)
+    OS:=windows
+endif
 TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET_HEADERS = $(patsubst %,$(TARGET_DIR)/%,$(HEADER_FILES))
 

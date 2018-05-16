@@ -42,14 +42,18 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -69,16 +73,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
-import java.util.Map;
+
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 @TargetClass(java.lang.Object.class)
 final class Target_java_lang_Object {
@@ -391,11 +392,6 @@ final class Target_java_lang_System {
     @Substitute
     private static void setErr(PrintStream ps) {
         err = ps;
-    }
-
-    @Substitute
-    private static void exit(int status) {
-        ConfigurationValues.getOSInterface().exit(status);
     }
 
     @Substitute
@@ -717,7 +713,7 @@ public final class JavaLangSubstitutions {
 
     static class ClassValueInitializer implements CustomFieldValueComputer {
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
             ClassValue<?> v = (ClassValue<?>) receiver;
             Map<Class<?>, Object> map = support.values.get(v);

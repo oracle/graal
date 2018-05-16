@@ -24,30 +24,29 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
-import java.io.FileDescriptor;
-import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryUtil;
-import com.oracle.svm.core.UnsafeAccess;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.os.OSInterface;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.code.MemoryBarriers;
@@ -111,10 +110,9 @@ final class Target_sun_misc_Unsafe {
     }
 
     @Substitute
-    private int pageSize() {
-        // This assumes that the page size of the Substrate VM
-        // is the same as the page size of the hosted VM.
-        return Util_sun_misc_Unsafe.hostedVMPageSize;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int pageSize() {
+        return (int) VirtualMemoryProvider.get().getPageSize().rawValue();
     }
 
     @Substitute
@@ -160,44 +158,27 @@ final class Target_sun_misc_Unsafe {
     }
 }
 
-final class Util_sun_misc_Unsafe {
-    /**
-     * Cache the size of a page in the hosted VM for use in the SubstrateVM.
-     */
-    static final int hostedVMPageSize = UnsafeAccess.UNSAFE.pageSize();
-}
-
 @TargetClass(sun.misc.MessageUtils.class)
 final class Target_sun_misc_MessageUtils {
 
+    /*
+     * Low-level logging support in the JDK. Methods must not use char-to-byte conversions (because
+     * they are used to report errors in the converters). We just redirect to the low-level SVM log
+     * infrastructure.
+     */
+
     @Substitute
     private static void toStderr(String msg) {
-        Util_sun_misc_MessageUtils.output(FileDescriptor.err, msg);
+        Log.log().string(msg);
     }
 
     @Substitute
     private static void toStdout(String msg) {
-        Util_sun_misc_MessageUtils.output(FileDescriptor.out, msg);
+        Log.log().string(msg);
     }
 }
 
-final class Util_sun_misc_MessageUtils {
-
-    static void output(FileDescriptor target, String msg) {
-        byte[] bytes = new byte[msg.length()];
-        for (int i = 0; i < msg.length(); i++) {
-            bytes[i] = (byte) msg.charAt(i);
-        }
-
-        OSInterface os = ConfigurationValues.getOSInterface();
-        try {
-            os.writeBytes(target, bytes);
-        } catch (IOException ex) {
-            // Ignore, since we are in low-level debug printing code.
-        }
-    }
-}
-
+@Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
     @Override
     public String apply(TargetClass annotation) {

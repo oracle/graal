@@ -38,6 +38,7 @@ typedef struct __graal_isolatethread_t graal_isolatethread_t;
 
 /* Parameters for the creation of a new isolate. */
 struct __graal_create_isolate_params_t {
+    int dummy;
 };
 
 typedef struct __graal_create_isolate_params_t graal_create_isolate_params_t;
