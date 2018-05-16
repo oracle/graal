@@ -1495,7 +1495,6 @@ suite = {
       ],
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle",
-      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.truffle.runtime.serviceprovider" : {
@@ -1786,6 +1785,7 @@ suite = {
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle",
       "testProject" : False,
+      "jacoco"      : "exclude",
     },
 
     "org.graalvm.compiler.truffle.pelang.benchmark" : {
@@ -1805,6 +1805,7 @@ suite = {
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle,Bench",
       "testProject" : True,
+      "jacoco"      : "exclude",
     },
 
     "org.graalvm.compiler.truffle.pelang.test" : {
@@ -1823,6 +1824,7 @@ suite = {
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle,Test",
       "testProject" : True,
+      "jacoco"      : "exclude",
     },
 
     # ------------- blackbox micro benchmarks -------------
