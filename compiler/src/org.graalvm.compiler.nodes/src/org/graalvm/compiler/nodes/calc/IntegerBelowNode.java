@@ -160,7 +160,7 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
                         }
                         // x |<| L implies !(x < 0)
                         if (integerLessThanNode.getY().isConstant() &&
-                                IntegerStamp.OPS.getAdd().isNeutral(integerLessThanNode.getY().asConstant())) {
+                                        IntegerStamp.OPS.getAdd().isNeutral(integerLessThanNode.getY().asConstant())) {
                             return TriState.FALSE;
                         }
                     }
