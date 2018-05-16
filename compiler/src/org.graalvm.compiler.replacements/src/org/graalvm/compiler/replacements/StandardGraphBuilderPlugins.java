@@ -265,6 +265,22 @@ public class StandardGraphBuilderPlugins {
 
     private static UnsafeCompareAndExchangePluginsRegistrar unsafeCompareAndExchangePluginsRegistrar = new UnsafeCompareAndExchangePluginsRegistrar();
 
+    public static void registerPlatformSpecificUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider, JavaKind[] supportedCasKinds) {
+        Registration r;
+        if (Java8OrEarlier) {
+            r = new Registration(plugins, Unsafe.class);
+        } else {
+            r = new Registration(plugins, "jdk.internal.misc.Unsafe", bytecodeProvider);
+        }
+
+        if (Java8OrEarlier) {
+            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSwap", new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+        } else {
+            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSet", supportedCasKinds);
+            unsafeCompareAndExchangePluginsRegistrar.register(r, "compareAndExchange", supportedCasKinds);
+        }
+    }
+
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider bytecodeProvider) {
         Registration r;
         if (Java8OrEarlier) {
@@ -304,13 +320,6 @@ public class StandardGraphBuilderPlugins {
         // Accesses to native memory addresses.
         r.register2("getAddress", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Long, false));
         r.register3("putAddress", Receiver.class, long.class, long.class, new UnsafePutPlugin(JavaKind.Long, false));
-        if (Java8OrEarlier) {
-            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSwap", new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
-        } else {
-            JavaKind[] javaKinds = {JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double};
-            unsafeCompareAndSwapPluginsRegistrar.register(r, "compareAndSet", javaKinds);
-            unsafeCompareAndExchangePluginsRegistrar.register(r, "compareAndExchange", javaKinds);
-        }
 
         r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
 
