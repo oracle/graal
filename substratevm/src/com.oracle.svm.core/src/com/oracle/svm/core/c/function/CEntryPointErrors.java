@@ -20,17 +20,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
-
-import com.oracle.svm.core.c.function.CEntryPointActions;
-import com.oracle.svm.core.c.function.CEntryPointNativeFunctions;
+package com.oracle.svm.core.c.function;
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
  * implementation, including snippets and foreign function calls. These are non-API, with the
  * exception of 0 = success.
  */
-public interface PosixCEntryPointErrors {
+public interface CEntryPointErrors {
     int NO_ERROR = 0;
     int UNSPECIFIED = 1;
     int NULL_ARGUMENT = 2;
