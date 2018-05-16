@@ -147,11 +147,11 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode incrementGlobal(long value, String identifier) {
-        return writeGlobal(add(literal(value), readLocal(identifier)), identifier);
+        return writeGlobal(add(literal(value), readGlobal(identifier)), identifier);
     }
 
     public PELangExpressionNode appendGlobal(String value, String identifier) {
-        return writeGlobal(add(literal(value), readLocal(identifier)), identifier);
+        return writeGlobal(add(literal(value), readGlobal(identifier)), identifier);
     }
 
     public PELangStatementNode ret(PELangExpressionNode bodyNode) {
