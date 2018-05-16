@@ -23,19 +23,18 @@
 package org.graalvm.compiler.truffle.pelang.test;
 
 import org.graalvm.compiler.truffle.pelang.PELangBuilder;
-import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class PELangSimpleTest extends PELangTest {
+public class PELangNCFTest extends PELangTest {
 
     protected Object constant10() {
-        return 10;
+        return 10L;
     }
 
     @Test
-    public void simpleTest() {
+    public void testAdd() {
         PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
@@ -49,19 +48,20 @@ public class PELangSimpleTest extends PELangTest {
     }
 
     @Test
-    public void simpleBasicBlockTest() {
+    public void testGlobalReadWrite() {
         PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         RootNode rootNode = b.root(
-            b.dispatch(
-                /* block 0 */ b.basicBlock(b.ret(b.add(5L, 5L)), PELangBasicBlockNode.NO_SUCCESSOR)
+            b.block(
+                b.writeGlobal(10L, "var1"),
+                b.ret(b.readGlobal("var1"))
             )
         );
         // @formatter:on
 
         assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
+        // assertPartialEvalEquals("constant10", rootNode);
     }
 
 }

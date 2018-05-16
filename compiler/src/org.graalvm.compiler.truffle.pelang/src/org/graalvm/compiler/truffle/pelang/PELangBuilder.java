@@ -29,6 +29,8 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangAddNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangGlobalReadNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangGlobalWriteNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
@@ -104,28 +106,52 @@ public class PELangBuilder {
         return new PELangWhileNode(conditionNode, bodyNode);
     }
 
-    public PELangExpressionNode read(String identifier) {
+    public PELangExpressionNode readLocal(String identifier) {
         return PELangLocalReadNodeGen.create(frameDescriptor.findOrAddFrameSlot(identifier));
     }
 
-    public PELangExpressionNode write(PELangExpressionNode valueNode, String identifier) {
+    public PELangExpressionNode writeLocal(PELangExpressionNode valueNode, String identifier) {
         return PELangLocalWriteNodeGen.create(valueNode, frameDescriptor.findOrAddFrameSlot(identifier));
     }
 
-    public PELangExpressionNode write(long value, String identifier) {
-        return write(literal(value), identifier);
+    public PELangExpressionNode writeLocal(long value, String identifier) {
+        return writeLocal(literal(value), identifier);
     }
 
-    public PELangExpressionNode write(String value, String identifier) {
-        return write(literal(value), identifier);
+    public PELangExpressionNode writeLocal(String value, String identifier) {
+        return writeLocal(literal(value), identifier);
     }
 
-    public PELangExpressionNode increment(long value, String identifier) {
-        return write(add(literal(value), read(identifier)), identifier);
+    public PELangExpressionNode incrementLocal(long value, String identifier) {
+        return writeLocal(add(literal(value), readLocal(identifier)), identifier);
     }
 
-    public PELangExpressionNode append(String value, String identifier) {
-        return write(add(literal(value), read(identifier)), identifier);
+    public PELangExpressionNode appendLocal(String value, String identifier) {
+        return writeLocal(add(literal(value), readLocal(identifier)), identifier);
+    }
+
+    public PELangExpressionNode readGlobal(String identifier) {
+        return PELangGlobalReadNodeGen.create(identifier);
+    }
+
+    public PELangExpressionNode writeGlobal(PELangExpressionNode valueNode, String identifier) {
+        return PELangGlobalWriteNodeGen.create(valueNode, identifier);
+    }
+
+    public PELangExpressionNode writeGlobal(long value, String identifier) {
+        return writeGlobal(literal(value), identifier);
+    }
+
+    public PELangExpressionNode writeGlobal(String value, String identifier) {
+        return writeGlobal(literal(value), identifier);
+    }
+
+    public PELangExpressionNode incrementGlobal(long value, String identifier) {
+        return writeGlobal(add(literal(value), readLocal(identifier)), identifier);
+    }
+
+    public PELangExpressionNode appendGlobal(String value, String identifier) {
+        return writeGlobal(add(literal(value), readLocal(identifier)), identifier);
     }
 
     public PELangStatementNode ret(PELangExpressionNode bodyNode) {

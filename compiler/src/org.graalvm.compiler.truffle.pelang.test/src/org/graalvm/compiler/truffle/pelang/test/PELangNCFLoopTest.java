@@ -28,7 +28,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class PELangLoopTest extends PELangTest {
+public class PELangNCFLoopTest extends PELangTest {
 
     protected Object constant10() {
         return 10;
@@ -41,11 +41,11 @@ public class PELangLoopTest extends PELangTest {
         // @formatter:off
         RootNode rootNode = b.root(
             b.block(
-                b.write(0, "counter"),
+                b.writeLocal(0, "counter"),
                 b.loop(
-                    b.lessThan(b.read("counter"), b.literal(10L)),
-                    b.increment(1, "counter")),
-                b.ret(b.read("counter"))
+                    b.lessThan(b.readLocal("counter"), b.literal(10L)),
+                    b.incrementLocal(1, "counter")),
+                b.ret(b.readLocal("counter"))
             )
         );
         // @formatter:on
@@ -59,20 +59,20 @@ public class PELangLoopTest extends PELangTest {
     }
 
     @Test
-    public void loopTest() {
+    public void testLoop() {
         PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         RootNode rootNode = b.root(
             b.block(
-                b.write(0, "counter"),
+                b.writeLocal(0, "counter"),
                 b.loop(
                     b.lessThan(
-                        b.read("counter"),
+                        b.readLocal("counter"),
                         b.literal(10L)),
-                    b.increment(1, "counter")),
+                    b.incrementLocal(1, "counter")),
                 b.ret(
-                    b.read("counter")
+                    b.readLocal("counter")
                 )
             )
         );
