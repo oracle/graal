@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
@@ -22,7 +23,7 @@ public class PELangBCFGenerator {
 
     private final List<PELangBasicBlockNode> basicBlocks = new ArrayList<>();
     private final Deque<Integer> labelStack = new ArrayDeque<>();
-    private final List<DelayedTuple> delayedTuples = new ArrayList<>();
+    private final List<Pair<PELangStatementNode, Mode>> delayedBlockBodies = new ArrayList<>();
 
     public PELangRootNode generate(PELangRootNode node) {
         // start in label mode with first label as PELangBasicBlockNode.NO_SUCCESSOR
@@ -71,31 +72,31 @@ public class PELangBCFGenerator {
                 PELangBlockNode innerBlock = (PELangBlockNode) bodyNode;
                 generateBlock(innerBlock, bodyMode);
             } else {
-                DelayedTuple tuple = new DelayedTuple(bodyNode, bodyMode);
-                delayedTuples.add(tuple);
+                Pair<PELangStatementNode, Mode> pair = Pair.create(bodyNode, bodyMode);
+                delayedBlockBodies.add(pair);
             }
         }
         generateDelayed();
     }
 
     private void generateDelayed() {
-        if (delayedTuples.size() > 0) {
+        if (delayedBlockBodies.size() > 0) {
             PELangStatementNode bodyNode = null;
-            Mode mode = null;
+            Mode bodyMode = null;
 
-            if (delayedTuples.size() == 1) {
-                DelayedTuple tuple = delayedTuples.get(0);
-                bodyNode = tuple.node;
-                mode = tuple.mode;
+            if (delayedBlockBodies.size() == 1) {
+                Pair<PELangStatementNode, Mode> pair = delayedBlockBodies.get(0);
+                bodyNode = pair.getLeft();
+                bodyMode = pair.getRight();
             } else {
-                PELangStatementNode[] bodyNodes = delayedTuples.stream().map(DelayedTuple::getNode).toArray(PELangStatementNode[]::new);
+                PELangStatementNode[] bodyNodes = delayedBlockBodies.stream().map(Pair::getLeft).toArray(PELangStatementNode[]::new);
                 bodyNode = new PELangBlockNode(bodyNodes);
 
                 // use mode of last delayed tuple
-                mode = delayedTuples.get(delayedTuples.size() - 1).getMode();
+                bodyMode = delayedBlockBodies.get(delayedBlockBodies.size() - 1).getRight();
             }
-            delayedTuples.clear();
-            generateSingle(bodyNode, mode);
+            delayedBlockBodies.clear();
+            generateSingle(bodyNode, bodyMode);
         }
     }
 
@@ -217,25 +218,6 @@ public class PELangBCFGenerator {
     static enum Mode {
         LABEL,
         COUNTER
-    }
-
-    static class DelayedTuple {
-        final PELangStatementNode node;
-        final Mode mode;
-
-        public DelayedTuple(PELangStatementNode node, Mode mode) {
-            this.node = node;
-            this.mode = mode;
-        }
-
-        public PELangStatementNode getNode() {
-            return node;
-        }
-
-        public Mode getMode() {
-            return mode;
-        }
-
     }
 
 }
