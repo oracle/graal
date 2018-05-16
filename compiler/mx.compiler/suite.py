@@ -1530,7 +1530,6 @@ suite = {
       "checkPackagePrefix" : "false",
       "multiReleaseJarVersion" : "9",
       "workingSets" : "Graal,Truffle",
-      "jacoco" : "exclude",
     },
 
     "org.graalvm.compiler.truffle.compiler.benchmark" : {
