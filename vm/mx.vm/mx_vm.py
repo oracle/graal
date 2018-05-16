@@ -188,7 +188,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
             _metadata = """
 OS_NAME=<os>
 OS_ARCH=<arch>
-SOURCE={source}
+SOURCE="{source}"
 COMMIT_INFO={commit_info}
 GRAALVM_VERSION={version}""".format(
                 source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in _sorted_suites]),
