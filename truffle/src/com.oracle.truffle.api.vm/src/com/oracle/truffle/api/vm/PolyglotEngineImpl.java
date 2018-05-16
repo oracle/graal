@@ -89,7 +89,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private static volatile boolean shutdownHookInitialized = false;
     private static final boolean DEBUG_MISSING_CLOSE = Boolean.getBoolean("polyglotimpl.DebugMissingClose");
 
-    Engine api; // effectively final
+    Engine creatorApi; // effectively final
+    Engine currentApi;
     final Object instrumentationHandler;
     final PolyglotImpl impl;
     DispatchOutputStream out;       // effectively final
@@ -614,7 +615,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public synchronized void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
+    public void close(Engine sourceEngine, boolean cancelIfExecuting) {
+        if (sourceEngine != creatorApi) {
+            throw new IllegalStateException("Engine instances that were indirectly received using Context.get() cannot be closed.");
+        }
+        ensureClosed(cancelIfExecuting, false);
+    }
+
+    synchronized void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
         if (!closed) {
             PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
             /*
@@ -955,7 +963,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             addContext(contextImpl);
         }
         Context api = impl.getAPIAccess().newContext(contextImpl);
-        contextImpl.api = api;
+        contextImpl.creatorApi = api;
+        contextImpl.currentApi = impl.getAPIAccess().newContext(contextImpl);
         return api;
     }
 

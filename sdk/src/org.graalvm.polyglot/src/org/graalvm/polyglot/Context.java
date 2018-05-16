@@ -279,7 +279,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public Engine getEngine() {
-        return impl.getEngineImpl();
+        return impl.getEngineImpl(this);
     }
 
     /**
@@ -334,36 +334,6 @@ public final class Context implements AutoCloseable {
      */
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
-    }
-
-    /**
-     * @since 1.0
-     * @deprecated use {@link #getBindings(String) getBindings(languageId)}.
-     *             {@link Value#getMember(String) getMember(symbol)} instead.
-     */
-    @Deprecated
-    public Value lookup(String languageId, String symbol) {
-        return getBindings(languageId).getMember(symbol);
-    }
-
-    /**
-     * @since 1.0
-     * @deprecated use {@link #getPolyglotBindings()}.{@link Value#getMember(String) getMember}
-     *             instead.
-     */
-    @Deprecated
-    public Value importSymbol(String name) {
-        return impl.getPolyglotBindings().getMember(name);
-    }
-
-    /**
-     * @since 1.0
-     * @deprecated use {@link #getPolyglotBindings()}.{@link Value#putMember(String, Object)
-     *             putMember} instead.
-     */
-    @Deprecated
-    public void exportSymbol(String name, Object value) {
-        impl.getPolyglotBindings().putMember(name, value);
     }
 
     /**
@@ -562,7 +532,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public void enter() {
-        impl.explicitEnter();
+        impl.explicitEnter(this);
     }
 
     /**
@@ -575,7 +545,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public void leave() {
-        impl.explicitLeave();
+        impl.explicitLeave(this);
     }
 
     /**
@@ -602,7 +572,7 @@ public final class Context implements AutoCloseable {
      * @since 1.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(cancelIfExecuting);
+        impl.close(this, cancelIfExecuting);
     }
 
     /**
@@ -624,6 +594,38 @@ public final class Context implements AutoCloseable {
      */
     public void close() {
         close(false);
+    }
+
+    /**
+     * Returns the currently entered polyglot context. A context is entered if the currently
+     * executing Java method was called by a Graal guest language or if a context was entered
+     * explicitly using {@link Context#enter()} on the current thread. The returned context may be
+     * used to:
+     * <ul>
+     * <li>Evaluate guest language code from {@link #eval(String, CharSequence) string literals} or
+     * {@link #eval(Source) file} sources.
+     * <li>{@link #asValue(Object) Convert} Java values to {@link Value polyglot values}.
+     * <li>Access top-level {@link #getBindings(String) bindings} of other languages.
+     * <li>Access {@link #getPolyglotBindings() polyglot bindings}.
+     * <li>Access meta-data like available {@link Engine#getLanguages() languages} or
+     * {@link Engine#getOptions() options} of the {@link #getEngine() engine}.
+     * </ul>
+     * <p>
+     * The returned context may <b>not</b> be used to {@link #enter() enter} , {@link #leave()
+     * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
+     * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
+     * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
+     * context.
+     * <p>
+     * The currently entered context may change. It is therefore required to call {@link #get() get}
+     * every time a context is needed. The currently entered context should not be cached in static
+     * fields.
+     *
+     * @throws IllegalStateException if no context is currently entered.
+     * @since 1.0
+     */
+    public static Context get() {
+        return Engine.getImpl().getCurrentContext();
     }
 
     /**
