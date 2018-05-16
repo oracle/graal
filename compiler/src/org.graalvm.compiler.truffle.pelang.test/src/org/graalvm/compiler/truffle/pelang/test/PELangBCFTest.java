@@ -22,131 +22,33 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangBCFGenerator;
-import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.PELangBuilder;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.junit.Test;
 
-public class PELangBCFTest extends PELangTest {
+import com.oracle.truffle.api.nodes.RootNode;
+
+public class PELangDispatchTest extends PELangTest {
 
     protected Object constant10() {
-        return 10L;
+        return 10;
     }
 
     @Test
-    public void testSimpleAdd() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.simpleAdd());
+    public void dispatchTest() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        RootNode rootNode = b.root(
+            b.dispatch(
+                /* block 0 */ b.basicBlock(b.write(0, "counter"), 1),
+                /* block 1 */ b.basicBlock(b.lessThan(b.read("counter"), b.literal(10L)), 2, 3),
+                /* block 2 */ b.basicBlock(b.increment(1, "counter"), 1),
+                /* block 3 */ b.basicBlock(b.ret(b.read("counter")), PELangBasicBlockNode.NO_SUCCESSOR)));
+        // @formatter:on
+
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleBlock() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.simpleBlock());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleLocalReadWrite() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.simpleLocalReadWrite());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleGlobalReadWrite() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.simpleGlobalReadWrite());
-        assertCallResult(10L, rootNode);
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
-    }
-
-    @Test
-    public void testSimpleBranch() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.simpleBranch());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleLoop() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.simpleLoop());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedAdd() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedAdds());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedBlocks() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedBlocks());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedLocalReadWrites() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedLocalReadWrites());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedLoops() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedLoops());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedBranches() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedBranches());
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testBranchWithGlobalReadWrite() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.branchWithGlobalReadWrite());
-        assertCallResult(10L, rootNode);
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
-    }
-
-    @Test
-    public void testLoopWithGlobalReadWrite() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.loopWithGlobalReadWrite());
-        assertCallResult(10L, rootNode);
-
-        try {
-            // do a first compilation to load compiler classes and ignore exceptions
-            compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        } catch (Exception e) {
-            // swallow exception
-        }
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
     }
 
 }

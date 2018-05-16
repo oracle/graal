@@ -22,131 +22,46 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.PELangBuilder;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.junit.Test;
 
-public class PELangNCFTest extends PELangTest {
+import com.oracle.truffle.api.nodes.RootNode;
+
+public class PELangSimpleTest extends PELangTest {
 
     protected Object constant10() {
-        return 10L;
+        return 10;
     }
 
     @Test
-    public void testSimpleAdd() {
-        PELangRootNode rootNode = PELangSample.simpleAdd();
+    public void simpleTest() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        RootNode rootNode = b.root(
+            b.ret(b.add(5L, 5L))
+        );
+        // @formatter:on
+
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
     }
 
     @Test
-    public void testSimpleBlock() {
-        PELangRootNode rootNode = PELangSample.simpleBlock();
+    public void simpleBasicBlockTest() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        RootNode rootNode = b.root(
+            b.dispatch(
+                /* block 0 */ b.basicBlock(b.ret(b.add(5L, 5L)), PELangBasicBlockNode.NO_SUCCESSOR)
+            )
+        );
+        // @formatter:on
+
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleLocalReadWrite() {
-        PELangRootNode rootNode = PELangSample.simpleLocalReadWrite();
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleGlobalReadWrite() {
-        PELangRootNode rootNode = PELangSample.simpleGlobalReadWrite();
-        assertCallResult(10L, rootNode);
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
-    }
-
-    @Test
-    public void testSimpleBranch() {
-        PELangRootNode rootNode = PELangSample.simpleBranch();
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testSimpleLoop() {
-        PELangRootNode rootNode = PELangSample.simpleLoop();
-        assertCallResult(10L, rootNode);
-
-        try {
-            // do a first compilation to load compiler classes and ignore exceptions
-            compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        } catch (Exception e) {
-            // swallow exception
-        }
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedAdd() {
-        PELangRootNode rootNode = PELangSample.nestedAdds();
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedBlocks() {
-        PELangRootNode rootNode = PELangSample.nestedBlocks();
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedLocalReadWrites() {
-        PELangRootNode rootNode = PELangSample.nestedLocalReadWrites();
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedLoops() {
-        PELangRootNode rootNode = PELangSample.nestedLoops();
-        assertCallResult(10L, rootNode);
-
-        try {
-            // do a first compilation to load compiler classes and ignore exceptions
-            compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        } catch (Exception e) {
-            // swallow exception
-        }
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testNestedBranches() {
-        PELangRootNode rootNode = PELangSample.nestedBranches();
-        assertCallResult(10L, rootNode);
-        assertPartialEvalEquals("constant10", rootNode);
-    }
-
-    @Test
-    public void testBranchWithGlobalReadWrite() {
-        PELangRootNode rootNode = PELangSample.branchWithGlobalReadWrite();
-        assertCallResult(10L, rootNode);
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
-    }
-
-    @Test
-    public void testLoopWithGlobalReadWrite() {
-        PELangRootNode rootNode = PELangSample.loopWithGlobalReadWrite();
-        assertCallResult(10L, rootNode);
-
-        try {
-            // do a first compilation to load compiler classes and ignore exceptions
-            compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        } catch (Exception e) {
-            // swallow exception
-        }
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
     }
 
 }
