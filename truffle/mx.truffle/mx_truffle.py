@@ -471,6 +471,48 @@ def check_filename_length(args):
             mx.log_error(x)
         mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
 
+COPYRIGHT_HEADER = """\
+/*
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+ // DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
+// Checkstyle: stop
+//@formatter:off
+{0}
+"""
+
+def create_dsl_parser(args=None, out=None):
+    """create the DSL expression parser using antlr"""
+    grammar_dir = mx.project("com.oracle.truffle.dsl.processor").source_dirs()[0] + "/com/oracle/truffle/dsl/processor/expression/"
+    grammar = grammar_dir + "Expression.g4"
+    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", "com.oracle.truffle.dsl.processor.expression", "-no-listener"] + args + [grammar], out=out)
+    pattern = re.compile(r"Generated from (?P<path>.*)/(?P<grammar>.*.g4)")
+    for filename in [grammar_dir + "ExpressionLexer.java", grammar_dir + "ExpressionParser.java"]:
+      with open(filename, 'r') as content_file:
+        content = content_file.read()
+      # remove first line
+      content = "\n".join(content.split("\n")[1:])
+      with open(filename, 'w') as content_file:
+        content_file.write(COPYRIGHT_HEADER.format(content));
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     suite=_suite,
@@ -488,4 +530,5 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],
+    'create-dsl-parser' : [create_dsl_parser, ""],
 })

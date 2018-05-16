@@ -34,6 +34,13 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.TokenStream;
+
 import com.oracle.truffle.dsl.processor.generator.DSLExpressionGenerator;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 
@@ -44,8 +51,28 @@ public abstract class DSLExpression {
     private DSLExpression() {
     }
 
+    private static final class DSLErrorListener extends BaseErrorListener {
+        static public DSLErrorListener INSTANCE = new DSLErrorListener();
+
+        @Override
+        public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
+            throw new InvalidExpressionException("line " + line + ":" + charPositionInLine + " " + msg);
+        }
+    }
+
     public static DSLExpression parse(String input) {
-        return Parser.parse(input);
+        ExpressionLexer lexer = new ExpressionLexer(CharStreams.fromString(input));
+        TokenStream tokens = new CommonTokenStream(lexer);
+        ExpressionParser parser = new ExpressionParser(tokens);
+        lexer.removeErrorListeners();
+        parser.removeErrorListeners();
+        lexer.addErrorListener(DSLErrorListener.INSTANCE);
+        parser.addErrorListener(DSLErrorListener.INSTANCE);
+        try {
+            return parser.expression().result;
+        } catch (RecognitionException e) {
+            throw new InvalidExpressionException(e.getMessage());
+        }
     }
 
     public final Set<VariableElement> findBoundVariableElements() {

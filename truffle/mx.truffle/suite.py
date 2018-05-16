@@ -53,6 +53,20 @@ suite = {
       ],
       "sha1" : "280c265b789e041c02e5c97815793dfc283fb1e6",
     },
+
+    "ANTLR4": {
+      "urls": [
+        "http://www.antlr.org/download/antlr-runtime-4.7.jar"
+      ],
+      "sha1": "30b13b7efc55b7feea667691509cf59902375001",
+    },
+
+    "ANTLR4_COMPLETE": {
+      "urls": [
+        "http://www.antlr.org/download/antlr-4.7-complete.jar"
+      ],
+      "sha1": "5b3a8824334069979a0862ce67ede796c3a4d1b1",
+    },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -216,6 +230,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.dsl",
         "com.oracle.truffle.api.instrumentation",
+        "ANTLR4"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.8",
@@ -850,7 +865,7 @@ suite = {
 
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.object.dsl.processor", "com.oracle.truffle.dsl.processor.jdk9"],
+      "dependencies" : ["com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.interop", "com.oracle.truffle.object.dsl.processor", "com.oracle.truffle.dsl.processor.jdk9", "ANTLR4"],
       "distDependencies" : ["TRUFFLE_API"],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
