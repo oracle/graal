@@ -85,6 +85,5 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
             return TriState.get(thisNegated);
         }
         return getValue().implies(!thisNegated, other);
-        //return super.implies(thisNegated, other);
     }
 }
