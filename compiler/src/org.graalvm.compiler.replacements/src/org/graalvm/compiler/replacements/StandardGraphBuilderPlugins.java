@@ -242,7 +242,7 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public JavaKind returnKind(JavaKind accessKind) {
-            return JavaKind.Int;
+            return JavaKind.Boolean.getStackKind();
         }
     }
 
@@ -257,7 +257,7 @@ public class StandardGraphBuilderPlugins {
         @Override
         public JavaKind returnKind(JavaKind accessKind) {
             if (accessKind.isNumericInteger()) {
-                return accessKind.getByteCount() <= 4 ? JavaKind.Int : JavaKind.Long;
+                return accessKind.getStackKind();
             } else {
                 return accessKind;
             }

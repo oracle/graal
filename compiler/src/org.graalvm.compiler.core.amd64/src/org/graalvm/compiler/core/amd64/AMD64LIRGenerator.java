@@ -207,8 +207,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
-    @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    private Value emitCompareAndSwap(boolean isLogic, LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         ValueKind<?> kind = newValue.getValueKind();
         assert kind.equals(expectedValue.getValueKind());
 
@@ -216,7 +215,8 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         LIRKind integralAccessKind = accessKind;
         Value reinterpretedExpectedValue = expectedValue;
         Value reinterpretedNewValue = newValue;
-        if (((AMD64Kind) accessKind.getPlatformKind()).isXMM()) {
+        boolean isXmm = ((AMD64Kind) accessKind.getPlatformKind()).isXMM();
+        if (isXmm) {
             if (accessKind.getPlatformKind().equals(AMD64Kind.SINGLE)) {
                 integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
             } else {
@@ -231,42 +231,32 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(aRes, reinterpretedExpectedValue);
         append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, allocatableNewValue));
 
-        assert trueValue.getValueKind().equals(falseValue.getValueKind());
-        Variable result = newVariable(trueValue.getValueKind());
-        append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
-        return result;
+        if (isLogic) {
+            assert trueValue.getValueKind().equals(falseValue.getValueKind());
+            Variable result = newVariable(trueValue.getValueKind());
+            append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
+            return result;
+        } else {
+            emitMove(aRes, reinterpretedExpectedValue);
+            append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, asAllocatable(reinterpretedNewValue)));
+            if (isXmm) {
+                return arithmeticLIRGen.emitReinterpret(accessKind, aRes);
+            } else {
+                Variable result = newVariable(kind);
+                emitMove(result, aRes);
+                return result;
+            }
+        }
+    }
+
+    @Override
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+        return (Variable) emitCompareAndSwap(true, accessKind, address, expectedValue, newValue, trueValue, falseValue);
     }
 
     @Override
     public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
-        ValueKind<?> kind = newValue.getValueKind();
-        assert kind.equals(expectedValue.getValueKind());
-
-        LIRKind integralAccessKind = accessKind;
-        Value reinterpretedExpectedValue = expectedValue;
-        Value reinterpretedNewValue = newValue;
-        boolean isXMM = ((AMD64Kind) accessKind.getPlatformKind()).isXMM();
-        if (isXMM) {
-            if (accessKind.getPlatformKind().equals(AMD64Kind.SINGLE)) {
-                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Int);
-            } else {
-                integralAccessKind = LIRKind.fromJavaKind(target().arch, JavaKind.Long);
-            }
-            reinterpretedExpectedValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, expectedValue);
-            reinterpretedNewValue = arithmeticLIRGen.emitReinterpret(integralAccessKind, newValue);
-        }
-        AMD64Kind memKind = (AMD64Kind) integralAccessKind.getPlatformKind();
-        AMD64AddressValue addressValue = asAddressValue(address);
-        RegisterValue raxRes = AMD64.rax.asValue(integralAccessKind);
-        emitMove(raxRes, reinterpretedExpectedValue);
-        append(new CompareAndSwapOp(memKind, raxRes, addressValue, raxRes, asAllocatable(reinterpretedNewValue)));
-        if (isXMM) {
-            return arithmeticLIRGen.emitReinterpret(accessKind, raxRes);
-        } else {
-            Variable result = newVariable(kind);
-            emitMove(result, raxRes);
-            return result;
-        }
+        return emitCompareAndSwap(false, accessKind, address, expectedValue, newValue, null, null);
     }
 
     public void emitCompareAndSwapBranch(ValueKind<?> kind, AMD64AddressValue address, Value expectedValue, Value newValue, Condition condition, LabelRef trueLabel, LabelRef falseLabel,
