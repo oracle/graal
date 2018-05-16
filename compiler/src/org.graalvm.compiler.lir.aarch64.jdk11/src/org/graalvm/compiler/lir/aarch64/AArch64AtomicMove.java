@@ -99,4 +99,55 @@ public class AArch64AtomicMove {
             }
         }
     }
+
+    /**
+     * Load (Read) and Write instruction. Does the following atomically: <code>
+     *  ATOMIC_READ_AND_WRITE(newValue, result, address):
+     *    result = *address
+     *    *address = newValue
+     *    return result
+     * </code>
+     */
+    @Opcode("ATOMIC_READ_AND_WRITE")
+    public static final class AtomicReadAndWriteOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<AtomicReadAndWriteOp> TYPE = LIRInstructionClass.create(AtomicReadAndWriteOp.class);
+
+        private final AArch64Kind accessKind;
+
+        @Def protected AllocatableValue resultValue;
+        @Alive protected AllocatableValue addressValue;
+        @Use protected Value newValue;
+        @Temp protected AllocatableValue scratchValue;
+
+        public AtomicReadAndWriteOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value newValue, AllocatableValue scratch) {
+            super(TYPE);
+            this.accessKind = kind;
+            this.resultValue = result;
+            this.addressValue = address;
+            this.newValue = newValue;
+            this.scratchValue = scratch;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            assert accessKind.isInteger();
+            final int size = accessKind.getSizeInBytes() * Byte.SIZE;
+
+            Register address = asRegister(addressValue);
+            Register value = asRegister(newValue);
+            Register result = asRegister(resultValue);
+
+            if (masm.supports(CPUFeature.LSE) || masm.isFlagSet(Flag.UseLSE)) {
+                masm.swp(size, value, result, address, true, true);
+            } else {
+                Register scratch = asRegister(scratchValue);
+                Label retry = new Label();
+                masm.bind(retry);
+                masm.ldaxr(size, result, address);
+                masm.stlxr(size, scratch, value, address);
+                // if scratch == 0 then write successful, else retry
+                masm.cbnz(32, scratch, retry);
+            }
+        }
+    }
 }

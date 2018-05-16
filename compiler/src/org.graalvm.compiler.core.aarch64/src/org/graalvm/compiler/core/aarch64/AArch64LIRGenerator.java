@@ -53,6 +53,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -142,6 +143,15 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Variable result = newVariable(newValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
         append(new CompareAndSwapOp(result, loadNonCompareConst(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
+        return result;
+    }
+
+    @Override
+    public Value emitAtomicReadAndWrite(Value address, Value newValue) {
+        ValueKind<?> kind = newValue.getValueKind();
+        Variable result = newVariable(newValue.getValueKind());
+        Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
+        append(new AtomicReadAndWriteOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), asAllocatable(newValue), asAllocatable(scratch)));
         return result;
     }
 
