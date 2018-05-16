@@ -378,11 +378,11 @@ public class ConditionalEliminationPhase extends BasePhase<PhaseContext> {
         @Override
         public Marks enter(Block block) {
             int infoElementsMark = undoOperations.size();
+            int conditionsMark = conditions.size();
             debug.log("[Pre Processing block %s]", block);
             // For now conservatively collect guards only within the same block.
             pendingTests.clear();
             processNodes(block);
-            int conditionsMark = conditions.size();
             return new Marks(infoElementsMark, conditionsMark);
         }
 
