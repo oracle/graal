@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import jdk.vm.ci.meta.TriState;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
@@ -134,5 +135,19 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
         protected IntegerLowerThanNode createNode(ValueNode x, ValueNode y) {
             return new IntegerBelowNode(x, y);
         }
+    }
+
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (!thisNegated && other instanceof IntegerLessThanNode) {
+            IntegerLessThanNode integerLessThanNode = (IntegerLessThanNode) other;
+            if (this.getX() == integerLessThanNode.getX() && this.getY() == integerLessThanNode.getY()) {
+                IntegerStamp stamp = (IntegerStamp) this.getY().stamp(NodeView.DEFAULT);
+                if (stamp.isPositive()) {
+                    return TriState.TRUE;
+                }
+            }
+        }
+        return super.implies(thisNegated, other);
     }
 }

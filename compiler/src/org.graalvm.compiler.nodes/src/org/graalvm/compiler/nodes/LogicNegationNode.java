@@ -26,6 +26,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.Condition;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import jdk.vm.ci.meta.TriState;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -77,4 +78,13 @@ public final class LogicNegationNode extends LogicNode implements Canonicalizabl
         return this;
     }
 
+
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (other == getValue()) {
+            return TriState.get(thisNegated);
+        }
+        return getValue().implies(!thisNegated, other);
+        //return super.implies(thisNegated, other);
+    }
 }
