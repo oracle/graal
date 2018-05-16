@@ -237,8 +237,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
             return result;
         } else {
-            emitMove(aRes, reinterpretedExpectedValue);
-            append(new CompareAndSwapOp(memKind, aRes, addressValue, aRes, asAllocatable(reinterpretedNewValue)));
             if (isXmm) {
                 return arithmeticLIRGen.emitReinterpret(accessKind, aRes);
             } else {
