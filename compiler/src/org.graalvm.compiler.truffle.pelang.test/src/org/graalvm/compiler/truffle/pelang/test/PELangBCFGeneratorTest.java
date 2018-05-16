@@ -54,15 +54,15 @@ public class PELangBCFGeneratorTest extends PELangTest {
         PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
-                    b.write(0, "counter"),
-                    b.write(1, "counter"),
-                    b.write(2, "counter"),
+                    b.writeLocal(0, "counter"),
+                    b.writeLocal(1, "counter"),
+                    b.writeLocal(2, "counter"),
                     b.block(
-                        b.write(3, "counter"),
-                        b.write(4, "counter"),
-                        b.write(10, "counter"),
+                        b.writeLocal(3, "counter"),
+                        b.writeLocal(4, "counter"),
+                        b.writeLocal(10, "counter"),
                         b.block(
-                            b.ret(b.read("counter"))
+                            b.ret(b.readLocal("counter"))
                         )
                     )
                 )
@@ -91,11 +91,11 @@ public class PELangBCFGeneratorTest extends PELangTest {
         PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
-                    b.write(0, "counter"),
+                    b.writeLocal(0, "counter"),
                     b.loop(
-                        b.lessThan(b.read("counter"), b.literal(10L)),
-                        b.increment(1, "counter")),
-                    b.ret(b.read("counter"))
+                        b.lessThan(b.readLocal("counter"), b.literal(10L)),
+                        b.incrementLocal(1, "counter")),
+                    b.ret(b.readLocal("counter"))
                 )
             )
         );
@@ -125,24 +125,24 @@ public class PELangBCFGeneratorTest extends PELangTest {
         PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
-                    b.write(0, "i"),
-                    b.write(0, "j"),
+                    b.writeLocal(0, "i"),
+                    b.writeLocal(0, "j"),
                     b.loop(
-                        b.lessThan(b.read("i"), b.literal(5L)),
+                        b.lessThan(b.readLocal("i"), b.literal(5L)),
                         b.block(
-                            b.increment(1, "i"),
+                            b.incrementLocal(1, "i"),
                             b.loop(
-                                b.lessThan(b.read("j"), b.literal(10L)),
+                                b.lessThan(b.readLocal("j"), b.literal(10L)),
                                 b.block(
-                                    b.increment(1, "j")
+                                    b.incrementLocal(1, "j")
                                 )
                             )
                         )
                     ),
                     b.ret(
                         b.add(
-                            b.read("i"),
-                            b.read("j")
+                            b.readLocal("i"),
+                            b.readLocal("j")
                         )
                     )
                 )
@@ -176,12 +176,12 @@ public class PELangBCFGeneratorTest extends PELangTest {
         PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
-                    b.write(0, "i"),
+                    b.writeLocal(0, "i"),
                     b.branch(
-                        b.lessThan(b.read("i"), b.literal(10L)),
-                        b.write(10, "i"),
-                        b.write(5L, "i")),
-                    b.ret(b.read("i"))
+                        b.lessThan(b.readLocal("i"), b.literal(10L)),
+                        b.writeLocal(10, "i"),
+                        b.writeLocal(5L, "i")),
+                    b.ret(b.readLocal("i"))
                 )
             )
         );
@@ -212,16 +212,16 @@ public class PELangBCFGeneratorTest extends PELangTest {
         PELangRootNode rootNode = g.generate(
             b.root(
                 b.block(
-                    b.write(0L, "i"),
+                    b.writeLocal(0L, "i"),
                     b.branch(
-                        b.lessThan(b.read("i"), b.literal(10L)),
+                        b.lessThan(b.readLocal("i"), b.literal(10L)),
                         b.branch(
-                            b.equals(b.read("i"), b.literal(0L)),
-                            b.write(10L, "i"),
-                            b.write(5L, "i")
+                            b.equals(b.readLocal("i"), b.literal(0L)),
+                            b.writeLocal(10L, "i"),
+                            b.writeLocal(5L, "i")
                         ),
-                        b.write(5L, "i")),
-                    b.ret(b.read("i"))
+                        b.writeLocal(5L, "i")),
+                    b.ret(b.readLocal("i"))
                 )
             )
         );

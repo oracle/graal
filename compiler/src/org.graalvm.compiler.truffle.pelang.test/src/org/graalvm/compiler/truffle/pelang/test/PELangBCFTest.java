@@ -28,23 +28,39 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class PELangDispatchTest extends PELangTest {
+public class PELangBCFTest extends PELangTest {
 
     protected Object constant10() {
         return 10;
     }
 
     @Test
-    public void dispatchTest() {
+    public void testAddDispatch() {
         PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         RootNode rootNode = b.root(
             b.dispatch(
-                /* block 0 */ b.basicBlock(b.write(0, "counter"), 1),
-                /* block 1 */ b.basicBlock(b.lessThan(b.read("counter"), b.literal(10L)), 2, 3),
-                /* block 2 */ b.basicBlock(b.increment(1, "counter"), 1),
-                /* block 3 */ b.basicBlock(b.ret(b.read("counter")), PELangBasicBlockNode.NO_SUCCESSOR)));
+                /* block 0 */ b.basicBlock(b.ret(b.add(5L, 5L)), PELangBasicBlockNode.NO_SUCCESSOR)
+            )
+        );
+        // @formatter:on
+
+        assertCallResult(10L, rootNode);
+        assertPartialEvalEquals("constant10", rootNode);
+    }
+
+    @Test
+    public void testLoopDispatch() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        RootNode rootNode = b.root(
+            b.dispatch(
+                /* block 0 */ b.basicBlock(b.writeLocal(0, "counter"), 1),
+                /* block 1 */ b.basicBlock(b.lessThan(b.readLocal("counter"), b.literal(10L)), 2, 3),
+                /* block 2 */ b.basicBlock(b.incrementLocal(1, "counter"), 1),
+                /* block 3 */ b.basicBlock(b.ret(b.readLocal("counter")), PELangBasicBlockNode.NO_SUCCESSOR)));
         // @formatter:on
 
         assertCallResult(10L, rootNode);

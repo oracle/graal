@@ -43,7 +43,7 @@ public final class PELangRootNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         try {
             bodyNode.executeVoid(frame);
-            return PELangNull.Instance;
+            return PELangState.getNullObject();
         } catch (PELangResultException e) {
             return e.getResult();
         }

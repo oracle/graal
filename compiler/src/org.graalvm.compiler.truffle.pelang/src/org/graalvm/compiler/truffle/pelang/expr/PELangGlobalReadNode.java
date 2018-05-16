@@ -20,33 +20,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.benchmark;
+package org.graalvm.compiler.truffle.pelang.expr;
 
-import org.graalvm.compiler.truffle.pelang.PELangBuilder;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.pelang.PELangState;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-public class PELangLoopBenchmark extends PartialEvaluationBenchmark {
+@NodeField(name = "identifier", type = String.class)
+public abstract class PELangGlobalReadNode extends PELangExpressionNode {
 
-    @Override
-    protected OptimizedCallTarget createCallTarget() {
-        PELangBuilder b = new PELangBuilder();
+    protected abstract String getIdentifier();
 
-        // @formatter:off
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(b.root(
-            b.block(
-                b.writeLocal(0, "counter"),
-                b.loop(
-                    b.lessThan(b.readLocal("counter"), b.literal(10L)),
-                    b.incrementLocal(1, "counter")),
-                b.ret(b.readLocal("counter"))
-            )
-        ));
-        // @formatter:on
+    @Specialization(guards = "isLong()")
+    protected long readLong(@SuppressWarnings("unused") VirtualFrame frame) {
+        return PELangState.readLongGlobal(getIdentifier());
+    }
 
-        return (OptimizedCallTarget) callTarget;
+    @Specialization(replaces = {"readLong"})
+    protected Object readObject(@SuppressWarnings("unused") VirtualFrame frame) {
+        return PELangState.readGlobal(getIdentifier());
+    }
+
+    protected boolean isLong() {
+        return PELangState.isLongGlobal(getIdentifier());
     }
 
 }

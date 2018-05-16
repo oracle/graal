@@ -20,18 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.expr;
 
-public final class PELangNull {
+import org.graalvm.compiler.truffle.pelang.PELangState;
 
-    public static final PELangNull Instance = new PELangNull();
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
-    private PELangNull() {
+@NodeChild("valueNode")
+@NodeField(name = "identifier", type = String.class)
+public abstract class PELangGlobalWriteNode extends PELangExpressionNode {
+
+    protected abstract String getIdentifier();
+
+    @Specialization(guards = "isLong()")
+    protected long writeLong(@SuppressWarnings("unused") VirtualFrame frame, long value) {
+        return PELangState.writeLongGlobal(getIdentifier(), value);
     }
 
-    @Override
-    public String toString() {
-        return "null";
+    @Specialization(replaces = {"writeLong"})
+    protected Object write(@SuppressWarnings("unused") VirtualFrame frame, Object value) {
+        return PELangState.writeGlobal(getIdentifier(), value);
+    }
+
+    protected boolean isLong() {
+        return PELangState.isLongGlobal(getIdentifier());
     }
 
 }
