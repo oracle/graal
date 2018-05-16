@@ -889,16 +889,16 @@ public final class Value {
 
     /**
      * Converts a Java host value to a polyglot value representation using
-     * {@link Context#asValue(Object)} with the {@link Context#get() current} context. This method
-     * is a short-cut for <code>Context.get().asValue(o)</code>.
+     * {@link Context#asValue(Object)} with the {@link Context#getCurrent() current} context. This
+     * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
      *
      * @param o the object to convert
      * @see Context#asValue(Object) Conversion rules.
-     * @see Context#get() Looking up the current context.
+     * @see Context#getCurrent() Looking up the current context.
      * @since 1.0
      */
     public static Value asValue(Object o) {
-        return Context.get().asValue(o);
+        return Context.getCurrent().asValue(o);
     }
 
 }

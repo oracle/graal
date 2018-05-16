@@ -365,11 +365,11 @@ public class ContextAPITest {
 
     @Test
     public void testEnteredContext() {
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
         Context context = Context.create();
 
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
         context.enter();
 
@@ -377,17 +377,17 @@ public class ContextAPITest {
 
         context.leave();
 
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
         context.close();
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
     }
 
     @Test
     public void testEnteredContextInJava() {
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Context context = Context.create();
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         Value v = context.asValue(new Runnable() {
             public void run() {
                 testGetContext(context);
@@ -399,11 +399,11 @@ public class ContextAPITest {
                 }).execute();
             }
         });
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         v.execute();
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         context.close();
-        assertFails(() -> Context.get(), IllegalStateException.class);
+        assertFails(() -> Context.getCurrent(), IllegalStateException.class);
     }
 
     @Test
@@ -426,18 +426,18 @@ public class ContextAPITest {
     }
 
     private static void testGetContext(Context creatorContext) {
-        assertNotSame("needs to be wrapped", creatorContext, Context.get());
-        assertSame("needs to be stable", Context.get(), Context.get());
+        assertNotSame("needs to be wrapped", creatorContext, Context.getCurrent());
+        assertSame("needs to be stable", Context.getCurrent(), Context.getCurrent());
 
         // assert that creator context and current context refer
         // to the same context.
         assertNull(creatorContext.getPolyglotBindings().getMember("foo"));
         creatorContext.getPolyglotBindings().putMember("foo", "bar");
         assertEquals("bar", creatorContext.getPolyglotBindings().getMember("foo").asString());
-        assertEquals("bar", Context.get().getPolyglotBindings().getMember("foo").asString());
+        assertEquals("bar", Context.getCurrent().getPolyglotBindings().getMember("foo").asString());
         creatorContext.getPolyglotBindings().removeMember("foo");
 
-        Context context = Context.get();
+        Context context = Context.getCurrent();
         testExecute(context);
         testPolyglotBindings(context);
         testBindings(context);

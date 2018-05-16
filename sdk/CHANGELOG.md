@@ -4,7 +4,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 
 ## Version 1.0 RC2
 * Added `Value.asValue(Object)` convert a Java object into its value representation using the currently entered context.
-* Added `Context.get()` to lookup the current context to allow Java methods called by a Grall guest language to evaluate additional code in the current context.
+* Added `Context.getCurrent()` to lookup the current context to allow Java methods called by a Grall guest language to evaluate additional code in the current context.
 * Removed deprecated `Context.exportSymbol` and `Context.importSymbol`.
 
 ## Version 1.0 RC1

@@ -617,14 +617,14 @@ public final class Context implements AutoCloseable {
      * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
      * context.
      * <p>
-     * The currently entered context may change. It is therefore required to call {@link #get() get}
-     * every time a context is needed. The currently entered context should not be cached in static
-     * fields.
+     * The currently entered context may change. It is therefore required to call
+     * {@link #getCurrent() getCurrent} every time a context is needed. The currently entered
+     * context should not be cached in static fields.
      *
      * @throws IllegalStateException if no context is currently entered.
      * @since 1.0
      */
-    public static Context get() {
+    public static Context getCurrent() {
         return Engine.getImpl().getCurrentContext();
     }
 
