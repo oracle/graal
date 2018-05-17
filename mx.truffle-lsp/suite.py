@@ -6,7 +6,7 @@ suite = {
         "suites": [{
             "name": "truffle",
             "subdir": True,
-            "version": "8c629b91f1882a6d7e482832f87f99a9071a3a23",
+            "version": "fd932e5e710ab6b7c1342fb7a6dcbc4a4a519635",
             "urls": [{
                 "url": "https://github.com/graalvm/graal",
                 "kind": "git"
@@ -103,10 +103,7 @@ suite = {
                 "truffle:TRUFFLE_DSL_PROCESSOR",
                 "truffle:TRUFFLE_NFI",
                 "sdk:GRAAL_SDK",
-                "LSP4J",
-                "mx:JUNIT"
-                #"sdk:LAUNCHER_COMMON",
-                # "tools:CHROMEINSPECTOR",
+                "LSP4J"
             ],
             "checkstyle": "de.hpi.swa.trufflelsp",
             "javaCompliance": "1.8",
