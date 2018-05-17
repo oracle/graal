@@ -5,15 +5,15 @@ overlay = 6ddf46f87d7f961a9a823b544c481daa1cb1407e
 # labsjdk* are JDKs based on OracleJDK binaries
 # openjdk* are JDKs based on OpenJDK binaries
 jdks: {
-  labsjdk8 : {name : labsjdk, version : "8u161-jvmci-0.42", platformspecific: true}
-  labsjdk8Debug : {name : labsjdk, version : "8u161-jvmci-0.42-fastdebug", platformspecific: true}
+  labsjdk8 : {name : labsjdk, version : "8u171-jvmci-0.43", platformspecific: true}
+  labsjdk8Debug : {name : labsjdk, version : "8u171-jvmci-0.43-fastdebug", platformspecific: true}
   oraclejdk9 : {name : oraclejdk, version : "9.0.4+11", platformspecific: true}
   oraclejdk10 : {name : oraclejdk, version : "10+46", platformspecific: true}
 
   # Snapshot of http://hg.openjdk.java.net/jdk/jdk
   oraclejdkSNAPSHOT : {name : labsjdk, version : "20180515-152016", platformspecific: true}
 
-  openjdk8 : {name : openjdk, version : "8u161-jvmci-0.42", platformspecific: true}
+  openjdk8 : {name : openjdk, version : "8u171-jvmci-0.43", platformspecific: true}
 }
 
 # This must always point to HEAD in the master branch but can be used to point
