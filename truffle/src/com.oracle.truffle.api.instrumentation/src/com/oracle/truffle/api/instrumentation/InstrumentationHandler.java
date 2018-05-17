@@ -398,6 +398,20 @@ final class InstrumentationHandler {
         return binding;
     }
 
+    private void visitLoadedSourceSections(EventBinding.Source<?> binding) {
+        if (TRACE) {
+            trace("BEGIN: Visiting loaded source sections %s, %s%n", binding.getFilter(), binding.getElement());
+        }
+
+        if (!loadedRoots.isEmpty()) {
+            visitRoots(loadedRoots, new NotifyLoadedWithBindingVisitor(binding));
+        }
+
+        if (TRACE) {
+            trace("END: Visited loaded source sections %s, %s%n", binding.getFilter(), binding.getElement());
+        }
+    }
+
     <T> EventBinding<T> addSourceBinding(EventBinding.Source<T> binding, boolean notifyLoaded) {
         if (TRACE) {
             trace("BEGIN: Adding source binding %s, %s%n", binding.getFilter(), binding.getElement());
@@ -912,6 +926,10 @@ final class InstrumentationHandler {
 
     private <T> EventBinding<T> attachSourceSectionListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
         return addSourceSectionBinding(new EventBinding.Source<>(abstractInstrumenter, filter, null, listener, false), notifyLoaded);
+    }
+
+    private void visitLoadedSourceSections(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, LoadSourceSectionListener listener) {
+        visitLoadedSourceSections(new EventBinding.Source<>(abstractInstrumenter, filter, null, listener, false));
     }
 
     private <T> EventBinding<T> attachExecuteSourceListener(AbstractInstrumenter abstractInstrumenter, SourceSectionFilter filter, T listener, boolean notifyLoaded) {
@@ -1767,6 +1785,12 @@ final class InstrumentationHandler {
         public <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean notifyLoaded) {
             verifyFilter(filter);
             return InstrumentationHandler.this.attachSourceSectionListener(this, filter, listener, notifyLoaded);
+        }
+
+        @Override
+        public void visitLoadedSourceSections(SourceSectionFilter filter, LoadSourceSectionListener listener) {
+            verifyFilter(filter);
+            InstrumentationHandler.this.visitLoadedSourceSections(this, filter, listener);
         }
 
         @Override
