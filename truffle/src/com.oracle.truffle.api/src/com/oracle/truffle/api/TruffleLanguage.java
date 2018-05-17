@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.api;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -51,6 +52,7 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile.FileAdapter;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
 import com.oracle.truffle.api.frame.Frame;
@@ -60,7 +62,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.ReadOnlyArrayList;
-import com.oracle.truffle.api.impl.SourceAccessorImpl;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -1794,7 +1795,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public Source.Builder<IOException, RuntimeException, RuntimeException> newSourceBuilder(final TruffleFile file) {
             Objects.requireNonNull(file, "File must be non null");
-            return Source.newBuilder(SourceAccessorImpl.asFile(file));
+            return Source.newBuilder(new TruffleFile.FileAdapter(file));
         }
 
         @SuppressWarnings("rawtypes")
@@ -2265,6 +2266,18 @@ public abstract class TruffleLanguage<C> {
             newEnv.context = env.context;
             env.valid = false;
             return env.spi.patchContext(env.context, newEnv) ? newEnv : null;
+        }
+
+        @Override
+        public boolean checkTruffleFile(File file) {
+            return file instanceof FileAdapter;
+        }
+
+        @Override
+        public byte[] truffleFileContent(File file) throws IOException {
+            assert file instanceof FileAdapter : "File must be " + FileAdapter.class.getSimpleName();
+            final TruffleFile tf = ((FileAdapter) file).getTruffleFile();
+            return tf.readAllBytes();
         }
     }
 }

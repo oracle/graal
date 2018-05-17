@@ -24,12 +24,9 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
-import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -56,7 +53,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
@@ -72,7 +72,6 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.polyglot.io.FileSystem;
 
 @SuppressWarnings("deprecation")
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -379,7 +378,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load(SPI.allLoaders());
+        List<InstrumentCache> cachedInstruments = InstrumentCache.load(VMAccessor.allLoaders());
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());

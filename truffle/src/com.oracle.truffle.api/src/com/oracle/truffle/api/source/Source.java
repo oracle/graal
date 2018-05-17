@@ -43,7 +43,8 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.impl.SourceAccessor;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleOptions;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one
@@ -122,7 +123,6 @@ import com.oracle.truffle.api.impl.SourceAccessor;
  */
 public abstract class Source implements Cloneable {
 
-    private static final boolean AOT = SourceAccessor.isAOT();
     private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false).toSource();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
@@ -195,7 +195,7 @@ public abstract class Source implements Cloneable {
      * @since 0.15
      */
     public Source subSource(int baseCharIndex, int length) {
-        SourceAccessor.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
+        CompilerAsserts.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
         return SubSourceImpl.create(this, baseCharIndex, length);
     }
 
@@ -641,7 +641,7 @@ public abstract class Source implements Cloneable {
     }
 
     static String findMimeType(final Path filePath) throws IOException {
-        if (!AOT) {
+        if (!TruffleOptions.AOT) {
             Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
             for (ClassLoader l : loaders) {
                 for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {

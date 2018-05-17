@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
@@ -107,6 +109,10 @@ public abstract class Accessor {
         public void reportPolymorphicSpecialize(Node node) {
             SUPPORT.reportPolymorphicSpecialize(node);
         }
+    }
+
+    public abstract static class SourceSupport {
+
     }
 
     public abstract static class DumpSupport {
@@ -389,6 +395,10 @@ public abstract class Accessor {
 
         public abstract void materializeHostFrames(Throwable original);
 
+        public abstract boolean checkTruffleFile(File file);
+
+        public abstract byte[] truffleFileContent(File file) throws IOException;
+
     }
 
     public abstract static class InstrumentSupport {
@@ -475,7 +485,7 @@ public abstract class Accessor {
     private static Accessor.InteropSupport INTEROP;
     private static Accessor.JavaInteropSupport JAVAINTEROP;
     private static Accessor.Frames FRAMES;
-    @SuppressWarnings("unused") private static Accessor SOURCE;
+    private static Accessor.SourceSupport SOURCE;
 
     static {
         TruffleLanguage<?> lng = new TruffleLanguage<Object>() {
@@ -585,7 +595,7 @@ public abstract class Accessor {
             }
             FRAMES = this.framesSupport();
         } else if (this.getClass().getSimpleName().endsWith("SourceAccessor")) {
-            SOURCE = this;
+            SOURCE = this.sourceSupport();
         } else if (this.getClass().getSimpleName().endsWith("DumpAccessor")) {
             DUMP = this.dumpSupport();
         } else if (this.getClass().getSimpleName().endsWith("JavaInteropAccessor")) {
@@ -632,6 +642,10 @@ public abstract class Accessor {
 
     protected JavaInteropSupport javaInteropSupport() {
         return JAVAINTEROP;
+    }
+
+    protected SourceSupport sourceSupport() {
+        return SOURCE;
     }
 
     static InstrumentSupport instrumentAccess() {

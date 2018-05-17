@@ -24,9 +24,9 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -64,7 +64,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
 import org.graalvm.polyglot.io.FileSystem;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -1113,4 +1116,44 @@ public final class TruffleFile {
             return new ByteChannelDecorator(delegate);
         }
     }
+
+    @SuppressWarnings("serial")
+    static final class FileAdapter extends File {
+        private final TruffleFile truffleFile;
+
+        FileAdapter(TruffleFile truffleFile) {
+            super(truffleFile.getPath());
+            this.truffleFile = truffleFile;
+        }
+
+        TruffleFile getTruffleFile() {
+            return truffleFile;
+        }
+
+        @Override
+        public String getName() {
+            return truffleFile.getName();
+        }
+
+        @Override
+        public String getPath() {
+            return truffleFile.getPath();
+        }
+
+        @Override
+        public File getAbsoluteFile() {
+            return new FileAdapter(truffleFile.getAbsoluteFile());
+        }
+
+        @Override
+        public File getCanonicalFile() throws IOException {
+            return new FileAdapter(truffleFile.getCanonicalFile());
+        }
+
+        @Override
+        public URI toURI() {
+            return truffleFile.toUri();
+        }
+    }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,46 +22,46 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.impl;
-
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
+package com.oracle.truffle.api.source;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-public final class SourceAccessorImpl extends SourceAccessor {
+import com.oracle.truffle.api.impl.Accessor;
+
+final class SourceAccessor extends Accessor {
+
+    static final SourceAccessor ACCESSOR = new SourceAccessor();
+
+    protected SourceAccessor() {
+    }
+
+    private static final SourceSupport SUPPORT = new SourceSupportImpl();
 
     @Override
-    protected Collection<ClassLoader> loaders() {
-        return TruffleLocator.loaders();
+    protected SourceSupport sourceSupport() {
+        return SUPPORT;
     }
 
     @Override
-    protected boolean checkAOT() {
-        return TruffleOptions.AOT;
+    protected LanguageSupport languageSupport() {
+        return super.languageSupport();
     }
 
-    @Override
-    protected void assertNeverPartOfCompilation(String msg) {
-        CompilerAsserts.neverPartOfCompilation(msg);
+    static Collection<ClassLoader> allLoaders() {
+        return ACCESSOR.loaders();
     }
 
-    @Override
-    protected boolean checkTruffleFile(File file) {
-        return file instanceof TruffleFileFileAdapter;
+    static byte[] readTruffleFile(File file) throws IOException {
+        return ACCESSOR.languageSupport().truffleFileContent(file);
     }
 
-    @Override
-    protected byte[] truffleFileContent(File file) throws IOException {
-        assert file instanceof TruffleFileFileAdapter : "File must be " + TruffleFileFileAdapter.class.getSimpleName();
-        final TruffleFile tf = ((TruffleFileFileAdapter) file).getTruffleFile();
-        return tf.readAllBytes();
+    static boolean isTruffleFile(File file) {
+        return ACCESSOR.languageSupport().checkTruffleFile(file);
     }
 
-    public static File asFile(TruffleFile truffleFile) {
-        return new TruffleFileFileAdapter(truffleFile);
+    static final class SourceSupportImpl extends Accessor.SourceSupport {
+
     }
 }
