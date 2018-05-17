@@ -28,6 +28,7 @@ import com.oracle.truffle.regex.tregex.automaton.IndexedState;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSortedArray;
+import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
 
@@ -43,6 +44,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
 
     private static final short[] NO_DOM_CHILDREN = new short[0];
 
+    private DFAAbstractStateNode originalDfaNode;
     private DFAAbstractStateNode dfaNode;
     private boolean dfaNodeCopied = false;
     private final short[] successorSet;
@@ -68,6 +70,7 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
     }
 
     private GraphNode(GraphNode cpy, short dfaNodeId) {
+        this.originalDfaNode = cpy.dfaNode;
         this.dfaNode = cpy.dfaNode.createNodeSplitCopy(dfaNodeId);
         this.dfaNodeCopied = true;
         this.successorSet = cpy.successorSet;
@@ -251,5 +254,17 @@ final class GraphNode implements Comparable<GraphNode>, IndexedState {
 
     public void clearCopy() {
         this.copy = null;
+    }
+
+    public void registerDuplicate(DFAGenerator dfaGenerator) {
+        if (originalDfaNode != null) {
+            dfaGenerator.nodeSplitRegisterDuplicateState(originalDfaNode.getId(), dfaNode.getId());
+        }
+    }
+
+    public void updateSuccessors(DFAGenerator dfaGenerator) {
+        if (dfaNodeCopied) {
+            dfaGenerator.nodeSplitUpdateSuccessors(dfaNode.getId(), dfaNode.getSuccessors());
+        }
     }
 }

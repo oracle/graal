@@ -41,6 +41,7 @@ public final class RegexProfile {
     private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter captureGroupAccesses = new Counter.ThreadSafeCounter();
+    private double avgMatchLength = 0;
     private double avgMatchedPortionOfSearchSpace = 0;
 
     /**
@@ -58,20 +59,17 @@ public final class RegexProfile {
     }
 
     /**
-     * Increase the number of times any capture groups of a match result were queried by one.
+     * Update profile after the execution of a lazy capture groups search DFA.
+     *
+     * @param matchLength the length of capture group 0 of the match.
+     * @param numberOfCharsTraversed the number of characters that were traversed between the
+     *            initial index (fromIndex) and the end of the match.
+     * @see com.oracle.truffle.regex.tregex.nodes.TRegexLazyCaptureGroupsRootNode
      */
-    public void incCaptureGroupAccesses() {
+    public void profileCaptureGroupAccess(int matchLength, int numberOfCharsTraversed) {
         captureGroupAccesses.inc();
-    }
-
-    /**
-     * Update the average matched portion of the searched part of the input.
-     * 
-     * @param matchedPortion the length of capture group zero divided by the amount of characters
-     *            the regular expression matcher traversed while searching for the match.
-     */
-    public void addMatchedPortionOfSearchSpace(double matchedPortion) {
-        assert captureGroupAccesses.getCount() > 0;
+        avgMatchLength += (matchLength - avgMatchLength) / captureGroupAccesses.getCount();
+        double matchedPortion = ((double) matchLength) / numberOfCharsTraversed;
         avgMatchedPortionOfSearchSpace += (matchedPortion - avgMatchedPortionOfSearchSpace) / captureGroupAccesses.getCount();
     }
 
@@ -105,11 +103,11 @@ public final class RegexProfile {
      *         <li>most searches led to a match</li>
      *         <li>the capture groups of most search results were queried</li>
      *         <li>the match often covered a big part of the part of the input string that had to be
-     *         traversed in order to find it</li>
+     *         traversed in order to find it, or the match was usually very short</li>
      *         </ul>
      */
     public boolean shouldUseEagerMatching() {
-        return matchRatio() > 0.5 && cgAccessRatio() > 0.5 && avgMatchedPortionOfSearchSpace > 0.4;
+        return matchRatio() > 0.5 && cgAccessRatio() > 0.5 && (avgMatchLength < 5 || avgMatchedPortionOfSearchSpace > 0.4);
     }
 
     @CompilerDirectives.TruffleBoundary

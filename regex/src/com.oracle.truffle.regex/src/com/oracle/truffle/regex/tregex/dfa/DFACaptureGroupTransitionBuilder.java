@@ -24,40 +24,47 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.ByteArrayBuffer;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAAbstractFinalState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupLazyTransitionNode;
 import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
 import com.oracle.truffle.regex.tregex.parser.Counter;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 import java.util.Arrays;
 
-public class DFACaptureGroupTransitionBuilder {
+public class DFACaptureGroupTransitionBuilder implements JsonConvertible {
 
+    private final Counter idCounter;
     private final NFA nfa;
-    private final DFAStateTransitionBuilder transitionBuilder;
-    private final DFAStateNodeBuilder successor;
+    private final DFAStateTransitionBuilder transition;
     private final boolean isInitialTransition;
     private NFAStateSet requiredStates = null;
     private DFACaptureGroupLazyTransitionNode lazyTransition = null;
 
-    public DFACaptureGroupTransitionBuilder(NFA nfa, DFAStateTransitionBuilder transitionBuilder, DFAStateNodeBuilder successor, boolean isInitialTransition) {
+    public DFACaptureGroupTransitionBuilder(Counter idCounter, NFA nfa, DFAStateTransitionBuilder transition, boolean isInitialTransition) {
+        this.idCounter = idCounter;
         this.nfa = nfa;
-        this.transitionBuilder = transitionBuilder;
-        this.successor = successor;
+        this.transition = transition;
         this.isInitialTransition = isInitialTransition;
+    }
+
+    public void setLazyTransition(DFACaptureGroupLazyTransitionNode lazyTransition) {
+        this.lazyTransition = lazyTransition;
     }
 
     private NFAStateSet getRequiredStates() {
         if (requiredStates == null) {
             requiredStates = new NFAStateSet(nfa);
-            for (NFAStateTransition transition : transitionBuilder.getTargetState()) {
-                requiredStates.add(transition.getSource());
+            for (NFAStateTransition nfaTransition : transition.getTransitionSet()) {
+                requiredStates.add(nfaTransition.getSource());
             }
         }
         return requiredStates;
@@ -71,11 +78,11 @@ public class DFACaptureGroupTransitionBuilder {
         ObjectArrayBuffer indexUpdates = compilationBuffer.getObjectBuffer1();
         ObjectArrayBuffer indexClears = compilationBuffer.getObjectBuffer2();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
-        for (NFAStateTransition nfaTransition : transitionBuilder.getTargetState()) {
+        for (NFAStateTransition nfaTransition : transition.getTransitionSet()) {
             if (targetStates.contains(nfaTransition.getTarget())) {
                 int sourceIndex = getRequiredStates().getStateIndex(nfaTransition.getSource());
                 int targetIndex = targetStates.getStateIndex(nfaTransition.getTarget());
-                assert !(nfaTransition.getTarget() instanceof NFAAbstractFinalState) || targetIndex == DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX;
+                assert !(nfaTransition.getTarget().isForwardFinalState()) || targetIndex == DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX;
                 if (!used[sourceIndex]) {
                     used[sourceIndex] = true;
                     newOrder[targetIndex] = sourceIndex;
@@ -124,41 +131,43 @@ public class DFACaptureGroupTransitionBuilder {
                         indexClears.toArray(DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS));
     }
 
-    private static byte[] createIndexManipulationArray(int targetIndex, byte[] groupBoundaryIndices) {
-        final byte[] indexUpdate = new byte[groupBoundaryIndices.length + 1];
+    public static byte[] createIndexManipulationArray(int targetIndex, CompilationFinalBitSet groupBoundaryIndices) {
+        final byte[] indexUpdate = new byte[groupBoundaryIndices.numberOfSetBits() + 1];
         indexUpdate[0] = (byte) targetIndex;
-        System.arraycopy(groupBoundaryIndices, 0, indexUpdate, 1, groupBoundaryIndices.length);
+        int i = 1;
+        for (int j : groupBoundaryIndices) {
+            assert j < 256;
+            indexUpdate[i++] = (byte) j;
+        }
         return indexUpdate;
     }
 
-    public DFACaptureGroupLazyTransitionNode toLazyTransition(Counter idCounter, CompilationBuffer compilationBuffer) {
+    public DFACaptureGroupLazyTransitionNode toLazyTransition(CompilationBuffer compilationBuffer) {
         if (lazyTransition == null) {
-            DFACaptureGroupPartialTransitionNode[] partialTransitions = new DFACaptureGroupPartialTransitionNode[successor.getCaptureGroupTransitions().length];
-            for (int i = 0; i < successor.getCaptureGroupTransitions().length; i++) {
-                DFACaptureGroupTransitionBuilder successorTransition = successor.getCaptureGroupTransitions()[i];
+            DFAStateNodeBuilder successor = transition.getTarget();
+            DFACaptureGroupPartialTransitionNode[] partialTransitions = new DFACaptureGroupPartialTransitionNode[successor.getTransitions().length];
+            for (int i = 0; i < successor.getTransitions().length; i++) {
+                DFACaptureGroupTransitionBuilder successorTransition = successor.getTransitions()[i].getCaptureGroupTransition();
                 partialTransitions[i] = createPartialTransition(successorTransition.getRequiredStates(), compilationBuffer);
             }
             DFACaptureGroupPartialTransitionNode transitionToFinalState = null;
             DFACaptureGroupPartialTransitionNode transitionToAnchoredFinalState = null;
             if (successor.isFinalState()) {
-                transitionToFinalState = createPartialTransition(new NFAStateSet(nfa, successor.getNfaStateSet().getFinalState()), compilationBuffer);
+                transitionToFinalState = createPartialTransition(
+                                new NFAStateSet(nfa, successor.getUnAnchoredFinalStateTransition().getSource()), compilationBuffer);
             }
             if (successor.isAnchoredFinalState()) {
-                transitionToAnchoredFinalState = createPartialTransition(new NFAStateSet(nfa, successor.getNfaStateSet().getAnchoredFinalState()), compilationBuffer);
+                transitionToAnchoredFinalState = createPartialTransition(
+                                new NFAStateSet(nfa, successor.getAnchoredFinalStateTransition().getSource()), compilationBuffer);
             }
             lazyTransition = new DFACaptureGroupLazyTransitionNode((short) idCounter.inc(), partialTransitions, transitionToFinalState, transitionToAnchoredFinalState);
         }
         return lazyTransition;
     }
 
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table("CGTransition");
-        for (NFAStateTransition nfaTransition : transitionBuilder.getTargetState()) {
-            table.append(new DebugUtil.Value("nfaTransition", String.format("%s -> %s",
-                            nfaTransition.getSource().idToString(),
-                            nfaTransition.getTarget().idToString())),
-                            nfaTransition.getGroupBoundaries().toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(transition.getTransitionSet().stream().map(x -> Json.val(x.getId())));
     }
 }

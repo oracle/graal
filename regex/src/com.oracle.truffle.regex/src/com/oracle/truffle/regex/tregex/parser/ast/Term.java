@@ -45,7 +45,7 @@ public abstract class Term extends RegexASTNode {
     }
 
     @Override
-    public abstract Term copy(RegexAST ast);
+    public abstract Term copy(RegexAST ast, boolean recursive);
 
     public int getSeqIndex() {
         return seqIndex;

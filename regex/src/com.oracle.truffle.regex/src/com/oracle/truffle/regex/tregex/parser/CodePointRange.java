@@ -24,12 +24,15 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.List;
 
-public class CodePointRange implements Comparable<CodePointRange>, ContainsRange {
+public class CodePointRange implements Comparable<CodePointRange>, ContainsRange, JsonConvertible {
 
     public final int lo;
     public final int hi;
@@ -110,7 +113,7 @@ public class CodePointRange implements Comparable<CodePointRange>, ContainsRange
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         if (isSingle()) {
             return DebugUtil.charToString(lo);
@@ -174,5 +177,12 @@ public class CodePointRange implements Comparable<CodePointRange>, ContainsRange
             }
         }
         return true;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("hi", hi),
+                        Json.prop("lo", lo));
     }
 }

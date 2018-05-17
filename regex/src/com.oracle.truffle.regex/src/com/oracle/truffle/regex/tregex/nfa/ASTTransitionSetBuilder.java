@@ -24,11 +24,14 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class ASTTransitionSetBuilder extends TransitionBuilder<ASTTransitionSet> {
+public class ASTTransitionSetBuilder extends TransitionBuilder<ASTTransitionSet> implements JsonConvertible {
 
     private final ASTTransitionSet transitionSet;
     private MatcherBuilder matcherBuilder;
@@ -49,13 +52,13 @@ public class ASTTransitionSetBuilder extends TransitionBuilder<ASTTransitionSet>
     }
 
     @Override
-    public ASTTransitionSet getTargetState() {
+    public ASTTransitionSet getTransitionSet() {
         return transitionSet;
     }
 
     @Override
     public ASTTransitionSetBuilder createMerged(TransitionBuilder<ASTTransitionSet> other, MatcherBuilder mergedMatcher) {
-        return new ASTTransitionSetBuilder(transitionSet.createMerged(other.getTargetState()), mergedMatcher);
+        return new ASTTransitionSetBuilder(transitionSet.createMerged(other.getTransitionSet()), mergedMatcher);
     }
 
     @Override
@@ -64,9 +67,10 @@ public class ASTTransitionSetBuilder extends TransitionBuilder<ASTTransitionSet>
         matcherBuilder = mergedMatcher;
     }
 
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("ASTTransitionSetBuilder",
-                        new DebugUtil.Value("matcherBuilder", matcherBuilder),
-                        transitionSet.toTable());
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("matcherBuilder", matcherBuilder),
+                        Json.prop("transitionSet", (JsonConvertible) transitionSet));
     }
 }

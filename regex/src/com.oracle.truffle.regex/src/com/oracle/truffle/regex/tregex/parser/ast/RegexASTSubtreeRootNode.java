@@ -24,9 +24,12 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A common supertype to the root node and look-ahead and look-behind assertions. Every AST subtree
@@ -43,14 +46,16 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     RegexASTSubtreeRootNode() {
     }
 
-    RegexASTSubtreeRootNode(RegexASTSubtreeRootNode copy, RegexAST ast) {
+    RegexASTSubtreeRootNode(RegexASTSubtreeRootNode copy, RegexAST ast, boolean recursive) {
         super(copy);
-        setGroup(copy.group.copy(ast));
+        if (recursive) {
+            setGroup(copy.group.copy(ast, true));
+        }
         ast.createEndPoint(this);
     }
 
     @Override
-    public abstract RegexASTSubtreeRootNode copy(RegexAST ast);
+    public abstract RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive);
 
     /**
      * Returns the {@link Group} that represents the contents of this subtree.
@@ -115,13 +120,18 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     public abstract String getPrefix();
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    public SourceSection getSourceSection() {
+        return group.getSourceSection();
+    }
+
+    @TruffleBoundary
+    @Override
     public String toString() {
         return "(" + getPrefix() + group.alternativesToString() + ")";
     }
 
     @Override
-    public DebugUtil.Table toTable(String name) {
-        return super.toTable(name).append(new DebugUtil.Value("group", astNodeId(group)));
+    protected JsonObject toJson(String typeName) {
+        return super.toJson(typeName).append(Json.prop("group", astNodeId(group)));
     }
 }

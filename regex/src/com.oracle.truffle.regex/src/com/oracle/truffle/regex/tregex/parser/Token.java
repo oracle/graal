@@ -24,10 +24,14 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
-public class Token {
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+public class Token implements JsonConvertible {
 
     public static Token create(Kind kind) {
         return new Token(kind);
@@ -63,21 +67,31 @@ public class Token {
     }
 
     public final Kind kind;
+    private SourceSection sourceSection;
 
     public Token(Kind kind) {
         this.kind = kind;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("Token", new DebugUtil.Value("kind", kind.name()));
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
+    public void setSourceSection(SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonObject toJson() {
+        return Json.obj(Json.prop("kind", kind.name()));
     }
 
     public static final class Quantifier extends Token {
 
         private final int min;
         private final int max;
-        private boolean greedy;
+        private final boolean greedy;
 
         public Quantifier(int min, int max, boolean greedy) {
             super(Kind.quantifier);
@@ -108,17 +122,13 @@ public class Token {
             return greedy;
         }
 
-        public void setGreedy(boolean greedy) {
-            this.greedy = greedy;
-        }
-
+        @TruffleBoundary
         @Override
-        @CompilerDirectives.TruffleBoundary
-        public DebugUtil.Table toTable() {
-            return super.toTable().append(
-                            new DebugUtil.Value("min", getMin()),
-                            new DebugUtil.Value("max", getMax()),
-                            new DebugUtil.Value("greedy", isGreedy()));
+        public JsonObject toJson() {
+            return super.toJson().append(
+                            Json.prop("min", getMin()),
+                            Json.prop("max", getMax()),
+                            Json.prop("greedy", isGreedy()));
         }
     }
 
@@ -131,10 +141,10 @@ public class Token {
             this.codePointSet = codePointSet;
         }
 
+        @TruffleBoundary
         @Override
-        @CompilerDirectives.TruffleBoundary
-        public DebugUtil.Table toTable() {
-            return super.toTable().append(new DebugUtil.Value("codePointSet", codePointSet));
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("codePointSet", codePointSet));
         }
 
         public CodePointSet getCodePointSet() {
@@ -151,10 +161,10 @@ public class Token {
             this.groupNr = groupNr;
         }
 
+        @TruffleBoundary
         @Override
-        @CompilerDirectives.TruffleBoundary
-        public DebugUtil.Table toTable() {
-            return super.toTable().append(new DebugUtil.Value("groupNr", groupNr));
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("groupNr", groupNr));
         }
 
         public int getGroupNr() {

@@ -24,7 +24,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A reference to the contents of a previously matched capturing group.
@@ -47,7 +50,7 @@ public class BackReference extends Term {
     }
 
     @Override
-    public BackReference copy(RegexAST ast) {
+    public BackReference copy(RegexAST ast, boolean recursive) {
         return ast.register(new BackReference(this));
     }
 
@@ -60,8 +63,9 @@ public class BackReference extends Term {
         return groupNr;
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("BackReference").append(new DebugUtil.Value("groupNr", groupNr));
+    public JsonValue toJson() {
+        return toJson("BackReference").append(Json.prop("groupNr", groupNr));
     }
 }

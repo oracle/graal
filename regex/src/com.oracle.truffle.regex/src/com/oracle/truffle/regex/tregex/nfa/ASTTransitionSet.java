@@ -24,14 +24,16 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 
-public class ASTTransitionSet implements Iterable<ASTTransition> {
+public class ASTTransitionSet implements Iterable<ASTTransition>, JsonConvertible {
 
     private final ArrayList<ASTTransition> transitions;
 
@@ -52,7 +54,7 @@ public class ASTTransitionSet implements Iterable<ASTTransition> {
     }
 
     public void mergeInPlace(TransitionBuilder<ASTTransitionSet> other) {
-        merge(other.getTargetState());
+        merge(other.getTransitionSet());
     }
 
     private void merge(ASTTransitionSet other) {
@@ -78,12 +80,9 @@ public class ASTTransitionSet implements Iterable<ASTTransition> {
         return this == obj || (obj instanceof ASTTransitionSet && transitions.equals(((ASTTransitionSet) obj).transitions));
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        DebugUtil.Table table = new DebugUtil.Table("ASTTransitionSet");
-        for (ASTTransition t : transitions) {
-            table.append(t.toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(transitions);
     }
 }

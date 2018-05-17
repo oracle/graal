@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.literal;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.regex.CompiledRegex;
@@ -43,8 +44,11 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputStartsWithNode;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public abstract class LiteralRegexExecRootNode extends RegexExecRootNode implements CompiledRegex {
+public abstract class LiteralRegexExecRootNode extends RegexExecRootNode implements CompiledRegex, JsonConvertible {
 
     protected final String literal;
     protected final PreCalculatedResultFactory resultFactory;
@@ -67,11 +71,12 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
         return regexCallTarget;
     }
 
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("LiteralRegexNode",
-                        new DebugUtil.Value("method", getImplName()),
-                        new DebugUtil.Value("literal", DebugUtil.escapeString(literal)),
-                        new DebugUtil.Value("factory", resultFactory));
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("method", getImplName()),
+                        Json.prop("literal", DebugUtil.escapeString(literal)),
+                        Json.prop("factory", resultFactory));
     }
 
     protected abstract String getImplName();

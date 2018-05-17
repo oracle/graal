@@ -24,28 +24,40 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.List;
-
-public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> {
+public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
 
     private final NFATransitionSet transitions;
     private MatcherBuilder matcherBuilder;
 
-    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, List<NFAStateTransition> transitions, NFA nfa, boolean forward, boolean prioritySensitive) {
-        this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transitions);
+    private int id = -1;
+    private DFAStateNodeBuilder source;
+    private DFAStateNodeBuilder target;
+    private DFACaptureGroupTransitionBuilder captureGroupTransition;
+
+    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFAStateTransition transition, NFA nfa, boolean forward, boolean prioritySensitive) {
+        this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transition);
         this.matcherBuilder = matcherBuilder;
     }
 
     DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitions) {
         this.transitions = transitions;
         this.matcherBuilder = matcherBuilder;
+    }
+
+    public DFAStateTransitionBuilder createNodeSplitCopy() {
+        return new DFAStateTransitionBuilder(matcherBuilder, transitions);
     }
 
     @Override
@@ -60,29 +72,70 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
 
     @Override
     public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        return new DFAStateTransitionBuilder(mergedMatcher, transitions.createMerged(other.getTargetState()));
+        return new DFAStateTransitionBuilder(mergedMatcher, transitions.createMerged(other.getTransitionSet()));
     }
 
     @Override
     public void mergeInPlace(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        transitions.addAll(other.getTargetState());
+        transitions.addAll(other.getTransitionSet());
         matcherBuilder = mergedMatcher;
     }
 
     @Override
-    public NFATransitionSet getTargetState() {
+    public NFATransitionSet getTransitionSet() {
         return transitions;
     }
 
-    @Override
-    public String toString() {
-        return toTable("DFAStateConnectionBuilder").toString();
+    public int getId() {
+        return id;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable(String name) {
-        return new DebugUtil.Table(name,
-                        new DebugUtil.Value("matcherBuilder", getMatcherBuilder()),
-                        new DebugUtil.Value("transitions", getTargetState()));
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public DFAStateNodeBuilder getSource() {
+        return source;
+    }
+
+    public void setSource(DFAStateNodeBuilder source) {
+        this.source = source;
+    }
+
+    public DFAStateNodeBuilder getTarget() {
+        return target;
+    }
+
+    public void setTarget(DFAStateNodeBuilder target) {
+        this.target = target;
+    }
+
+    public DFACaptureGroupTransitionBuilder getCaptureGroupTransition() {
+        return captureGroupTransition;
+    }
+
+    public void setCaptureGroupTransition(DFACaptureGroupTransitionBuilder captureGroupTransition) {
+        this.captureGroupTransition = captureGroupTransition;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        JsonArray nfaTransitions = Json.array(getTransitionSet().stream().map(t -> Json.val(t.getId())));
+        if (target.getAnchoredFinalStateTransition() != null) {
+            nfaTransitions.append(Json.val(target.getAnchoredFinalStateTransition().getId()));
+        }
+        if (target.getUnAnchoredFinalStateTransition() != null) {
+            nfaTransitions.append(Json.val(target.getUnAnchoredFinalStateTransition().getId()));
+        }
+        JsonObject ret = Json.obj(Json.prop("id", id),
+                        Json.prop("source", source.getId()),
+                        Json.prop("target", target.getId()),
+                        Json.prop("matcherBuilder", getMatcherBuilder().toString()),
+                        Json.prop("nfaTransitions", nfaTransitions));
+        if (captureGroupTransition != null) {
+            ret.append(Json.prop("captureGroupTransition", captureGroupTransition.toLazyTransition(new CompilationBuffer())));
+        }
+        return ret;
     }
 }

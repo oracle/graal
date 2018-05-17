@@ -27,9 +27,6 @@ package com.oracle.truffle.regex.tregex.util;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.dfa.NFAStateSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAAbstractFinalState;
-import com.oracle.truffle.regex.tregex.nfa.NFAAnchoredFinalState;
-import com.oracle.truffle.regex.tregex.nfa.NFAFinalState;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 
@@ -38,26 +35,27 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public final class NFAExport {
 
     private final NFA nfa;
     private final BufferedWriter writer;
-    private final boolean reverse;
+    private final boolean forward;
     private final boolean fullLabels;
 
-    private NFAExport(NFA nfa, BufferedWriter writer, boolean reverse, boolean fullLabels) {
+    private NFAExport(NFA nfa, BufferedWriter writer, boolean forward, boolean fullLabels) {
         this.nfa = nfa;
         this.writer = writer;
-        this.reverse = reverse;
+        this.forward = forward;
         this.fullLabels = fullLabels;
     }
 
     @CompilerDirectives.TruffleBoundary
     public static void exportDot(NFA nfa, String path, boolean fullLabels) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, false, fullLabels).exportDot();
+            new NFAExport(nfa, writer, true, fullLabels).exportDot();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -66,7 +64,7 @@ public final class NFAExport {
     @CompilerDirectives.TruffleBoundary
     public static void exportDotReverse(NFA nfa, String path, boolean fullLabels) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, true, fullLabels).exportDotReverse();
+            new NFAExport(nfa, writer, false, fullLabels).exportDotReverse();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -75,7 +73,7 @@ public final class NFAExport {
     @CompilerDirectives.TruffleBoundary
     public static void exportLaTex(NFA nfa, String path, boolean fullLabels) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
-            new NFAExport(nfa, writer, false, fullLabels).exportLaTex();
+            new NFAExport(nfa, writer, true, fullLabels).exportLaTex();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -85,11 +83,11 @@ public final class NFAExport {
         writer.write("digraph finite_state_machine {");
         writer.newLine();
         writer.newLine();
-        if (!nfa.getReverseUnAnchoredEntry().getPrev().isEmpty()) {
-            setDotNodeStyle(nfa.getReverseUnAnchoredEntry(), "doublecircle");
+        if (!nfa.getReverseUnAnchoredEntry().getSource().getPrev().isEmpty()) {
+            setDotNodeStyle(nfa.getReverseUnAnchoredEntry().getSource(), "doublecircle");
         }
-        if (!nfa.getReverseAnchoredEntry().getPrev().isEmpty()) {
-            setDotNodeStyle(nfa.getReverseAnchoredEntry(), "Mcircle");
+        if (!nfa.getReverseAnchoredEntry().getSource().getPrev().isEmpty()) {
+            setDotNodeStyle(nfa.getReverseAnchoredEntry().getSource(), "Mcircle");
         }
         writer.write("    node [shape = circle];");
         writer.newLine();
@@ -115,19 +113,19 @@ public final class NFAExport {
                 if (state == null) {
                     continue;
                 }
-                if (state instanceof NFAFinalState && state != nfa.getReverseUnAnchoredEntry()) {
+                if (state.isReverseUnAnchoredFinalState()) {
                     setDotNodeStyle(state, "doublecircle");
-                } else if (state instanceof NFAAnchoredFinalState && state != nfa.getReverseAnchoredEntry()) {
+                } else if (state.isReverseAnchoredFinalState()) {
                     setDotNodeStyle(state, "Mcircle");
                 }
             }
         } else {
-            for (int i = 0; i < nfa.getAnchoredEntry().size(); i++) {
-                if (!nfa.getUnAnchoredEntry().get(i).getNext().isEmpty()) {
-                    setDotNodeStyle(nfa.getUnAnchoredEntry().get(i), "doublecircle");
+            for (int i = 0; i < nfa.getAnchoredEntry().length; i++) {
+                if (!nfa.getUnAnchoredEntry()[i].getTarget().getNext().isEmpty()) {
+                    setDotNodeStyle(nfa.getUnAnchoredEntry()[i].getTarget(), "doublecircle");
                 }
-                if (!nfa.getAnchoredEntry().get(i).getNext().isEmpty()) {
-                    setDotNodeStyle(nfa.getAnchoredEntry().get(i), "Mcircle");
+                if (!nfa.getAnchoredEntry()[i].getTarget().getNext().isEmpty()) {
+                    setDotNodeStyle(nfa.getAnchoredEntry()[i].getTarget(), "Mcircle");
                 }
             }
         }
@@ -161,8 +159,8 @@ public final class NFAExport {
         writer.newLine();
         ArrayList<NFAState> curStates = new ArrayList<>();
         ArrayList<NFAState> nextStates = new ArrayList<>();
-        curStates.add(nfa.getAnchoredEntry().get(nfa.getAnchoredEntry().size() - 1));
-        curStates.add(nfa.getUnAnchoredEntry().get(nfa.getUnAnchoredEntry().size() - 1));
+        curStates.add(nfa.getAnchoredEntry()[nfa.getAnchoredEntry().length - 1].getTarget());
+        curStates.add(nfa.getUnAnchoredEntry()[nfa.getUnAnchoredEntry().length - 1].getTarget());
         printLaTexState(curStates.get(0), null, null);
         printLaTexState(curStates.get(1), curStates.get(0), "below");
         while (!curStates.isEmpty()) {
@@ -226,27 +224,19 @@ public final class NFAExport {
     }
 
     private String getLaTexStateStyle(NFAState state) {
-        if (state instanceof NFAAbstractFinalState) {
-            if (reverse) {
-                if (state == nfa.getReverseAnchoredEntry() || state == nfa.getReverseUnAnchoredEntry()) {
-                    return "initial,state";
-                }
-                return "accepting,state";
-            } else {
-                if (state instanceof NFAAnchoredFinalState && nfa.getAnchoredEntry().contains(state) ||
-                                state instanceof NFAFinalState && nfa.getUnAnchoredEntry().contains(state)) {
-                    return "initial,state";
-                }
-                return "accepting,state";
-            }
+        if (nfa.isEntry(state, forward)) {
+            return "initial,state";
+        }
+        if (state.isAnchoredFinalState(forward) || state.isUnAnchoredFinalState(forward)) {
+            return "accepting,state";
         }
         return "state";
     }
 
     private String labelTransition(NFAStateTransition transition, int priority) {
         StringBuilder sb = new StringBuilder();
-        if (!(transition.getTarget(!reverse) instanceof NFAAbstractFinalState)) {
-            sb.append(transition.getTarget(!reverse));
+        if (!(transition.getTarget(forward).isAnchoredFinalState(forward) || transition.getTarget(forward).isUnAnchoredFinalState(forward))) {
+            sb.append(transition.getTarget(forward));
         }
         if (fullLabels) {
             sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());
@@ -261,37 +251,20 @@ public final class NFAExport {
 
     private String labelState(NFAState state) {
         StringBuilder sb = new StringBuilder();
-        if (state instanceof NFAAbstractFinalState) {
-            if (state instanceof NFAAnchoredFinalState) {
-                if (reverse) {
-                    if (state == nfa.getReverseAnchoredEntry()) {
-                        sb.append("I^");
-                    }
-                } else {
-                    int i = nfa.getAnchoredEntry().indexOf(state);
-                    if (i >= 0) {
-                        sb.append("I^").append(i);
-                    }
-                }
-                if (sb.length() == 0) {
-                    sb.append("F$");
-                }
-            } else {
-                assert state instanceof NFAFinalState;
-                if (reverse) {
-                    if (state == nfa.getReverseUnAnchoredEntry()) {
-                        sb.append("I");
-                    }
-                } else {
-                    int i = nfa.getUnAnchoredEntry().indexOf(state);
-                    if (i >= 0) {
-                        sb.append("I").append(i);
-                    }
-                }
-                if (sb.length() == 0) {
-                    sb.append("F");
-                }
+        if (nfa.isAnchoredEntry(state, forward)) {
+            sb.append("I^");
+            if (forward) {
+                sb.append(Arrays.asList(nfa.getAnchoredEntry()).indexOf(state));
             }
+        } else if (nfa.isUnAnchoredEntry(state, forward)) {
+            sb.append("I");
+            if (forward) {
+                sb.append(Arrays.asList(nfa.getUnAnchoredEntry()).indexOf(state));
+            }
+        } else if (state.isAnchoredFinalState(forward)) {
+            sb.append("F$");
+        } else if (state.isUnAnchoredFinalState(forward)) {
+            sb.append("F");
         } else {
             if (fullLabels) {
                 sb.append("S").append(state.idToString());

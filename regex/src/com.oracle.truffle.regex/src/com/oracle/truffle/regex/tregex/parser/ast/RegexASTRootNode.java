@@ -25,7 +25,9 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Root node of every AST.
@@ -36,13 +38,13 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
         setId(InitIDVisitor.REGEX_AST_ROOT_PARENT_ID);
     }
 
-    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast) {
-        super(copy, ast);
+    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast, boolean recursive) {
+        super(copy, ast, recursive);
     }
 
     @Override
-    public RegexASTSubtreeRootNode copy(RegexAST ast) {
-        return new RegexASTRootNode(this, ast);
+    public RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive) {
+        return new RegexASTRootNode(this, ast, recursive);
     }
 
     @Override
@@ -55,8 +57,9 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
         return getGroup().toString();
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return getGroup().toTable();
+    public JsonValue toJson() {
+        return getGroup().toJson();
     }
 }

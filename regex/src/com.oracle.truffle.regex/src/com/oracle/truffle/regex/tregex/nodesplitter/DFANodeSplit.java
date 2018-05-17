@@ -29,6 +29,7 @@ import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.StateSetBackingSortedArray;
 import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
+import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.DFAInitialStateNode;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
@@ -48,13 +49,15 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
 
     public static final int EXTRA_INITIAL_CAPACITY = 20;
 
+    private final DFAGenerator dfaGenerator;
     private final Graph graph;
     private final DominatorTree domTree;
     private final CompilationFinalBitSet flagDone;
     private final CompilationFinalBitSet flagActive;
     private short nextId;
 
-    private DFANodeSplit(DFAAbstractStateNode[] dfa) {
+    private DFANodeSplit(DFAGenerator dfaGenerator, DFAAbstractStateNode[] dfa) {
+        this.dfaGenerator = dfaGenerator;
         graph = new Graph(dfa.length + EXTRA_INITIAL_CAPACITY);
         CompilationFinalBitSet successorBitSet = new CompilationFinalBitSet(dfa.length);
         ShortArrayBuffer successorBuffer = new ShortArrayBuffer();
@@ -118,7 +121,11 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     }
 
     public static DFAAbstractStateNode[] createReducibleGraph(DFAAbstractStateNode[] nodes) throws DFANodeSplitBailoutException {
-        return new DFANodeSplit(nodes).process();
+        return new DFANodeSplit(null, nodes).process();
+    }
+
+    public static DFAAbstractStateNode[] createReducibleGraphAndUpdateDFAGen(DFAGenerator dfaGen, DFAAbstractStateNode[] nodes) throws DFANodeSplitBailoutException {
+        return new DFANodeSplit(dfaGen, nodes).process();
     }
 
     @Override
@@ -140,7 +147,24 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
         for (GraphNode node : graph.getNodes()) {
             ret[node.getDfaNode().getId()] = node.getDfaNode();
         }
+        if (dfaGenerator != null) {
+            updateDFAGenerator();
+        }
         return ret;
+    }
+
+    /**
+     * Register all changes made in the DFA generator. This is necessary for gathering debug
+     * information only, never do this in production!
+     */
+    private void updateDFAGenerator() {
+        dfaGenerator.nodeSplitSetNewDFASize(graph.size());
+        for (GraphNode node : graph.getNodes()) {
+            node.registerDuplicate(dfaGenerator);
+        }
+        for (GraphNode node : graph.getNodes()) {
+            node.updateSuccessors(dfaGenerator);
+        }
     }
 
     private boolean splitLoops(GraphNode topNode, Set<GraphNode> set) throws DFANodeSplitBailoutException {

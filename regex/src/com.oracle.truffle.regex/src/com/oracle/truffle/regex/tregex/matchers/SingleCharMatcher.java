@@ -58,6 +58,11 @@ public final class SingleCharMatcher extends ProfiledCharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        return 1;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         return modifiersToString() + DebugUtil.charToString(c);

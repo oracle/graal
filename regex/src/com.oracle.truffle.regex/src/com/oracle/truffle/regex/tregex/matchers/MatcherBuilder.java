@@ -33,13 +33,16 @@ import com.oracle.truffle.regex.tregex.buffer.RangesArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.CodePointRange;
 import com.oracle.truffle.regex.tregex.parser.CodePointSet;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import com.oracle.truffle.regex.util.Constants;
 
 import java.util.Arrays;
 import java.util.List;
 
-public final class MatcherBuilder implements Comparable<MatcherBuilder> {
+public final class MatcherBuilder implements Comparable<MatcherBuilder>, JsonConvertible {
 
     private static final MatcherBuilder CONSTANT_EMPTY = new MatcherBuilder(new char[0]);
     private static final MatcherBuilder CONSTANT_FULL = new MatcherBuilder(new char[]{Character.MIN_VALUE, Character.MAX_VALUE});
@@ -921,12 +924,18 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
     @TruffleBoundary
     public static String rangesToString(char[] ranges, boolean numeric) {
         StringBuilder sb = new StringBuilder();
+        if (!numeric && ranges.length > 2) {
+            sb.append("[");
+        }
         for (int i = 0; i < ranges.length; i += 2) {
             if (numeric) {
                 sb.append("[").append((int) ranges[i]).append("-").append((int) ranges[i + 1]).append("]");
             } else {
-                sb.append("[").append(rangeToString(ranges[i], ranges[i + 1])).append("]");
+                sb.append(rangeToString(ranges[i], ranges[i + 1]));
             }
+        }
+        if (!numeric && ranges.length > 2) {
+            sb.append("]");
         }
         return sb.toString();
     }
@@ -992,5 +1001,11 @@ public final class MatcherBuilder implements Comparable<MatcherBuilder> {
             }
         }
         return cmp;
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(ranges);
     }
 }

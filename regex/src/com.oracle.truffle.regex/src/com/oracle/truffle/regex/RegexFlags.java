@@ -28,8 +28,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.runtime.RegexFlagsMessageResolutionForeign;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class RegexFlags implements RegexLanguageObject {
+public final class RegexFlags implements RegexLanguageObject, JsonConvertible {
 
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;
@@ -159,4 +162,14 @@ public final class RegexFlags implements RegexLanguageObject {
         return RegexFlagsMessageResolutionForeign.ACCESS;
     }
 
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("ignoreCase", isIgnoreCase()),
+                        Json.prop("multiline", isMultiline()),
+                        Json.prop("global", isGlobal()),
+                        Json.prop("sticky", isSticky()),
+                        Json.prop("unicode", isUnicode()),
+                        Json.prop("dotAll", isDotAll()));
+    }
 }

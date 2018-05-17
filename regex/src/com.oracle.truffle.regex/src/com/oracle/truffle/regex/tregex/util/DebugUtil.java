@@ -24,16 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class DebugUtil {
 
@@ -46,7 +43,10 @@ public class DebugUtil {
     public static final boolean LOG_BAILOUT_MESSAGES = false;
     public static final boolean LOG_AUTOMATON_SIZES = false;
 
-    @CompilerDirectives.TruffleBoundary
+    private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
+                    '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
+
+    @TruffleBoundary
     public static String charToString(int c) {
         if (c <= 0xffff && (Character.isDigit(c) || (0 < c && c < 128 && !Character.isISOControl(c)))) {
             return String.valueOf((char) c);
@@ -59,7 +59,7 @@ public class DebugUtil {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static String escapeString(String s) {
         StringBuilder ret = new StringBuilder();
         for (int i = 0; i < s.length(); i++) {
@@ -68,18 +68,19 @@ public class DebugUtil {
         return ret.toString();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static StringBuilder appendNodeId(StringBuilder sb, int id) {
         return sb.append(nodeID(id));
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static String nodeID(int id) {
         return String.format("%04x", id);
     }
 
     private static final Pattern specialChars = Pattern.compile("[\"\\\\\u0000-\u001F\u007F-\u009F]");
 
+    @TruffleBoundary
     public static String jsStringEscape(String str) {
         StringBuffer escapedString = new StringBuffer();
         Matcher m = specialChars.matcher(str);
@@ -100,6 +101,7 @@ public class DebugUtil {
         return escapedString.toString();
     }
 
+    @TruffleBoundary
     public static String randomJsStringFromRanges(char[] ranges, int length) {
         Random random = new Random(System.currentTimeMillis());
         StringBuilder stringBuilder = new StringBuilder(length);
@@ -119,6 +121,10 @@ public class DebugUtil {
             }
         }
         return stringBuilder.toString();
+    }
+
+    public static boolean isValidCharForFileName(int c) {
+        return Character.isLetterOrDigit(c) || validSpecialCharsForFileNames.get(c);
     }
 
     public static class Timer {
@@ -159,74 +165,4 @@ public class DebugUtil {
         }
     }
 
-    public abstract static class AbstractValue {
-
-        protected String name;
-
-        public AbstractValue(String name) {
-            this.name = name;
-        }
-
-        public abstract String toString(int indent, int nameWidth);
-
-        protected static String nameFmtString(int indent, int nameWidth) {
-            return "%" + (indent == 0 ? "" : indent) + "s%-" + nameWidth + "s: ";
-        }
-    }
-
-    public static class Value extends AbstractValue {
-
-        private final Object value;
-
-        public Value(String name, Object value) {
-            super(name);
-            this.value = value;
-        }
-
-        @Override
-        @CompilerDirectives.TruffleBoundary
-        public String toString(int indent, int nameWidth) {
-            return String.format(nameFmtString(indent, nameWidth) + "%s", "", name, value);
-        }
-    }
-
-    public static class Table extends AbstractValue {
-
-        private final ArrayList<AbstractValue> values;
-
-        public Table(String name, ArrayList<AbstractValue> values) {
-            super(name);
-            this.values = values;
-        }
-
-        public Table(String name, AbstractValue... values) {
-            super(name);
-            this.values = new ArrayList<>();
-            Collections.addAll(this.values, values);
-        }
-
-        public Table append(AbstractValue... appendValues) {
-            Collections.addAll(values, appendValues);
-            return this;
-        }
-
-        public Table append(Stream<AbstractValue> appendValues) {
-            appendValues.forEach(values::add);
-            return this;
-        }
-
-        @Override
-        @CompilerDirectives.TruffleBoundary
-        public String toString() {
-            return toString(0, name.length());
-        }
-
-        @Override
-        @CompilerDirectives.TruffleBoundary
-        public String toString(int indent, int nameWidth) {
-            final int newNameWidth = values.stream().map(x -> x.name.length()).max(Comparator.naturalOrder()).orElse(0);
-            final String fmtString = nameFmtString(indent, nameWidth) + "{\n%s\n%" + (indent + 1) + "s";
-            return String.format(fmtString, "", name, values.stream().map(x -> x.toString(indent + 2, newNameWidth)).collect(Collectors.joining("\n")), "}");
-        }
-    }
 }

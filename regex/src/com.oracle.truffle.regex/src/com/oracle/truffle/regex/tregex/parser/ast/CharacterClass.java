@@ -26,11 +26,16 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A {@link Term} that matches characters belonging to a specified set of characters.
@@ -43,9 +48,8 @@ import java.util.stream.Collectors;
  * Note that {@link CharacterClass} nodes and the {@link MatcherBuilder}s that they rely on can only
  * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
  * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
- * by {@link com.oracle.truffle.regex.tregex.parser.RegexParser} into a more complex expression
- * which matches the individual code units that would make up the UTF-16 encoding of those
- * characters.
+ * by {@link RegexParser} into a more complex expression which matches the individual code units
+ * that would make up the UTF-16 encoding of those characters.
  */
 public class CharacterClass extends Term {
 
@@ -67,7 +71,7 @@ public class CharacterClass extends Term {
     }
 
     @Override
-    public CharacterClass copy(RegexAST ast) {
+    public CharacterClass copy(RegexAST ast, boolean recursive) {
         return ast.register(new CharacterClass(this));
     }
 
@@ -107,12 +111,13 @@ public class CharacterClass extends Term {
         return matcherBuilder.toString();
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        final DebugUtil.Table table = toTable("CharacterClass").append(new DebugUtil.Value("matcherBuilder", matcherBuilder));
+    public JsonValue toJson() {
+        final JsonObject json = toJson("CharacterClass").append(Json.prop("matcherBuilder", matcherBuilder));
         if (lookBehindEntries != null) {
-            table.append(new DebugUtil.Value("lookBehindEntries", lookBehindEntries.stream().map(RegexASTNode::astNodeId).collect(Collectors.joining(","))));
+            json.append(Json.prop("lookBehindEntries", lookBehindEntries.stream().map(RegexASTNode::astNodeId).collect(Collectors.toList())));
         }
-        return table;
+        return json;
     }
 }

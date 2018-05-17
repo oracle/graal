@@ -24,12 +24,15 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A Sequence is a concatenation of {@link Term}s.
@@ -48,16 +51,18 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
     Sequence() {
     }
 
-    private Sequence(Sequence copy, RegexAST ast) {
+    private Sequence(Sequence copy, RegexAST ast, boolean recursive) {
         super(copy);
-        for (Term t : copy.terms) {
-            add(t.copy(ast));
+        if (recursive) {
+            for (Term t : copy.terms) {
+                add(t.copy(ast, true));
+            }
         }
     }
 
     @Override
-    public Sequence copy(RegexAST ast) {
-        return ast.register(new Sequence(this, ast));
+    public Sequence copy(RegexAST ast, boolean recursive) {
+        return ast.register(new Sequence(this, ast, recursive));
     }
 
     @Override
@@ -170,13 +175,27 @@ public class Sequence extends RegexASTNode implements RegexASTVisitorIterable {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    public SourceSection getSourceSection() {
+        SourceSection src = super.getSourceSection();
+        if (src != null && !isEmpty()) {
+            int endIndex = getLastTerm().getSourceSection().getCharEndIndex();
+            if (endIndex != src.getCharEndIndex()) {
+                int startIndex = src.getCharIndex();
+                super.setSourceSection(src.getSource().createSection(startIndex, endIndex - startIndex));
+            }
+        }
+        return super.getSourceSection();
+    }
+
+    @TruffleBoundary
+    @Override
     public String toString() {
         return terms.stream().map(Term::toString).collect(Collectors.joining(""));
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("Sequence").append(terms.stream().map(RegexASTNode::toTable));
+    public JsonValue toJson() {
+        return toJson("Sequence").append(Json.prop("terms", terms));
     }
 }

@@ -24,7 +24,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds depending on whether another regular expression can be matched at the
@@ -49,13 +51,13 @@ public class LookAheadAssertion extends RegexASTSubtreeRootNode {
         setFlag(FLAG_LOOK_AHEAD_NEGATED, negated);
     }
 
-    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast) {
-        super(copy, ast);
+    private LookAheadAssertion(LookAheadAssertion copy, RegexAST ast, boolean recursive) {
+        super(copy, ast, recursive);
     }
 
     @Override
-    public LookAheadAssertion copy(RegexAST ast) {
-        return ast.register(new LookAheadAssertion(this, ast));
+    public LookAheadAssertion copy(RegexAST ast, boolean recursive) {
+        return ast.register(new LookAheadAssertion(this, ast, recursive));
     }
 
     /**
@@ -75,8 +77,9 @@ public class LookAheadAssertion extends RegexASTSubtreeRootNode {
         return isNegated() ? "?!" : "?=";
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable(isNegated() ? "NegativeLookAheadAssertion" : "LookAheadAssertion");
+    public JsonValue toJson() {
+        return toJson(isNegated() ? "NegativeLookAheadAssertion" : "LookAheadAssertion");
     }
 }
