@@ -38,6 +38,7 @@ import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.IdentityHashMap;
@@ -46,8 +47,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
@@ -75,6 +78,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
@@ -301,18 +305,7 @@ final class Target_java_lang_Throwable {
 }
 
 @TargetClass(java.lang.Runtime.class)
-@SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
-
-    @Substitute
-    private void addShutdownHook(java.lang.Thread hook) {
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(hook);
-    }
-
-    @Substitute
-    private boolean removeShutdownHook(java.lang.Thread hook) {
-        return RuntimeSupport.getRuntimeSupport().removeShutdownHook(hook);
-    }
 
     @Substitute
     public void loadLibrary(String libname) {
@@ -623,16 +616,122 @@ final class Target_java_lang_ApplicationShutdownHooks {
 
     /**
      * Re-initialize the map of registered hooks, because any hooks registered during native image
-     * construction can not survive into the running image.
+     * construction can not survive into the running image. But `hooks` must be initialized to an
+     * IdentityHashMap, because 'null' means I am in the middle of shutting down.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = IdentityHashMap.class)//
     private static IdentityHashMap<Thread, Thread> hooks;
 
+    /**
+     * Instead of starting all the threads in {@link #hooks}, just run the {@link Runnable}s one
+     * after another.
+     *
+     * Run the hooks that were added via {@link RuntimeSupport#addShutdownHook(Runnable)}.
+     */
+    @Substitute
+    static void runHooks() {
+        /* Claim all the hooks. */
+        final Collection<Thread> threads;
+        /* Checkstyle: allow synchronization. */
+        synchronized (Target_java_lang_ApplicationShutdownHooks.class) {
+            threads = hooks.keySet();
+            hooks = null;
+        }
+        /* Checkstyle: disallow synchronization. */
+
+        /* Run all the hooks, catching anything that is thrown. */
+        final List<Throwable> hookExceptions = new ArrayList<>();
+        for (Thread hook : threads) {
+            try {
+                Util_java_lang_ApplicationShutdownHooks.callRunnableOfThread(hook);
+            } catch (Throwable ex) {
+                hookExceptions.add(ex);
+            }
+        }
+        /* Report any hook exceptions, but do not re-throw them. */
+        if (hookExceptions.size() > 0) {
+            for (Throwable ex : hookExceptions) {
+                ex.printStackTrace(Log.logStream());
+            }
+        }
+
+        /* Run all the hooks that were registered with RuntimeSupport. */
+        RuntimeSupport.getRuntimeSupport().executeShutdownHooks();
+    }
+
+    /**
+     * Interpose so that the first time someone adds an ApplicationShutdownHook, I set up a shutdown
+     * hook to run all the ApplicationShutdownHooks. Then the rest of this method is copied from
+     * {@code ApplicationShutdownHook.add(Thread)}.
+     */
+    @Substitute
+    /* Checkstyle: allow synchronization */
+    static synchronized void add(Thread hook) {
+        Util_java_lang_ApplicationShutdownHooks.initializeOnce();
+        if (hooks == null) {
+            throw new IllegalStateException("Shutdown in progress");
+        }
+        if (hook.isAlive()) {
+            throw new IllegalArgumentException("Hook already running");
+        }
+        if (hooks.containsKey(hook)) {
+            throw new IllegalArgumentException("Hook previously registered");
+        }
+        hooks.put(hook, hook);
+    }
+    /* Checkstyle: disallow synchronization */
+}
+
+class Util_java_lang_ApplicationShutdownHooks {
+
+    /** An initialization flag. */
+    private static volatile boolean initialized = false;
+
+    /** A lock to protect the initialization flag. */
+    private static ReentrantLock lock = new ReentrantLock();
+
+    public static void initializeOnce() {
+        if (!initialized) {
+            lock.lock();
+            try {
+                if (!initialized) {
+                    try {
+                        /*
+                         * Register a shutdown hook.
+                         *
+                         * Compare this code to the static initializations done in {@link
+                         * ApplicationShutdownHooks}.
+                         */
+                        Target_java_lang_Shutdown.add(1 /* shutdown hook invocation order */,
+                                        false /* not registered if shutdown in progress */,
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Target_java_lang_ApplicationShutdownHooks.runHooks();
+                                            }
+                                        });
+                    } catch (InternalError ie) {
+                        /* Someone else has registered the shutdown hook at slot 2. */
+                    } catch (IllegalStateException ise) {
+                        /* Too late to register this shutdown hook. */
+                    }
+                    /* Announce that initialization is complete. */
+                    initialized = true;
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    @SuppressFBWarnings(value = {"RU_INVOKE_RUN"}, justification = "Do not start a new thread, just call the run method.")
+    static void callRunnableOfThread(Thread thread) {
+        thread.run();
+    }
 }
 
 @TargetClass(className = "java.lang.Shutdown")
 final class Target_java_lang_Shutdown {
-
     /**
      * Re-initialize the map of registered hooks, because any hooks registered during native image
      * construction can not survive into the running image.
@@ -651,6 +750,10 @@ final class Target_java_lang_Shutdown {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
     }
 
+    /**
+     * Invoked by the JNI DestroyJavaVM procedure when the last non-daemon thread has finished.
+     * Unlike the exit method, this method does not actually halt the VM.
+     */
     @Alias
     static native void shutdown();
 
