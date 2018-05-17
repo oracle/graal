@@ -94,6 +94,7 @@ public final class LLVMDebugTest {
         configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
         configs.put("testFunctionPointer", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testObjectPointer", new String[]{BC_O0, BC_MEM2REG});
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
     }
 
