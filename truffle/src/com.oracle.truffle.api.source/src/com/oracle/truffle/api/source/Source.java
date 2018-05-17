@@ -33,11 +33,15 @@ import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.spi.FileTypeDetector;
+import java.util.Collection;
 import java.util.Objects;
+import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.source.impl.SourceAccessor;
 
@@ -116,21 +120,18 @@ import com.oracle.truffle.api.source.impl.SourceAccessor;
  *
  * @since 0.8 or earlier
  */
-public abstract class Source {
-    // TODO (mlvdv) consider canonicalizing and reusing SourceSection instances
-    // TODO (mlvdv) connect SourceSections into a spatial tree for fast geometric lookup
+public abstract class Source implements Cloneable {
 
-    private static final Source EMPTY = new SourceImpl(new LiteralSourceImpl("<empty>", ""));
+    private static final boolean AOT = SourceAccessor.isAOT();
+    private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false).toSource();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
+    private static final String URI_SCHEME = "truffle";
 
-    private final Content content;
-    private final URI uri;
-    private final String name;
-    private String mimeType;
-    private String languageId;
-    private final boolean internal;
-    private final boolean interactive;
+    private static final InternedSources SOURCES = new InternedSources();
+
+    private final Object lock = new Object();
     private volatile TextMap textMap;
+    private volatile URI computedURI;
 
     /**
      * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
@@ -195,8 +196,7 @@ public abstract class Source {
      */
     public Source subSource(int baseCharIndex, int length) {
         SourceAccessor.neverPartOfCompilation(NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE);
-        final SubSourceImpl subSource = SubSourceImpl.create(this, baseCharIndex, length);
-        return new SourceImpl(subSource);
+        return SubSourceImpl.create(this, baseCharIndex, length);
     }
 
     /**
@@ -251,19 +251,18 @@ public abstract class Source {
         return builder.toString();
     }
 
-    Source(Content content, String mimeType, String languageId, URI uri, String name, boolean internal, boolean interactive) {
-        this.content = content;
-        this.mimeType = mimeType;
-        this.languageId = languageId;
-        this.name = name;
-        this.internal = internal;
-        this.interactive = interactive;
-        this.uri = uri;
+    @Override
+    protected Source clone() throws CloneNotSupportedException {
+        return (Source) super.clone();
     }
 
-    Content content() {
-        return content;
-    }
+    /**
+     * Returns the code sequence as {@link CharSequence}. Causes the contents of this source to be
+     * loaded if they are loaded lazily.
+     *
+     * @since 0.28
+     */
+    public abstract CharSequence getCharacters();
 
     /**
      * Returns the name of this resource holding a guest language program. An example would be the
@@ -273,9 +272,7 @@ public abstract class Source {
      * @return the name of the guest language program
      * @since 0.8 or earlier
      */
-    public String getName() {
-        return name == null ? content().getName() : name;
-    }
+    public abstract String getName();
 
     /**
      * The fully qualified name of the source. In case this source originates from a {@link File},
@@ -283,9 +280,7 @@ public abstract class Source {
      *
      * @since 0.8 or earlier
      */
-    public String getPath() {
-        return content().getPath();
-    }
+    public abstract String getPath();
 
     /**
      * Check whether this source has been marked as <em>internal</em>, meaning that it has been
@@ -301,9 +296,7 @@ public abstract class Source {
      * @return whether this source is marked as <em>internal</em>
      * @since 0.15
      */
-    public boolean isInternal() {
-        return internal;
-    }
+    public abstract boolean isInternal();
 
     /**
      * Check whether this source has been marked as <em>interactive</em>. Interactive sources are
@@ -325,9 +318,7 @@ public abstract class Source {
      * @return whether this source is marked as <em>interactive</em>
      * @since 0.21
      */
-    public boolean isInteractive() {
-        return interactive;
-    }
+    public abstract boolean isInteractive();
 
     /**
      * The URL if the source is retrieved via URL.
@@ -335,9 +326,9 @@ public abstract class Source {
      * @return URL or <code>null</code>
      * @since 0.8 or earlier
      */
-    public URL getURL() {
-        return content().getURL();
-    }
+    public abstract URL getURL();
+
+    abstract URI getOriginalURI();
 
     /**
      * Get URI of the source. Every source has an associated {@link URI}, which can be used as a
@@ -352,30 +343,54 @@ public abstract class Source {
      * @return a URI, it's never <code>null</code>
      * @since 0.14
      */
-    public URI getURI() {
-        return uri == null ? content().getURI() : uri;
+    public final URI getURI() {
+        URI uri = getOriginalURI();
+        if (uri == null) {
+            uri = computedURI;
+            if (uri == null) {
+                uri = computeURI();
+            }
+        }
+        return uri;
     }
+
+    private URI computeURI() {
+        synchronized (lock) {
+            URI uri = computedURI;
+            if (uri == null) {
+                uri = getNamedURI(getName(), getCharacters().toString().getBytes());
+            }
+            return uri;
+        }
+    }
+
+    /**
+     * MIME type that is associated with this source. By default file extensions known to the system
+     * are used to determine the MIME type (via registered {@link FileTypeDetector} classes), yet
+     * one can directly {@link Builder#mimeType(java.lang.String) provide a MIME type} to each
+     * source.
+     *
+     * @return MIME type of this source or <code>null</code>, if unknown
+     * @since 0.8 or earlier
+     */
+    public abstract String getMimeType();
+
+    /**
+     * Returns the language this source was created with.
+     *
+     * @return the language of this source or <code>null</code>, if unknown
+     * @since 0.28
+     * @see Builder#language(java.lang.String)
+     */
+    public abstract String getLanguage();
 
     /**
      * Access to the source contents.
      *
      * @since 0.8 or earlier
      */
-    public Reader getReader() {
-        try {
-            return content().getReader();
-        } catch (final IOException ex) {
-            return new Reader() {
-                @Override
-                public int read(char[] cbuf, int off, int len) throws IOException {
-                    throw ex;
-                }
-
-                @Override
-                public void close() throws IOException {
-                }
-            };
-        }
+    public final Reader getReader() {
+        return new CharSequenceReader(getCharacters());
     }
 
     /**
@@ -399,16 +414,6 @@ public abstract class Source {
     }
 
     /**
-     * Returns the code sequence as {@link CharSequence}. Causes the contents of this source to be
-     * loaded if they are loaded lazily.
-     *
-     * @since 0.28
-     */
-    public CharSequence getCharacters() {
-        return content().getCharacters();
-    }
-
-    /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
@@ -418,44 +423,6 @@ public abstract class Source {
         final int offset = getTextMap().lineStartOffset(lineNumber);
         final int length = getTextMap().lineLength(lineNumber);
         return getCharacters().subSequence(offset, offset + length);
-    }
-
-    /**
-     * Returns the complete text of the code. Causes the contents of this source to be loaded if
-     * they are loaded lazily.
-     *
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getCharacters()} instead.
-     */
-    @Deprecated
-    public String getCode() {
-        return content().getCharacters().toString();
-    }
-
-    /**
-     * Returns a subsection of the code test. Causes the contents of this source to be loaded if
-     * they are loaded lazily.
-     *
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getCharacters() getCodeSequence()}.
-     *             {@link CharSequence#subSequence(int, int)} subSequence(charIndex, charIndex +
-     *             charLength)
-     */
-    @Deprecated
-    public String getCode(int charIndex, int charLength) {
-        return getCharacters().subSequence(charIndex, charIndex + charLength).toString();
-    }
-
-    /**
-     * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
-     * Causes the contents of this source to be loaded if they are loaded lazily.
-     *
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getCharacters(int)} instead.
-     */
-    @Deprecated
-    public final String getCode(int lineNumber) {
-        return getCharacters(lineNumber).toString();
     }
 
     /**
@@ -617,18 +584,21 @@ public abstract class Source {
     final TextMap getTextMap() {
         TextMap res = textMap;
         if (res == null) {
-            synchronized (this) {
-                if (textMap == null) {
-                    textMap = createTextMap();
+            synchronized (lock) {
+                res = this.textMap;
+                if (res == null) {
+                    res = textMap = createTextMap();
                 }
-                res = textMap;
             }
         }
+        assert res != null;
         return res;
     }
 
-    final synchronized void clearTextMap() {
-        textMap = null;
+    final void clearTextMap() {
+        synchronized (lock) {
+            textMap = null;
+        }
     }
 
     TextMap createTextMap() {
@@ -637,37 +607,6 @@ public abstract class Source {
             throw new RuntimeException("can't read file " + getName());
         }
         return TextMap.fromCharSequence(code);
-    }
-
-    /**
-     * MIME type that is associated with this source. By default file extensions known to the system
-     * are used to determine the MIME type (via registered {@link FileTypeDetector} classes), yet
-     * one can directly {@link Builder#mimeType(java.lang.String) provide a MIME type} to each
-     * source.
-     *
-     * @return MIME type of this source or <code>null</code>, if unknown
-     * @since 0.8 or earlier
-     */
-    public String getMimeType() {
-        if (mimeType == null) {
-            try {
-                mimeType = content().findMimeType();
-            } catch (IOException ex) {
-                // swallow and return null
-            }
-        }
-        return mimeType;
-    }
-
-    /**
-     * Returns the language this source was created with.
-     *
-     * @return the language of this source or <code>null</code>, if unknown
-     * @since 0.28
-     * @see Builder#language(java.lang.String)
-     */
-    public String getLanguage() {
-        return languageId;
     }
 
     final boolean equalAttributes(Source other) {
@@ -682,6 +621,205 @@ public abstract class Source {
     @SuppressWarnings({"unchecked", "unused"})
     static <E extends Exception> E raise(Class<E> type, Exception ex) throws E {
         throw (E) ex;
+    }
+
+    @SuppressWarnings("all")
+    static CharSequence enforceCharSequenceContract(CharSequence sequence) {
+        boolean assertions = false;
+        assert assertions = true;
+        if (assertions) {
+            if (sequence instanceof String) {
+                return sequence;
+            } else if (sequence instanceof CharSequenceWrapper) {
+                // already wrapped
+                return sequence;
+            } else {
+                return new CharSequenceWrapper(sequence);
+            }
+        }
+        return sequence;
+    }
+
+    static String findMimeType(final Path filePath) throws IOException {
+        if (!AOT) {
+            Collection<ClassLoader> loaders = SourceAccessor.allLoaders();
+            for (ClassLoader l : loaders) {
+                for (FileTypeDetector detector : ServiceLoader.load(FileTypeDetector.class, l)) {
+                    String mimeType = detector.probeContentType(filePath);
+                    if (mimeType != null) {
+                        return mimeType;
+                    }
+                }
+            }
+        }
+
+        String found = Files.probeContentType(filePath);
+        return found == null ? "content/unknown" : found;
+    }
+
+    static String findMimeType(final URL url) throws IOException {
+        Path path;
+        try {
+            path = Paths.get(url.toURI());
+            String firstGuess = findMimeType(path);
+            if (firstGuess != null) {
+                return firstGuess;
+            }
+        } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
+            // swallow and go on
+        }
+        return url.openConnection().getContentType();
+    }
+
+    protected final URI getNamedURI(String name, byte[] bytes) {
+        return getNamedURI(name, bytes, 0, bytes.length);
+    }
+
+    protected final URI getNamedURI(String name, byte[] bytes, int byteIndex, int length) {
+        String digest;
+        if (bytes != null) {
+            digest = digest(bytes, byteIndex, length);
+        } else {
+            digest = Integer.toString(System.identityHashCode(this), 16);
+        }
+        if (name != null) {
+            digest += '/' + name;
+        }
+        try {
+            return new URI(URI_SCHEME, digest, null);
+        } catch (URISyntaxException ex) {
+            throw new Error(ex);    // Should not happen
+        }
+    }
+
+    private static final int[] S = new int[]{
+                    0x29, 0x2E, 0x43, 0xC9, 0xA2, 0xD8, 0x7C, 0x01, 0x3D, 0x36, 0x54, 0xA1, 0xEC, 0xF0, 0x06, 0x13,
+                    0x62, 0xA7, 0x05, 0xF3, 0xC0, 0xC7, 0x73, 0x8C, 0x98, 0x93, 0x2B, 0xD9, 0xBC, 0x4C, 0x82, 0xCA,
+                    0x1E, 0x9B, 0x57, 0x3C, 0xFD, 0xD4, 0xE0, 0x16, 0x67, 0x42, 0x6F, 0x18, 0x8A, 0x17, 0xE5, 0x12,
+                    0xBE, 0x4E, 0xC4, 0xD6, 0xDA, 0x9E, 0xDE, 0x49, 0xA0, 0xFB, 0xF5, 0x8E, 0xBB, 0x2F, 0xEE, 0x7A,
+                    0xA9, 0x68, 0x79, 0x91, 0x15, 0xB2, 0x07, 0x3F, 0x94, 0xC2, 0x10, 0x89, 0x0B, 0x22, 0x5F, 0x21,
+                    0x80, 0x7F, 0x5D, 0x9A, 0x5A, 0x90, 0x32, 0x27, 0x35, 0x3E, 0xCC, 0xE7, 0xBF, 0xF7, 0x97, 0x03,
+                    0xFF, 0x19, 0x30, 0xB3, 0x48, 0xA5, 0xB5, 0xD1, 0xD7, 0x5E, 0x92, 0x2A, 0xAC, 0x56, 0xAA, 0xC6,
+                    0x4F, 0xB8, 0x38, 0xD2, 0x96, 0xA4, 0x7D, 0xB6, 0x76, 0xFC, 0x6B, 0xE2, 0x9C, 0x74, 0x04, 0xF1,
+                    0x45, 0x9D, 0x70, 0x59, 0x64, 0x71, 0x87, 0x20, 0x86, 0x5B, 0xCF, 0x65, 0xE6, 0x2D, 0xA8, 0x02,
+                    0x1B, 0x60, 0x25, 0xAD, 0xAE, 0xB0, 0xB9, 0xF6, 0x1C, 0x46, 0x61, 0x69, 0x34, 0x40, 0x7E, 0x0F,
+                    0x55, 0x47, 0xA3, 0x23, 0xDD, 0x51, 0xAF, 0x3A, 0xC3, 0x5C, 0xF9, 0xCE, 0xBA, 0xC5, 0xEA, 0x26,
+                    0x2C, 0x53, 0x0D, 0x6E, 0x85, 0x28, 0x84, 0x09, 0xD3, 0xDF, 0xCD, 0xF4, 0x41, 0x81, 0x4D, 0x52,
+                    0x6A, 0xDC, 0x37, 0xC8, 0x6C, 0xC1, 0xAB, 0xFA, 0x24, 0xE1, 0x7B, 0x08, 0x0C, 0xBD, 0xB1, 0x4A,
+                    0x78, 0x88, 0x95, 0x8B, 0xE3, 0x63, 0xE8, 0x6D, 0xE9, 0xCB, 0xD5, 0xFE, 0x3B, 0x00, 0x1D, 0x39,
+                    0xF2, 0xEF, 0xB7, 0x0E, 0x66, 0x58, 0xD0, 0xE4, 0xA6, 0x77, 0x72, 0xF8, 0xEB, 0x75, 0x4B, 0x0A,
+                    0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
+    };
+
+    static String digest(byte[] message, int from, int length) {
+        int[] m = new int[19];
+        int[] x = new int[48];
+        int[] c = new int[16];
+
+        int t;
+        int loop = 1;
+        int start = 0;
+        int bytes = 0;
+
+        for (int i = 0; i < 16; ++i) {
+            x[i] = c[i] = 0;
+        }
+
+        int last = 0;
+        int index = from;
+        m[16] = m[17] = m[18] = 0;
+        while (loop == 1) {
+            m[0] = m[16];
+            m[1] = m[17];
+            m[2] = m[18];
+            for (int i = 3; i < 16; i++) {
+                m[i] = 0;
+            }
+            int i;
+            for (i = start; index < length && i < 16; ++index) {
+                int code = message[index];
+                if (code < 0) {
+                    code += 256;
+                }
+                m[i++] = code;
+            }
+            bytes += i - start;
+            start = i - 16;
+
+            if (index == length && i < 16) {
+                loop = 2;
+                t = 16 - (bytes & 15);
+                for (; i < 16; ++i) {
+                    m[i] = t;
+                }
+            }
+
+            for (i = 0; i < 16; ++i) {
+                c[i] ^= S[m[i] ^ last];
+                last = c[i];
+            }
+
+            for (i = 0; i < loop; ++i) {
+                int[] mOrC = i == 0 ? m : c;
+
+                x[16] = mOrC[0];
+                x[32] = x[16] ^ x[0];
+                x[17] = mOrC[1];
+                x[33] = x[17] ^ x[1];
+                x[18] = mOrC[2];
+                x[34] = x[18] ^ x[2];
+                x[19] = mOrC[3];
+                x[35] = x[19] ^ x[3];
+                x[20] = mOrC[4];
+                x[36] = x[20] ^ x[4];
+                x[21] = mOrC[5];
+                x[37] = x[21] ^ x[5];
+                x[22] = mOrC[6];
+                x[38] = x[22] ^ x[6];
+                x[23] = mOrC[7];
+                x[39] = x[23] ^ x[7];
+                x[24] = mOrC[8];
+                x[40] = x[24] ^ x[8];
+                x[25] = mOrC[9];
+                x[41] = x[25] ^ x[9];
+                x[26] = mOrC[10];
+                x[42] = x[26] ^ x[10];
+                x[27] = mOrC[11];
+                x[43] = x[27] ^ x[11];
+                x[28] = mOrC[12];
+                x[44] = x[28] ^ x[12];
+                x[29] = mOrC[13];
+                x[45] = x[29] ^ x[13];
+                x[30] = mOrC[14];
+                x[46] = x[30] ^ x[14];
+                x[31] = mOrC[15];
+                x[47] = x[31] ^ x[15];
+
+                t = 0;
+                for (int j = 0; j < 18; ++j) {
+                    for (int k = 0; k < 48; ++k) {
+                        x[k] = t = x[k] ^ S[t];
+                    }
+                    t = (t + j) & 0xFF;
+                }
+            }
+        }
+
+        StringBuilder result = new StringBuilder(32);
+        for (int i = 0; i < 16; ++i) {
+            final String hex = Integer.toHexString(x[i]);
+            if (result.length() == 0) {
+                if (hex.equals("0")) {
+                    continue;
+                }
+            } else {
+                if (hex.length() == 1) {
+                    result.append("0");
+                }
+            }
+            result.append(hex);
+        }
+        return result.toString();
     }
 
     /**
@@ -730,7 +868,6 @@ public abstract class Source {
         private final Object origin;
         private URI uri;
         private String name;
-        private String path;
         private String mime;
         private String language;
         private CharSequence content;
@@ -753,11 +890,6 @@ public abstract class Source {
             Objects.requireNonNull(newName);
             this.name = newName;
             return (Builder<E1, E2, RuntimeException>) this;
-        }
-
-        Builder<E1, E2, E3> path(String p) {
-            this.path = p;
-            return this;
         }
 
         /**
@@ -881,11 +1013,6 @@ public abstract class Source {
             return (Builder<RuntimeException, E2, E3>) this;
         }
 
-        Builder<E1, E2, E3> content(byte[] arr, int offset, int length, Charset encoding) {
-            this.content = new String(arr, offset, length, encoding);
-            return this;
-        }
-
         /**
          * Uses configuration of this builder to create new {@link Source} object. The return value
          * is parametrized to ensure your code doesn't compile until you specify a MIME type:
@@ -908,71 +1035,62 @@ public abstract class Source {
          * @since 0.15
          */
         public Source build() throws E1, E2, E3 {
-            Content holder;
             try {
+                String useName = this.name;
+                CharSequence useContent = this.content;
+                String usePath = null;
+                URI useUri = this.uri;
+                URL useUrl = null;
+                String useMimeType = this.mime;
+
                 if (origin instanceof File) {
-                    holder = buildFile(content == null);
+                    final File file = (File) origin;
+                    File absoluteFile = file.getCanonicalFile();
+                    useName = useName == null ? file.getName() : useName;
+                    useContent = useContent == null ? read(file) : useContent;
+                    usePath = usePath == null ? absoluteFile.getPath() : usePath;
+                    useUri = useUri == null ? absoluteFile.toURI() : useUri;
+                    useMimeType = useMimeType == null ? findMimeType(absoluteFile.toPath()) : useMimeType;
                 } else if (origin instanceof Reader) {
-                    holder = buildReader();
+                    final Reader r = (Reader) origin;
+                    useContent = useContent == null ? read(r) : useContent;
                 } else if (origin instanceof URL) {
-                    holder = buildURL();
+                    final URL url = (URL) origin;
+                    String urlPath = url.getPath();
+                    int lastIndex = urlPath.lastIndexOf('/');
+                    useName = useName == null && lastIndex != -1 ? url.getPath().substring(lastIndex + 1) : useName;
+                    useContent = useContent == null ? read(new InputStreamReader(url.openStream())) : useContent;
+                    usePath = usePath == null ? url.toExternalForm() : usePath;
+                    if (useUri == null) {
+                        try {
+                            useUri = url.toURI();
+                        } catch (URISyntaxException ex) {
+                            throw new IOException("Bad URL: " + url, ex);
+                        }
+                    }
+                    useUrl = url;
+                    useMimeType = useMimeType == null ? findMimeType(url) : useMimeType;
                 } else {
-                    holder = buildString();
+                    assert origin instanceof CharSequence;
+                    useContent = useContent == null ? (CharSequence) this.origin : useContent;
                 }
-                String type = this.mime == null ? holder.findMimeType() : this.mime;
-                if (type == null) {
+                useContent = enforceCharSequenceContract(useContent);
+
+                // make sure origin is not consumed again if builder is used twice
+                this.content = useContent;
+
+                if (useMimeType == null) {
                     throw raise(RuntimeException.class, new MissingMIMETypeException());
                 }
-                if (content != null) {
-                    holder.code = content;
-                }
-                SourceImpl ret = new SourceImpl(holder, type, language, uri, name, internal, interactive);
-                if (ret.getName() == null) {
+                if (useName == null) {
                     throw raise(RuntimeException.class, new MissingNameException());
                 }
-                return ret;
+
+                SourceImpl.Key key = new SourceImpl.Key(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive);
+                return SOURCES.intern(key);
             } catch (IOException ex) {
                 throw raise(RuntimeException.class, ex);
             }
-        }
-
-        private Content buildFile(boolean read) throws IOException {
-            final File file = (File) origin;
-            File absoluteFile = file.getCanonicalFile();
-            FileSourceImpl fileSource = new FileSourceImpl(
-                            read ? Source.read(file) : null,
-                            absoluteFile,
-                            name == null ? file.getName() : name,
-                            path);
-            return fileSource;
-        }
-
-        private Content buildReader() throws IOException {
-            final Reader r = (Reader) origin;
-            if (content == null) {
-                content = read(r);
-            }
-            r.close();
-            LiteralSourceImpl ret = new LiteralSourceImpl(
-                            name, content);
-            return ret;
-        }
-
-        private Content buildURL() throws IOException {
-            final URL url = (URL) origin;
-            String computedName = url.getPath().substring(url.getPath().lastIndexOf('/') + 1);
-            URLSourceImpl ret = new URLSourceImpl(url, content, computedName);
-            return ret;
-        }
-
-        private Content buildString() {
-            final CharSequence r = (CharSequence) origin;
-            if (content == null) {
-                content = r;
-            }
-            LiteralSourceImpl ret = new LiteralSourceImpl(
-                            name, content);
-            return ret;
         }
     }
 }

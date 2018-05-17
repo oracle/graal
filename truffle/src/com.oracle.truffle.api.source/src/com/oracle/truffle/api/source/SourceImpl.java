@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,37 +25,140 @@
 package com.oracle.truffle.api.source;
 
 import java.net.URI;
+import java.net.URL;
+import java.util.Objects;
 
-import com.oracle.truffle.api.source.impl.SourceAccessor;
+final class SourceImpl extends Source {
 
-final class SourceImpl extends Source implements Cloneable {
+    private final Key key;
 
-    SourceImpl(Content content) {
-        this(content, null, null, null, null, false, false);
-    }
-
-    SourceImpl(Content content, String mimeType, String language, URI uri, String name, boolean internal, boolean interactive) {
-        super(content, mimeType, language, uri, name, internal, interactive);
-    }
-
-    @Override
-    protected SourceImpl clone() throws CloneNotSupportedException {
-        return (SourceImpl) super.clone();
+    private SourceImpl(Key key) {
+        this.key = key;
     }
 
     @Override
-    public boolean equals(Object obj) {
-        SourceAccessor.neverPartOfCompilation("do not call Source.equals from compiled code");
-        if (obj instanceof Source) {
-            Source other = (Source) obj;
-            return content().equals(other.content()) && equalAttributes(other);
+    public CharSequence getCharacters() {
+        return key.characters;
+    }
+
+    @Override
+    public String getName() {
+        return key.name;
+    }
+
+    @Override
+    public String getPath() {
+        return key.path;
+    }
+
+    @Override
+    public boolean isInternal() {
+        return key.internal;
+    }
+
+    @Override
+    public boolean isInteractive() {
+        return key.interactive;
+    }
+
+    @Override
+    public URL getURL() {
+        return key.url;
+    }
+
+    @Override
+    public URI getOriginalURI() {
+        return key.uri;
+    }
+
+    @Override
+    public String getMimeType() {
+        return key.mimeType;
+    }
+
+    @Override
+    public String getLanguage() {
+        return key.language;
+    }
+
+    Key toKey() {
+        return key;
+    }
+
+    static final class Key {
+
+        final CharSequence characters;
+        final URI uri;
+        final URL url;
+        final String name;
+        final String mimeType;
+        final String language;
+        final String path;
+        final boolean internal;
+        final boolean interactive;
+
+        Key(CharSequence characters, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive) {
+            this.characters = characters;
+            this.mimeType = mimeType;
+            this.language = languageId;
+            this.name = name;
+            this.path = path;
+            this.internal = internal;
+            this.interactive = interactive;
+            this.url = url;
+            this.uri = uri;
         }
-        return false;
-    }
 
-    @Override
-    public int hashCode() {
-        return content().hashCode();
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((characters == null) ? 0 : characters.hashCode());
+            result = prime * result + (interactive ? 1231 : 1237);
+            result = prime * result + (internal ? 1231 : 1237);
+            result = prime * result + ((language == null) ? 0 : language.hashCode());
+            result = prime * result + ((mimeType == null) ? 0 : mimeType.hashCode());
+            result = prime * result + ((name == null) ? 0 : name.hashCode());
+            result = prime * result + ((path == null) ? 0 : path.hashCode());
+            result = prime * result + ((uri == null) ? 0 : uri.hashCode());
+            result = prime * result + ((url == null) ? 0 : url.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (getClass() != obj.getClass()) {
+                return false;
+            }
+            assert characters != null;
+            Key other = (Key) obj;
+            return compareCharacters(other) &&
+                            Objects.equals(language, other.language) && //
+                            Objects.equals(mimeType, other.mimeType) && //
+                            Objects.equals(name, other.name) && //
+                            Objects.equals(path, other.path) && //
+                            Objects.equals(uri, other.uri) && //
+                            Objects.equals(url, other.url) && //
+                            interactive == other.interactive && //
+                            internal == other.internal;
+        }
+
+        private boolean compareCharacters(Key other) {
+            if (characters == other.characters) {
+                return true;
+            } else if (characters == null) {
+                return false;
+            } else {
+                assert other.characters != null;
+                return Objects.equals(characters.toString(), other.characters.toString());
+            }
+        }
+
+        SourceImpl toSource() {
+            return new SourceImpl(this);
+        }
     }
 
 }

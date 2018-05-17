@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,69 +24,41 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.net.URI;
-import java.net.URL;
-import java.util.Objects;
+/**
+ * Wrapper to enforce CharSequence contract is not violated by any language.
+ */
+class CharSequenceWrapper implements CharSequence {
 
-final class LiteralSourceImpl extends Content implements Content.CreateURI {
+    private final CharSequence delegate;
 
-    private final String name;
+    CharSequenceWrapper(CharSequence delegate) {
+        this.delegate = delegate;
+    }
 
-    LiteralSourceImpl(String name, CharSequence code) {
-        this.name = name;
-        this.code = enforceCharSequenceContract(code);
+    public int length() {
+        return delegate.length();
+    }
+
+    public char charAt(int index) {
+        return delegate.charAt(index);
+    }
+
+    public CharSequence subSequence(int start, int end) {
+        return delegate.subSequence(start, end);
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public CharSequence getCharacters() {
-        return code;
-    }
-
-    @Override
-    public String getPath() {
-        return null;
-    }
-
-    @Override
-    public URL getURL() {
-        return null;
-    }
-
-    @Override
-    URI getURI() {
-        return createURIOnce(this);
-    }
-
-    @Override
-    public URI createURI() {
-        return getNamedURI(name, code.toString().getBytes());
-    }
-
-    @Override
-    public Reader getReader() {
-        return new CharSequenceReader(code);
+    public boolean equals(Object obj) {
+        return delegate.equals(obj);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, code);
+        return delegate.hashCode();
     }
 
     @Override
-    String findMimeType() throws IOException {
-        return null;
+    public String toString() {
+        return delegate.toString();
     }
-
-    @Override
-    Object getHashKey() {
-        return code;
-    }
-
 }

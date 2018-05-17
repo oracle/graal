@@ -24,18 +24,17 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.io.IOException;
-import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
 
-final class SubSourceImpl extends Content {
+final class SubSourceImpl extends Source {
 
     private final Source base;
     private final int baseIndex;
     private final int subLength;
 
     static SubSourceImpl create(Source base, int baseIndex, int length) {
+        assert base != null;
         if (baseIndex < 0 || length < 0 || baseIndex + length > base.getLength()) {
             throw new IllegalArgumentException("text positions out of range");
         }
@@ -46,6 +45,25 @@ final class SubSourceImpl extends Content {
         this.base = base;
         this.baseIndex = baseIndex;
         this.subLength = length;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof SubSourceImpl)) {
+            return false;
+        }
+        SubSourceImpl other = (SubSourceImpl) obj;
+        return base.equals(other.base) && baseIndex == other.baseIndex && subLength == other.subLength;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + base.hashCode();
+        result = prime * result + baseIndex;
+        result = prime * result + subLength;
+        return result;
     }
 
     @Override
@@ -60,18 +78,12 @@ final class SubSourceImpl extends Content {
 
     @Override
     public URL getURL() {
-        return null;
+        return base.getURL();
     }
 
     @Override
-    URI getURI() {
+    public URI getOriginalURI() {
         return base.getURI();
-    }
-
-    @Override
-    public Reader getReader() {
-        assert false;
-        return null;
     }
 
     @Override
@@ -80,13 +92,23 @@ final class SubSourceImpl extends Content {
     }
 
     @Override
-    String findMimeType() throws IOException {
+    public boolean isInternal() {
+        return base.isInternal();
+    }
+
+    @Override
+    public boolean isInteractive() {
+        return base.isInteractive();
+    }
+
+    @Override
+    public String getMimeType() {
         return base.getMimeType();
     }
 
     @Override
-    Object getHashKey() {
-        return base;
+    public String getLanguage() {
+        return base.getLanguage();
     }
 
 }
