@@ -224,8 +224,8 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
         return register(assertion);
     }
 
-    public LookBehindAssertion createLookBehindAssertion() {
-        final LookBehindAssertion assertion = new LookBehindAssertion();
+    public LookBehindAssertion createLookBehindAssertion(boolean negated) {
+        final LookBehindAssertion assertion = new LookBehindAssertion(negated);
         createEndPoint(assertion);
         return register(assertion);
     }
@@ -279,6 +279,9 @@ public class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible {
     public LookBehindAssertion register(LookBehindAssertion lookBehindAssertion) {
         nodeCount.inc();
         properties.setLookBehindAssertions();
+        if (lookBehindAssertion.isNegated()) {
+            properties.setNegativeLookBehindAssertions();
+        }
         lookBehinds.add(lookBehindAssertion);
         return lookBehindAssertion;
     }

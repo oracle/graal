@@ -42,7 +42,7 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     private static final byte FLAG_DOLLAR = 1 << 3;
     protected static final byte FLAG_GROUP_LOOP = 1 << 4;
     protected static final byte FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 5;
-    protected static final byte FLAG_LOOK_AHEAD_NEGATED = 1 << 6;
+    protected static final byte FLAG_LOOK_AROUND_NEGATED = 1 << 6;
     protected static final byte FLAG_EMPTY_GUARD = (byte) (1 << 7);
 
     private short id = -1;
