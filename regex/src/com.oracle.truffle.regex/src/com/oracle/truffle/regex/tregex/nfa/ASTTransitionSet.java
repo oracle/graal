@@ -26,6 +26,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -33,7 +34,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-public class ASTTransitionSet implements Iterable<ASTTransition>, JsonConvertible {
+public class ASTTransitionSet implements TransitionSet, Iterable<ASTTransition> {
 
     private final ArrayList<ASTTransition> transitions;
 
@@ -46,19 +47,21 @@ public class ASTTransitionSet implements Iterable<ASTTransition>, JsonConvertibl
         this.transitions = transitions;
     }
 
-    public ASTTransitionSet createMerged(ASTTransitionSet other) {
+    @Override
+    public ASTTransitionSet createMerged(TransitionSet other) {
         ArrayList<ASTTransition> merged = new ArrayList<>(transitions);
         ASTTransitionSet ret = new ASTTransitionSet(merged);
         ret.merge(other);
         return ret;
     }
 
-    public void mergeInPlace(TransitionBuilder<ASTTransitionSet> other) {
-        merge(other.getTransitionSet());
+    @Override
+    public void addAll(TransitionSet other) {
+        merge(other);
     }
 
-    private void merge(ASTTransitionSet other) {
-        for (ASTTransition t : other) {
+    private void merge(TransitionSet other) {
+        for (ASTTransition t : (ASTTransitionSet) other) {
             if (!transitions.contains(t)) {
                 transitions.add(t);
             }

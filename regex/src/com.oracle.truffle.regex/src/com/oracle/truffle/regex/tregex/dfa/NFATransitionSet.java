@@ -25,6 +25,7 @@
 package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -48,7 +49,7 @@ import java.util.stream.StreamSupport;
  * @see DFAGenerator
  * @see DFAStateTransitionBuilder
  */
-public class NFATransitionSet implements Iterable<NFAStateTransition>, JsonConvertible {
+public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransition> {
 
     private static final byte FLAG_FORWARD = 1;
     private static final byte FLAG_LEADS_TO_FINAL_STATE = 1 << 1;
@@ -86,8 +87,9 @@ public class NFATransitionSet implements Iterable<NFAStateTransition>, JsonConve
         return transitionSet;
     }
 
-    public NFATransitionSet createMerged(NFATransitionSet other) {
-        NFATransitionSet merged = new NFATransitionSet(this, mergedInitialCapacity(other));
+    @Override
+    public NFATransitionSet createMerged(TransitionSet other) {
+        NFATransitionSet merged = new NFATransitionSet(this, mergedInitialCapacity((NFATransitionSet) other));
         merged.addAll(other);
         return merged;
     }
@@ -206,10 +208,12 @@ public class NFATransitionSet implements Iterable<NFAStateTransition>, JsonConve
      *
      * @see #add(NFAStateTransition)
      */
-    public void addAll(NFATransitionSet other) {
-        ensureCapacity(size + other.size);
-        for (int i = 0; i < other.size; i++) {
-            doAdd(other.getTransition(i));
+    @Override
+    public void addAll(TransitionSet other) {
+        NFATransitionSet o = (NFATransitionSet) other;
+        ensureCapacity(size + o.size);
+        for (int i = 0; i < o.size; i++) {
+            doAdd(o.getTransition(i));
         }
     }
 

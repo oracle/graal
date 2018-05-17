@@ -34,46 +34,21 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
 
-    private final NFATransitionSet transitions;
-    private MatcherBuilder matcherBuilder;
-
     private int id = -1;
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
-    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitions) {
-        this.transitions = transitions;
-        this.matcherBuilder = matcherBuilder;
+    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitionSet) {
+        super(transitionSet, matcherBuilder);
     }
 
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(matcherBuilder, transitions);
-    }
-
-    @Override
-    public MatcherBuilder getMatcherBuilder() {
-        return matcherBuilder;
-    }
-
-    @Override
-    public void setMatcherBuilder(MatcherBuilder matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
+        return new DFAStateTransitionBuilder(getMatcherBuilder(), getTransitionSet());
     }
 
     @Override
     public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        return new DFAStateTransitionBuilder(mergedMatcher, transitions.createMerged(other.getTransitionSet()));
-    }
-
-    @Override
-    public void mergeInPlace(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        transitions.addAll(other.getTransitionSet());
-        matcherBuilder = mergedMatcher;
-    }
-
-    @Override
-    public NFATransitionSet getTransitionSet() {
-        return transitions;
+        return new DFAStateTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()));
     }
 
     public int getId() {

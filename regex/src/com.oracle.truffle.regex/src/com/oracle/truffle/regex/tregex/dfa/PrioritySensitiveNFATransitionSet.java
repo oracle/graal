@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -66,9 +67,8 @@ public final class PrioritySensitiveNFATransitionSet extends NFATransitionSet {
     }
 
     @Override
-    public PrioritySensitiveNFATransitionSet createMerged(NFATransitionSet other) {
-        assert other instanceof PrioritySensitiveNFATransitionSet : "do not mix NFATransitionSet and PrioritySensitiveTransitionSet!";
-        PrioritySensitiveNFATransitionSet merged = new PrioritySensitiveNFATransitionSet(this, mergedInitialCapacity(other));
+    public PrioritySensitiveNFATransitionSet createMerged(TransitionSet other) {
+        PrioritySensitiveNFATransitionSet merged = new PrioritySensitiveNFATransitionSet(this, mergedInitialCapacity((PrioritySensitiveNFATransitionSet) other));
         merged.addAll(other);
         return merged;
     }
@@ -97,17 +97,17 @@ public final class PrioritySensitiveNFATransitionSet extends NFATransitionSet {
      * @see #add(NFAStateTransition)
      */
     @Override
-    public void addAll(NFATransitionSet other) {
-        assert other instanceof PrioritySensitiveNFATransitionSet : "do not mix NFATransitionSet and PrioritySensitiveTransitionSet!";
+    public void addAll(TransitionSet other) {
+        PrioritySensitiveNFATransitionSet o = (PrioritySensitiveNFATransitionSet) other;
         if (addNotAllowed()) {
             return;
         }
-        ensureCapacity(size() + other.size());
-        for (int i = 0; i < other.size(); i++) {
+        ensureCapacity(size() + o.size());
+        for (int i = 0; i < o.size(); i++) {
             if (addNotAllowed()) {
                 return;
             }
-            doAdd(other.getTransition(i));
+            doAdd(o.getTransition(i));
         }
     }
 
