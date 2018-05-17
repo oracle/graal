@@ -1116,7 +1116,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 ValueNode array = loadIndexedNode.array();
                 ValueNode index = loadIndexedNode.index();
                 for (NodePlugin nodePlugin : nodePlugins) {
-                    if (nodePlugin.handleLoadIndexed(graphBuilderContext, array, index, loadIndexedNode.elementKind())) {
+                    if (nodePlugin.handleLoadIndexed(graphBuilderContext, array, index, loadIndexedNode.getBoundsCheck(), loadIndexedNode.elementKind())) {
                         replacedNode = graphBuilderContext.pushedNode;
                         break;
                     }
@@ -1128,7 +1128,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 ValueNode index = storeIndexedNode.index();
                 ValueNode value = storeIndexedNode.value();
                 for (NodePlugin nodePlugin : nodePlugins) {
-                    if (nodePlugin.handleStoreIndexed(graphBuilderContext, array, index, storeIndexedNode.elementKind(), value)) {
+                    if (nodePlugin.handleStoreIndexed(graphBuilderContext, array, index, storeIndexedNode.getBoundsCheck(), storeIndexedNode.getStoreCheck(), storeIndexedNode.elementKind(), value)) {
                         replacedNode = graphBuilderContext.pushedNode;
                         break;
                     }

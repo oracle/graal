@@ -84,6 +84,7 @@ import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -199,6 +200,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerArrayLengthNode((ArrayLengthNode) n, tool);
             } else if (n instanceof LoadHubNode) {
                 lowerLoadHubNode((LoadHubNode) n, tool);
+            } else if (n instanceof LoadArrayComponentHubNode) {
+                lowerLoadArrayComponentHubNode((LoadArrayComponentHubNode) n);
             } else if (n instanceof MonitorEnterNode) {
                 lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
@@ -454,7 +457,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         JavaKind elementKind = storeIndexed.elementKind();
 
         LogicNode condition = null;
-        if (elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
+        if (storeIndexed.getStoreCheck() == null && elementKind == JavaKind.Object && !StampTool.isPointerAlwaysNull(value)) {
             /* Array store check. */
             TypeReference arrayType = StampTool.typeReferenceOrNull(array);
             if (arrayType != null && arrayType.isExact()) {
@@ -517,6 +520,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         ValueNode hub = createReadHub(graph, loadHub.getValue(), tool);
         loadHub.replaceAtUsagesAndDelete(hub);
+    }
+
+    protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
+        StructuredGraph graph = loadHub.graph();
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), loadHub);
+        graph.replaceFixed(loadHub, hub);
     }
 
     protected void lowerMonitorEnterNode(MonitorEnterNode monitorEnter, LoweringTool tool, StructuredGraph graph) {
@@ -1060,6 +1069,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
 
     protected GuardingNode getBoundsCheck(AccessIndexedNode n, ValueNode array, LoweringTool tool) {
+        if (n.getBoundsCheck() != null) {
+            return n.getBoundsCheck();
+        }
+
         StructuredGraph graph = n.graph();
         ValueNode arrayLength = readArrayLength(array, tool.getConstantReflection());
         if (arrayLength == null) {

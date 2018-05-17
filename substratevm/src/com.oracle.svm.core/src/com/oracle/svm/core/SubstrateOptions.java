@@ -194,13 +194,13 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
-    public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(15);
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
 
     @Option(help = "Maximum number of invokes in a method so that it is considered trivial (for testing only).")//
     public static final HostedOptionKey<Integer> MaxInvokesInTrivialMethod = new HostedOptionKey<>(1);
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
-    public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(30);
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     public static FoldedPredicate makeFilter(String definedFilter) {
         if (definedFilter != null) {

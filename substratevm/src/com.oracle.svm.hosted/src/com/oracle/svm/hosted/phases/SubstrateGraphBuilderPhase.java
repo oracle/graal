@@ -76,13 +76,13 @@ public class SubstrateGraphBuilderPhase extends SharedGraphBuilderPhase {
 
     @Override
     protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        return new SubstrateBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+        return new SubstrateBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext, false);
     }
 
     public static class SubstrateBytecodeParser extends SharedBytecodeParser {
         public SubstrateBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges);
         }
 
         @Override

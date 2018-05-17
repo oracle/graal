@@ -1053,7 +1053,7 @@ public class GraphUtil {
         } else {
             /* The source array is not virtualized, emit index loads. */
             for (int i = 0; i < readLength; i++) {
-                LoadIndexedNode load = new LoadIndexedNode(null, sourceAlias, ConstantNode.forInt(i + fromInt, graph), elementKind);
+                LoadIndexedNode load = new LoadIndexedNode(null, sourceAlias, ConstantNode.forInt(i + fromInt, graph), null, elementKind);
                 tool.addNode(load);
                 newEntryState[i] = load;
             }

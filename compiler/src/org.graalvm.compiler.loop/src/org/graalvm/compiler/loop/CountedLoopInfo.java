@@ -118,7 +118,7 @@ public class CountedLoopInfo {
         }
         // round-away-from-zero divison: (range + stride -/+ 1) / stride
         ValueNode denominator = add(graph, range, sub(graph, absStride, one));
-        ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride);
+        ValueNode div = unsignedDivBefore(graph, loop.entryPoint(), denominator, absStride, null);
 
         if (assumePositive) {
             return div;

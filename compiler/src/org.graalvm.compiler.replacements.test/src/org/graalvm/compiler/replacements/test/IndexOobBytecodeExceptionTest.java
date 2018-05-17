@@ -33,6 +33,7 @@ import org.junit.runners.Parameterized.Parameters;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -57,7 +58,7 @@ public class IndexOobBytecodeExceptionTest extends BytecodeExceptionTest {
         invocationPlugins.register(new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode idx, ValueNode length) {
-                return throwBytecodeException(b, ArrayIndexOutOfBoundsException.class, idx, length);
+                return throwBytecodeException(b, BytecodeExceptionKind.OUT_OF_BOUNDS, idx, length);
             }
         }, Exceptions.class, "throwOutOfBounds", int.class, int.class);
         super.registerInvocationPlugins(invocationPlugins);

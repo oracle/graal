@@ -461,11 +461,11 @@ public abstract class JavaThreads {
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
+            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(false);
             JavaStackWalker.walkCurrentThread(readCallerStackPointer(), readReturnAddress(), stackTraceBuilder);
             return stackTraceBuilder.getTrace();
         } else {
-            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
+            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(false);
             JavaStackWalker.walkThread(thread, stackTraceBuilder);
             return stackTraceBuilder.getTrace();
         }
@@ -843,7 +843,7 @@ final class Target_java_lang_Thread {
     private StackTraceElement[] getStackTrace() {
         if (JavaThreads.fromTarget(this) == Thread.currentThread()) {
             /* We can walk our own stack without a VMOperation. */
-            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
+            StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(false);
             JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress(), stackTraceBuilder);
             return stackTraceBuilder.getTrace();
 
