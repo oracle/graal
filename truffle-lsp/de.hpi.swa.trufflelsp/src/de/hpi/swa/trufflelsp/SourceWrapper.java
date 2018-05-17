@@ -9,6 +9,7 @@ import com.oracle.truffle.api.source.Source;
 public class SourceWrapper {
     private List<Node> nodes = new ArrayList<>();
     private Source source;
+    private boolean parsingSuccessful = false;
 
     public SourceWrapper(Source source) {
         this.setSource(source);
@@ -28,5 +29,13 @@ public class SourceWrapper {
 
     public void setSource(Source source) {
         this.source = source;
+    }
+
+    public boolean isParsingSuccessful() {
+        return parsingSuccessful;
+    }
+
+    public void setParsingSuccessful(boolean parsingSuccessful) {
+        this.parsingSuccessful = parsingSuccessful;
     }
 }

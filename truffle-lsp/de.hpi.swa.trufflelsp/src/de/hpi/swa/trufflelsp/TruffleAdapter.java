@@ -150,7 +150,10 @@ public class TruffleAdapter implements ContextsListener {
             System.out.println("\nParsing " + langId + " " + uri);
             Source source = Source.newBuilder(text).name(uri).language(langId).build();
             try {
-                return env.parse(source);
+                CallTarget callTarget = env.parse(source);
+                SourceWrapper sourceWrapper = this.sourceProvider.getLoadedSource(langId, uri);
+                sourceWrapper.setParsingSuccessful(true);
+                return callTarget;
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
@@ -248,11 +251,13 @@ public class TruffleAdapter implements ContextsListener {
         String langId = this.uri2LangId.get(uri);
         boolean includeGlobalsAndLocalsInCompletion = true;
 
+        boolean sourceWasFixed = false;
         int character = originalCharacter;
         SourceWrapper sourceWrapper = this.sourceProvider.getLoadedSource(langId, uri);
-        if (sourceWrapper == null) {
+        if (sourceWrapper == null || !sourceWrapper.isParsingSuccessful()) {
             // parsing failed, now try to fix simple syntax errors
             String text = this.uri2Text.get(uri);
+            System.out.println("No source wrapper found, fixing source.");
             SourceFix sourceFix = fixSourceAtPosition(text, langId, uri, line, character);
             try {
 // String suffix = "[FIX]";
@@ -261,6 +266,7 @@ public class TruffleAdapter implements ContextsListener {
                 sourceWrapper = this.sourceProvider.getLoadedSource(langId, uri + suffix);
                 character = sourceFix.character;
                 includeGlobalsAndLocalsInCompletion = !sourceFix.isObjectPropertyCompletion;
+                sourceWasFixed = true;
 // exec(uri); //TODO(ds)
             } catch (IllegalStateException e) {
                 this.err.println(e.getLocalizedMessage());
@@ -281,6 +287,7 @@ public class TruffleAdapter implements ContextsListener {
 
                 Node nodeForLocalScoping;
                 String debugDetails = "";
+                boolean isCaretDirectlyBehindContainsNode = false;
                 if (containsSection == null) {
                     // We are not in a local scope, so only top scope objects possible
                     nodeForLocalScoping = null;
@@ -289,6 +296,7 @@ public class TruffleAdapter implements ContextsListener {
                     // scope objects
                     nodeForLocalScoping = (Node) nearestSections.getContainsNode();
                     debugDetails += "-containsEnd-";
+                    isCaretDirectlyBehindContainsNode = true;
                 } else if (nodeIsInChildHirarchyOf((Node) nearestSections.getNextNode(), (Node) nearestSections.getContainsNode())) {
                     // Great, the nextNode is a (indirect) sibling of our containing node, so it is in the same scope as
                     // we are and we can use it to get local scope objects
@@ -309,19 +317,22 @@ public class TruffleAdapter implements ContextsListener {
                 if (nodeForLocalScoping instanceof InstrumentableNode) {
                     InstrumentableNode instrumentableNode = (InstrumentableNode) nodeForLocalScoping;
                     if (instrumentableNode.isInstrumentable()) {
-                        VirtualFrame frame = null;
-                        MaterializedFrame materializedFrame = this.section2frame.get(nodeForLocalScoping.getSourceSection());
-                        if (materializedFrame != null) {
-                            frame = materializedFrame;
-                        }
-                        boolean arePojectPropertiesPresent = fillCompletionsWithObjectProperties(completions, frame, nodeForLocalScoping, langId);
-                        if (arePojectPropertiesPresent) {
-                            includeGlobalsAndLocalsInCompletion = false;
-                        } else if (materializedFrame == null) {
-                            // No frame is available for the current source section and no properties could be derived
-                            this.diagnosticsPublisher.addDiagnostics(
-                                            Arrays.asList(new Diagnostic(sourceSectionToRange(nodeForLocalScoping.getSourceSection()), "No types harvested for this source section yet.",
-                                                            DiagnosticSeverity.Information, "Truffle")));
+                        VirtualFrame frame = this.section2frame.get(nodeForLocalScoping.getSourceSection());
+
+                        if (isCaretDirectlyBehindContainsNode) {
+                            // Here we cannot use any nodeForLocalScoping instance, because this can also be the nextNode or
+                            // previousNode. We need the node directly before our caret.
+                            boolean arePojectPropertiesPresent = fillCompletionsWithObjectProperties(completions, frame, nodeForLocalScoping, langId);
+                            if (arePojectPropertiesPresent) {
+                                // If there are object properties available for code completion, then we do not want to display any
+                                // globals or local variables
+                                includeGlobalsAndLocalsInCompletion = false;
+                            } else if (frame == null) {
+                                // No frame is available for the current source section and no properties could be derived
+                                this.diagnosticsPublisher.addDiagnostics(
+                                                Arrays.asList(new Diagnostic(sourceSectionToRange(nodeForLocalScoping.getSourceSection()), "No types harvested for this source section yet.",
+                                                                DiagnosticSeverity.Information, "Truffle")));
+                            }
                         }
 
                         if (includeGlobalsAndLocalsInCompletion) {
@@ -338,6 +349,14 @@ public class TruffleAdapter implements ContextsListener {
         if (includeGlobalsAndLocalsInCompletion) {
             fillCompletionsWithGlobals(uri, completions, langId);
         }
+
+        if (sourceWasFixed) {
+            // If we fixed a source, than we have to remove the wrapper object from our cache here, because
+            // without the fix the code would not have been parsed correctly. If we keep it in the cache, it
+            // looks like the code was parsed correctly, because a source wrapper exists for the provided URI.
+            this.sourceProvider.remove(langId, uri);
+        }
+
         return completions;
     }
 
@@ -424,16 +443,16 @@ public class TruffleAdapter implements ContextsListener {
         return sourceFix != null ? sourceFix : new SourceFix(text, character, false);
     }
 
-    private boolean fillCompletionsWithObjectProperties(CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId) {
+    private boolean fillCompletionsWithObjectProperties(CompletionList completions, VirtualFrame frame, Node nodeBeforeCaret, String langId) {
         return doWithContext(() -> {
             boolean areObjectPropertiesPresent = false;
             if (frame != null) {
                 ExecutableNode executableNode = this.env.parseInline(
-                                Source.newBuilder(nodeForLocalScoping.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy inline eval").build(),
-                                nodeForLocalScoping,
+                                Source.newBuilder(nodeBeforeCaret.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy inline eval").build(),
+                                nodeBeforeCaret,
                                 frame.materialize());
                 if (executableNode != null) {
-                    NodeAccessHelper.insertNode(nodeForLocalScoping, executableNode);
+                    NodeAccessHelper.insertNode(nodeBeforeCaret, executableNode);
                     try {
                         Object object = executableNode.execute(frame);
                         Object metaObject = getMetaObject(langId, object);
@@ -447,7 +466,7 @@ public class TruffleAdapter implements ContextsListener {
                     // TODO(ds) here we get sometimes the wrong nodeForLocalScoping, because for example in Python we
                     // use the node before the caret for local scoping instead of the containing node which would be
                     // useful here
-                    CallTarget callTarget = this.env.parse(Source.newBuilder(nodeForLocalScoping.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy eval").build());
+                    CallTarget callTarget = this.env.parse(Source.newBuilder(nodeBeforeCaret.getEncapsulatingSourceSection().getCharacters()).language(langId).name("dummy eval").build());
                     Object object = callTarget.call();
                     Object metaObject = getMetaObject(langId, object);
                     areObjectPropertiesPresent = fillCompletionsFromTruffleObject(completions, langId, object, metaObject);
@@ -455,7 +474,7 @@ public class TruffleAdapter implements ContextsListener {
                 }
             }
 
-            areObjectPropertiesPresent = languageSpecificFillCompletions(this, completions, frame, nodeForLocalScoping, langId, areObjectPropertiesPresent);
+            areObjectPropertiesPresent = languageSpecificFillCompletions(this, completions, frame, nodeBeforeCaret, langId, areObjectPropertiesPresent);
 
             return areObjectPropertiesPresent;
         });
