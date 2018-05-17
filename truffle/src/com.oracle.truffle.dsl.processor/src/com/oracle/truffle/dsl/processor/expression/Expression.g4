@@ -41,31 +41,73 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.*;
 
 // parser
 
-expression returns [DSLExpression result]: f=logic_factor { $result = $f.result; } EOF;
+expression returns [DSLExpression result]
+:
+f=logic_factor                                   { $result = $f.result; }
+EOF
+;
 
-logic_factor returns [DSLExpression result] : f1=comparison_factor { $result = $f1.result; } (op='||' f2=comparison_factor { $result = new Binary($op.text, $result, $f2.result); } )?;
+logic_factor returns [DSLExpression result]
+:
+f1=comparison_factor                             { $result = $f1.result; }
+(
+    op='||' 
+    f2=comparison_factor                         { $result = new Binary($op.text, $result, $f2.result); }
+)?
+;
 
-comparison_factor returns [DSLExpression result] : f1=negate_factor  { $result = $f1.result; } (op=('<' | '<=' | '>' | '>=' | '==' | '!=') f2=negate_factor { $result = new Binary($op.text, $result, $f2.result); } )?;
+comparison_factor returns [DSLExpression result]
+:
+f1=negate_factor  { $result = $f1.result; }
+(
+    op=('<' | '<=' | '>' | '>=' | '==' | '!=')
+    f2=negate_factor                             { $result = new Binary($op.text, $result, $f2.result); }
+)?;
 
-negate_factor returns [DSLExpression result] : { boolean negated = false; } ('!' { negated = true; })? f=factor { $result = negated ? new Negate($f.result) : $f.result; };
+negate_factor returns [DSLExpression result]
+:                                                { boolean negated = false; }
+(
+    '!'                                          { negated = true; }
+)?
+f=factor                                         { $result = negated ? new Negate($f.result) : $f.result; }
+;
 
-factor returns [DSLExpression result] : m=member_expression { $result = $m.result; } | l=NUMERIC_LITERAL { $result = new IntLiteral($l.text); } | '(' e=logic_factor { $result = $e.result; } ')';
+factor returns [DSLExpression result]
+:
+m=member_expression                              { $result = $m.result; }
+|
+l=NUMERIC_LITERAL                                { $result = new IntLiteral($l.text); }
+|
+'('
+e=logic_factor                                   { $result = $e.result; } 
+')'
+;
 
 member_expression returns [DSLExpression result] :
-       id1=IDENTIFIER { $result = new Variable(null, $id1.text); } 
-       (
-           '(' { List<DSLExpression> parameters = new ArrayList<>(); }
-       	   (e1=logic_factor { parameters.add($e1.result); } (',' e2=logic_factor { parameters.add($e2.result); })*)?
-       	   ')' { $result = new Call(null, $id1.text, parameters); }
-       )?
-       (
-           '.' id2=IDENTIFIER { $result = new Variable($result, $id2.text); }
-           (
-               '(' { List<DSLExpression> parameters = new ArrayList<>(); }
-       	       (e1=logic_factor { parameters.add($e1.result); } (',' e2=logic_factor { parameters.add($e2.result); })*)?
-       	       ')' { $result = new Call(((Variable) $result).getReceiver(), $id2.text, parameters); }
-           )?
-       )*;
+id1=IDENTIFIER                                   { $result = new Variable(null, $id1.text); } 
+(
+    '('                                          { List<DSLExpression> parameters = new ArrayList<>(); }
+    (
+        e1=logic_factor                          { parameters.add($e1.result); }
+        (
+            ',' e2=logic_factor                  { parameters.add($e2.result); }
+        )*
+    )?
+    ')'                                          { $result = new Call(null, $id1.text, parameters); }
+)?
+(
+    '.' id2=IDENTIFIER                           { $result = new Variable($result, $id2.text); }
+    (
+         '('                                     { List<DSLExpression> parameters = new ArrayList<>(); }
+       	 (
+             e1=logic_factor                     { parameters.add($e1.result); }
+             (
+                 ',' e2=logic_factor             { parameters.add($e2.result); }
+             )*
+         )?
+        ')'                                      { $result = new Call(((Variable) $result).getReceiver(), $id2.text, parameters); }
+    )?
+)*;
 
 // lexer
 
