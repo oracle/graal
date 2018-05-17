@@ -1387,29 +1387,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * Looks up symbol in the top-most scope of the language. Returns <code>null</code> if no
-         * symbol was found.
-         * <p>
-         * The returned object can either be <code>TruffleObject</code> (e.g. a native object from
-         * the other language) to support interoperability between languages, {@link String} or one
-         * of the Java primitive wrappers ( {@link Integer}, {@link Double}, {@link Byte},
-         * {@link Boolean}, etc.).
-         * <p>
-         *
-         * @param language the language too lookup. must not be null.
-         * @param symbolName the name of the symbol in the top-most scope.
-         * @since 0.27
-         * @deprecated deprecated without replacement. the language
-         *             {@link Context#getBindings(String) bindings} may be exposed to the language
-         *             using the polyglot bindings.
-         */
-        @TruffleBoundary
-        @Deprecated
-        public Object lookupSymbol(@SuppressWarnings("hiding") LanguageInfo language, String symbolName) {
-            return AccessAPI.engineAccess().lookupSymbol(vmObject, this, language, symbolName);
-        }
-
-        /**
          * Returns <code>true</code> if host access is generally allowed. If this method returns
          * <code>false</code> then {@link #lookupHostSymbol(String)} will always fail.
          *

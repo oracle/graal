@@ -573,13 +573,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Object lookupSymbol(Object vmObject, Env env, LanguageInfo language, String symbolName) {
-            PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
-            int index = context.context.engine.idToLanguage.get(language.getId()).index;
-            return context.context.contexts[index].lookupGuest(symbolName);
-        }
-
-        @Override
         public Object lookupHostSymbol(Object vmObject, Env env, String symbolName) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) vmObject;
             HostContext hostContext = ((PolyglotLanguageContext) vmObject).context.getHostContextImpl();

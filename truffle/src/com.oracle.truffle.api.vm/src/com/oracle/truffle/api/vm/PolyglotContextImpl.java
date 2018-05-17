@@ -123,11 +123,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     @CompilationFinal boolean createThreadAllowed;
 
     // map from class to language index
-    private final FinalIntMap languageIndexMap = new FinalIntMap();
+    @CompilationFinal private FinalIntMap languageIndexMap;
 
     Set<String> allowedPublicLanguages;     // effectively final
     Map<String, String[]> applicationArguments;  // effectively final
-    private final Set<PolyglotContextImpl> childContexts = new LinkedHashSet<>();
+    private final List<PolyglotContextImpl> childContexts = new ArrayList<>();
     boolean inContextPreInitialization; // effectively final
     FileSystem fileSystem;  // effectively final
 
@@ -703,15 +703,19 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     private PolyglotLanguageContext getLanguageContextImpl(Class<? extends TruffleLanguage<?>> languageClass) {
-        int indexValue = languageIndexMap.get(languageClass);
+        FinalIntMap map = this.languageIndexMap;
+        int indexValue = map != null ? map.get(languageClass) : -1;
         if (indexValue == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
+                if (this.languageIndexMap == null) {
+                    this.languageIndexMap = new FinalIntMap();
+                }
                 indexValue = languageIndexMap.get(languageClass);
                 if (indexValue == -1) {
                     PolyglotLanguageContext context = findLanguageContext(languageClass, true);
                     indexValue = context.language.index;
-                    languageIndexMap.put(languageClass, indexValue);
+                    this.languageIndexMap.put(languageClass, indexValue);
                 }
             }
         }
