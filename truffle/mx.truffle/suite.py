@@ -65,6 +65,7 @@ suite = {
 
     "ANTLR4_COMPLETE": {
       "urls": [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7-complete.jar",
         "http://www.antlr.org/download/antlr-4.7-complete.jar"
       ],
       "sha1": "5b3a8824334069979a0862ce67ede796c3a4d1b1",
