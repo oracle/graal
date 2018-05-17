@@ -189,11 +189,13 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createVarArgCompoundValue(int length, int alignment, LLVMExpressionNode parameterNode);
 
-    LLVMExpressionNode createDebugWrite(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
+    LLVMExpressionNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
 
-    LLVMExpressionNode createDebugInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
+    LLVMExpressionNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
     LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode);
+
+    LLVMDebugObjectBuilder createDebugDynamicValue(LLVMExpressionNode valueNode);
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 

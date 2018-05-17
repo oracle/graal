@@ -121,7 +121,7 @@ final class LLVMRuntimeDebugInformation {
         private void visitSimpleConstant(SymbolImpl constant) {
             final LLVMExpressionNode node = symbols.resolve(constant);
             assert node != null;
-            final LLVMDebugObjectBuilder value = factory.createDebugStaticValue(node);
+            final LLVMDebugObjectBuilder value = factory.createDebugDynamicValue(node);
             context.getSourceContext().registerStatic(symbol, value);
             variable.addStaticValue();
         }
@@ -246,7 +246,7 @@ final class LLVMRuntimeDebugInformation {
             }
         }
 
-        return factory.createDebugInit(targetSlot, offsets, lengths);
+        return factory.createDebugValueInit(targetSlot, offsets, lengths);
     }
 
     private static final int[] CLEAR_NONE = new int[0];
@@ -321,7 +321,7 @@ final class LLVMRuntimeDebugInformation {
 
         final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
         final LLVMExpressionNode containerRead = factory.createFrameRead(MetaType.DEBUG, targetSlot);
-        return factory.createDebugWrite(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
+        return factory.createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
     }
 
 }
