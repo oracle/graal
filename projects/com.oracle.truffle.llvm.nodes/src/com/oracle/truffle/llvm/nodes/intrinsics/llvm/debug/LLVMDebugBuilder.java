@@ -45,7 +45,7 @@ public abstract class LLVMDebugBuilder {
     public static final LLVMDebugBuilder NATIVE_VALUE = new LLVMDebugBuilder() {
         @Override
         public LLVMDebugValue.Builder createBuilder(TruffleLanguage.ContextReference<LLVMContext> contextRef) {
-            return LLVMToDebugValueNodeGen.create(contextRef);
+            return LLVMToDebugValueNodeGen.LLVMToDynamicDebugValueNodeGen.create(contextRef);
         }
     };
 

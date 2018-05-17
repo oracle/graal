@@ -56,7 +56,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValue.Builder {
 
-    private final ContextReference<LLVMContext> contextRef;
+    protected final ContextReference<LLVMContext> contextRef;
 
     protected LLVMToDebugValueNode(ContextReference<LLVMContext> contextRef) {
         this.contextRef = contextRef;
@@ -130,10 +130,14 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
         return new LLVMConstantValueProvider.BigFloat(value);
     }
 
+    protected LLVMDebugValue createFromGlobal(@SuppressWarnings("unused") LLVMGlobal value, @SuppressWarnings("unused") LLVMMemory memory) {
+        return LLVMDebugValue.UNAVAILABLE;
+    }
+
     @Specialization
     protected LLVMDebugValue fromGlobal(LLVMGlobal value,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return new LLVMConstantGlobalValueProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.create(contextRef));
+        return createFromGlobal(value, memory);
     }
 
     @Specialization
@@ -190,5 +194,32 @@ public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebug
     @Specialization
     protected LLVMDebugValue fromGenericObject(@SuppressWarnings("unused") Object value) {
         return LLVMDebugValue.UNAVAILABLE;
+    }
+
+    public abstract static class LLVMToStaticDebugValueNode extends LLVMToDebugValueNode {
+
+        protected LLVMToStaticDebugValueNode(ContextReference<LLVMContext> contextRef) {
+            super(contextRef);
+        }
+
+        @Override
+        protected LLVMDebugValue createFromGlobal(LLVMGlobal value, LLVMMemory memory) {
+            // global as value container, all referenced globals should instead be treated as
+            // pointers
+            return new LLVMConstantGlobalValueProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.LLVMToDynamicDebugValueNodeGen.create(contextRef));
+        }
+    }
+
+    public abstract static class LLVMToDynamicDebugValueNode extends LLVMToDebugValueNode {
+
+        protected LLVMToDynamicDebugValueNode(ContextReference<LLVMContext> contextRef) {
+            super(contextRef);
+        }
+
+        @Override
+        protected LLVMDebugValue createFromGlobal(LLVMGlobal value, LLVMMemory memory) {
+            // global as pointer value
+            return new LLVMConstantGlobalPointerProvider(memory, value, contextRef.get(), LLVMToDebugValueNodeGen.LLVMToDynamicDebugValueNodeGen.create(contextRef));
+        }
     }
 }

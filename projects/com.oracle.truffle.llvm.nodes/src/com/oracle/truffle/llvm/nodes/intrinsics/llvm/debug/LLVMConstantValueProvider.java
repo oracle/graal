@@ -302,6 +302,11 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         }
 
         @Override
+        public Object computeAddress(long bitOffset) {
+            return address.increment(bitOffset / LLVMDebugTypeConstants.ADDRESS_SIZE);
+        }
+
+        @Override
         public LLVMDebugValue dereferencePointer(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.ADDRESS_SIZE)) {
                 return new LLVMAllocationValueProvider(memory, address);
