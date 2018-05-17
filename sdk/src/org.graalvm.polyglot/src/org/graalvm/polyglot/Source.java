@@ -235,30 +235,12 @@ public final class Source {
     }
 
     /**
-     * @since 1.0
-     * @deprecated use {@link #getCharacters()}
-     */
-    @Deprecated
-    public CharSequence getCode() {
-        return getImpl().getCode(impl);
-    }
-
-    /**
      * Gets the text (not including a possible terminating newline) in a (1-based) numbered line.
      * Causes the contents of this source to be loaded if they are loaded lazily.
      *
      * @since 1.0
      */
     public CharSequence getCharacters(int lineNumber) {
-        return getImpl().getCode(impl, lineNumber);
-    }
-
-    /**
-     * @since 1.0
-     * @deprecated use {@link #getCharacters(int)}
-     */
-    @Deprecated
-    public CharSequence getCode(int lineNumber) {
         return getImpl().getCode(impl, lineNumber);
     }
 
