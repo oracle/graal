@@ -25,9 +25,8 @@ package org.graalvm.compiler.core.common;
 import jdk.vm.ci.code.BailoutException;
 import org.graalvm.compiler.debug.CausableByCompilerAssert;
 
+@SuppressWarnings("serial")
 public class GraalBailoutException extends BailoutException implements CausableByCompilerAssert {
-
-    private static final long serialVersionUID = 0L;
 
     public GraalBailoutException(String format, Object... args) {
         super(format, args);

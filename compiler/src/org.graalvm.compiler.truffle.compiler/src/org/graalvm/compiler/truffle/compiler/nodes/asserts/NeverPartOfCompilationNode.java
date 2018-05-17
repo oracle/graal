@@ -79,9 +79,8 @@ public final class NeverPartOfCompilationNode extends ControlSinkNode implements
         }
     }
 
+    @SuppressWarnings("serial")
     private static class NeverPartOfCompilationException extends GraalBailoutException {
-
-        private static final long serialVersionUID = 0L;
 
         NeverPartOfCompilationException(String message) {
             super(null, message, new Object[]{});
