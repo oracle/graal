@@ -888,7 +888,6 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
           "TRUFFLE_TCK",
-          "TRUFFLE_DSL_PROCESSOR"
       ],
       "license" : "UPL",
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
@@ -922,7 +921,6 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
           "TRUFFLE_TCK",
-          "TRUFFLE_DSL_PROCESSOR",
           "TRUFFLE_SL"
       ],
       "license" : "UPL",
