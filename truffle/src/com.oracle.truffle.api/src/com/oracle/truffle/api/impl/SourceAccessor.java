@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api.source.impl;
+package com.oracle.truffle.api.impl;
 
 import java.io.File;
 import java.io.IOException;

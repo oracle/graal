@@ -43,7 +43,7 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.ServiceLoader;
 
-import com.oracle.truffle.api.source.impl.SourceAccessor;
+import com.oracle.truffle.api.impl.SourceAccessor;
 
 /**
  * Representation of a source code unit and its contents. Source instances are created by using one

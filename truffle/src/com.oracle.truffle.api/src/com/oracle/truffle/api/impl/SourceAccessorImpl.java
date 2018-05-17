@@ -27,7 +27,7 @@ package com.oracle.truffle.api.impl;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.source.impl.SourceAccessor;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;

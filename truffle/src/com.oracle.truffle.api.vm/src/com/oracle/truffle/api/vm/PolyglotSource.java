@@ -43,7 +43,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.source.impl.SourceAccessor;
+import com.oracle.truffle.api.impl.SourceAccessor;
 
 class PolyglotSource extends AbstractSourceImpl {
 
