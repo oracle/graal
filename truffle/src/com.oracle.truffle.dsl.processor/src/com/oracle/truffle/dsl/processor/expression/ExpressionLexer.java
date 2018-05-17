@@ -20,10 +20,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
- // DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 // Checkstyle: stop
 //@formatter:off
 package com.oracle.truffle.dsl.processor.expression;
+
+// DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
+
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.Token;
@@ -33,7 +35,7 @@ import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.misc.*;
 
-@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
+@SuppressWarnings("all")
 public class ExpressionLexer extends Lexer {
 	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
 

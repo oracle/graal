@@ -55,10 +55,12 @@ suite = {
     },
 
     "ANTLR4": {
-      "urls": [
-        "http://www.antlr.org/download/antlr-runtime-4.7.jar"
-      ],
-      "sha1": "30b13b7efc55b7feea667691509cf59902375001",
+      "sha1" : "30b13b7efc55b7feea667691509cf59902375001",
+      "maven" : {
+        "groupId" : "org.antlr",
+        "artifactId" : "antlr4-runtime",
+        "version" : "4.7",
+      }
     },
 
     "ANTLR4_COMPLETE": {
@@ -877,6 +879,7 @@ suite = {
       "javaCompliance" : "1.8",
       "dependencies" : [
         "com.oracle.truffle.sl",
+        "ANTLR4",
       ],
       "exclude" : [
         "mx:JUNIT",

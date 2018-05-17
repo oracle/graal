@@ -20,10 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
- // DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 // Checkstyle: stop
 //@formatter:off
 package com.oracle.truffle.dsl.processor.expression;
+
+// DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.*;
 
@@ -36,7 +37,7 @@ import java.util.List;
 import java.util.Iterator;
 import java.util.ArrayList;
 
-@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
+@SuppressWarnings("all")
 public class ExpressionParser extends Parser {
 	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
 
@@ -131,8 +132,8 @@ public class ExpressionParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(12);
-			((ExpressionContext)_localctx).f = logic_factor();
-			 ((ExpressionContext)_localctx).result =  ((ExpressionContext)_localctx).f.result; 
+			_localctx.f = logic_factor();
+			 _localctx.result =  _localctx.f.result; 
 			setState(14);
 			match(EOF);
 			}
@@ -173,18 +174,18 @@ public class ExpressionParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(16);
-			((Logic_factorContext)_localctx).f1 = comparison_factor();
-			 ((Logic_factorContext)_localctx).result =  ((Logic_factorContext)_localctx).f1.result; 
+			_localctx.f1 = comparison_factor();
+			 _localctx.result =  _localctx.f1.result; 
 			setState(22);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			if (_la==T__0) {
 				{
 				setState(18);
-				((Logic_factorContext)_localctx).op = match(T__0);
+				_localctx.op = match(T__0);
 				setState(19);
-				((Logic_factorContext)_localctx).f2 = comparison_factor();
-				 ((Logic_factorContext)_localctx).result =  new Binary((((Logic_factorContext)_localctx).op!=null?((Logic_factorContext)_localctx).op.getText():null), _localctx.result, ((Logic_factorContext)_localctx).f2.result); 
+				_localctx.f2 = comparison_factor();
+				 _localctx.result =  new Binary((_localctx.op!=null?_localctx.op.getText():null), _localctx.result, _localctx.f2.result); 
 				}
 			}
 
@@ -226,18 +227,18 @@ public class ExpressionParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(24);
-			((Comparison_factorContext)_localctx).f1 = negate_factor();
-			 ((Comparison_factorContext)_localctx).result =  ((Comparison_factorContext)_localctx).f1.result; 
+			_localctx.f1 = negate_factor();
+			 _localctx.result =  _localctx.f1.result; 
 			setState(30);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__1) | (1L << T__2) | (1L << T__3) | (1L << T__4) | (1L << T__5) | (1L << T__6))) != 0)) {
 				{
 				setState(26);
-				((Comparison_factorContext)_localctx).op = _input.LT(1);
+				_localctx.op = _input.LT(1);
 				_la = _input.LA(1);
 				if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__1) | (1L << T__2) | (1L << T__3) | (1L << T__4) | (1L << T__5) | (1L << T__6))) != 0)) ) {
-					((Comparison_factorContext)_localctx).op = (Token)_errHandler.recoverInline(this);
+					_localctx.op = _errHandler.recoverInline(this);
 				}
 				else {
 					if ( _input.LA(1)==Token.EOF ) matchedEOF = true;
@@ -245,8 +246,8 @@ public class ExpressionParser extends Parser {
 					consume();
 				}
 				setState(27);
-				((Comparison_factorContext)_localctx).f2 = negate_factor();
-				 ((Comparison_factorContext)_localctx).result =  new Binary((((Comparison_factorContext)_localctx).op!=null?((Comparison_factorContext)_localctx).op.getText():null), _localctx.result, ((Comparison_factorContext)_localctx).f2.result); 
+				_localctx.f2 = negate_factor();
+				 _localctx.result =  new Binary((_localctx.op!=null?_localctx.op.getText():null), _localctx.result, _localctx.f2.result); 
 				}
 			}
 
@@ -295,8 +296,8 @@ public class ExpressionParser extends Parser {
 			}
 
 			setState(37);
-			((Negate_factorContext)_localctx).f = factor();
-			 ((Negate_factorContext)_localctx).result =  negated ? new Negate(((Negate_factorContext)_localctx).f.result) : ((Negate_factorContext)_localctx).f.result; 
+			_localctx.f = factor();
+			 _localctx.result =  negated ? new Negate(_localctx.f.result) : _localctx.f.result; 
 			}
 		}
 		catch (RecognitionException re) {
@@ -339,16 +340,16 @@ public class ExpressionParser extends Parser {
 				enterOuterAlt(_localctx, 1);
 				{
 				setState(40);
-				((FactorContext)_localctx).m = member_expression();
-				 ((FactorContext)_localctx).result =  ((FactorContext)_localctx).m.result; 
+				_localctx.m = member_expression();
+				 _localctx.result =  _localctx.m.result; 
 				}
 				break;
 			case NUMERIC_LITERAL:
 				enterOuterAlt(_localctx, 2);
 				{
 				setState(43);
-				((FactorContext)_localctx).l = match(NUMERIC_LITERAL);
-				 ((FactorContext)_localctx).result =  new IntLiteral((((FactorContext)_localctx).l!=null?((FactorContext)_localctx).l.getText():null)); 
+				_localctx.l = match(NUMERIC_LITERAL);
+				 _localctx.result =  new IntLiteral((_localctx.l!=null?_localctx.l.getText():null)); 
 				}
 				break;
 			case T__8:
@@ -357,8 +358,8 @@ public class ExpressionParser extends Parser {
 				setState(45);
 				match(T__8);
 				setState(46);
-				((FactorContext)_localctx).e = logic_factor();
-				 ((FactorContext)_localctx).result =  ((FactorContext)_localctx).e.result; 
+				_localctx.e = logic_factor();
+				 _localctx.result =  _localctx.e.result; 
 				setState(48);
 				match(T__9);
 				}
@@ -408,8 +409,8 @@ public class ExpressionParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(52);
-			((Member_expressionContext)_localctx).id1 = match(IDENTIFIER);
-			 ((Member_expressionContext)_localctx).result =  new Variable(null, (((Member_expressionContext)_localctx).id1!=null?((Member_expressionContext)_localctx).id1.getText():null)); 
+			_localctx.id1 = match(IDENTIFIER);
+			 _localctx.result =  new Variable(null, (_localctx.id1!=null?_localctx.id1.getText():null)); 
 			setState(71);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
@@ -424,8 +425,8 @@ public class ExpressionParser extends Parser {
 				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__7) | (1L << T__8) | (1L << IDENTIFIER) | (1L << NUMERIC_LITERAL))) != 0)) {
 					{
 					setState(56);
-					((Member_expressionContext)_localctx).e1 = logic_factor();
-					 parameters.add(((Member_expressionContext)_localctx).e1.result); 
+					_localctx.e1 = logic_factor();
+					 parameters.add(_localctx.e1.result); 
 					setState(64);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
@@ -435,8 +436,8 @@ public class ExpressionParser extends Parser {
 						setState(58);
 						match(T__10);
 						setState(59);
-						((Member_expressionContext)_localctx).e2 = logic_factor();
-						 parameters.add(((Member_expressionContext)_localctx).e2.result); 
+						_localctx.e2 = logic_factor();
+						 parameters.add(_localctx.e2.result); 
 						}
 						}
 						setState(66);
@@ -448,7 +449,7 @@ public class ExpressionParser extends Parser {
 
 				setState(69);
 				match(T__9);
-				 ((Member_expressionContext)_localctx).result =  new Call(null, (((Member_expressionContext)_localctx).id1!=null?((Member_expressionContext)_localctx).id1.getText():null), parameters); 
+				 _localctx.result =  new Call(null, (_localctx.id1!=null?_localctx.id1.getText():null), parameters); 
 				}
 			}
 
@@ -461,8 +462,8 @@ public class ExpressionParser extends Parser {
 				setState(73);
 				match(T__11);
 				setState(74);
-				((Member_expressionContext)_localctx).id2 = match(IDENTIFIER);
-				 ((Member_expressionContext)_localctx).result =  new Variable(_localctx.result, (((Member_expressionContext)_localctx).id2!=null?((Member_expressionContext)_localctx).id2.getText():null)); 
+				_localctx.id2 = match(IDENTIFIER);
+				 _localctx.result =  new Variable(_localctx.result, (_localctx.id2!=null?_localctx.id2.getText():null)); 
 				setState(93);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
@@ -477,8 +478,8 @@ public class ExpressionParser extends Parser {
 					if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__7) | (1L << T__8) | (1L << IDENTIFIER) | (1L << NUMERIC_LITERAL))) != 0)) {
 						{
 						setState(78);
-						((Member_expressionContext)_localctx).e1 = logic_factor();
-						 parameters.add(((Member_expressionContext)_localctx).e1.result); 
+						_localctx.e1 = logic_factor();
+						 parameters.add(_localctx.e1.result); 
 						setState(86);
 						_errHandler.sync(this);
 						_la = _input.LA(1);
@@ -488,8 +489,8 @@ public class ExpressionParser extends Parser {
 							setState(80);
 							match(T__10);
 							setState(81);
-							((Member_expressionContext)_localctx).e2 = logic_factor();
-							 parameters.add(((Member_expressionContext)_localctx).e2.result); 
+							_localctx.e2 = logic_factor();
+							 parameters.add(_localctx.e2.result); 
 							}
 							}
 							setState(88);
@@ -501,7 +502,7 @@ public class ExpressionParser extends Parser {
 
 					setState(91);
 					match(T__9);
-					 ((Member_expressionContext)_localctx).result =  new Call(((Variable) _localctx.result).getReceiver(), (((Member_expressionContext)_localctx).id2!=null?((Member_expressionContext)_localctx).id2.getText():null), parameters); 
+					 _localctx.result =  new Call(((Variable) _localctx.result).getReceiver(), (_localctx.id2!=null?_localctx.id2.getText():null), parameters); 
 					}
 				}
 

@@ -494,14 +494,13 @@ COPYRIGHT_HEADER_GPL = """\
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
- // DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 // Checkstyle: stop
 //@formatter:off
 {0}
 """
 COPYRIGHT_HEADER_UPL = """\
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -540,11 +539,13 @@ COPYRIGHT_HEADER_UPL = """\
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
- // DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 // Checkstyle: stop
 //@formatter:off
 {0}
 """
+PTRN_SUPPRESS_WARNINGS = re.compile("^@SuppressWarnings.*$", re.MULTILINE)
+PTRN_LOCALCTXT_CAST = re.compile(r"\(\([a-zA-Z_]*Context\)_localctx\)")
+PTRN_TOKEN_CAST = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)")
 
 def create_dsl_parser(args=None, out=None):
     """create the DSL expression parser using antlr"""
@@ -554,18 +555,24 @@ def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
     create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright, args=None, out=None):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None):
     """create the DSL expression parser using antlr"""
     grammar_dir = mx.project(grammar_project).source_dirs()[0] + "/" + grammar_package.replace(".", "/") + "/"
     mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
-    
     for filename in [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]:
-      with open(filename, 'r') as content_file:
-        content = content_file.read()
-      # remove first line
-      content = "\n".join(content.split("\n")[1:])
-      with open(filename, 'w') as content_file:
-        content_file.write(copyright.format(content));
+        with open(filename, 'r') as content_file:
+            content = content_file.read()
+        # remove first line
+        content = "\n".join(content.split("\n")[1:])
+        # modify SuppressWarnings to remove useless entries
+        content = PTRN_SUPPRESS_WARNINGS.sub('@SuppressWarnings("all")', content)
+        # remove useless casts
+        content = PTRN_LOCALCTXT_CAST.sub('_localctx', content)
+        content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
+        # add copyright header
+        content = copyright_template.format(content)
+        with open(filename, 'w') as content_file:
+            content_file.write(content)
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     suite=_suite,
@@ -583,6 +590,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],
-    'create-dsl-parser' : [create_dsl_parser, ""],
-    'create-sl-parser' : [create_sl_parser, ""],
+    'create-dsl-parser' : [create_dsl_parser, "create the DSL expression parser using antlr"],
+    'create-sl-parser' : [create_sl_parser, "create the SimpleLanguage parser using antlr"],
 })

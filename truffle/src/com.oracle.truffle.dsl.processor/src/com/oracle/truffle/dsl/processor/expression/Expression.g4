@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,14 @@ grammar Expression;
 
 @parser::header
 {
+// DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
+
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.*;
+}
+
+@lexer::header
+{
+// DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 }
 
 // parser

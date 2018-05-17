@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,10 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
- // DO NOT MODIFY - generated from Expression.g4 using "mx create-dsl-parser"
 // Checkstyle: stop
 //@formatter:off
 package com.oracle.truffle.sl.parser;
+
+// DO NOT MODIFY - generated from SimpleLanguage.g4 using "mx create-sl-parser"
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +65,7 @@ import java.util.List;
 import java.util.Iterator;
 import java.util.ArrayList;
 
-@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
+@SuppressWarnings("all")
 public class SimpleLanguageParser extends Parser {
 	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
 
@@ -264,18 +265,18 @@ public class SimpleLanguageParser extends Parser {
 			setState(37);
 			match(T__0);
 			setState(38);
-			((FunctionContext)_localctx).IDENTIFIER = match(IDENTIFIER);
+			_localctx.IDENTIFIER = match(IDENTIFIER);
 			setState(39);
-			((FunctionContext)_localctx).s = match(T__1);
-			 factory.startFunction(((FunctionContext)_localctx).IDENTIFIER, ((FunctionContext)_localctx).s); 
+			_localctx.s = match(T__1);
+			 factory.startFunction(_localctx.IDENTIFIER, _localctx.s); 
 			setState(51);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			if (_la==IDENTIFIER) {
 				{
 				setState(41);
-				((FunctionContext)_localctx).IDENTIFIER = match(IDENTIFIER);
-				 factory.addFormalParameter(((FunctionContext)_localctx).IDENTIFIER); 
+				_localctx.IDENTIFIER = match(IDENTIFIER);
+				 factory.addFormalParameter(_localctx.IDENTIFIER); 
 				setState(48);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
@@ -285,8 +286,8 @@ public class SimpleLanguageParser extends Parser {
 					setState(43);
 					match(T__2);
 					setState(44);
-					((FunctionContext)_localctx).IDENTIFIER = match(IDENTIFIER);
-					 factory.addFormalParameter(((FunctionContext)_localctx).IDENTIFIER); 
+					_localctx.IDENTIFIER = match(IDENTIFIER);
+					 factory.addFormalParameter(_localctx.IDENTIFIER); 
 					}
 					}
 					setState(50);
@@ -299,8 +300,8 @@ public class SimpleLanguageParser extends Parser {
 			setState(53);
 			match(T__3);
 			setState(54);
-			((FunctionContext)_localctx).body = block(false);
-			 factory.finishFunction(((FunctionContext)_localctx).body.result); 
+			_localctx.body = block(false);
+			 factory.finishFunction(_localctx.body.result); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -344,7 +345,7 @@ public class SimpleLanguageParser extends Parser {
 			 factory.startBlock();
 			                                                  List<SLStatementNode> body = new ArrayList<>(); 
 			setState(58);
-			((BlockContext)_localctx).s = match(T__4);
+			_localctx.s = match(T__4);
 			setState(64);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
@@ -352,8 +353,8 @@ public class SimpleLanguageParser extends Parser {
 				{
 				{
 				setState(59);
-				((BlockContext)_localctx).statement = statement(inLoop);
-				 body.add(((BlockContext)_localctx).statement.result); 
+				_localctx.statement = statement(inLoop);
+				 body.add(_localctx.statement.result); 
 				}
 				}
 				setState(66);
@@ -361,8 +362,8 @@ public class SimpleLanguageParser extends Parser {
 				_la = _input.LA(1);
 			}
 			setState(67);
-			((BlockContext)_localctx).e = match(T__5);
-			 ((BlockContext)_localctx).result =  factory.finishBlock(body, ((BlockContext)_localctx).s.getStartIndex(), ((BlockContext)_localctx).e.getStopIndex() - ((BlockContext)_localctx).s.getStartIndex() + 1); 
+			_localctx.e = match(T__5);
+			 _localctx.result =  factory.finishBlock(body, _localctx.s.getStartIndex(), _localctx.e.getStopIndex() - _localctx.s.getStartIndex() + 1); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -418,15 +419,15 @@ public class SimpleLanguageParser extends Parser {
 			case T__10:
 				{
 				setState(70);
-				((StatementContext)_localctx).while_statement = while_statement();
-				 ((StatementContext)_localctx).result =  ((StatementContext)_localctx).while_statement.result; 
+				_localctx.while_statement = while_statement();
+				 _localctx.result =  _localctx.while_statement.result; 
 				}
 				break;
 			case T__6:
 				{
 				setState(73);
-				((StatementContext)_localctx).b = match(T__6);
-				 if (inLoop) { ((StatementContext)_localctx).result =  factory.createBreak(((StatementContext)_localctx).b); } else { SemErr(((StatementContext)_localctx).b, "break used outside of loop"); } 
+				_localctx.b = match(T__6);
+				 if (inLoop) { _localctx.result =  factory.createBreak(_localctx.b); } else { SemErr(_localctx.b, "break used outside of loop"); } 
 				setState(75);
 				match(T__7);
 				}
@@ -434,8 +435,8 @@ public class SimpleLanguageParser extends Parser {
 			case T__8:
 				{
 				setState(76);
-				((StatementContext)_localctx).c = match(T__8);
-				 if (inLoop) { ((StatementContext)_localctx).result =  factory.createContinue(((StatementContext)_localctx).c); } else { SemErr(((StatementContext)_localctx).c, "continue used outside of loop"); } 
+				_localctx.c = match(T__8);
+				 if (inLoop) { _localctx.result =  factory.createContinue(_localctx.c); } else { SemErr(_localctx.c, "continue used outside of loop"); } 
 				setState(78);
 				match(T__7);
 				}
@@ -443,15 +444,15 @@ public class SimpleLanguageParser extends Parser {
 			case T__11:
 				{
 				setState(79);
-				((StatementContext)_localctx).if_statement = if_statement(inLoop);
-				 ((StatementContext)_localctx).result =  ((StatementContext)_localctx).if_statement.result; 
+				_localctx.if_statement = if_statement(inLoop);
+				 _localctx.result =  _localctx.if_statement.result; 
 				}
 				break;
 			case T__13:
 				{
 				setState(82);
-				((StatementContext)_localctx).return_statement = return_statement();
-				 ((StatementContext)_localctx).result =  ((StatementContext)_localctx).return_statement.result; 
+				_localctx.return_statement = return_statement();
+				 _localctx.result =  _localctx.return_statement.result; 
 				}
 				break;
 			case T__1:
@@ -460,17 +461,17 @@ public class SimpleLanguageParser extends Parser {
 			case NUMERIC_LITERAL:
 				{
 				setState(85);
-				((StatementContext)_localctx).expression = expression();
+				_localctx.expression = expression();
 				setState(86);
 				match(T__7);
-				 ((StatementContext)_localctx).result =  ((StatementContext)_localctx).expression.result; 
+				 _localctx.result =  _localctx.expression.result; 
 				}
 				break;
 			case T__9:
 				{
 				setState(89);
-				((StatementContext)_localctx).d = match(T__9);
-				 ((StatementContext)_localctx).result =  factory.createDebugger(((StatementContext)_localctx).d); 
+				_localctx.d = match(T__9);
+				 _localctx.result =  factory.createDebugger(_localctx.d); 
 				setState(91);
 				match(T__7);
 				}
@@ -515,16 +516,16 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(94);
-			((While_statementContext)_localctx).w = match(T__10);
+			_localctx.w = match(T__10);
 			setState(95);
 			match(T__1);
 			setState(96);
-			((While_statementContext)_localctx).condition = expression();
+			_localctx.condition = expression();
 			setState(97);
 			match(T__3);
 			setState(98);
-			((While_statementContext)_localctx).body = block(true);
-			 ((While_statementContext)_localctx).result =  factory.createWhile(((While_statementContext)_localctx).w, ((While_statementContext)_localctx).condition.result, ((While_statementContext)_localctx).body.result); 
+			_localctx.body = block(true);
+			 _localctx.result =  factory.createWhile(_localctx.w, _localctx.condition.result, _localctx.body.result); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -570,15 +571,15 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(101);
-			((If_statementContext)_localctx).i = match(T__11);
+			_localctx.i = match(T__11);
 			setState(102);
 			match(T__1);
 			setState(103);
-			((If_statementContext)_localctx).condition = expression();
+			_localctx.condition = expression();
 			setState(104);
 			match(T__3);
 			setState(105);
-			((If_statementContext)_localctx).then = ((If_statementContext)_localctx).block = block(inLoop);
+			_localctx.then = _localctx.block = block(inLoop);
 			 SLStatementNode elsePart = null; 
 			setState(111);
 			_errHandler.sync(this);
@@ -588,12 +589,12 @@ public class SimpleLanguageParser extends Parser {
 				setState(107);
 				match(T__12);
 				setState(108);
-				((If_statementContext)_localctx).block = block(inLoop);
-				 elsePart = ((If_statementContext)_localctx).block.result; 
+				_localctx.block = block(inLoop);
+				 elsePart = _localctx.block.result; 
 				}
 			}
 
-			 ((If_statementContext)_localctx).result =  factory.createIf(((If_statementContext)_localctx).i, ((If_statementContext)_localctx).condition.result, ((If_statementContext)_localctx).then.result, elsePart); 
+			 _localctx.result =  factory.createIf(_localctx.i, _localctx.condition.result, _localctx.then.result, elsePart); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -628,7 +629,7 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(115);
-			((Return_statementContext)_localctx).r = match(T__13);
+			_localctx.r = match(T__13);
 			 SLExpressionNode value = null; 
 			setState(120);
 			_errHandler.sync(this);
@@ -636,12 +637,12 @@ public class SimpleLanguageParser extends Parser {
 			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__1) | (1L << IDENTIFIER) | (1L << STRING_LITERAL) | (1L << NUMERIC_LITERAL))) != 0)) {
 				{
 				setState(117);
-				((Return_statementContext)_localctx).expression = expression();
-				 value = ((Return_statementContext)_localctx).expression.result; 
+				_localctx.expression = expression();
+				 value = _localctx.expression.result; 
 				}
 			}
 
-			 ((Return_statementContext)_localctx).result =  factory.createReturn(((Return_statementContext)_localctx).r, value); 
+			 _localctx.result =  factory.createReturn(_localctx.r, value); 
 			setState(123);
 			match(T__7);
 			}
@@ -681,8 +682,8 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(125);
-			((ExpressionContext)_localctx).logic_term = logic_term();
-			 ((ExpressionContext)_localctx).result =  ((ExpressionContext)_localctx).logic_term.result; 
+			_localctx.logic_term = logic_term();
+			 _localctx.result =  _localctx.logic_term.result; 
 			setState(133);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,7,_ctx);
@@ -691,10 +692,10 @@ public class SimpleLanguageParser extends Parser {
 					{
 					{
 					setState(127);
-					((ExpressionContext)_localctx).op = match(T__14);
+					_localctx.op = match(T__14);
 					setState(128);
-					((ExpressionContext)_localctx).logic_term = logic_term();
-					 ((ExpressionContext)_localctx).result =  factory.createBinary(((ExpressionContext)_localctx).op, _localctx.result, ((ExpressionContext)_localctx).logic_term.result); 
+					_localctx.logic_term = logic_term();
+					 _localctx.result =  factory.createBinary(_localctx.op, _localctx.result, _localctx.logic_term.result); 
 					}
 					} 
 				}
@@ -739,8 +740,8 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(136);
-			((Logic_termContext)_localctx).logic_factor = logic_factor();
-			 ((Logic_termContext)_localctx).result =  ((Logic_termContext)_localctx).logic_factor.result; 
+			_localctx.logic_factor = logic_factor();
+			 _localctx.result =  _localctx.logic_factor.result; 
 			setState(144);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,8,_ctx);
@@ -749,10 +750,10 @@ public class SimpleLanguageParser extends Parser {
 					{
 					{
 					setState(138);
-					((Logic_termContext)_localctx).op = match(T__15);
+					_localctx.op = match(T__15);
 					setState(139);
-					((Logic_termContext)_localctx).logic_factor = logic_factor();
-					 ((Logic_termContext)_localctx).result =  factory.createBinary(((Logic_termContext)_localctx).op, _localctx.result, ((Logic_termContext)_localctx).logic_factor.result); 
+					_localctx.logic_factor = logic_factor();
+					 _localctx.result =  factory.createBinary(_localctx.op, _localctx.result, _localctx.logic_factor.result); 
 					}
 					} 
 				}
@@ -797,18 +798,18 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(147);
-			((Logic_factorContext)_localctx).arithmetic = arithmetic();
-			 ((Logic_factorContext)_localctx).result =  ((Logic_factorContext)_localctx).arithmetic.result; 
+			_localctx.arithmetic = arithmetic();
+			 _localctx.result =  _localctx.arithmetic.result; 
 			setState(153);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,9,_ctx) ) {
 			case 1:
 				{
 				setState(149);
-				((Logic_factorContext)_localctx).op = _input.LT(1);
+				_localctx.op = _input.LT(1);
 				_la = _input.LA(1);
 				if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__16) | (1L << T__17) | (1L << T__18) | (1L << T__19) | (1L << T__20) | (1L << T__21))) != 0)) ) {
-					((Logic_factorContext)_localctx).op = (Token)_errHandler.recoverInline(this);
+					_localctx.op = _errHandler.recoverInline(this);
 				}
 				else {
 					if ( _input.LA(1)==Token.EOF ) matchedEOF = true;
@@ -816,8 +817,8 @@ public class SimpleLanguageParser extends Parser {
 					consume();
 				}
 				setState(150);
-				((Logic_factorContext)_localctx).arithmetic = arithmetic();
-				 ((Logic_factorContext)_localctx).result =  factory.createBinary(((Logic_factorContext)_localctx).op, _localctx.result, ((Logic_factorContext)_localctx).arithmetic.result); 
+				_localctx.arithmetic = arithmetic();
+				 _localctx.result =  factory.createBinary(_localctx.op, _localctx.result, _localctx.arithmetic.result); 
 				}
 				break;
 			}
@@ -859,8 +860,8 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(155);
-			((ArithmeticContext)_localctx).term = term();
-			 ((ArithmeticContext)_localctx).result =  ((ArithmeticContext)_localctx).term.result; 
+			_localctx.term = term();
+			 _localctx.result =  _localctx.term.result; 
 			setState(163);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,10,_ctx);
@@ -869,10 +870,10 @@ public class SimpleLanguageParser extends Parser {
 					{
 					{
 					setState(157);
-					((ArithmeticContext)_localctx).op = _input.LT(1);
+					_localctx.op = _input.LT(1);
 					_la = _input.LA(1);
 					if ( !(_la==T__22 || _la==T__23) ) {
-						((ArithmeticContext)_localctx).op = (Token)_errHandler.recoverInline(this);
+						_localctx.op = _errHandler.recoverInline(this);
 					}
 					else {
 						if ( _input.LA(1)==Token.EOF ) matchedEOF = true;
@@ -880,8 +881,8 @@ public class SimpleLanguageParser extends Parser {
 						consume();
 					}
 					setState(158);
-					((ArithmeticContext)_localctx).term = term();
-					 ((ArithmeticContext)_localctx).result =  factory.createBinary(((ArithmeticContext)_localctx).op, _localctx.result, ((ArithmeticContext)_localctx).term.result); 
+					_localctx.term = term();
+					 _localctx.result =  factory.createBinary(_localctx.op, _localctx.result, _localctx.term.result); 
 					}
 					} 
 				}
@@ -927,8 +928,8 @@ public class SimpleLanguageParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(166);
-			((TermContext)_localctx).factor = factor();
-			 ((TermContext)_localctx).result =  ((TermContext)_localctx).factor.result; 
+			_localctx.factor = factor();
+			 _localctx.result =  _localctx.factor.result; 
 			setState(174);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,11,_ctx);
@@ -937,10 +938,10 @@ public class SimpleLanguageParser extends Parser {
 					{
 					{
 					setState(168);
-					((TermContext)_localctx).op = _input.LT(1);
+					_localctx.op = _input.LT(1);
 					_la = _input.LA(1);
 					if ( !(_la==T__24 || _la==T__25) ) {
-						((TermContext)_localctx).op = (Token)_errHandler.recoverInline(this);
+						_localctx.op = _errHandler.recoverInline(this);
 					}
 					else {
 						if ( _input.LA(1)==Token.EOF ) matchedEOF = true;
@@ -948,8 +949,8 @@ public class SimpleLanguageParser extends Parser {
 						consume();
 					}
 					setState(169);
-					((TermContext)_localctx).factor = factor();
-					 ((TermContext)_localctx).result =  factory.createBinary(((TermContext)_localctx).op, _localctx.result, ((TermContext)_localctx).factor.result); 
+					_localctx.factor = factor();
+					 _localctx.result =  factory.createBinary(_localctx.op, _localctx.result, _localctx.factor.result); 
 					}
 					} 
 				}
@@ -1006,21 +1007,21 @@ public class SimpleLanguageParser extends Parser {
 			case IDENTIFIER:
 				{
 				setState(177);
-				((FactorContext)_localctx).IDENTIFIER = match(IDENTIFIER);
-				 SLExpressionNode assignmentName = factory.createStringLiteral(((FactorContext)_localctx).IDENTIFIER, false); 
+				_localctx.IDENTIFIER = match(IDENTIFIER);
+				 SLExpressionNode assignmentName = factory.createStringLiteral(_localctx.IDENTIFIER, false); 
 				setState(183);
 				_errHandler.sync(this);
 				switch ( getInterpreter().adaptivePredict(_input,12,_ctx) ) {
 				case 1:
 					{
 					setState(179);
-					((FactorContext)_localctx).member_expression = member_expression(null, null, assignmentName);
-					 ((FactorContext)_localctx).result =  ((FactorContext)_localctx).member_expression.result; 
+					_localctx.member_expression = member_expression(null, null, assignmentName);
+					 _localctx.result =  _localctx.member_expression.result; 
 					}
 					break;
 				case 2:
 					{
-					 ((FactorContext)_localctx).result =  factory.createRead(assignmentName); 
+					 _localctx.result =  factory.createRead(assignmentName); 
 					}
 					break;
 				}
@@ -1029,26 +1030,26 @@ public class SimpleLanguageParser extends Parser {
 			case STRING_LITERAL:
 				{
 				setState(185);
-				((FactorContext)_localctx).STRING_LITERAL = match(STRING_LITERAL);
-				 ((FactorContext)_localctx).result =  factory.createStringLiteral(((FactorContext)_localctx).STRING_LITERAL, true); 
+				_localctx.STRING_LITERAL = match(STRING_LITERAL);
+				 _localctx.result =  factory.createStringLiteral(_localctx.STRING_LITERAL, true); 
 				}
 				break;
 			case NUMERIC_LITERAL:
 				{
 				setState(187);
-				((FactorContext)_localctx).NUMERIC_LITERAL = match(NUMERIC_LITERAL);
-				 ((FactorContext)_localctx).result =  factory.createNumericLiteral(((FactorContext)_localctx).NUMERIC_LITERAL); 
+				_localctx.NUMERIC_LITERAL = match(NUMERIC_LITERAL);
+				 _localctx.result =  factory.createNumericLiteral(_localctx.NUMERIC_LITERAL); 
 				}
 				break;
 			case T__1:
 				{
 				setState(189);
-				((FactorContext)_localctx).s = match(T__1);
+				_localctx.s = match(T__1);
 				setState(190);
-				((FactorContext)_localctx).expr = expression();
+				_localctx.expr = expression();
 				setState(191);
-				((FactorContext)_localctx).e = match(T__3);
-				 ((FactorContext)_localctx).result =  factory.createParenExpression(((FactorContext)_localctx).expr.result, ((FactorContext)_localctx).s.getStartIndex(), ((FactorContext)_localctx).e.getStopIndex() - ((FactorContext)_localctx).s.getStartIndex() + 1); 
+				_localctx.e = match(T__3);
+				 _localctx.result =  factory.createParenExpression(_localctx.expr.result, _localctx.s.getStartIndex(), _localctx.e.getStopIndex() - _localctx.s.getStartIndex() + 1); 
 				}
 				break;
 			default:
@@ -1122,8 +1123,8 @@ public class SimpleLanguageParser extends Parser {
 				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__1) | (1L << IDENTIFIER) | (1L << STRING_LITERAL) | (1L << NUMERIC_LITERAL))) != 0)) {
 					{
 					setState(199);
-					((Member_expressionContext)_localctx).expression = expression();
-					 parameters.add(((Member_expressionContext)_localctx).expression.result); 
+					_localctx.expression = expression();
+					 parameters.add(_localctx.expression.result); 
 					setState(207);
 					_errHandler.sync(this);
 					_la = _input.LA(1);
@@ -1133,8 +1134,8 @@ public class SimpleLanguageParser extends Parser {
 						setState(201);
 						match(T__2);
 						setState(202);
-						((Member_expressionContext)_localctx).expression = expression();
-						 parameters.add(((Member_expressionContext)_localctx).expression.result); 
+						_localctx.expression = expression();
+						 parameters.add(_localctx.expression.result); 
 						}
 						}
 						setState(209);
@@ -1145,8 +1146,8 @@ public class SimpleLanguageParser extends Parser {
 				}
 
 				setState(212);
-				((Member_expressionContext)_localctx).e = match(T__3);
-				 ((Member_expressionContext)_localctx).result =  factory.createCall(receiver, parameters, ((Member_expressionContext)_localctx).e); 
+				_localctx.e = match(T__3);
+				 _localctx.result =  factory.createCall(receiver, parameters, _localctx.e); 
 				}
 				break;
 			case T__26:
@@ -1154,13 +1155,13 @@ public class SimpleLanguageParser extends Parser {
 				setState(214);
 				match(T__26);
 				setState(215);
-				((Member_expressionContext)_localctx).expression = expression();
+				_localctx.expression = expression();
 				 if (assignmentName == null) {
-				                                                      SemErr((((Member_expressionContext)_localctx).expression!=null?(((Member_expressionContext)_localctx).expression.start):null), "invalid assignment target");
+				                                                      SemErr((_localctx.expression!=null?(_localctx.expression.start):null), "invalid assignment target");
 				                                                  } else if (assignmentReceiver == null) {
-				                                                      ((Member_expressionContext)_localctx).result =  factory.createAssignment(assignmentName, ((Member_expressionContext)_localctx).expression.result);
+				                                                      _localctx.result =  factory.createAssignment(assignmentName, _localctx.expression.result);
 				                                                  } else {
-				                                                      ((Member_expressionContext)_localctx).result =  factory.createWriteProperty(assignmentReceiver, assignmentName, ((Member_expressionContext)_localctx).expression.result);
+				                                                      _localctx.result =  factory.createWriteProperty(assignmentReceiver, assignmentName, _localctx.expression.result);
 				                                                  } 
 				}
 				break;
@@ -1172,9 +1173,9 @@ public class SimpleLanguageParser extends Parser {
 				                                                       receiver = factory.createRead(assignmentName); 
 				                                                  } 
 				setState(220);
-				((Member_expressionContext)_localctx).IDENTIFIER = match(IDENTIFIER);
-				 nestedAssignmentName = factory.createStringLiteral(((Member_expressionContext)_localctx).IDENTIFIER, false);
-				                                                  ((Member_expressionContext)_localctx).result =  factory.createReadProperty(receiver, nestedAssignmentName); 
+				_localctx.IDENTIFIER = match(IDENTIFIER);
+				 nestedAssignmentName = factory.createStringLiteral(_localctx.IDENTIFIER, false);
+				                                                  _localctx.result =  factory.createReadProperty(receiver, nestedAssignmentName); 
 				}
 				break;
 			case T__28:
@@ -1185,9 +1186,9 @@ public class SimpleLanguageParser extends Parser {
 				                                                      receiver = factory.createRead(assignmentName); 
 				                                                  } 
 				setState(224);
-				((Member_expressionContext)_localctx).expression = expression();
-				 nestedAssignmentName = ((Member_expressionContext)_localctx).expression.result;
-				                                                  ((Member_expressionContext)_localctx).result =  factory.createReadProperty(receiver, nestedAssignmentName); 
+				_localctx.expression = expression();
+				 nestedAssignmentName = _localctx.expression.result;
+				                                                  _localctx.result =  factory.createReadProperty(receiver, nestedAssignmentName); 
 				setState(226);
 				match(T__29);
 				}
@@ -1201,8 +1202,8 @@ public class SimpleLanguageParser extends Parser {
 			case 1:
 				{
 				setState(230);
-				((Member_expressionContext)_localctx).member_expression = member_expression(_localctx.result, receiver, nestedAssignmentName);
-				 ((Member_expressionContext)_localctx).result =  ((Member_expressionContext)_localctx).member_expression.result; 
+				_localctx.member_expression = member_expression(_localctx.result, receiver, nestedAssignmentName);
+				 _localctx.result =  _localctx.member_expression.result; 
 				}
 				break;
 			}

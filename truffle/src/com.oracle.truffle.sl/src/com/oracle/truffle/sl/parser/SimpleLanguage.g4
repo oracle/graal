@@ -39,14 +39,16 @@
  * SOFTWARE.
  */
  
- /*
-  * The parser and lexer need to be generated using "mx create-sl-parser".
-  */
+/*
+ * The parser and lexer need to be generated using "mx create-sl-parser".
+ */
 
 grammar SimpleLanguage;
 
 @parser::header
 {
+// DO NOT MODIFY - generated from SimpleLanguage.g4 using "mx create-sl-parser"
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +60,11 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.parser.SLParseError;
+}
+
+@lexer::header
+{
+// DO NOT MODIFY - generated from SimpleLanguage.g4 using "mx create-sl-parser"
 }
 
 @parser::members
