@@ -18,7 +18,7 @@ import de.hpi.swa.trufflelsp.TruffleAdapter.SourceFix;
 public class LanguageSpecificHacks {
     public static boolean enableLanguageSpecificHacks = true;
 
-    public static SourceFix languageSpecificFixSourceAtPosition(String text, String langId, int character, Source originalSource, int oneBasedLineNumber, String textAtCaretLine) {
+    public static SourceFix fixSourceAtPosition(String text, String langId, int character, Source originalSource, int oneBasedLineNumber, String textAtCaretLine) {
         if (enableLanguageSpecificHacks) {
             if (langId.equals("python") || langId.equals("js")) {
                 if (textAtCaretLine.charAt(character - 1) == '.') {
@@ -51,7 +51,7 @@ public class LanguageSpecificHacks {
         return null;
     }
 
-    public static boolean languageSpecificFillCompletions(TruffleAdapter adapter, CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId,
+    public static boolean fillCompletions(TruffleAdapter adapter, CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId,
                     boolean areObjectPropertiesPresent) {
         if (enableLanguageSpecificHacks) {
             if (langId.equals("sl") && frame != null) {
@@ -73,7 +73,7 @@ public class LanguageSpecificHacks {
         return areObjectPropertiesPresent;
     }
 
-    public static String languageSpecificFillCompletionsFromTruffleObject(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
+    public static String fillCompletionsFromTruffleObject(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
         if (enableLanguageSpecificHacks) {
             if (langId.equals("python")) {
                 try {
@@ -97,5 +97,21 @@ public class LanguageSpecificHacks {
             }
         }
         return documentation;
+    }
+
+    public static boolean isObjectPropertyCompletionCharacter(String text, String langId) {
+        if (enableLanguageSpecificHacks) {
+            switch (langId) {
+                case "python":
+                case "sl":
+                case "js":
+                case "ruby":
+                    return ".".equals(text);
+                default:
+                    return false;
+            }
+        } else {
+            return false;
+        }
     }
 }

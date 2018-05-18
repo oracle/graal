@@ -35,6 +35,13 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class NearestSectionsFinder {
 
+    public static enum NodeLocationType {
+        CONTAINS,
+        CONTAINS_END,
+        PREVIOUS,
+        NEXT
+    }
+
     private NearestSectionsFinder() {
     }
 

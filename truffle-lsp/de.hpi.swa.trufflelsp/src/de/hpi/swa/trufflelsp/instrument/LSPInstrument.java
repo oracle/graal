@@ -52,8 +52,8 @@ public class LSPInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Don't use loopback address. (default:false)", category = OptionCategory.EXPERT) //
     static final OptionKey<Boolean> Remote = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(name = "Lsp.languagespecific.hacks", help = "Enable language specific hacks to get features which are not supported by some languages yet. (default:true)", category = OptionCategory.EXPERT) //
-    static final OptionKey<Boolean> LspLanguageSpecificHacks = new OptionKey<>(true);
+    @com.oracle.truffle.api.Option(name = "Languagespecific.hacks", help = "Enable language specific hacks to get features which are not supported by some languages yet. (default:true)", category = OptionCategory.EXPERT) //
+    static final OptionKey<Boolean> LanguageSpecificHacksOption = new OptionKey<>(true);
 
     @Override
     protected void onCreate(Env env) {
@@ -66,7 +66,7 @@ public class LSPInstrument extends TruffleInstrument {
                 PrintWriter err = new PrintWriter(env.err());
                 PrintWriter info = new PrintWriter(env.out());
                 ServerSocket serverSocket = new ServerSocket(socketAddress.getPort(), 50, socketAddress.getAddress());
-                LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LspLanguageSpecificHacks).booleanValue();
+                LanguageSpecificHacks.enableLanguageSpecificHacks = options.get(LanguageSpecificHacksOption).booleanValue();
                 LSPServer languageServer = LSPServer.create(new TruffleAdapter(env), info, err);
                 languageServer.start(serverSocket);
                 info.println("[Truffle LSP] Starting server on " + socketAddress);

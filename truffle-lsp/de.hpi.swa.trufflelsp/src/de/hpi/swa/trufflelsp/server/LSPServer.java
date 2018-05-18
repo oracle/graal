@@ -67,6 +67,7 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import de.hpi.swa.trufflelsp.TruffleAdapter;
 
 public class LSPServer implements LanguageServer, LanguageClientAware, TextDocumentService, WorkspaceService, DiagnosticsPublisher {
+    private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
     private final TruffleAdapter truffle;
     private final PrintWriter err;
     private final PrintWriter info;
@@ -95,7 +96,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 // final SignatureHelpOptions signatureHelpOptions = new SignatureHelpOptions(triggerCharacters);
 
         ServerCapabilities capabilities = new ServerCapabilities();
-        capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
+        capabilities.setTextDocumentSync(TEXT_DOCUMENT_SYNC_KIND);
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
         capabilities.setDefinitionProvider(true);
@@ -114,20 +115,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         final InitializeResult res = new InitializeResult(capabilities);
         return CompletableFuture.supplyAsync(() -> res);
     }
-
-// private void loadWorkspace(final InitializeParams params) {
-// try {
-// som.loadWorkspace(params.getRootUri());
-// } catch (URISyntaxException e) {
-// MessageParams msg = new MessageParams();
-// msg.setType(MessageType.Error);
-// msg.setMessage("Workspace root URI invalid: " + params.getRootUri());
-//
-// client.logMessage(msg);
-//
-// ServerLauncher.logErr(msg.getMessage());
-// }
-// }
 
     public CompletableFuture<Object> shutdown() {
         info.println("[Truffle LSP] Shutting down server...");
@@ -163,8 +150,8 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
         this.diagnostics.addAll(diagnostics);
     }
 
-    public void reportCollectedDiagnostics(final String documentUri) {
-        if (!this.diagnostics.isEmpty()) {
+    public void reportCollectedDiagnostics(final String documentUri, boolean forceIfEmpty) {
+        if (!this.diagnostics.isEmpty() || forceIfEmpty) {
             PublishDiagnosticsParams result = new PublishDiagnosticsParams();
             result.setDiagnostics(this.diagnostics);
             result.setUri(documentUri);
@@ -176,15 +163,11 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(
                     TextDocumentPositionParams position) {
-        // CompletionList result =
-        // som.getCompletions(position.getTextDocument().getUri(),
-        // position.getPosition().getLine(), position.getPosition().getCharacter());
-        // return CompletableFuture.completedFuture(Either.forRight(result));
         try {
             CompletionList result = this.truffle.getCompletions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
             return CompletableFuture.supplyAsync(() -> Either.forRight(result));
         } finally {
-            reportCollectedDiagnostics(position.getTextDocument().getUri());
+            reportCollectedDiagnostics(position.getTextDocument().getUri(), false);
         }
     }
 
@@ -208,10 +191,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
-        // List<? extends Location> result =
-        // som.getDefinitions(position.getTextDocument().getUri(),
-        // position.getPosition().getLine(), position.getPosition().getCharacter());
-        // return CompletableFuture.completedFuture(result);
         List<? extends Location> result = this.truffle.getDefinitions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
         return CompletableFuture.completedFuture(result);
     }
@@ -232,7 +211,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
         List<? extends SymbolInformation> result = truffle.getSymbolInfo(params.getTextDocument().getUri());
         return CompletableFuture.completedFuture(result);
-// return CompletableFuture.supplyAsync(() -> new ArrayList<>());
     }
 
     @Override
@@ -250,10 +228,6 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
-        // List<CodeLens> result = new ArrayList<>();
-        // som.getCodeLenses(result, params.getTextDocument().getUri());
-        // return CompletableFuture.completedFuture(result);
-
         CodeLens codeLens = new CodeLens(new Range(new Position(), new Position()));
         Command command = new Command("Harvest types (exec this code)", "harvest_types");
         command.setArguments(Arrays.asList(params.getTextDocument().getUri()));
@@ -294,9 +268,9 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
-// ServerLauncher.logMsg("didOpen()");
-
         this.openedFileUri2LangId.put(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId());
+
+        this.truffle.didOpen(params.getTextDocument().getUri(), params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
 
         parseDocument(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId(),
                         params.getTextDocument().getText());
@@ -304,25 +278,33 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public void didChange(DidChangeTextDocumentParams params) {
-        // ServerLauncher.logMsg("didChange()");
-        validateTextDocument(params.getTextDocument().getUri(), params.getContentChanges());
+        processChanges(params.getTextDocument().getUri(), params.getContentChanges());
     }
 
-    private void validateTextDocument(final String documentUri,
+    private void processChanges(final String documentUri,
                     final List<? extends TextDocumentContentChangeEvent> list) {
         String langId = this.openedFileUri2LangId.get(documentUri);
         assert langId != null : documentUri;
 
-        // Only need the first element, as long as sync mode is
-        // TextDocumentSyncKind.Full
-        TextDocumentContentChangeEvent e = list.iterator().next();
+        if (TEXT_DOCUMENT_SYNC_KIND.equals(TextDocumentSyncKind.Full)) {
+            // Only need the first element, as long as sync mode is
+            // TextDocumentSyncKind.Full
+            TextDocumentContentChangeEvent e = list.iterator().next();
 
-        parseDocument(documentUri, langId, e.getText());
+            parseDocument(documentUri, langId, e.getText());
+        } else if (TEXT_DOCUMENT_SYNC_KIND.equals(TextDocumentSyncKind.Incremental)) {
+            processChangesAndParseDocument(documentUri, list);
+        }
     }
 
-    private void parseDocument(String documentUri, final String langId, final String text) {
+    private void parseDocument(final String documentUri, final String langId, final String text) {
         this.truffle.parse(text, langId, documentUri);
-        reportCollectedDiagnostics(documentUri);
+        reportCollectedDiagnostics(documentUri, true);
+    }
+
+    private void processChangesAndParseDocument(String documentUri, List<? extends TextDocumentContentChangeEvent> list) {
+        this.truffle.processChangesAndParse(list, documentUri);
+        reportCollectedDiagnostics(documentUri, true);
     }
 
     @Override
@@ -369,7 +351,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             try {
                 this.truffle.exec(uri);
             } finally {
-                reportCollectedDiagnostics(uri);
+                reportCollectedDiagnostics(uri, false);
             }
         }
 
