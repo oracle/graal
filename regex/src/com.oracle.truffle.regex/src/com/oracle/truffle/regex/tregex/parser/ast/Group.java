@@ -265,8 +265,8 @@ public class Group extends Term implements RegexASTVisitorIterable {
 
     /**
      * Returns the {@link SourceSection} corresponding to this group's opening bracket and modifier
-     * symbols (like "?:", "?=", ...), or <code>null</code> if this group has no corresponding
-     * source (this is the case for groups inserted by the parser when expanding quantifiers etc.).
+     * symbols (like "?:", "?=", ...), or {@code null} if this group has no corresponding source
+     * (this is the case for groups inserted by the parser when expanding quantifiers etc.).
      */
     public SourceSection getSourceSectionBegin() {
         return sourceSectionBegin;
@@ -278,8 +278,8 @@ public class Group extends Term implements RegexASTVisitorIterable {
 
     /**
      * Returns the {@link SourceSection} corresponding to this group's closing bracket, or
-     * <code>null</code> if this group has no corresponding source (this is the case for groups
-     * inserted by the parser when expanding quantifiers etc.).
+     * {@code null} if this group has no corresponding source (this is the case for groups inserted
+     * by the parser when expanding quantifiers etc.).
      */
     public SourceSection getSourceSectionEnd() {
         return sourceSectionEnd;

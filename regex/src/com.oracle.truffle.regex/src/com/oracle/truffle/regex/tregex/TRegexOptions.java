@@ -134,7 +134,7 @@ public class TRegexOptions {
 
     /**
      * Maximum number of NFA states involved in one DFA transition. This number must not be higher
-     * that 255, because the maximum number of NFA states in one DFA transition determines the
+     * than 255, because the maximum number of NFA states in one DFA transition determines the
      * number of simultaneously tracked result sets (arrays) in capture group tracking mode, which
      * are accessed over byte indices in {@link DFACaptureGroupPartialTransitionNode}.
      */

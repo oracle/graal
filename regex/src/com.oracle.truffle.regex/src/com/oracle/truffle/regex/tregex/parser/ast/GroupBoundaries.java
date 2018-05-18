@@ -74,7 +74,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     /**
-     * Creates a byte array suitable to be part of the <code>indexUpdates</code> parameter passed to
+     * Creates a byte array suitable to be part of the {@code indexUpdates} parameter passed to
      * {@link DFACaptureGroupPartialTransitionNode#create(byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
      * 
@@ -87,7 +87,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     /**
-     * Creates a byte array suitable to be part of the <code>indexClears</code> parameter passed to
+     * Creates a byte array suitable to be part of the {@code indexClears} parameter passed to
      * {@link DFACaptureGroupPartialTransitionNode#create(byte[], byte[], byte[][], byte[][], byte)}
      * from this object.
      * 

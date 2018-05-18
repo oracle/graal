@@ -86,12 +86,12 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
     }
 
     /**
-     * Merge this transition fragment with another by merging <code>this.transitionSet</code> with
-     * <code>other.transitionSet</code> using {@link TransitionSet#addAll(TransitionSet)} and
-     * setting <code>matcherBuilder</code> to <code>mergedMatcher</code>.
+     * Merge this transition fragment with another by merging {@code this.transitionSet} with
+     * {@code other.transitionSet} using {@link TransitionSet#addAll(TransitionSet)} and setting
+     * {@code matcherBuilder} to {@code mergedMatcher}.
      * 
-     * @param other the {@link TransitionBuilder} to merge into <code>this</code>. Overriding
-     *            classes may accept their own type only.
+     * @param other the {@link TransitionBuilder} to merge into {@code this}. Overriding classes may
+     *            accept their own type only.
      */
     void mergeInPlace(TransitionBuilder<TS> other, MatcherBuilder mergedMatcher) {
         transitionSet.addAll(other.transitionSet);
@@ -99,11 +99,11 @@ public class TransitionBuilder<TS extends TransitionSet> implements JsonConverti
     }
 
     /**
-     * Merge <code>this</code> and <code>other</code> into a newly created {@link TransitionBuilder}
-     * . The new <code>transitionSet</code> is created by calling
-     * {@link TransitionSet#createMerged(TransitionSet)} on <code>this.transitionSet</code> with
-     * <code>other.transitionSet</code> as parameter. The <code>matcherBuilder</code> of the new
-     * {@link TransitionBuilder} will be set to <code>mergedMatcher</code> directly.
+     * Merge {@code this} and {@code other} into a newly created {@link TransitionBuilder} . The new
+     * {@code transitionSet} is created by calling {@link TransitionSet#createMerged(TransitionSet)}
+     * on {@code this.transitionSet} with {@code other.transitionSet} as parameter. The
+     * {@code matcherBuilder} of the new {@link TransitionBuilder} will be set to
+     * {@code mergedMatcher} directly.
      * 
      * @return the newly created {@link TransitionBuilder}. Overriding classes are expected to
      *         return an instance of their own type!

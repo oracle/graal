@@ -191,8 +191,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return <code>true</code> if the matching transition loops back to this state,
-     *         <code>false</code> otherwise.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch1(VirtualFrame frame, TRegexDFAExecutorNode executor) {
@@ -232,8 +232,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.
-     * @return <code>true</code> if the matching transition loops back to this state,
-     *         <code>false</code> otherwise.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch2(VirtualFrame frame, TRegexDFAExecutorNode executor) {
@@ -283,8 +283,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
      * @param preLoopIndex the index pointed to by
      *            {@link TRegexDFAExecutorNode#getIndex(VirtualFrame)} <i>before</i> this method is
      *            called for the first time.
-     * @return <code>true</code> if the matching transition loops back to this state,
-     *         <code>false</code> otherwise.
+     * @return {@code true} if the matching transition loops back to this state, {@code false}
+     *         otherwise.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     private boolean checkMatch3(VirtualFrame frame, TRegexDFAExecutorNode executor, int preLoopIndex) {

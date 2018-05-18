@@ -63,9 +63,9 @@ public abstract class RegexASTNode implements IndexedState, JsonConvertible {
     /**
      * Copy this node, in one of the following ways:
      * <ul>
-     * <li>if <code>recursive</code> is <code>true</code>, recursively copy this subtree. This
-     * method should be used instead of {@link CopyVisitor} if the copying process is required to be
-     * thread-safe.</li>
+     * <li>if {@code recursive} is {@code true}, recursively copy this subtree. This method should
+     * be used instead of {@link CopyVisitor} if the copying process is required to be thread-safe.
+     * </li>
      * <li>else, copy this node only, without any child nodes.</li>
      * </ul>
      * In both cases, the ID and minPath of the copied nodes is left unset.

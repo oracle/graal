@@ -37,21 +37,21 @@ import java.util.Collection;
 public interface TransitionSet extends JsonConvertible {
 
     /**
-     * Create a merged set of <code>this</code> and <code>other</code> by copying <code>this</code>
-     * and adding the contents of <code>other</code> to the copy.
+     * Create a merged set of {@code this} and {@code other} by copying {@code this} and adding the
+     * contents of {@code other} to the copy.
      * 
      * @param other the {@link TransitionSet} to be merged with the copy. Implementing classes may
      *            accept objects of their own type only.
-     * @return the merged set. <strong>MUST</strong> be of the same type as <code>this</code>!
+     * @return the merged set. <strong>MUST</strong> be of the same type as {@code this}!
      */
     TransitionSet createMerged(TransitionSet other);
 
     /**
-     * Add the contents of <code>other</code> to <code>this</code>, analogous to
+     * Add the contents of {@code other} to {@code this}, analogous to
      * {@link java.util.Set#addAll(Collection)}.
      * 
-     * @param other the {@link TransitionSet} to be merged with <code>this</code>. Implementing
-     *            classes may accept objects of their own type only.
+     * @param other the {@link TransitionSet} to be merged with {@code this}. Implementing classes
+     *            may accept objects of their own type only.
      */
     void addAll(TransitionSet other);
 

@@ -30,7 +30,6 @@ import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Iterator;
@@ -43,7 +42,7 @@ import java.util.stream.StreamSupport;
  * This class represents a set of NFA transitions leading to a set of NFA states. The uniqueness of
  * one {@link NFAStateTransition} inside this class is defined by its target {@link NFAState} as
  * returned by {@link NFAStateTransition#getTarget(boolean)}, where
- * {@link NFATransitionSet#isForward()} is used as the parameter <code>forward</code>.
+ * {@link NFATransitionSet#isForward()} is used as the parameter {@code forward}.
  * {@link #iterator()} reflects insertion order.
  *
  * @see DFAGenerator
@@ -115,10 +114,10 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
     }
 
     /**
-     * Returns <code>true</code> if the set contains a transition to a NFA state that in turn
-     * contains a transition to an un-anchored NFA final state as denoted by
+     * Returns {@code true} if the set contains a transition to a NFA state that in turn contains a
+     * transition to an un-anchored NFA final state as denoted by
      * {@link NFAState#hasTransitionToUnAnchoredFinalState(boolean)}, where {@link #isForward()} is
-     * used as the <code>forward</code> parameter.
+     * used as the {@code forward} parameter.
      */
     public boolean leadsToFinalState() {
         return isFlagSet(FLAG_LEADS_TO_FINAL_STATE);
@@ -164,7 +163,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
      * Add a {@link NFAStateTransition} to this set. Note that this set will refuse to add the
      * transition if it already contains a transition leading to the same <em>target state</em> as
      * denoted by {@link NFAStateTransition#getTarget(boolean)}, where {@link #isForward()} is used
-     * as the <code>forward</code> parameter.
+     * as the {@code forward} parameter.
      */
     public void add(NFAStateTransition transition) {
         doAdd(transition);

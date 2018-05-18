@@ -386,7 +386,7 @@ public final class DFAGenerator implements JsonConvertible {
      * possible results - this could be fine-tuned further.
      *
      * @param state the state to inspect.
-     * @return <code>true</code> if the state was pruned, <code>false</code> otherwise.
+     * @return {@code true} if the state was pruned, {@code false} otherwise.
      * @see com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator
      */
     private boolean tryPruneTraceFinderState(DFAStateNodeBuilder state) {

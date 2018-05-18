@@ -61,8 +61,8 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     }
 
     /**
-     * Returns <code>true</code> if the DFA executor may safely omit the result set reordering step
-     * in this transition.
+     * Returns {@code true} if the DFA executor may safely omit the result set reordering step in
+     * this transition.
      *
      * @see DFACaptureGroupPartialTransitionNode
      */
@@ -132,9 +132,9 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     }
 
     /**
-     * Converts the ordering given by <code>newOrder</code> to a sequence of swap operations as
-     * needed by {@link DFACaptureGroupPartialTransitionNode}. The number of swap operations is
-     * guaranteed to be smaller than <code>newOrder.length</code>. Caution: this method uses
+     * Converts the ordering given by {@code newOrder} to a sequence of swap operations as needed by
+     * {@link DFACaptureGroupPartialTransitionNode}. The number of swap operations is guaranteed to
+     * be smaller than {@code newOrder.length}. Caution: this method uses
      * {@link CompilationBuffer#getByteArrayBuffer()}.
      */
     private static byte[] newOrderToSequenceOfSwaps(int[] newOrder, CompilationBuffer compilationBuffer) {

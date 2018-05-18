@@ -184,11 +184,11 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     /**
-     * The <code>fromIndex</code> argument given to
+     * The {@code fromIndex} argument given to
      * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the <code>fromIndex</code> argument given to
+     * @return the {@code fromIndex} argument given to
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      */
     public int getFromIndex(VirtualFrame frame) {
@@ -232,11 +232,11 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     /**
-     * The <code>input</code> argument given to
+     * The {@code input} argument given to
      * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the <code>input</code> argument given to
+     * @return the {@code input} argument given to
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      */
     public Object getInput(VirtualFrame frame) {
@@ -248,11 +248,11 @@ public final class TRegexDFAExecutorNode extends Node {
     }
 
     /**
-     * The length of the <code>input</code> argument given to
+     * The length of the {@code input} argument given to
      * {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      *
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
-     * @return the length of the <code>input</code> argument given to
+     * @return the length of the {@code input} argument given to
      *         {@link TRegexExecRootNode#execute(VirtualFrame, RegexObject, Object, int)}.
      */
     public int getInputLength(VirtualFrame frame) {

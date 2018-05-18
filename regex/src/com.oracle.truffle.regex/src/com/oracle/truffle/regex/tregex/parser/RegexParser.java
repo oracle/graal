@@ -585,14 +585,14 @@ public final class RegexParser {
     }
 
     /**
-     * This method should be called when <code>curSequence</code> is about to be closed. If the
-     * current {@link Sequence} <em>and</em> the last {@link Sequence} consist of a single
+     * This method should be called when {@code curSequence} is about to be closed. If the current
+     * {@link Sequence} <em>and</em> the last {@link Sequence} consist of a single
      * {@link CharacterClass} each, the {@link CharacterClass} contained in the current
      * {@link Sequence} will be removed and merged into the last {@link Sequence}'s
      * {@link CharacterClass}, resulting in a smaller NFA.
      * 
-     * @return <code>true</code> if the {@link CharacterClass} in the current sequence was merged
-     *         with the {@link CharacterClass} in the last Sequence.
+     * @return {@code true} if the {@link CharacterClass} in the current sequence was merged with
+     *         the {@link CharacterClass} in the last Sequence.
      */
     private boolean tryMergeSingleCharClassAlternations() {
         if (curGroup.size() > 1 && curSequence.isSingleCharClass()) {

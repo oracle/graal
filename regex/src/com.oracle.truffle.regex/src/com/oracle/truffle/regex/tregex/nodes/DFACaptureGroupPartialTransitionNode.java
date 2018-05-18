@@ -68,14 +68,13 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
     /**
      * Creates a new {@link DFACaptureGroupPartialTransitionNode}. All numeric values stored in this
      * class refer to indices of the first or second dimension of
-     * {@link DFACaptureGroupTrackingData#results} and are stored as <code>byte</code> to save
-     * space. This is OK since the dimensions of {@link DFACaptureGroupTrackingData#results} are
-     * capped by
+     * {@link DFACaptureGroupTrackingData#results} and are stored as {@code byte} to save space.
+     * This is OK since the dimensions of {@link DFACaptureGroupTrackingData#results} are capped by
      * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfNFAStatesInOneDFATransition}
      * (1st dimension) and
      * {@link com.oracle.truffle.regex.tregex.TRegexOptions#TRegexMaxNumberOfCaptureGroups}
-     * <code>* 2</code> (2nd dimension, times two because we need two array slots per capture group,
-     * one for the beginning and one for the end). <br>
+     * {@code * 2} (2nd dimension, times two because we need two array slots per capture group, one
+     * for the beginning and one for the end). <br>
      * Although we treat {@link DFACaptureGroupTrackingData#results} as a 2D-array here, it is
      * actually flattened into one dimension for performance. For that reason, we additionally have
      * {@link DFACaptureGroupTrackingData#currentResultOrder}, which stores the offset of every
@@ -92,55 +91,52 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
      *            array denote one swap operation.
      *            <p>
      *            Example: <br>
-     *            If
-     *            <code>currentResultOrder = DFACaptureGroupTrackingData#currentResultOrder</code>
-     *            and <code>reorderSwaps = [0, 1, 1, 2]</code>, then
-     *            <code>currentResultOrder[0]</code> will be swapped with
-     *            <code>currentResultOrder[1]</code>, and <code>currentResultOrder[1]</code> will be
-     *            swapped with <code>currentResultOrder[2]</code>, in that order.
+     *            If {@code currentResultOrder = DFACaptureGroupTrackingData#currentResultOrder} and
+     *            {@code reorderSwaps = [0, 1, 1, 2]}, then {@code currentResultOrder[0]} will be
+     *            swapped with {@code currentResultOrder[1]}, and {@code currentResultOrder[1]} will
+     *            be swapped with {@code currentResultOrder[2]}, in that order.
      *            </p>
      * @param arrayCopies copy rows of {@link DFACaptureGroupTrackingData#results} (1st dimension)
      *            as described in this array. Every two elements in this array denote one copy
      *            operation, where the first element is the source, and the second is the target.
      *            The copy operations will be applied <em>after</em> the reordering of
-     *            {@link DFACaptureGroupTrackingData#currentResultOrder} with
-     *            <code>reorderSwaps</code>.
+     *            {@link DFACaptureGroupTrackingData#currentResultOrder} with {@code reorderSwaps}.
      *            <p>
      *            Example: <br>
-     *            If <code>results = DFACaptureGroupTrackingData#results</code> and
-     *            <code>arrayCopies = [0, 1, 2, 3]</code>, then the contents of
-     *            <code>results[0]</code> will be copied into <code>results[1]</code>, and the
-     *            contents of <code>results[2]</code> will be copied into <code>results[3]</code>.
+     *            If {@code results = DFACaptureGroupTrackingData#results} and
+     *            {@code arrayCopies = [0, 1, 2, 3]}, then the contents of {@code results[0]} will
+     *            be copied into {@code results[1]}, and the contents of {@code results[2]} will be
+     *            copied into {@code results[3]}.
      *            </p>
      * @param indexUpdates denotes which index of which array in
      *            {@link DFACaptureGroupTrackingData#results} shall be updated to
-     *            <code>currentIndex</code> in {@link #apply(DFACaptureGroupTrackingData, int)},
+     *            {@code currentIndex} in {@link #apply(DFACaptureGroupTrackingData, int)},
      *            {@link #applyPreFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)}
      *            and {@link #applyFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)}.
      *            In every row (1st dimension element) of this 2D array, the first value is the
      *            index of one row in {@link DFACaptureGroupTrackingData#results}, all following
-     *            values are indices in that row that shall be set to <code>currentIndex</code>.
+     *            values are indices in that row that shall be set to {@code currentIndex}.
      *            <p>
      *            Example: <br>
-     *            If <code>results = DFACaptureGroupTrackingData#results</code> and
-     *            <code>indexUpdates = [[0, 1, 2], [3, 4]]</code>, then <code>results[0][1]</code>,
-     *            <code>results[0][2]</code> and <code>results[3][4]</code> will be set to
-     *            <code>currentIndex</code>.
+     *            If {@code results = DFACaptureGroupTrackingData#results} and
+     *            {@code indexUpdates = [[0, 1, 2], [3, 4]]}, then {@code results[0][1]},
+     *            {@code results[0][2]} and {@code results[3][4]} will be set to
+     *            {@code currentIndex}.
      *            </p>
      * @param indexClears denotes which index of which array in
-     *            {@link DFACaptureGroupTrackingData#results} shall be updated to <code>0</code> in
+     *            {@link DFACaptureGroupTrackingData#results} shall be updated to {@code 0} in
      *            {@link #apply(DFACaptureGroupTrackingData, int)},
      *            {@link #applyPreFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)}
      *            and {@link #applyFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)},
-     *            analogous to <code>indexUpdates</code>.
+     *            analogous to {@code indexUpdates}.
      * @param preReorderFinalStateResultIndex denotes the row (1st dimension element) of
      *            {@link DFACaptureGroupTrackingData#results} that corresponds to the NFA final
-     *            state <em>before</em> the reordering given by <code>reorderSwaps</code> is
-     *            applied. This is needed in
+     *            state <em>before</em> the reordering given by {@code reorderSwaps} is applied.
+     *            This is needed in
      *            {@link #applyPreFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)}
-     *            when {@link TRegexDFAExecutorNode#isSearching()} is <code>true</code>, because in
-     *            that case we need to be able to apply copy the current result corresponding to the
-     *            NFA final state without doing any reordering.
+     *            when {@link TRegexDFAExecutorNode#isSearching()} is {@code true}, because in that
+     *            case we need to be able to apply copy the current result corresponding to the NFA
+     *            final state without doing any reordering.
      * @return a new {@link DFACaptureGroupPartialTransitionNode}, or a static empty instance if all
      *         arguments are empty or zero.
      */

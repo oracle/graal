@@ -80,7 +80,7 @@ public final class PrioritySensitiveNFATransitionSet extends NFATransitionSet {
     /**
      * Analogous to {@link NFATransitionSet#add(NFAStateTransition)}, but the new element will also
      * be refused if the transition set already contains a transition to a final state (see JavaDoc
-     * of this class), i.e. {@link NFATransitionSet#leadsToFinalState()} is <code>true</code>.
+     * of this class), i.e. {@link NFATransitionSet#leadsToFinalState()} is {@code true}.
      */
     @Override
     public void add(NFAStateTransition transition) {
