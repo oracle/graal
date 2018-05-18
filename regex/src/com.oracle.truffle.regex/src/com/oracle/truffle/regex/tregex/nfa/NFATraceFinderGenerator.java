@@ -28,6 +28,7 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import org.graalvm.collections.EconomicMap;
 
 import java.util.ArrayList;
@@ -272,7 +273,7 @@ public final class NFATraceFinderGenerator {
     }
 
     private NFAStateTransition copyEntry(NFAState dummyInitialState, NFAStateTransition originalReverseEntry) {
-        return new NFAStateTransition((short) transitionID.inc(), copy(originalReverseEntry.getSource()), dummyInitialState, new GroupBoundaries());
+        return new NFAStateTransition((short) transitionID.inc(), copy(originalReverseEntry.getSource()), dummyInitialState, GroupBoundaries.getEmptyInstance());
     }
 
     private NFAState copy(NFAState s) {

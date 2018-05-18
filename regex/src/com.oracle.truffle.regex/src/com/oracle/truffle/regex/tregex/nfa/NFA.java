@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.parser.Counter;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
@@ -78,7 +79,7 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
                             (short) transitionIDCounter.inc(),
                             getUnAnchoredInitialState(),
                             getUnAnchoredInitialState(),
-                            new GroupBoundaries());
+                            GroupBoundaries.getEmptyInstance());
             this.transitions[initialLoopBack.getId()] = initialLoopBack;
         }
         for (NFAState s : states) {

@@ -37,7 +37,6 @@ import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
-import com.oracle.truffle.regex.tregex.nfa.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
@@ -56,6 +55,7 @@ import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplitBailoutException;
 import com.oracle.truffle.regex.tregex.parser.Counter;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -593,12 +593,17 @@ public final class DFAGenerator implements JsonConvertible {
         byte[][] indexUpdates = DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_UPDATES;
         byte[][] indexClears = DFACaptureGroupPartialTransitionNode.EMPTY_INDEX_CLEARS;
         if (groupBoundaries.hasIndexUpdates()) {
-            indexUpdates = new byte[][]{DFACaptureGroupTransitionBuilder.createIndexManipulationArray(0, groupBoundaries.getUpdateIndices())};
+            indexUpdates = new byte[][]{groupBoundaries.updatesToPartialTransitionArray(0)};
         }
         if (groupBoundaries.hasIndexClears()) {
-            indexClears = new byte[][]{DFACaptureGroupTransitionBuilder.createIndexManipulationArray(0, groupBoundaries.getClearIndices())};
+            indexClears = new byte[][]{groupBoundaries.clearsToPartialTransitionArray(0)};
         }
-        return DFACaptureGroupPartialTransitionNode.create(null, DFACaptureGroupPartialTransitionNode.EMPTY_ARRAY_COPIES, indexUpdates, indexClears);
+        return DFACaptureGroupPartialTransitionNode.create(
+                        DFACaptureGroupPartialTransitionNode.EMPTY_REORDER_SWAPS,
+                        DFACaptureGroupPartialTransitionNode.EMPTY_ARRAY_COPIES,
+                        indexUpdates,
+                        indexClears,
+                        (byte) DFACaptureGroupPartialTransitionNode.FINAL_STATE_RESULT_INDEX);
     }
 
     private DFAAbstractStateNode[] tryMakeReducible(DFAAbstractStateNode[] states) {
@@ -640,7 +645,9 @@ public final class DFAGenerator implements JsonConvertible {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        nfa.setInitialLoopBack(forward && executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
+        if (forward) {
+            nfa.setInitialLoopBack(executorProps.isSearching() && !nfa.getAst().getSource().getFlags().isSticky());
+        }
         DFAStateTransitionBuilder[] transitionList = new DFAStateTransitionBuilder[transitionIDCounter.getCount()];
         for (DFAStateNodeBuilder s : getStateIndexMap()) {
             if (s == null) {

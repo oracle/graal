@@ -27,15 +27,17 @@ package com.oracle.truffle.regex.tregex.nodes;
 
 public final class DFACaptureGroupTrackingData {
 
-    public final int[][] results;
+    public final int[] results;
     public final int[] currentResultOrder;
-    public final int[] swap;
     public final int[] currentResult;
 
     public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int numberOfCaptureGroups) {
-        results = new int[maxNumberOfNFAStates][numberOfCaptureGroups * 2];
+        results = new int[maxNumberOfNFAStates * numberOfCaptureGroups * 2];
         currentResultOrder = new int[maxNumberOfNFAStates];
-        swap = new int[maxNumberOfNFAStates];
         currentResult = new int[numberOfCaptureGroups * 2];
+    }
+
+    public void exportResult(byte index) {
+        System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
     }
 }

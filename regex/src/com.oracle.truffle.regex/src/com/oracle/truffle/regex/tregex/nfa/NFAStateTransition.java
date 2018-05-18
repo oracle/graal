@@ -26,6 +26,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;

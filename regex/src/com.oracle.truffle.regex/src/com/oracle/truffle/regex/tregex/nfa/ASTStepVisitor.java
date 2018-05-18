@@ -27,6 +27,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
@@ -178,7 +179,7 @@ public final class ASTStepVisitor extends NFATraversalRegexASTVisitor {
                 dollar = (PositionAssertion) node;
             }
         }
-        transition.getGroupBoundaries().setIndices(captureGroupUpdates, captureGroupClears);
+        transition.setGroupBoundaries(ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears));
         final RegexASTNode lastNode = path.get(path.size() - 1).getNode();
         if (dollar == null) {
             if (lastNode instanceof CharacterClass) {

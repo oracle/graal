@@ -289,6 +289,10 @@ public class Group extends Term implements RegexASTVisitorIterable {
         this.sourceSectionEnd = sourceSectionEnd;
     }
 
+    public int size() {
+        return alternatives.size();
+    }
+
     /**
      * Adds a new alternative to this group. The new alternative will be <em>appended to the
      * end</em>, meaning it will have the <em>lowest priority</em> among all the alternatives.
@@ -322,6 +326,10 @@ public class Group extends Term implements RegexASTVisitorIterable {
         Sequence sequence = ast.createSequence();
         add(sequence);
         return sequence;
+    }
+
+    public void removeLastSequence() {
+        alternatives.remove(alternatives.size() - 1);
     }
 
     public boolean isLiteral() {

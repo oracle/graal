@@ -22,9 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nfa;
+package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
+import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
+import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -35,74 +38,103 @@ import java.util.Objects;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+/**
+ * Objects of this class represent the capture group boundaries traversed in a single
+ * {@link NFAStateTransition} or {@link ASTTransition}. The boundaries of one capture group
+ * correspond to its opening and closing brackets. All capture group boundaries are mapped to
+ * indices according to {@link Group#getBoundaryIndexStart()} and
+ * {@link Group#getBoundaryIndexEnd()}. A transition may <em>update</em> or <em>clear</em> any
+ * boundary when traversed. <br>
+ * To save space, instances of this class are deduplicated in
+ * {@link com.oracle.truffle.regex.tregex.parser.ast.RegexAST}. Due to the deduplication, every
+ * instance must be treated as immutable!
+ *
+ * @see ASTTransition
+ * @see NFAStateTransition
+ * @see com.oracle.truffle.regex.tregex.parser.ast.RegexAST
+ */
 public class GroupBoundaries implements JsonConvertible {
 
-    private CompilationFinalBitSet updateIndices;
-    private CompilationFinalBitSet clearIndices;
+    private static final GroupBoundaries EMPTY_INSTANCE = new GroupBoundaries(new CompilationFinalBitSet(0), new CompilationFinalBitSet(0));
 
-    private boolean hashComputed = false;
-    private int cachedHash;
+    private final CompilationFinalBitSet updateIndices;
+    private final CompilationFinalBitSet clearIndices;
+    private final int cachedHash;
+
+    GroupBoundaries(CompilationFinalBitSet updateIndices, CompilationFinalBitSet clearIndices) {
+        this.updateIndices = updateIndices;
+        this.clearIndices = clearIndices;
+        // both bit sets are immutable, and the hash is always needed immediately in
+        // RegexAST#createGroupBoundaries()
+        this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
+    }
+
+    public static GroupBoundaries getEmptyInstance() {
+        return EMPTY_INSTANCE;
+    }
 
     /**
-     * Returns an array containing the indices of all capture group boundaries traversed in this
-     * object, where indices are seen in the following form: [start of CG 0, end of CG 0, start of
-     * CG 1, end of CG 1, ... ].
+     * Creates a byte array suitable to be part of the <code>indexUpdates</code> parameter passed to
+     * {@link DFACaptureGroupPartialTransitionNode#create(byte[], byte[], byte[][], byte[][], byte)}
+     * from this object.
+     * 
+     * @param targetArray the index of the row to be targeted.
      *
-     * @return indices of all boundaries traversed.
+     * @see DFACaptureGroupPartialTransitionNode#create(byte[], byte[], byte[][], byte[][], byte)
+     */
+    public byte[] updatesToPartialTransitionArray(int targetArray) {
+        return createPartialTransitionArray(targetArray, updateIndices);
+    }
+
+    /**
+     * Creates a byte array suitable to be part of the <code>indexClears</code> parameter passed to
+     * {@link DFACaptureGroupPartialTransitionNode#create(byte[], byte[], byte[][], byte[][], byte)}
+     * from this object.
+     * 
+     * @param targetArray the index of the row to be targeted.
+     *
+     * @see DFACaptureGroupPartialTransitionNode#create(byte[], byte[], byte[][], byte[][], byte)
+     */
+    public byte[] clearsToPartialTransitionArray(int targetArray) {
+        return createPartialTransitionArray(targetArray, clearIndices);
+    }
+
+    private static byte[] createPartialTransitionArray(int targetArray, CompilationFinalBitSet indices) {
+        assert !indices.isEmpty() : "should not be called on empty sets";
+        final byte[] indexUpdate = new byte[indices.numberOfSetBits() + 1];
+        indexUpdate[0] = (byte) targetArray;
+        int i = 1;
+        for (int j : indices) {
+            assert j < 256;
+            indexUpdate[i++] = (byte) j;
+        }
+        return indexUpdate;
+    }
+
+    /**
+     * Directly returns the {@link CompilationFinalBitSet} used to store the indices of all capture
+     * group boundaries that should be updated when traversed. <br>
+     * CAUTION: Do not alter the returned object!
      */
     public CompilationFinalBitSet getUpdateIndices() {
         return updateIndices;
     }
 
-    public CompilationFinalBitSet getClearIndices() {
-        return clearIndices;
-    }
-
     public boolean hasIndexUpdates() {
-        assert updateIndices == null || !updateIndices.isEmpty();
-        return updateIndices != null;
+        return !updateIndices.isEmpty();
     }
 
     public boolean hasIndexClears() {
-        assert clearIndices == null || !clearIndices.isEmpty();
-        return clearIndices != null;
-    }
-
-    public void setIndices(CompilationFinalBitSet updates, CompilationFinalBitSet clears) {
-        if (!updates.isEmpty()) {
-            updateIndices = updates.copy();
-        }
-        if (!clears.isEmpty()) {
-            clearIndices = clears.copy();
-        }
-        hashComputed = false;
+        return !clearIndices.isEmpty();
     }
 
     /**
-     * Merge this GroupBoundaries object with another.
-     *
-     * @param o other GroupBoundaries object. Assumed to be disjoint with this.
+     * Updates the given {@link CompilationFinalBitSet}s with the values contained in this
+     * {@link GroupBoundaries} object.
      */
-    public void addAll(GroupBoundaries o) {
-        if (updateIndices == null) {
-            if (o.updateIndices != null) {
-                updateIndices = o.updateIndices.copy();
-            }
-        } else {
-            if (o.updateIndices != null) {
-                updateIndices.union(o.updateIndices);
-            }
-        }
-        if (clearIndices == null) {
-            if (o.clearIndices != null) {
-                clearIndices = o.clearIndices.copy();
-            }
-        } else {
-            if (o.clearIndices != null) {
-                clearIndices.union(o.clearIndices);
-            }
-        }
-        hashComputed = false;
+    public void updateBitSets(CompilationFinalBitSet foreignUpdateIndices, CompilationFinalBitSet foreignClearIndices) {
+        foreignUpdateIndices.union(updateIndices);
+        foreignClearIndices.union(clearIndices);
     }
 
     @Override
@@ -119,10 +151,6 @@ public class GroupBoundaries implements JsonConvertible {
 
     @Override
     public int hashCode() {
-        if (!hashComputed) {
-            cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
-            hashComputed = true;
-        }
         return cachedHash;
     }
 
