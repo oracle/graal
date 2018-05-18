@@ -40,8 +40,8 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 /**
- * Represents an atomic compare-and-swap operation.
- * The result is the current value of the memory location that was compared.
+ * Represents an atomic compare-and-swap operation. The result is the current value of the memory
+ * location that was compared.
  */
 @NodeInfo(allowedUsageTypes = {Value, Memory}, cycles = CYCLES_8, size = SIZE_8)
 public final class UnsafeCompareAndExchangeNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {

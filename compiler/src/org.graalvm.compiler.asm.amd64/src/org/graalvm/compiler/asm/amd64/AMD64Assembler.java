@@ -1854,9 +1854,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * The 8-bit cmpxchg compares the value at adr with the contents of X86.rax,
-     * and stores reg into adr if so; otherwise, the value at adr is loaded into X86.rax,.
-     * The ZF is set if the compared values were equal, and cleared otherwise.
+     * The 8-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg into
+     * adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the compared
+     * values were equal, and cleared otherwise.
      */
     public final void cmpxchgb(Register reg, AMD64Address adr) { // cmpxchg
         prefix(adr, reg);
@@ -1866,9 +1866,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * The 16-bit cmpxchg compares the value at adr with the contents of X86.rax,
-     * and stores reg into adr if so; otherwise, the value at adr is loaded into X86.rax,.
-     * The ZF is set if the compared values were equal, and cleared otherwise.
+     * The 16-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg
+     * into adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the
+     * compared values were equal, and cleared otherwise.
      */
     public final void cmpxchgw(Register reg, AMD64Address adr) { // cmpxchg
         emitByte(0x66); // Switch to 16-bit mode.
@@ -1879,9 +1879,9 @@ public class AMD64Assembler extends Assembler {
     }
 
     /**
-     * The 32-bit cmpxchg compares the value at adr with the contents of X86.rax,
-     * and stores reg into adr if so; otherwise, the value at adr is loaded into X86.rax,.
-     * The ZF is set if the compared values were equal, and cleared otherwise.
+     * The 32-bit cmpxchg compares the value at adr with the contents of X86.rax, and stores reg
+     * into adr if so; otherwise, the value at adr is loaded into X86.rax,. The ZF is set if the
+     * compared values were equal, and cleared otherwise.
      */
     public final void cmpxchgl(Register reg, AMD64Address adr) { // cmpxchg
         prefix(adr, reg);

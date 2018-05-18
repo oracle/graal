@@ -76,7 +76,7 @@ public class AMD64GraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, arch, replacementsBytecodeProvider);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, arch, replacementsBytecodeProvider);
                 StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins(invocationPlugins, replacementsBytecodeProvider,
-                        new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double});
+                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object, JavaKind.Boolean, JavaKind.Byte, JavaKind.Short, JavaKind.Char, JavaKind.Float, JavaKind.Double});
                 registerUnsafePlugins(invocationPlugins, replacementsBytecodeProvider);
                 registerStringPlugins(invocationPlugins, arch, replacementsBytecodeProvider);
                 registerStringLatin1Plugins(invocationPlugins, replacementsBytecodeProvider);

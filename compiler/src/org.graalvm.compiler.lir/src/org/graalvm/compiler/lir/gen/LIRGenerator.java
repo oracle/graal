@@ -35,7 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jdk.vm.ci.code.RegisterConfig;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;

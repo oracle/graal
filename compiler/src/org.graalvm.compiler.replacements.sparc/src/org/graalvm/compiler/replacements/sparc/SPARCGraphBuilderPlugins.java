@@ -57,9 +57,10 @@ public class SPARCGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, IntegerSubstitutions.class, JavaKind.Int, bytecodeProvider);
                 registerIntegerLongPlugins(invocationPlugins, LongSubstitutions.class, JavaKind.Long, bytecodeProvider);
                 registerMathPlugins(invocationPlugins);
-                // This is temporarily disabled until we implement correct emitting of the CAS instructions of the proper width.
+                // This is temporarily disabled until we implement correct emitting of the CAS
+                // instructions of the proper width.
                 StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins(invocationPlugins, bytecodeProvider,
-                        new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }

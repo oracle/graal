@@ -57,9 +57,10 @@ public class AArch64GraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins);
                 registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
                 registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
-                // This is temporarily disabled until we implement correct emitting of the CAS instructions of the proper width.
+                // This is temporarily disabled until we implement correct emitting of the CAS
+                // instructions of the proper width.
                 StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins(invocationPlugins, bytecodeProvider,
-                        new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }
