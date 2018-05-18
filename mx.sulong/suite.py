@@ -8,7 +8,7 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "version" : "8ed0b0b53c7e722b0779c29d7e3532fcf27ab3ac",
+        "version" : "7159b91744d7b9e04a0aeccdbbff961611e620ec",
         "urls" : [
           {"url" : "https://github.com/graalvm/graal", "kind" : "git"},
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -59,11 +59,20 @@ suite = {
       ],
       "sha1" : "679f71fcf99674a0972b48740ca810dfc1ae2255",
     },
-    "COCO" : {
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/Coco.jar"
+    "ANTLR4": {
+      "sha1" : "30b13b7efc55b7feea667691509cf59902375001",
+      "maven" : {
+        "groupId" : "org.antlr",
+        "artifactId" : "antlr4-runtime",
+        "version" : "4.7",
+      }
+    },
+    "ANTLR4_COMPLETE": {
+      "urls": [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7-complete.jar",
+        "http://www.antlr.org/download/antlr-4.7-complete.jar"
       ],
-      "sha1" : "f204783009ab88838b5118adce58eca4368acd94",
+      "sha1": "5b3a8824334069979a0862ce67ede796c3a4d1b1",
     },
   },
 
@@ -130,7 +139,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.llvm.runtime"
+        "com.oracle.truffle.llvm.runtime",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8",
@@ -177,26 +186,12 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "com.oracle.truffle.llvm.asm.amd64.parser" : {
-      "subDir" : "projects",
-      "native" : True,
-      "dependencies" : [
-        "COCO"
-      ],
-      "buildEnv" : {
-        "COCO_JAR" : "<path:COCO>",
-      },
-      "license" : "BSD-new",
-    },
-
     "com.oracle.truffle.llvm.asm.amd64" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.nodes",
-      ],
-      "buildDependencies" : [
-        "com.oracle.truffle.llvm.asm.amd64.parser",
+        "ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "1.8",

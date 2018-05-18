@@ -40,7 +40,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.llvm.asm.amd64.Parser;
+import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMFrameNuller;
 import com.oracle.truffle.llvm.nodes.control.LLVMBrUnconditionalNode;
@@ -1453,8 +1453,7 @@ public class BasicNodeFactory implements NodeFactory {
             retOffsets = alloca.getOffsets();
         }
 
-        Parser asmParser = new Parser(context.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
-        LLVMInlineAssemblyRootNode assemblyRoot = asmParser.Parse();
+        LLVMInlineAssemblyRootNode assemblyRoot = InlineAssemblyParser.parseInlineAssembly(context.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
         LLVMFunctionDescriptor asm = LLVMFunctionDescriptor.createDescriptor(context, "<asm>", new FunctionType(MetaType.UNKNOWN, new Type[0], false), -1);
         asm.define(library, new LLVMIRFunction(Truffle.getRuntime().createCallTarget(assemblyRoot), null));
         LLVMFunctionLiteralNode asmFunction = LLVMFunctionLiteralNodeGen.create(asm);
