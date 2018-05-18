@@ -88,8 +88,8 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
      * {@link DFACaptureGroupTrackingData#currentResultOrder} becomes [2, 0, 4].
      *
      * @param reorderSwaps reorder {@link DFACaptureGroupTrackingData#currentResultOrder} using a
-     *            sequence swap operations described in this array. Every two elements in this array
-     *            denote one swap operation.
+     *            sequence of swap operations described in this array. Every two elements in this
+     *            array denote one swap operation.
      *            <p>
      *            Example: <br>
      *            If
@@ -118,8 +118,8 @@ public final class DFACaptureGroupPartialTransitionNode extends Node implements 
      *            {@link #applyPreFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)}
      *            and {@link #applyFinalStateTransition(DFACaptureGroupTrackingData, boolean, int)}.
      *            In every row (1st dimension element) of this 2D array, the first value is the
-     *            index one row in {@link DFACaptureGroupTrackingData#results}, all following values
-     *            are indices in that row that shall be set to <code>currentIndex</code>.
+     *            index of one row in {@link DFACaptureGroupTrackingData#results}, all following
+     *            values are indices in that row that shall be set to <code>currentIndex</code>.
      *            <p>
      *            Example: <br>
      *            If <code>results = DFACaptureGroupTrackingData#results</code> and

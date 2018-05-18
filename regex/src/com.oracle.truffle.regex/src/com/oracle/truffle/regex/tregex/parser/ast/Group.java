@@ -329,7 +329,7 @@ public class Group extends Term implements RegexASTVisitorIterable {
     }
 
     public void removeLastSequence() {
-        alternatives.remove(alternatives.get(alternatives.size() - 1));
+        alternatives.remove(alternatives.size() - 1);
     }
 
     public boolean isLiteral() {

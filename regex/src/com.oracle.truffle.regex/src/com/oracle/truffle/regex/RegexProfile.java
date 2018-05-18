@@ -38,6 +38,8 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
  */
 public final class RegexProfile {
 
+    private static final int EVALUATION_TRIP_POINT = 800;
+
     private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter captureGroupAccesses = new Counter.ThreadSafeCounter();
@@ -77,11 +79,10 @@ public final class RegexProfile {
      * Check if the profiling information gathered so far is sufficient for making a decision.
      * 
      * @return <code>true</code> if the number of times the regular expression was called is
-     *         divisible by 800.
+     *         divisible by {@value #EVALUATION_TRIP_POINT}.
      */
     public boolean atEvaluationTripPoint() {
-        // evaluate profile after every 800 calls
-        return calls.getCount() > 0 && (calls.getCount() % 800) == 0;
+        return calls.getCount() > 0 && (calls.getCount() % EVALUATION_TRIP_POINT) == 0;
     }
 
     private double matchRatio() {
