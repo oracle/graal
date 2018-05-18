@@ -88,6 +88,7 @@ public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage langua
 
 // parser
 
+// note: this grammar is not using the "$x.text" shortcut to avoid findbugs warnings
 
 inline_assembly :
   '"'
@@ -114,7 +115,7 @@ prefix :
   | 'repne'
   | 'repnz'
   | 'lock'
-  )                                              { factory.setPrefix($op.text); }
+  )                                              { factory.setPrefix($op.getText()); }
   ;
 
 assembly_instruction :
@@ -212,20 +213,20 @@ zero_op :
   | 'stosw'
   | 'stosd'
   | 'stosq'
-  )                                              { factory.createOperation($op.text); }
+  )                                              { factory.createOperation($op.getText()); }
   ;
 
 imul_div :
   ( op1=( 'idivb' | 'imulb' )
-    a1=operand8 ( { factory.createUnaryOperation($op1.text, $a1.op); } | ',' b1=operand8 ( { factory.createBinaryOperation($op1.text, $a1.op, $b1.op); } | ',' c1=operand8 { factory.createTernaryOperation($op1.text, $a1.op, $b1.op, $c1.op); } ) )
+    a1=operand8 ( { factory.createUnaryOperation($op1.getText(), $a1.op); } | ',' b1=operand8 ( { factory.createBinaryOperation($op1.getText(), $a1.op, $b1.op); } | ',' c1=operand8 { factory.createTernaryOperation($op1.getText(), $a1.op, $b1.op, $c1.op); } ) )
   | op2=( 'idivw' | 'imulw' )
-    a2=operand16 ( { factory.createUnaryOperation($op2.text, $a2.op); } | ',' b2=operand16 ( { factory.createBinaryOperation($op2.text, $a2.op, $b2.op); } | ',' c2=operand16 { factory.createTernaryOperation($op2.text, $a2.op, $b2.op, $c2.op); } ) )
+    a2=operand16 ( { factory.createUnaryOperation($op2.getText(), $a2.op); } | ',' b2=operand16 ( { factory.createBinaryOperation($op2.getText(), $a2.op, $b2.op); } | ',' c2=operand16 { factory.createTernaryOperation($op2.getText(), $a2.op, $b2.op, $c2.op); } ) )
   | op3=( 'idivl' | 'imull' )
-    a3=operand32 ( { factory.createUnaryOperation($op3.text, $a3.op); } | ',' b3=operand32 ( { factory.createBinaryOperation($op3.text, $a3.op, $b3.op); } | ',' c3=operand32 { factory.createTernaryOperation($op3.text, $a3.op, $b3.op, $c3.op); } ) )
+    a3=operand32 ( { factory.createUnaryOperation($op3.getText(), $a3.op); } | ',' b3=operand32 ( { factory.createBinaryOperation($op3.getText(), $a3.op, $b3.op); } | ',' c3=operand32 { factory.createTernaryOperation($op3.getText(), $a3.op, $b3.op, $c3.op); } ) )
   | op4=( 'idivq' | 'imulq' )
-    a4=operand64 ( { factory.createUnaryOperation($op4.text, $a4.op); } | ',' b4=operand64 ( { factory.createBinaryOperation($op4.text, $a4.op, $b4.op); } | ',' c4=operand64 { factory.createTernaryOperation($op4.text, $a4.op, $b4.op, $c4.op); } ) )
+    a4=operand64 ( { factory.createUnaryOperation($op4.getText(), $a4.op); } | ',' b4=operand64 ( { factory.createBinaryOperation($op4.getText(), $a4.op, $b4.op); } | ',' c4=operand64 { factory.createTernaryOperation($op4.getText(), $a4.op, $b4.op, $c4.op); } ) )
   | op5=( 'idiv' | 'imul' )
-    a5=operand ( { factory.createUnaryOperation($op5.text, $a5.op); } | ',' b5=operand ( { factory.createBinaryOperation($op5.text, $a5.op, $b5.op); } | ',' c5=operand { factory.createTernaryOperation($op5.text, $a5.op, $b5.op, $c5.op); } ) )
+    a5=operand ( { factory.createUnaryOperation($op5.getText(), $a5.op); } | ',' b5=operand ( { factory.createBinaryOperation($op5.getText(), $a5.op, $b5.op); } | ',' c5=operand { factory.createTernaryOperation($op5.getText(), $a5.op, $b5.op, $c5.op); } ) )
   )
   ;
 
@@ -237,7 +238,7 @@ unary_op8 :
   | 'divb'
   | 'mulb'
   )
-  operand8                                       { factory.createUnaryOperation($op.text, $operand8.op); }
+  operand8                                       { factory.createUnaryOperation($op.getText(), $operand8.op); }
   ;
 
 unary_op16 :
@@ -250,7 +251,7 @@ unary_op16 :
   | 'pushw'
   | 'popw'
   )
-  operand16                                      { factory.createUnaryOperation($op.text, $operand16.op); }
+  operand16                                      { factory.createUnaryOperation($op.getText(), $operand16.op); }
   ;
 
 unary_op32 :
@@ -264,7 +265,7 @@ unary_op32 :
   | 'pushl'
   | 'popl'
   )
-  operand32                                      { factory.createUnaryOperation($op.text, $operand32.op); }
+  operand32                                      { factory.createUnaryOperation($op.getText(), $operand32.op); }
   ;
 
 unary_op64 :
@@ -278,7 +279,7 @@ unary_op64 :
   | 'pushq'
   | 'popq'
   )
-  operand64                                      { factory.createUnaryOperation($op.text, $operand64.op); }
+  operand64                                      { factory.createUnaryOperation($op.getText(), $operand64.op); }
   ;
 
 unary_op :
@@ -324,7 +325,7 @@ unary_op :
   | 'cmpxchg8b'
   | 'cmpxchg16b'
   )
-  operand                                        { factory.createUnaryOperationImplicitSize($op.text, $operand.op); }
+  operand                                        { factory.createUnaryOperationImplicitSize($op.getText(), $operand.op); }
   ;
 
 binary_op8 :
@@ -350,7 +351,7 @@ binary_op8 :
   | 'testb'
   | 'cmpxchgb'
   )
-  a=operand8 ',' b=operand8                      { factory.createBinaryOperation($op.text, $a.op, $b.op); }
+  a=operand8 ',' b=operand8                      { factory.createBinaryOperation($op.getText(), $a.op, $b.op); }
   ;
 
 binary_op16 :
@@ -404,7 +405,7 @@ binary_op16 :
   | 'btrw'
   | 'btsw'
   )
-  a1=operand16 ',' b1=operand16                  { factory.createBinaryOperation($op1.text, $a1.op, $b1.op); }
+  a1=operand16 ',' b1=operand16                  { factory.createBinaryOperation($op1.getText(), $a1.op, $b1.op); }
   |
   op2=( 'rclw'
   | 'rcrw'
@@ -415,12 +416,12 @@ binary_op16 :
   | 'shlw'
   | 'shrw'
   )
-  a2=operand8 ',' b2=operand16                   { factory.createBinaryOperation($op2.text, $a2.op, $b2.op); }
+  a2=operand8 ',' b2=operand16                   { factory.createBinaryOperation($op2.getText(), $a2.op, $b2.op); }
   |
   op3=( 'movsbw'
   | 'movzbw'
   )
-  a3=operand8 ',' b3=operand16                   { factory.createBinaryOperation($op3.text, $a3.op, $b3.op); }
+  a3=operand8 ',' b3=operand16                   { factory.createBinaryOperation($op3.getText(), $a3.op, $b3.op); }
   ;
 
 binary_op32 :
@@ -474,7 +475,7 @@ binary_op32 :
   | 'btrl'
   | 'btsl'
   )
-  a1=operand32 ',' b1=operand32                  { factory.createBinaryOperation($op1.text, $a1.op, $b1.op); }
+  a1=operand32 ',' b1=operand32                  { factory.createBinaryOperation($op1.getText(), $a1.op, $b1.op); }
   |
   op2=( 'rcll'
   | 'rcrl'
@@ -485,17 +486,17 @@ binary_op32 :
   | 'shll'
   | 'shrl'
   )
-  a2=operand8 ',' b2=operand32                   { factory.createBinaryOperation($op2.text, $a2.op, $b2.op); }
+  a2=operand8 ',' b2=operand32                   { factory.createBinaryOperation($op2.getText(), $a2.op, $b2.op); }
   |
   op3=( 'movsbl'
   | 'movswl'
   )
-  a3=operand8 ',' b3=operand32                   { factory.createBinaryOperation($op3.text, $a3.op, $b3.op); }
+  a3=operand8 ',' b3=operand32                   { factory.createBinaryOperation($op3.getText(), $a3.op, $b3.op); }
   |
   op4=( 'movzbl'
   | 'movzwl'
   )
-  a4=operand16 ',' b4=operand32                  { factory.createBinaryOperation($op4.text, $a4.op, $b4.op); }
+  a4=operand16 ',' b4=operand32                  { factory.createBinaryOperation($op4.getText(), $a4.op, $b4.op); }
   ;
 
 binary_op64 :
@@ -549,7 +550,7 @@ binary_op64 :
   | 'btrq'
   | 'btsq'
   )
-  a1=operand64 ',' b1=operand64                    { factory.createBinaryOperation($op1.text, $a1.op, $b1.op); }
+  a1=operand64 ',' b1=operand64                    { factory.createBinaryOperation($op1.getText(), $a1.op, $b1.op); }
   |
   op2=( 'rclq'
   | 'rcrq'
@@ -560,20 +561,20 @@ binary_op64 :
   | 'shlq'
   | 'shrq'
   )
-  a2=operand8 ',' b2=operand64                     { factory.createBinaryOperation($op2.text, $a2.op, $b2.op); }
+  a2=operand8 ',' b2=operand64                     { factory.createBinaryOperation($op2.getText(), $a2.op, $b2.op); }
   |
   op3=( 'movsbq'
   | 'movzbq'
   )
-  a3=operand8 ',' b3=operand64                     { factory.createBinaryOperation($op3.text, $a3.op, $b3.op); }
+  a3=operand8 ',' b3=operand64                     { factory.createBinaryOperation($op3.getText(), $a3.op, $b3.op); }
   |
   op4=( 'movswq'
   | 'movzwq'
   )
-  a4=operand16 ',' b4=operand64                    { factory.createBinaryOperation($op4.text, $a4.op, $b4.op); }
+  a4=operand16 ',' b4=operand64                    { factory.createBinaryOperation($op4.getText(), $a4.op, $b4.op); }
   |
   op5='movslq'
-  a5=operand32 ',' b5=operand64                    { factory.createBinaryOperation($op5.text, $a5.op, $b5.op); }
+  a5=operand32 ',' b5=operand64                    { factory.createBinaryOperation($op5.getText(), $a5.op, $b5.op); }
   ;
 
 binary_op :
@@ -633,7 +634,7 @@ binary_op :
   | 'bsf'
   | 'bsr'
   )
-  a=operand ',' b=operand                        { factory.createBinaryOperationImplicitSize($op.text, $a.op, $b.op); }
+  a=operand ',' b=operand                        { factory.createBinaryOperationImplicitSize($op.getText(), $a.op, $b.op); }
   ;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -687,7 +688,7 @@ memory_reference returns [AsmMemoryOperand op] :
                                                    AsmOperand offset = null;
                                                    int scale = 1; }
   ( segment_register { segment = $segment_register.reg; } ':' )?
-  ( ( i=IDENT                                    { displacement = $i.text; }
+  ( ( i=IDENT                                    { displacement = $i.getText(); }
     | number                                     { displacement = String.valueOf($number.n); }
     )
     ( '('
@@ -738,7 +739,7 @@ register8 returns [AsmRegisterOperand op] :
   | '%r13l'
   | '%r14l'
   | '%r15l'
-  )                                              { $op = new AsmRegisterOperand($r.text); }
+  )                                              { $op = new AsmRegisterOperand($r.getText()); }
   ;
 
 register16 returns [AsmRegisterOperand op] :
@@ -766,7 +767,7 @@ register16 returns [AsmRegisterOperand op] :
   | '%r13w'
   | '%r14w'
   | '%r15w'
-  )                                              { $op = new AsmRegisterOperand($r.text); }
+  )                                              { $op = new AsmRegisterOperand($r.getText()); }
   ;
 
 register32 returns [AsmRegisterOperand op] :
@@ -794,7 +795,7 @@ register32 returns [AsmRegisterOperand op] :
   | '%r13d'
   | '%r14d'
   | '%r15d'
-  )                                              { $op = new AsmRegisterOperand($r.text); }
+  )                                              { $op = new AsmRegisterOperand($r.getText()); }
   ;
 
 register64 returns [AsmRegisterOperand op] :
@@ -822,7 +823,7 @@ register64 returns [AsmRegisterOperand op] :
   | '%r13'
   | '%r14'
   | '%r15'
-  )                                              { $op = new AsmRegisterOperand($r.text); }
+  )                                              { $op = new AsmRegisterOperand($r.getText()); }
   ;
 
 segment_register returns [String reg] :
@@ -832,13 +833,13 @@ segment_register returns [String reg] :
   | '%fs'
   | '%gs'
   | '%ss'
-  )                                              { $reg = $r.text; }
+  )                                              { $reg = $r.getText(); }
   ;
 
 number returns [long n] :
-  ( num=NUMBER                                   { $n = Long.parseLong($num.text, 10); }
-  | num=BIN_NUMBER                               { $n = Long.parseLong($num.text.substring(2), 2); }
-  | num=HEX_NUMBER                               { $n = Long.parseLong($num.text.substring(2), 16); }
+  ( num=NUMBER                                   { $n = Long.parseLong($num.getText(), 10); }
+  | num=BIN_NUMBER                               { $n = Long.parseLong($num.getText().substring(2), 2); }
+  | num=HEX_NUMBER                               { $n = Long.parseLong($num.getText().substring(2), 16); }
   )
   ;
 

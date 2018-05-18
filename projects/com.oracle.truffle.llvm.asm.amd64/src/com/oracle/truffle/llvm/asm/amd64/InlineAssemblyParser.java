@@ -1353,7 +1353,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 factory.setPrefix((_localctx.op!=null?_localctx.op.getText():null)); 
+			 factory.setPrefix(_localctx.op.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2025,7 +2025,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 factory.createOperation((_localctx.op!=null?_localctx.op.getText():null)); 
+			 factory.createOperation(_localctx.op.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2129,7 +2129,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation((_localctx.op1!=null?_localctx.op1.getText():null), _localctx.a1.op); 
+					 factory.createUnaryOperation(_localctx.op1.getText(), _localctx.a1.op); 
 					}
 					break;
 				case T__78:
@@ -2145,7 +2145,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation((_localctx.op1!=null?_localctx.op1.getText():null), _localctx.a1.op, _localctx.b1.op); 
+						 factory.createBinaryOperation(_localctx.op1.getText(), _localctx.a1.op, _localctx.b1.op); 
 						}
 						break;
 					case T__78:
@@ -2154,7 +2154,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__78);
 						setState(125);
 						_localctx.c1 = operand8();
-						 factory.createTernaryOperation((_localctx.op1!=null?_localctx.op1.getText():null), _localctx.a1.op, _localctx.b1.op, _localctx.c1.op); 
+						 factory.createTernaryOperation(_localctx.op1.getText(), _localctx.a1.op, _localctx.b1.op, _localctx.c1.op); 
 						}
 						break;
 					default:
@@ -2190,7 +2190,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation((_localctx.op2!=null?_localctx.op2.getText():null), _localctx.a2.op); 
+					 factory.createUnaryOperation(_localctx.op2.getText(), _localctx.a2.op); 
 					}
 					break;
 				case T__78:
@@ -2206,7 +2206,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation((_localctx.op2!=null?_localctx.op2.getText():null), _localctx.a2.op, _localctx.b2.op); 
+						 factory.createBinaryOperation(_localctx.op2.getText(), _localctx.a2.op, _localctx.b2.op); 
 						}
 						break;
 					case T__78:
@@ -2215,7 +2215,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__78);
 						setState(139);
 						_localctx.c2 = operand16();
-						 factory.createTernaryOperation((_localctx.op2!=null?_localctx.op2.getText():null), _localctx.a2.op, _localctx.b2.op, _localctx.c2.op); 
+						 factory.createTernaryOperation(_localctx.op2.getText(), _localctx.a2.op, _localctx.b2.op, _localctx.c2.op); 
 						}
 						break;
 					default:
@@ -2251,7 +2251,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation((_localctx.op3!=null?_localctx.op3.getText():null), _localctx.a3.op); 
+					 factory.createUnaryOperation(_localctx.op3.getText(), _localctx.a3.op); 
 					}
 					break;
 				case T__78:
@@ -2267,7 +2267,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation((_localctx.op3!=null?_localctx.op3.getText():null), _localctx.a3.op, _localctx.b3.op); 
+						 factory.createBinaryOperation(_localctx.op3.getText(), _localctx.a3.op, _localctx.b3.op); 
 						}
 						break;
 					case T__78:
@@ -2276,7 +2276,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__78);
 						setState(153);
 						_localctx.c3 = operand32();
-						 factory.createTernaryOperation((_localctx.op3!=null?_localctx.op3.getText():null), _localctx.a3.op, _localctx.b3.op, _localctx.c3.op); 
+						 factory.createTernaryOperation(_localctx.op3.getText(), _localctx.a3.op, _localctx.b3.op, _localctx.c3.op); 
 						}
 						break;
 					default:
@@ -2312,7 +2312,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation((_localctx.op4!=null?_localctx.op4.getText():null), _localctx.a4.op); 
+					 factory.createUnaryOperation(_localctx.op4.getText(), _localctx.a4.op); 
 					}
 					break;
 				case T__78:
@@ -2328,7 +2328,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation((_localctx.op4!=null?_localctx.op4.getText():null), _localctx.a4.op, _localctx.b4.op); 
+						 factory.createBinaryOperation(_localctx.op4.getText(), _localctx.a4.op, _localctx.b4.op); 
 						}
 						break;
 					case T__78:
@@ -2337,7 +2337,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__78);
 						setState(167);
 						_localctx.c4 = operand64();
-						 factory.createTernaryOperation((_localctx.op4!=null?_localctx.op4.getText():null), _localctx.a4.op, _localctx.b4.op, _localctx.c4.op); 
+						 factory.createTernaryOperation(_localctx.op4.getText(), _localctx.a4.op, _localctx.b4.op, _localctx.c4.op); 
 						}
 						break;
 					default:
@@ -2373,7 +2373,7 @@ public class InlineAssemblyParser extends Parser {
 				case T__1:
 				case T__2:
 					{
-					 factory.createUnaryOperation((_localctx.op5!=null?_localctx.op5.getText():null), _localctx.a5.op); 
+					 factory.createUnaryOperation(_localctx.op5.getText(), _localctx.a5.op); 
 					}
 					break;
 				case T__78:
@@ -2389,7 +2389,7 @@ public class InlineAssemblyParser extends Parser {
 					case T__1:
 					case T__2:
 						{
-						 factory.createBinaryOperation((_localctx.op5!=null?_localctx.op5.getText():null), _localctx.a5.op, _localctx.b5.op); 
+						 factory.createBinaryOperation(_localctx.op5.getText(), _localctx.a5.op, _localctx.b5.op); 
 						}
 						break;
 					case T__78:
@@ -2398,7 +2398,7 @@ public class InlineAssemblyParser extends Parser {
 						match(T__78);
 						setState(181);
 						_localctx.c5 = operand();
-						 factory.createTernaryOperation((_localctx.op5!=null?_localctx.op5.getText():null), _localctx.a5.op, _localctx.b5.op, _localctx.c5.op); 
+						 factory.createTernaryOperation(_localctx.op5.getText(), _localctx.a5.op, _localctx.b5.op, _localctx.c5.op); 
 						}
 						break;
 					default:
@@ -2459,7 +2459,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(191);
 			((Unary_op8Context)_localctx).operand8 = operand8();
-			 factory.createUnaryOperation((((Unary_op8Context)_localctx).op!=null?((Unary_op8Context)_localctx).op.getText():null), ((Unary_op8Context)_localctx).operand8.op); 
+			 factory.createUnaryOperation(((Unary_op8Context)_localctx).op.getText(), ((Unary_op8Context)_localctx).operand8.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2505,7 +2505,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(195);
 			((Unary_op16Context)_localctx).operand16 = operand16();
-			 factory.createUnaryOperation((((Unary_op16Context)_localctx).op!=null?((Unary_op16Context)_localctx).op.getText():null), ((Unary_op16Context)_localctx).operand16.op); 
+			 factory.createUnaryOperation(((Unary_op16Context)_localctx).op.getText(), ((Unary_op16Context)_localctx).operand16.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2551,7 +2551,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(199);
 			((Unary_op32Context)_localctx).operand32 = operand32();
-			 factory.createUnaryOperation((((Unary_op32Context)_localctx).op!=null?((Unary_op32Context)_localctx).op.getText():null), ((Unary_op32Context)_localctx).operand32.op); 
+			 factory.createUnaryOperation(((Unary_op32Context)_localctx).op.getText(), ((Unary_op32Context)_localctx).operand32.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2597,7 +2597,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(203);
 			((Unary_op64Context)_localctx).operand64 = operand64();
-			 factory.createUnaryOperation((((Unary_op64Context)_localctx).op!=null?((Unary_op64Context)_localctx).op.getText():null), ((Unary_op64Context)_localctx).operand64.op); 
+			 factory.createUnaryOperation(((Unary_op64Context)_localctx).op.getText(), ((Unary_op64Context)_localctx).operand64.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2643,7 +2643,7 @@ public class InlineAssemblyParser extends Parser {
 			}
 			setState(207);
 			_localctx.operand = operand();
-			 factory.createUnaryOperationImplicitSize((_localctx.op!=null?_localctx.op.getText():null), _localctx.operand.op); 
+			 factory.createUnaryOperationImplicitSize(_localctx.op.getText(), _localctx.operand.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2697,7 +2697,7 @@ public class InlineAssemblyParser extends Parser {
 			match(T__78);
 			setState(213);
 			((Binary_op8Context)_localctx).b = operand8();
-			 factory.createBinaryOperation((((Binary_op8Context)_localctx).op!=null?((Binary_op8Context)_localctx).op.getText():null), ((Binary_op8Context)_localctx).a.op, ((Binary_op8Context)_localctx).b.op); 
+			 factory.createBinaryOperation(((Binary_op8Context)_localctx).op.getText(), ((Binary_op8Context)_localctx).a.op, ((Binary_op8Context)_localctx).b.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -2812,7 +2812,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(219);
 				((Binary_op16Context)_localctx).b1 = operand16();
-				 factory.createBinaryOperation((((Binary_op16Context)_localctx).op1!=null?((Binary_op16Context)_localctx).op1.getText():null), ((Binary_op16Context)_localctx).a1.op, ((Binary_op16Context)_localctx).b1.op); 
+				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op1.getText(), ((Binary_op16Context)_localctx).a1.op, ((Binary_op16Context)_localctx).b1.op); 
 				}
 				break;
 			case T__230:
@@ -2842,7 +2842,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(225);
 				((Binary_op16Context)_localctx).b2 = operand16();
-				 factory.createBinaryOperation((((Binary_op16Context)_localctx).op2!=null?((Binary_op16Context)_localctx).op2.getText():null), ((Binary_op16Context)_localctx).a2.op, ((Binary_op16Context)_localctx).b2.op); 
+				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op2.getText(), ((Binary_op16Context)_localctx).a2.op, ((Binary_op16Context)_localctx).b2.op); 
 				}
 				break;
 			case T__238:
@@ -2866,7 +2866,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(231);
 				((Binary_op16Context)_localctx).b3 = operand16();
-				 factory.createBinaryOperation((((Binary_op16Context)_localctx).op3!=null?((Binary_op16Context)_localctx).op3.getText():null), ((Binary_op16Context)_localctx).a3.op, ((Binary_op16Context)_localctx).b3.op); 
+				 factory.createBinaryOperation(((Binary_op16Context)_localctx).op3.getText(), ((Binary_op16Context)_localctx).a3.op, ((Binary_op16Context)_localctx).b3.op); 
 				}
 				break;
 			default:
@@ -2991,7 +2991,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(239);
 				((Binary_op32Context)_localctx).b1 = operand32();
-				 factory.createBinaryOperation((((Binary_op32Context)_localctx).op1!=null?((Binary_op32Context)_localctx).op1.getText():null), ((Binary_op32Context)_localctx).a1.op, ((Binary_op32Context)_localctx).b1.op); 
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op1.getText(), ((Binary_op32Context)_localctx).a1.op, ((Binary_op32Context)_localctx).b1.op); 
 				}
 				break;
 			case T__289:
@@ -3021,7 +3021,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(245);
 				((Binary_op32Context)_localctx).b2 = operand32();
-				 factory.createBinaryOperation((((Binary_op32Context)_localctx).op2!=null?((Binary_op32Context)_localctx).op2.getText():null), ((Binary_op32Context)_localctx).a2.op, ((Binary_op32Context)_localctx).b2.op); 
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op2.getText(), ((Binary_op32Context)_localctx).a2.op, ((Binary_op32Context)_localctx).b2.op); 
 				}
 				break;
 			case T__297:
@@ -3045,7 +3045,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(251);
 				((Binary_op32Context)_localctx).b3 = operand32();
-				 factory.createBinaryOperation((((Binary_op32Context)_localctx).op3!=null?((Binary_op32Context)_localctx).op3.getText():null), ((Binary_op32Context)_localctx).a3.op, ((Binary_op32Context)_localctx).b3.op); 
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op3.getText(), ((Binary_op32Context)_localctx).a3.op, ((Binary_op32Context)_localctx).b3.op); 
 				}
 				break;
 			case T__299:
@@ -3069,7 +3069,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(257);
 				((Binary_op32Context)_localctx).b4 = operand32();
-				 factory.createBinaryOperation((((Binary_op32Context)_localctx).op4!=null?((Binary_op32Context)_localctx).op4.getText():null), ((Binary_op32Context)_localctx).a4.op, ((Binary_op32Context)_localctx).b4.op); 
+				 factory.createBinaryOperation(((Binary_op32Context)_localctx).op4.getText(), ((Binary_op32Context)_localctx).a4.op, ((Binary_op32Context)_localctx).b4.op); 
 				}
 				break;
 			default:
@@ -3200,7 +3200,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(265);
 				((Binary_op64Context)_localctx).b1 = operand64();
-				 factory.createBinaryOperation((((Binary_op64Context)_localctx).op1!=null?((Binary_op64Context)_localctx).op1.getText():null), ((Binary_op64Context)_localctx).a1.op, ((Binary_op64Context)_localctx).b1.op); 
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op1.getText(), ((Binary_op64Context)_localctx).a1.op, ((Binary_op64Context)_localctx).b1.op); 
 				}
 				break;
 			case T__350:
@@ -3230,7 +3230,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(271);
 				((Binary_op64Context)_localctx).b2 = operand64();
-				 factory.createBinaryOperation((((Binary_op64Context)_localctx).op2!=null?((Binary_op64Context)_localctx).op2.getText():null), ((Binary_op64Context)_localctx).a2.op, ((Binary_op64Context)_localctx).b2.op); 
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op2.getText(), ((Binary_op64Context)_localctx).a2.op, ((Binary_op64Context)_localctx).b2.op); 
 				}
 				break;
 			case T__358:
@@ -3254,7 +3254,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(277);
 				((Binary_op64Context)_localctx).b3 = operand64();
-				 factory.createBinaryOperation((((Binary_op64Context)_localctx).op3!=null?((Binary_op64Context)_localctx).op3.getText():null), ((Binary_op64Context)_localctx).a3.op, ((Binary_op64Context)_localctx).b3.op); 
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op3.getText(), ((Binary_op64Context)_localctx).a3.op, ((Binary_op64Context)_localctx).b3.op); 
 				}
 				break;
 			case T__360:
@@ -3278,7 +3278,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(283);
 				((Binary_op64Context)_localctx).b4 = operand64();
-				 factory.createBinaryOperation((((Binary_op64Context)_localctx).op4!=null?((Binary_op64Context)_localctx).op4.getText():null), ((Binary_op64Context)_localctx).a4.op, ((Binary_op64Context)_localctx).b4.op); 
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op4.getText(), ((Binary_op64Context)_localctx).a4.op, ((Binary_op64Context)_localctx).b4.op); 
 				}
 				break;
 			case T__362:
@@ -3292,7 +3292,7 @@ public class InlineAssemblyParser extends Parser {
 				match(T__78);
 				setState(289);
 				((Binary_op64Context)_localctx).b5 = operand64();
-				 factory.createBinaryOperation((((Binary_op64Context)_localctx).op5!=null?((Binary_op64Context)_localctx).op5.getText():null), ((Binary_op64Context)_localctx).a5.op, ((Binary_op64Context)_localctx).b5.op); 
+				 factory.createBinaryOperation(((Binary_op64Context)_localctx).op5.getText(), ((Binary_op64Context)_localctx).a5.op, ((Binary_op64Context)_localctx).b5.op); 
 				}
 				break;
 			default:
@@ -3350,7 +3350,7 @@ public class InlineAssemblyParser extends Parser {
 			match(T__78);
 			setState(297);
 			_localctx.b = operand();
-			 factory.createBinaryOperationImplicitSize((_localctx.op!=null?_localctx.op.getText():null), _localctx.a.op, _localctx.b.op); 
+			 factory.createBinaryOperationImplicitSize(_localctx.op.getText(), _localctx.a.op, _localctx.b.op); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4084,7 +4084,7 @@ public class InlineAssemblyParser extends Parser {
 					{
 					setState(386);
 					_localctx.i = match(IDENT);
-					 displacement = (_localctx.i!=null?_localctx.i.getText():null); 
+					 displacement = _localctx.i.getText(); 
 					}
 					break;
 				case BIN_NUMBER:
@@ -4239,7 +4239,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register8Context)_localctx).op =  new AsmRegisterOperand((((Register8Context)_localctx).r!=null?((Register8Context)_localctx).r.getText():null)); 
+			 ((Register8Context)_localctx).op =  new AsmRegisterOperand(((Register8Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4280,7 +4280,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register16Context)_localctx).op =  new AsmRegisterOperand((((Register16Context)_localctx).r!=null?((Register16Context)_localctx).r.getText():null)); 
+			 ((Register16Context)_localctx).op =  new AsmRegisterOperand(((Register16Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4321,7 +4321,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register32Context)_localctx).op =  new AsmRegisterOperand((((Register32Context)_localctx).r!=null?((Register32Context)_localctx).r.getText():null)); 
+			 ((Register32Context)_localctx).op =  new AsmRegisterOperand(((Register32Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4362,7 +4362,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 ((Register64Context)_localctx).op =  new AsmRegisterOperand((((Register64Context)_localctx).r!=null?((Register64Context)_localctx).r.getText():null)); 
+			 ((Register64Context)_localctx).op =  new AsmRegisterOperand(((Register64Context)_localctx).r.getText()); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4403,7 +4403,7 @@ public class InlineAssemblyParser extends Parser {
 				_errHandler.reportMatch(this);
 				consume();
 			}
-			 _localctx.reg =  (_localctx.r!=null?_localctx.r.getText():null); 
+			 _localctx.reg =  _localctx.r.getText(); 
 			}
 		}
 		catch (RecognitionException re) {
@@ -4442,21 +4442,21 @@ public class InlineAssemblyParser extends Parser {
 				{
 				setState(450);
 				_localctx.num = match(NUMBER);
-				 _localctx.n =  Long.parseLong((_localctx.num!=null?_localctx.num.getText():null), 10); 
+				 _localctx.n =  Long.parseLong(_localctx.num.getText(), 10); 
 				}
 				break;
 			case BIN_NUMBER:
 				{
 				setState(452);
 				_localctx.num = match(BIN_NUMBER);
-				 _localctx.n =  Long.parseLong((_localctx.num!=null?_localctx.num.getText():null).substring(2), 2); 
+				 _localctx.n =  Long.parseLong(_localctx.num.getText().substring(2), 2); 
 				}
 				break;
 			case HEX_NUMBER:
 				{
 				setState(454);
 				_localctx.num = match(HEX_NUMBER);
-				 _localctx.n =  Long.parseLong((_localctx.num!=null?_localctx.num.getText():null).substring(2), 16); 
+				 _localctx.n =  Long.parseLong(_localctx.num.getText().substring(2), 16); 
 				}
 				break;
 			default:
