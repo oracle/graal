@@ -13,8 +13,8 @@ where `reflectconfig` is a JSON file in the following format (use `-H:+PrintFlag
 	[
 	  {
 	    "name" : "java.lang.Class",
-	    "allDeclaredMethods" : "true",
-	    "allPublicMethods" : "true"
+	    "allDeclaredMethods" : true,
+	    "allPublicMethods" : true
 	  },
 	  {
 	    "name" : "java.lang.String",
