@@ -31,6 +31,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.serviceprovider.GraalServices.JAVA_SPECIFICATION_VERSION;
 
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -107,6 +108,9 @@ public class AArch64GraphBuilderPlugins {
                 return true;
             }
         });
+        registerRound(r, "rint", RoundingMode.NEAREST);
+        registerRound(r, "ceil", RoundingMode.UP);
+        registerRound(r, "floor", RoundingMode.DOWN);
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
@@ -114,6 +118,16 @@ public class AArch64GraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerRound(Registration r, String name, RoundingMode mode) {
+        r.register1(name, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.push(JavaKind.Double, b.append(new AArch64RoundNode(arg, mode)));
                 return true;
             }
         });
