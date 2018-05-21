@@ -513,7 +513,7 @@ public class SnippetTemplate {
         }
 
         @Override
-        public ValueNode length() {
+        public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
             return ConstantNode.forInt(varargs.length);
         }
     }
