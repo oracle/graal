@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.export;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.CanResolve;
@@ -43,11 +44,20 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.AsPointerCachedNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.CanExecuteHelperNodeGen;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.ExecuteCachedNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.IsPointerCachedNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMPointerMessageResolutionFactory.ToNativeCachedNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectNativeLibrary;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @MessageResolution(receiverType = LLVMPointer.class)
@@ -298,6 +308,80 @@ public class LLVMPointerMessageResolution {
             }
 
             write.execute(ptr, (LLVMInteropType.Value) type, value);
+        }
+    }
+
+    @Resolve(message = "IS_EXECUTABLE")
+    public abstract static class CanExecute extends Node {
+
+        @Child CanExecuteHelper canExecute = CanExecuteHelperNodeGen.create();
+
+        protected boolean access(LLVMPointer receiver) {
+            return canExecute.execute(receiver);
+        }
+    }
+
+    abstract static class CanExecuteHelper extends LLVMNode {
+
+        private final ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
+
+        protected abstract boolean execute(LLVMPointer receiver);
+
+        @Specialization
+        boolean doNative(LLVMNativePointer receiver) {
+            return ctxRef.get().getFunctionDescriptor(receiver) != null;
+        }
+
+        @Specialization
+        boolean doManaged(@SuppressWarnings("unused") LLVMManagedPointer receiver) {
+            return false;
+        }
+    }
+
+    @Resolve(message = "EXECUTE")
+    public abstract static class Execute extends Node {
+
+        @Child ExecuteCached executeCached = ExecuteCachedNodeGen.create();
+
+        protected Object access(LLVMPointer receiver, Object[] args) {
+            return executeCached.execute(receiver, args);
+        }
+    }
+
+    abstract static class ExecuteCached extends LLVMNode {
+
+        private final ContextReference<LLVMContext> ctxRef = LLVMLanguage.getLLVMContextReference();
+
+        protected abstract Object execute(LLVMPointer receiver, Object[] args);
+
+        @Specialization(guards = {"value.asNative() == cachedValue.asNative()", "handle != null"})
+        Object doNativeCached(@SuppressWarnings("unused") LLVMNativePointer value, Object[] args,
+                        @Cached("value") @SuppressWarnings("unused") LLVMNativePointer cachedValue,
+                        @Cached("getDescriptor(cachedValue)") LLVMFunctionDescriptor handle,
+                        @Cached("create()") LLVMForeignCallNode foreignCall) {
+            return foreignCall.executeCall(handle, args);
+        }
+
+        @Specialization(replaces = "doNativeCached")
+        Object doNative(LLVMNativePointer value, Object[] args,
+                        @Cached("create()") LLVMForeignCallNode foreignCall) {
+            LLVMFunctionDescriptor handle = getDescriptor(value);
+            if (handle != null) {
+                return foreignCall.executeCall(handle, args);
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedMessageException.raise(Message.createExecute(args.length));
+            }
+        }
+
+        @Specialization
+        Object doManaged(@SuppressWarnings("unused") LLVMManagedPointer value, Object[] args) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.raise(Message.createExecute(args.length));
+        }
+
+        protected LLVMFunctionDescriptor getDescriptor(LLVMNativePointer value) {
+            return ctxRef.get().getFunctionDescriptor(value);
         }
     }
 
