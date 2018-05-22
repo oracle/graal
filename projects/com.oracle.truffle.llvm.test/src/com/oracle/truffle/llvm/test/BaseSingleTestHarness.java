@@ -64,7 +64,7 @@ public abstract class BaseSingleTestHarness extends BaseTestHarness {
                 throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
             }
 
-            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()));
+            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()), getContextOptions());
             int sulongResult = out.getReturnValue();
             String sulongStdOut = out.getStdOutput();
 

@@ -75,7 +75,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             if (!candidate.toAbsolutePath().toFile().exists()) {
                 fail(getTestName(), new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist."));
             }
-            ProcessResult result = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{});
+            ProcessResult result = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{}, getContextOptions());
 
             int sulongRet = result.getReturnValue();
             if (sulongRet != (sulongRet & 0xFF)) {
