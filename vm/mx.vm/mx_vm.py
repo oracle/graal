@@ -174,27 +174,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             # Add release file
             _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
-
-            _commit_info = {}
-            for _s in _sorted_suites:
-                if _s.vc:
-                    _info = _s.vc.parent_info(_s.vc_dir)
-                    _commit_info[_s.name] = {
-                        "commit.rev": _s.vc.parent(_s.vc_dir),
-                        "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
-                        "commit.committer-ts": _info['committer-ts'],
-                    }
-
-            _metadata = """
-OS_NAME=<os>
-OS_ARCH=<arch>
-SOURCE="{source}"
-COMMIT_INFO={commit_info}
-GRAALVM_VERSION={version}""".format(
-                source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in _sorted_suites]),
-                commit_info=json.dumps(_commit_info, sort_keys=True),
-                version=_suite.release_version()
-            )
+            _metadata = self._get_metadata(_sorted_suites)
             _add(layout, "<jdk_base>/release", "string:{}".format(_metadata))
 
         # Add the rest of the GraalVM
@@ -271,6 +251,11 @@ GRAALVM_VERSION={version}""".format(
             if isinstance(_component, mx_sdk.GraalVmJvmciComponent) and _component.graal_compiler:
                 has_graal_compiler = True
 
+            if isinstance(_component, mx_sdk.GraalVmLanguage) and not is_graalvm:
+                # add language-specific release file
+                _metadata = self._get_metadata([_component.suite])
+                _add(layout, _component_base + 'release', "string:{}".format(_metadata))
+
         if has_graal_compiler:
             _add(layout, '<jdk_base>/jre/lib/jvmci/compiler-name', 'string:graal')
 
@@ -280,6 +265,32 @@ GRAALVM_VERSION={version}""".format(
                                                             testDistribution=testDistribution, **kw_args)
         self.reset_user_group = True
         mx.logv("'{}' has layout:\n{}".format(self.name, pprint.pformat(self.layout)))
+
+    def _get_metadata(self, suites):
+        '''
+        :type suites: list[str]
+        :return:
+        '''
+        _commit_info = {}
+        for _s in suites:
+            if _s.vc:
+                _info = _s.vc.parent_info(_s.vc_dir)
+                _commit_info[_s.name] = {
+                    "commit.rev": _s.vc.parent(_s.vc_dir),
+                    "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
+                    "commit.committer-ts": _info['committer-ts'],
+                }
+        _metadata = """\
+OS_NAME=<os>
+OS_ARCH=<arch>
+SOURCE="{source}"
+COMMIT_INFO={commit_info}
+GRAALVM_VERSION={version}""".format(
+            source=' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites]),
+            commit_info=json.dumps(_commit_info, sort_keys=True),
+            version=_suite.release_version()
+        )
+        return _metadata
 
 
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
