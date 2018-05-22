@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -52,11 +53,17 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
  * An expression node is a node that returns a result, e.g., a local variable read, or an addition
  * operation.
  */
+@GenerateWrapper
 public abstract class LLVMExpressionNode extends LLVMNode implements InstrumentableNode {
 
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMExpressionNodeWrapper(this, probe);
+    }
+
+    @GenerateWrapper.OutgoingConverter
+    Object convertOutgoing(@SuppressWarnings("unused") Object object) {
+        return null;
     }
 
     @Override

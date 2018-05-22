@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.nodes.base.LLVMBasicBlockNode;
@@ -57,6 +58,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
+@GenerateWrapper
 public abstract class LLVMRetNode extends LLVMControlFlowNode implements InstrumentableNode {
 
     public LLVMRetNode(LLVMSourceLocation sourceSection) {
@@ -70,6 +72,11 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode implements Instrum
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
         return new LLVMRetNodeWrapper(this, this, probe);
+    }
+
+    @GenerateWrapper.OutgoingConverter
+    Object convertOutgoing(@SuppressWarnings("unused") Object object) {
+        return null;
     }
 
     @Override
