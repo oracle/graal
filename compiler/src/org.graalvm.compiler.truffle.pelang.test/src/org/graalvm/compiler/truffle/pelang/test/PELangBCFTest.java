@@ -23,6 +23,7 @@
 package org.graalvm.compiler.truffle.pelang.test;
 
 import org.graalvm.compiler.truffle.pelang.PELangBCFGenerator;
+import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.junit.Test;
 
@@ -80,6 +81,24 @@ public class PELangBCFTest extends PELangTest {
         PELangRootNode rootNode = g.generate(PELangSample.simpleLoop());
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
+    }
+
+    @Test(expected = PELangException.class)
+    public void testInvalidBranch() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.invalidBranch());
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test(expected = PELangException.class)
+    public void testInvalidLoop() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.invalidLoop());
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -144,6 +163,26 @@ public class PELangBCFTest extends PELangTest {
         } catch (Exception e) {
             // swallow exception
         }
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
+    public void testNestedLoopsWithMultipleBackEdges() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.nestedLoopsWithMultipleBackEdges());
+        assertCallResult(10L, rootNode);
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
+    public void testIrreducibleLoop() {
+        // irreducible loop is directly coded with basic blocks
+        PELangRootNode rootNode = PELangSample.irreducibleLoop();
+        assertCallResult(10L, rootNode);
 
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
         // TODO: add partial evaluation asserts

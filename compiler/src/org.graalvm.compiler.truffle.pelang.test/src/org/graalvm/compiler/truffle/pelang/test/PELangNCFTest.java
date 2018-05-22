@@ -22,6 +22,7 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
+import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.junit.Test;
 
@@ -66,6 +67,22 @@ public class PELangNCFTest extends PELangTest {
         PELangRootNode rootNode = PELangSample.simpleBranch();
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
+    }
+
+    @Test(expected = PELangException.class)
+    public void testInvalidBranch() {
+        PELangRootNode rootNode = PELangSample.invalidBranch();
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test(expected = PELangException.class)
+    public void testInvalidLoop() {
+        PELangRootNode rootNode = PELangSample.invalidLoop();
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -144,6 +161,15 @@ public class PELangNCFTest extends PELangTest {
         } catch (Exception e) {
             // swallow exception
         }
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
+    public void testNestedLoopsWithMultipleBackEdges() {
+        PELangRootNode rootNode = PELangSample.nestedLoopsWithMultipleBackEdges();
+        assertCallResult(10L, rootNode);
 
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
         // TODO: add partial evaluation asserts

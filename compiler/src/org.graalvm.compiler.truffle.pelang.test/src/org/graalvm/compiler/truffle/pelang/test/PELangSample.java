@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.pelang.test;
 
 import org.graalvm.compiler.truffle.pelang.PELangBuilder;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 
 public class PELangSample {
 
@@ -82,6 +83,35 @@ public class PELangSample {
                 b.writeLocal(0, "counter"),
                 b.loop(
                     b.lessThan(b.readLocal("counter"), b.literal(10L)),
+                    b.incrementLocal(1, "counter")),
+                b.ret(b.readLocal("counter"))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode invalidBranch() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(0, "i"),
+                b.branch(
+                    b.literal("foo"),
+                    b.writeLocal(10L, "i"),
+                    b.writeLocal(5L, "i")),
+                b.ret(b.readLocal("i"))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode invalidLoop() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(0, "counter"),
+                b.loop(
+                    b.literal("foo"),
                     b.incrementLocal(1, "counter")),
                 b.ret(b.readLocal("counter"))));
         // @formatter:on
@@ -234,6 +264,51 @@ public class PELangSample {
                     b.lessThan(b.readGlobal("g"), b.literal(10L)),
                     b.block(b.incrementGlobal(1L, "g"))),
                 b.ret(b.readGlobal("g"))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode nestedLoopsWithMultipleBackEdges() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(0, "i"),
+                b.writeLocal(0, "j"),
+                b.writeLocal(0, "k"),
+                b.loop(
+                    b.lessThan(b.readLocal("i"), b.literal(5L)),
+                    b.block(
+                        b.incrementLocal(1, "i"),
+                        b.loop(
+                            b.lessThan(b.readLocal("j"), b.literal(5L)),
+                            b.branch(
+                                b.lessThan(b.readLocal("j"), b.literal(3L)),
+                                b.block(
+                                    b.incrementLocal(1L, "j"),
+                                    b.incrementLocal(1L, "k")),
+                                b.incrementLocal(1L, "j"))))),
+                b.ret(
+                    b.add(
+                        b.readLocal("i"),
+                        b.readLocal("j")))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode irreducibleLoop() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.dispatch(
+                /* 0 */ b.basicBlock(b.writeLocal(0, "i"), 1),
+                /* 1 */ b.basicBlock(b.writeLocal(0, "j"), 2),
+                /* 2 */ b.basicBlock(b.equals(b.readLocal("i"), b.literal(0L)), 6, 3),
+                /* 3 */ b.basicBlock(b.lessThan(b.readLocal("j"), b.literal(10L)), 4, 5),
+                /* 4 */ b.basicBlock(b.incrementLocal(1, "j"), 3),
+                /* 5 */ b.basicBlock(b.incrementLocal(1, "i"), 7),
+                /* 6 */ b.basicBlock(b.incrementLocal(1, "i"), 4),
+                /* 7 */ b.basicBlock(b.ret(b.readLocal("j")), PELangBasicBlockNode.NO_SUCCESSOR)));
         // @formatter:on
     }
 
