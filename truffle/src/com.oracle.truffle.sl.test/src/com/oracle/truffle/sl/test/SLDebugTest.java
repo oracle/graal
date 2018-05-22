@@ -443,6 +443,12 @@ public class SLDebugTest {
                 assertEquals("21", p21.as(String.class));
                 assertNull(p21.getScope());
                 assertFalse(propertiesIt.hasNext());
+
+                DebugValue ep1 = e.getProperty("p1");
+                assertEquals("1", ep1.as(String.class));
+                ep1.set(p21);
+                assertEquals("21", ep1.as(String.class));
+                assertNull(e.getProperty("NonExisting"));
             });
 
             expectDone();

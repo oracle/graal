@@ -87,4 +87,11 @@ public final class ExceptionDetails {
         json.put("executionContextId", context.getId());
         return json;
     }
+
+    /**
+     * For test purposes only. Do not call from production code.
+     */
+    public static void resetIDs() {
+        LAST_ID.set(0);
+    }
 }
