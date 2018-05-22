@@ -48,6 +48,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.Runner.SulongLibrary;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -60,6 +61,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @TruffleLanguage.Registration(id = "llvm", name = "llvm", version = "6.0.0", mimeType = {Sulong.LLVM_SULONG_TYPE, Sulong.LLVM_BITCODE_MIME_TYPE, Sulong.LLVM_BITCODE_BASE64_MIME_TYPE,
                 Sulong.SULONG_LIBRARY_MIME_TYPE, Sulong.LLVM_ELF_SHARED_MIME_TYPE, Sulong.LLVM_ELF_EXEC_MIME_TYPE}, internal = false, interactive = false)
@@ -148,7 +150,7 @@ public final class Sulong extends LLVMLanguage {
 
     @Override
     protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof LLVMInternalTruffleObject;
+        return LLVMPointer.isInstance(object) || object instanceof LLVMInternalTruffleObject || object instanceof SulongLibrary;
     }
 
     @Override
