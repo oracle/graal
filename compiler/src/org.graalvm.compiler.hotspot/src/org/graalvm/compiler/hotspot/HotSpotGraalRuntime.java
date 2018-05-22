@@ -64,6 +64,7 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
@@ -329,6 +330,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
         }
         BenchmarkCounters.shutdown(runtime(), optionsRef.get(), runtimeStartTime);
+
+        NodeCounterPhase.dump(optionsRef.get());
 
         outputDirectory.close();
     }
