@@ -24,13 +24,22 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.r15;
+import static jdk.vm.ci.amd64.AMD64.rsp;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.ENABLE_STACK_RESERVED_ZONE;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.THROW_DELAYED_STACKOVERFLOW_ERROR;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
+import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapStackArgumentSpaceBeforeInstruction;
 
@@ -50,20 +59,33 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp implemen
     private final Register thread;
     private final Register scratchForSafepointOnReturn;
     private final GraalHotSpotVMConfig config;
+    private final boolean requiresReservedStackAccessCheck;
 
-    AMD64HotSpotReturnOp(Value value, boolean isStub, Register thread, Register scratchForSafepointOnReturn, GraalHotSpotVMConfig config) {
+    AMD64HotSpotReturnOp(Value value, boolean isStub, Register thread, Register scratchForSafepointOnReturn, GraalHotSpotVMConfig config, boolean requiresReservedStackAccessCheck) {
         super(TYPE);
         this.value = value;
         this.isStub = isStub;
         this.thread = thread;
         this.scratchForSafepointOnReturn = scratchForSafepointOnReturn;
         this.config = config;
+        this.requiresReservedStackAccessCheck = requiresReservedStackAccessCheck;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         leaveFrameAndRestoreRbp(crb, masm);
         if (!isStub) {
+            if (requiresReservedStackAccessCheck) {
+                HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.foreignCalls;
+
+                Label noReserved = new Label();
+                masm.cmpptr(rsp, new AMD64Address(r15, config.javaThreadReservedStackActivationOffset));
+                masm.jccb(AMD64Assembler.ConditionFlag.Below, noReserved);
+                AMD64Call.directCall(crb, masm, foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE), null, false, null);
+                AMD64Call.directJmp(crb, masm, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
+                masm.bind(noReserved);
+            }
+
             // Every non-stub compile method must have a poll before the return.
             AMD64HotSpotSafepointOp.emitCode(crb, masm, config, true, null, thread, scratchForSafepointOnReturn);
 

@@ -194,7 +194,7 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
             emitMove(operand, input);
         }
         Register thread = getProviders().getRegisters().getThreadRegister();
-        append(new SPARCHotSpotReturnOp(operand, getStub() != null, config, thread, getSafepointAddressValue()));
+        append(new SPARCHotSpotReturnOp(operand, getStub() != null, config, thread, getSafepointAddressValue(), getResult().requiresReservedStackAccessCheck()));
     }
 
     @Override

@@ -24,11 +24,19 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.ENABLE_STACK_RESERVED_ZONE;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.THROW_DELAYED_STACKOVERFLOW_ERROR;
+
+import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.aarch64.AArch64BlockEndOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Call;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
@@ -53,9 +61,23 @@ abstract class AArch64HotSpotEpilogueOp extends AArch64BlockEndOp {
         this.thread = null; // no safepoint
     }
 
-    protected void leaveFrame(CompilationResultBuilder crb, AArch64MacroAssembler masm, boolean emitSafepoint) {
+    protected void leaveFrame(CompilationResultBuilder crb, AArch64MacroAssembler masm, boolean emitSafepoint, boolean requiresReservedStackAccessCheck) {
         assert crb.frameContext != null : "We never elide frames in aarch64";
         crb.frameContext.leave(crb);
+        if (requiresReservedStackAccessCheck) {
+            try (ScratchRegister sc = masm.getScratchRegister()) {
+                Register scratch = sc.getRegister();
+                HotSpotForeignCallsProvider foreignCalls = (HotSpotForeignCallsProvider) crb.foreignCalls;
+
+                Label noReserved = new Label();
+                masm.ldr(64, scratch, masm.makeAddress(thread, config.javaThreadReservedStackActivationOffset, 8));
+                masm.cmp(8, sp, scratch);
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.LO, noReserved);
+                AArch64Call.directCall(crb, masm, foreignCalls.lookupForeignCall(ENABLE_STACK_RESERVED_ZONE), null, null);
+                AArch64Call.indirectJmp(crb, masm, scratch, foreignCalls.lookupForeignCall(THROW_DELAYED_STACKOVERFLOW_ERROR));
+                masm.bind(noReserved);
+            }
+        }
         if (emitSafepoint) {
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
