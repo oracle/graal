@@ -514,6 +514,12 @@ public class AMD64Move {
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             move(accessKind, crb, masm, result, newValue);
             switch (accessKind) {
+                case BYTE:
+                    masm.xchgb(asRegister(result), address.toAddress());
+                    break;
+                case WORD:
+                    masm.xchgw(asRegister(result), address.toAddress());
+                    break;
                 case DWORD:
                     masm.xchgl(asRegister(result), address.toAddress());
                     break;

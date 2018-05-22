@@ -3733,6 +3733,19 @@ public class AMD64Assembler extends Assembler {
         emitOperandHelper(src, dst, 0);
     }
 
+    public final void xchgb(Register dst, AMD64Address src) {
+        prefix(src, dst);
+        emitByte(0x86);
+        emitOperandHelper(dst, src, 0);
+    }
+
+    public final void xchgw(Register dst, AMD64Address src) {
+        emitByte(0x66);
+        prefix(src, dst);
+        emitByte(0x87);
+        emitOperandHelper(dst, src, 0);
+    }
+
     public final void xchgl(Register dst, AMD64Address src) {
         prefix(src, dst);
         emitByte(0x87);

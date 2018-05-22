@@ -38,11 +38,14 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import jdk.vm.ci.meta.ValueKind;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -562,7 +565,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
         BarrierType barrierType = storeBarrierType(n.object(), n.newValue());
-        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, barrierType));
+        LIRKind lirAccessKind = LIRKind.fromJavaKind(target.arch, valueKind);
+        LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, lirAccessKind, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
 
         ValueNode readValue = implicitLoadConvert(graph, valueKind, memoryRead);
