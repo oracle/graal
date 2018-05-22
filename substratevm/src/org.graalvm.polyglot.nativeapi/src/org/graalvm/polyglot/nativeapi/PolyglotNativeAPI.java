@@ -27,6 +27,8 @@ import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.Polygl
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_number_expected;
 import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus.poly_ok;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -1522,7 +1524,12 @@ public final class PolyglotNativeAPI {
         PolyglotStatus errorCode = t instanceof PolyglotNativeAPIError ? ((PolyglotNativeAPIError) t).getCode() : poly_generic_failure;
         PolyglotExtendedErrorInfo unmanagedErrorInfo = UnmanagedMemory.malloc(SizeOf.get(PolyglotExtendedErrorInfo.class));
         unmanagedErrorInfo.setErrorCode(errorCode.getCValue());
-        CCharPointerHolder holder = CTypeConversion.toCString(t.getMessage());
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        pw.println(t.getMessage());
+        pw.println("The full stack trace is:");
+        t.printStackTrace(pw);
+        CCharPointerHolder holder = CTypeConversion.toCString(sw.toString());
         CCharPointer value = holder.get();
         unmanagedErrorInfo.setErrorMessage(value);
         errorInfo.set(new ErrorInfoHolder(unmanagedErrorInfo, holder));
