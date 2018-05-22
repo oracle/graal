@@ -61,7 +61,7 @@ void *truffle_deref_handle_for_managed(void *managed);
 void *truffle_import(const char *name);        // renamed to polyglot_import
 void *truffle_import_cached(const char *name); // no replacement, use polyglot_import
 
-void *truffle_address_to_function(void *address); // deprecated, use a typecast to function pointer instead
+void *truffle_address_to_function(void *address); // deprecated, does nothing
 
 void *truffle_get_arg(int i); // renamed to polyglot_get_arg
 
