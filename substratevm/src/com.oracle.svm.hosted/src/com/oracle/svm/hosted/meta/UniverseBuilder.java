@@ -736,7 +736,7 @@ public class UniverseBuilder {
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
         // Object.wait() and Object.notify() and friends.
         if (clazz.needMonitorField()) {
-            final int referenceFieldAlignmentAndSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Object);
+            final int referenceFieldAlignmentAndSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             nextOffset = ObjectLayout.roundUp(nextOffset, referenceFieldAlignmentAndSize);
             clazz.setMonitorFieldOffset(nextOffset);
             nextOffset += referenceFieldAlignmentAndSize;
@@ -751,7 +751,7 @@ public class UniverseBuilder {
         }
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
-        clazz.instanceSize = nextOffset;
+        clazz.instanceSize = ConfigurationValues.getObjectLayout().alignUp(nextOffset);
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {

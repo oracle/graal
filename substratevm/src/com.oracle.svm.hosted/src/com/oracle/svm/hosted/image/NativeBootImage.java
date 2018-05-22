@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.amd64.FrameAccess;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
@@ -93,7 +94,6 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.code.site.DataSectionReference;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -749,7 +749,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
         if (pageSize > 0) {
             objectFile.setPageSize(pageSize);
         }
-        wordSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Object);
+        wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
     }
 

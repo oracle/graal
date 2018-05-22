@@ -600,7 +600,7 @@ public class SubstrateAMD64Backend extends Backend {
         public void enter(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
 
-            assert getDeoptScatchSpace() >= 16;
+            assert getDeoptScratchSpace() >= 16;
 
             // Move the DeoptimizedFrame into rdi
             asm.movq(rdi, new AMD64Address(rsp, 0));
@@ -622,7 +622,7 @@ public class SubstrateAMD64Backend extends Backend {
         public void leave(CompilationResultBuilder tasm) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) tasm.asm;
 
-            assert getDeoptScatchSpace() >= 16;
+            assert getDeoptScratchSpace() >= 16;
 
             super.leave(tasm);
 
@@ -639,13 +639,13 @@ public class SubstrateAMD64Backend extends Backend {
         }
     }
 
-    static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
+    protected static class SubstrateAMD64MoveFactory extends AMD64MoveFactory {
 
         private final SharedMethod method;
         private final LIRKindTool lirKindTool;
         private final SubstrateAMD64RegisterConfig registerConfig;
 
-        SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool, SubstrateAMD64RegisterConfig registerConfig) {
+        protected SubstrateAMD64MoveFactory(BackupSlotProvider backupSlotProvider, SharedMethod method, LIRKindTool lirKindTool, SubstrateAMD64RegisterConfig registerConfig) {
             super(backupSlotProvider);
             this.method = method;
             this.lirKindTool = lirKindTool;
@@ -663,7 +663,7 @@ public class SubstrateAMD64Backend extends Backend {
         @Override
         public AMD64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createLoad(dst, JavaConstant.LONG_0);
+                return super.createLoad(dst, JavaConstant.INT_0);
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             }
@@ -673,14 +673,14 @@ public class SubstrateAMD64Backend extends Backend {
         @Override
         public LIRInstruction createStackLoad(AllocatableValue dst, Constant src) {
             if (CompressedNullConstant.COMPRESSED_NULL.equals(src)) {
-                return super.createStackLoad(dst, JavaConstant.LONG_0);
+                return super.createStackLoad(dst, JavaConstant.INT_0);
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
 
-        private AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
+        protected AMD64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
             if (!constant.isCompressed() && ReferenceAccess.singleton().haveCompressedReferences()) {
                 RegisterValue heapBase = registerConfig.getHeapBaseRegister().asValue();
                 return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
@@ -768,7 +768,7 @@ public class SubstrateAMD64Backend extends Backend {
         return new AMD64ArithmeticLIRGenerator(nullRegisterValue, null);
     }
 
-    private static SubstrateAMD64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
+    protected static SubstrateAMD64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
         return (SubstrateAMD64RegisterConfig) lirGenRes.getRegisterConfig();
     }
 
@@ -874,7 +874,7 @@ public class SubstrateAMD64Backend extends Backend {
      * Returns the amount of scratch space which must be reserved for return value registers in
      * {@link DeoptimizedFrame}.
      */
-    public static int getDeoptScatchSpace() {
+    public static int getDeoptScratchSpace() {
         // Space for two 64-bit registers: rax and xmm0
         return 2 * 8;
     }

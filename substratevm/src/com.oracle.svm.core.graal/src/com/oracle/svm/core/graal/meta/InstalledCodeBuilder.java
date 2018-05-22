@@ -42,7 +42,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -268,7 +267,8 @@ public class InstalledCodeBuilder {
 
         ObjectConstantsHolder(CompilationResult compilation) {
             /* Conservative estimate on the maximum number of object constants we might have. */
-            offsets = new int[compilation.getDataSection().getSectionSize() / FrameAccess.wordSize()];
+            int maxReferences = compilation.getDataSection().getSectionSize() / ConfigurationValues.getObjectLayout().getReferenceSize();
+            offsets = new int[maxReferences];
             values = new Object[offsets.length];
             referenceMap = new SubstrateReferenceMap();
         }

@@ -574,7 +574,7 @@ class CodeInfoVerifier extends CodeInfoDecoder {
         int curIdx = startIdx;
         while (curOffset.notEqual(expectedOffset)) {
             ValueInfo value = actualObject[curIdx];
-            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind(), value.isCompressedReference));
+            curOffset = curOffset.add(objectLayout.sizeInBytes(value.getKind()));
             curIdx++;
         }
         assert curOffset.equal(expectedOffset);

@@ -29,6 +29,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.amd64.FrameAccess;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -49,8 +50,8 @@ public class ReferenceMapDecoder {
     public static boolean walkOffsetsFromPointer(PointerBase baseAddress, byte[] referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor) {
         assert referenceMapIndex != CodeInfoQueryResult.NO_REFERENCE_MAP;
         assert referenceMapEncoding != null;
-        UnsignedWord uncompressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
-        UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getCompressedReferenceSize());
+        UnsignedWord uncompressedSize = WordFactory.unsigned(FrameAccess.uncompressedReferenceSize());
+        UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
 
         Pointer objRef = (Pointer) baseAddress;
         long idx = referenceMapIndex;
