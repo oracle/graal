@@ -857,8 +857,6 @@ suite = {
       "checkstyle": "org.graalvm.compiler.graph",
       "javaCompliance" : "9+",
       "imports" : [
-        # All other internal packages are exported dynamically -
-        # see org.graalvm.compiler.hotspot.HotSpotGraalJVMCIServiceLocator
         "jdk.internal.misc",
       ],
     },
