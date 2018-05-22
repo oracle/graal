@@ -181,7 +181,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
                     _info = _s.vc.parent_info(_s.vc_dir)
                     _commit_info[_s.name] = {
                         "commit.rev": _s.vc.parent(_s.vc_dir),
-                        "commit.committer": _info['committer'],
+                        "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
                         "commit.committer-ts": _info['committer-ts'],
                     }
 
