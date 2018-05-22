@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.vm;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -35,38 +35,25 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-public final class TruffleLogger extends Logger {
+final class PolyglotLogger extends Logger {
 
-    private TruffleLogger(final String loggerName, final String resourceBundleName) {
+    private PolyglotLogger(final String loggerName, final String resourceBundleName) {
         super(loggerName, resourceBundleName);
-    }
-
-    public static Logger getLogger(final String languageId, final Class<?> forClass) {
-        return getLogger(languageId, forClass.getName(), null);
-    }
-
-    public static Logger getLogger(final String languageId, final String loggerName) {
-        return getLogger(languageId, loggerName, null);
-    }
-
-    public static Logger getLogger(final String languageId, final String loggerName, final String resourceBundleName) {
-        final String globalLoggerId = languageId + '.' + loggerName;
-        final LoggerCache logManager = LoggerCache.getInstance();
-        return logManager.getOrCreateLogger(globalLoggerId, resourceBundleName);
     }
 
     @Override
     public void addHandler(Handler handler) {
-        if (handler != TruffleLanguage.AccessAPI.engineAccess().getPolyglotLogHandler()) {
+        if (handler != ForwardingHandler.INSTANCE) {
             super.addHandler(handler);
         }
     }
 
     @Override
     public void removeHandler(Handler handler) {
-        if (handler != TruffleLanguage.AccessAPI.engineAccess().getPolyglotLogHandler()) {
+        if (handler != ForwardingHandler.INSTANCE) {
             super.removeHandler(handler);
         }
     }
@@ -79,10 +66,10 @@ public final class TruffleLogger extends Logger {
         private static final int MAX_CLEANED_REFS = 100;
         private static final LoggerCache INSTANCE = new LoggerCache();
         private final ReferenceQueue<Logger> loggersRefQueue = new ReferenceQueue<>();
-        private final Map<String,LoggerRef> loggers = new HashMap<>();
+        private final Map<String, LoggerRef> loggers = new HashMap<>();
         private final LoggerNode root;
-        private final Map<Object,Map<String,Level>> levelsByContext;
-        private Map<String,Level> effectiveLevels;
+        private final Map<Object, Map<String, Level>> levelsByContext;
+        private Map<String, Level> effectiveLevels;
 
         private LoggerCache() {
             root = new LoggerNode(null, new LoggerRef(Logger.getLogger(""), ""));
@@ -90,46 +77,46 @@ public final class TruffleLogger extends Logger {
             this.effectiveLevels = Collections.emptyMap();
         }
 
-        void onContextCreated(final Object context, final Map<String,Level> addedLevels) {
+        void addLogLevelsForContext(final Object context, final Map<String, Level> addedLevels) {
             if (!addedLevels.isEmpty()) {
                 synchronized (this) {
                     levelsByContext.put(context, addedLevels);
                     final Collection<String> removedLevels = new HashSet<>();
                     final Collection<String> changedLevels = new HashSet<>();
                     effectiveLevels = computeEffectiveLevels(
-                            effectiveLevels,
-                            Collections.emptySet(),
-                            addedLevels,
-                            levelsByContext,
-                            removedLevels,
-                            changedLevels);
+                                    effectiveLevels,
+                                    Collections.emptySet(),
+                                    addedLevels,
+                                    levelsByContext,
+                                    removedLevels,
+                                    changedLevels);
                     reconfigure(removedLevels, changedLevels);
                 }
             }
         }
 
-        synchronized void onContextClosed(final Object context) {
-            final Map<String,Level> levels = levelsByContext.remove(context);
+        synchronized void removeLogLevelsForContext(final Object context) {
+            final Map<String, Level> levels = levelsByContext.remove(context);
             if (levels != null && !levels.isEmpty()) {
                 final Collection<String> removedLevels = new HashSet<>();
                 final Collection<String> changedLevels = new HashSet<>();
                 effectiveLevels = computeEffectiveLevels(
-                        effectiveLevels,
-                        levels.keySet(),
-                        Collections.emptyMap(),
-                        levelsByContext,
-                        removedLevels,
-                        changedLevels);
+                                effectiveLevels,
+                                levels.keySet(),
+                                Collections.emptyMap(),
+                                levelsByContext,
+                                removedLevels,
+                                changedLevels);
                 reconfigure(removedLevels, changedLevels);
             }
         }
 
-        private Logger getOrCreateLogger(final String loggerName, final String resourceBundleName) {
+        Logger getOrCreateLogger(final String loggerName, final String resourceBundleName) {
             Logger found = getLogger(loggerName);
             if (found == null) {
-                for (final TruffleLogger logger = new TruffleLogger(loggerName, resourceBundleName); found == null;) {
+                for (final PolyglotLogger logger = new PolyglotLogger(loggerName, resourceBundleName); found == null;) {
                     if (addLogger(logger)) {
-                        logger.addHandlerInternal(TruffleLanguage.AccessAPI.engineAccess().getPolyglotLogHandler());
+                        logger.addHandlerInternal(ForwardingHandler.INSTANCE);
                         found = logger;
                         break;
                     }
@@ -214,7 +201,7 @@ public final class TruffleLogger extends Logger {
 
         private void createParents(final String loggerName) {
             int index = -1;
-            for (int start = 1;;start = index+1) {
+            for (int start = 1;; start = index + 1) {
                 index = loggerName.indexOf('.', start);
                 if (index < 0) {
                     break;
@@ -227,7 +214,7 @@ public final class TruffleLogger extends Logger {
         }
 
         private void cleanupFreedReferences() {
-            for (int i=0; i< MAX_CLEANED_REFS; i++) {
+            for (int i = 0; i < MAX_CLEANED_REFS; i++) {
                 final LoggerRef ref = (LoggerRef) loggersRefQueue.poll();
                 if (ref == null) {
                     break;
@@ -238,12 +225,12 @@ public final class TruffleLogger extends Logger {
 
         private LoggerNode findLoggerNode(String loggerName) {
             LoggerNode node = root;
-            while(!loggerName.isEmpty()) {
+            while (!loggerName.isEmpty()) {
                 int index = loggerName.indexOf('.');
                 String currentNameCompoment;
                 if (index > 0) {
                     currentNameCompoment = loggerName.substring(0, index);
-                    loggerName = loggerName.substring(index+1);
+                    loggerName = loggerName.substring(index + 1);
                 } else {
                     currentNameCompoment = loggerName;
                     loggerName = "";
@@ -265,14 +252,14 @@ public final class TruffleLogger extends Logger {
             return INSTANCE;
         }
 
-        private static Map<String,Level> computeEffectiveLevels(
-                final Map<String,Level> currentEffectiveLevels,
-                final Set<String> removed,
-                final Map<String,Level> added,
-                final Map<Object,Map<String,Level>> levelsByContext,
-                final Collection<? super String> removedLevels,
-                final Collection<? super String> changedLevels) {
-            final Map<String,Level> newEffectiveLevels = new HashMap<>(currentEffectiveLevels);
+        private static Map<String, Level> computeEffectiveLevels(
+                        final Map<String, Level> currentEffectiveLevels,
+                        final Set<String> removed,
+                        final Map<String, Level> added,
+                        final Map<Object, Map<String, Level>> levelsByContext,
+                        final Collection<? super String> removedLevels,
+                        final Collection<? super String> changedLevels) {
+            final Map<String, Level> newEffectiveLevels = new HashMap<>(currentEffectiveLevels);
             for (String loggerName : removed) {
                 final Level level = findMinLevel(loggerName, levelsByContext);
                 if (level == null) {
@@ -286,7 +273,7 @@ public final class TruffleLogger extends Logger {
                     }
                 }
             }
-            for (Map.Entry<String,Level> addedLevel : added.entrySet()) {
+            for (Map.Entry<String, Level> addedLevel : added.entrySet()) {
                 final String loggerName = addedLevel.getKey();
                 final Level loggerLevel = addedLevel.getValue();
                 final Level currentLevel = newEffectiveLevels.get(loggerName);
@@ -298,9 +285,9 @@ public final class TruffleLogger extends Logger {
             return newEffectiveLevels;
         }
 
-        private static Level findMinLevel(final String loggerName, final Map<Object,Map<String,Level>> levelsByContext) {
+        private static Level findMinLevel(final String loggerName, final Map<Object, Map<String, Level>> levelsByContext) {
             Level min = null;
-            for (Map<String,Level> levels : levelsByContext.values()) {
+            for (Map<String, Level> levels : levelsByContext.values()) {
                 Level level = levels.get(loggerName);
                 if (min == null) {
                     min = level;
@@ -331,7 +318,7 @@ public final class TruffleLogger extends Logger {
             }
 
             void close() {
-                synchronized(LoggerCache.this) {
+                synchronized (LoggerCache.this) {
                     if (closed) {
                         return;
                     }
@@ -349,7 +336,7 @@ public final class TruffleLogger extends Logger {
 
         private final class LoggerNode {
             final LoggerNode parent;
-            Map<String,LoggerNode> children;
+            Map<String, LoggerNode> children;
             private LoggerRef loggerRef;
 
             LoggerNode(final LoggerNode parent, final LoggerRef loggerRef) {
@@ -390,6 +377,47 @@ public final class TruffleLogger extends Logger {
                     }
                 }
             }
+        }
+    }
+
+    private static final class ForwardingHandler extends Handler {
+
+        static final Handler INSTANCE = new ForwardingHandler();
+
+        private ForwardingHandler() {
+        }
+
+        @Override
+        public void publish(final LogRecord record) {
+            final Handler handler = findDelegate();
+            if (handler != null) {
+                handler.publish(record);
+            }
+        }
+
+        @Override
+        public void flush() {
+            final Handler handler = findDelegate();
+            if (handler != null) {
+                handler.flush();
+            }
+        }
+
+        @Override
+        public void close() throws SecurityException {
+            final Handler handler = findDelegate();
+            if (handler != null) {
+                handler.close();
+            }
+        }
+
+        private Handler findDelegate() {
+            Handler result = null;
+            final PolyglotContextImpl currentContext = PolyglotContextImpl.current();
+            if (currentContext != null) {
+                result = currentContext.logHandler;
+            }
+            return result;
         }
     }
 }

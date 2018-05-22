@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,14 +86,11 @@ public class SLLoggerTest {
         restoreLoggersState();
     }
 
-    private Context createContext(Map<String,String> options) {
+    private Context createContext(Map<String, String> options) {
         if (currentContext != null) {
             throw new IllegalStateException("Context already created");
         }
-        currentContext = Context.newBuilder("sl")
-                .options(options)
-                .logHandler(testHandler)
-                .build();
+        currentContext = Context.newBuilder("sl").options(options).logHandler(testHandler).build();
         return currentContext;
     }
 
@@ -106,21 +103,21 @@ public class SLLoggerTest {
 
     @Test
     public void testLoggerSlFunctionLevelFine() throws IOException {
-        final Context context = createContext(createLoggingOptions("sl","com.oracle.truffle.sl.runtime.SLFunction", "FINE"));
+        final Context context = createContext(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE"));
         executeSlScript(context);
         Assert.assertFalse(functionNames(testHandler.getRecords()).isEmpty());
     }
 
     @Test
     public void testLoggerSlFunctionParentLevelFine() throws IOException {
-        final Context context = createContext(createLoggingOptions("sl","com.oracle.truffle.sl.runtime", "FINE"));
+        final Context context = createContext(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime", "FINE"));
         executeSlScript(context);
         Assert.assertFalse(functionNames(testHandler.getRecords()).isEmpty());
     }
 
     @Test
     public void testLoggerSlFunctionSiblingLevelFine() throws IOException {
-        final Context context = createContext(createLoggingOptions("sl","com.oracle.truffle.sl.runtime.SLContext", "FINE"));
+        final Context context = createContext(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLContext", "FINE"));
         executeSlScript(context);
         Assert.assertTrue(functionNames(testHandler.getRecords()).isEmpty());
     }
@@ -148,13 +145,13 @@ public class SLLoggerTest {
         LogManager.getLogManager().getLogger("").setLevel(rootLoggerLevel);
     }
 
-    private static Map<String,String> createLoggingOptions(String... kvs) {
+    private static Map<String, String> createLoggingOptions(String... kvs) {
         if ((kvs.length % 3) != 0) {
             throw new IllegalArgumentException("Lang, Key, Val length has to be divisible by 3.");
         }
-        final Map<String,String> options = new HashMap<>();
+        final Map<String, String> options = new HashMap<>();
         for (int i = 0; i < kvs.length; i += 3) {
-            options.put(String.format("log.%s.%s.level", kvs[i], kvs[i+1]), kvs[i + 2]);
+            options.put(String.format("log.%s.%s.level", kvs[i], kvs[i + 1]), kvs[i + 2]);
         }
         return options;
     }

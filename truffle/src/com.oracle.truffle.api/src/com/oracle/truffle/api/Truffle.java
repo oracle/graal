@@ -30,6 +30,7 @@ import java.security.PrivilegedAction;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import java.util.logging.Logger;
 
 /**
  * Class for obtaining the Truffle runtime singleton object of this virtual machine.
@@ -54,6 +55,19 @@ public class Truffle {
      */
     public static TruffleRuntime getRuntime() {
         return RUNTIME;
+    }
+
+    public static Logger getLogger(final String languageId, final Class<?> forClass) {
+        return getLogger(languageId, forClass.getName(), null);
+    }
+
+    public static Logger getLogger(final String languageId, final String loggerName) {
+        return getLogger(languageId, loggerName, null);
+    }
+
+    public static Logger getLogger(final String languageId, final String loggerName, final String resourceBundleName) {
+        final String globalLoggerId = languageId + '.' + loggerName;
+        return TruffleLanguage.AccessAPI.engineAccess().getLogger(globalLoggerId, resourceBundleName);
     }
 
     @SafeVarargs

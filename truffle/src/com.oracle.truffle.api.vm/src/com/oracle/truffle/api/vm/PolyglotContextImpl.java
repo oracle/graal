@@ -135,7 +135,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     boolean inContextPreInitialization; // effectively final
     FileSystem fileSystem;  // effectively final
     Handler logHandler;     // effectively final
-    Map<String,Level> logLevels;    // effectively final
+    Map<String, Level> logLevels;    // effectively final
 
     /* Constructor for testing. */
     private PolyglotContextImpl() {
@@ -204,7 +204,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
         this.polyglotBindings = new ConcurrentHashMap<>();
         this.polyglotHostBindings = getAPIAccess().newValue(polyglotBindings, new PolyglotBindingsValue(hostContext));
-        VMAccessor.LANGUAGE.addLogLevelsForContext(this, logLevels);
+        PolyglotLogger.LoggerCache.getInstance().addLogLevelsForContext(this, logLevels);
         this.truffleContext = VMAccessor.LANGUAGE.createTruffleContext(this);
         VMAccessor.INSTRUMENT.notifyContextCreated(engine, truffleContext);
     }
@@ -1026,7 +1026,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 VMAccessor.INSTRUMENT.notifyThreadFinished(engine, truffleContext, thread);
             }
             VMAccessor.INSTRUMENT.notifyContextClosed(engine, truffleContext);
-            VMAccessor.LANGUAGE.removeLogLevelsForContext(this);
+            PolyglotLogger.LoggerCache.getInstance().removeLogLevelsForContext(this);
         }
         return true;
     }

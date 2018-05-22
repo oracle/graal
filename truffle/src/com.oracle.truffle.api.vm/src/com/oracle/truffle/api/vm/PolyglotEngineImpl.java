@@ -132,7 +132,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     // Data used by the runtime to enable "global" state per Engine
     volatile Object runtimeData;
     final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
-    Map<String,Level> logLevels;    // effectively final
+    Map<String, Level> logLevels;    // effectively final
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
                     boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine, Handler logHandler) {
@@ -303,7 +303,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
                     Map<String, String> originalEngineOptions, Map<String, String> originalCompilerOptions,
                     Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
-                    Map<String,Level> logOptions, boolean preInitialization) {
+                    Map<String, Level> logOptions, boolean preInitialization) {
         // When changing this logic, make sure it is in synch with #isEngineGroup()
         if (useSystemProperties) {
             Properties properties = System.getProperties();
@@ -354,7 +354,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 continue;
             }
             if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
-                logOptions.put(parseLoggerName(key),Level.parse(value));
+                logOptions.put(parseLoggerName(key), Level.parse(value));
                 continue;
             }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);

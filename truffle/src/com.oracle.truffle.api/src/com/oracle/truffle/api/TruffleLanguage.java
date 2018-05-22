@@ -68,7 +68,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.logging.Level;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -2279,15 +2278,6 @@ public abstract class TruffleLanguage<C> {
             assert file instanceof FileAdapter : "File must be " + FileAdapter.class.getSimpleName();
             final TruffleFile tf = ((FileAdapter) file).getTruffleFile();
             return tf.readAllBytes();
-        }
-
-        public void addLogLevelsForContext(Object context, Map<String,Level> logLevels) {
-            TruffleLogger.LoggerCache.getInstance().onContextCreated(context, logLevels);
-        }
-
-        @Override
-        public void removeLogLevelsForContext(Object context) {
-            TruffleLogger.LoggerCache.getInstance().onContextClosed(context);
         }
     }
 }

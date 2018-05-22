@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.runtime;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
@@ -70,7 +69,7 @@ import java.util.logging.Logger;
  * encapsulates a {@link SLUndefinedFunctionRootNode}.
  */
 public final class SLFunction implements TruffleObject {
-    private static final Logger LOG = TruffleLogger.getLogger(SLLanguage.ID, SLFunction.class);
+    private static final Logger LOG = Truffle.getLogger(SLLanguage.ID, SLFunction.class);
 
     /** The name of the function. */
     private final String name;

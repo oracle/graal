@@ -935,8 +935,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
         @Override
-        public Handler getPolyglotLogHandler() {
-            return PolyglotLogHandler.INSTANCE;
+        public Logger getLogger(String loggerName, String resourceBundleName) {
+            return PolyglotLogger.LoggerCache.getInstance().getOrCreateLogger(loggerName, resourceBundleName);
         }
     }
 }
