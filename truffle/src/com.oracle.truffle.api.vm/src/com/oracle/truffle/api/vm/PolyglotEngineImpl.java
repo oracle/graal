@@ -48,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
@@ -131,6 +132,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     // Data used by the runtime to enable "global" state per Engine
     volatile Object runtimeData;
     final Map<Object, Object> javaInteropCodeCache = new ConcurrentHashMap<>();
+    Map<String,Level> logLevels;    // effectively final
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options, long timeout, TimeUnit timeoutUnit,
                     boolean sandbox, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine, Handler logHandler) {
@@ -194,10 +196,11 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
         Map<String, String> originalEngineOptions = new HashMap<>();
         Map<String, String> originalCompilerOptions = new HashMap<>();
+        logLevels = new HashMap<>();
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, preInitialization);
+        parseOptions(options, useSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels, preInitialization);
 
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
@@ -239,7 +242,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
 
-        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, false);
+        this.logLevels.clear();
+        parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, originalCompilerOptions, languagesOptions, instrumentsOptions, logLevels, false);
 
         this.engineOptionValues.putAll(originalEngineOptions);
         this.compilerOptionValues.putAll(originalCompilerOptions);
@@ -299,7 +303,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private void parseOptions(Map<String, String> options, boolean useSystemProperties,
                     Map<String, String> originalEngineOptions, Map<String, String> originalCompilerOptions,
                     Map<PolyglotLanguage, Map<String, String>> languagesOptions, Map<PolyglotInstrument, Map<String, String>> instrumentsOptions,
-                    boolean preInitialization) {
+                    Map<String,Level> logOptions, boolean preInitialization) {
         // When changing this logic, make sure it is in synch with #isEngineGroup()
         if (useSystemProperties) {
             Properties properties = System.getProperties();
@@ -349,6 +353,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                 originalCompilerOptions.put(key, value);
                 continue;
             }
+            if (group.equals(PolyglotEngineOptions.OPTION_GROUP_LOG)) {
+                logOptions.put(parseLoggerName(key),Level.parse(value));
+                continue;
+            }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);
         }
     }
@@ -373,6 +381,17 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             group = key;
         }
         return group;
+    }
+
+    static String parseLoggerName(String optionKey) {
+        final String prefix = "log.";
+        final String suffix = ".level";
+        if (!optionKey.startsWith(prefix) || !optionKey.endsWith(suffix)) {
+            throw new IllegalArgumentException(optionKey);
+        }
+        final int start = prefix.length();
+        final int end = optionKey.length() - suffix.length();
+        return start < end ? optionKey.substring(start, end) : "";
     }
 
     @Override

@@ -40,22 +40,19 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Enumeration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -68,14 +65,13 @@ import org.junit.Test;
 public class SLLoggerTest {
 
     private TestHandler testHandler;
-    private Context ctx;
+    private Context currentContext;
     private Level rootLoggerLevel;
 
     @Before
     public void setUp() {
         saveLoggersState();
         testHandler = new TestHandler();
-        ctx = Context.newBuilder("sl").logHandler(testHandler).build();
     }
 
     @After
@@ -83,54 +79,63 @@ public class SLLoggerTest {
         if (testHandler != null) {
             testHandler.close();
         }
-        if (ctx != null) {
-            ctx.close();
+        if (currentContext != null) {
+            currentContext.close();
+            currentContext = null;
         }
         restoreLoggersState();
     }
 
+    private Context createContext(Map<String,String> options) {
+        if (currentContext != null) {
+            throw new IllegalStateException("Context already created");
+        }
+        currentContext = Context.newBuilder("sl")
+                .options(options)
+                .logHandler(testHandler)
+                .build();
+        return currentContext;
+    }
+
     @Test
     public void testLoggerNoConfig() throws IOException {
-        final ByteArrayInputStream loggerConfig = new ByteArrayInputStream(new byte[0]);
-        LogManager.getLogManager().readConfiguration(loggerConfig);
-        executeSlScript();
+        final Context context = createContext(Collections.emptyMap());
+        executeSlScript(context);
         Assert.assertTrue(functionNames(testHandler.getRecords()).isEmpty());
     }
 
     @Test
     public void testLoggerSlFunctionLevelFine() throws IOException {
-        LogManager.getLogManager().readConfiguration(createLogConfigFile("com.oracle.truffle.sl.runtime.SLFunction.level", "FINE"));
-        executeSlScript();
+        final Context context = createContext(createLoggingOptions("sl","com.oracle.truffle.sl.runtime.SLFunction", "FINE"));
+        executeSlScript(context);
         Assert.assertFalse(functionNames(testHandler.getRecords()).isEmpty());
     }
 
     @Test
     public void testLoggerSlFunctionParentLevelFine() throws IOException {
-        // LogManager.readConfiguration does not restore parent levels for existing loogers with non
-        // existing parent - need to have existing parent
-        final Logger dummy = Logger.getLogger("com.oracle.truffle.sl.runtime");
-        LogManager.getLogManager().readConfiguration(createLogConfigFile("com.oracle.truffle.sl.runtime.level", "FINE"));
-        executeSlScript();
+        final Context context = createContext(createLoggingOptions("sl","com.oracle.truffle.sl.runtime", "FINE"));
+        executeSlScript(context);
         Assert.assertFalse(functionNames(testHandler.getRecords()).isEmpty());
     }
 
     @Test
     public void testLoggerSlFunctionSiblingLevelFine() throws IOException {
-        LogManager.getLogManager().readConfiguration(createLogConfigFile("com.oracle.truffle.sl.runtime.SLContext.level", "FINE"));
-        executeSlScript();
+        final Context context = createContext(createLoggingOptions("sl","com.oracle.truffle.sl.runtime.SLContext", "FINE"));
+        executeSlScript(context);
         Assert.assertTrue(functionNames(testHandler.getRecords()).isEmpty());
     }
 
     @Test
     public void testRootLoggerLevelFine() throws IOException {
         LogManager.getLogManager().getLogger("").setLevel(Level.FINE);
-        executeSlScript();
+        final Context context = createContext(Collections.emptyMap());
+        executeSlScript(context);
         Assert.assertFalse(functionNames(testHandler.getRecords()).isEmpty());
     }
 
-    private void executeSlScript() throws IOException {
+    private static void executeSlScript(final Context context) throws IOException {
         final Source src = Source.newBuilder("sl", "function add(a,b) {return a + b;} function main() {return add(1,1);}", "testLogger.sl").build();
-        final Value res = ctx.eval(src);
+        final Value res = context.eval(src);
         Assert.assertTrue(res.isNumber());
         Assert.assertEquals(2, res.asInt());
     }
@@ -141,24 +146,21 @@ public class SLLoggerTest {
 
     private void restoreLoggersState() throws IOException {
         LogManager.getLogManager().getLogger("").setLevel(rootLoggerLevel);
-        LogManager.getLogManager().readConfiguration();
     }
 
-    private static InputStream createLogConfigFile(String... kvs) throws IOException {
-        if ((kvs.length & 1) == 1) {
-            throw new IllegalArgumentException("Keys and values has to have even length.");
+    private static Map<String,String> createLoggingOptions(String... kvs) {
+        if ((kvs.length % 3) != 0) {
+            throw new IllegalArgumentException("Lang, Key, Val length has to be divisible by 3.");
         }
-        final Properties props = new Properties();
-        for (int i = 0; i < kvs.length; i += 2) {
-            props.setProperty(kvs[i], kvs[i + 1]);
+        final Map<String,String> options = new HashMap<>();
+        for (int i = 0; i < kvs.length; i += 3) {
+            options.put(String.format("log.%s.%s.level", kvs[i], kvs[i+1]), kvs[i + 2]);
         }
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        props.store(out, null);
-        return new ByteArrayInputStream(out.toByteArray());
+        return options;
     }
 
     private static Set<String> functionNames(final List<? extends LogRecord> records) {
-        return records.stream().filter((lr) -> "com.oracle.truffle.sl.runtime.SLFunction".equals(lr.getLoggerName())).map((lr) -> (String) lr.getParameters()[0]).collect(Collectors.toSet());
+        return records.stream().filter((lr) -> "sl.com.oracle.truffle.sl.runtime.SLFunction".equals(lr.getLoggerName())).map((lr) -> (String) lr.getParameters()[0]).collect(Collectors.toSet());
     }
 
     private static final class TestHandler extends Handler {

@@ -36,6 +36,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -405,6 +406,10 @@ public abstract class Accessor {
         public abstract boolean checkTruffleFile(File file);
 
         public abstract byte[] truffleFileContent(File file) throws IOException;
+
+        public abstract void addLogLevelsForContext(Object context, Map<String,Level> logLevels);
+
+        public abstract void removeLogLevelsForContext(Object context);
 
     }
 
