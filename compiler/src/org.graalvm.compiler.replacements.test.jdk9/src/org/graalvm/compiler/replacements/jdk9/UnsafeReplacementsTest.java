@@ -25,6 +25,7 @@ package org.graalvm.compiler.replacements.jdk9;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.graalvm.compiler.test.AddExports;
+import org.junit.Assert;
 import org.junit.Test;
 
 @AddExports("java.base/jdk.internal.misc")
@@ -202,5 +203,44 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeCompareAndExchangeDouble");
         testGraph("unsafeCompareAndExchangeObject");
         test("unsafeCompareAndExchangeObject");
+    }
+
+    public static int unsafeGetAndAddByte() {
+        Container container = new Container();
+        return unsafe.getAndAddByte(container, byteOffset, (byte) 2);
+    }
+
+    public static int unsafeGetAndAddChar() {
+        Container container = new Container();
+        return unsafe.getAndAddChar(container, charOffset, (char) 250);
+    }
+
+    public static int unsafeGetAndAddShort() {
+        Container container = new Container();
+        return unsafe.getAndAddShort(container, charOffset, (short) 1250);
+    }
+
+    public static int unsafeGetAndAddInt() {
+        Container container = new Container();
+        return unsafe.getAndAddInt(container, charOffset, 104501);
+    }
+
+    public static long unsafeGetAndAddLong() {
+        Container container = new Container();
+        return unsafe.getAndAddLong(container, longOffset, 0x123456abcdL);
+    }
+
+    @Test
+    public void testGetAndAdd() {
+        testGraph("unsafeGetAndAddByte");
+        test("unsafeGetAndAddByte");
+        testGraph("unsafeGetAndAddChar");
+        test("unsafeGetAndAddChar");
+        testGraph("unsafeGetAndAddShort");
+        test("unsafeGetAndAddShort");
+        testGraph("unsafeGetAndAddInt");
+        test("unsafeGetAndAddInt");
+        testGraph("unsafeGetAndAddLong");
+        test("unsafeGetAndAddLong");
     }
 }

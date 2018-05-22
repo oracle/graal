@@ -226,7 +226,9 @@ public class AMD64GraphBuilderPlugins {
         } else {
             r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
         }
-        for (JavaKind kind : new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}) {
+
+        JavaKind[] unsafeJavaKinds = new JavaKind[]{JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
+        for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
 
             r.register4("getAndSet" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
@@ -239,14 +241,14 @@ public class AMD64GraphBuilderPlugins {
                     return true;
                 }
             });
-            if (kind != JavaKind.Object) {
+            if (kind != JavaKind.Boolean && kind.isNumericInteger()) {
                 r.register4("getAndAdd" + kind.name(), Receiver.class, Object.class, long.class, javaClass, new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode object, ValueNode offset, ValueNode delta) {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
                         AddressNode address = b.add(new OffsetAddressNode(object, offset));
-                        b.addPush(kind, new AtomicReadAndAddNode(address, delta, LocationIdentity.any()));
+                        b.addPush(kind, new AtomicReadAndAddNode(address, delta, kind, LocationIdentity.any()));
                         b.getGraph().markUnsafeAccess();
                         return true;
                     }

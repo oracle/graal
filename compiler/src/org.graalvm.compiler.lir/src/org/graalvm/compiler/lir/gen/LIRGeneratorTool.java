@@ -152,7 +152,7 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * @param address address of the value to be read and written
      * @param delta the value to be added
      */
-    default Value emitAtomicReadAndAdd(Value address, Value delta) {
+    default Value emitAtomicReadAndAdd(Value address, ValueKind<?> valueKind, Value delta) {
         throw GraalError.unimplemented();
     }
 

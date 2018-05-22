@@ -474,6 +474,12 @@ public class AMD64Move {
                 masm.lock();
             }
             switch (accessKind) {
+                case BYTE:
+                    masm.xaddb(address.toAddress(), asRegister(result));
+                    break;
+                case WORD:
+                    masm.xaddw(address.toAddress(), asRegister(result));
+                    break;
                 case DWORD:
                     masm.xaddl(address.toAddress(), asRegister(result));
                     break;

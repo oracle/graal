@@ -3704,6 +3704,21 @@ public class AMD64Assembler extends Assembler {
         emitByte(imm8);
     }
 
+    public final void xaddb(AMD64Address dst, Register src) {
+        prefix(dst, src);
+        emitByte(0x0F);
+        emitByte(0xC0);
+        emitOperandHelper(src, dst, 0);
+    }
+
+    public final void xaddw(AMD64Address dst, Register src) {
+        emitByte(0x66); // Switch to 16-bit mode.
+        prefix(dst, src);
+        emitByte(0x0F);
+        emitByte(0xC1);
+        emitOperandHelper(src, dst, 0);
+    }
+
     public final void xaddl(AMD64Address dst, Register src) {
         prefix(dst, src);
         emitByte(0x0F);
