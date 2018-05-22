@@ -84,6 +84,10 @@ public abstract class LLVMForeignCallNode extends LLVMNode {
         }
     }
 
+    public static LLVMForeignCallNode create() {
+        return LLVMForeignCallNodeGen.create();
+    }
+
     public static PackForeignArgumentsNode createFastPackArguments(LLVMFunctionDescriptor descriptor, int length) {
         checkArgLength(descriptor.getType().getArgumentTypes().length, length);
         return new PackForeignArgumentsNode(descriptor.getType().getArgumentTypes(), length);
