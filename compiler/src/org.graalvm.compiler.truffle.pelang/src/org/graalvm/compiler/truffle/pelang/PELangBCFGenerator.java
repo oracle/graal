@@ -40,6 +40,7 @@ public class PELangBCFGenerator {
         if (node instanceof PELangBlockNode) {
             PELangBlockNode blockNode = (PELangBlockNode) node;
             generateBlock(blockNode, mode);
+            generateDelayed();
         } else if (node instanceof PELangIfNode) {
             PELangIfNode ifNode = (PELangIfNode) node;
             generateBranch(ifNode, mode);
@@ -76,7 +77,6 @@ public class PELangBCFGenerator {
                 delayedBlockBodies.add(pair);
             }
         }
-        generateDelayed();
     }
 
     private void generateDelayed() {
