@@ -131,10 +131,18 @@ svm-downstream-test: ${requireGCC} {
   run: [[mx, testdownstream, -R, "${SVM_REPO}", --suitedir, "${SVM_SUITEDIR}", -C, "--dynamicimport sulong gate --tags build,sulong"]]
 }
 
+gate-asm-parser: ${gateCommon} ${linux-amd64} {
+  run: [
+    ["mx", "create-asm-parser"]
+    ["git", "diff", "--exit-code", "projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/InlineAssemblyLexer.java"]
+    ["git", "diff", "--exit-code", "projects/com.oracle.truffle.llvm.asm.amd64/src/com/oracle/truffle/llvm/asm/amd64/InlineAssemblyParser.java"]
+  ]
+}
 
 builds = [
   ${gateStyle} { name: gate-style, run: [[mx, gate, --tags, "style"]] }
   ${gateStyle} ${requireJDT} { name: gate-fullbuild, run: [[mx, gate, --tags, "fullbuild"]] }
+  ${gate-asm-parser} { name: gate-asm-parser }
   ${gateTest38-linux} { name: gate-misc0, run: [[mx, gate, --tags, "build,assembly,args,callback,vaargs"]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-misc1, run: [[mx, gate, --tags, "build,benchmarks,type,pipe"]] }
   ${gateTest38-linux} ${requireGCC} { name: gate-parser, run: [[mx, gate, --tags, "build,parser"]] }
