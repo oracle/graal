@@ -129,6 +129,25 @@ public class NFA implements StateIndex<NFAState>, JsonConvertible {
         return forward ? transitionListContainsTarget(unAnchoredEntry, state) : reverseUnAnchoredEntry.getSource() == state;
     }
 
+    public int getAnchoredEntryOffset(NFAState state, boolean forward) {
+        assert isAnchoredEntry(state, forward);
+        return forward ? transitionListIndexOfTarget(anchoredEntry, state) : 0;
+    }
+
+    public int getUnAnchoredEntryOffset(NFAState state, boolean forward) {
+        assert isUnAnchoredEntry(state, forward);
+        return forward ? transitionListIndexOfTarget(unAnchoredEntry, state) : 0;
+    }
+
+    private static int transitionListIndexOfTarget(NFAStateTransition[] transitions, NFAState target) {
+        for (int i = 0; i < transitions.length; i++) {
+            if (transitions[i].getTarget() == target) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     private static boolean transitionListContainsTarget(NFAStateTransition[] transitions, NFAState target) {
         for (NFAStateTransition t : transitions) {
             if (t.getTarget() == target) {
