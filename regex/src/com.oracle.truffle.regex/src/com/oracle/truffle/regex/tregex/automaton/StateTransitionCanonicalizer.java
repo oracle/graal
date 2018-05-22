@@ -80,18 +80,15 @@ public abstract class StateTransitionCanonicalizer<TS extends TransitionSet, TB 
      * as an empty list.</li>
      * <li>For every element <em>e</em> of the input list, we compare the expected character sets of
      * <em>e</em> and every element in the result list. If an intersection with an element
-     * <em>r</em> of the result list is found, we distinguish the following three cases, where the
+     * <em>r</em> of the result list is found, we distinguish the following two cases, where the
      * character set of an element <em>x</em> is denoted as <em>x.cs</em> and the transition set of
      * an element <em>x</em> is denoted as <em>x.ts</em>:
      * <ul>
-     * <li>If <em>e.cs</em> contains <em>r.cs</em>, <em>e.ts</em> is merged into<em>r.ts</em> using
-     * {@link TransitionBuilder#mergeInPlace(TransitionBuilder, MatcherBuilder)}.</li>
-     * <li>If <em>r.cs</em> contains <em>e.cs</em>, <em>e.ts</em> is merged into<em>r.ts</em> using
-     * {@link TransitionBuilder#mergeInPlace(TransitionBuilder, MatcherBuilder)} and <em>e</em> is
-     * discarded.</li>
-     * <li>If <em>e.cs</em> partially intersects with <em>r.cs</em>, a new transition containing
-     * <em>e.ts</em> and <em>r.ts</em> and the intersection of <em>e.cs</em> and <em>r.cs</em> is
-     * added to the result list. This new transition is created using
+     * <li>If <em>e.cs</em> contains <em>r.cs</em>, <em>e.ts</em> is merged into <em>r.ts</em> using
+     * {@link TransitionSet#addAll(TransitionSet)}.</li>
+     * <li>Otherwise, a new transition containing <em>e.ts</em> and <em>r.ts</em> and the
+     * intersection of <em>e.cs</em> and <em>r.cs</em> is added to the result list. This new
+     * transition is created using
      * {@link TransitionBuilder#createMerged(TransitionBuilder, MatcherBuilder)}. The intersection
      * of <em>e.cs</em> and <em>r.cs</em> is removed from <em>r.cs</em>.</li>
      * </ul>
@@ -135,7 +132,7 @@ public abstract class StateTransitionCanonicalizer<TS extends TransitionSet, TB 
                 MatcherBuilder intersection = intersectionResult[2];
                 if (intersection.matchesSomething()) {
                     if (rSubtractedMatcher.matchesNothing()) {
-                        r.mergeInPlace(e, intersection);
+                        r.getTransitionSet().addAll(e.getTransitionSet());
                     } else {
                         r.setMatcherBuilder(rSubtractedMatcher);
                         disjointTransitions.add((TB) r.createMerged(e, intersection));

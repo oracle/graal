@@ -32,6 +32,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -189,9 +190,7 @@ public class NFATransitionSet implements TransitionSet, Iterable<NFAStateTransit
         while (newLength < newSize) {
             newLength *= 2;
         }
-        short[] newTransitions = new short[newLength];
-        System.arraycopy(transitions, 0, newTransitions, 0, size);
-        transitions = newTransitions;
+        transitions = Arrays.copyOf(transitions, newLength);
     }
 
     private void appendTransition(NFAStateTransition transition) {

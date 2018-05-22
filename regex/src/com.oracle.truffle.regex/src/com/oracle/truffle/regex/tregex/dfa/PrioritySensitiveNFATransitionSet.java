@@ -143,10 +143,11 @@ public final class PrioritySensitiveNFATransitionSet extends NFATransitionSet {
         if (obj == this) {
             return true;
         }
-        if (!(obj instanceof NFATransitionSet)) {
+        if (!(obj instanceof PrioritySensitiveNFATransitionSet)) {
+            assert !(obj instanceof NFATransitionSet) : "Do not mix NFATransitionSet and PrioritySensitiveNFATransitionSet!";
             return false;
         }
-        NFATransitionSet o = (NFATransitionSet) obj;
+        PrioritySensitiveNFATransitionSet o = (PrioritySensitiveNFATransitionSet) obj;
         if (size() != o.size()) {
             return false;
         }
