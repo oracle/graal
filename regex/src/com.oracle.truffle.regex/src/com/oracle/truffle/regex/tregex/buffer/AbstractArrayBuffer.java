@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,60 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.regex.tregex.buffer;
 
-import java.util.Arrays;
-
 /**
- * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
- * never shrink its internal buffer, so it should be disposed as soon as it is no longer needed.
- * <p>
- * Usage Example:
- * </p>
- * 
- * <pre>
- * CharArrayBuffer buf = new CharArrayBuffer();
- * List<char[]> results = new ArrayList<>();
- * for (Object obj : listOfThingsToProcess) {
- *     for (Object x : obj.thingsThatShouldBecomeChars()) {
- *         buf.add(someCalculation(x));
- *     }
- *     results.add(buf.toArray());
- *     buf.clear();
- * }
- * </pre>
+ * Abstract base class of all ArrayBuffer classes, exists solely to avoid code duplication.
  */
-public class CharArrayBuffer extends AbstractArrayBuffer {
+public abstract class AbstractArrayBuffer {
 
-    private char[] buf;
+    int size;
 
-    public CharArrayBuffer(int initialSize) {
-        buf = new char[initialSize];
+    public void clear() {
+        size = 0;
     }
 
-    @Override
-    int getBufferSize() {
-        return buf.length;
+    public boolean isEmpty() {
+        return size == 0;
     }
 
-    @Override
-    void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
+    public int size() {
+        return size;
     }
 
-    public char[] getBuffer() {
-        return buf;
+    public void setSize(int size) {
+        this.size = size;
     }
 
-    public void add(char c) {
-        if (size == buf.length) {
-            grow(size * 2);
+    public void ensureCapacity(int newSize) {
+        if (getBufferSize() < newSize) {
+            int newBufferSize = getBufferSize() * 2;
+            while (newBufferSize < newSize) {
+                newBufferSize *= 2;
+            }
+            grow(newBufferSize);
         }
-        buf[size++] = c;
     }
 
-    public char[] toArray() {
-        return Arrays.copyOf(buf, size);
-    }
+    abstract int getBufferSize();
+
+    abstract void grow(int newSize);
 }
