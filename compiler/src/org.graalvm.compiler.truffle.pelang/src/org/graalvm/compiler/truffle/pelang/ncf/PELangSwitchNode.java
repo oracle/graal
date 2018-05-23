@@ -33,27 +33,20 @@ import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 public final class PELangSwitchNode extends PELangStatementNode {
 
     @Child private PELangExpressionNode valueNode;
-    @Child private PELangStatementNode defaultBodyNode;
-
     @Children private final PELangExpressionNode[] caseValueNodes;
     @Children private final PELangStatementNode[] caseBodyNodes;
 
-    public PELangSwitchNode(PELangExpressionNode valueNode, PELangStatementNode defaultBodyNode, PELangExpressionNode[] caseValueNodes, PELangStatementNode[] caseBodyNodes) {
+    public PELangSwitchNode(PELangExpressionNode valueNode, PELangExpressionNode[] caseValueNodes, PELangStatementNode[] caseBodyNodes) {
         if (caseValueNodes.length != caseBodyNodes.length) {
             throw new IllegalArgumentException("length of case value and body nodes must be the same");
         }
         this.valueNode = valueNode;
-        this.defaultBodyNode = defaultBodyNode;
         this.caseValueNodes = caseValueNodes;
         this.caseBodyNodes = caseBodyNodes;
     }
 
     public PELangExpressionNode getValueNode() {
         return valueNode;
-    }
-
-    public PELangStatementNode getDefaultBodyNode() {
-        return defaultBodyNode;
     }
 
     public PELangExpressionNode[] getCaseValueNodes() {
@@ -78,7 +71,6 @@ public final class PELangSwitchNode extends PELangStatementNode {
                 return;
             }
         }
-        defaultBodyNode.executeVoid(frame);
     }
 
 }
