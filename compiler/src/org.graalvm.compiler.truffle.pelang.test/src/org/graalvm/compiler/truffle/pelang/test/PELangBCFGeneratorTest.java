@@ -31,6 +31,7 @@ import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.junit.Test;
 
@@ -161,6 +162,39 @@ public class PELangBCFGeneratorTest {
         assertThat(b1.getFalseSuccessor(), equalTo(3));
         assertThat(b2.getSuccessor(), equalTo(1));
         assertThat(b3.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
+    }
+
+    @Test
+    public void testSimpleSwitch() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleSwitch());
+
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(5));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[1], instanceOf(PELangMultiSuccessorNode.class));
+        assertThat(basicBlocks[2], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[3], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[4], instanceOf(PELangSingleSuccessorNode.class));
+
+        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
+        PELangMultiSuccessorNode b1 = (PELangMultiSuccessorNode) basicBlocks[1];
+        PELangSingleSuccessorNode b2 = (PELangSingleSuccessorNode) basicBlocks[2];
+        PELangSingleSuccessorNode b3 = (PELangSingleSuccessorNode) basicBlocks[3];
+        PELangSingleSuccessorNode b4 = (PELangSingleSuccessorNode) basicBlocks[4];
+
+        assertThat(b0.getSuccessor(), equalTo(1));
+        assertThat(b1.getDefaultSuccessor(), equalTo(4));
+        assertThat(b1.getCaseBodySuccessors().length, equalTo(2));
+        assertThat(b1.getCaseBodySuccessors()[0], equalTo(2));
+        assertThat(b1.getCaseBodySuccessors()[1], equalTo(3));
+        assertThat(b2.getSuccessor(), equalTo(4));
+        assertThat(b3.getSuccessor(), equalTo(4));
+        assertThat(b4.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
     }
 
     @Test

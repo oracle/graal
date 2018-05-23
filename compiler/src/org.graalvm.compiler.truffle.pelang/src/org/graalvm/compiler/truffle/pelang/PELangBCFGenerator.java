@@ -31,11 +31,13 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangSwitchNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
 
 public class PELangBCFGenerator {
@@ -69,6 +71,9 @@ public class PELangBCFGenerator {
         } else if (node instanceof PELangWhileNode) {
             PELangWhileNode wihleNode = (PELangWhileNode) node;
             generateLoop(wihleNode, mode);
+        } else if (node instanceof PELangSwitchNode) {
+            PELangSwitchNode switchNode = (PELangSwitchNode) node;
+            generateSwitch(switchNode, mode);
         } else if (node instanceof PELangExpressionNode | node instanceof PELangReturnNode) {
             generateSingle(node, mode);
         }
@@ -91,6 +96,10 @@ public class PELangBCFGenerator {
                 PELangWhileNode whileNode = (PELangWhileNode) bodyNode;
                 generateDelayed();
                 generateLoop(whileNode, bodyMode);
+            } else if (bodyNode instanceof PELangSwitchNode) {
+                PELangSwitchNode switchNode = (PELangSwitchNode) bodyNode;
+                generateDelayed();
+                generateSwitch(switchNode, bodyMode);
             } else if (bodyNode instanceof PELangBlockNode) {
                 PELangBlockNode innerBlock = (PELangBlockNode) bodyNode;
                 generateBlock(innerBlock, bodyMode);
@@ -135,7 +144,7 @@ public class PELangBCFGenerator {
         basicBlock.setTrueSuccessor(blockCounter.get());
 
         // push a new label for the branch end on the stack
-        int branchEnd = labelCounter.incrementAndGet();
+        int branchEnd = labelCounter.decrementAndGet();
         labelStack.push(branchEnd);
 
         // generate then nodes in label mode with pushed branch end
@@ -166,9 +175,16 @@ public class PELangBCFGenerator {
             } else if (blockNode instanceof PELangDoubleSuccessorNode) {
                 PELangDoubleSuccessorNode doubleSuccessor = (PELangDoubleSuccessorNode) blockNode;
 
-                // only false successor has to be patched in loops
+                // only false successor needs to be patched for double successor nodes
                 if (doubleSuccessor.getFalseSuccessor() == branchEnd) {
                     doubleSuccessor.setFalseSuccessor(successor);
+                }
+            } else if (blockNode instanceof PELangMultiSuccessorNode) {
+                PELangMultiSuccessorNode multiSuccessor = (PELangMultiSuccessorNode) blockNode;
+
+                // only default successor needs to be patched for multi successor nodes
+                if (multiSuccessor.getDefaultSuccessor() == branchEnd) {
+                    multiSuccessor.setDefaultSuccessor(successor);
                 }
             }
         }
@@ -198,6 +214,70 @@ public class PELangBCFGenerator {
         // determine false successor after size of body nodes is known based on current mode
         int successor = (mode == Mode.COUNTER) ? blockCounter.get() : labelStack.peek();
         basicBlock.setFalseSuccessor(successor);
+    }
+
+    private void generateSwitch(PELangSwitchNode node, Mode mode) {
+        // create multi successor for switch node
+        PELangMultiSuccessorNode basicBlock = new PELangMultiSuccessorNode(node.getValueNode(), node.getCaseValueNodes());
+
+        basicBlocks.add(basicBlock);
+        blockCounter.increment();
+
+        // save last block index to avoid iteration over all blocks when patching labels
+        int lastIndex = basicBlocks.size() - 1;
+
+        // push a new label for the switch end on the stack
+        int switchEnd = labelCounter.decrementAndGet();
+        labelStack.push(switchEnd);
+
+        // set switch end as default successor for non-matching cases
+        basicBlock.setDefaultSuccessor(switchEnd);
+
+        // create list for case body successor indices
+        List<Integer> caseBodySuccessors = new ArrayList<>();
+
+        // generate case body nodes
+        for (int i = 0; i < node.getCaseValueNodes().length; i++) {
+            int blockIndex = blockCounter.get();
+            generate(node.getCaseBodyNodes()[i], Mode.LABEL);
+            caseBodySuccessors.add(blockIndex);
+        }
+
+        // set case body successors
+        basicBlock.setCaseBodySuccessors(caseBodySuccessors.stream().mapToInt(i -> i).toArray());
+
+        // pop switch end label from the stack
+        labelStack.pop();
+
+        // determine successor of the blocks to patch based on current mode
+        int successor = (mode == Mode.COUNTER) ? blockCounter.get() : labelStack.peek();
+
+        // patch blocks by given successor
+        for (int i = lastIndex; i < basicBlocks.size(); i++) {
+            PELangBasicBlockNode blockNode = basicBlocks.get(i);
+
+            if (blockNode instanceof PELangSingleSuccessorNode) {
+                PELangSingleSuccessorNode singleSuccessor = (PELangSingleSuccessorNode) blockNode;
+
+                if (singleSuccessor.getSuccessor() == switchEnd) {
+                    singleSuccessor.setSuccessor(successor);
+                }
+            } else if (blockNode instanceof PELangDoubleSuccessorNode) {
+                PELangDoubleSuccessorNode doubleSuccessor = (PELangDoubleSuccessorNode) blockNode;
+
+                // only false successor needs to be patched for double successor nodes
+                if (doubleSuccessor.getFalseSuccessor() == switchEnd) {
+                    doubleSuccessor.setFalseSuccessor(successor);
+                }
+            } else if (blockNode instanceof PELangMultiSuccessorNode) {
+                PELangMultiSuccessorNode multiSuccessor = (PELangMultiSuccessorNode) blockNode;
+
+                // only default successor needs to be patched for multi successor nodes
+                if (multiSuccessor.getDefaultSuccessor() == switchEnd) {
+                    multiSuccessor.setDefaultSuccessor(successor);
+                }
+            }
+        }
     }
 
     private void generateSingle(PELangStatementNode node, Mode mode) {

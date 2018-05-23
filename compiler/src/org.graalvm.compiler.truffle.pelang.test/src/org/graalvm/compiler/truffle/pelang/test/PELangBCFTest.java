@@ -83,6 +83,14 @@ public class PELangBCFTest extends PELangTest {
         assertPartialEvalEquals("constant10", rootNode);
     }
 
+    @Test
+    public void testSimpleSwitch() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleSwitch());
+        assertCallResult(10L, rootNode);
+        assertPartialEvalEquals("constant10", rootNode);
+    }
+
     @Test(expected = PELangException.class)
     public void testInvalidBranch() {
         PELangBCFGenerator g = new PELangBCFGenerator();
