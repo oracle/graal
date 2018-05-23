@@ -155,6 +155,21 @@ public final class Sulong extends LLVMLanguage {
     }
 
     @Override
+    protected String toString(LLVMContext context, Object value) {
+        if (value instanceof SulongLibrary) {
+            return "LLVMLibrary:" + ((SulongLibrary) value).getName();
+        } else if (isObjectOfLanguage(value)) {
+            // our internal objects have safe toString implementations
+            return value.toString();
+        } else if (value instanceof String || value instanceof Number) {
+            // truffle primitives
+            return value.toString();
+        } else {
+            return "<unknown object>";
+        }
+    }
+
+    @Override
     public LLVMContext findLLVMContext() {
         return getContextReference().get();
     }
