@@ -134,20 +134,26 @@ public final class Runner {
      */
     static final class SulongLibrary implements TruffleObject {
 
+        private final String name;
         private final LLVMScope scope;
         private final CallTarget main;
 
-        private SulongLibrary(LLVMScope scope, CallTarget main) {
+        private SulongLibrary(String name, LLVMScope scope, CallTarget main) {
+            this.name = name;
             this.scope = scope;
             this.main = main;
         }
 
-        private LLVMFunctionDescriptor lookup(String name) {
-            LLVMSymbol symbol = scope.get(name);
+        private LLVMFunctionDescriptor lookup(String symbolName) {
+            LLVMSymbol symbol = scope.get(symbolName);
             if (symbol != null && symbol.isFunction()) {
                 return symbol.asFunction();
             }
             return null;
+        }
+
+        public String getName() {
+            return name;
         }
 
         @Override
@@ -359,7 +365,7 @@ public final class Runner {
             parseFunctionsEagerly(parserResults);
             registerDynamicLinkChain(parserResults);
             callStructors(initializationOrder);
-            return createLibraryCallTarget(parserResults);
+            return createLibraryCallTarget(source.getName(), parserResults);
         } catch (Throwable t) {
             throw new IOException("Error while parsing " + library, t);
         }
@@ -893,7 +899,7 @@ public final class Runner {
         }
     }
 
-    private CallTarget createLibraryCallTarget(List<LLVMParserResult> parserResults) {
+    private CallTarget createLibraryCallTarget(String name, List<LLVMParserResult> parserResults) {
         RootCallTarget mainFunctionCallTarget = null;
         LLVMFunctionDescriptor mainFunctionDescriptor = findMainMethod(parserResults);
         LLVMFunctionDescriptor startFunctionDescriptor = findStartMethod();
@@ -908,7 +914,7 @@ public final class Runner {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
             LLVMScope scope = combineScopes(parserResults);
-            SulongLibrary lib = new SulongLibrary(scope, mainFunctionCallTarget);
+            SulongLibrary lib = new SulongLibrary(name, scope, mainFunctionCallTarget);
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(lib));
         }
     }
