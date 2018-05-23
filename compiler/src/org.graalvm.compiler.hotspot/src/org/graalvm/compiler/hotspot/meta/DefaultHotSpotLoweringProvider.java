@@ -208,7 +208,7 @@ public class DefaultHotSpotLoweringProvider extends DefaultJavaLoweringProvider 
         instanceofSnippets = new InstanceOfSnippets.Templates(options, factories, runtime, providers, target);
         newObjectSnippets = new NewObjectSnippets.Templates(options, factories, runtime, providers, target, config);
         monitorSnippets = new MonitorSnippets.Templates(options, factories, runtime, providers, target, config.useFastLocking);
-        writeBarrierSnippets = new WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config.useCompressedOops ? config.getOopEncoding() : null);
+        writeBarrierSnippets = new WriteBarrierSnippets.Templates(options, factories, runtime, providers, target, config);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, factories, providers, target);
         unsafeLoadSnippets = new UnsafeLoadSnippets.Templates(options, factories, providers, target);
         assertionSnippets = new AssertionSnippets.Templates(options, factories, providers, target);
