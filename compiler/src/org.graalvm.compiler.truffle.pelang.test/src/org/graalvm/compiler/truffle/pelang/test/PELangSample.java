@@ -88,6 +88,25 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode simpleSelect() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(0, "counter"),
+                b.select(
+                    b.readLocal("counter"),
+                    b.selectPair(
+                        b.literal(0L),
+                        b.incrementLocal(10L, "counter")),
+                    b.selectPair(
+                        b.literal(5L),
+                        b.incrementLocal(5L, "counter"))),
+                b.ret(b.readLocal("counter"))));
+        // @formatter:on
+    }
+
     public static PELangRootNode invalidBranch() {
         PELangBuilder b = new PELangBuilder();
 

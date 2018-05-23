@@ -22,6 +22,9 @@
  */
 package org.graalvm.compiler.truffle.pelang;
 
+import java.util.Arrays;
+
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
@@ -41,6 +44,7 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
+import org.graalvm.compiler.truffle.pelang.ncf.PELangSwitchNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -106,6 +110,22 @@ public class PELangBuilder {
         return new PELangWhileNode(conditionNode, bodyNode);
     }
 
+    public PELangStatementNode select(PELangExpressionNode valueNode, PELangStatementNode defaultBodyNode,
+                    SelectPair... selectPairs) {
+        PELangExpressionNode[] caseValueNodes = Arrays.stream(selectPairs).map(SelectPair::getCaseValueNode).toArray(PELangExpressionNode[]::new);
+        PELangStatementNode[] caseBodyNodes = Arrays.stream(selectPairs).map(SelectPair::getCaseBodyNode).toArray(PELangStatementNode[]::new);
+
+        return new PELangSwitchNode(valueNode, defaultBodyNode, caseValueNodes, caseBodyNodes);
+    }
+
+    public PELangStatementNode select(PELangExpressionNode valueNode, SelectPair... selectPairs) {
+        return select(valueNode, block(), selectPairs);
+    }
+
+    public SelectPair selectPair(PELangExpressionNode caseValueNode, PELangStatementNode caseBodyNode) {
+        return new SelectPair(caseValueNode, caseBodyNode);
+    }
+
     public PELangExpressionNode readLocal(String identifier) {
         return PELangLocalReadNodeGen.create(frameDescriptor.findOrAddFrameSlot(identifier));
     }
@@ -168,6 +188,26 @@ public class PELangBuilder {
 
     public PELangBasicBlockNode basicBlock(PELangExpressionNode bodyNode, int trueSuccessor, int falseSuccessor) {
         return new PELangDoubleSuccessorNode(bodyNode, trueSuccessor, falseSuccessor);
+    }
+
+    public static final class SelectPair {
+
+        private final PELangExpressionNode caseValueNode;
+        private final PELangStatementNode caseBodyNode;
+
+        public SelectPair(PELangExpressionNode caseValueNode, PELangStatementNode caseBodyNode) {
+            this.caseValueNode = caseValueNode;
+            this.caseBodyNode = caseBodyNode;
+        }
+
+        public PELangExpressionNode getCaseValueNode() {
+            return caseValueNode;
+        }
+
+        public PELangStatementNode getCaseBodyNode() {
+            return caseBodyNode;
+        }
+
     }
 
 }
