@@ -155,14 +155,14 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     private void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources, Source... expectedSources) {
         Assert.assertEquals(expectedSources.length, actualSources.size());
         for (int i = 0; i < expectedSources.length; i++) {
-            Assert.assertSame("index " + i, getSourceImpl(expectedSources[i]), actualSources.get(i));
+            Assert.assertEquals("index " + i, getSourceImpl(expectedSources[i]), actualSources.get(i));
         }
     }
 
     private static void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources, com.oracle.truffle.api.source.Source... expectedSources) {
         Assert.assertEquals(expectedSources.length, actualSources.size());
         for (int i = 0; i < expectedSources.length; i++) {
-            Assert.assertSame("index " + i, expectedSources[i], actualSources.get(i));
+            Assert.assertEquals("index " + i, expectedSources[i], actualSources.get(i));
         }
     }
 

@@ -129,9 +129,23 @@ public abstract class Source implements Cloneable {
 
     private static final InternedSources SOURCES = new InternedSources();
 
-    private final Object lock = new Object();
     private volatile TextMap textMap;
     private volatile URI computedURI;
+
+    protected abstract Object getSourceId();
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (!(obj instanceof Source)) {
+            return false;
+        }
+        return getSourceId().equals(((Source) obj).getSourceId());
+    }
+
+    @Override
+    public final int hashCode() {
+        return getSourceId().hashCode();
+    }
 
     /**
      * Creates new {@link Source} builder for specified <code>file</code>. Once the source is built
@@ -252,8 +266,14 @@ public abstract class Source implements Cloneable {
     }
 
     @Override
-    protected Source clone() throws CloneNotSupportedException {
-        return (Source) super.clone();
+    protected Source clone() {
+        Source copy;
+        try {
+            copy = (Source) super.clone();
+        } catch (CloneNotSupportedException e) {
+            throw new AssertionError();
+        }
+        return copy;
     }
 
     /**
@@ -355,7 +375,7 @@ public abstract class Source implements Cloneable {
     }
 
     private URI computeURI() {
-        synchronized (lock) {
+        synchronized (getSourceId()) {
             URI uri = computedURI;
             if (uri == null) {
                 uri = getNamedURI(getName(), getCharacters().toString().getBytes());
@@ -584,7 +604,7 @@ public abstract class Source implements Cloneable {
     final TextMap getTextMap() {
         TextMap res = textMap;
         if (res == null) {
-            synchronized (lock) {
+            synchronized (getSourceId()) {
                 res = this.textMap;
                 if (res == null) {
                     res = textMap = createTextMap();
@@ -596,7 +616,7 @@ public abstract class Source implements Cloneable {
     }
 
     final void clearTextMap() {
-        synchronized (lock) {
+        synchronized (getSourceId()) {
             textMap = null;
         }
     }
@@ -1092,6 +1112,11 @@ public abstract class Source implements Cloneable {
                 throw raise(RuntimeException.class, ex);
             }
         }
+    }
+
+    static {
+        // force loading source accessor
+        SourceAccessor.allLoaders();
     }
 }
 

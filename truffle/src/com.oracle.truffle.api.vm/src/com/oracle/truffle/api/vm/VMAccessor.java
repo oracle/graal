@@ -37,6 +37,7 @@ class VMAccessor extends Accessor {
     @CompilationFinal static VMAccessor SPI;
 
     @CompilationFinal static Nodes NODES;
+    @CompilationFinal static SourceSupport SOURCE;
     @CompilationFinal static InstrumentSupport INSTRUMENT;
     @CompilationFinal static JavaInteropSupport JAVAINTEROP;
     @CompilationFinal static LanguageSupport LANGUAGE;
@@ -77,6 +78,7 @@ class VMAccessor extends Accessor {
         INSTRUMENT = SPI.instrumentSupport();
         JAVAINTEROP = SPI.javaInteropSupport();
         LANGUAGE = SPI.languageSupport();
+        SOURCE = SPI.sourceSupport();
     }
 
     @Override

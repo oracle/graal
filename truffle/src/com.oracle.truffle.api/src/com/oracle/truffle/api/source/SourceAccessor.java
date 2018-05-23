@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,11 +37,9 @@ final class SourceAccessor extends Accessor {
     protected SourceAccessor() {
     }
 
-    private static final SourceSupport SUPPORT = new SourceSupportImpl();
-
     @Override
     protected SourceSupport sourceSupport() {
-        return SUPPORT;
+        return new SourceSupportImpl();
     }
 
     @Override
@@ -62,6 +60,17 @@ final class SourceAccessor extends Accessor {
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {
+
+        @Override
+        public Source copySource(Source source) {
+            Source clone = source.clone();
+            return clone;
+        }
+
+        @Override
+        public Object getSourceIdentifier(Source source) {
+            return source.getSourceId();
+        }
 
     }
 }

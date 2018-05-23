@@ -79,7 +79,7 @@ final class InternedSources {
 
         final SourceImpl.Key key;
 
-        public WeakSourceRef(SourceImpl referent, ReferenceQueue<SourceImpl> q) {
+        WeakSourceRef(SourceImpl referent, ReferenceQueue<SourceImpl> q) {
             super(referent, q);
             this.key = referent.toKey();
         }

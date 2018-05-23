@@ -31,9 +31,20 @@ import java.util.Objects;
 final class SourceImpl extends Source {
 
     private final Key key;
+    private final Object sourceId;
 
     private SourceImpl(Key key) {
         this.key = key;
+        /*
+         * SourceImpl instances are interned so a single instance can identify it. We cannot use
+         * SourceImpl directly as the sourceId needs to be shared when a source is cloned.
+         */
+        this.sourceId = new Object();
+    }
+
+    @Override
+    protected Object getSourceId() {
+        return sourceId;
     }
 
     @Override
@@ -111,17 +122,15 @@ final class SourceImpl extends Source {
 
         @Override
         public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + ((characters == null) ? 0 : characters.hashCode());
-            result = prime * result + (interactive ? 1231 : 1237);
-            result = prime * result + (internal ? 1231 : 1237);
-            result = prime * result + ((language == null) ? 0 : language.hashCode());
-            result = prime * result + ((mimeType == null) ? 0 : mimeType.hashCode());
-            result = prime * result + ((name == null) ? 0 : name.hashCode());
-            result = prime * result + ((path == null) ? 0 : path.hashCode());
-            result = prime * result + ((uri == null) ? 0 : uri.hashCode());
-            result = prime * result + ((url == null) ? 0 : url.hashCode());
+            int result = 31 * 1 + ((characters == null) ? 0 : characters.hashCode());
+            result = 31 * result + (interactive ? 1231 : 1237);
+            result = 31 * result + (internal ? 1231 : 1237);
+            result = 31 * result + ((language == null) ? 0 : language.hashCode());
+            result = 31 * result + ((mimeType == null) ? 0 : mimeType.hashCode());
+            result = 31 * result + ((name == null) ? 0 : name.hashCode());
+            result = 31 * result + ((path == null) ? 0 : path.hashCode());
+            result = 31 * result + ((uri == null) ? 0 : uri.hashCode());
+            result = 31 * result + ((url == null) ? 0 : url.hashCode());
             return result;
         }
 
@@ -134,15 +143,19 @@ final class SourceImpl extends Source {
             }
             assert characters != null;
             Key other = (Key) obj;
-            return compareCharacters(other) &&
-                            Objects.equals(language, other.language) && //
+            /*
+             * Compare characters last as it is likely the most expensive comparison in the worst
+             * case.
+             */
+            return Objects.equals(language, other.language) && //
                             Objects.equals(mimeType, other.mimeType) && //
                             Objects.equals(name, other.name) && //
                             Objects.equals(path, other.path) && //
                             Objects.equals(uri, other.uri) && //
                             Objects.equals(url, other.url) && //
                             interactive == other.interactive && //
-                            internal == other.internal;
+                            internal == other.internal &&
+                            compareCharacters(other);
         }
 
         private boolean compareCharacters(Key other) {
@@ -159,6 +172,7 @@ final class SourceImpl extends Source {
         SourceImpl toSource() {
             return new SourceImpl(this);
         }
+
     }
 
 }

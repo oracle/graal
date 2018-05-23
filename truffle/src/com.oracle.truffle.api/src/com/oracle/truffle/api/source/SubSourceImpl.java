@@ -29,86 +29,100 @@ import java.net.URL;
 
 final class SubSourceImpl extends Source {
 
-    private final Source base;
-    private final int baseIndex;
-    private final int subLength;
+    private final Key key;
 
-    static SubSourceImpl create(Source base, int baseIndex, int length) {
-        assert base != null;
+    static Source create(Source base, int baseIndex, int length) {
         if (baseIndex < 0 || length < 0 || baseIndex + length > base.getLength()) {
             throw new IllegalArgumentException("text positions out of range");
         }
-        return new SubSourceImpl(base, baseIndex, length);
+        return new SubSourceImpl(new Key(base, baseIndex, length));
     }
 
-    private SubSourceImpl(Source base, int baseIndex, int length) {
-        this.base = base;
-        this.baseIndex = baseIndex;
-        this.subLength = length;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof SubSourceImpl)) {
-            return false;
-        }
-        SubSourceImpl other = (SubSourceImpl) obj;
-        return base.equals(other.base) && baseIndex == other.baseIndex && subLength == other.subLength;
+    private SubSourceImpl(Key key) {
+        this.key = key;
     }
 
     @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + base.hashCode();
-        result = prime * result + baseIndex;
-        result = prime * result + subLength;
-        return result;
+    protected Object getSourceId() {
+        return key;
     }
 
     @Override
     public String getName() {
-        return base.getName();
+        return key.base.getName();
     }
 
     @Override
     public String getPath() {
-        return base.getPath();
+        return key.base.getPath();
     }
 
     @Override
     public URL getURL() {
-        return base.getURL();
+        return key.base.getURL();
     }
 
     @Override
     public URI getOriginalURI() {
-        return base.getURI();
+        return key.base.getURI();
     }
 
     @Override
     public CharSequence getCharacters() {
-        return base.getCharacters().subSequence(baseIndex, baseIndex + subLength);
+        return key.base.getCharacters().subSequence(key.baseIndex, key.baseIndex + key.subLength);
     }
 
     @Override
     public boolean isInternal() {
-        return base.isInternal();
+        return key.base.isInternal();
     }
 
     @Override
     public boolean isInteractive() {
-        return base.isInteractive();
+        return key.base.isInteractive();
     }
 
     @Override
     public String getMimeType() {
-        return base.getMimeType();
+        return key.base.getMimeType();
     }
 
     @Override
     public String getLanguage() {
-        return base.getLanguage();
+        return key.base.getLanguage();
+    }
+
+    private static final class Key {
+
+        final Source base;
+        final int baseIndex;
+        final int subLength;
+
+        Key(Source base, int baseIndex, int length) {
+            this.base = base;
+            this.baseIndex = baseIndex;
+            this.subLength = length;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Key)) {
+                return false;
+            }
+            Key other = (Key) obj;
+            return base.equals(other.base) && baseIndex == other.baseIndex && subLength == other.subLength;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + base.hashCode();
+            result = prime * result + baseIndex;
+            result = prime * result + subLength;
+            return result;
+        }
+
     }
 
 }

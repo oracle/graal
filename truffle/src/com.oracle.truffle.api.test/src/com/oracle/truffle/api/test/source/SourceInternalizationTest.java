@@ -22,12 +22,20 @@
  */
 package com.oracle.truffle.api.test.source;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -37,8 +45,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.Assert.*;
-
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.source.Source;
@@ -160,6 +167,32 @@ public class SourceInternalizationTest {
         }
         service.shutdown();
         assertTrue(service.awaitTermination(10000, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void testSourceInterning() {
+        byte[] bytes = new byte[16 * 1024 * 1024];
+        byte byteValue = (byte) 'a';
+        Arrays.fill(bytes, byteValue);
+        String testString = new String(bytes); // big string
+
+        ReferenceQueue<Object> queue = new ReferenceQueue<>();
+        List<WeakReference<Object>> sources = new ArrayList<>();
+        for (int i = 0; i < 200; i++) {
+            sources.add(new WeakReference<>(createTestSource(testString, i), queue));
+        }
+
+        int refsCleared = 0;
+        while (queue.poll() != null) {
+            refsCleared++;
+        }
+        // we need to have any refs cleared for this test to have any value
+        Assert.assertTrue(refsCleared > 0);
+    }
+
+    private static Object createTestSource(String testString, int i) {
+        String testStringIteraton = testString.substring(i, testString.length());
+        return Source.newBuilder(testStringIteraton).name(String.valueOf(i)).mimeType("").build();
     }
 
 }

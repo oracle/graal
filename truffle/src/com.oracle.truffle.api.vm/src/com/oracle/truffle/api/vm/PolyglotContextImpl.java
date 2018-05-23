@@ -282,10 +282,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         childContexts.add(child);
     }
 
-    Env requireEnv(PolyglotLanguage language) {
-        return contexts[language.index].requireEnv();
-    }
-
     Predicate<String> getClassFilter() {
         return classFilter;
     }

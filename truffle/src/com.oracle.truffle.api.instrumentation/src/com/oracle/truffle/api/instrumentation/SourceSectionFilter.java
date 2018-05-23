@@ -801,7 +801,7 @@ public final class SourceSectionFilter {
             @Override
             boolean isSourceIncluded(Source src) {
                 for (Source otherSource : sources) {
-                    if (src == otherSource) {
+                    if (src.equals(otherSource)) {
                         return true;
                     }
                 }
