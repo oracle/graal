@@ -219,10 +219,34 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         } catch (PolyglotException e) {
             if (e.isExit()) {
                 return e.getExitStatus();
+            } else if (!e.isInternalError()) {
+                printStackTraceSkipTrailingHost(e);
+                return -1;
+            } else {
+                throw e;
             }
-            throw e;
         } catch (IOException e) {
             throw abort(e);
+        }
+    }
+
+    private static void printStackTraceSkipTrailingHost(PolyglotException e) {
+        List<PolyglotException.StackFrame> stackTrace = new ArrayList<>();
+        for (PolyglotException.StackFrame s : e.getPolyglotStackTrace()) {
+            stackTrace.add(s);
+        }
+        // remove trailing host frames
+        for (ListIterator<PolyglotException.StackFrame> iterator = stackTrace.listIterator(stackTrace.size()); iterator.hasPrevious();) {
+            PolyglotException.StackFrame s = iterator.previous();
+            if (s.isHostFrame()) {
+                iterator.remove();
+            } else {
+                break;
+            }
+        }
+        System.out.println(e.isHostException() ? e.asHostException().toString() : e.getMessage());
+        for (PolyglotException.StackFrame s : stackTrace) {
+           System.out.println("\tat " + s);
         }
     }
 }

@@ -44,7 +44,6 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -69,6 +68,11 @@ public class LLVMGlobalRootNode extends RootNode {
     }
 
     @Override
+    public boolean isInternal() {
+        return true;
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         try (StackPointer basePointer = getContext().getThreadingStack().getStack().newFrame()) {
             try {
@@ -85,9 +89,6 @@ public class LLVMGlobalRootNode extends RootNode {
                 context.setCleanupNecessary(false);
                 context.awaitThreadTermination();
                 return e.getReturnCode();
-            } catch (SulongRuntimeException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw e;
             } catch (GuestLanguageRuntimeException e) {
                 CompilerDirectives.transferToInterpreter();
                 return e.handleExit();

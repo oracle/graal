@@ -29,24 +29,47 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
  */
-public final class LLVMException extends ControlFlowException {
+public final class LLVMException extends RuntimeException implements TruffleException {
 
     public static final String FRAME_SLOT_ID = "<function exception value>";
 
     private static final long serialVersionUID = 1L;
 
+    private final Node location;
     private final Object unwindHeader;
 
-    public LLVMException(Object unwindHeader) {
+    public LLVMException(Node location, Object unwindHeader) {
+        this.location = location;
         this.unwindHeader = unwindHeader;
     }
 
     public Object getUnwindHeader() {
         return unwindHeader;
+    }
+
+    @Override
+    public Node getLocation() {
+        return location;
+    }
+
+    @Override
+    public Object getExceptionObject() {
+        return unwindHeader;
+    }
+
+    @Override
+    public String getMessage() {
+        return "LLVMException:" + unwindHeader.toString();
+    }
+
+    @Override
+    public synchronized Throwable fillInStackTrace() {
+        return null;
     }
 }

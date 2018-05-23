@@ -33,16 +33,12 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.nodes.func.LLVMFunctionStartNode;
 import com.oracle.truffle.llvm.runtime.GuestLanguageRuntimeException;
-import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
-import com.oracle.truffle.llvm.runtime.SulongStackTrace;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
@@ -87,46 +83,11 @@ public class LLVMBasicBlockNode extends LLVMStatementNode {
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
                 throw e;
-            } catch (ThreadDeath e) {
-                // stack unwinding in the instrumentation framework relies on this not being wrapped
-                // in another exception
-                throw e;
             } catch (GuestLanguageRuntimeException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw e;
-            } catch (SulongRuntimeException e) {
-                CompilerDirectives.transferToInterpreter();
-                fillStackTrace(e.getCStackTrace(), i);
-                throw e;
-            } catch (Throwable t) {
-                CompilerDirectives.transferToInterpreter();
-                final SulongStackTrace stackTrace = new SulongStackTrace(t.getMessage());
-                fillStackTrace(stackTrace, i);
-                throw new SulongRuntimeException(t, stackTrace);
             }
         }
-    }
-
-    private void fillStackTrace(SulongStackTrace stackTrace, int errorIndex) {
-        final LLVMSourceLocation loc = getLastAvailableSourceLocation(errorIndex);
-        final LLVMFunctionStartNode f = NodeUtil.findParent(this, LLVMFunctionStartNode.class);
-        stackTrace.addStackTraceElement(f.getOriginalName(), loc, f.getName(), f.getBcSource().getName(), blockName());
-    }
-
-    private LLVMSourceLocation getLastAvailableSourceLocation(int i) {
-        CompilerAsserts.neverPartOfCompilation();
-        for (int j = i; j >= 0; j--) {
-            LLVMStatementNode node = statements[j];
-            if (node instanceof InstrumentableNode.WrapperNode) {
-                node = (LLVMStatementNode) ((InstrumentableNode.WrapperNode) node).getDelegateNode();
-            }
-
-            LLVMSourceLocation location = node.getSourceLocation();
-            if (location != null) {
-                return location;
-            }
-        }
-        return null;
     }
 
     public int getBlockId() {

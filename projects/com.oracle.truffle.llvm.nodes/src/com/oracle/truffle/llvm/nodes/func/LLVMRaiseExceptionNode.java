@@ -43,6 +43,6 @@ public final class LLVMRaiseExceptionNode extends LLVMExpressionNode {
 
     @Override
     public Object executeGeneric(VirtualFrame frame) {
-        throw new LLVMException(unwindHeader.executeGeneric(frame));
+        throw new LLVMException(this, unwindHeader.executeGeneric(frame));
     }
 }
