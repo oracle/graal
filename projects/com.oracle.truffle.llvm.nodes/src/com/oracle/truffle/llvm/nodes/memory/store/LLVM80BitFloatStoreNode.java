@@ -49,33 +49,30 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobal address, LLVM80BitFloat value,
+    protected void doOp(LLVMGlobal address, LLVM80BitFloat value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().put80BitFloat(globalAccess.executeWithTarget(address), value);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMNativePointer addr, LLVM80BitFloat value) {
+    protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value) {
         getLLVMMemoryCached().put80BitFloat(addr, value);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value) {
-        return doForeign(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value) {
+        doForeign(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     // TODO (chaeubl): we could store this in a more efficient way (short + long)
     @Specialization
-    protected Object doForeign(LLVMManagedPointer address, LLVM80BitFloat value) {
+    protected void doForeign(LLVMManagedPointer address, LLVM80BitFloat value) {
         byte[] bytes = value.getBytes();
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < bytes.length; i++) {
             getForeignWriteNode().execute(currentPtr, bytes[i]);
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Override

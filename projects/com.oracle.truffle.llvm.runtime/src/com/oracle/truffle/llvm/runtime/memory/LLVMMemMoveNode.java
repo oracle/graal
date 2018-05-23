@@ -32,5 +32,5 @@ package com.oracle.truffle.llvm.runtime.memory;
 import com.oracle.truffle.api.nodes.NodeInterface;
 
 public interface LLVMMemMoveNode extends NodeInterface {
-    Object executeWithTarget(Object target, Object source, long length);
+    void executeWithTarget(Object target, Object source, long length);
 }

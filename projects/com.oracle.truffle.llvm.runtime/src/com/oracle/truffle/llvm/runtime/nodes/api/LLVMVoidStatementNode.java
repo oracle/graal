@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,19 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.debug.DebuggerTags;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 
-public class LLVMAMD64BreakpointNode extends LLVMStatementNode {
-    private final LLVMSourceLocation source;
+/**
+ * This node is used to execute an expression as a statement, discarding the result.
+ */
+@NodeChild(value = "value", type = LLVMExpressionNode.class)
+public abstract class LLVMVoidStatementNode extends LLVMStatementNode {
 
-    public LLVMAMD64BreakpointNode(LLVMSourceLocation source) {
-        this.source = source;
-    }
-
-    @Override
-    public void execute(VirtualFrame frame) {
+    @Specialization
+    protected void doVoid(@SuppressWarnings("unused") Object value) {
         // nothing to do
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
-    }
-
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == DebuggerTags.AlwaysHalt.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
     }
 }

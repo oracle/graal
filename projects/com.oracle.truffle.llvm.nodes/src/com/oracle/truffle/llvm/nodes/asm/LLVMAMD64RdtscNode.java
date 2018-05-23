@@ -35,9 +35,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.LLVMAMD64RdtscNodeGen.LLVMAMD64RdtscReadNodeGen;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
 
-public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64RdtscNode extends LLVMStatementNode {
     @Child private LLVMExpressionNode rdtsc;
     @Child private LLVMAMD64WriteTupelNode out;
 
@@ -47,12 +48,11 @@ public abstract class LLVMAMD64RdtscNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame) {
+    protected void doOp(VirtualFrame frame) {
         long value = LLVMTypesGen.asLong(rdtsc.executeGeneric(frame));
         long lo = value & LLVMExpressionNode.I32_MASK;
         long hi = (value >> LLVMExpressionNode.I32_SIZE_IN_BITS) & LLVMExpressionNode.I32_MASK;
         out.execute(frame, lo, hi);
-        return null;
     }
 
     public abstract static class LLVMAMD64RdtscReadNode extends LLVMExpressionNode {

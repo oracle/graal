@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
@@ -41,19 +46,14 @@ import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
     private final LLVMContext context;
     private final ExternalLibrary library;
     private final FrameDescriptor frame;
-    private final List<LLVMExpressionNode> blocks;
+    private final List<LLVMStatementNode> blocks;
     private final Map<InstructionBlock, List<Phi>> phis;
     private final LLVMSymbolReadResolver symbols;
     private final NodeFactory nodeFactory;
@@ -82,7 +82,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
         this.initDebugValues = dbgInfoHandler.isEnabled();
     }
 
-    public List<LLVMExpressionNode> getBlocks() {
+    public List<LLVMStatementNode> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
 
@@ -99,7 +99,7 @@ final class LLVMBitcodeFunctionVisitor implements FunctionVisitor {
 
         if (initDebugValues) {
             for (SourceVariable variable : function.getSourceFunction().getVariables()) {
-                final LLVMExpressionNode initNode = dbgInfoHandler.createInitializer(variable);
+                final LLVMStatementNode initNode = dbgInfoHandler.createInitializer(variable);
                 if (initNode != null) {
                     visitor.addInstructionUnchecked(initNode);
                 }

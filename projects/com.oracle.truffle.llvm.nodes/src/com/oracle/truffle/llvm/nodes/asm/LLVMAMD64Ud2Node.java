@@ -31,11 +31,11 @@ package com.oracle.truffle.llvm.nodes.asm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMAMD64Ud2Node extends LLVMExpressionNode {
+public class LLVMAMD64Ud2Node extends LLVMStatementNode {
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public void execute(VirtualFrame frame) {
         CompilerDirectives.transferToInterpreter();
         throw new RuntimeException("Illegal opcode");
     }

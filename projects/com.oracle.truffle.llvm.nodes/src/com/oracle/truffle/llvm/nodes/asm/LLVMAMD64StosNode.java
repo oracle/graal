@@ -40,11 +40,12 @@ import com.oracle.truffle.llvm.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChildren({@NodeChild(value = "rax", type = LLVMExpressionNode.class), @NodeChild(value = "rdi", type = LLVMExpressionNode.class), @NodeChild(value = "df", type = LLVMExpressionNode.class)})
-public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
     @Child protected LLVMStoreNode store;
     @Child protected LLVMAMD64WriteValueNode writeRDI;
 
@@ -59,17 +60,15 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, byte al, long rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, byte al, long rdi, boolean df) {
             store.executeWithTarget(LLVMNativePointer.create(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -1 : 1));
-            return null;
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, byte al, LLVMPointer rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, byte al, LLVMPointer rdi, boolean df) {
             store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -1 : 1));
-            return null;
         }
     }
 
@@ -80,17 +79,15 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, short al, long rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, short al, long rdi, boolean df) {
             store.executeWithTarget(LLVMNativePointer.create(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -2 : 2));
-            return null;
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, short al, LLVMPointer rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, short al, LLVMPointer rdi, boolean df) {
             store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -2 : 2));
-            return null;
         }
     }
 
@@ -101,17 +98,15 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, int al, long rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, int al, long rdi, boolean df) {
             store.executeWithTarget(LLVMNativePointer.create(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -4 : 4));
-            return null;
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, int al, LLVMPointer rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, int al, LLVMPointer rdi, boolean df) {
             store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -4 : 4));
-            return null;
         }
     }
 
@@ -122,17 +117,15 @@ public abstract class LLVMAMD64StosNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, long al, long rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, long al, long rdi, boolean df) {
             store.executeWithTarget(LLVMNativePointer.create(rdi), al);
             writeRDI.execute(frame, rdi + (df ? -8 : 8));
-            return null;
         }
 
         @Specialization
-        protected Object opI8(VirtualFrame frame, long al, LLVMPointer rdi, boolean df) {
+        protected void opI8(VirtualFrame frame, long al, LLVMPointer rdi, boolean df) {
             store.executeWithTarget(rdi, al);
             writeRDI.execute(frame, rdi.increment(df ? -8 : 8));
-            return null;
         }
     }
 }

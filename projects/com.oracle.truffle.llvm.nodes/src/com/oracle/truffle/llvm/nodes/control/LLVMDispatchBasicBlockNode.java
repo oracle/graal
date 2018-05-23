@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.runtime.LLVMException;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
@@ -56,10 +57,10 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     @Children private final LLVMBasicBlockNode[] bodyNodes;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] beforeBlockNuller;
     @CompilationFinal(dimensions = 2) private final FrameSlot[][] afterBlockNuller;
-    @Children private final LLVMExpressionNode[] copyArgumentsToFrame;
+    @Children private final LLVMStatementNode[] copyArgumentsToFrame;
 
     public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot[][] beforeBlockNuller, FrameSlot[][] afterBlockNuller, LLVMSourceLocation source,
-                    LLVMExpressionNode[] copyArgumentsToFrame) {
+                    LLVMStatementNode[] copyArgumentsToFrame) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.beforeBlockNuller = beforeBlockNuller;
@@ -70,8 +71,8 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     private void copyArgumentsToFrame(VirtualFrame frame) {
-        for (LLVMExpressionNode n : copyArgumentsToFrame) {
-            n.executeGeneric(frame);
+        for (LLVMStatementNode n : copyArgumentsToFrame) {
+            n.execute(frame);
         }
     }
 
@@ -90,7 +91,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
             LLVMBasicBlockNode bb = bodyNodes[basicBlockIndex];
 
             // execute all statements
-            bb.executeStatements(frame);
+            bb.execute(frame);
 
             // execute control flow node, write phis, null stack frame slots, and dispatch to
             // the correct successor block
@@ -264,9 +265,9 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     @ExplodeLoop
     private static void executePhis(VirtualFrame frame, LLVMControlFlowNode controlFlowNode, int successorIndex) {
-        LLVMExpressionNode phi = controlFlowNode.getPhiNode(successorIndex);
+        LLVMStatementNode phi = controlFlowNode.getPhiNode(successorIndex);
         if (phi != null) {
-            phi.executeGeneric(frame);
+            phi.execute(frame);
         }
     }
 

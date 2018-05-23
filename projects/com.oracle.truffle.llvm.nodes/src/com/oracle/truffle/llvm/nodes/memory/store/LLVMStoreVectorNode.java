@@ -63,175 +63,148 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMDoubleVector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMDoubleVector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMDoubleVector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMDoubleVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMDoubleVector value,
+    protected void writeVector(LLVMGlobal address, LLVMDoubleVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMFloatVector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMFloatVector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMFloatVector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMFloatVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMFloatVector value,
+    protected void writeVector(LLVMGlobal address, LLVMFloatVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMI16Vector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMI16Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI16Vector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMI16Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMI16Vector value,
+    protected void writeVector(LLVMGlobal address, LLVMI16Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMI1Vector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMI1Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI1Vector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMI1Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMI1Vector value,
+    protected void writeVector(LLVMGlobal address, LLVMI1Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMI32Vector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMI32Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI32Vector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMI32Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMI32Vector value,
+    protected void writeVector(LLVMGlobal address, LLVMI32Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMI64Vector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMI64Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI64Vector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMI64Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMI64Vector value,
+    protected void writeVector(LLVMGlobal address, LLVMI64Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMI8Vector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMI8Vector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMI8Vector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMI8Vector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMI8Vector value,
+    protected void writeVector(LLVMGlobal address, LLVMI8Vector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMPointerVector value) {
+    protected void writeVector(LLVMNativePointer address, LLVMPointerVector value) {
         getLLVMMemoryCached().putVector(address, value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMPointerVector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMPointerVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMPointerVector value,
+    protected void writeVector(LLVMGlobal address, LLVMPointerVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(address)")
-    protected Object writeVector(LLVMNativePointer address, LLVMFunctionVector value,
+    protected void writeVector(LLVMNativePointer address, LLVMFunctionVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(address, value, vectorLength, globalAccess);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(address)")
-    protected Object writeVectorDerefHandle(LLVMNativePointer address, LLVMFunctionVector value) {
+    protected void writeVectorDerefHandle(LLVMNativePointer address, LLVMFunctionVector value) {
         writeVector(getDerefHandleGetReceiverNode().execute(address), value);
-        return null;
     }
 
     @Specialization
-    protected Object writeVector(LLVMGlobal address, LLVMFunctionVector value,
+    protected void writeVector(LLVMGlobal address, LLVMFunctionVector value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putVector(globalAccess.executeWithTarget(address), value, vectorLength, globalAccess);
-        return null;
     }
 
     LLVMStoreVectorNode createRecursive() {
@@ -240,109 +213,100 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMI1Vector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMI1Vector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I1_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMI8Vector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMI8Vector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMI16Vector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMI16Vector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I16_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMI32Vector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMI32Vector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I32_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMFloatVector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMFloatVector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(FLOAT_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMDoubleVector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMDoubleVector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(DOUBLE_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMI64Vector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMI64Vector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMPointerVector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMPointerVector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(ADDRESS_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Specialization
     @ExplodeLoop
-    protected Object writeVector(LLVMManagedPointer address, LLVMFunctionVector value) {
+    protected void writeVector(LLVMManagedPointer address, LLVMFunctionVector value) {
         assert value.getLength() == vectorLength;
         LLVMManagedPointer currentPtr = address;
         for (int i = 0; i < vectorLength; i++) {
             getForeignWriteNode().execute(currentPtr, value.getValue(i));
             currentPtr = currentPtr.increment(I64_SIZE_IN_BYTES);
         }
-        return null;
     }
 }

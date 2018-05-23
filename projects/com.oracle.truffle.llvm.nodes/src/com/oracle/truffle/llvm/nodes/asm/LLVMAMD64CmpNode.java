@@ -35,9 +35,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode.LLVMAMD64UpdateCPAZSOFlagsNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-@NodeChildren({@NodeChild("left"), @NodeChild("right")})
-public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
+@NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
+public abstract class LLVMAMD64CmpNode extends LLVMStatementNode {
     @Child protected LLVMAMD64UpdateCPAZSOFlagsNode flags;
 
     public LLVMAMD64CmpNode(LLVMAMD64UpdateCPAZSOFlagsNode flags) {
@@ -50,13 +51,12 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, byte left, byte right) {
+        protected void doOp(VirtualFrame frame, byte left, byte right) {
             int result = left - right;
             boolean overflow = (byte) ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Byte.toUnsignedInt(left) < Byte.toUnsignedInt(right);
             boolean adjust = (((left ^ right) ^ result) & 0x10) != 0;
             flags.execute(frame, overflow, carry, adjust, result);
-            return null;
         }
     }
 
@@ -66,13 +66,12 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, short left, short right) {
+        protected void doOp(VirtualFrame frame, short left, short right) {
             int result = left - right;
             boolean overflow = (short) ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Short.toUnsignedInt(left) < Short.toUnsignedInt(right);
             boolean adjust = (((left ^ right) ^ result) & 0x10) != 0;
             flags.execute(frame, overflow, carry, adjust, result);
-            return null;
         }
     }
 
@@ -82,13 +81,12 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, int left, int right) {
+        protected void doOp(VirtualFrame frame, int left, int right) {
             int result = left - right;
             boolean overflow = ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Integer.compareUnsigned(left, right) < 0;
             boolean adjust = (((left ^ right) ^ result) & 0x10) != 0;
             flags.execute(frame, overflow, carry, adjust, result);
-            return null;
         }
     }
 
@@ -98,13 +96,12 @@ public abstract class LLVMAMD64CmpNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, long left, long right) {
+        protected void doOp(VirtualFrame frame, long left, long right) {
             long result = left - right;
             boolean overflow = ((left ^ right) & (left ^ result)) < 0;
             boolean carry = Long.compareUnsigned(left, right) < 0;
             boolean adjust = (((left ^ right) ^ result) & 0x10) != 0;
             flags.execute(frame, overflow, carry, adjust, result);
-            return null;
         }
     }
 }

@@ -33,9 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public abstract class LLVMDebugInitNode extends LLVMExpressionNode {
+public abstract class LLVMDebugInitNode extends LLVMStatementNode {
 
     private final FrameSlot frameSlot;
 
@@ -59,10 +59,8 @@ public abstract class LLVMDebugInitNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object init(VirtualFrame frame) {
+        protected void init(VirtualFrame frame) {
             frame.setObject(getFrameSlot(), new LLVMDebugAggregateObjectBuilder(offsets, lengths));
-            return null;
         }
     }
-
 }

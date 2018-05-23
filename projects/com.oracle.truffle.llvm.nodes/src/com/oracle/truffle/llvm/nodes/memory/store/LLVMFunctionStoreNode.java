@@ -49,27 +49,24 @@ public abstract class LLVMFunctionStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMNativePointer addr, Object value,
+    protected void doOp(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         getLLVMMemoryCached().putFunctionPointer(addr, toNative.executeWithTarget(value).asNative());
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMNativePointer addr, Object value) {
-        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, Object value) {
+        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobal address, Object value,
+    protected void doOp(LLVMGlobal address, Object value,
                     @Cached("create()") WriteObjectNode globalAccess) {
         globalAccess.execute(address, value);
-        return null;
     }
 
     @Specialization
-    protected Object doOpManaged(LLVMManagedPointer address, Object value) {
+    protected void doOpManaged(LLVMManagedPointer address, Object value) {
         getForeignWriteNode().execute(address, value);
-        return null;
     }
 }

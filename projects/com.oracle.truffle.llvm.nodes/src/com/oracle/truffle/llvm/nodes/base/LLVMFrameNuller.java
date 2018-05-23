@@ -31,9 +31,9 @@ package com.oracle.truffle.llvm.nodes.base;
 
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMFrameNuller extends LLVMExpressionNode {
+public class LLVMFrameNuller extends LLVMStatementNode {
     private final FrameSlot frameSlot;
 
     public LLVMFrameNuller(FrameSlot frameSlot) {
@@ -41,8 +41,7 @@ public class LLVMFrameNuller extends LLVMExpressionNode {
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public void execute(VirtualFrame frame) {
         LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot, false);
-        return null;
     }
 }

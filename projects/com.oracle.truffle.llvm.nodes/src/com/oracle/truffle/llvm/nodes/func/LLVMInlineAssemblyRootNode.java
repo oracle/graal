@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.nodes.asm.base.LLVMInlineAssemblyPrologueNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
@@ -50,7 +51,7 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
     private final LLVMExpressionNode result;
 
     public LLVMInlineAssemblyRootNode(LLVMLanguage language, LLVMSourceLocation source, FrameDescriptor frameDescriptor,
-                    LLVMExpressionNode[] statements, List<LLVMExpressionNode> writeNodes, LLVMExpressionNode result) {
+                    LLVMStatementNode[] statements, List<LLVMStatementNode> writeNodes, LLVMExpressionNode result) {
         super(language, frameDescriptor);
         this.source = source;
         this.prologue = new LLVMInlineAssemblyPrologueNode(writeNodes);
@@ -68,8 +69,8 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        prologue.executeGeneric(frame);
-        block.executeGeneric(frame);
+        prologue.execute(frame);
+        block.execute(frame);
         return result == null ? 0 : result.executeGeneric(frame);
     }
 }
