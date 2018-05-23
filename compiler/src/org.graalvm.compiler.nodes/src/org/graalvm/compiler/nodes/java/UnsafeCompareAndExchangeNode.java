@@ -22,12 +22,7 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.InputType.Value;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
-
-import org.graalvm.compiler.core.common.type.StampFactory;
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
@@ -38,16 +33,19 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.InputType.Value;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 /**
- * Represents an atomic compare-and-swap operation. The result is a boolean that contains whether
- * the value matched the expected value.
+ * Represents an atomic compare-and-swap operation. The result is the current value of the memory
+ * location that was compared.
  */
 @NodeInfo(allowedUsageTypes = {Value, Memory}, cycles = CYCLES_8, size = SIZE_8)
-public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
+public final class UnsafeCompareAndExchangeNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single {
 
-    public static final NodeClass<UnsafeCompareAndSwapNode> TYPE = NodeClass.create(UnsafeCompareAndSwapNode.class);
+    public static final NodeClass<UnsafeCompareAndExchangeNode> TYPE = NodeClass.create(UnsafeCompareAndExchangeNode.class);
     @Input ValueNode object;
     @Input ValueNode offset;
     @Input ValueNode expected;
@@ -56,8 +54,8 @@ public final class UnsafeCompareAndSwapNode extends AbstractMemoryCheckpoint imp
     private final JavaKind valueKind;
     private final LocationIdentity locationIdentity;
 
-    public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean.getStackKind()));
+    public UnsafeCompareAndExchangeNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
+        super(TYPE, expected.stamp(NodeView.DEFAULT).meet(newValue.stamp(NodeView.DEFAULT)));
         assert expected.stamp(NodeView.DEFAULT).isCompatible(newValue.stamp(NodeView.DEFAULT));
         this.object = object;
         this.offset = offset;

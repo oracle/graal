@@ -142,9 +142,9 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     void emitNullCheck(Value address, LIRFrameState state);
 
-    Variable emitLogicCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
+    Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue);
 
-    Value emitValueCompareAndSwap(Value address, Value expectedValue, Value newValue);
+    Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue);
 
     /**
      * Emit an atomic read-and-add instruction.

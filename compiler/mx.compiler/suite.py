@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.151.0",
+  "mxversion" : "5.169.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -847,6 +847,20 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.compiler.replacements.test.jdk9" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.replacements.test"
+      ],
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "9+",
+      "imports" : [
+        "jdk.internal.misc",
+      ],
+    },
+
     "org.graalvm.compiler.replacements.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1549,6 +1563,7 @@ suite = {
         "org.graalvm.compiler.truffle.test",
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
+        "org.graalvm.compiler.replacements.test.jdk9",
       ],
       "distDependencies" : [
         "JVMCI_HOTSPOT",

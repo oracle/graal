@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -56,7 +57,10 @@ public class AArch64GraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins);
                 registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
                 registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
-
+                // This is temporarily disabled until we implement correct emitting of the CAS
+                // instructions of the proper width.
+                StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins(invocationPlugins, bytecodeProvider,
+                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }

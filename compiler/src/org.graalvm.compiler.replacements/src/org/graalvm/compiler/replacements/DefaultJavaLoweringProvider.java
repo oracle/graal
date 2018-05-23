@@ -109,7 +109,9 @@ import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
@@ -199,6 +201,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerMonitorEnterNode((MonitorEnterNode) n, tool, graph);
             } else if (n instanceof UnsafeCompareAndSwapNode) {
                 lowerCompareAndSwapNode((UnsafeCompareAndSwapNode) n);
+            } else if (n instanceof UnsafeCompareAndExchangeNode) {
+                lowerCompareAndExchangeNode((UnsafeCompareAndExchangeNode) n);
             } else if (n instanceof AtomicReadAndWriteNode) {
                 lowerAtomicReadAndWriteNode((AtomicReadAndWriteNode) n);
             } else if (n instanceof RawLoadNode) {
@@ -533,6 +537,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
         LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, barrierType));
         atomicNode.setStateAfter(cas.stateAfter());
+        graph.replaceFixedWithFixed(cas, atomicNode);
+    }
+
+    protected void lowerCompareAndExchangeNode(UnsafeCompareAndExchangeNode cas) {
+        StructuredGraph graph = cas.graph();
+        JavaKind valueKind = cas.getValueKind();
+
+        ValueNode expectedValue = implicitStoreConvert(graph, valueKind, cas.expected());
+        ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
+
+        AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
+        BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
+        ValueCompareAndSwapNode atomicNode = graph.add(new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getLocationIdentity(), barrierType));
+        ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
+        atomicNode.setStateAfter(cas.stateAfter());
+        cas.replaceAtUsages(coercedNode);
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
 
