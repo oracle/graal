@@ -76,6 +76,27 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         return sb.toString();
     }
 
+    @TruffleBoundary
+    public static String toLLVMString(LLVM80BitFloat value) {
+        if (value.isQNaN()) {
+            return "QNaN";
+
+        } else if (value.isSNaN()) {
+            return "SNaN";
+
+        } else if (value.isInfinity()) {
+            return "INF";
+
+        } else {
+            short exponent = value.getExponent();
+            if (value.getSign()) {
+                exponent |= (1 << EXPONENT_BIT_WIDTH);
+            }
+            long fraction = value.getFraction();
+            return String.format("0xK%4x%16x", exponent, fraction).replace(' ', '0');
+        }
+    }
+
     private static String getBinaryString(int bitWidth, long number) {
         return String.format("%" + bitWidth + "s", Long.toBinaryString(number)).replace(" ", "0");
     }

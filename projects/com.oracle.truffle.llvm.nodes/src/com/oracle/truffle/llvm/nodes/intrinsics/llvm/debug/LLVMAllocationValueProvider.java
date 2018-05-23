@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugTypeConstants;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
@@ -103,7 +104,7 @@ final class LLVMAllocationValueProvider implements LLVMDebugValue {
     @Override
     public Object read80BitFloat(long bitOffset) {
         if (canRead(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL) && isByteAligned(bitOffset)) {
-            return memory.get80BitFloat(basePointer.increment(bitOffset / Byte.SIZE));
+            return LLVM80BitFloat.toLLVMString(memory.get80BitFloat(basePointer.increment(bitOffset / Byte.SIZE)));
         } else {
             return unavailable(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
         }

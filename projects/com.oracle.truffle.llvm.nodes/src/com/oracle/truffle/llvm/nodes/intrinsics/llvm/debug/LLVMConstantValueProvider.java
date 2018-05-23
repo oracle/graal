@@ -484,7 +484,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
 
         @Override
         Object getBaseValue() {
-            return value;
+            return LLVM80BitFloat.toLLVMString(value);
         }
 
         @Override
@@ -497,7 +497,7 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
         @Override
         public Object read80BitFloat(long bitOffset) {
             if (canRead(bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL)) {
-                return value;
+                return LLVM80BitFloat.toLLVMString(value);
             } else {
                 return cannotInterpret(LLVMDebugTypeConstants.LLVM80BIT_NAME, bitOffset, LLVMDebugTypeConstants.LLVM80BIT_SIZE_ACTUAL);
             }
