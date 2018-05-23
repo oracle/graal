@@ -405,13 +405,12 @@ public abstract class Source implements Cloneable {
     }
 
     private URI computeURI() {
-        synchronized (getSourceId()) {
-            URI uri = computedURI;
-            if (uri == null) {
-                uri = getNamedURI(getName(), getCharacters().toString().getBytes());
-            }
-            return uri;
+        URI uri = computedURI;
+        if (uri == null) {
+            uri = getNamedURI(getName(), getCharacters().toString().getBytes());
+            this.computedURI = uri;
         }
+        return uri;
     }
 
     /**
@@ -634,21 +633,10 @@ public abstract class Source implements Cloneable {
     final TextMap getTextMap() {
         TextMap res = textMap;
         if (res == null) {
-            synchronized (getSourceId()) {
-                res = this.textMap;
-                if (res == null) {
-                    res = textMap = createTextMap();
-                }
-            }
+            res = textMap = createTextMap();
         }
         assert res != null;
         return res;
-    }
-
-    final void clearTextMap() {
-        synchronized (getSourceId()) {
-            textMap = null;
-        }
     }
 
     TextMap createTextMap() {
