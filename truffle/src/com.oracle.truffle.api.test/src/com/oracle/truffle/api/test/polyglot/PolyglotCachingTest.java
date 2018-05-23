@@ -158,11 +158,11 @@ public class PolyglotCachingTest {
         assertObjectsCollectible(200, (iteration) -> {
             Context context = Context.create();
             Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
-            assertParsedEval(context, source);
+            CallTarget parsedAST = assertParsedEval(context, source);
             assertCachedEval(context, source);
             survivingSources.add(source);
             context.close();
-            return context;
+            return parsedAST;
         });
     }
 
