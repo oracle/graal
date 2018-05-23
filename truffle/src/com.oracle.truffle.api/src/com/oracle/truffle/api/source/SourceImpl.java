@@ -146,7 +146,7 @@ final class SourceImpl extends Source {
         public boolean equals(Object obj) {
             if (this == obj) {
                 return true;
-            } else if (getClass() != obj.getClass()) {
+            } else if (!(obj instanceof Key)) {
                 return false;
             }
             assert characters != null;
