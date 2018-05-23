@@ -33,16 +33,18 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.test.options.TestOptions;
-
-import java.util.Map;
-import java.util.Objects;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 
 public class ProcessUtil {
 
@@ -126,12 +128,19 @@ public class ProcessUtil {
         }
     }
 
-    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options) throws Exception {
+    public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws Exception {
         if (TestOptions.TEST_AOT_IMAGE == null) {
-            try (CaptureOutput out = new CaptureOutput()) {
-                int result = executeMain(bitcodeFile, args, options);
-                System.out.flush();
-                System.err.flush();
+            org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, bitcodeFile).build();
+            Builder builder = Context.newBuilder();
+            try (CaptureOutput out = captureOutput.apply(builder)) {
+                int result;
+                try (Context context = builder.arguments(LLVMLanguage.NAME, args).options(options).allowAllAccess(true).build()) {
+                    Value main = context.eval(source);
+                    if (!main.canExecute()) {
+                        throw new LinkageError("No main function found.");
+                    }
+                    result = main.execute().asInt();
+                }
                 return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
             }
         } else {
@@ -148,17 +157,6 @@ public class ProcessUtil {
             str.append("'--").append(encoded.replace("'", "''")).append("' ");
         }
         return str.toString();
-    }
-
-    private static int executeMain(File file, String[] args, Map<String, String> options) throws Exception {
-        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.NAME, file).build();
-        try (Context context = Context.newBuilder().arguments(LLVMLanguage.NAME, args).options(options).allowAllAccess(true).build()) {
-            Value result = context.eval(source);
-            if (!result.canExecute()) {
-                throw new LinkageError("No main function found.");
-            }
-            return result.execute().asInt();
-        }
     }
 
     public static ProcessResult executeNativeCommandZeroReturn(String command) {

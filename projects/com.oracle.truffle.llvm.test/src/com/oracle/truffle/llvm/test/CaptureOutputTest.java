@@ -31,6 +31,8 @@ package com.oracle.truffle.llvm.test;
 
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
+
+import com.oracle.truffle.llvm.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import java.io.IOException;
 
@@ -40,7 +42,7 @@ public class CaptureOutputTest {
     public void testOutputCapturing() throws IOException {
         String string = "Testoutput";
         String captured;
-        try (CaptureOutput out = new CaptureOutput()) {
+        try (CaptureOutput out = new CaptureNativeOutput()) {
             System.out.print(string);
             captured = out.getStdOut();
         }
@@ -52,7 +54,7 @@ public class CaptureOutputTest {
     public void testOutputCapturing2() throws IOException {
         String string = "Does it work again?";
         String captured;
-        try (CaptureOutput out = new CaptureOutput()) {
+        try (CaptureOutput out = new CaptureNativeOutput()) {
             System.out.print(string);
             captured = out.getStdOut();
         }
@@ -64,7 +66,7 @@ public class CaptureOutputTest {
     public void testErrCapturing() throws IOException {
         String string = "Testoutput";
         String captured;
-        try (CaptureOutput out = new CaptureOutput()) {
+        try (CaptureOutput out = new CaptureNativeOutput()) {
             System.err.print(string);
             captured = out.getStdErr();
         }
@@ -76,7 +78,7 @@ public class CaptureOutputTest {
     public void testErrCapturing2() throws IOException {
         String string = "Does it work again?";
         String captured;
-        try (CaptureOutput out = new CaptureOutput()) {
+        try (CaptureOutput out = new CaptureNativeOutput()) {
             System.err.print(string);
             captured = out.getStdErr();
         }
@@ -87,7 +89,7 @@ public class CaptureOutputTest {
     @Test
     public void testNothingHappens() throws IOException {
         for (int i = 0; i < 3; i++) {
-            try (CaptureOutput out = new CaptureOutput()) {
+            try (CaptureOutput out = new CaptureNativeOutput()) {
                 // do nothing
             }
         }
@@ -97,7 +99,7 @@ public class CaptureOutputTest {
     public void testBigOutput() throws IOException {
         StringBuilder result = new StringBuilder();
         String capture;
-        try (CaptureOutput out = new CaptureOutput()) {
+        try (CaptureOutput out = new CaptureNativeOutput()) {
             for (int i = 0; i < 9000; i++) {
                 String line = String.format("line %04d\n", i);
                 System.out.print(line);
