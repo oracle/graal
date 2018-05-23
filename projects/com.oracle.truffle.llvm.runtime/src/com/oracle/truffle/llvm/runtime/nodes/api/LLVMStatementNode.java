@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,37 +27,41 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.asm;
+package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public class LLVMAMD64BreakpointNode extends LLVMStatementNode {
-    private final LLVMSourceLocation source;
+/**
+ * An statement node is a node that returns no result.
+ */
+@GenerateWrapper
+public abstract class LLVMStatementNode extends LLVMNode implements InstrumentableNode {
 
-    public LLVMAMD64BreakpointNode(LLVMSourceLocation source) {
-        this.source = source;
+    @Override
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new LLVMStatementNodeWrapper(this, probe);
     }
 
     @Override
-    public void execute(VirtualFrame frame) {
-        // nothing to do
+    public boolean isInstrumentable() {
+        return getSourceLocation() != null;
     }
 
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
+    public static final LLVMStatementNode[] NO_STATEMENTS = {};
+
+    public abstract void execute(VirtualFrame frame);
+
+    public String getSourceDescription() {
+        return getRootNode().getName();
     }
 
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == DebuggerTags.AlwaysHalt.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
+    public static boolean notLLVM(TruffleObject object) {
+        return !(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object);
     }
 }

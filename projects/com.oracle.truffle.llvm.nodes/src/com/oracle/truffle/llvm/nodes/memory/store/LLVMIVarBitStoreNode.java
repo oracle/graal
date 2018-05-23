@@ -49,32 +49,29 @@ public abstract class LLVMIVarBitStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobal address, LLVMIVarBit value,
+    protected void doOp(LLVMGlobal address, LLVMIVarBit value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess) {
         getLLVMMemoryCached().putIVarBit(globalAccess.executeWithTarget(address), value);
-        return null;
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMNativePointer addr, LLVMIVarBit value) {
+    protected void doOp(LLVMNativePointer addr, LLVMIVarBit value) {
         getLLVMMemoryCached().putIVarBit(addr, value);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value) {
-        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMIVarBit value) {
+        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization
-    protected Object doOpManaged(LLVMManagedPointer address, LLVMIVarBit value) {
+    protected void doOpManaged(LLVMManagedPointer address, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
         LLVMManagedPointer currentPtr = address;
         for (int i = bytes.length - 1; i >= 0; i--) {
             getForeignWriteNode().execute(currentPtr, bytes[i]);
             currentPtr = currentPtr.increment(I8_SIZE_IN_BYTES);
         }
-        return null;
     }
 
     @Override

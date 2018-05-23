@@ -107,6 +107,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -775,23 +777,23 @@ public final class Runner {
     private RootCallTarget createGlobalVariableInitializer(LLVMParserResult parserResult) {
         FrameDescriptor rootFrame = StackManager.createRootFrame();
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(parserResult.getRuntime(), rootFrame);
-        final List<LLVMExpressionNode> globalNodes = new ArrayList<>();
+        final List<LLVMStatementNode> globalNodes = new ArrayList<>();
         for (GlobalVariable global : parserResult.getDefinedGlobals()) {
-            final LLVMExpressionNode store = createGlobalInitialization(symbolResolver, global);
+            final LLVMStatementNode store = createGlobalInitialization(symbolResolver, global);
             if (store != null) {
                 globalNodes.add(store);
             }
         }
 
         if (!globalNodes.isEmpty()) {
-            LLVMExpressionNode[] initNodes = globalNodes.toArray(new LLVMExpressionNode[globalNodes.size()]);
+            LLVMStatementNode[] initNodes = globalNodes.toArray(new LLVMStatementNode[globalNodes.size()]);
             RootNode globalVarInits = new LLVMStaticInitsBlockNode(context.getLanguage(), initNodes, rootFrame);
             return Truffle.getRuntime().createCallTarget(globalVarInits);
         }
         return null;
     }
 
-    private LLVMExpressionNode createGlobalInitialization(LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
+    private LLVMStatementNode createGlobalInitialization(LLVMSymbolReadResolver symbolResolver, GlobalVariable global) {
         if (global == null || global.getValue() == null) {
             return null;
         }
@@ -826,7 +828,7 @@ public final class Runner {
     private RootCallTarget createStructor(String name, LLVMParserResult parserResult, Comparator<Pair<Integer, ?>> priorityComparator) {
         for (GlobalVariable globalVariable : parserResult.getDefinedGlobals()) {
             if (globalVariable.getName().equals(name)) {
-                LLVMExpressionNode[] targets = resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator);
+                LLVMStatementNode[] targets = resolveStructor(parserResult.getRuntime().getFileScope(), globalVariable, priorityComparator);
                 if (targets.length > 0) {
                     return Truffle.getRuntime().createCallTarget(new LLVMStaticInitsBlockNode(context.getLanguage(), targets, StackManager.createRootFrame()));
                 } else {
@@ -837,10 +839,10 @@ public final class Runner {
         return null;
     }
 
-    private LLVMExpressionNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator) {
+    private LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
-            return LLVMExpressionNode.NO_EXPRESSIONS;
+            return LLVMStatementNode.NO_STATEMENTS;
         }
 
         final LLVMGlobal global = (LLVMGlobal) fileScope.get(globalSymbol.getName());
@@ -853,7 +855,7 @@ public final class Runner {
         final FunctionType functionType = (FunctionType) ((PointerType) elementType.getElementType(1)).getPointeeType();
         final int indexedTypeLength = context.getByteAlignment(functionType);
 
-        final ArrayList<Pair<Integer, LLVMExpressionNode>> structors = new ArrayList<>(elemCount);
+        final ArrayList<Pair<Integer, LLVMStatementNode>> structors = new ArrayList<>(elemCount);
         FrameDescriptor rootFrame = StackManager.createRootFrame();
         for (int i = 0; i < elemCount; i++) {
             final LLVMExpressionNode globalVarAddress = nodeFactory.createLiteral(global, new PointerType(globalSymbol.getType()));
@@ -866,7 +868,7 @@ public final class Runner {
             final LLVMExpressionNode loadedFunction = nodeFactory.createLoad(functionType, functionLoadTarget);
             final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
                             nodeFactory.createFrameRead(PointerType.VOID, rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
-            final LLVMExpressionNode functionCall = nodeFactory.createFunctionCall(loadedFunction, argNodes, functionType, null);
+            final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(nodeFactory.createFunctionCall(loadedFunction, argNodes, functionType, null));
 
             final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
             final SymbolImpl prioritySymbol = structorDefinition.getElement(0);
@@ -874,7 +876,7 @@ public final class Runner {
             structors.add(new Pair<>(priority != null ? priority : LEAST_CONSTRUCTOR_PRIORITY, functionCall));
         }
 
-        return structors.stream().sorted(priorityComparator).map(Pair::getSecond).toArray(LLVMExpressionNode[]::new);
+        return structors.stream().sorted(priorityComparator).map(Pair::getSecond).toArray(LLVMStatementNode[]::new);
     }
 
     private static byte[] decodeBase64(CharSequence charSequence) {

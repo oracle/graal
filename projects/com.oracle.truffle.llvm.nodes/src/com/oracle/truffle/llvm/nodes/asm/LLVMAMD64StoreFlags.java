@@ -35,8 +35,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64Flags;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
+public abstract class LLVMAMD64StoreFlags extends LLVMStatementNode {
     @Child protected LLVMAMD64WriteBooleanNode cf;
     @Child protected LLVMAMD64WriteBooleanNode pf;
     @Child protected LLVMAMD64WriteBooleanNode af;
@@ -62,13 +63,12 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doObject(VirtualFrame frame, byte flags) {
+        protected void doObject(VirtualFrame frame, byte flags) {
             cf.execute(frame, set(flags, LLVMAMD64Flags.CF));
             pf.execute(frame, set(flags, LLVMAMD64Flags.PF));
             af.execute(frame, set(flags, LLVMAMD64Flags.AF));
             zf.execute(frame, set(flags, LLVMAMD64Flags.ZF));
             sf.execute(frame, set(flags, LLVMAMD64Flags.SF));
-            return null;
         }
     }
 
@@ -83,14 +83,13 @@ public abstract class LLVMAMD64StoreFlags extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doObject(VirtualFrame frame, short flags) {
+        protected void doObject(VirtualFrame frame, short flags) {
             cf.execute(frame, set(flags, LLVMAMD64Flags.CF));
             pf.execute(frame, set(flags, LLVMAMD64Flags.PF));
             af.execute(frame, set(flags, LLVMAMD64Flags.AF));
             zf.execute(frame, set(flags, LLVMAMD64Flags.ZF));
             sf.execute(frame, set(flags, LLVMAMD64Flags.SF));
             of.execute(frame, set(flags, LLVMAMD64Flags.OF));
-            return null;
         }
     }
 }

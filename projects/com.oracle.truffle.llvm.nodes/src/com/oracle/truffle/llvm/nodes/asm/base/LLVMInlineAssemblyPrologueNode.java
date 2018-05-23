@@ -33,22 +33,21 @@ import java.util.List;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMInlineAssemblyPrologueNode extends LLVMExpressionNode {
+public final class LLVMInlineAssemblyPrologueNode extends LLVMStatementNode {
 
-    @Children private final LLVMExpressionNode[] writeNodes;
+    @Children private final LLVMStatementNode[] writeNodes;
 
-    public LLVMInlineAssemblyPrologueNode(List<LLVMExpressionNode> writeNodes) {
-        this.writeNodes = writeNodes.toArray(new LLVMExpressionNode[writeNodes.size()]);
+    public LLVMInlineAssemblyPrologueNode(List<LLVMStatementNode> writeNodes) {
+        this.writeNodes = writeNodes.toArray(new LLVMStatementNode[writeNodes.size()]);
     }
 
     @Override
     @ExplodeLoop
-    public Object executeGeneric(VirtualFrame frame) {
-        for (LLVMExpressionNode n : writeNodes) {
-            n.executeGeneric(frame);
+    public void execute(VirtualFrame frame) {
+        for (LLVMStatementNode n : writeNodes) {
+            n.execute(frame);
         }
-        return null;
     }
 }

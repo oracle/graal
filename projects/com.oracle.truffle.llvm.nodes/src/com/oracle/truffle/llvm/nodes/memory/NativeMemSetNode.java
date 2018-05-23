@@ -48,7 +48,7 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     @CompilationFinal private boolean inJava = true;
 
     @Specialization
-    protected Object memset(LLVMNativePointer address, byte value, long length,
+    protected void memset(LLVMNativePointer address, byte value, long length,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
@@ -77,7 +77,6 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
         }
 
         nativeMemSet(memory, address, value, length);
-        return null;
     }
 
     @SuppressWarnings("deprecation")
@@ -86,14 +85,15 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization(guards = {"!isManagedMallocObject(object)"})
-    protected Object memset(LLVMManagedPointer object, byte value, long length, @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
+    protected void memset(LLVMManagedPointer object, byte value, long length,
+                    @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memset(globalAccess.executeWithTarget(object), value, length, memory);
+        memset(globalAccess.executeWithTarget(object), value, length, memory);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"isManagedMallocObject(object)", "value == 0"})
-    protected Object memset(LLVMManagedPointer object, byte value, long length) {
+    protected void memset(LLVMManagedPointer object, byte value, long length) {
         assert length % ADDRESS_SIZE_IN_BYTES == 0;
 
         final ManagedMallocObject obj = (ManagedMallocObject) object.getObject();
@@ -101,7 +101,6 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
         for (int i = 0; i < length / ADDRESS_SIZE_IN_BYTES; i++) {
             obj.set(arrayOffset + i, LLVMNativePointer.createNull());
         }
-        return null;
     }
 
     protected boolean isManagedMallocObject(LLVMManagedPointer object) {
@@ -109,10 +108,10 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
     }
 
     @Specialization
-    protected Object memset(LLVMGlobal global, byte value, long length,
+    protected void memset(LLVMGlobal global, byte value, long length,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode globalAccess,
                     @Cached("getLLVMMemory()") LLVMMemory memory) {
-        return memset(globalAccess.executeWithTarget(global), value, length, memory);
+        memset(globalAccess.executeWithTarget(global), value, length, memory);
     }
 
 }

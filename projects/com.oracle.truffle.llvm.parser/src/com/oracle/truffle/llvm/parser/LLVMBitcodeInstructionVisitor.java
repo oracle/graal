@@ -95,6 +95,8 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMVoidStatementNodeGen;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -118,7 +120,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     private final List<FrameSlot> notNullable;
     private final LLVMRuntimeDebugInformation dbgInfoHandler;
 
-    private final List<LLVMExpressionNode> blockInstructions;
+    private final List<LLVMStatementNode> blockInstructions;
     private int instructionIndex;
     private LLVMControlFlowNode controlFlowNode;
 
@@ -143,8 +145,8 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         this.blockInstructions = new ArrayList<>();
     }
 
-    public LLVMExpressionNode[] getInstructions() {
-        return blockInstructions.toArray(new LLVMExpressionNode[0]);
+    public LLVMStatementNode[] getInstructions() {
+        return blockInstructions.toArray(new LLVMStatementNode[0]);
     }
 
     public LLVMControlFlowNode getControlFlowNode() {
@@ -310,13 +312,13 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
 
         if (valueSlot != null) {
-            final LLVMExpressionNode typeNode = nodeFactory.registerSourceType(valueSlot, variable.getSourceType());
+            final LLVMStatementNode typeNode = nodeFactory.registerSourceType(valueSlot, variable.getSourceType());
             if (typeNode != null) {
                 addInstructionUnchecked(typeNode);
             }
         }
 
-        final LLVMExpressionNode dbgIntrinsic = dbgInfoHandler.handleDebugIntrinsic(value, variable, expression, index, isDeclaration);
+        final LLVMStatementNode dbgIntrinsic = dbgInfoHandler.handleDebugIntrinsic(value, variable, expression, index, isDeclaration);
         if (dbgIntrinsic != null) {
             addInstructionUnchecked(dbgIntrinsic);
         }
@@ -368,7 +370,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 node = nodeFactory.createFunctionCall(function, args, functionType, source);
             }
         }
-        addInstruction(node);
+        addInstruction(LLVMVoidStatementNodeGen.create(node));
     }
 
     @Override
@@ -421,9 +423,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 }
             }
         }
-        LLVMExpressionNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
+        LLVMStatementNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
                         normalType.toArray(Type.EMPTY_ARRAY));
-        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
+        LLVMStatementNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
                         unwindType.toArray(Type.EMPTY_ARRAY));
 
         final LLVMSourceLocation source = getSourceLocation(call, false);
@@ -486,9 +488,9 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
                 }
             }
         }
-        LLVMExpressionNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
+        LLVMStatementNode normalPhi = nodeFactory.createPhi(normalValue.toArray(new LLVMExpressionNode[normalValue.size()]), normalTo.toArray(new FrameSlot[normalTo.size()]),
                         normalType.toArray(Type.EMPTY_ARRAY));
-        LLVMExpressionNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
+        LLVMStatementNode unwindPhi = nodeFactory.createPhi(unwindValue.toArray(new LLVMExpressionNode[unwindValue.size()]), unwindTo.toArray(new FrameSlot[unwindTo.size()]),
                         unwindType.toArray(Type.EMPTY_ARRAY));
 
         final LLVMSourceLocation source = getSourceLocation(call, false);
@@ -539,7 +541,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         int trueIndex = branch.getTrueSuccessor().getBlockIndex();
         int falseIndex = branch.getFalseSuccessor().getBlockIndex();
 
-        LLVMExpressionNode[] phiWriteNodes = getPhiWriteNodes(branch);
+        LLVMStatementNode[] phiWriteNodes = getPhiWriteNodes(branch);
         LLVMControlFlowNode node = nodeFactory.createConditionalBranch(trueIndex, falseIndex, conditionNode, phiWriteNodes[0], phiWriteNodes[1], getSourceLocation(branch));
 
         setControlFlowNode(node);
@@ -707,8 +709,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             source = getSourceLocation(store);
         }
 
-        final LLVMExpressionNode node = nodeFactory.createStore(context, pointerNode, valueNode, type, source);
-
+        final LLVMStatementNode node = nodeFactory.createStore(context, pointerNode, valueNode, type, source);
         addInstruction(node);
     }
 
@@ -726,8 +727,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(FenceInstruction fence) {
-        final LLVMExpressionNode node = nodeFactory.createFence();
-
+        final LLVMStatementNode node = nodeFactory.createFence();
         addInstruction(node);
     }
 
@@ -750,20 +750,20 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         setControlFlowNode(node);
     }
 
-    private LLVMExpressionNode[] getPhiWriteNodes(TerminatingInstruction terminatingInstruction) {
+    private LLVMStatementNode[] getPhiWriteNodes(TerminatingInstruction terminatingInstruction) {
         if (blockPhis != null) {
             ArrayList<Phi>[] phisPerSuccessor = LLVMPhiManager.getPhisForSuccessors(terminatingInstruction, blockPhis);
             return convertToPhiWriteNodes(phisPerSuccessor);
         }
-        return new LLVMExpressionNode[terminatingInstruction.getSuccessorCount()];
+        return new LLVMStatementNode[terminatingInstruction.getSuccessorCount()];
     }
 
-    private LLVMExpressionNode[] convertToPhiWriteNodes(ArrayList<Phi>[] phisPerSuccessor) {
+    private LLVMStatementNode[] convertToPhiWriteNodes(ArrayList<Phi>[] phisPerSuccessor) {
         if (phisPerSuccessor.length == 0) {
-            return LLVMExpressionNode.NO_EXPRESSIONS;
+            return LLVMStatementNode.NO_STATEMENTS;
         }
 
-        LLVMExpressionNode[] result = new LLVMExpressionNode[phisPerSuccessor.length];
+        LLVMStatementNode[] result = new LLVMStatementNode[phisPerSuccessor.length];
         for (int i = 0; i < result.length; i++) {
             LLVMExpressionNode[] from = new LLVMExpressionNode[phisPerSuccessor[i].size()];
             FrameSlot[] to = new FrameSlot[phisPerSuccessor[i].size()];
@@ -823,7 +823,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private void createFrameWrite(LLVMExpressionNode result, ValueInstruction source, LLVMSourceLocation sourceLocation) {
-        final LLVMExpressionNode node = nodeFactory.createFrameWrite(source.getType(), result, getSlot(source.getName()), sourceLocation);
+        final LLVMStatementNode node = nodeFactory.createFrameWrite(source.getType(), result, getSlot(source.getName()), sourceLocation);
         addInstruction(node);
     }
 
@@ -849,12 +849,12 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         return getSlot(LLVMStack.FRAME_ID);
     }
 
-    private void addInstruction(LLVMExpressionNode node) {
+    private void addInstruction(LLVMStatementNode node) {
         blockInstructions.add(node);
         handleNullerInfo();
     }
 
-    public void addInstructionUnchecked(LLVMExpressionNode instruction) {
+    public void addInstructionUnchecked(LLVMStatementNode instruction) {
         blockInstructions.add(instruction);
     }
 
@@ -867,7 +867,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
             } else if (nuller.getInstructionIndex() == instructionIndex) {
                 FrameSlot frameSlot = frameSlots.get(nuller.getFrameSlotIndex());
                 if (!notNullable.contains(frameSlot)) {
-                    LLVMExpressionNode nullerNode = nodeFactory.createFrameNuller(frameSlot);
+                    LLVMStatementNode nullerNode = nodeFactory.createFrameNuller(frameSlot);
                     blockInstructions.add(nullerNode);
                 }
                 nullerInfos.remove(i);

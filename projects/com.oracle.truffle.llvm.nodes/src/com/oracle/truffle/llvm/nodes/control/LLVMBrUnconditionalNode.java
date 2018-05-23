@@ -35,12 +35,12 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @GenerateWrapper
 public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode implements InstrumentableNode {
 
-    public static LLVMBrUnconditionalNode create(int successor, LLVMExpressionNode phi, LLVMSourceLocation sourceSection) {
+    public static LLVMBrUnconditionalNode create(int successor, LLVMStatementNode phi, LLVMSourceLocation sourceSection) {
         return new LLVMBrUnconditionalNodeImpl(successor, phi, sourceSection);
     }
 
@@ -68,10 +68,10 @@ public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode implem
     public abstract void execute(VirtualFrame frame);
 
     private static final class LLVMBrUnconditionalNodeImpl extends LLVMBrUnconditionalNode {
-        @Child private LLVMExpressionNode phi;
+        @Child private LLVMStatementNode phi;
         private final int successor;
 
-        private LLVMBrUnconditionalNodeImpl(int successor, LLVMExpressionNode phi, LLVMSourceLocation sourceSection) {
+        private LLVMBrUnconditionalNodeImpl(int successor, LLVMStatementNode phi, LLVMSourceLocation sourceSection) {
             super(sourceSection);
             this.successor = successor;
             this.phi = phi;
@@ -83,7 +83,7 @@ public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode implem
         }
 
         @Override
-        public LLVMExpressionNode getPhiNode(int successorIndex) {
+        public LLVMStatementNode getPhiNode(int successorIndex) {
             assert successorIndex == 0;
             return phi;
         }

@@ -37,9 +37,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-@NodeChild("level")
-public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
+@NodeChild(value = "level", type = LLVMExpressionNode.class)
+public abstract class LLVMAMD64CpuidNode extends LLVMStatementNode {
     public static final String BRAND = "Sulong"; // at most 48 characters
     public static final String VENDOR_ID = "SulongLLVM64"; // exactly 12 characters
 
@@ -95,7 +96,7 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object doOp(VirtualFrame frame, int level) {
+    protected void doOp(VirtualFrame frame, int level) {
         int a;
         int b;
         int c;
@@ -175,6 +176,5 @@ public abstract class LLVMAMD64CpuidNode extends LLVMExpressionNode {
         ebx.execute(frame, b);
         ecx.execute(frame, c);
         edx.execute(frame, d);
-        return null;
     }
 }

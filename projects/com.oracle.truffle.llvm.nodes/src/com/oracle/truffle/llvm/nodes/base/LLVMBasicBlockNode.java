@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.SulongRuntimeException;
 import com.oracle.truffle.llvm.runtime.SulongStackTrace;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 /**
  * This node represents a basic block in LLVM. The node contains both sequential statements which do
@@ -53,11 +53,11 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
  *
  * @see <a href="http://llvm.org/docs/LangRef.html#functions">basic blocks in LLVM IR</a>
  */
-public class LLVMBasicBlockNode extends LLVMExpressionNode {
+public class LLVMBasicBlockNode extends LLVMStatementNode {
 
     public static final int RETURN_FROM_FUNCTION = -1;
 
-    @Children private final LLVMExpressionNode[] statements;
+    @Children private final LLVMStatementNode[] statements;
     @Child public LLVMControlFlowNode termInstruction;
 
     private final int blockId;
@@ -68,13 +68,7 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
 
     @CompilationFinal(dimensions = 1) private final long[] successorExecutionCount;
 
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException("Must not be called.");
-    }
-
-    public LLVMBasicBlockNode(LLVMExpressionNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
+    public LLVMBasicBlockNode(LLVMStatementNode[] statements, LLVMControlFlowNode termInstruction, int blockId, String blockName) {
         this.statements = statements;
         this.termInstruction = termInstruction;
         this.blockId = blockId;
@@ -82,13 +76,14 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
         successorExecutionCount = termInstruction.needsBranchProfiling() ? new long[termInstruction.getSuccessorCount()] : null;
     }
 
+    @Override
     @ExplodeLoop
-    public void executeStatements(VirtualFrame frame) {
+    public void execute(VirtualFrame frame) {
         blockEntered.enter();
         for (int i = 0; i < statements.length; i++) {
-            LLVMExpressionNode statement = statements[i];
+            LLVMStatementNode statement = statements[i];
             try {
-                statement.executeGeneric(frame);
+                statement.execute(frame);
             } catch (ControlFlowException e) {
                 controlFlowExceptionProfile.enter();
                 throw e;
@@ -121,9 +116,9 @@ public class LLVMBasicBlockNode extends LLVMExpressionNode {
     private LLVMSourceLocation getLastAvailableSourceLocation(int i) {
         CompilerAsserts.neverPartOfCompilation();
         for (int j = i; j >= 0; j--) {
-            LLVMExpressionNode node = statements[j];
+            LLVMStatementNode node = statements[j];
             if (node instanceof InstrumentableNode.WrapperNode) {
-                node = (LLVMExpressionNode) ((InstrumentableNode.WrapperNode) node).getDelegateNode();
+                node = (LLVMStatementNode) ((InstrumentableNode.WrapperNode) node).getDelegateNode();
             }
 
             LLVMSourceLocation location = node.getSourceLocation();

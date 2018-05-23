@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
@@ -106,11 +107,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         FrameSlot[][] nullableAfterBlock = getNullableFrameSlots(frame, liveness.getNullableAfterBlock(), notNullable);
         LLVMSourceLocation location = method.getLexicalScope();
 
-        List<LLVMExpressionNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
-        LLVMExpressionNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMExpressionNode[copyArgumentsToFrame.size()]);
+        List<LLVMStatementNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
+        LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMStatementNode[copyArgumentsToFrame.size()]);
         LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock,
-                        nullableAfterBlock,
-                        location, copyArgumentsToFrameArray);
+                        nullableAfterBlock, location, copyArgumentsToFrameArray);
 
         RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(runtime.getContext(), body, method.getSourceSection(), frame, method, source, location);
 
@@ -146,9 +146,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         return result;
     }
 
-    private List<LLVMExpressionNode> copyArgumentsToFrame(FrameDescriptor frame) {
+    private List<LLVMStatementNode> copyArgumentsToFrame(FrameDescriptor frame) {
         List<FunctionParameter> parameters = method.getParameters();
-        List<LLVMExpressionNode> formalParamInits = new ArrayList<>();
+        List<LLVMStatementNode> formalParamInits = new ArrayList<>();
         LLVMExpressionNode stackPointerNode = runtime.getNodeFactory().createFunctionArgNode(0, PrimitiveType.I64);
         formalParamInits.add(runtime.getNodeFactory().createFrameWrite(PointerType.VOID, stackPointerNode, frame.findFrameSlot(LLVMStack.FRAME_ID), null));
 

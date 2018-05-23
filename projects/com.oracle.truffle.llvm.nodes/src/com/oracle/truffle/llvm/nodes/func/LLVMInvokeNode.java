@@ -52,6 +52,7 @@ import com.oracle.truffle.llvm.nodes.others.LLVMValueProfilingNodeFactory.LLVMI8
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -63,8 +64,8 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
 
     private static class LLVMInvokeNodeImpl extends LLVMInvokeNode {
 
-        @Child protected LLVMExpressionNode normalPhiNode;
-        @Child protected LLVMExpressionNode unwindPhiNode;
+        @Child protected LLVMStatementNode normalPhiNode;
+        @Child protected LLVMStatementNode unwindPhiNode;
         @Child protected LLVMValueProfilingNode returnValueProfile;
 
         protected final FunctionType type;
@@ -78,7 +79,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
 
         LLVMInvokeNodeImpl(FunctionType type, FrameSlot resultLocation,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, LLVMSourceLocation sourceSection) {
+                        LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(sourceSection);
             this.normalSuccessor = normalSuccessor;
             this.unwindSuccessor = unwindSuccessor;
@@ -148,7 +149,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
         }
 
         @Override
-        public LLVMExpressionNode getPhiNode(int successorIndex) {
+        public LLVMStatementNode getPhiNode(int successorIndex) {
             if (successorIndex == NORMAL_SUCCESSOR) {
                 return normalPhiNode;
             } else {
@@ -202,10 +203,10 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
         @ExplodeLoop
         public void writePhis(VirtualFrame frame, int successorIndex) {
             if (profile.profile(successorIndex == NORMAL_SUCCESSOR)) {
-                normalPhiNode.executeGeneric(frame);
+                normalPhiNode.execute(frame);
             } else {
                 assert successorIndex == UNWIND_SUCCESSOR;
-                unwindPhiNode.executeGeneric(frame);
+                unwindPhiNode.execute(frame);
             }
         }
     }
@@ -258,7 +259,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
 
         public LLVMSubstitutionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode substitution,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, LLVMSourceLocation sourceSection) {
+                        LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
             this.substitution = substitution;
         }
@@ -277,7 +278,7 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode implements Inst
 
         public LLVMFunctionInvokeNode(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                         int normalSuccessor, int unwindSuccessor,
-                        LLVMExpressionNode normalPhiNode, LLVMExpressionNode unwindPhiNode, LLVMSourceLocation sourceSection) {
+                        LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode, LLVMSourceLocation sourceSection) {
             super(type, resultLocation, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, sourceSection);
             this.functionNode = functionNode;
             this.argumentNodes = argumentNodes;

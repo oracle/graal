@@ -38,9 +38,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 @NodeChild(value = "llvmValueRead", type = LLVMExpressionNode.class)
-public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
+public abstract class LLVMDebugWriteNode extends LLVMStatementNode {
 
     private final LLVMDebugBuilder builder;
 
@@ -62,9 +63,9 @@ public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object write(VirtualFrame frame, Object llvmValue, @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
+        protected void write(VirtualFrame frame, Object llvmValue,
+                        @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
             frame.setObject(slot, new LLVMDebugSimpleObjectBuilder(valueProcessor, llvmValue));
-            return null;
         }
     }
 
@@ -81,10 +82,10 @@ public abstract class LLVMDebugWriteNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object setPart(LLVMDebugAggregateObjectBuilder container, Object partLLVMValue, @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
+        protected void setPart(LLVMDebugAggregateObjectBuilder container, Object partLLVMValue,
+                        @Cached("createBuilder()") LLVMDebugValue.Builder valueProcessor) {
             container.setPart(partIndex, valueProcessor, partLLVMValue);
             clearIndices(container);
-            return null;
         }
 
         @ExplodeLoop

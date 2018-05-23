@@ -48,11 +48,11 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
     private final LLVMMemory memory = getLLVMMemory();
 
     @Specialization
-    protected Object doLong(Object target, Object source, long length) {
-        return memmove(convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
+    protected void doLong(Object target, Object source, long length) {
+        memmove(convertTarget.executeWithTarget(target), convertSource.executeWithTarget(source), length);
     }
 
-    private Object memmove(LLVMNativePointer target, LLVMNativePointer source, long length) {
+    private void memmove(LLVMNativePointer target, LLVMNativePointer source, long length) {
         if (inJava) {
             if (length <= MAX_JAVA_LEN) {
                 long targetPointer = target.asNative();
@@ -65,7 +65,7 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
                 } else {
                     copyBackward(memory, targetPointer, sourcePointer, length);
                 }
-                return null;
+                return;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 inJava = false;
@@ -73,7 +73,6 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         }
 
         nativeMemCopy(memory, target, source, length);
-        return null;
     }
 
     private static void copyForward(LLVMMemory memory, long target, long source, long length) {

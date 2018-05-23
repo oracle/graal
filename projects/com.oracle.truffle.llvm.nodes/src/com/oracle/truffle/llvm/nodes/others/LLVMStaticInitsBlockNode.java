@@ -38,13 +38,13 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public class LLVMStaticInitsBlockNode extends RootNode {
 
-    @Children private final LLVMExpressionNode[] nodes;
+    @Children private final LLVMStatementNode[] nodes;
 
-    public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMExpressionNode[] nodes, FrameDescriptor descriptor) {
+    public LLVMStaticInitsBlockNode(LLVMLanguage language, LLVMStatementNode[] nodes, FrameDescriptor descriptor) {
         super(language, descriptor);
         assert nodes.length > 0;
         this.nodes = nodes;
@@ -65,8 +65,8 @@ public class LLVMStaticInitsBlockNode extends RootNode {
     @Override
     public Object execute(VirtualFrame frame) {
         frame.setObject(getStackPointerSlot(), frame.getArguments()[0]);
-        for (LLVMExpressionNode node : nodes) {
-            node.executeGeneric(frame);
+        for (LLVMStatementNode node : nodes) {
+            node.execute(frame);
         }
         return null;
     }

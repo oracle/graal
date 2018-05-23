@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -78,11 +79,11 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createLoad(Type resolvedResultType, LLVMExpressionNode loadTarget);
 
-    LLVMExpressionNode createStore(LLVMContext context, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, LLVMSourceLocation source);
+    LLVMStatementNode createStore(LLVMContext context, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type, LLVMSourceLocation source);
 
     LLVMExpressionNode createReadModifyWrite(ReadModifyWriteOperator operator, LLVMExpressionNode pointerNode, LLVMExpressionNode valueNode, Type type);
 
-    LLVMExpressionNode createFence();
+    LLVMStatementNode createFence();
 
     LLVMExpressionNode createLogicalOperation(LLVMExpressionNode left, LLVMExpressionNode right, LLVMLogicalInstructionKind opCode, Type llvmType, Flag[] flags);
 
@@ -92,7 +93,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createVectorLiteralNode(List<LLVMExpressionNode> listValues, Type type);
 
-    LLVMExpressionNode createFrameNuller(FrameSlot slot);
+    LLVMStatementNode createFrameNuller(FrameSlot slot);
 
     LLVMControlFlowNode createRetVoid(LLVMSourceLocation source);
 
@@ -105,12 +106,12 @@ public interface NodeFactory extends InteropNodeFactory {
     LLVMExpressionNode createFunctionCall(LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, LLVMSourceLocation sourceSection);
 
     LLVMControlFlowNode createFunctionInvoke(FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argNodes, FunctionType type, int normalIndex,
-                    int unwindIndex, LLVMExpressionNode normalPhiWriteNodes,
-                    LLVMExpressionNode unwindPhiWriteNodes, LLVMSourceLocation sourceSection);
+                    int unwindIndex, LLVMStatementNode normalPhiWriteNodes,
+                    LLVMStatementNode unwindPhiWriteNodes, LLVMSourceLocation sourceSection);
 
     LLVMExpressionNode createFrameRead(Type llvmType, FrameSlot frameSlot);
 
-    LLVMExpressionNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot, LLVMSourceLocation sourceSection);
+    LLVMStatementNode createFrameWrite(Type llvmType, LLVMExpressionNode result, FrameSlot slot, LLVMSourceLocation sourceSection);
 
     LLVMExpressionNode createComparison(CompareOperator operator, Type type, LLVMExpressionNode lhs, LLVMExpressionNode rhs);
 
@@ -129,15 +130,15 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMControlFlowNode createUnreachableNode();
 
-    LLVMControlFlowNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMExpressionNode[] phiWrites, LLVMSourceLocation source);
+    LLVMControlFlowNode createIndirectBranch(LLVMExpressionNode value, int[] labelTargets, LLVMStatementNode[] phiWrites, LLVMSourceLocation source);
 
     LLVMControlFlowNode createSwitch(LLVMExpressionNode cond, int[] labels, LLVMExpressionNode[] cases,
-                    Type llvmType, LLVMExpressionNode[] phiWriteNodes, LLVMSourceLocation source);
+                    Type llvmType, LLVMStatementNode[] phiWriteNodes, LLVMSourceLocation source);
 
-    LLVMControlFlowNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMExpressionNode truePhiWriteNodes,
-                    LLVMExpressionNode falsePhiWriteNodes, LLVMSourceLocation sourceSection);
+    LLVMControlFlowNode createConditionalBranch(int trueIndex, int falseIndex, LLVMExpressionNode conditionNode, LLVMStatementNode truePhiWriteNodes,
+                    LLVMStatementNode falsePhiWriteNodes, LLVMSourceLocation sourceSection);
 
-    LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMExpressionNode phi, LLVMSourceLocation source);
+    LLVMControlFlowNode createUnconditionalBranch(int unconditionalIndex, LLVMStatementNode phi, LLVMSourceLocation source);
 
     LLVMExpressionNode createArrayLiteral(LLVMContext context, List<LLVMExpressionNode> arrayValues, ArrayType arrayType);
 
@@ -162,10 +163,10 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createStructureConstantNode(LLVMContext context, Type structureType, boolean packed, Type[] types, LLVMExpressionNode[] constants);
 
-    LLVMExpressionNode createBasicBlockNode(LLVMExpressionNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
+    LLVMStatementNode createBasicBlockNode(LLVMStatementNode[] statementNodes, LLVMControlFlowNode terminatorNode, int blockId, String blockName);
 
-    LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMExpressionNode> basicBlockNodes, FrameSlot[][] beforeBlockNuller,
-                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMExpressionNode[] copyArgumentsToFrame);
+    LLVMExpressionNode createFunctionBlockNode(FrameSlot exceptionValueSlot, List<? extends LLVMStatementNode> basicBlockNodes, FrameSlot[][] beforeBlockNuller,
+                    FrameSlot[][] afterBlockNuller, LLVMSourceLocation sourceSection, LLVMStatementNode[] copyArgumentsToFrame);
 
     RootNode createFunctionStartNode(LLVMContext context, LLVMExpressionNode functionBodyNode, SourceSection sourceSection, FrameDescriptor frameDescriptor, FunctionDefinition functionHeader,
                     Source bcSource, LLVMSourceLocation location);
@@ -183,15 +184,15 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMExpressionNode createLLVMBuiltin(LLVMContext context, Symbol target, LLVMExpressionNode[] args, int callerArgumentCount, LLVMSourceLocation sourceSection);
 
-    LLVMExpressionNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
+    LLVMStatementNode createPhi(LLVMExpressionNode[] from, FrameSlot[] to, Type[] types);
 
     LLVMExpressionNode createCopyStructByValue(LLVMContext context, Type type, LLVMExpressionNode parameterNode);
 
     LLVMExpressionNode createVarArgCompoundValue(int length, int alignment, LLVMExpressionNode parameterNode);
 
-    LLVMExpressionNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
+    LLVMStatementNode createDebugValueUpdate(boolean isDeclaration, LLVMExpressionNode valueRead, FrameSlot targetSlot, LLVMExpressionNode aggregateRead, int partIndex, int[] clearParts);
 
-    LLVMExpressionNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
+    LLVMStatementNode createDebugValueInit(FrameSlot targetSlot, int[] offsets, int[] lengths);
 
     LLVMDebugObjectBuilder createDebugStaticValue(LLVMExpressionNode valueNode);
 
@@ -199,7 +200,7 @@ public interface NodeFactory extends InteropNodeFactory {
 
     LLVMFrameValueAccess createDebugFrameValue(FrameSlot slot, boolean isDeclaration);
 
-    LLVMExpressionNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
+    LLVMStatementNode registerSourceType(FrameSlot valueSlot, LLVMSourceType type);
 
     LLVMMemMoveNode createMemMove();
 

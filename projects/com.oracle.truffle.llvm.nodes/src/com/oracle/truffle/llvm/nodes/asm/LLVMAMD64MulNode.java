@@ -36,10 +36,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64UpdateFlagsNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteBooleanNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteTupelNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.nodes.asm.support.LongMultiplication;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
+public abstract class LLVMAMD64MulNode extends LLVMStatementNode {
     @Child protected LLVMAMD64WriteBooleanNode writeCFNode;
     @Child protected LLVMAMD64WriteBooleanNode writePFNode;
     @Child protected LLVMAMD64WriteBooleanNode writeAFNode;
@@ -68,19 +70,22 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
 
     @NodeChildren({@NodeChild(value = "left", type = LLVMExpressionNode.class), @NodeChild(value = "right", type = LLVMExpressionNode.class)})
     public abstract static class LLVMAMD64MulbNode extends LLVMAMD64MulNode {
+        @Child private LLVMAMD64WriteValueNode out;
+
         public LLVMAMD64MulbNode(LLVMAMD64WriteBooleanNode writeCFNode, LLVMAMD64WriteBooleanNode writePFNode, LLVMAMD64WriteBooleanNode writeAFNode, LLVMAMD64WriteBooleanNode writeZFNode,
-                        LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode) {
+                        LLVMAMD64WriteBooleanNode writeSFNode, LLVMAMD64WriteBooleanNode writeOFNode, LLVMAMD64WriteValueNode out) {
             super(writeCFNode, writePFNode, writeAFNode, writeZFNode, writeSFNode, writeOFNode);
+            this.out = out;
         }
 
         @Specialization
-        protected short doOp(VirtualFrame frame, byte left, byte right) {
+        protected void doOp(VirtualFrame frame, byte left, byte right) {
             short value = (short) (Byte.toUnsignedInt(left) * Byte.toUnsignedInt(right));
             byte valueb = (byte) value;
             boolean overflow = ((value >> LLVMExpressionNode.I8_SIZE_IN_BITS) & LLVMExpressionNode.I8_MASK) != 0;
             boolean sign = valueb < 0;
             setFlags(frame, valueb, overflow, sign);
-            return value;
+            out.execute(frame, value);
         }
     }
 
@@ -95,12 +100,11 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, short left, short right) {
+        protected void doOp(VirtualFrame frame, short left, short right) {
             int value = Short.toUnsignedInt(left) * Short.toUnsignedInt(right);
             short hi = (short) (value >> LLVMExpressionNode.I16_SIZE_IN_BITS);
             setFlags(frame, (byte) value, hi != 0, (short) value < 0);
             out.execute(frame, (short) value, hi);
-            return null;
         }
     }
 
@@ -115,12 +119,11 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, int left, int right) {
+        protected void doOp(VirtualFrame frame, int left, int right) {
             long value = Integer.toUnsignedLong(left) * Integer.toUnsignedLong(right);
             int hi = (int) (value >> LLVMExpressionNode.I32_SIZE_IN_BITS);
             setFlags(frame, (byte) value, hi != 0, (int) value < 0);
             out.execute(frame, (int) value, hi);
-            return null;
         }
     }
 
@@ -135,12 +138,11 @@ public abstract class LLVMAMD64MulNode extends LLVMExpressionNode {
         }
 
         @Specialization
-        protected Object doOp(VirtualFrame frame, long left, long right) {
+        protected void doOp(VirtualFrame frame, long left, long right) {
             long value = left * right;
             long hi = LongMultiplication.multiplyHighUnsigned(left, right);
             setFlags(frame, (byte) value, hi != 0, value < 0);
             out.execute(frame, value, hi);
-            return null;
         }
     }
 }

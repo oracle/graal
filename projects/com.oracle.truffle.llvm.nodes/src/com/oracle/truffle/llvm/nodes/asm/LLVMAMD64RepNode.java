@@ -38,26 +38,26 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.nodes.asm.support.LLVMAMD64WriteValueNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMAMD64RepNode extends LLVMExpressionNode {
+public class LLVMAMD64RepNode extends LLVMStatementNode {
     @Child private LoopNode loop;
 
-    public LLVMAMD64RepNode(LLVMAMD64WriteValueNode writeRCX, LLVMExpressionNode rcx, LLVMExpressionNode body) {
+    public LLVMAMD64RepNode(LLVMAMD64WriteValueNode writeRCX, LLVMExpressionNode rcx, LLVMStatementNode body) {
         this.loop = Truffle.getRuntime().createLoopNode(new LLVMAMD64RepLoopNode(writeRCX, rcx, body));
     }
 
     @Override
-    public Object executeGeneric(VirtualFrame frame) {
+    public void execute(VirtualFrame frame) {
         loop.executeLoop(frame);
-        return null;
     }
 
     private static class LLVMAMD64RepLoopNode extends LLVMNode implements RepeatingNode {
         @Child private LLVMAMD64WriteValueNode writeRCX;
         @Child private LLVMExpressionNode rcx;
-        @Child private LLVMExpressionNode body;
+        @Child private LLVMStatementNode body;
 
-        LLVMAMD64RepLoopNode(LLVMAMD64WriteValueNode writeRCX, LLVMExpressionNode rcx, LLVMExpressionNode body) {
+        LLVMAMD64RepLoopNode(LLVMAMD64WriteValueNode writeRCX, LLVMExpressionNode rcx, LLVMStatementNode body) {
             this.writeRCX = writeRCX;
             this.rcx = rcx;
             this.body = body;
@@ -70,7 +70,7 @@ public class LLVMAMD64RepNode extends LLVMExpressionNode {
                 if (rcxValue == 0) {
                     return false;
                 } else {
-                    body.executeGeneric(frame);
+                    body.execute(frame);
                     writeRCX.execute(frame, rcxValue - 1);
                     return true;
                 }

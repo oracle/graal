@@ -52,41 +52,36 @@ public abstract class LLVMI8StoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doOp(LLVMNativePointer addr, byte value) {
+    protected void doOp(LLVMNativePointer addr, byte value) {
         getLLVMMemoryCached().putI8(addr, value);
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMNativePointer addr, byte value) {
-        return doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, byte value) {
+        doOpManaged(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization
-    protected Object doOp(LLVMVirtualAllocationAddress address, byte value,
+    protected void doOp(LLVMVirtualAllocationAddress address, byte value,
                     @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
         address.writeI8(memory, value);
-        return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMGlobal address, byte value,
+    protected void doOp(LLVMGlobal address, byte value,
                     @Cached("create()") WriteI8Node globalAccess) {
         globalAccess.execute(address, value);
-        return null;
     }
 
     @Specialization
-    protected Object doOpManaged(LLVMManagedPointer address, byte value) {
+    protected void doOpManaged(LLVMManagedPointer address, byte value) {
         getForeignWriteNode().execute(address, value);
-        return null;
     }
 
     @Specialization
-    protected Object doOp(LLVMBoxedPrimitive address, byte value) {
+    protected void doOp(LLVMBoxedPrimitive address, byte value) {
         if (address.getValue() instanceof Long) {
             getLLVMMemoryCached().putI8((long) address.getValue(), value);
-            return null;
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + address.getValue());

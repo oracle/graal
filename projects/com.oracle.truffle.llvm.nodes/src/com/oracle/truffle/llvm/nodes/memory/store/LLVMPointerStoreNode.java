@@ -53,31 +53,28 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "!isAutoDerefHandle(addr)")
-    protected Object doAddress(LLVMNativePointer addr, Object value,
+    protected void doAddress(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         getLLVMMemoryCached().putPointer(addr, toNative.executeWithTarget(value));
-        return null;
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected Object doOpDerefHandle(LLVMNativePointer addr, Object value) {
-        return doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), value);
+    protected void doOpDerefHandle(LLVMNativePointer addr, Object value) {
+        doTruffleObject(getDerefHandleGetReceiverNode().execute(addr), value);
     }
 
     @Specialization
-    protected Object doAddress(LLVMVirtualAllocationAddress address, Object value,
+    protected void doAddress(LLVMVirtualAllocationAddress address, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @Cached("getUnsafeArrayAccess()") UnsafeArrayAccess memory) {
         address.writeI64(memory, toNative.executeWithTarget(value).asNative());
-        return null;
     }
 
     @Specialization
-    protected Object doBoxed(LLVMBoxedPrimitive address, Object value,
+    protected void doBoxed(LLVMBoxedPrimitive address, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         if (address.getValue() instanceof Long) {
             getLLVMMemoryCached().putPointer((long) address.getValue(), toNative.executeWithTarget(value));
-            return null;
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalAccessError("Cannot access address: " + address.getValue());
@@ -85,15 +82,13 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization
-    protected Object doGlobal(LLVMGlobal address, Object value,
+    protected void doGlobal(LLVMGlobal address, Object value,
                     @Cached("create()") WriteObjectNode globalAccess) {
         globalAccess.execute(address, value);
-        return null;
     }
 
     @Specialization
-    protected Object doTruffleObject(LLVMManagedPointer address, Object value) {
+    protected void doTruffleObject(LLVMManagedPointer address, Object value) {
         getForeignWriteNode().execute(address, value);
-        return null;
     }
 }
