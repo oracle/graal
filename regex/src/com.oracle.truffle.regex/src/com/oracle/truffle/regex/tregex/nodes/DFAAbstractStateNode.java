@@ -60,7 +60,7 @@ public abstract class DFAAbstractStateNode extends Node implements JsonConvertib
      * Calculates this state's successor and returns its ID ({@link DFAStateNode#getId()}) via
      * {@link TRegexDFAExecutorNode#setSuccessorIndex(VirtualFrame, int)}. This return value is
      * called "successor index" and may either be an index of the successors array (between 0 and
-     * <code>{@link #getSuccessors()}.length</code>) or {@link #FS_RESULT_NO_SUCCESSOR}.
+     * {@link #getSuccessors()}{@code .length}) or {@link #FS_RESULT_NO_SUCCESSOR}.
      * 
      * @param frame a virtual frame as described by {@link TRegexDFAExecutorProperties}.
      * @param executor this node's parent {@link TRegexDFAExecutorNode}.

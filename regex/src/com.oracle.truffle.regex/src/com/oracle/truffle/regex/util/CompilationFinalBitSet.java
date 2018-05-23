@@ -191,7 +191,9 @@ public class CompilationFinalBitSet implements Iterable<Integer> {
         private int last;
 
         private CompilationFinalBitSetIterator() {
-            curWord = words[0];
+            if (hasNext()) {
+                curWord = words[0];
+            }
             findNext();
         }
 

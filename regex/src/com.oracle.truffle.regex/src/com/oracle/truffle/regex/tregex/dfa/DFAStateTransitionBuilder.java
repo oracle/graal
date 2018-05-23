@@ -26,64 +26,29 @@ package com.oracle.truffle.regex.tregex.dfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
-import com.oracle.truffle.regex.tregex.nfa.NFA;
-import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
-import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements JsonConvertible {
 
-    private final NFATransitionSet transitions;
-    private MatcherBuilder matcherBuilder;
-
     private int id = -1;
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
-    private DFACaptureGroupTransitionBuilder captureGroupTransition;
 
-    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFAStateTransition transition, NFA nfa, boolean forward, boolean prioritySensitive) {
-        this.transitions = NFATransitionSet.create(nfa, forward, prioritySensitive, transition);
-        this.matcherBuilder = matcherBuilder;
-    }
-
-    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitions) {
-        this.transitions = transitions;
-        this.matcherBuilder = matcherBuilder;
+    DFAStateTransitionBuilder(MatcherBuilder matcherBuilder, NFATransitionSet transitionSet) {
+        super(transitionSet, matcherBuilder);
     }
 
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(matcherBuilder, transitions);
-    }
-
-    @Override
-    public MatcherBuilder getMatcherBuilder() {
-        return matcherBuilder;
-    }
-
-    @Override
-    public void setMatcherBuilder(MatcherBuilder matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
+        return new DFAStateTransitionBuilder(getMatcherBuilder(), getTransitionSet());
     }
 
     @Override
     public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        return new DFAStateTransitionBuilder(mergedMatcher, transitions.createMerged(other.getTransitionSet()));
-    }
-
-    @Override
-    public void mergeInPlace(TransitionBuilder<NFATransitionSet> other, MatcherBuilder mergedMatcher) {
-        transitions.addAll(other.getTransitionSet());
-        matcherBuilder = mergedMatcher;
-    }
-
-    @Override
-    public NFATransitionSet getTransitionSet() {
-        return transitions;
+        return new DFAStateTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()));
     }
 
     public int getId() {
@@ -110,14 +75,6 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         this.target = target;
     }
 
-    public DFACaptureGroupTransitionBuilder getCaptureGroupTransition() {
-        return captureGroupTransition;
-    }
-
-    public void setCaptureGroupTransition(DFACaptureGroupTransitionBuilder captureGroupTransition) {
-        this.captureGroupTransition = captureGroupTransition;
-    }
-
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
@@ -128,14 +85,10 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
         if (target.getUnAnchoredFinalStateTransition() != null) {
             nfaTransitions.append(Json.val(target.getUnAnchoredFinalStateTransition().getId()));
         }
-        JsonObject ret = Json.obj(Json.prop("id", id),
+        return Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
                         Json.prop("matcherBuilder", getMatcherBuilder().toString()),
                         Json.prop("nfaTransitions", nfaTransitions));
-        if (captureGroupTransition != null) {
-            ret.append(Json.prop("captureGroupTransition", captureGroupTransition.toLazyTransition(new CompilationBuffer())));
-        }
-        return ret;
     }
 }
