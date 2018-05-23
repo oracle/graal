@@ -1784,7 +1784,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "findbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Truffle",
-      "testProject" : False,
+      "testProject" : True,
       "jacoco"      : "exclude",
     },
 
