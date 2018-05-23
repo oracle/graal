@@ -20,21 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.compiler.debug;
 
-public class PermanentBailoutException extends GraalBailoutException {
-
-    private static final long serialVersionUID = -2683649650135362549L;
-
-    public PermanentBailoutException(String format, Object... args) {
-        super(true, format, args);
-    }
-
-    public PermanentBailoutException(String reason) {
-        super(true, "%s", reason);
-    }
-
-    public PermanentBailoutException(Throwable cause, String format, Object... args) {
-        super(cause, format, args);
-    }
+public interface CausableByCompilerAssert {
+    boolean isCausedByCompilerAssert();
 }
