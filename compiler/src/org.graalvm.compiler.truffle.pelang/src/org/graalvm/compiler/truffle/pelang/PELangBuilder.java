@@ -185,6 +185,10 @@ public class PELangBuilder {
         return new PELangDoubleSuccessorNode(bodyNode, trueSuccessor, falseSuccessor);
     }
 
+    public PELangBasicBlockNode basicBlock(PELangExpressionNode valueNode, PELangExpressionNode[] caseValueNodes, int[] caseBodySuccessors, int defaultSuccessor) {
+        return new PELangMultiSuccessorNode(valueNode, caseValueNodes, caseBodySuccessors, defaultSuccessor);
+    }
+
     public static final class Case {
 
         private final PELangExpressionNode valueNode;

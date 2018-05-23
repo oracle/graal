@@ -52,7 +52,7 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
             PELangBasicBlockNode blockNode = blockNodes[blockIndex];
 
             // basic block execution has to be inlined here in order to prevent a bailout exception
-            // this is especially the case for the double successor node
+            // this is especially the case for double and multi successor nodes
             if (blockNode instanceof PELangSingleSuccessorNode) {
                 PELangSingleSuccessorNode node = (PELangSingleSuccessorNode) blockNode;
                 node.getBodyNode().executeVoid(frame);
@@ -60,6 +60,21 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
             } else if (blockNode instanceof PELangDoubleSuccessorNode) {
                 PELangDoubleSuccessorNode node = (PELangDoubleSuccessorNode) blockNode;
                 blockIndex = (node.getBodyNode().evaluateCondition(frame) == 0L) ? node.getTrueSuccessor() : node.getFalseSuccessor();
+            } else if (blockNode instanceof PELangMultiSuccessorNode) {
+                PELangMultiSuccessorNode node = (PELangMultiSuccessorNode) blockNode;
+                CompilerAsserts.compilationConstant(node.getCaseValueNodes().length);
+                Object value = node.getValueNode().executeGeneric(frame);
+                int successor = -1;
+
+                for (int i = 0; i < node.getCaseValueNodes().length; i++) {
+                    Object caseValue = node.getCaseValueNodes()[i].executeGeneric(frame);
+
+                    if (value.equals(caseValue)) {
+                        successor = node.getCaseBodySuccessors()[i];
+                        break;
+                    }
+                }
+                blockIndex = (successor == -1) ? node.getDefaultSuccessor() : successor;
             }
         }
     }
