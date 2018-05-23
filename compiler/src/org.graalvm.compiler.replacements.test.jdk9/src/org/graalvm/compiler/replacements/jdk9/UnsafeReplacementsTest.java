@@ -238,15 +238,18 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndAdd() {
-        testGraph("unsafeGetAndAddByte");
+        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
+        if (target.arch instanceof AMD64) {
+            testGraph("unsafeGetAndAddByte");
+            testGraph("unsafeGetAndAddChar");
+            testGraph("unsafeGetAndAddShort");
+            testGraph("unsafeGetAndAddInt");
+            testGraph("unsafeGetAndAddLong");
+        }
         test("unsafeGetAndAddByte");
-        testGraph("unsafeGetAndAddChar");
         test("unsafeGetAndAddChar");
-        testGraph("unsafeGetAndAddShort");
         test("unsafeGetAndAddShort");
-        testGraph("unsafeGetAndAddInt");
         test("unsafeGetAndAddInt");
-        testGraph("unsafeGetAndAddLong");
         test("unsafeGetAndAddLong");
     }
 
@@ -289,19 +292,22 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndSet() {
-        testGraph("unsafeGetAndSetBoolean");
+        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
+        if (target.arch instanceof AMD64) {
+            testGraph("unsafeGetAndSetBoolean");
+            testGraph("unsafeGetAndSetByte");
+            testGraph("unsafeGetAndSetChar");
+            testGraph("unsafeGetAndSetShort");
+            testGraph("unsafeGetAndSetInt");
+            testGraph("unsafeGetAndSetLong");
+            testGraph("unsafeGetAndSetObject");
+        }
         test("unsafeGetAndSetBoolean");
-        testGraph("unsafeGetAndSetByte");
         test("unsafeGetAndSetByte");
-        testGraph("unsafeGetAndSetChar");
         test("unsafeGetAndSetChar");
-        testGraph("unsafeGetAndSetShort");
         test("unsafeGetAndSetShort");
-        testGraph("unsafeGetAndSetInt");
         test("unsafeGetAndSetInt");
-        testGraph("unsafeGetAndSetLong");
         test("unsafeGetAndSetLong");
-        testGraph("unsafeGetAndSetObject");
         test("unsafeGetAndSetObject");
     }
 }
