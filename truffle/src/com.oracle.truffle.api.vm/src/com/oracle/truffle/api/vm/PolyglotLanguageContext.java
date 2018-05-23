@@ -594,7 +594,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 CompilerDirectives.transferToInterpreter();
                 throw PolyglotImpl.engineError(new IllegalArgumentException(String.format("Values cannot be passed from one context to another. " +
                                 "The current value originates from context 0x%s and the argument originates from context 0x%s.",
-                                Integer.toHexString(languageContext.context.api.hashCode()), Integer.toHexString(valueImpl.languageContext.context.api.hashCode()))));
+                                Integer.toHexString(languageContext.context.hashCode()), Integer.toHexString(valueImpl.languageContext.context.hashCode()))));
             }
             return languageContext.getAPIAccess().getReceiver(receiverValue);
         } else if (PolyglotImpl.isGuestPrimitive(receiver)) {

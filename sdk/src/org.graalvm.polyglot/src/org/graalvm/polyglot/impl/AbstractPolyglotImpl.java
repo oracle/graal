@@ -223,15 +223,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value eval(String language, Object sourceImpl);
 
-        public abstract Engine getEngineImpl();
+        public abstract Engine getEngineImpl(Context sourceContext);
 
-        public abstract void close(boolean interuptExecution);
+        public abstract void close(Context sourceContext, boolean interuptExecution);
 
         public abstract Value asValue(Object hostValue);
 
-        public abstract void explicitEnter();
+        public abstract void explicitEnter(Context sourceContext);
 
-        public abstract void explicitLeave();
+        public abstract void explicitLeave(Context sourceContext);
 
         public abstract Value getBindings(String language);
 
@@ -250,7 +250,7 @@ public abstract class AbstractPolyglotImpl {
 
         // Runtime
 
-        public abstract void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure);
+        public abstract void close(Engine sourceEngine, boolean cancelIfExecuting);
 
         public abstract Map<String, Instrument> getInstruments();
 
@@ -363,8 +363,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getId();
 
         public abstract OptionDescriptors getOptions();
-
-        public abstract Engine getEngineAPI();
 
     }
 
@@ -636,5 +634,9 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Class<?> loadLanguageClass(String className);
+
+    public Context getCurrentContext() {
+        throw new IllegalStateException("No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
+    }
 
 }

@@ -1088,7 +1088,6 @@ public class LanguageSPITest {
         c.close();
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void testExportSymbolInCreate() {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -1101,7 +1100,7 @@ public class LanguageSPITest {
         });
         Context c = Context.create();
         c.initialize(ProxyLanguage.ID);
-        assertTrue(c.importSymbol("symbol").isHostObject());
+        assertTrue(c.getPolyglotBindings().getMember("symbol").isHostObject());
         c.close();
     }
 

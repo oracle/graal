@@ -31,15 +31,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
@@ -136,11 +135,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;
-    }
-
-    @Override
-    public Engine getEngineAPI() {
-        return getEngine().api;
     }
 
     void ensureInitialized() {
@@ -257,7 +251,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             if (context.engine != language.engine) {
                 throw new AssertionError(String.format("Context reference was used from an Engine that is currently not entered. " +
                                 "ContextReference of engine %s was used but engine %s is currently entered. " +
-                                "ContextReference must not be shared between multiple TruffleLanguage instances.", language.engine.api, context.engine.api));
+                                "ContextReference must not be shared between multiple TruffleLanguage instances.", language.engine.creatorApi, context.engine.creatorApi));
             }
             return true;
         }
