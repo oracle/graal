@@ -24,10 +24,10 @@ package org.graalvm.compiler.truffle.pelang;
 
 import java.util.Arrays;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangAddNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNodeGen;
@@ -57,11 +57,11 @@ public class PELangBuilder {
         return new PELangRootNode(bodyNode, frameDescriptor);
     }
 
-    public PELangExpressionNode literal(long value) {
+    public PELangExpressionNode lit(long value) {
         return new PELangLiteralLongNode(value);
     }
 
-    public PELangExpressionNode literal(String value) {
+    public PELangExpressionNode lit(String value) {
         return new PELangLiteralStringNode(value);
     }
 
@@ -70,14 +70,14 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode add(long left, long right) {
-        return add(literal(left), literal(right));
+        return add(lit(left), lit(right));
     }
 
     public PELangExpressionNode add(String left, String right) {
-        return add(literal(left), literal(right));
+        return add(lit(left), lit(right));
     }
 
-    public PELangExpressionNode equals(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public PELangExpressionNode eq(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangEqualsNodeGen.create(leftNode, rightNode);
     }
 
@@ -85,11 +85,11 @@ public class PELangBuilder {
         return new PELangNotNode(bodyNode);
     }
 
-    public PELangExpressionNode lessThan(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public PELangExpressionNode lt(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangLessThanNodeGen.create(leftNode, rightNode);
     }
 
-    public PELangExpressionNode greaterThan(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+    public PELangExpressionNode gt(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangGreaterThanNodeGen.create(leftNode, rightNode);
     }
 
@@ -97,33 +97,28 @@ public class PELangBuilder {
         return new PELangBlockNode(bodyNodes);
     }
 
-    public PELangStatementNode branch(PELangExpressionNode conditionNode, PELangStatementNode thenNode,
+    public PELangStatementNode if_(PELangExpressionNode conditionNode, PELangStatementNode thenNode,
                     PELangStatementNode elseNode) {
         return new PELangIfNode(conditionNode, thenNode, elseNode);
     }
 
-    public PELangStatementNode branch(PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
-        return branch(conditionNode, thenNode, block());
+    public PELangStatementNode if_(PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
+        return if_(conditionNode, thenNode, block());
     }
 
-    public PELangStatementNode loop(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
+    public PELangStatementNode while_(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
         return new PELangWhileNode(conditionNode, bodyNode);
     }
 
-    public PELangStatementNode select(PELangExpressionNode valueNode, PELangStatementNode defaultBodyNode,
-                    SelectPair... selectPairs) {
-        PELangExpressionNode[] caseValueNodes = Arrays.stream(selectPairs).map(SelectPair::getCaseValueNode).toArray(PELangExpressionNode[]::new);
-        PELangStatementNode[] caseBodyNodes = Arrays.stream(selectPairs).map(SelectPair::getCaseBodyNode).toArray(PELangStatementNode[]::new);
+    public PELangStatementNode switch_(PELangExpressionNode valueNode, Case... cases) {
+        PELangExpressionNode[] caseValueNodes = Arrays.stream(cases).map(Case::getValueNode).toArray(PELangExpressionNode[]::new);
+        PELangStatementNode[] caseBodyNodes = Arrays.stream(cases).map(Case::getBodyNode).toArray(PELangStatementNode[]::new);
 
-        return new PELangSwitchNode(valueNode, defaultBodyNode, caseValueNodes, caseBodyNodes);
+        return new PELangSwitchNode(valueNode, caseValueNodes, caseBodyNodes);
     }
 
-    public PELangStatementNode select(PELangExpressionNode valueNode, SelectPair... selectPairs) {
-        return select(valueNode, block(), selectPairs);
-    }
-
-    public SelectPair selectPair(PELangExpressionNode caseValueNode, PELangStatementNode caseBodyNode) {
-        return new SelectPair(caseValueNode, caseBodyNode);
+    public Case case_(PELangExpressionNode valueNode, PELangStatementNode bodyNode) {
+        return new Case(valueNode, bodyNode);
     }
 
     public PELangExpressionNode readLocal(String identifier) {
@@ -135,19 +130,19 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode writeLocal(long value, String identifier) {
-        return writeLocal(literal(value), identifier);
+        return writeLocal(lit(value), identifier);
     }
 
     public PELangExpressionNode writeLocal(String value, String identifier) {
-        return writeLocal(literal(value), identifier);
+        return writeLocal(lit(value), identifier);
     }
 
     public PELangExpressionNode incrementLocal(long value, String identifier) {
-        return writeLocal(add(literal(value), readLocal(identifier)), identifier);
+        return writeLocal(add(lit(value), readLocal(identifier)), identifier);
     }
 
     public PELangExpressionNode appendLocal(String value, String identifier) {
-        return writeLocal(add(literal(value), readLocal(identifier)), identifier);
+        return writeLocal(add(lit(value), readLocal(identifier)), identifier);
     }
 
     public PELangExpressionNode readGlobal(String identifier) {
@@ -159,22 +154,22 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode writeGlobal(long value, String identifier) {
-        return writeGlobal(literal(value), identifier);
+        return writeGlobal(lit(value), identifier);
     }
 
     public PELangExpressionNode writeGlobal(String value, String identifier) {
-        return writeGlobal(literal(value), identifier);
+        return writeGlobal(lit(value), identifier);
     }
 
     public PELangExpressionNode incrementGlobal(long value, String identifier) {
-        return writeGlobal(add(literal(value), readGlobal(identifier)), identifier);
+        return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
     }
 
     public PELangExpressionNode appendGlobal(String value, String identifier) {
-        return writeGlobal(add(literal(value), readGlobal(identifier)), identifier);
+        return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
     }
 
-    public PELangStatementNode ret(PELangExpressionNode bodyNode) {
+    public PELangStatementNode return_(PELangExpressionNode bodyNode) {
         return new PELangReturnNode(bodyNode);
     }
 
@@ -190,22 +185,22 @@ public class PELangBuilder {
         return new PELangDoubleSuccessorNode(bodyNode, trueSuccessor, falseSuccessor);
     }
 
-    public static final class SelectPair {
+    public static final class Case {
 
-        private final PELangExpressionNode caseValueNode;
-        private final PELangStatementNode caseBodyNode;
+        private final PELangExpressionNode valueNode;
+        private final PELangStatementNode bodyNode;
 
-        public SelectPair(PELangExpressionNode caseValueNode, PELangStatementNode caseBodyNode) {
-            this.caseValueNode = caseValueNode;
-            this.caseBodyNode = caseBodyNode;
+        public Case(PELangExpressionNode valueNode, PELangStatementNode bodyNode) {
+            this.valueNode = valueNode;
+            this.bodyNode = bodyNode;
         }
 
-        public PELangExpressionNode getCaseValueNode() {
-            return caseValueNode;
+        public PELangExpressionNode getValueNode() {
+            return valueNode;
         }
 
-        public PELangStatementNode getCaseBodyNode() {
-            return caseBodyNode;
+        public PELangStatementNode getBodyNode() {
+            return bodyNode;
         }
 
     }

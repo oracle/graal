@@ -30,7 +30,7 @@ public class PELangSample {
 
     public static PELangRootNode simpleAdd() {
         PELangBuilder b = new PELangBuilder();
-        return b.root(b.ret(b.add(5L, 5L)));
+        return b.root(b.return_(b.add(5L, 5L)));
     }
 
     public static PELangRootNode simpleBlock() {
@@ -45,18 +45,18 @@ public class PELangSample {
                 b.incrementLocal(2L, "i"),
                 b.incrementLocal(2L, "i"),
                 b.incrementLocal(2L, "i"),
-                b.ret(b.readLocal("i"))));
+                b.return_(b.readLocal("i"))));
         // @formatter:on
     }
 
     public static PELangRootNode simpleLocalReadWrite() {
         PELangBuilder b = new PELangBuilder();
-        return b.root(b.block(b.writeLocal(10L, "i"), b.ret(b.readLocal("i"))));
+        return b.root(b.block(b.writeLocal(10L, "i"), b.return_(b.readLocal("i"))));
     }
 
     public static PELangRootNode simpleGlobalReadWrite() {
         PELangBuilder b = new PELangBuilder();
-        return b.root(b.block(b.writeGlobal(10L, "i"), b.ret(b.readGlobal("i"))));
+        return b.root(b.block(b.writeGlobal(10L, "i"), b.return_(b.readGlobal("i"))));
     }
 
     public static PELangRootNode simpleBranch() {
@@ -66,11 +66,11 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeLocal(0, "i"),
-                b.branch(
-                    b.lessThan(b.readLocal("i"), b.literal(10L)),
+                b.if_(
+                    b.lt(b.readLocal("i"), b.lit(10L)),
                     b.writeLocal(10L, "i"),
                     b.writeLocal(5L, "i")),
-                b.ret(b.readLocal("i"))));
+                b.return_(b.readLocal("i"))));
         // @formatter:on
     }
 
@@ -81,29 +81,29 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeLocal(0, "counter"),
-                b.loop(
-                    b.lessThan(b.readLocal("counter"), b.literal(10L)),
+                b.while_(
+                    b.lt(b.readLocal("counter"), b.lit(10L)),
                     b.incrementLocal(1, "counter")),
-                b.ret(b.readLocal("counter"))));
+                b.return_(b.readLocal("counter"))));
         // @formatter:on
     }
 
-    public static PELangRootNode simpleSelect() {
+    public static PELangRootNode simpleSwitch() {
         PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
             b.block(
                 b.writeLocal(0, "counter"),
-                b.select(
+                b.switch_(
                     b.readLocal("counter"),
-                    b.selectPair(
-                        b.literal(0L),
+                    b.case_(
+                        b.lit(0L),
                         b.incrementLocal(10L, "counter")),
-                    b.selectPair(
-                        b.literal(5L),
+                    b.case_(
+                        b.lit(5L),
                         b.incrementLocal(5L, "counter"))),
-                b.ret(b.readLocal("counter"))));
+                b.return_(b.readLocal("counter"))));
         // @formatter:on
     }
 
@@ -114,11 +114,11 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeLocal(0, "i"),
-                b.branch(
-                    b.literal("foo"),
+                b.if_(
+                    b.lit("foo"),
                     b.writeLocal(10L, "i"),
                     b.writeLocal(5L, "i")),
-                b.ret(b.readLocal("i"))));
+                b.return_(b.readLocal("i"))));
         // @formatter:on
     }
 
@@ -129,10 +129,10 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeLocal(0, "counter"),
-                b.loop(
-                    b.literal("foo"),
+                b.while_(
+                    b.lit("foo"),
                     b.incrementLocal(1, "counter")),
-                b.ret(b.readLocal("counter"))));
+                b.return_(b.readLocal("counter"))));
         // @formatter:on
     }
 
@@ -141,16 +141,16 @@ public class PELangSample {
 
         // @formatter:off
         return b.root(
-            b.ret(
+            b.return_(
                 b.add(
                     b.add(
-                        b.literal(2L),
-                        b.literal(2L)),
+                        b.lit(2L),
+                        b.lit(2L)),
                     b.add(
-                        b.literal(2L),
+                        b.lit(2L),
                         b.add(
-                            b.literal(2L),
-                            b.literal(2L))))));
+                            b.lit(2L),
+                            b.lit(2L))))));
         // @formatter:on
     }
 
@@ -175,7 +175,7 @@ public class PELangSample {
                         b.incrementLocal(1L, "i"),
                         b.incrementLocal(1L, "i"))),
                 b.block(
-                    b.ret(b.readLocal("i")))));
+                    b.return_(b.readLocal("i")))));
         // @formatter:on
     }
 
@@ -210,7 +210,7 @@ public class PELangSample {
                         b.readLocal("k"),
                         b.readLocal("l")),
                     "l"),
-                b.ret(b.readLocal("l"))));
+                b.return_(b.readLocal("l"))));
         // @formatter:on
     }
 
@@ -222,15 +222,15 @@ public class PELangSample {
             b.block(
                 b.writeLocal(0, "i"),
                 b.writeLocal(0, "j"),
-                b.loop(
-                    b.lessThan(b.readLocal("i"), b.literal(5L)),
+                b.while_(
+                    b.lt(b.readLocal("i"), b.lit(5L)),
                     b.block(
                         b.incrementLocal(1, "i"),
-                        b.loop(
-                            b.lessThan(b.readLocal("j"), b.literal(5L)),
+                        b.while_(
+                            b.lt(b.readLocal("j"), b.lit(5L)),
                             b.block(
                                 b.incrementLocal(1, "j"))))),
-                b.ret(
+                b.return_(
                     b.add(
                         b.readLocal("i"),
                         b.readLocal("j")))));
@@ -244,16 +244,16 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeLocal(0L, "i"),
-                b.branch(
-                    b.lessThan(b.readLocal("i"), b.literal(5L)),
+                b.if_(
+                    b.lt(b.readLocal("i"), b.lit(5L)),
                     b.block(
                         b.incrementLocal(5L, "i"),
-                        b.branch(
-                            b.lessThan(b.readLocal("i"), b.literal(10L)),
+                        b.if_(
+                            b.lt(b.readLocal("i"), b.lit(10L)),
                             b.incrementLocal(5L, "i"),
                             b.incrementLocal(1L, "i"))),
                     b.incrementLocal(1L, "i")),
-                b.ret(b.readLocal("i"))));
+                b.return_(b.readLocal("i"))));
         // @formatter:on
     }
 
@@ -264,11 +264,11 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeGlobal(0L, "g"),
-                b.branch(
-                    b.lessThan(b.readGlobal("g"), b.literal(10L)),
+                b.if_(
+                    b.lt(b.readGlobal("g"), b.lit(10L)),
                     b.incrementGlobal(10L, "g"),
                     b.incrementGlobal(5L, "g")),
-                b.ret(b.readGlobal("g"))));
+                b.return_(b.readGlobal("g"))));
         // @formatter:on
     }
 
@@ -279,10 +279,10 @@ public class PELangSample {
         return b.root(
             b.block(
                 b.writeGlobal(0L, "g"),
-                b.loop(
-                    b.lessThan(b.readGlobal("g"), b.literal(10L)),
+                b.while_(
+                    b.lt(b.readGlobal("g"), b.lit(10L)),
                     b.block(b.incrementGlobal(1L, "g"))),
-                b.ret(b.readGlobal("g"))));
+                b.return_(b.readGlobal("g"))));
         // @formatter:on
     }
 
@@ -295,19 +295,19 @@ public class PELangSample {
                 b.writeLocal(0, "i"),
                 b.writeLocal(0, "j"),
                 b.writeLocal(0, "k"),
-                b.loop(
-                    b.lessThan(b.readLocal("i"), b.literal(5L)),
+                b.while_(
+                    b.lt(b.readLocal("i"), b.lit(5L)),
                     b.block(
                         b.incrementLocal(1, "i"),
-                        b.loop(
-                            b.lessThan(b.readLocal("j"), b.literal(5L)),
-                            b.branch(
-                                b.lessThan(b.readLocal("j"), b.literal(3L)),
+                        b.while_(
+                            b.lt(b.readLocal("j"), b.lit(5L)),
+                            b.if_(
+                                b.lt(b.readLocal("j"), b.lit(3L)),
                                 b.block(
                                     b.incrementLocal(1L, "j"),
                                     b.incrementLocal(1L, "k")),
                                 b.incrementLocal(1L, "j"))))),
-                b.ret(
+                b.return_(
                     b.add(
                         b.readLocal("i"),
                         b.readLocal("j")))));
@@ -322,12 +322,12 @@ public class PELangSample {
             b.dispatch(
                 /* 0 */ b.basicBlock(b.writeLocal(0, "i"), 1),
                 /* 1 */ b.basicBlock(b.writeLocal(0, "j"), 2),
-                /* 2 */ b.basicBlock(b.equals(b.readLocal("i"), b.literal(0L)), 6, 3),
-                /* 3 */ b.basicBlock(b.lessThan(b.readLocal("j"), b.literal(10L)), 4, 5),
+                /* 2 */ b.basicBlock(b.eq(b.readLocal("i"), b.lit(0L)), 6, 3),
+                /* 3 */ b.basicBlock(b.lt(b.readLocal("j"), b.lit(10L)), 4, 5),
                 /* 4 */ b.basicBlock(b.incrementLocal(1, "j"), 3),
                 /* 5 */ b.basicBlock(b.incrementLocal(1, "i"), 7),
                 /* 6 */ b.basicBlock(b.incrementLocal(1, "i"), 4),
-                /* 7 */ b.basicBlock(b.ret(b.readLocal("j")), PELangBasicBlockNode.NO_SUCCESSOR)));
+                /* 7 */ b.basicBlock(b.return_(b.readLocal("j")), PELangBasicBlockNode.NO_SUCCESSOR)));
         // @formatter:on
     }
 

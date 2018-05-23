@@ -100,12 +100,10 @@ public class PELangNCFTest extends PELangTest {
     }
 
     @Test
-    public void testSimpleSelect() {
-        PELangRootNode rootNode = PELangSample.simpleSelect();
+    public void testSimpleSwitch() {
+        PELangRootNode rootNode = PELangSample.simpleSwitch();
         assertCallResult(10L, rootNode);
-
         assertPartialEvalEquals("constant10", rootNode);
-        // TODO: add partial evaluation asserts
     }
 
     @Test
