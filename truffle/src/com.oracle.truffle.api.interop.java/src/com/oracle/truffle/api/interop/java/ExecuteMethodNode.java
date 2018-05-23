@@ -42,6 +42,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -608,7 +609,7 @@ abstract class ExecuteMethodNode extends Node {
             value = ((JavaObject) argument).obj;
         }
         if (!parameterType.isPrimitive()) {
-            return value == null || parameterType.isInstance(value);
+            return value == null || (parameterType.isInstance(value) && !(value instanceof TruffleObject));
         } else {
             if (value != null) {
                 Class<?> boxedToPrimitive = boxedTypeToPrimitiveType(value.getClass());
