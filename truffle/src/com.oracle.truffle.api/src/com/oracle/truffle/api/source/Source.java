@@ -721,11 +721,11 @@ public abstract class Source implements Cloneable {
         return url.openConnection().getContentType();
     }
 
-    private final URI getNamedURI(String name, byte[] bytes) {
+    private URI getNamedURI(String name, byte[] bytes) {
         return getNamedURI(name, bytes, 0, bytes.length);
     }
 
-    private final URI getNamedURI(String name, byte[] bytes, int byteIndex, int length) {
+    private URI getNamedURI(String name, byte[] bytes, int byteIndex, int length) {
         String digest;
         if (bytes != null) {
             digest = digest(bytes, byteIndex, length);
