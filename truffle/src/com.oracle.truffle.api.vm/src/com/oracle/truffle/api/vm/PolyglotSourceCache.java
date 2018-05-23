@@ -52,44 +52,50 @@ final class PolyglotSourceCache {
         cleanupStaleEntries();
 
         CallTarget target;
-        Object sourceId = VMAccessor.SOURCE.getSourceIdentifier(source);
-        if (argumentNames != null && argumentNames.length > 0) {
-            sourceId = new ArgumentSourceId(sourceId, argumentNames);
-        }
+        if (source.isCached()) {
+            Object sourceId = VMAccessor.SOURCE.getSourceIdentifier(source);
+            if (argumentNames != null && argumentNames.length > 0) {
+                sourceId = new ArgumentSourceId(sourceId, argumentNames);
+            }
 
-        target = sourceCache.get(sourceId);
-        if (target == null) {
-            target = sourceCache.computeIfAbsent(sourceId, new Function<Object, CallTarget>() {
+            target = sourceCache.get(sourceId);
+            if (target == null) {
+                target = sourceCache.computeIfAbsent(sourceId, new Function<Object, CallTarget>() {
+                    @Override
+                    public CallTarget apply(Object o) {
+                        /*
+                         * We need to capture every source as weak reference to get notified when
+                         * sources are collected. We also need to ensure that weak references
+                         * instances are not collected before the source reference hence the list of
+                         * weak references is needed here.
+                         */
+                        synchronized (weakReferences) {
+                            weakReferences.add(new SourceReference(o, source, deadSources));
+                        }
 
-                @Override
-                public CallTarget apply(Object o) {
-                    /*
-                     * We need to capture every source as weak reference to get notified when
-                     * sources are collected. We also need to ensure that weak references instances
-                     * are not collected before the source reference hence the list of weak
-                     * references is needed here.
-                     */
-                    synchronized (weakReferences) {
-                        weakReferences.add(new SourceReference(o, source, deadSources));
+                        /*
+                         * We pass in for parsing only a copy of the original source. This allows us
+                         * to keep a strong reference to CallTarget while keeping the source
+                         * collectible. If the source is collected then the deadSources queue will
+                         * be updated and the call target entry will be removed to clean the cache.
+                         */
+                        Source weakSource = VMAccessor.SOURCE.copySource(source);
+                        return parseImpl(context, argumentNames, weakSource);
                     }
-
-                    /*
-                     * We pass in for parsing only a copy of the original source. This allows us to
-                     * keep a strong reference to CallTarget while keeping the source collectible.
-                     * If the source is collected then the deadSources queue will be updated and the
-                     * call target entry will be removed to clean the cache.
-                     */
-                    Source weakSource = VMAccessor.SOURCE.copySource(source);
-                    CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), weakSource, null, argumentNames);
-                    if (parsedTarget == null) {
-                        throw new AssertionError(String.format("Parsing resulted in a null CallTarget for %s.", weakSource));
-                    }
-                    return parsedTarget;
-                }
-            });
+                });
+            }
+        } else {
+            target = parseImpl(context, argumentNames, source);
         }
-
         return target;
+    }
+
+    private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) throws AssertionError {
+        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
+        if (parsedTarget == null) {
+            throw new AssertionError(String.format("Parsing resulted in a null CallTarget for %s.", source));
+        }
+        return parsedTarget;
     }
 
     private void cleanupStaleEntries() {

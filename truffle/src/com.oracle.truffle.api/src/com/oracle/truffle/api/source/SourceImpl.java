@@ -53,6 +53,11 @@ final class SourceImpl extends Source {
     }
 
     @Override
+    public boolean isCached() {
+        return key.cached;
+    }
+
+    @Override
     public String getName() {
         return key.name;
     }
@@ -107,8 +112,9 @@ final class SourceImpl extends Source {
         final String path;
         final boolean internal;
         final boolean interactive;
+        final boolean cached;
 
-        Key(CharSequence characters, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive) {
+        Key(CharSequence characters, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached) {
             this.characters = characters;
             this.mimeType = mimeType;
             this.language = languageId;
@@ -116,6 +122,7 @@ final class SourceImpl extends Source {
             this.path = path;
             this.internal = internal;
             this.interactive = interactive;
+            this.cached = cached;
             this.url = url;
             this.uri = uri;
         }
@@ -125,6 +132,7 @@ final class SourceImpl extends Source {
             int result = 31 * 1 + ((characters == null) ? 0 : characters.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
+            result = 31 * result + (cached ? 1231 : 1237);
             result = 31 * result + ((language == null) ? 0 : language.hashCode());
             result = 31 * result + ((mimeType == null) ? 0 : mimeType.hashCode());
             result = 31 * result + ((name == null) ? 0 : name.hashCode());
@@ -155,6 +163,7 @@ final class SourceImpl extends Source {
                             Objects.equals(url, other.url) && //
                             interactive == other.interactive && //
                             internal == other.internal &&
+                            cached == other.cached &&
                             compareCharacters(other);
         }
 

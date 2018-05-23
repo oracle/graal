@@ -123,7 +123,7 @@ import com.oracle.truffle.api.TruffleOptions;
  */
 public abstract class Source implements Cloneable {
 
-    private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false).toSource();
+    private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, false).toSource();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
 
@@ -132,8 +132,16 @@ public abstract class Source implements Cloneable {
     private volatile TextMap textMap;
     private volatile URI computedURI;
 
-    protected abstract Object getSourceId();
+    abstract Object getSourceId();
 
+    Source() {
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     public final boolean equals(Object obj) {
         if (!(obj instanceof Source)) {
@@ -142,6 +150,11 @@ public abstract class Source implements Cloneable {
         return getSourceId().equals(((Source) obj).getSourceId());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     public final int hashCode() {
         return getSourceId().hashCode();
@@ -265,6 +278,11 @@ public abstract class Source implements Cloneable {
         return builder.toString();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 1.0
+     */
     @Override
     protected Source clone() {
         Source copy;
@@ -317,6 +335,18 @@ public abstract class Source implements Cloneable {
      * @since 0.15
      */
     public abstract boolean isInternal();
+
+    /**
+     * Returns <code>true</code> if code caching is enabled for this source. If <code>true</code>
+     * then the source does not require parsing every time this source is evaluated. If
+     * <code>false</code> then the source requires parsing every time the source is evaluated but
+     * does not remember any state. Disabling caching may be useful if the source is known to only
+     * be evaluated once.
+     *
+     * @return whether this source is allowed to be <em>cached</em>
+     * @since 1.0
+     */
+    public abstract boolean isCached();
 
     /**
      * Check whether this source has been marked as <em>interactive</em>. Interactive sources are
@@ -691,11 +721,11 @@ public abstract class Source implements Cloneable {
         return url.openConnection().getContentType();
     }
 
-    protected final URI getNamedURI(String name, byte[] bytes) {
+    private final URI getNamedURI(String name, byte[] bytes) {
         return getNamedURI(name, bytes, 0, bytes.length);
     }
 
-    protected final URI getNamedURI(String name, byte[] bytes, int byteIndex, int length) {
+    private final URI getNamedURI(String name, byte[] bytes, int byteIndex, int length) {
         String digest;
         if (bytes != null) {
             digest = digest(bytes, byteIndex, length);
@@ -893,6 +923,7 @@ public abstract class Source implements Cloneable {
         private CharSequence content;
         private boolean internal;
         private boolean interactive;
+        private boolean cached = true;
 
         private Builder(Object origin) {
             this.origin = origin;
@@ -929,6 +960,25 @@ public abstract class Source implements Cloneable {
             Objects.requireNonNull(newMimeType);
             this.mime = newMimeType;
             return (Builder<E1, RuntimeException, E3>) this;
+        }
+
+        /**
+         * Enables or disables code caching for this source. By default code caching is enabled. If
+         * <code>true</code> then the source does not require parsing every time this source is
+         * evaluated. If <code>false</code> then the source requires parsing every time the source
+         * is evaluated but does not remember any code. Disabling caching may be useful if the
+         * source is known to only be evaluated once.
+         * <p>
+         * If a source instance is no longer referenced by the client then all code caches will be
+         * freed automatically. Also, if the underlying context or engine is no longer referenced
+         * then cached code for evaluated sources will be freed automatically.
+         *
+         * @return instance of <code>this</code> builder ready to {@link #build() create new source}
+         * @since 1.0
+         */
+        public Builder<E1, E2, E3> cached(@SuppressWarnings("hiding") boolean cached) {
+            this.cached = cached;
+            return this;
         }
 
         /**
@@ -1106,7 +1156,7 @@ public abstract class Source implements Cloneable {
                     throw raise(RuntimeException.class, new MissingNameException());
                 }
 
-                SourceImpl.Key key = new SourceImpl.Key(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive);
+                SourceImpl.Key key = new SourceImpl.Key(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached);
                 return SOURCES.intern(key);
             } catch (IOException ex) {
                 throw raise(RuntimeException.class, ex);

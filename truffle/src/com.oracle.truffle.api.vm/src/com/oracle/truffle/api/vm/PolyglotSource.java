@@ -222,7 +222,7 @@ class PolyglotSource extends AbstractSourceImpl {
 
     @SuppressWarnings("unchecked")
     @Override
-    public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal) throws IOException {
+    public Source build(String language, Object origin, URI uri, String name, CharSequence content, boolean interactive, boolean internal, boolean cached) throws IOException {
         assert language != null;
         com.oracle.truffle.api.source.Source.Builder<?, ?, ?> builder;
         boolean needsName = false;
@@ -262,6 +262,7 @@ class PolyglotSource extends AbstractSourceImpl {
             builder.interactive();
         }
 
+        builder.cached(cached);
         builder.language(language);
 
         try {

@@ -43,6 +43,11 @@ final class SubSourceImpl extends Source {
     }
 
     @Override
+    public boolean isCached() {
+        return key.base.isCached();
+    }
+
+    @Override
     protected Object getSourceId() {
         return key;
     }

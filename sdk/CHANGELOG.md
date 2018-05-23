@@ -8,6 +8,7 @@ This changelog summarizes major changes between Graal SDK versions. The main foc
 * Removed deprecated `Context.exportSymbol` and `Context.importSymbol`.
 * Removed deprecated `Source.getCode`.
 * The code cache for sources is now weak. Code can be garbage collected if a source is no longer referenced but the Context or Engine is still active.
+* Added `Source.Builder.cached(boolean)` to configure caching behavior by source.
 
 ## Version 1.0 RC1
 * Added Context.Builder#allowHostClassLoading to allow loading of new classes by the guest language.

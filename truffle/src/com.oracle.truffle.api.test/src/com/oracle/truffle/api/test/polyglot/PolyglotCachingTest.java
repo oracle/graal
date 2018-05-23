@@ -33,6 +33,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
@@ -50,6 +51,33 @@ import com.oracle.truffle.api.nodes.RootNode;
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  */
 public class PolyglotCachingTest {
+
+    @Test
+    public void testDisableCaching() throws Exception {
+        AtomicInteger parseCalled = new AtomicInteger(0);
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                parseCalled.incrementAndGet();
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
+            }
+        });
+        Context c = Context.create();
+        Source cachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(true).buildLiteral();
+        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "testSourceInstanceIsEqual", "name").cached(false).buildLiteral();
+        assertEquals(0, parseCalled.get());
+        c.eval(uncachedSource);
+        assertEquals(1, parseCalled.get());
+        c.eval(uncachedSource);
+        assertEquals(2, parseCalled.get());
+        c.eval(uncachedSource);
+        assertEquals(3, parseCalled.get());
+
+        c.eval(cachedSource);
+        assertEquals(4, parseCalled.get());
+        c.eval(cachedSource);
+        assertEquals(4, parseCalled.get());
+    }
 
     /*
      * Tests that the inner source instance is never the same as the one passed in. That allows the
