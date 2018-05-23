@@ -30,6 +30,7 @@ import java.security.PrivilegedAction;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /**
@@ -66,7 +67,8 @@ public class Truffle {
     }
 
     public static Logger getLogger(final String languageId, final String loggerName, final String resourceBundleName) {
-        final String globalLoggerId = languageId + '.' + loggerName;
+        Objects.requireNonNull(languageId, "LanguageId must be non null.");
+        final String globalLoggerId = loggerName == null ? languageId : languageId + '.' + loggerName;
         return TruffleLanguage.AccessAPI.engineAccess().getLogger(globalLoggerId, resourceBundleName);
     }
 
