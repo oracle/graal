@@ -28,6 +28,7 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 
 public final class PELangSwitchNode extends PELangStatementNode {
 
@@ -63,23 +64,17 @@ public final class PELangSwitchNode extends PELangStatementNode {
         return caseBodyNodes;
     }
 
-    @ExplodeLoop
     @Override
+    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
     public void executeVoid(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(caseValueNodes.length);
-        CompilerAsserts.compilationConstant(caseBodyNodes.length);
-
         Object value = valueNode.executeGeneric(frame);
 
         for (int i = 0; i < caseValueNodes.length; i++) {
-            PELangExpressionNode caseValueNode = caseValueNodes[i];
-            Object caseValue = caseValueNode.executeGeneric(frame);
+            Object caseValue = caseValueNodes[i].executeGeneric(frame);
 
             if (value.equals(caseValue)) {
-                PELangStatementNode caseBodyNode = caseBodyNodes[i];
-                CompilerAsserts.partialEvaluationConstant(caseBodyNode);
-
-                caseBodyNode.executeVoid(frame);
+                caseBodyNodes[i].executeVoid(frame);
                 return;
             }
         }
