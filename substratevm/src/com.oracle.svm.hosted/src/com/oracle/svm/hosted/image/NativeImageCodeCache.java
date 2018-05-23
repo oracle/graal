@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -52,6 +53,7 @@ import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.graal.code.amd64.AMD64InstructionPatcher;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -67,8 +69,12 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
+import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.code.site.Reference;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -341,15 +347,26 @@ public class NativeImageCodeCache {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
                 JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                Object obj = SubstrateObjectConstant.asObject(constant);
-
-                if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
-                    throw VMError.shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + obj.getClass().getName());
-                }
-
-                imageHeap.addObject(debug, obj, false, false, constantReasons.get(constant));
+                addConstantToHeap(debug, constant);
             }
         }
+        for (CompilationResult compilationResult : compilations.values()) {
+            for (DataPatch patch : compilationResult.getDataPatches()) {
+                if (patch.reference instanceof ConstantReference) {
+                    addConstantToHeap(debug, ((ConstantReference) patch.reference).getConstant());
+                }
+            }
+        }
+    }
+
+    private void addConstantToHeap(DebugContext debug, Constant constant) {
+        Object obj = SubstrateObjectConstant.asObject(constant);
+
+        if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
+            throw VMError.shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + obj.getClass().getName());
+        }
+
+        imageHeap.addObject(debug, obj, false, false, constantReasons.get(constant));
     }
 
     /**
@@ -415,6 +432,7 @@ public class NativeImageCodeCache {
             }
             // ... and patch references to constant data
             for (DataPatch dataPatch : compilation.getDataPatches()) {
+                Reference ref = dataPatch.reference;
                 /*
                  * Constants are allocated offsets in a separate space, which can be emitted as
                  * read-only (.rodata) section.
@@ -428,13 +446,21 @@ public class NativeImageCodeCache {
                  * offset.
                  */
                 long siteOffset = compStart + patchData.operandPosition;
-                /*
-                 * Do we have an addend? Yes; it's constStart. BUT x86/x86-64 PC-relative references
-                 * are relative to the *next* instruction. So, if the next instruction starts n
-                 * bytes from the relocation site, we want to subtract n bytes from our addend.
-                 */
-                long addend = (patchData.nextInstructionPosition - patchData.operandPosition);
-                relocs.addPCRelativeRelocationWithAddend((int) siteOffset, patchData.operandSize, addend, dataPatch.reference);
+                if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference) {
+                    /*
+                     * Do we have an addend? Yes; it's constStart. BUT x86/x86-64 PC-relative
+                     * references are relative to the *next* instruction. So, if the next
+                     * instruction starts n bytes from the relocation site, we want to subtract n
+                     * bytes from our addend.
+                     */
+                    long addend = (patchData.nextInstructionPosition - patchData.operandPosition);
+                    relocs.addPCRelativeRelocationWithAddend((int) siteOffset, patchData.operandSize, addend, ref);
+                } else if (ref instanceof ConstantReference) {
+                    assert SubstrateOptions.UseHeapBaseRegister.getValue() : "Inlined object references must be base-relative";
+                    relocs.addDirectRelocationWithoutAddend((int) siteOffset, patchData.operandSize, ref);
+                } else {
+                    throw VMError.shouldNotReachHere("Unknown type of reference in code");
+                }
             }
         }
     }

@@ -366,7 +366,8 @@ public class NativeImageGenerator {
                 architecture = new AMD64(features, SubstrateTargetDescription.allFlags());
             }
             assert architecture instanceof AMD64 : "SVM supports only AMD64 architectures.";
-            return new SubstrateTargetDescription(architecture, true, 16, 0, false);
+            boolean inlineObjects = SubstrateOptions.UseHeapBaseRegister.getValue();
+            return new SubstrateTargetDescription(architecture, true, 16, 0, inlineObjects);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: " + platform.getClass().getTypeName());
         }

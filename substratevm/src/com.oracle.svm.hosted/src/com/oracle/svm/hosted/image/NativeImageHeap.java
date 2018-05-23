@@ -639,7 +639,7 @@ public final class NativeImageHeap {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getOffsetInSection() >>> shift);
             } else {
-                addDirectRelocationWithoutAddend(buffer, index, target);
+                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), target);
             }
         }
     }
@@ -679,9 +679,9 @@ public final class NativeImageHeap {
         }
     }
 
-    private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, Object target) {
+    private void addDirectRelocationWithoutAddend(RelocatableBuffer buffer, int index, int size, Object target) {
         assert !spawnIsolates() || index >= readOnlyRelocatable.offsetInSection() && index < readOnlyRelocatable.offsetInSection(readOnlyRelocatable.getSize());
-        buffer.addDirectRelocationWithoutAddend(index, referenceSize(), target);
+        buffer.addDirectRelocationWithoutAddend(index, size, target);
         if (firstRelocatablePointerOffsetInSection == -1) {
             firstRelocatablePointerOffsetInSection = index;
         }
@@ -706,7 +706,8 @@ public final class NativeImageHeap {
         HostedMethod method = ((MethodPointer) pointer).getMethod();
         if (method.isCodeAddressOffsetValid()) {
             // Only compiled methods inserted in vtables require relocation.
-            addDirectRelocationWithoutAddend(buffer, index, pointer);
+            int pointerSize = ConfigurationValues.getTarget().wordSize;
+            addDirectRelocationWithoutAddend(buffer, index, pointerSize, pointer);
         }
     }
 

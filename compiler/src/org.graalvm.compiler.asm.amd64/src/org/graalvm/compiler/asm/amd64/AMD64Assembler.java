@@ -657,17 +657,37 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, int imm) {
+            emit(asm, size, dst, imm, false);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, int imm, boolean annotateImm) {
             assert verify(asm, size, dst, null);
+            int insnPos = asm.position();
             emitOpcode(asm, size, getRXB(null, dst), 0, dst.encoding);
             asm.emitModRM(ext, dst);
+            int immPos = asm.position();
             emitImmediate(asm, size, imm);
+            int nextInsnPos = asm.position();
+            if (annotateImm && asm.codePatchingAnnotationConsumer != null) {
+                asm.codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+            }
         }
 
         public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, int imm) {
+            emit(asm, size, dst, imm, false);
+        }
+
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, int imm, boolean annotateImm) {
             assert verify(asm, size, null, null);
+            int insnPos = asm.position();
             emitOpcode(asm, size, getRXB(null, dst), 0, 0);
             asm.emitOperandHelper(ext, dst, immediateSize(size));
+            int immPos = asm.position();
             emitImmediate(asm, size, imm);
+            int nextInsnPos = asm.position();
+            if (annotateImm && asm.codePatchingAnnotationConsumer != null) {
+                asm.codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+            }
         }
     }
 
@@ -1877,9 +1897,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movl(Register dst, int imm32) {
+        movl(dst, imm32, false);
+    }
+
+    public final void movl(Register dst, int imm32, boolean annotateImm) {
+        int insnPos = position();
         prefix(dst);
         emitByte(0xB8 + encode(dst));
+        int immPos = position();
         emitInt(imm32);
+        int nextInsnPos = position();
+        if (annotateImm && codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+        }
     }
 
     public final void movl(Register dst, Register src) {
@@ -2835,9 +2865,19 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movq(Register dst, long imm64) {
+        movq(dst, imm64, false);
+    }
+
+    public final void movq(Register dst, long imm64, boolean annotateImm) {
+        int insnPos = position();
         prefixq(dst);
         emitByte(0xB8 + encode(dst));
+        int immPos = position();
         emitLong(imm64);
+        int nextInsnPos = position();
+        if (annotateImm && codePatchingAnnotationConsumer != null) {
+            codePatchingAnnotationConsumer.accept(new ImmediateOperandAnnotation(insnPos, immPos, nextInsnPos - immPos, nextInsnPos));
+        }
     }
 
     public final void movslq(Register dst, int imm32) {

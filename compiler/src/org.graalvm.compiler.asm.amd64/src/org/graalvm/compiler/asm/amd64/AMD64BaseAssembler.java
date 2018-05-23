@@ -222,7 +222,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * Annotation that stores additional information about the displacement of a
      * {@link Assembler#getPlaceholder placeholder address} that needs patching.
      */
-    private static class AddressDisplacementAnnotation extends OperandDataAnnotation {
+    protected static class AddressDisplacementAnnotation extends OperandDataAnnotation {
         AddressDisplacementAnnotation(int instructionPosition, int operandPosition, int operandSize, int nextInstructionPosition) {
             super(instructionPosition, operandPosition, operandSize, nextInstructionPosition);
         }
@@ -232,7 +232,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
      * Annotation that stores additional information about the immediate operand, e.g., of a call
      * instruction, that needs patching.
      */
-    private static class ImmediateOperandAnnotation extends OperandDataAnnotation {
+    protected static class ImmediateOperandAnnotation extends OperandDataAnnotation {
         ImmediateOperandAnnotation(int instructionPosition, int operandPosition, int operandSize, int nextInstructionPosition) {
             super(instructionPosition, operandPosition, operandSize, nextInstructionPosition);
         }

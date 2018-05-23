@@ -800,7 +800,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                                     barrierType = fieldInitializationBarrier(entryKind);
                                 }
                             } else {
-                                address = createOffsetAddress(graph, newObject, tool.getMetaAccess().getArrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind));
+                                address = createOffsetAddress(graph, newObject, arrayBaseOffset(entryKind) + i * arrayScalingFactor(entryKind));
                                 barrierType = arrayInitializationBarrier(entryKind);
                             }
                             if (address != null) {
