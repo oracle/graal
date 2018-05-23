@@ -26,6 +26,7 @@ package com.oracle.truffle.api.interop.java.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.util.List;
 
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
+import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -108,6 +110,14 @@ public class JavaStringCoercionTest {
         assertEquals("Infinity", call(api, Double.POSITIVE_INFINITY));
         assertEquals("-Infinity", call(api, Double.NEGATIVE_INFINITY));
         assertEquals("\uffff", call(api, Character.MAX_VALUE));
+
+        assertEquals("42", call(api, new UnboxableToInt(42)));
+
+        try {
+            ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), api, "call", new NotCoercibleObject());
+            fail("Expected String coercion to fail");
+        } catch (UnsupportedTypeException e) {
+        }
     }
 
     private static Object call(TruffleObject obj, Object value) throws InteropException {
@@ -115,6 +125,18 @@ public class JavaStringCoercionTest {
             return ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "call", value);
         } catch (UnsupportedTypeException e) {
             throw new AssertionError("String coercion failed for: " + value + " (" + (value == null ? null : value.getClass().getName()) + ")", e);
+        }
+    }
+
+    @MessageResolution(receiverType = NotCoercibleObject.class)
+    static final class NotCoercibleObject implements TruffleObject {
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return NotCoercibleObjectForeign.ACCESS;
+        }
+
+        static boolean isInstance(TruffleObject obj) {
+            return obj instanceof NotCoercibleObject;
         }
     }
 }
