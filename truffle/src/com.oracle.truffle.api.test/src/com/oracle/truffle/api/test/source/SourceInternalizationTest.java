@@ -180,6 +180,7 @@ public class SourceInternalizationTest {
         List<WeakReference<Object>> sources = new ArrayList<>();
         for (int i = 0; i < 200; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
+            System.gc();
         }
 
         int refsCleared = 0;
