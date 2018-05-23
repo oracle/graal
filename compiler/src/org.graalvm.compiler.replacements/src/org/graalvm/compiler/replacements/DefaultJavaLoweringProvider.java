@@ -550,7 +550,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
         BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
         ValueCompareAndSwapNode atomicNode = graph.add(new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getLocationIdentity(), barrierType));
+        ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
         atomicNode.setStateAfter(cas.stateAfter());
+        cas.replaceAtUsages(coercedNode);
         graph.replaceFixedWithFixed(cas, atomicNode);
     }
 

@@ -46,11 +46,12 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         public volatile long longField = 0xdedababafafaL;
         public volatile float floatField = 0.125f;
         public volatile double doubleField = 0.125;
-        public volatile Object objectField = this;
+        public volatile Object objectField = dummyValue;
     }
 
     static jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
     static Container dummyValue = new Container();
+    static Container newDummyValue = new Container();
     static long booleanOffset;
     static long byteOffset;
     static long charOffset;
@@ -119,8 +120,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static boolean unsafeCompareAndSetObject() {
         Container container = new Container();
-        return unsafe.compareAndSetObject(container, objectOffset, container, new Object() {
-        });
+        return unsafe.compareAndSetObject(container, objectOffset, dummyValue, newDummyValue);
     }
 
     public static boolean unsafeCompareAndExchangeBoolean() {
@@ -165,7 +165,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static Object unsafeCompareAndExchangeObject() {
         Container container = new Container();
-        return unsafe.compareAndExchangeObject(container, objectOffset, container, dummyValue);
+        return unsafe.compareAndExchangeObject(container, objectOffset, dummyValue, newDummyValue);
     }
 
     @Test
