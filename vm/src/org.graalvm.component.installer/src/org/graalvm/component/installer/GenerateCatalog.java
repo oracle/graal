@@ -29,6 +29,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -83,7 +84,7 @@ public final class GenerateCatalog {
         OPTIONS.put("n", "s");
         OPTIONS.put("a", "s");
         OPTIONS.put("n", "");  // GraalVM release name
-        OPTIONS.put("b", "");  // URL Base
+        OPTIONS.put("b", "s");  // URL Base
         OPTIONS.put("p", "s");  // path base
     }
 
@@ -134,10 +135,10 @@ public final class GenerateCatalog {
 
     static class Spec {
         File f;
-        URL u;
+        String u;
         String relativePath;
 
-        Spec(File f, URL u) {
+        Spec(File f, String u) {
             this.f = f;
             this.u = u;
         }
@@ -171,7 +172,14 @@ public final class GenerateCatalog {
     }
 
     private void readCommandLine() throws IOException {
-        SimpleGetopt getopt = new SimpleGetopt(OPTIONS).ignoreUnknownCommands(true);
+        SimpleGetopt getopt = new SimpleGetopt(OPTIONS) {
+            @Override
+            RuntimeException err(String messageKey, Object... args) {
+                ComponentInstaller.printErr(messageKey, args);
+                System.exit(1);
+                return null;
+            }
+        }.ignoreUnknownCommands(true);
         getopt.setParameters(new LinkedList<>(params));
         getopt.process();
         this.env = new Environment(null, null, getopt.getPositionalParameters(), getopt.getOptValues());
@@ -181,7 +189,7 @@ public final class GenerateCatalog {
         if (pb != null) {
             pathBase = Paths.get(pb).toAbsolutePath();
         }
-        urlPrefix = env.optValue("u");
+        urlPrefix = env.optValue("b");
         graalVersionPrefix = env.optValue("g");
         if (graalVersionPrefix != null) {
             graalVersionName = env.optValue("n");
@@ -212,7 +220,7 @@ public final class GenerateCatalog {
          */
         for (String spec : locations) {
             File f = null;
-            URL u = null;
+            String u = null;
 
             int eq = spec.indexOf('=');
             if (eq != -1) {
@@ -220,31 +228,41 @@ public final class GenerateCatalog {
                 if (!f.exists()) {
                     throw new FileNotFoundException(f.toString());
                 }
-                u = new URL(spec.substring(eq + 1));
+                String uriPart = spec.substring(eq + 1);
+                u = uriPart;
             } else {
                 f = new File(spec);
                 if (!f.exists()) {
                     f = null;
-                    u = new URL(spec);
-                    if (u.getProtocol() == null) {
-                        throw new FileNotFoundException(spec);
-                    }
+                    u = spec;
                 }
             }
-            Spec spc = new Spec(f, u);
-            if (f != null) {
-                if (pathBase != null) {
-                    spc.relativePath = pathBase.relativize(f.toPath().toAbsolutePath()).toString();
-                }
+            addComponentSpec(f, u);
+        }
+    }
+    
+    private void addComponentSpec(File f, String u) {
+        Spec spc = new Spec(f, u);
+        if (f != null) {
+            if (pathBase != null) {
+                spc.relativePath = pathBase.relativize(f.toPath().toAbsolutePath()).toString();
             }
-            componentSpecs.add(spc);
+        }
+        componentSpecs.add(spc);
+    }
+    
+    private URL createURL(String spec) throws MalformedURLException {
+        if (urlPrefix != null) {
+            return new URL(new URL(urlPrefix), spec);
+        } else {
+            return new URL(spec);
         }
     }
 
     private void downloadFiles() throws IOException {
         for (Spec spec : componentSpecs) {
             if (spec.f == null) {
-                FileDownloader dn = new FileDownloader(spec.u.toString(), spec.u, env);
+                FileDownloader dn = new FileDownloader(spec.u, createURL(spec.u), env);
                 dn.setDisplayProgress(true);
                 dn.download();
                 spec.f = dn.getLocalFile();
@@ -315,6 +333,38 @@ public final class GenerateCatalog {
                     name = spec.u.toString();
                 } else {
                     name = spec.relativePath != null ? spec.relativePath : f.getName();
+                }
+                int pos;
+                while ((pos = name.indexOf("${")) != -1) {
+                    int endPos = name.indexOf("}", pos + 1);
+                    if (endPos == -1) {
+                        break;
+                    }
+                    String key = name.substring(pos + 2, endPos);
+                    String repl = info.getRequiredGraalValues().get(key);
+                    if (repl == null) {
+                        switch (key) {
+                            case "version":
+                                repl = version;
+                                break;
+                            case "os":
+                                repl = os;
+                                break;
+                            case "arch":
+                                repl = arch;
+                                break;
+                            case "comp_version":
+                                repl = info.getVersionString();
+                                break;
+                            default:
+                                throw new IllegalArgumentException(key);
+                        }
+                    }
+                    if (repl == null) {
+                        throw new IllegalArgumentException(key);
+                    }
+                    String toReplace = "${" + key + "}";
+                    name = name.replace(toReplace, repl);
                 }
                 String url = (urlPrefix == null || urlPrefix.isEmpty()) ? name : urlPrefix + "/" + name;
                 catalogContents.append(MessageFormat.format(
