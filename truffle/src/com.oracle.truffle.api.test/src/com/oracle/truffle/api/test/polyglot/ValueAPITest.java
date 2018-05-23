@@ -853,8 +853,7 @@ public class ValueAPITest {
                         "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String' using Value.asString(): Invalid coercion. You can ensure that the value can be converted using Value.isString().");
         assertFails(() -> noString.as(char.class), ClassCastException.class,
                         "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'char': Invalid or lossy primitive coercion.");
-        assertFails(() -> noString.as(String.class), ClassCastException.class,
-                        "Cannot convert 'false'(language: Java, type: java.lang.Boolean) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
+        assertEquals("false", noString.as(String.class));
 
         Value noBoolean = context.asValue("foobar");
 
@@ -951,10 +950,11 @@ public class ValueAPITest {
                         "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
         assertFails(() -> stringList.set(1, null), IndexOutOfBoundsException.class,
                         "Invalid index 1 for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]).");
-        assertFails(() -> ((List<Object>) stringList).set(0, 42), ClassCastException.class,
-                        "Invalid value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
-        assertFails(() -> ((List<Object>) stringList).set(0, context.asValue(42)), ClassCastException.class,
-                        "Invalid value '42'(language: Java, type: java.lang.Integer) for List<java.lang.String> '[asdf]'(language: Java, type: java.lang.String[]) and index 0.");
+
+        ((List<Object>) stringList).set(0, 42);
+        assertEquals("42", stringList.get(0));
+        ((List<Object>) stringList).set(0, context.asValue(42));
+        assertEquals("42", stringList.get(0));
 
         // just to make sure this works
         ((List<Object>) stringList).set(0, context.asValue("foo"));
@@ -1039,9 +1039,7 @@ public class ValueAPITest {
                         "Illegal identifier type 'java.lang.Object' for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         Map<String, String> stringMap = v.as(STRING_MAP);
-
-        assertFails(() -> stringMap.get("value"), ClassCastException.class,
-                        "Cannot convert '43'(language: Java, type: java.lang.Integer) to Java type 'java.lang.String': Invalid or lossy primitive coercion.");
+        assertEquals("43", stringMap.get("value"));
 
         assertFails(() -> map.put("value", ""), ClassCastException.class,
                         "Invalid value ''(language: Java, type: java.lang.String) for Map<Object, Object> 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and identifier 'value'.");
@@ -1121,35 +1119,33 @@ public class ValueAPITest {
         assertEquals("", v.execute("").as(Object.class));
         assertEquals("", v.execute("").asString());
 
+        String className = executable.getClass().getName();
         assertFails(() -> v.execute("", ""), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") " +
                                         "with arguments [''(language: Java, type: java.lang.String), ''(language: Java, type: java.lang.String)]. Expected 1 argument(s) but got 2.");
 
         assertFails(() -> v.execute(), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) with arguments []." +
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") with arguments []." +
                                         " Expected 1 argument(s) but got 0.");
 
-        assertFails(() -> v.execute(42), IllegalArgumentException.class,
-                        "Invalid argument when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
-                                        "with arguments ['42'(language: Java, type: java.lang.Integer)].");
+        assertTrue(v.execute(42).isString());
+        assertEquals("42", v.execute(42).asString());
 
         assertFails(() -> context.asValue("").execute(), UnsupportedOperationException.class,
                         "Unsupported operation Value.execute(Object...) for ''(language: Java, type: java.lang.String). You can ensure that the operation " +
                                         "is supported using Value.canExecute().");
 
         assertFails(() -> v.as(OtherInterface0.class).execute(), IllegalArgumentException.class,
-                        "Invalid argument count when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
+                        "Invalid argument count when executing 'testExecutable'(language: Java, type: " + className + ") " +
                                         "with arguments []. Expected 1 argument(s) but got 0.");
 
         assertEquals("", v.as(OtherInterface1.class).execute(""));
 
-        assertFails(() -> v.as(OtherInterface1.class).execute(42), IllegalArgumentException.class,
-                        "Invalid argument when executing 'testExecutable'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) " +
-                                        "with arguments ['42'(language: Java, type: java.lang.Integer)].");
+        assertEquals("42", v.as(OtherInterface1.class).execute(42));
 
         assertFails(() -> v.as(OtherInterface2.class).execute("", ""), IllegalArgumentException.class,
                         "Invalid argument count when executing 'testExecutable'(language: Java, " +
-                                        "type: com.oracle.truffle.api.test.polyglot.ValueAPITest$9) with arguments [''(language: Java, type: java.lang.String), " +
+                                        "type: " + className + ") with arguments [''(language: Java, type: java.lang.String), " +
                                         "''(language: Java, type: java.lang.String)]. Expected 1 argument(s) but got 2.");
 
         assertSame(executable, v.as(ExecutableInterface.class));
