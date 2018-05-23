@@ -63,7 +63,7 @@ abstract class LLVMAbstractLoadNode extends LLVMLoadNode {
 
     abstract LLVMForeignReadNode createForeignRead();
 
-    protected LLVMMemory getLLVMMemoryCached() {
+    protected final LLVMMemory getLLVMMemoryCached() {
         if (llvmMemory == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             llvmMemory = getLLVMMemory();

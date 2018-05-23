@@ -69,7 +69,8 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
-        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y, @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
+        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
+                        @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             try {
                 return impl.execute(x, y);
             } catch (InteropException ex) {
@@ -94,7 +95,8 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
-        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y, @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
+        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
+                        @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             try {
                 return impl.execute(x, y);
             } catch (InteropException ex) {
@@ -119,7 +121,8 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
-        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y, @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
+        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
+                        @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             try {
                 return impl.execute(x, y);
             } catch (InteropException ex) {
@@ -144,7 +147,8 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
-        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y, @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
+        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
+                        @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             try {
                 return impl.execute(x, y);
             } catch (InteropException ex) {
@@ -169,7 +173,8 @@ public abstract class LLVMArithmeticFactory {
         }
 
         @Specialization(guards = "impl.canCompute(x, y)")
-        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y, @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
+        public LLVMArithmetic execute(LLVMArithmetic x, LLVMArithmetic y,
+                        @Cached("createNode(x, y)") LLVMArithmeticOpNode impl) {
             try {
                 return impl.execute(x, y);
             } catch (InteropException ex) {

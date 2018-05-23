@@ -71,7 +71,7 @@ public abstract class LLVMGlobalWriteNode extends LLVMNode {
     @CompilationFinal private LLVMMemory memory;
     @CompilationFinal private boolean memoryResolved = false;
 
-    protected LLVMMemory getMemory() {
+    protected final LLVMMemory getMemory() {
         if (!memoryResolved) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             memory = getLLVMMemory();

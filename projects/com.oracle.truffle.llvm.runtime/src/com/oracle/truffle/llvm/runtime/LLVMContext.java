@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -104,7 +103,6 @@ public final class LLVMContext {
     private final List<ContextExtension> contextExtensions;
 
     private final MaterializedFrame globalFrame = Truffle.getRuntime().createMaterializedFrame(new Object[0]);
-    private final FrameDescriptor globalFrameDescriptor = globalFrame.getFrameDescriptor();
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
     private final Map<Thread, Object> tls = new HashMap<>();
@@ -674,7 +672,7 @@ public final class LLVMContext {
         } else {
             kind = FrameSlotKind.Object;
         }
-        return globalFrameDescriptor.findOrAddFrameSlot(symbol, type, kind);
+        return globalFrame.getFrameDescriptor().findOrAddFrameSlot(symbol, type, kind);
     }
 
     public void setCleanupNecessary(boolean value) {
