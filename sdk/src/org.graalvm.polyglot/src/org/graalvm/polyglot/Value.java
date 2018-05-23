@@ -893,6 +893,7 @@ public final class Value {
      * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
      *
      * @param o the object to convert
+     * @throws IllegalStateException if no context is currently entered.
      * @see Context#asValue(Object) Conversion rules.
      * @see Context#getCurrent() Looking up the current context.
      * @since 1.0
