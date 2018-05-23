@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,72 +29,15 @@
  */
 package com.oracle.truffle.llvm.pipe;
 
-import java.io.File;
-
 import java.io.IOException;
-import java.nio.file.Files;
 
-public final class CaptureOutput implements AutoCloseable {
-
-    static {
-        String pipeLib = System.getProperty("test.pipe.lib");
-        if (pipeLib == null) {
-            System.loadLibrary("pipe");
-        } else {
-            System.load(pipeLib);
-        }
-    }
-
-    private static final int STDOUT = 1;
-    private static final int STDERR = 2;
-
-    private final File stdoutFile;
-    private final int oldStdout;
-
-    private final File stderrFile;
-    private final int oldStderr;
-
-    private String stdout;
-    private String stderr;
-
-    public CaptureOutput() throws IOException {
-        stdoutFile = File.createTempFile("stdout", ".log");
-        stdoutFile.deleteOnExit();
-
-        stderrFile = File.createTempFile("stderr", ".log");
-        stderrFile.deleteOnExit();
-
-        oldStdout = startCapturing(STDOUT, stdoutFile.getAbsolutePath());
-        oldStderr = startCapturing(STDERR, stderrFile.getAbsolutePath());
-
-        stdout = null;
-        stderr = null;
-    }
+public interface CaptureOutput extends AutoCloseable {
 
     @Override
-    public void close() throws IOException {
-        if (stdout == null) {
-            stopCapturing(oldStdout, oldStderr);
+    void close() throws IOException;
 
-            stdout = new String(Files.readAllBytes(stdoutFile.toPath()));
-            stdoutFile.delete();
+    String getStdOut() throws IOException;
 
-            stderr = new String(Files.readAllBytes(stderrFile.toPath()));
-            stderrFile.delete();
-        }
-    }
+    String getStdErr() throws IOException;
 
-    public String getStdOut() throws IOException {
-        close();
-        return stdout;
-    }
-
-    public String getStdErr() throws IOException {
-        close();
-        return stderr;
-    }
-
-    private static native int startCapturing(int fd, String tempFilename) throws IOException;
-
-    private static native void stopCapturing(int oldStdout, int oldStderr) throws IOException;
 }

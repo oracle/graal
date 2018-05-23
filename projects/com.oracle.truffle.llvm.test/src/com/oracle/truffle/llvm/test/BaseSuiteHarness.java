@@ -38,14 +38,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.llvm.pipe.CaptureNativeOutput;
+import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
@@ -54,6 +58,10 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
 
     private static final List<Path> passingTests = new ArrayList<>();
     private static final List<Path> failingTests = new ArrayList<>();
+
+    protected Function<Context.Builder, CaptureOutput> getCaptureOutput() {
+        return c -> new CaptureNativeOutput();
+    }
 
     @Override
     @Test
@@ -75,7 +83,7 @@ public abstract class BaseSuiteHarness extends BaseTestHarness {
             if (!candidate.toAbsolutePath().toFile().exists()) {
                 fail(getTestName(), new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist."));
             }
-            ProcessResult result = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{}, getContextOptions());
+            ProcessResult result = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), new String[]{}, getContextOptions(), getCaptureOutput());
 
             int sulongRet = result.getReturnValue();
             if (sulongRet != (sulongRet & 0xFF)) {

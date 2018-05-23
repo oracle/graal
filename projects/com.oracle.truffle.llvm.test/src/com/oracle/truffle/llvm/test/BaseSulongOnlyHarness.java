@@ -36,6 +36,7 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.llvm.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
 
@@ -43,7 +44,7 @@ public abstract class BaseSulongOnlyHarness {
 
     @Test
     public void test() throws Exception {
-        ProcessResult out = ProcessUtil.executeSulongTestMain(getPath().toAbsolutePath().toFile(), getConfiguration().args, getContextOptions());
+        ProcessResult out = ProcessUtil.executeSulongTestMain(getPath().toAbsolutePath().toFile(), getConfiguration().args, getContextOptions(), c -> new CaptureNativeOutput());
         int sulongResult = out.getReturnValue();
         String sulongStdOut = out.getStdOutput();
 

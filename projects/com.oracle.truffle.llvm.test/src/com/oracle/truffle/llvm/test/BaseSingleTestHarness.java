@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.llvm.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.test.util.ProcessUtil;
 import com.oracle.truffle.llvm.test.util.ProcessUtil.ProcessResult;
 
@@ -64,7 +65,7 @@ public abstract class BaseSingleTestHarness extends BaseTestHarness {
                 throw new AssertionError("File " + candidate.toAbsolutePath().toFile() + " does not exist.");
             }
 
-            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()), getContextOptions());
+            ProcessResult out = ProcessUtil.executeSulongTestMain(candidate.toAbsolutePath().toFile(), getArguments(candidate.getParent()), getContextOptions(), c -> new CaptureNativeOutput());
             int sulongResult = out.getReturnValue();
             String sulongStdOut = out.getStdOutput();
 
