@@ -84,7 +84,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static boolean unsafeCompareAndSetByte() {
         Container container = new Container();
-        return unsafe.compareAndSetByte(container, booleanOffset, (byte) 17, (byte) 121);
+        return unsafe.compareAndSetByte(container, byteOffset, (byte) 17, (byte) 121);
     }
 
     public static boolean unsafeCompareAndSetChar() {
@@ -165,7 +165,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static Object unsafeCompareAndExchangeObject() {
         Container container = new Container();
-        return unsafe.compareAndExchangeObject(container, doubleOffset, container, dummyValue);
+        return unsafe.compareAndExchangeObject(container, objectOffset, container, dummyValue);
     }
 
     @Test
