@@ -187,6 +187,22 @@ abstract class LLVMDebugValue {
         }
     }
 
+    static final class Exact extends LLVMDebugValue {
+
+        private final String expected;
+
+        Exact(String expectedType, String expected, boolean isBuggy) {
+            super(expectedType, isBuggy);
+            this.expected = expected;
+        }
+
+        @Override
+        void checkValue(DebugValue value) {
+            final String actual = value.as(String.class);
+            assertEquals(expected, actual);
+        }
+    }
+
     static final class Structured extends LLVMDebugValue {
 
         private final Map<String, LLVMDebugValue> expectedMembers;
