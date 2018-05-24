@@ -90,7 +90,7 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
@@ -842,7 +842,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     }
 
     private FrameSlot getExceptionSlot() {
-        return getSlot(LLVMException.FRAME_SLOT_ID);
+        return getSlot(LLVMUserException.FRAME_SLOT_ID);
     }
 
     private FrameSlot getStackSlot() {

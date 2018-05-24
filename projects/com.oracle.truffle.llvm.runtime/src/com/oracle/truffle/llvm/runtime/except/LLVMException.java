@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,28 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.except;
+
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
- * An exception that also contains a C stack trace so that debugging is easier.
+ * Common base class for all LLVM exceptions.
  */
-public final class SulongRuntimeException extends RuntimeException {
+public abstract class LLVMException extends RuntimeException implements TruffleException {
 
-    private static final long serialVersionUID = 8152326202993926377L;
+    private static final long serialVersionUID = 1L;
 
-    private final SulongStackTrace cStackTrace;
+    private final Node location;
 
-    public SulongRuntimeException(Throwable interpreterException, SulongStackTrace cStackTrace) {
-        super(interpreterException);
-        this.cStackTrace = cStackTrace;
+    protected LLVMException(Node location, String message) {
+        super(message);
+        this.location = location;
     }
 
-    public SulongStackTrace getCStackTrace() {
-        return cStackTrace;
+    protected LLVMException(Node location) {
+        this.location = location;
     }
 
     @Override
-    public String getMessage() {
-        return getCause().getClass().getSimpleName() + " " + cStackTrace.toString();
+    public Node getLocation() {
+        return location;
+    }
+
+    @Override
+    @SuppressWarnings("sync-override")
+    public final Throwable fillInStackTrace() {
+        return null;
     }
 }

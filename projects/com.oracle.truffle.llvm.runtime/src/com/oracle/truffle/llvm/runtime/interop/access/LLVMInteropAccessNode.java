@@ -34,10 +34,12 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNodeGen.MakeAccessLocationNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -125,9 +127,12 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
             TruffleObject inner;
             try {
                 inner = (TruffleObject) ForeignAccess.sendRead(read, foreign, identifier);
-            } catch (InteropException ex) {
+            } catch (UnknownIdentifierException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
+                throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(this, "Can not read member '%s'.", identifier);
             }
 
             return recursive.execute(type, inner, restOffset);

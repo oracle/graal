@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,49 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
- * This class is the entry point for every intrinsified (substituted) function.
+ * Exception resulting from invalid use of polyglot builtins.
  */
-public abstract class LLVMIntrinsicRootNode extends RootNode {
+public final class LLVMPolyglotException extends LLVMException {
 
-    private final String name;
+    private static final long serialVersionUID = 1L;
 
-    LLVMIntrinsicRootNode(TruffleLanguage<?> language, String name) {
-        super(language, new FrameDescriptor());
-        this.name = name;
+    public LLVMPolyglotException(Node location, String message) {
+        super(location, message);
     }
 
-    public abstract LLVMExpressionNode getNode();
-
-    @Override
-    public boolean isInternal() {
-        return true;
-    }
-
-    @Override
-    public String toString() {
-        return name;
-    }
-
-    @NodeChild(type = LLVMExpressionNode.class, value = "node")
-    public abstract static class LLVMIntrinsicExpressionNode extends LLVMIntrinsicRootNode {
-
-        public LLVMIntrinsicExpressionNode(TruffleLanguage<?> language, String name) {
-            super(language, name);
-        }
-
-        @Specialization
-        protected Object doOp(Object val) {
-            return val;
-        }
+    @TruffleBoundary
+    public LLVMPolyglotException(Node location, String format, Object... args) {
+        this(location, String.format(format, args));
     }
 }

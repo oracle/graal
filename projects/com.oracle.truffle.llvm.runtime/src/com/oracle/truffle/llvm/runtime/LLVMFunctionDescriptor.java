@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
@@ -220,7 +221,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
                     return;
                 }
             }
-            throw new LinkageError(String.format("External function %s cannot be found.", descriptor.getName()));
+            throw new LLVMLinkerException(String.format("External function %s cannot be found.", descriptor.getName()));
         }
 
         @Override
@@ -363,7 +364,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         TruffleObject nativeFunction = ((NativeFunction) getFunction()).nativeFunction;
         if (nativeFunction == null) {
             CompilerDirectives.transferToInterpreter();
-            throw new LinkageError("Native function " + getName() + " not found");
+            throw new LLVMLinkerException("Native function " + getName() + " not found");
         }
         return nativeFunction;
     }

@@ -60,6 +60,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.NullFunction;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.export.InteropNodeFactory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -411,7 +412,7 @@ public final class LLVMContext {
             if (libPath.toFile().exists()) {
                 return libPath;
             } else {
-                throw new LinkageError(String.format("Library \"%s\" does not exist.", lib));
+                throw new LLVMLinkerException(String.format("Library \"%s\" does not exist.", lib));
             }
         }
 

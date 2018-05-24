@@ -29,8 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
@@ -61,6 +63,12 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
     @Specialization(guards = {"allowNonForeign", "!isForeign(pointer)"})
     TruffleObject doOther(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
         return null;
+    }
+
+    @Specialization(guards = {"!allowNonForeign", "!isForeign(pointer)"})
+    @TruffleBoundary
+    TruffleObject doFail(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
+        throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value.");
     }
 
     protected static boolean isForeign(LLVMManagedPointer pointer) {

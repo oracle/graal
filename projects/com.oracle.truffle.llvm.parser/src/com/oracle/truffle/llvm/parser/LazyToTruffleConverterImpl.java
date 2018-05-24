@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
-import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -109,7 +109,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         List<LLVMStatementNode> copyArgumentsToFrame = copyArgumentsToFrame(frame);
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame.toArray(new LLVMStatementNode[copyArgumentsToFrame.size()]);
-        LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock,
+        LLVMExpressionNode body = runtime.getNodeFactory().createFunctionBlockNode(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), visitor.getBlocks(), nullableBeforeBlock,
                         nullableAfterBlock, location, copyArgumentsToFrameArray);
 
         RootNode rootNode = runtime.getNodeFactory().createFunctionStartNode(runtime.getContext(), body, method.getSourceSection(), frame, method, source, location);

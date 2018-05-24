@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
-import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -56,7 +56,7 @@ public final class StackManager {
     public static FrameDescriptor createFrame(FunctionDefinition function) {
         final FrameDescriptor frame = new FrameDescriptor();
 
-        frame.addFrameSlot(LLVMException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
+        frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
         frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
 
         for (FunctionParameter parameter : function.getParameters()) {

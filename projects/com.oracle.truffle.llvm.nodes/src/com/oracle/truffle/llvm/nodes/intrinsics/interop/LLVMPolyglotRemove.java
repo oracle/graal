@@ -36,11 +36,13 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -60,9 +62,12 @@ public final class LLVMPolyglotRemove {
             TruffleObject foreign = asForeign.execute(value);
             try {
                 return ForeignAccess.sendRemove(foreignRemove, foreign, readStr.executeWithTarget(id));
-            } catch (InteropException ex) {
+            } catch (UnknownIdentifierException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
+                throw new LLVMPolyglotException(this, "Member '%s' does not exist.", ex.getUnknownIdentifier());
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(this, "Can not remove member '%s' from polyglot value.", id);
             }
         }
 
@@ -70,7 +75,7 @@ public final class LLVMPolyglotRemove {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public boolean error(Object value, Object id) {
-            throw new IllegalArgumentException("Non-polyglot value passed to polyglot_remove_member.");
+            throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
     }
 
@@ -86,9 +91,10 @@ public final class LLVMPolyglotRemove {
             TruffleObject foreign = asForeign.execute(value);
             try {
                 return ForeignAccess.sendRemove(foreignRemove, foreign, idx);
-            } catch (InteropException ex) {
-                CompilerDirectives.transferToInterpreter();
-                throw ex.raise();
+            } catch (UnknownIdentifierException ex) {
+                throw new LLVMPolyglotException(this, "Index %d does not exist.", idx);
+            } catch (UnsupportedMessageException ex) {
+                throw new LLVMPolyglotException(this, "Can not remove index %d from polyglot value.", idx);
             }
         }
 
@@ -96,7 +102,7 @@ public final class LLVMPolyglotRemove {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public boolean fallback(Object value, Object id) {
-            throw new IllegalArgumentException("Non-polyglot value passed to polyglot_remove_array_element.");
+            throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
     }
 }

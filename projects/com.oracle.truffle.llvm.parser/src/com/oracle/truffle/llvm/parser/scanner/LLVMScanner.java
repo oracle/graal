@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.elf.ElfSectionHeaderTable.Entry;
 import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 public final class LLVMScanner {
 
@@ -130,7 +131,7 @@ public final class LLVMScanner {
             b.limit((int) (offset + size));
             bitcode = b.slice();
         } else {
-            throw new RuntimeException("Not a valid input file!");
+            throw new LLVMParserException("Not a valid input file!");
         }
 
         parseBitcodeBlock(source, bitcode, model);
@@ -151,7 +152,7 @@ public final class LLVMScanner {
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
         final long actualMagicWord = scanner.read(Integer.SIZE);
         if (actualMagicWord != BC_MAGIC_WORD) {
-            throw new RuntimeException("Not a valid Bitcode File!");
+            throw new LLVMParserException("Not a valid Bitcode File!");
         }
 
         scanner.scanToEnd();
