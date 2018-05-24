@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -106,9 +107,15 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
                 rawValue = ForeignAccess.sendNew(foreignNewInstance, foreign, evaluatedArgs);
             }
             return toLLVM.executeWithTarget(rawValue);
-        } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
+        } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw e.raise();
+            throw new LLVMPolyglotException(this, "Polyglot value can not be instantiated.");
+        } catch (UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Wrong argument type passed to polyglot_new_instance.");
+        } catch (ArityException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Wrong number of arguments passed to polyglot_new_instance, expected %d but got %d.", e.getExpectedArity(), e.getActualArity());
         }
     }
 
@@ -116,6 +123,6 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
     @SuppressWarnings("unused")
     public Object fallback(Object value) {
         CompilerDirectives.transferToInterpreter();
-        throw new IllegalArgumentException("Non-polyglot value passed to polyglot_new_instance.");
+        throw new LLVMPolyglotException(this, "Non-polyglot value passed to polyglot_new_instance.");
     }
 }

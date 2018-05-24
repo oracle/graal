@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -54,18 +55,30 @@ public final class LLVMTruffleWrite {
     private static void doWrite(Node foreignWrite, TruffleObject value, String name, Object v) throws IllegalAccessError {
         try {
             ForeignAccess.sendWrite(foreignWrite, value, name, v);
-        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw new LLVMPolyglotException(foreignWrite, "Can not write member '%s' to polyglot value.", name);
+        } catch (UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(foreignWrite, "Member '%s' does not exist.", e.getUnknownIdentifier());
+        } catch (UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing member '%s'.", name);
         }
     }
 
     private static void doWriteIdx(Node foreignWrite, TruffleObject value, int id, Object v) {
         try {
             ForeignAccess.sendWrite(foreignWrite, value, id, v);
-        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw new LLVMPolyglotException(foreignWrite, "Can not write to index %d of polyglot value.", id);
+        } catch (UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(foreignWrite, "Index %d does not exist.", id);
+        } catch (UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(foreignWrite, "Unsupported type writing index %d.", id);
         }
     }
 
@@ -102,8 +115,7 @@ public final class LLVMTruffleWrite {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id, Object v) {
-            String message = "Invalid arguments to polyglot_put_member(), the receiver is " + value + " (" + value.getClass().getName() + ") and not a LLVMManagedPointer";
-            throw new IllegalArgumentException(message);
+            throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
     }
 
@@ -129,8 +141,7 @@ public final class LLVMTruffleWrite {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id, Object v) {
-            String message = "Invalid arguments to polyglot_set_array_element(), the receiver is " + value + " (" + value.getClass().getName() + ") and not a LLVMManagedPointer";
-            throw new IllegalArgumentException(message);
+            throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
     }
 }

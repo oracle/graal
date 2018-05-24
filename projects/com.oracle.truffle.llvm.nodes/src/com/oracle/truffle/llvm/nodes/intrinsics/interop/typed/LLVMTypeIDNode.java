@@ -48,6 +48,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFact
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFactory.StructNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -96,7 +97,7 @@ public abstract class LLVMTypeIDNode extends LLVMNode {
         @Fallback
         LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("don't call __polyglot_[as|from]_typed functions directly, use POLYGLOT_DECLARE_* macros");
+            throw new LLVMPolyglotException(this, "Don't call __polyglot_[as|from]_typed functions directly, use POLYGLOT_DECLARE_* macros.");
         }
     }
 
@@ -123,7 +124,7 @@ public abstract class LLVMTypeIDNode extends LLVMNode {
         @Fallback
         LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid) {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("don't call __polyglot_as_typed_array function directly, use POLYGLOT_DECLARE_* macros");
+            throw new LLVMPolyglotException(this, "Don't call __polyglot_as_typed_array function directly, use POLYGLOT_DECLARE_* macros.");
         }
     }
 
@@ -151,7 +152,7 @@ public abstract class LLVMTypeIDNode extends LLVMNode {
         @Fallback
         LLVMInteropType.Structured fallback(@SuppressWarnings("unused") Object typeid, @SuppressWarnings("unused") Object len) {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("don't call __polyglot_from_typed_array function directly, use POLYGLOT_DECLARE_* macros");
+            throw new LLVMPolyglotException(this, "Don't call __polyglot_from_typed_array function directly, use POLYGLOT_DECLARE_* macros.");
         }
     }
 

@@ -34,10 +34,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.AccessLocation;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropWriteNodeGen.GetValueSizeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -77,9 +80,15 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
     private void write(AccessLocation location, Object value) {
         try {
             ForeignAccess.sendWrite(write, location.base, location.identifier, value);
-        } catch (InteropException ex) {
+        } catch (UnknownIdentifierException ex) {
             CompilerDirectives.transferToInterpreter();
-            throw ex.raise();
+            throw new LLVMPolyglotException(this, "Member '%s' not found.", location.identifier);
+        } catch (UnsupportedMessageException ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Can not write member '%s'.", location.identifier);
+        } catch (UnsupportedTypeException ex) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Wrong type writing to member '%s'.", location.identifier);
         }
     }
 

@@ -31,7 +31,9 @@ package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -48,6 +50,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNode.LLVMIncrementPointerNode;
 import com.oracle.truffle.llvm.nodes.memory.LLVMGetElementPtrNodeGen.LLVMIncrementPointerNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -109,6 +112,13 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
             } catch (UnsupportedMessageException ex) {
                 throw ex.raise();
             }
+        }
+
+        @Fallback
+        @TruffleBoundary
+        @SuppressWarnings("unused")
+        ByteBuffer doFail(TruffleObject object, LLVMCharset charset) {
+            throw new LLVMPolyglotException(this, "Polyglot value is not a string.");
         }
 
         public static BoxedEncodeStringNode create() {

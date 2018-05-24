@@ -36,6 +36,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -67,7 +68,7 @@ public final class LLVMNativeCallUtils {
         }
         try {
             return ForeignAccess.sendExecute(nativeCall, function, nativeArgs);
-        } catch (Throwable e) {
+        } catch (InteropException e) {
             CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }

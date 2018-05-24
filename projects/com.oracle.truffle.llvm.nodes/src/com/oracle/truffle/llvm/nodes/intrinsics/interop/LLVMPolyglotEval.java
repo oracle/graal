@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.nodes.intrinsics.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.LLVMPolyglotEvalNodeGen.GetSourceStringNodeGen;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -74,9 +76,15 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
     protected Object doEval(Object idPointer, Object srcPointer,
                     @Cached("createReadString()") LLVMReadStringNode readId,
                     @Cached("createReadString()") LLVMReadStringNode readSrc) {
-        CallTarget callTarget = getSource.execute(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer));
-        Object foreign = callTarget.call();
-        return toLLVM.executeWithTarget(foreign);
+        try {
+            CallTarget callTarget = getSource.execute(readId.executeWithTarget(idPointer), readSrc.executeWithTarget(srcPointer));
+            Object foreign = callTarget.call();
+            return toLLVM.executeWithTarget(foreign);
+        } catch (IllegalStateException e) {
+            // language id not found
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, e.getMessage());
+        }
     }
 
     abstract static class GetSourceNode extends LLVMNode {
@@ -127,8 +135,7 @@ public abstract class LLVMPolyglotEval extends LLVMIntrinsic {
                 Source sourceObject = Source.newBuilder(new File(filename)).name("<eval>").language(id).build();
                 return ctxRef.get().getEnv().parse(sourceObject);
             } catch (IOException ex) {
-                // TODO proper sulong exception
-                throw new IllegalStateException(ex);
+                throw new LLVMPolyglotException(this, "Could not parse file %s (%s).", filename, ex.getMessage());
             }
         }
     }

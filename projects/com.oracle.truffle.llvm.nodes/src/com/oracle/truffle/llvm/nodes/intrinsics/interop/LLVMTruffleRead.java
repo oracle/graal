@@ -44,6 +44,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -54,9 +55,12 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, name);
             return toLLVM.executeWithTarget(rawValue);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw new LLVMPolyglotException(foreignRead, "Can not read member '%s' of polyglot value.", name);
+        } catch (UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(foreignRead, "Member '%s' does not exist.", e.getUnknownIdentifier());
         }
     }
 
@@ -64,9 +68,12 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         try {
             Object rawValue = ForeignAccess.sendRead(foreignRead, value, id);
             return toLLVM.executeWithTarget(rawValue);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
+            throw new LLVMPolyglotException(foreignRead, "Can not read from index %d of polyglot value.", id);
+        } catch (UnknownIdentifierException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(foreignRead, "Index %d does not exist.", id);
         }
     }
 
@@ -101,8 +108,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id) {
-            System.err.println("Invalid arguments to read-builtin.");
-            throw new IllegalArgumentException();
+            throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
     }
 
@@ -127,8 +133,7 @@ public abstract class LLVMTruffleRead extends LLVMIntrinsic {
         @TruffleBoundary
         @SuppressWarnings("unused")
         public Object fallback(Object value, Object id) {
-            System.err.println("Invalid arguments to read-builtin.");
-            throw new IllegalArgumentException();
+            throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
     }
 }
