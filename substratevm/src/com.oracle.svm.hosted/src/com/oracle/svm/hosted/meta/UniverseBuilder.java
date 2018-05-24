@@ -699,7 +699,7 @@ public class UniverseBuilder {
             boolean progress = false;
             for (int i = 0; i < rawFields.size(); i++) {
                 HostedField field = rawFields.get(i);
-                int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(field.getJavaKind());
+                int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(field.getStorageKind());
 
                 if (nextOffset % fieldSize == 0) {
                     field.setLocation(nextOffset);
@@ -788,11 +788,11 @@ public class UniverseBuilder {
         for (HostedField field : fields) {
             if (!field.wrapped.isWritten()) {
                 // Constant, does not require memory.
-            } else if (field.getType().getStorageKind() == JavaKind.Object) {
+            } else if (field.getStorageKind() == JavaKind.Object) {
                 field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObjectField)));
                 nextObjectField += 1;
             } else {
-                int fieldSize = layout.sizeInBytes(field.getJavaKind());
+                int fieldSize = layout.sizeInBytes(field.getStorageKind());
                 while (layout.getArrayElementOffset(JavaKind.Byte, nextPrimitiveField) % fieldSize != 0) {
                     // Insert padding byte for alignment
                     nextPrimitiveField++;
@@ -1033,16 +1033,18 @@ public class UniverseBuilder {
                     layoutHelper = LayoutEncoding.forAbstract();
                 } else if (HybridLayout.isHybrid(type)) {
                     HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
-                    JavaKind kind = hybridLayout.getArrayElementKind();
-                    layoutHelper = LayoutEncoding.forArray(kind == JavaKind.Object, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(kind), ol.getAlignment());
+                    JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
+                    boolean isObject = (storageKind == JavaKind.Object);
+                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind), ol.getAlignment());
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
                 hashCodeOffset = instanceClass.getHashCodeFieldOffset();
             } else if (type.isArray()) {
-                JavaKind kind = type.getComponentType().getStorageKind();
-                layoutHelper = LayoutEncoding.forArray(kind == JavaKind.Object, ol.getArrayBaseOffset(kind), ol.getArrayIndexShift(kind), ol.getAlignment());
+                JavaKind storageKind = type.getComponentType().getStorageKind();
+                boolean isObject = (storageKind == JavaKind.Object);
+                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind), ol.getAlignment());
                 hashCodeOffset = ol.getArrayHashCodeOffset();
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();

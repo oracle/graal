@@ -478,7 +478,7 @@ public final class NativeImageHeap {
             }
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
-            final long size = layout.getArraySize(type.getComponentType().getJavaKind(), Array.getLength(canonicalObj));
+            final long size = layout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(canonicalObj));
             info = addToImageHeap(original, canonicalObj, clazz, size, identityHashCode, reason);
             recursiveAddObject(hub, canonicalizable, false, info);
             if (canonicalObj instanceof Object[]) {
@@ -885,14 +885,14 @@ public final class NativeImageHeap {
                 buffer.putInt(info.getIntIndexInSection(layout.getArrayLengthOffset()), length);
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIntIndexInSection(hybridLayout.getArrayElementOffset(i));
-                    final JavaKind elementKind = hybridLayout.getArrayElementKind();
+                    final JavaKind elementStorageKind = hybridLayout.getArrayElementStorageKind();
                     final Object array = Array.get(hybridArray, i);
-                    writeConstant(buffer, elementIndex, elementKind, array, info);
+                    writeConstant(buffer, elementIndex, elementStorageKind, array, info);
                 }
             }
 
         } else if (clazz.isArray()) {
-            JavaKind kind = clazz.getComponentType().getJavaKind();
+            JavaKind kind = clazz.getComponentType().getStorageKind();
             Object array = info.getObject();
             int length = Array.getLength(array);
             buffer.putInt(info.getIntIndexInSection(layout.getArrayLengthOffset()), length);

@@ -410,8 +410,7 @@ public class FrameInfoEncoder {
                     length++;
                 }
 
-                assert objectLayout.getArrayElementOffset(type.getComponentType().getJavaKind(), length) == objectLayout.getArrayBaseOffset(type.getComponentType().getJavaKind()) +
-                                computeOffset(valueList.subList(2, valueList.size()));
+                assert objectLayout.getArrayElementOffset(kind, length) == objectLayout.getArrayBaseOffset(kind) + computeOffset(valueList.subList(2, valueList.size()));
             }
 
             assert valueList.get(1) == null;
