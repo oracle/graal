@@ -16,6 +16,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Removed deprecated `TruffleLanguage.Env.lookupSymbol` method.
 * All Truffle source objects are now automatically weakly internalized when created using the source builder. The source builder will now return the same instance for every source where it was previously just equal.
 * Added `Source.Builder.cached(boolean)` and `Source.isCached()` to configure caching behavior by source.
+* Removed deprecated `Source.getCode()` and `SourceSection.getCode`.
 
 ## Version 1.0.0 RC1
 
