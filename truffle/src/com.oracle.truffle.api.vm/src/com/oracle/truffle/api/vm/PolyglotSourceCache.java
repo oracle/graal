@@ -44,7 +44,7 @@ final class PolyglotSourceCache {
         this.sourceCache = new ConcurrentHashMap<>();
     }
 
-    CallTarget parseCached(PolyglotLanguageContext context, Source source, String[] argumentNames) throws AssertionError {
+    CallTarget parseCached(PolyglotLanguageContext context, Source source, String[] argumentNames) {
         cleanupStaleEntries();
 
         CallTarget target;
@@ -80,7 +80,7 @@ final class PolyglotSourceCache {
         return target;
     }
 
-    private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) throws AssertionError {
+    private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
         CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
         if (parsedTarget == null) {
             throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
