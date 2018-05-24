@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang;
+package org.graalvm.compiler.truffle.pelang.util;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -28,12 +28,14 @@ import java.util.Deque;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;

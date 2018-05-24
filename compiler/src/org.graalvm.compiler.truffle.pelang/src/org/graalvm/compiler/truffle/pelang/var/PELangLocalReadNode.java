@@ -20,7 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.var;
+
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;

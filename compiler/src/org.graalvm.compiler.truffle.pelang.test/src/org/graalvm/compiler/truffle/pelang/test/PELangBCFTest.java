@@ -22,9 +22,9 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangBCFGenerator;
 import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.util.PELangBCFGenerator;
 import org.junit.Test;
 
 public class PELangBCFTest extends PELangTest {

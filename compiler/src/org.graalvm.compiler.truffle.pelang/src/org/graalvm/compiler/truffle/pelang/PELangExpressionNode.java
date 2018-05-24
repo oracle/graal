@@ -20,10 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
-
-import org.graalvm.compiler.truffle.pelang.PELangException;
-import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
+package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;

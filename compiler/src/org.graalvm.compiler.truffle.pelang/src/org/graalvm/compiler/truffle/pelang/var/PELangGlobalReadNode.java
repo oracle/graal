@@ -20,29 +20,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.expr;
+package org.graalvm.compiler.truffle.pelang.var;
 
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangState;
 
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-@NodeChild("valueNode")
 @NodeField(name = "identifier", type = String.class)
-public abstract class PELangGlobalWriteNode extends PELangExpressionNode {
+public abstract class PELangGlobalReadNode extends PELangExpressionNode {
 
     protected abstract String getIdentifier();
 
     @Specialization(guards = "isLong()")
-    protected long writeLong(@SuppressWarnings("unused") VirtualFrame frame, long value) {
-        return PELangState.writeLongGlobal(getIdentifier(), value);
+    protected long readLong(@SuppressWarnings("unused") VirtualFrame frame) {
+        return PELangState.readLongGlobal(getIdentifier());
     }
 
-    @Specialization(replaces = {"writeLong"})
-    protected Object write(@SuppressWarnings("unused") VirtualFrame frame, Object value) {
-        return PELangState.writeGlobal(getIdentifier(), value);
+    @Specialization(replaces = {"readLong"})
+    protected Object readObject(@SuppressWarnings("unused") VirtualFrame frame) {
+        return PELangState.readGlobal(getIdentifier());
     }
 
     protected boolean isLong() {

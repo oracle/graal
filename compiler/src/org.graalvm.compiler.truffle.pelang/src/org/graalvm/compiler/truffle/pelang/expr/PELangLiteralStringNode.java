@@ -22,6 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.expr;
 
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class PELangLiteralStringNode extends PELangExpressionNode {

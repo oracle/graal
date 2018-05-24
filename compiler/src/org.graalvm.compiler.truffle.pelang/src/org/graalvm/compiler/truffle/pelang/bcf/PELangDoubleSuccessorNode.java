@@ -22,7 +22,7 @@
  */
 package org.graalvm.compiler.truffle.pelang.bcf;
 
-import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 

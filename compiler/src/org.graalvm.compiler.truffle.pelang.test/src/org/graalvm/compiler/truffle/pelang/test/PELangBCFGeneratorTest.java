@@ -26,13 +26,13 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertThat;
 
-import org.graalvm.compiler.truffle.pelang.PELangBCFGenerator;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.util.PELangBCFGenerator;
 import org.junit.Test;
 
 public class PELangBCFGeneratorTest {

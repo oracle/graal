@@ -22,8 +22,8 @@
  */
 package org.graalvm.compiler.truffle.pelang.ncf;
 
+import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangExpressionNode;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;

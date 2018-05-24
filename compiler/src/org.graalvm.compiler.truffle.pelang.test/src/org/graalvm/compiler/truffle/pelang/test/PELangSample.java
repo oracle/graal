@@ -22,9 +22,9 @@
  */
 package org.graalvm.compiler.truffle.pelang.test;
 
-import org.graalvm.compiler.truffle.pelang.PELangBuilder;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
+import org.graalvm.compiler.truffle.pelang.util.PELangBuilder;
 
 public class PELangSample {
 
