@@ -49,7 +49,11 @@ class CharSequenceWrapper implements CharSequence {
 
     @Override
     public boolean equals(Object obj) {
-        return delegate.equals(obj);
+        if (obj instanceof CharSequenceWrapper) {
+            return delegate.equals(((CharSequenceWrapper) obj).delegate);
+        } else {
+            return delegate.equals(obj);
+        }
     }
 
     @Override
