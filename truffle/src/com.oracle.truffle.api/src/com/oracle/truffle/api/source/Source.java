@@ -647,15 +647,6 @@ public abstract class Source implements Cloneable {
         return TextMap.fromCharSequence(code);
     }
 
-    final boolean equalAttributes(Source other) {
-        return Objects.equals(getMimeType(), other.getMimeType()) &&
-                        Objects.equals(getLanguage(), other.getLanguage()) &&
-                        Objects.equals(getName(), other.getName()) &&
-                        Objects.equals(getPath(), other.getPath()) &&
-                        isInternal() == other.isInternal() &&
-                        isInteractive() == other.isInteractive();
-    }
-
     @SuppressWarnings({"unchecked", "unused"})
     static <E extends Exception> E raise(Class<E> type, Exception ex) throws E {
         throw (E) ex;
