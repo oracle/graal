@@ -221,13 +221,15 @@ public class AMD64GraphBuilderPlugins {
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
         Registration r;
+        JavaKind[] unsafeJavaKinds;
         if (Java8OrEarlier) {
             r = new Registration(plugins, Unsafe.class);
+            unsafeJavaKinds = new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object};
         } else {
             r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacementsBytecodeProvider);
+            unsafeJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
         }
 
-        JavaKind[] unsafeJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
 

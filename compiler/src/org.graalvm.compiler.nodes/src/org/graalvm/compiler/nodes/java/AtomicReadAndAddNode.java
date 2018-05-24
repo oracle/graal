@@ -52,8 +52,8 @@ public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint impleme
     @Input(Association) AddressNode address;
     @Input ValueNode delta;
     /**
-     * We explicitly track the kind of this node instead of using {#delta.getStackKind()}
-     * to be able to emit the memory access instruction with the correct number of bits.
+     * We explicitly track the kind of this node instead of using {#delta.getStackKind()} to be able
+     * to emit the memory access instruction with the correct number of bits.
      */
     private JavaKind valueKind;
 
