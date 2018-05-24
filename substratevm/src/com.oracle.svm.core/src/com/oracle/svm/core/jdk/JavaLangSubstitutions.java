@@ -359,6 +359,12 @@ final class Target_java_lang_System {
     }
 
     @Substitute
+    public static String clearProperty(String key) {
+        checkKey(key);
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).clearProperty(key);
+    }
+
+    @Substitute
     private static String getProperty(String key, String def) {
         String result = getProperty(key);
         return result != null ? result : def;
