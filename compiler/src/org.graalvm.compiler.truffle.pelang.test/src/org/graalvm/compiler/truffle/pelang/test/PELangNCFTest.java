@@ -28,10 +28,6 @@ import org.junit.Test;
 
 public class PELangNCFTest extends PELangTest {
 
-    protected Object constant10() {
-        return 10L;
-    }
-
     @Test
     public void testSimpleAdd() {
         PELangRootNode rootNode = PELangSample.simpleAdd();
@@ -69,22 +65,6 @@ public class PELangNCFTest extends PELangTest {
         assertPartialEvalEquals("constant10", rootNode);
     }
 
-    @Test(expected = PELangException.class)
-    public void testInvalidBranch() {
-        PELangRootNode rootNode = PELangSample.invalidBranch();
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
-    }
-
-    @Test(expected = PELangException.class)
-    public void testInvalidLoop() {
-        PELangRootNode rootNode = PELangSample.invalidLoop();
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
-    }
-
     @Test
     public void testSimpleLoop() {
         PELangRootNode rootNode = PELangSample.simpleLoop();
@@ -104,6 +84,22 @@ public class PELangNCFTest extends PELangTest {
         PELangRootNode rootNode = PELangSample.simpleSwitch();
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
+    }
+
+    @Test(expected = PELangException.class)
+    public void testInvalidBranch() {
+        PELangRootNode rootNode = PELangSample.invalidBranch();
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test(expected = PELangException.class)
+    public void testInvalidLoop() {
+        PELangRootNode rootNode = PELangSample.invalidLoop();
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
     }
 
     @Test
@@ -128,6 +124,13 @@ public class PELangNCFTest extends PELangTest {
     }
 
     @Test
+    public void testNestedBranches() {
+        PELangRootNode rootNode = PELangSample.nestedBranches();
+        assertCallResult(10L, rootNode);
+        assertPartialEvalEquals("constant10", rootNode);
+    }
+
+    @Test
     public void testNestedLoops() {
         PELangRootNode rootNode = PELangSample.nestedLoops();
         assertCallResult(10L, rootNode);
@@ -142,8 +145,8 @@ public class PELangNCFTest extends PELangTest {
     }
 
     @Test
-    public void testNestedBranches() {
-        PELangRootNode rootNode = PELangSample.nestedBranches();
+    public void testNestedSwitches() {
+        PELangRootNode rootNode = PELangSample.nestedSwitches();
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
     }
@@ -180,6 +183,10 @@ public class PELangNCFTest extends PELangTest {
 
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
         // TODO: add partial evaluation asserts
+    }
+
+    protected Object constant10() {
+        return 10L;
     }
 
 }

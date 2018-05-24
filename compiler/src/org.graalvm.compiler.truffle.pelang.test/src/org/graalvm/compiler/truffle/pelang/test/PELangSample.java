@@ -214,6 +214,26 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode nestedBranches() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(0L, "i"),
+                b.if_(
+                    b.lt(b.readLocal("i"), b.lit(5L)),
+                    b.block(
+                        b.incrementLocal(5L, "i"),
+                        b.if_(
+                            b.lt(b.readLocal("i"), b.lit(10L)),
+                            b.incrementLocal(5L, "i"),
+                            b.incrementLocal(1L, "i"))),
+                    b.incrementLocal(1L, "i")),
+                b.return_(b.readLocal("i"))));
+        // @formatter:on
+    }
+
     public static PELangRootNode nestedLoops() {
         PELangBuilder b = new PELangBuilder();
 
@@ -237,22 +257,30 @@ public class PELangSample {
         // @formatter:on
     }
 
-    public static PELangRootNode nestedBranches() {
+    public static PELangRootNode nestedSwitches() {
         PELangBuilder b = new PELangBuilder();
 
         // @formatter:off
         return b.root(
             b.block(
-                b.writeLocal(0L, "i"),
-                b.if_(
-                    b.lt(b.readLocal("i"), b.lit(5L)),
-                    b.block(
-                        b.incrementLocal(5L, "i"),
-                        b.if_(
-                            b.lt(b.readLocal("i"), b.lit(10L)),
-                            b.incrementLocal(5L, "i"),
-                            b.incrementLocal(1L, "i"))),
-                    b.incrementLocal(1L, "i")),
+                b.writeLocal(0, "i"),
+                b.writeLocal(0, "j"),
+                b.switch_(
+                    b.readLocal("i"),
+                    b.case_(
+                        b.lit(0L),
+                        b.switch_(
+                            b.readLocal("j"),
+                            b.case_(
+                                b.lit(0L),
+                                b.incrementLocal(10L, "i")))),
+                    b.case_(
+                        b.lit(5L),
+                        b.switch_(
+                            b.readLocal("j"),
+                            b.case_(
+                                b.lit(5L),
+                                b.incrementLocal(5L, "i"))))),
                 b.return_(b.readLocal("i"))));
         // @formatter:on
     }

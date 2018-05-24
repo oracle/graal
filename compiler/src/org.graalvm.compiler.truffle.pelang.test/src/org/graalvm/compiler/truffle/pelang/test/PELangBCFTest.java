@@ -29,10 +29,6 @@ import org.junit.Test;
 
 public class PELangBCFTest extends PELangTest {
 
-    protected Object constant10() {
-        return 10L;
-    }
-
     @Test
     public void testSimpleAdd() {
         PELangBCFGenerator g = new PELangBCFGenerator();
@@ -134,6 +130,14 @@ public class PELangBCFTest extends PELangTest {
     }
 
     @Test
+    public void testNestedBranches() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.nestedBranches());
+        assertCallResult(10L, rootNode);
+        assertPartialEvalEquals("constant10", rootNode);
+    }
+
+    @Test
     public void testNestedLoops() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.nestedLoops());
@@ -142,9 +146,9 @@ public class PELangBCFTest extends PELangTest {
     }
 
     @Test
-    public void testNestedBranches() {
+    public void testNestedSwitches() {
         PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedBranches());
+        PELangRootNode rootNode = g.generate(PELangSample.nestedSwitches());
         assertCallResult(10L, rootNode);
         assertPartialEvalEquals("constant10", rootNode);
     }
@@ -194,6 +198,10 @@ public class PELangBCFTest extends PELangTest {
 
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
         // TODO: add partial evaluation asserts
+    }
+
+    protected Object constant10() {
+        return 10L;
     }
 
 }
