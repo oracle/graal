@@ -113,7 +113,7 @@ public final class ComponentInstaller {
     private static void printHelp() {
         System.err.println(BUNDLE.getString("INFO_Usage")); // NOI18N
     }
-    
+
     static void printErr(String messageKey, Object... args) {
         String s;
 

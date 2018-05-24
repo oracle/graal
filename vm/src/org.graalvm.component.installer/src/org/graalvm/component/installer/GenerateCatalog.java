@@ -240,7 +240,7 @@ public final class GenerateCatalog {
             addComponentSpec(f, u);
         }
     }
-    
+
     private void addComponentSpec(File f, String u) {
         Spec spc = new Spec(f, u);
         if (f != null) {
@@ -250,7 +250,7 @@ public final class GenerateCatalog {
         }
         componentSpecs.add(spc);
     }
-    
+
     private URL createURL(String spec) throws MalformedURLException {
         if (urlPrefix != null) {
             return new URL(new URL(urlPrefix), spec);
