@@ -74,20 +74,27 @@ public class AArch64AtomicMove {
             Register address = asRegister(addressValue);
             Register result = asRegister(resultValue);
             Register newVal = asRegister(newValue);
-            Register scratch = asRegister(scratchValue);
-            // We could avoid using a scratch register here, by reusing resultValue for the stlxr
-            // success flag and issue a mov resultValue, expectedValue in case of success before
-            // returning.
-            Label retry = new Label();
-            Label fail = new Label();
-            masm.bind(retry);
-            masm.ldaxr(size, result, address);
-            AArch64Compare.gpCompare(masm, resultValue, expectedValue);
-            masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
-            masm.stlxr(size, scratch, newVal, address);
-            // if scratch == 0 then write successful, else retry.
-            masm.cbnz(32, scratch, retry);
-            masm.bind(fail);
+            if (AArch64LIRFlagsVersioned.useLSE(masm)) {
+                Register expected = asRegister(expectedValue);
+                masm.mov(size, result, expected);
+                masm.cas(size, expected, newVal, address, true /* acquire */, true /* release */);
+                AArch64Compare.gpCompare(masm, resultValue, expectedValue);
+            } else {
+                // We could avoid using a scratch register here, by reusing resultValue for the
+                // stlxr success flag and issue a mov resultValue, expectedValue in case of success
+                // before returning.
+                Register scratch = asRegister(scratchValue);
+                Label retry = new Label();
+                Label fail = new Label();
+                masm.bind(retry);
+                masm.ldaxr(size, result, address);
+                AArch64Compare.gpCompare(masm, resultValue, expectedValue);
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, fail);
+                masm.stlxr(size, scratch, newVal, address);
+                // if scratch == 0 then write successful, else retry.
+                masm.cbnz(32, scratch, retry);
+                masm.bind(fail);
+            }
         }
     }
 }
