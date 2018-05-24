@@ -132,52 +132,20 @@ suite = {
         },
 
         "com.oracle.svm.native": {
-            "native": True,
             "subDir": "src",
-            "output": "clibraries",
-            "os_arch": {
-                "linux": {
-                    "amd64": {
-                        "results": [
-                            "linux-amd64/libstrictmath.a",
-                            "linux-amd64/liblibchelper.a",
-                            "linux-amd64/include/cpufeatures.h",
-                            "linux-amd64/include/jni.h",
-                            "linux-amd64/include/jni_md.h",
-                        ],
-                    },
-                    "<others>": {
-                        "results": [],
-                    },
-                },
-                "darwin": {
-                    "amd64": {
-                        "results": [
-                            "darwin-amd64/libstrictmath.a",
-                            "darwin-amd64/liblibchelper.a",
-                            "darwin-amd64/include/cpufeatures.h",
-                            "darwin-amd64/include/jni.h",
-                            "darwin-amd64/include/jni_md.h",
-                        ],
-                    },
-                },
-                "windows": {
-                    "amd64": {
-                        "results": [
-                            "windows-amd64/libstrictmath.a",
-                            "windows-amd64/liblibchelper.a",
-                            "windows-amd64/include/cpufeatures.h",
-                            "windows-amd64/include/jni.h",
-                            "windows-amd64/include/jni_md.h",
-                        ],
-                    },
-                },
-                "solaris": {
-                    "<others>": {
-                        "results": [],
-                    },
-                },
-            }
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/libstrictmath.a",
+                "<os>-<arch>/liblibchelper.a",
+                "<os>-<arch>/include/cpufeatures.h",
+                "<os>-<arch>/include/jni.h",
+                "<os>-<arch>/include/jni_md.h",
+            ],
         },
 
         "com.oracle.svm.jni": {
@@ -428,24 +396,28 @@ suite = {
         "org.graalvm.polyglot.nativeapi.native" : {
             "subDir" : "src",
             "native" : True,
-            "output" : "mxbuild/org.graalvm.polyglot.nativeapi.native",
+            "vpath": True,
             "os_arch" : {
                 "linux": {
                     "amd64" : {
-                        "results" : ["linux-amd64/polyglot-nativeapi.o"],
+                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
                     },
                 },
                 "darwin": {
                     "amd64" : {
-                        "results" : ["darwin-amd64/polyglot-nativeapi.o"],
+                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
                     },
                 },
                 "windows": {
                     "amd64" : {
-                        "results" : ["windows-amd64/polyglot-nativeapi.obj"],
+                        "results" : ["<os>-<arch>/polyglot-nativeapi.obj"],
                     },
                 },
-            }
+            },
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
         },
 
         "bootstrap.native-image" : {
@@ -548,6 +520,7 @@ suite = {
                 "com.oracle.svm.libffi"
             ],
             "native": True,
+            "platformDependent" : True,
             "relpath": True,
             "output": "clibraries",
         },
