@@ -33,6 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
 final class PolyglotSourceCache {
@@ -83,7 +86,7 @@ final class PolyglotSourceCache {
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) throws AssertionError {
         CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
         if (parsedTarget == null) {
-            throw new AssertionError(String.format("Parsing resulted in a null CallTarget for %s.", source));
+            throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
         }
         return parsedTarget;
     }
