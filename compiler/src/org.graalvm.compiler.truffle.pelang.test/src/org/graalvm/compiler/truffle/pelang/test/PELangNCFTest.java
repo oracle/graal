@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.pelang.test;
 
 import org.graalvm.compiler.truffle.pelang.PELangException;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.util.PELangSample;
 import org.junit.Test;
 
 public class PELangNCFTest extends PELangTest {

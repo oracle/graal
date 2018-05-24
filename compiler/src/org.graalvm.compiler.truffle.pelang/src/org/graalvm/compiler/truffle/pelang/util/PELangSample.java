@@ -20,11 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.pelang.test;
+package org.graalvm.compiler.truffle.pelang.util;
 
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
-import org.graalvm.compiler.truffle.pelang.util.PELangBuilder;
 
 public class PELangSample {
 

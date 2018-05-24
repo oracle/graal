@@ -33,6 +33,7 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.util.PELangBCFGenerator;
+import org.graalvm.compiler.truffle.pelang.util.PELangSample;
 import org.junit.Test;
 
 public class PELangBCFGeneratorTest {
