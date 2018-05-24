@@ -39,6 +39,7 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangReadArgumentNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
@@ -125,6 +126,10 @@ public class PELangBuilder {
 
     public PELangExpressionNode readLocal(String identifier) {
         return PELangLocalReadNode.create(frameDescriptor.findOrAddFrameSlot(identifier));
+    }
+
+    public PELangExpressionNode readArgument(int index) {
+        return new PELangReadArgumentNode(index);
     }
 
     public PELangExpressionNode writeLocal(PELangExpressionNode valueNode, String identifier) {
