@@ -184,10 +184,9 @@ public class FileDownloaderTest extends NetworkTestBase {
     }
 
     /**
-     * Checks that slow proxy will be used although the direct connection
-     * has failed already.
+     * Checks that slow proxy will be used although the direct connection has failed already.
      * 
-     * @throws Exception 
+     * @throws Exception
      */
     @Test
     public void testDownloadSlowProxy() throws Exception {
@@ -227,11 +226,11 @@ public class FileDownloaderTest extends NetworkTestBase {
         exception.expect(FileNotFoundException.class);
         dn.download();
     }
-    
+
     /**
-     * Checks that if proxy fails, the direct connection, although it connects later,
-     * will be used.
-     * @throws Exception 
+     * Checks that if proxy fails, the direct connection, although it connects later, will be used.
+     * 
+     * @throws Exception
      */
     @Test
     public void testDownloadFailedProxy() throws Exception {

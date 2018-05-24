@@ -81,7 +81,7 @@ public class Handler extends URLStreamHandler {
         URLConnection c = httpProxyConnections.get(u.toString());
         if (c != null) {
             return doOpenConnection(u, c);
-        }  else {
+        } else {
             throw new ConnectException(u.toExternalForm());
         }
     }
@@ -91,8 +91,8 @@ public class Handler extends URLStreamHandler {
         URLConnection c = connections.get(u.toString());
         return doOpenConnection(u, c);
     }
-    
-    private URLConnection doOpenConnection(URL u, URLConnection c) throws IOException {
+
+    private static URLConnection doOpenConnection(URL u, URLConnection c) throws IOException {
         visitedURLs.add(u.toString());
         if (c != null) {
             return c;

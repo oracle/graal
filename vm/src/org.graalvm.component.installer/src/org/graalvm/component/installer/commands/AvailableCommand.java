@@ -36,5 +36,5 @@ public class AvailableCommand extends ListInstalledCommand {
     protected ComponentRegistry initRegistry() {
         return input.getRegistry();
     }
-    
+
 }

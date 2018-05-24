@@ -97,10 +97,10 @@ public abstract class QueryCommandBase implements InstallerCommand {
     public void setVerbose(boolean verbose) {
         this.verbose = verbose;
     }
-    
+
     protected ComponentRegistry initRegistry() {
         if (input.optValue(Commands.OPTION_CATALOG) != null ||
-            input.optValue(Commands.OPTION_FOREIGN_CATALOG) != null) {
+                        input.optValue(Commands.OPTION_FOREIGN_CATALOG) != null) {
             return input.getRegistry();
         } else {
             return input.getLocalRegistry();

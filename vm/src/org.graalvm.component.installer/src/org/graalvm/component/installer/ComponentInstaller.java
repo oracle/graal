@@ -158,7 +158,7 @@ public final class ComponentInstaller {
             env.setGraalHome(graalHomePath);
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
                             env, storagePath, graalHomePath)));
-            
+
             int srcCount = 0;
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 srcCount++;
@@ -175,7 +175,7 @@ public final class ComponentInstaller {
             if (srcCount > 1) {
                 err("ERROR_MultipleSourcesUnsupported");
             }
-            
+
             if (optValues.containsKey(Commands.OPTION_FILES)) {
                 env.setFileIterable(new FileIterable(env, env));
             } else if (optValues.containsKey(Commands.OPTION_URLS)) {

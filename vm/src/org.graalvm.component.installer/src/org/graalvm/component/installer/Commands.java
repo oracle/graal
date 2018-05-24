@@ -45,9 +45,9 @@ public interface Commands {
      */
     String OPTION_FORCE = "f";  // NOI18N
     String LONG_OPTION_FORCE = "force"; // NOI18N
-    
+
     /**
-     * Interpret command line parameters as files
+     * Interpret command line parameters as files.
      */
     String OPTION_FILES = "F"; // NOI18N
     String LONG_OPTION_FILES = "file"; // NOI18N
