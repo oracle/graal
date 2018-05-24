@@ -40,9 +40,9 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 /**
  * An AST visitor that produces a deep copy of a given {@link Term} and its subtree, and registers
  * all new nodes in the {@link RegexAST} provided at instantiation. This visitor should be preferred
- * over {@link RegexASTNode#copy(RegexAST)} whenever possible, since it is non-recursive. Note that
- * this visitor is not thread-safe!
- * 
+ * over recursively copying with {@link RegexASTNode#copy(RegexAST, boolean)} whenever possible,
+ * since it is non-recursive. Note that this visitor is not thread-safe!
+ *
  * @see DepthFirstTraversalRegexASTVisitor
  */
 public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
@@ -65,16 +65,12 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(BackReference backReference) {
-        addToParent(ast.createBackReference(backReference.getGroupNr()));
+        addToParent(backReference.copy(ast, false));
     }
 
     @Override
     protected void visit(Group group) {
-        Group copy = group.isCapturing() ? ast.createCaptureGroup(group.getGroupNumber()) : ast.createGroup();
-        copy.setLoop(group.isLoop());
-        copy.setExpandedQuantifier(group.isExpandedQuantifier());
-        copy.setEnclosedCaptureGroupsLow(group.getEnclosedCaptureGroupsLow());
-        copy.setEnclosedCaptureGroupsHigh(group.getEnclosedCaptureGroupsHigh());
+        Group copy = group.copy(ast, false);
         addToParent(copy);
         curParent = copy;
     }
@@ -86,7 +82,9 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(Sequence sequence) {
-        curParent = ((Group) curParent).addSequence(ast);
+        Sequence copy = sequence.copy(ast, false);
+        ((Group) curParent).add(copy);
+        curParent = copy;
     }
 
     @Override
@@ -96,12 +94,12 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(PositionAssertion assertion) {
-        addToParent(ast.createPositionAssertion(assertion.type));
+        addToParent(assertion.copy(ast, false));
     }
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        LookBehindAssertion copy = ast.createLookBehindAssertion();
+        LookBehindAssertion copy = assertion.copy(ast, false);
         addToParent(copy);
         curParent = copy;
     }
@@ -113,7 +111,7 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        LookAheadAssertion copy = ast.createLookAheadAssertion(assertion.isNegated());
+        LookAheadAssertion copy = assertion.copy(ast, false);
         addToParent(copy);
         curParent = copy;
     }
@@ -125,7 +123,7 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(CharacterClass characterClass) {
-        addToParent(ast.createCharacterClass(characterClass.getMatcherBuilder()));
+        addToParent(characterClass.copy(ast, false));
     }
 
     @Override

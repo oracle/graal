@@ -59,7 +59,7 @@ public final class HybridBitSetMatcher extends ProfiledCharMatcher {
     }
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     protected boolean matchChar(char c) {
         final int highByte = highByte(c);
         for (int i = 0; i < highBytes.length; i++) {
@@ -72,6 +72,11 @@ public final class HybridBitSetMatcher extends ProfiledCharMatcher {
             }
         }
         return restMatcher.match(c);
+    }
+
+    @Override
+    public int estimatedCost() {
+        return (bitSets.length * 2) + restMatcher.estimatedCost();
     }
 
     @Override

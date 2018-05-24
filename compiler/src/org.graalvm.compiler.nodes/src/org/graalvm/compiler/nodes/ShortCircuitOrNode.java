@@ -278,6 +278,7 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
                 }
             }
         }
+
         return null;
     }
 

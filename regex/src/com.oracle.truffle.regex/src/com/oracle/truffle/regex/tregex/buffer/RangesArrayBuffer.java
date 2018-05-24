@@ -40,6 +40,10 @@ package com.oracle.truffle.regex.tregex.buffer;
  */
 public class RangesArrayBuffer extends CharArrayBuffer {
 
+    public RangesArrayBuffer() {
+        this(16);
+    }
+
     public RangesArrayBuffer(int initialSize) {
         super(initialSize);
     }

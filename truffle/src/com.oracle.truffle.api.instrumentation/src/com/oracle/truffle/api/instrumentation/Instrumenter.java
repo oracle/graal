@@ -257,6 +257,19 @@ public abstract class Instrumenter {
     public abstract <T extends LoadSourceSectionListener> EventBinding<T> attachLoadSourceSectionListener(SourceSectionFilter filter, T listener, boolean includeExistingSourceSections);
 
     /**
+     * Notifies the listener for each {@link SourceSection} in every loaded {@link Source} that
+     * corresponds to the filter. Only loaded sections are notified, synchronously.
+     *
+     * @param filter a filter on which source sections trigger events
+     * @param listener a listener that gets notified with loaded source sections
+     *
+     * @see LoadSourceSectionListener#onLoad(LoadSourceSectionEvent)
+     *
+     * @since 1.0
+     */
+    public abstract void visitLoadedSourceSections(SourceSectionFilter filter, LoadSourceSectionListener listener);
+
+    /**
      * Attach an output stream as a consumer of the {@link TruffleInstrument.Env#out() standard
      * output}. The consumer output stream receives all output that goes to
      * {@link TruffleInstrument.Env#out()} since this call, including output emitted by the
@@ -325,12 +338,12 @@ public abstract class Instrumenter {
      */
     public final List<SourceSection> querySourceSections(SourceSectionFilter filter) {
         final List<SourceSection> sourceSectionList = new ArrayList<>();
-        EventBinding<?> binding = attachLoadSourceSectionListener(filter, new LoadSourceSectionListener() {
+        visitLoadedSourceSections(filter, new LoadSourceSectionListener() {
+            @Override
             public void onLoad(LoadSourceSectionEvent event) {
                 sourceSectionList.add(event.getSourceSection());
             }
-        }, true);
-        binding.dispose();
+        });
         return Collections.unmodifiableList(sourceSectionList);
     }
 

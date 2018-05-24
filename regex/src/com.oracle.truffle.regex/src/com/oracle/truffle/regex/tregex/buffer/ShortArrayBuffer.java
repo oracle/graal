@@ -46,10 +46,9 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class ShortArrayBuffer {
+public class ShortArrayBuffer extends AbstractArrayBuffer {
 
     private short[] buf;
-    private int size = 0;
 
     public ShortArrayBuffer() {
         this(16);
@@ -59,12 +58,14 @@ public class ShortArrayBuffer {
         buf = new short[initialSize];
     }
 
-    public void clear() {
-        size = 0;
+    @Override
+    int getBufferSize() {
+        return buf.length;
     }
 
-    public int size() {
-        return size;
+    @Override
+    void grow(int newSize) {
+        buf = Arrays.copyOf(buf, newSize);
     }
 
     public short get(int i) {
@@ -79,8 +80,10 @@ public class ShortArrayBuffer {
         size++;
     }
 
-    private void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
+    public void addAll(short[] values, int length) {
+        ensureCapacity(size + length);
+        System.arraycopy(values, 0, buf, size, length);
+        size += length;
     }
 
     public short[] toArray() {

@@ -161,6 +161,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     protected final ForeignCallsProvider foreignCalls;
     protected final TargetDescription target;
     private final boolean useCompressedOops;
+    private final ResolvedJavaType objectArrayType;
 
     private BoxingSnippets.Templates boxingSnippets;
     private ConstantStringIndexOfSnippets.Templates indexOfSnippets;
@@ -170,6 +171,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         this.foreignCalls = foreignCalls;
         this.target = target;
         this.useCompressedOops = useCompressedOops;
+        this.objectArrayType = metaAccess.lookupJavaType(Object[].class);
     }
 
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
@@ -537,7 +539,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
+        BarrierType barrierType = guessStoreBarrierType(cas.object(), expectedValue);
         LogicCompareAndSwapNode atomicNode = graph.add(new LogicCompareAndSwapNode(address, cas.getLocationIdentity(), expectedValue, newValue, barrierType));
         atomicNode.setStateAfter(cas.stateAfter());
         graph.replaceFixedWithFixed(cas, atomicNode);
@@ -551,7 +553,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, cas.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(cas.object(), cas.offset()));
-        BarrierType barrierType = storeBarrierType(cas.object(), expectedValue);
+        BarrierType barrierType = guessStoreBarrierType(cas.object(), expectedValue);
         ValueCompareAndSwapNode atomicNode = graph.add(new ValueCompareAndSwapNode(address, expectedValue, newValue, cas.getLocationIdentity(), barrierType));
         ValueNode coercedNode = implicitLoadConvert(graph, valueKind, atomicNode, true);
         atomicNode.setStateAfter(cas.stateAfter());
@@ -566,7 +568,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         ValueNode newValue = implicitStoreConvert(graph, valueKind, n.newValue());
 
         AddressNode address = graph.unique(new OffsetAddressNode(n.object(), n.offset()));
-        BarrierType barrierType = storeBarrierType(n.object(), n.newValue());
+        BarrierType barrierType = guessStoreBarrierType(n.object(), n.newValue());
         LIRKind lirAccessKind = LIRKind.fromJavaKind(target.arch, valueKind);
         LoweredAtomicReadAndWriteNode memoryRead = graph.add(new LoweredAtomicReadAndWriteNode(address, n.getLocationIdentity(), newValue, lirAccessKind, barrierType));
         memoryRead.setStateAfter(n.stateAfter());
@@ -920,20 +922,22 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return entryKind == JavaKind.Object ? BarrierType.PRECISE : BarrierType.NONE;
     }
 
-    private static BarrierType unsafeStoreBarrierType(RawStoreNode store) {
+    private BarrierType unsafeStoreBarrierType(RawStoreNode store) {
         if (!store.needsBarrier()) {
             return BarrierType.NONE;
         }
-        return storeBarrierType(store.object(), store.value());
+        return guessStoreBarrierType(store.object(), store.value());
     }
 
-    private static BarrierType storeBarrierType(ValueNode object, ValueNode value) {
+    private BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
         if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
             ResolvedJavaType type = StampTool.typeOrNull(object);
-            if (type != null && !type.isArray()) {
-                return BarrierType.IMPRECISE;
-            } else {
+            // Array types must use a precise barrier, so if the type is unknown or is a supertype
+            // of Object[] then treat it as an array.
+            if (type == null || type.isArray() || type.isAssignableFrom(objectArrayType)) {
                 return BarrierType.PRECISE;
+            } else {
+                return BarrierType.IMPRECISE;
             }
         }
         return BarrierType.NONE;

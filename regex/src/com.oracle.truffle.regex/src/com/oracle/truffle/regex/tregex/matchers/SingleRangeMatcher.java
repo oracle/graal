@@ -67,6 +67,11 @@ public final class SingleRangeMatcher extends ProfiledCharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        return 2;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         return modifiersToString() + MatcherBuilder.rangeToString(lo, hi);

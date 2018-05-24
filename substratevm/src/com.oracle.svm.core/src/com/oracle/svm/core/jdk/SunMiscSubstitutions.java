@@ -112,7 +112,7 @@ final class Target_sun_misc_Unsafe {
     @Substitute
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int pageSize() {
-        return (int) VirtualMemoryProvider.get().getPageSize().rawValue();
+        return (int) VirtualMemoryProvider.get().getGranularity().rawValue();
     }
 
     @Substitute

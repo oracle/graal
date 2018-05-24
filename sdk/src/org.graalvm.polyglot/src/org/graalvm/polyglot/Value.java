@@ -886,4 +886,20 @@ public final class Value {
     public SourceSection getSourceLocation() {
         return impl.getSourceLocation(receiver);
     }
+
+    /**
+     * Converts a Java host value to a polyglot value representation using
+     * {@link Context#asValue(Object)} with the {@link Context#getCurrent() current} context. This
+     * method is a short-cut for <code>Context.getCurrent().asValue(o)</code>.
+     *
+     * @param o the object to convert
+     * @throws IllegalStateException if no context is currently entered.
+     * @see Context#asValue(Object) Conversion rules.
+     * @see Context#getCurrent() Looking up the current context.
+     * @since 1.0
+     */
+    public static Value asValue(Object o) {
+        return Context.getCurrent().asValue(o);
+    }
+
 }

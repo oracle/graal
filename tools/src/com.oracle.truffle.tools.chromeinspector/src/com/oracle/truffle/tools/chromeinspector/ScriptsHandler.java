@@ -297,6 +297,18 @@ public final class ScriptsHandler implements LoadSourceListener {
         }
     }
 
+    static boolean compareURLs(String url1, String url2) {
+        return stripScheme(url1).equals(stripScheme(url2));
+    }
+
+    private static String stripScheme(String url) {
+        // we can strip the scheme part iff it's "file"
+        if (url.startsWith("file://")) {
+            return url.substring("file://".length());
+        }
+        return url;
+    }
+
     interface LoadScriptListener {
 
         void loadedScript(Script script);

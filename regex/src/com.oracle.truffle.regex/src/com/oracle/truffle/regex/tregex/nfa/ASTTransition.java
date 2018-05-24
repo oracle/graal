@@ -24,14 +24,17 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class ASTTransition {
+public class ASTTransition implements JsonConvertible {
 
     private Term target;
-    private final GroupBoundaries groupBoundaries = new GroupBoundaries();
+    private GroupBoundaries groupBoundaries = GroupBoundaries.getEmptyInstance();
 
     public ASTTransition() {
     }
@@ -52,6 +55,10 @@ public class ASTTransition {
         return groupBoundaries;
     }
 
+    public void setGroupBoundaries(GroupBoundaries groupBoundaries) {
+        this.groupBoundaries = groupBoundaries;
+    }
+
     @Override
     public int hashCode() {
         return target.hashCode();
@@ -62,10 +69,10 @@ public class ASTTransition {
         return obj instanceof ASTTransition && target.equals(((ASTTransition) obj).target);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("ASTTransition",
-                        new DebugUtil.Value("target", target.toStringWithID()),
-                        groupBoundaries.toTable());
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("target", target.getId()),
+                        Json.prop("groupBoundaries", groupBoundaries));
     }
 }

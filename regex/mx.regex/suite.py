@@ -34,6 +34,7 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyleVersion" : "8.8",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Regex",
     },

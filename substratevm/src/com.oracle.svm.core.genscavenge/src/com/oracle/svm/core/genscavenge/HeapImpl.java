@@ -389,6 +389,13 @@ public class HeapImpl extends Heap {
         return false;
     }
 
+    public boolean isImageHeapObject(Object obj) {
+        return (NativeImageInfo.isObjectInReadOnlyPrimitivePartition(obj) ||
+                        NativeImageInfo.isObjectInReadOnlyReferencePartition(obj) ||
+                        NativeImageInfo.isObjectInWritablePrimitivePartition(obj) ||
+                        NativeImageInfo.isObjectInWritableReferencePartition(obj));
+    }
+
     /**
      * Returns the size (in bytes) of the heap currently used for aligned and unaligned chunks. It
      * excludes chunks that are unused.

@@ -50,7 +50,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -62,6 +61,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -715,7 +715,7 @@ final class Target_java_lang_System {
 
     @Substitute
     private static void exit(int status) {
-        JavaMainSupport.executeShutdownHooks();
+        RuntimeSupport.getRuntimeSupport().executeShutdownHooks();
         LibC.exit(status);
     }
 }

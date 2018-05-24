@@ -1,7 +1,2 @@
 Error(s) parsing script:
--- line 11 col 11: invalid Factor
--- line 12 col 11: invalid Factor
--- line 13 col 11: invalid Factor
--- line 14 col 11: invalid Factor
--- line 22 col 8: ")" expected
-
+-- line 11 col 9: mismatched input '=' expecting ';'

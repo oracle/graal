@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -109,10 +110,10 @@ public class StaticAnalysisResultsBuilder {
 
         ArrayList<BytecodeEntry> entries = new ArrayList<>(method.getCodeSize());
 
-        for (InstanceOfTypeFlow originalInstanceOf : originalFlows.getInstaceOfFlows()) {
-            if (BytecodeLocation.hasValidBci(originalInstanceOf.getLocation())) {
-
-                int bci = originalInstanceOf.getLocation().getBci();
+        for (Map.Entry<Object, InstanceOfTypeFlow> entry : originalFlows.getInstanceOfFlows()) {
+            if (BytecodeLocation.isValidBci(entry.getKey())) {
+                int bci = (int) entry.getKey();
+                InstanceOfTypeFlow originalInstanceOf = entry.getValue();
 
                 /* Fold the instanceof flows. */
                 TypeState instanceOfTypeState = methodFlow.foldTypeFlow(bb, originalInstanceOf);
@@ -127,9 +128,10 @@ public class StaticAnalysisResultsBuilder {
             }
         }
 
-        for (InvokeTypeFlow originalInvoke : originalFlows.getInvokes()) {
-            if (BytecodeLocation.hasValidBci(originalInvoke.getLocation())) {
-                int bci = originalInvoke.getLocation().getBci();
+        for (Entry<Object, InvokeTypeFlow> entry : originalFlows.getInvokes()) {
+            if (BytecodeLocation.isValidBci(entry.getKey())) {
+                int bci = (int) entry.getKey();
+                InvokeTypeFlow originalInvoke = entry.getValue();
 
                 TypeState invokeTypeState = TypeState.forEmpty();
                 if (originalInvoke.getTargetMethod().hasReceiver()) {

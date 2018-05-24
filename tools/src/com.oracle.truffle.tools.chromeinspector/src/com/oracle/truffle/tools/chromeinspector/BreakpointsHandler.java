@@ -83,7 +83,7 @@ final class BreakpointsHandler {
         synchronized (bpIDs) {
             id = ++lastID;
             scriptListener = script -> {
-                if (url instanceof Pattern ? ((Pattern) url).matcher(script.getUrl()).matches() : url.equals(script.getUrl())) {
+                if (url instanceof Pattern ? ((Pattern) url).matcher(script.getUrl()).matches() : ScriptsHandler.compareURLs((String) url, script.getUrl())) {
                     Breakpoint bp = createBuilder(script.getSource(), line, column).resolveListener(resolvedHandler).build();
                     if (condition != null && !condition.isEmpty()) {
                         bp.setCondition(condition);

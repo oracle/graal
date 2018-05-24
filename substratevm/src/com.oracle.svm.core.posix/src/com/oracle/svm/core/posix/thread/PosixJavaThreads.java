@@ -115,7 +115,7 @@ public final class PosixJavaThreads extends JavaThreads {
         }
 
         PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_setguardsize(attributes, VirtualMemoryProvider.get().getPageSize()),
+                        Pthread.pthread_attr_setguardsize(attributes, VirtualMemoryProvider.get().getGranularity()),
                         "PosixJavaThreads.start0: pthread_attr_setguardsize");
 
         ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));

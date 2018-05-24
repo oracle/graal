@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nfa;
+package com.oracle.truffle.regex.tregex.buffer;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+/**
+ * Abstract base class of all ArrayBuffer classes, exists solely to avoid code duplication.
+ */
+public abstract class AbstractArrayBuffer {
 
-public class NFAFinalState extends NFAAbstractFinalState {
+    int size;
 
-    public NFAFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet) {
-        super(id, stateSet);
+    public void clear() {
+        size = 0;
     }
 
-    public NFAFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
-        super(id, stateSet, preCalculatedResultIndex);
+    public boolean isEmpty() {
+        return size == 0;
     }
 
-    @Override
-    public String toString() {
-        return "end";
+    public int size() {
+        return size;
     }
 
-    @Override
-    @CompilerDirectives.TruffleBoundary
-    public DebugUtil.Table toTable() {
-        return toTable("NFAFinalState");
+    public void setSize(int size) {
+        this.size = size;
     }
+
+    public void ensureCapacity(int newSize) {
+        if (getBufferSize() < newSize) {
+            int newBufferSize = getBufferSize() * 2;
+            while (newBufferSize < newSize) {
+                newBufferSize *= 2;
+            }
+            grow(newBufferSize);
+        }
+    }
+
+    abstract int getBufferSize();
+
+    abstract void grow(int newSize);
 }

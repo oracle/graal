@@ -100,6 +100,24 @@ public class NativeImageInfo {
         return result;
     }
 
+    /* Convenience methods taking an Object as a parameter. */
+
+    public static boolean isObjectInReadOnlyPrimitivePartition(Object obj) {
+        return isInReadOnlyPrimitivePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInWritablePrimitivePartition(Object obj) {
+        return isInWritablePrimitivePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInReadOnlyReferencePartition(Object obj) {
+        return isInReadOnlyReferencePartition(Word.objectToUntrackedPointer(obj));
+    }
+
+    public static boolean isObjectInWritableReferencePartition(Object obj) {
+        return isInWritableReferencePartition(Word.objectToUntrackedPointer(obj));
+    }
+
     /*
      * Convenience methods for applying lambdas to each of the partitions of the native image heap.
      *

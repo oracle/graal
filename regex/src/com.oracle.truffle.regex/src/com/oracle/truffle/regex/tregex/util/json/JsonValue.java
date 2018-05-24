@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.regex.tregex.nfa;
 
-import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
+package com.oracle.truffle.regex.tregex.util.json;
 
-public abstract class NFAAbstractFinalState extends NFAState {
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
-    protected NFAAbstractFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet, int preCalculatedResultIndex) {
-        super(id, stateSet);
-        addPossibleResult(preCalculatedResultIndex);
+public abstract class JsonValue implements JsonConvertible {
+
+    @Override
+    public JsonValue toJson() {
+        return this;
     }
 
-    protected NFAAbstractFinalState(short id, ASTNodeSet<? extends RegexASTNode> stateSet) {
-        super(id, stateSet);
+    public void dump(String path) {
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(Paths.get(path)))) {
+            dump(writer, 0);
+            writer.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public abstract void dump(PrintWriter writer, int indent);
+
+    static void printIndent(PrintWriter writer, int indent) {
+        for (int i = 0; i < indent; i++) {
+            writer.print(' ');
+        }
+    }
+
+    @Override
+    public String toString() {
+        StringWriter stringWriter = new StringWriter();
+        dump(new PrintWriter(stringWriter), 0);
+        return stringWriter.toString();
     }
 }

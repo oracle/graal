@@ -57,16 +57,16 @@ It could also be in an external jar file, but for convenience it is located next
 Creating such an in-repo benchmark is a two-step procedure.
 
 ### Setting up an [mx project]
-First, we need an [mx project] in the [`suite.py`] with `mx:JMH_1_18` in its `dependencies` and `annotationProcessors`.
-(`JMH_1_18` was the latest [JMH] version available in [mx] at the time of writing.)
+First, we need an [mx project] in the [`suite.py`] with `mx:JMH_1_21` in its `dependencies` and `annotationProcessors`.
+(`JMH_1_21` was the latest [JMH] version available in [mx] at the time of writing.)
 
 ```python
 "org.graalvm.micro.benchmarks" : {
   # ...
   "dependencies" : [
-    "mx:JMH_1_18",
+    "mx:JMH_1_21",
   ],
-  "annotationProcessors" : ["mx:JMH_1_18"],
+  "annotationProcessors" : ["mx:JMH_1_21"],
   "checkPackagePrefix" : "false",
 }
 ```

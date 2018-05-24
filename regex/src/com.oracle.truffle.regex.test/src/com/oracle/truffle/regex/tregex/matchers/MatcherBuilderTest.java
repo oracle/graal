@@ -24,9 +24,72 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import org.junit.Assert;
 import org.junit.Test;
 
-public class MatcherBuilderTest extends CharMatcherTest {
+public class MatcherBuilderTest {
+
+    private static MatcherBuilder single(char i) {
+        return range(i, i);
+    }
+
+    private static MatcherBuilder range(char i, char j) {
+        return MatcherBuilder.create(i, j);
+    }
+
+    private static MatcherBuilder range(char[] i) {
+        Assert.assertEquals(i.length, 2);
+        return range(i[0], i[1]);
+    }
+
+    private static MatcherBuilder multi(char... values) {
+        assert (values.length & 1) == 0;
+        return MatcherBuilder.create(values);
+    }
+
+    private static String matchError(String errorMsg, MatcherBuilder m, char[] values) {
+        StringBuilder sb = new StringBuilder(errorMsg).append(": got ").append(m.toString()).append(", expected [ ");
+        for (int i = 0; i < values.length; i += 2) {
+            sb.append("[").append(values[i]).append("-").append(values[i + 1]).append("] ");
+        }
+        return sb.append("]").toString();
+    }
+
+    private static void checkMatch(String errorMsg, MatcherBuilder m, MatcherBuilder expected) {
+        checkMatch(errorMsg, m, expected.getRanges());
+    }
+
+    private static void checkMatch(String errorMsg, MatcherBuilder m, char... values) {
+        Assert.assertArrayEquals(matchError(errorMsg, m, values), values, m.getRanges());
+    }
+
+    private static void checkContains(MatcherBuilder a, MatcherBuilder b, boolean expected) {
+        boolean test = a.contains(b);
+        Assert.assertEquals(a + ".contains(" + b + "): got " + test + ", expected " + expected, test, expected);
+    }
+
+    private static void checkInverse(MatcherBuilder a, char... values) {
+        checkMatch("inverse(" + a + ")", a.createInverse(new CompilationBuffer()), values);
+    }
+
+    private static void checkIntersection(MatcherBuilder a, MatcherBuilder b, char... values) {
+        MatcherBuilder intersection = a.createIntersectionMatcher(b, new CompilationBuffer());
+        checkMatch("intersection(" + a + "," + b + ")", intersection, values);
+        MatcherBuilder[] result = new MatcherBuilder[3];
+        a.intersectAndSubtract(b, new CompilationBuffer(), result);
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[0]", result[0], a.subtract(intersection, new CompilationBuffer()));
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[1]", result[1], b.subtract(intersection, new CompilationBuffer()));
+        checkMatch("intersectAndSubtract(" + a + "," + b + ")[2]", result[2], intersection);
+    }
+
+    private static void checkSubtraction(MatcherBuilder a, MatcherBuilder b, char... values) {
+        checkMatch("subtraction(" + a + "," + b + ")", a.subtract(b, new CompilationBuffer()), values);
+    }
+
+    private static void checkUnion(MatcherBuilder a, MatcherBuilder b, char... values) {
+        checkMatch("union(" + a + "," + b + ")", a.union(b, new CompilationBuffer()), values);
+    }
 
     @Test
     public void testInverseSingle() {

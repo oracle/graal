@@ -35,4 +35,13 @@ public interface CharMatcher {
      * @return {@code true} if the character matches.
      */
     boolean match(char c);
+
+    /**
+     * Conservatively estimate the equivalent number of integer comparisons of calling
+     * {@link #match(char)}.
+     * 
+     * @return the number of integer comparisons one call to {@link #match(char)} is roughly
+     *         equivalent to. Array loads are treated as two comparisons.
+     */
+    int estimatedCost();
 }

@@ -309,7 +309,9 @@ public class FileDownloader {
 
     public void download() throws IOException {
         if (fileDescription != null) {
-            feedback.output("MSG_Downloading", getFileDescription());
+            if (!feedback.verboseOutput("MSG_DownloadingVerbose", getFileDescription(), getSourceURL())) {
+                feedback.output("MSG_Downloading", getFileDescription());
+            }
         } else {
             feedback.output("MSG_DownloadingFrom", getSourceURL());
         }
