@@ -32,22 +32,22 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangAddNodeGen;
-import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNodeGen;
-import org.graalvm.compiler.truffle.pelang.expr.PELangGlobalReadNodeGen;
-import org.graalvm.compiler.truffle.pelang.expr.PELangGlobalWriteNodeGen;
-import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNodeGen;
-import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNodeGen;
+import org.graalvm.compiler.truffle.pelang.expr.PELangAddNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
-import org.graalvm.compiler.truffle.pelang.expr.PELangLocalReadNodeGen;
-import org.graalvm.compiler.truffle.pelang.expr.PELangLocalWriteNodeGen;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangSwitchNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
+import org.graalvm.compiler.truffle.pelang.var.PELangGlobalReadNode;
+import org.graalvm.compiler.truffle.pelang.var.PELangGlobalWriteNode;
+import org.graalvm.compiler.truffle.pelang.var.PELangLocalReadNode;
+import org.graalvm.compiler.truffle.pelang.var.PELangLocalWriteNode;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 
@@ -68,7 +68,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode add(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangAddNodeGen.create(leftNode, rightNode);
+        return PELangAddNode.create(leftNode, rightNode);
     }
 
     public PELangExpressionNode add(long left, long right) {
@@ -80,7 +80,7 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode eq(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangEqualsNodeGen.create(leftNode, rightNode);
+        return PELangEqualsNode.create(leftNode, rightNode);
     }
 
     public PELangExpressionNode not(PELangExpressionNode bodyNode) {
@@ -88,11 +88,11 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode lt(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangLessThanNodeGen.create(leftNode, rightNode);
+        return PELangLessThanNode.create(leftNode, rightNode);
     }
 
     public PELangExpressionNode gt(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
-        return PELangGreaterThanNodeGen.create(leftNode, rightNode);
+        return PELangGreaterThanNode.create(leftNode, rightNode);
     }
 
     public PELangStatementNode block(PELangStatementNode... bodyNodes) {
@@ -124,11 +124,11 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode readLocal(String identifier) {
-        return PELangLocalReadNodeGen.create(frameDescriptor.findOrAddFrameSlot(identifier));
+        return PELangLocalReadNode.create(frameDescriptor.findOrAddFrameSlot(identifier));
     }
 
     public PELangExpressionNode writeLocal(PELangExpressionNode valueNode, String identifier) {
-        return PELangLocalWriteNodeGen.create(valueNode, frameDescriptor.findOrAddFrameSlot(identifier));
+        return PELangLocalWriteNode.create(valueNode, frameDescriptor.findOrAddFrameSlot(identifier));
     }
 
     public PELangExpressionNode writeLocal(long value, String identifier) {
@@ -148,11 +148,11 @@ public class PELangBuilder {
     }
 
     public PELangExpressionNode readGlobal(String identifier) {
-        return PELangGlobalReadNodeGen.create(identifier);
+        return PELangGlobalReadNode.create(identifier);
     }
 
     public PELangExpressionNode writeGlobal(PELangExpressionNode valueNode, String identifier) {
-        return PELangGlobalWriteNodeGen.create(valueNode, identifier);
+        return PELangGlobalWriteNode.create(valueNode, identifier);
     }
 
     public PELangExpressionNode writeGlobal(long value, String identifier) {
