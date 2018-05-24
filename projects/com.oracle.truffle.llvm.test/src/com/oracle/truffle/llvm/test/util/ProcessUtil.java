@@ -44,6 +44,7 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.llvm.pipe.CaptureOutput;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.test.options.TestOptions;
 
 public class ProcessUtil {
@@ -137,7 +138,7 @@ public class ProcessUtil {
                 try (Context context = builder.arguments(LLVMLanguage.NAME, args).options(options).allowAllAccess(true).build()) {
                     Value main = context.eval(source);
                     if (!main.canExecute()) {
-                        throw new LinkageError("No main function found.");
+                        throw new LLVMLinkerException("No main function found.");
                     }
                     result = main.execute().asInt();
                 }

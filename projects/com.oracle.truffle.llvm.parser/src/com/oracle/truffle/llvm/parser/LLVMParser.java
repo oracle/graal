@@ -53,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -141,7 +142,7 @@ public final class LLVMParser {
                 importedSymbols.add(global.getName());
             } else {
                 assert exportedDescriptor.isFunction();
-                throw new LinkageError("The global variable " + global.getName() + " conflicts with a function that has the same name.");
+                throw new LLVMLinkerException("The global variable " + global.getName() + " conflicts with a function that has the same name.");
             }
         }
     }
@@ -166,7 +167,7 @@ public final class LLVMParser {
                 importedSymbols.add(functionSymbol.getName());
             } else {
                 assert exportedDescriptor.isGlobalVariable();
-                throw new LinkageError("The function " + functionSymbol.getName() + " conflicts with a global variable that has the same name.");
+                throw new LLVMLinkerException("The function " + functionSymbol.getName() + " conflicts with a global variable that has the same name.");
             }
         }
     }
@@ -220,7 +221,7 @@ public final class LLVMParser {
             } else if (descriptor.isFunction() && exportedDescriptor.isFunction() || descriptor.isGlobalVariable() && exportedDescriptor.isGlobalVariable()) {
                 importedSymbols.add(newName);
             } else {
-                throw new LinkageError("The alias " + newName + " conflicts with another symbol that has a different type but the same name.");
+                throw new LLVMLinkerException("The alias " + newName + " conflicts with another symbol that has a different type but the same name.");
             }
         }
     }

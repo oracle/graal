@@ -100,6 +100,7 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
@@ -575,7 +576,8 @@ public final class Runner {
                     globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isFunction()) {
                     assert globalSymbol.isGlobalVariable();
-                    throw new LinkageError("The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
+                    throw new LLVMLinkerException(
+                                    "The function " + function.getName() + " is declared as external but its definition is shadowed by a conflicting global variable with the same name.");
                 }
 
                 // there can already be a different local entry in the file scope
@@ -591,7 +593,7 @@ public final class Runner {
                     globalScope.register(globalSymbol);
                 } else if (!globalSymbol.isGlobalVariable()) {
                     assert globalSymbol.isFunction();
-                    throw new LinkageError("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
+                    throw new LLVMLinkerException("The global variable " + global.getName() + " is declared as external but its definition is shadowed by a conflicting function with the same name.");
                 }
 
                 // there can already be a different local entry in the file scope
@@ -634,7 +636,7 @@ public final class Runner {
         }
 
         if (!global.isDefined() && !context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            throw new LinkageError("Global variable " + global.getName() + " is declared but not defined.");
+            throw new LLVMLinkerException("Global variable " + global.getName() + " is declared but not defined.");
         }
     }
 

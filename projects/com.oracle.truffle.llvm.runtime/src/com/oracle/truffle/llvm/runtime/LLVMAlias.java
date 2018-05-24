@@ -34,6 +34,7 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
 public class LLVMAlias implements LLVMSymbol {
@@ -107,7 +108,7 @@ public class LLVMAlias implements LLVMSymbol {
 
     private void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
         if (visited.contains(alias)) {
-            throw new LinkageError("Found a cycle between the following aliases: " + visited.toString());
+            throw new LLVMLinkerException("Found a cycle between the following aliases: " + visited.toString());
         }
         visited.add(alias);
         if (alias.getTarget() instanceof LLVMAlias) {
