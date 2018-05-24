@@ -22,9 +22,12 @@
  */
 package org.graalvm.compiler.truffle.pelang.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangFunction;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
@@ -35,7 +38,9 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangAddNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangInvokeNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
@@ -50,6 +55,7 @@ import org.graalvm.compiler.truffle.pelang.var.PELangGlobalWriteNode;
 import org.graalvm.compiler.truffle.pelang.var.PELangLocalReadNode;
 import org.graalvm.compiler.truffle.pelang.var.PELangLocalWriteNode;
 
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 
 public class PELangBuilder {
@@ -66,6 +72,28 @@ public class PELangBuilder {
 
     public PELangExpressionNode lit(String value) {
         return new PELangLiteralStringNode(value);
+    }
+
+    public PELangExpressionNode lit(PELangFunction function) {
+        return new PELangLiteralFunctionNode(function);
+    }
+
+    public PELangFunction fn(FunctionHeader header, PELangStatementNode bodyNode) {
+        PELangBuilder builder = new PELangBuilder();
+        List<PELangStatementNode> bodyNodes = new ArrayList<>();
+
+        // read arguments and make them available as local variables
+        for (int i = 0; i < header.getArgs().length; i++) {
+            bodyNodes.add(builder.writeLocal(builder.readArgument(i), header.getArgs()[i]));
+        }
+        bodyNodes.add(bodyNode);
+
+        PELangRootNode rootNode = builder.root(builder.block(bodyNodes.stream().toArray(PELangStatementNode[]::new)));
+        return new PELangFunction(header, Truffle.getRuntime().createCallTarget(rootNode));
+    }
+
+    public FunctionHeader header(String... args) {
+        return new FunctionHeader(args);
     }
 
     public PELangExpressionNode add(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
@@ -144,6 +172,10 @@ public class PELangBuilder {
         return writeLocal(lit(value), identifier);
     }
 
+    public PELangExpressionNode writeLocal(PELangFunction function, String identifier) {
+        return writeLocal(lit(function), identifier);
+    }
+
     public PELangExpressionNode incrementLocal(long value, String identifier) {
         return writeLocal(add(lit(value), readLocal(identifier)), identifier);
     }
@@ -168,12 +200,20 @@ public class PELangBuilder {
         return writeGlobal(lit(value), identifier);
     }
 
+    public PELangExpressionNode writeGlobal(PELangFunction function, String identifier) {
+        return writeGlobal(lit(function), identifier);
+    }
+
     public PELangExpressionNode incrementGlobal(long value, String identifier) {
         return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
     }
 
     public PELangExpressionNode appendGlobal(String value, String identifier) {
         return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
+    }
+
+    public PELangExpressionNode invoke(PELangExpressionNode expressionNode, PELangExpressionNode... argumentNodes) {
+        return new PELangInvokeNode(expressionNode, argumentNodes);
     }
 
     public PELangStatementNode return_(PELangExpressionNode bodyNode) {
@@ -194,6 +234,20 @@ public class PELangBuilder {
 
     public PELangBasicBlockNode basicBlock(PELangExpressionNode valueNode, PELangExpressionNode[] caseValueNodes, int[] caseBodySuccessors, int defaultSuccessor) {
         return new PELangMultiSuccessorNode(valueNode, caseValueNodes, caseBodySuccessors, defaultSuccessor);
+    }
+
+    public static final class FunctionHeader {
+
+        private final String[] args;
+
+        public FunctionHeader(String... args) {
+            this.args = args;
+        }
+
+        public String[] getArgs() {
+            return args;
+        }
+
     }
 
     public static final class Case {

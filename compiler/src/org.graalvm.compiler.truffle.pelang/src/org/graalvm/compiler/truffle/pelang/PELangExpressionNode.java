@@ -42,11 +42,23 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         return expectString(executeGeneric(frame));
     }
 
+    public PELangFunction executeFunction(VirtualFrame frame) throws UnexpectedResultException {
+        return expectFunction(executeGeneric(frame));
+    }
+
     public long evaluateCondition(VirtualFrame frame) {
         try {
             return executeLong(frame);
         } catch (UnexpectedResultException ex) {
-            throw new PELangException("expected value of type long", this);
+            throw new PELangException("expected value of type Long", this);
+        }
+    }
+
+    public PELangFunction evaluateFunction(VirtualFrame frame) {
+        try {
+            return executeFunction(frame);
+        } catch (UnexpectedResultException ex) {
+            throw new PELangException("expected value of type PELangFunction", this);
         }
     }
 
@@ -60,6 +72,13 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
     private static String expectString(Object value) throws UnexpectedResultException {
         if (value instanceof String) {
             return (String) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    private static PELangFunction expectFunction(Object value) throws UnexpectedResultException {
+        if (value instanceof PELangFunction) {
+            return (PELangFunction) value;
         }
         throw new UnexpectedResultException(value);
     }
