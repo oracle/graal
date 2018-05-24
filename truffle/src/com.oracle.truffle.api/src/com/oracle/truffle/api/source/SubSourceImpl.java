@@ -43,6 +43,11 @@ final class SubSourceImpl extends Source {
     }
 
     @Override
+    Source copy() {
+        return new SubSourceImpl(key);
+    }
+
+    @Override
     public boolean isCached() {
         return key.base.isCached();
     }

@@ -63,8 +63,7 @@ final class SourceAccessor extends Accessor {
 
         @Override
         public Source copySource(Source source) {
-            Source clone = source.clone();
-            return clone;
+            return source.copy();
         }
 
         @Override
