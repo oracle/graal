@@ -80,9 +80,9 @@ public class PolyglotCachingTest {
     }
 
     /*
-     * Tests that the inner source instance is never the same as the one passed in. That allows the
-     * other source instance to be collected while the inner one is still referenced strongly. The
-     * collection of the outer source instance will cleanup of the CallTarget cache.
+     * Tests that the outer source instance is never the same as the one passed in. That allows the
+     * outer source instance to be collected while the inner one is still referenced strongly. The
+     * garbage collection of the outer source instance will trigger cleanup the cached CallTargets.
      */
     @Test
     public void testLanguageSourceInstanceIsEqualToEmbedder() throws Exception {
