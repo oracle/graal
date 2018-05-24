@@ -110,7 +110,7 @@ abstract class JNIGeneratedMethod implements GraphProvider, ResolvedJavaMethod {
     @Override
     public StackTraceElement asStackTraceElement(int bci) {
         if (stackTraceElement == null) {
-            stackTraceElement = new StackTraceElement(getDeclaringClass().getName(), getName(), "generated", 0);
+            stackTraceElement = new StackTraceElement(getDeclaringClass().toJavaName(true), getName(), "generated", 0);
         }
         return stackTraceElement;
     }

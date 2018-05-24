@@ -112,10 +112,10 @@ public abstract class InstrumentPhase extends BasePhase<PhaseContext> {
         TypeReference typeRef = TypeReference.createExactTrusted(context.getMetaAccess().lookupJavaType(tableConstant));
         ConstantNode table = graph.unique(new ConstantNode(tableConstant, StampFactory.object(typeRef, true)));
         ConstantNode rawIndex = graph.unique(ConstantNode.forInt(slotIndex));
-        LoadIndexedNode load = graph.add(new LoadIndexedNode(null, table, rawIndex, JavaKind.Long));
+        LoadIndexedNode load = graph.add(new LoadIndexedNode(null, table, rawIndex, null, JavaKind.Long));
         ConstantNode one = graph.unique(ConstantNode.forLong(1L));
         ValueNode add = graph.unique(new AddNode(load, one));
-        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, JavaKind.Long, add));
+        StoreIndexedNode store = graph.add(new StoreIndexedNode(table, rawIndex, null, null, JavaKind.Long, add));
 
         graph.addAfterFixed(targetNode, load);
         graph.addAfterFixed(load, store);

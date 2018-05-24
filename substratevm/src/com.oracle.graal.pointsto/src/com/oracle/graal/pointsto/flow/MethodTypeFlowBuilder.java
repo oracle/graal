@@ -68,7 +68,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -260,11 +259,6 @@ public class MethodTypeFlowBuilder {
                     assert arrayType.isArray();
                     arrayType.getComponentType().registerAsInTypeCheck();
                 }
-
-            } else if (n instanceof BytecodeExceptionNode) {
-                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
-                AnalysisType type = bb.getMetaAccess().lookupJavaType(node.getExceptionClass());
-                type.registerAsInHeap();
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;

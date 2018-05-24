@@ -109,6 +109,12 @@ public class ImplicitExceptionsPlugin implements NodePlugin {
         return ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(b.getMethod());
     }
 
+    /**
+     * The singleton {@link AssertionError} to throw when an assert fails in code that must not
+     * allocate.
+     */
+    private static final AssertionError CACHED_ASSERTION_ERROR = new AssertionError();
+
     @Override
     public boolean handleNewInstance(GraphBuilderContext b, ResolvedJavaType type) {
         /*
@@ -124,7 +130,7 @@ public class ImplicitExceptionsPlugin implements NodePlugin {
              * then we get a NullPointerException when calling the constructor. So we just use the
              * cached AssertionError object that already exists.
              */
-            b.push(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(SnippetRuntime.cachedAssertionError), metaAccess, b.getGraph()));
+            b.push(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(CACHED_ASSERTION_ERROR), metaAccess, b.getGraph()));
             return true;
         }
         return false;
