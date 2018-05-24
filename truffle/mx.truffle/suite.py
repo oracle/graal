@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.149.0",
+  "mxversion" : "5.167.0",
   "name" : "truffle",
   "version": "1.0.0-rc2-dev",
   "sourceinprojectwhitelist" : [],
@@ -170,14 +170,14 @@ suite = {
       "dependencies" : [
         "TRUFFLE_API",
         "TRUFFLE_INSTRUMENT_TEST",
-        "mx:JMH_1_18",
+        "mx:JMH_1_21",
       ],
       "imports" : ["jdk.internal.loader"],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "1.8",
       "findbugsIgnoresGenerated" : True,
       "testProject" : True,
-      "annotationProcessors" : ["mx:JMH_1_18", "TRUFFLE_DSL_PROCESSOR"],
+      "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
     },
@@ -718,12 +718,12 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.tck",
         "com.oracle.truffle.sl",
-        "mx:JMH_1_18",
+        "mx:JMH_1_21",
       ],
       "checkstyle" : "com.oracle.truffle.sl",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,SimpleLanguage,Test",
-      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_18"],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
       "license" : "UPL",
       "testProject" : True,
     },
@@ -916,7 +916,7 @@ suite = {
       ],
       "exclude" : [
         "mx:JUNIT",
-        "mx:JMH_1_18"
+        "mx:JMH_1_21"
       ],
       "distDependencies" : [
           "TRUFFLE_API",
@@ -963,7 +963,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.instrumentation.test",
       ],
-      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_18"],
+      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
       "distDependencies" : [
         "TRUFFLE_API",
         "TRUFFLE_DSL_PROCESSOR",
@@ -989,7 +989,7 @@ suite = {
          "com.oracle.truffle.tools.test",
          "com.oracle.truffle.nfi.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_18"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_NFI",
