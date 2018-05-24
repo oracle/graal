@@ -17,7 +17,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f1eeb352d2e94148e688a742d2c2979c7006d3ce",
+                "version": "a6b141057d0b42c4fca09b1da453474e90a87084",
                 "urls" : [
                     {"url" : "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -27,7 +27,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f1eeb352d2e94148e688a742d2c2979c7006d3ce",
+                "version": "a6b141057d0b42c4fca09b1da453474e90a87084",
                 "urls": [
                     {"url": "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
