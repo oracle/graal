@@ -49,4 +49,8 @@ public abstract class PELangEqualsNode extends PELangExpressionNode {
         }
     }
 
+    public static PELangEqualsNode create(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
+        return PELangEqualsNodeGen.create(leftNode, rightNode);
+    }
+
 }
