@@ -37,7 +37,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMBitcodeLibraryFunctions;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -78,7 +78,7 @@ public final class LLVMLandingpadNode extends LLVMExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         try {
-            LLVMException exception = (LLVMException) frame.getObject(exceptionSlot);
+            LLVMUserException exception = (LLVMUserException) frame.getObject(exceptionSlot);
             Object unwindHeader = exception.getUnwindHeader();
             LLVMStack.StackPointer stack = (LLVMStack.StackPointer) getStack.executeGeneric(frame);
 

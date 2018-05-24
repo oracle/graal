@@ -27,51 +27,24 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.interop;
+package com.oracle.truffle.llvm.runtime.except;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.api.nodes.Node;
 
-public abstract class LLVMAsForeignNode extends LLVMNode {
+/**
+ * Exception resulting from invalid use of polyglot builtins.
+ */
+public final class LLVMPolyglotException extends LLVMException {
 
-    final boolean allowNonForeign;
+    private static final long serialVersionUID = 1L;
 
-    protected LLVMAsForeignNode(boolean allowNonForeign) {
-        this.allowNonForeign = allowNonForeign;
+    public LLVMPolyglotException(Node location, String message) {
+        super(location, message);
     }
 
-    public abstract TruffleObject execute(LLVMManagedPointer pointer);
-
-    public static LLVMAsForeignNode create() {
-        return LLVMAsForeignNodeGen.create(false);
-    }
-
-    public static LLVMAsForeignNode createOptional() {
-        return LLVMAsForeignNodeGen.create(true);
-    }
-
-    @Specialization(guards = "isForeign(pointer)")
-    TruffleObject doForeign(LLVMManagedPointer pointer) {
-        LLVMTypedForeignObject foreign = (LLVMTypedForeignObject) pointer.getObject();
-        return foreign.getForeign();
-    }
-
-    @Specialization(guards = {"allowNonForeign", "!isForeign(pointer)"})
-    TruffleObject doOther(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
-        return null;
-    }
-
-    @Specialization(guards = {"!allowNonForeign", "!isForeign(pointer)"})
     @TruffleBoundary
-    TruffleObject doFail(@SuppressWarnings("unused") LLVMManagedPointer pointer) {
-        throw new LLVMPolyglotException(this, "Pointer does not point to a polyglot value.");
-    }
-
-    protected static boolean isForeign(LLVMManagedPointer pointer) {
-        return pointer.getOffset() == 0 && pointer.getObject() instanceof LLVMTypedForeignObject;
+    public LLVMPolyglotException(Node location, String format, Object... args) {
+        this(location, String.format(format, args));
     }
 }

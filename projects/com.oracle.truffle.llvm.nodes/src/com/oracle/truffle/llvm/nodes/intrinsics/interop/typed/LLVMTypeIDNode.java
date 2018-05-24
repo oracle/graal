@@ -48,7 +48,7 @@ import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFact
 import com.oracle.truffle.llvm.nodes.intrinsics.interop.typed.LLVMTypeIDNodeFactory.StructNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;

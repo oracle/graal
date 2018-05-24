@@ -27,30 +27,27 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.except;
 
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
+ * Common base class for all LLVM exceptions.
  */
-public final class LLVMException extends RuntimeException implements TruffleException {
-
-    public static final String FRAME_SLOT_ID = "<function exception value>";
+public abstract class LLVMException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = 1L;
 
     private final Node location;
-    private final Object unwindHeader;
 
-    public LLVMException(Node location, Object unwindHeader) {
+    protected LLVMException(Node location, String message) {
+        super(message);
         this.location = location;
-        this.unwindHeader = unwindHeader;
     }
 
-    public Object getUnwindHeader() {
-        return unwindHeader;
+    protected LLVMException(Node location) {
+        this.location = location;
     }
 
     @Override
@@ -59,17 +56,8 @@ public final class LLVMException extends RuntimeException implements TruffleExce
     }
 
     @Override
-    public Object getExceptionObject() {
-        return unwindHeader;
-    }
-
-    @Override
-    public String getMessage() {
-        return "LLVMException:" + unwindHeader.toString();
-    }
-
-    @Override
-    public synchronized Throwable fillInStackTrace() {
+    @SuppressWarnings("sync-override")
+    public final Throwable fillInStackTrace() {
         return null;
     }
 }

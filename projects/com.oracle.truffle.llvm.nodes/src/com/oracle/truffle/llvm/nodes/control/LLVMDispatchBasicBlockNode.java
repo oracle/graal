@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.nodes.base.LLVMFrameNullerUtil;
 import com.oracle.truffle.llvm.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.nodes.others.LLVMUnreachableNode;
-import com.oracle.truffle.llvm.runtime.LLVMException;
+import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -220,7 +220,7 @@ public final class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                     basicBlockIndex = invokeNode.getNormalSuccessor();
                     nullDeadSlots(frame, basicBlockIndex, beforeBlockNuller);
                     continue outer;
-                } catch (LLVMException e) {
+                } catch (LLVMUserException e) {
                     frame.setObject(exceptionValueSlot, e);
                     if (CompilerDirectives.inInterpreter()) {
                         if (invokeNode.getUnwindSuccessor() <= basicBlockIndex) {

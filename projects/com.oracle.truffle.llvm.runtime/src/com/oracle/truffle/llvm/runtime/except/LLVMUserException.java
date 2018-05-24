@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime;
+package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * Exception resulting from invalid use of polyglot builtins.
+ * Used for implementing try catch blocks within LLVM bitcode (e.g., when executing __cxa_throw).
  */
-public final class LLVMPolyglotException extends RuntimeException implements TruffleException {
+public final class LLVMUserException extends LLVMException {
+
+    public static final String FRAME_SLOT_ID = "<function exception value>";
 
     private static final long serialVersionUID = 1L;
 
-    private final Node location;
+    private final Object unwindHeader;
 
-    public LLVMPolyglotException(Node location, String message) {
-        super(message);
-        this.location = location;
+    public LLVMUserException(Node location, Object unwindHeader) {
+        super(location);
+        this.unwindHeader = unwindHeader;
     }
 
-    @TruffleBoundary
-    public LLVMPolyglotException(Node location, String format, Object... args) {
-        this(location, String.format(format, args));
-    }
-
-    @Override
-    public Node getLocation() {
-        return location;
+    public Object getUnwindHeader() {
+        return unwindHeader;
     }
 
     @Override
-    public synchronized Throwable fillInStackTrace() {
-        return null;
+    public Object getExceptionObject() {
+        return unwindHeader;
+    }
+
+    @Override
+    public String getMessage() {
+        return "LLVMException:" + unwindHeader.toString();
     }
 }
