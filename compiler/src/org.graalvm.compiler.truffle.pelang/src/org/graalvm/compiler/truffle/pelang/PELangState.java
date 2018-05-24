@@ -26,7 +26,7 @@ import org.graalvm.collections.EconomicMap;
 
 public final class PELangState {
 
-    private static final Object NULL = new Object();
+    private static final Object NULL = new PELangNull();
     private static final EconomicMap<String, Object> GLOBALS = EconomicMap.create();
 
     public static Object getNullObject() {
@@ -57,6 +57,15 @@ public final class PELangState {
 
     private static Object getGlobal(String identifier) {
         return GLOBALS.get(identifier, NULL);
+    }
+
+    private static final class PELangNull {
+
+        @Override
+        public String toString() {
+            return "PELangNull";
+        }
+
     }
 
 }
