@@ -121,7 +121,7 @@ import com.oracle.truffle.api.TruffleOptions;
  *
  * @since 0.8 or earlier
  */
-public abstract class Source implements Cloneable {
+public abstract class Source {
 
     private static final Source EMPTY = new SourceImpl.Key(null, null, null, null, null, null, null, false, false, false).toSource();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
