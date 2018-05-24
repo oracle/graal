@@ -30,7 +30,6 @@ import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
@@ -60,19 +59,15 @@ final class PolyglotSourceCache {
                  * We use a weak reference as key to get notified when sources are collected.
                  */
                 SourceWeakReference ref = new SourceWeakReference(sourceId, source, deadSources);
-                target = sourceCache.computeIfAbsent(ref, new Function<Object, CallTarget>() {
-                    @Override
-                    public CallTarget apply(Object o) {
-                        /*
-                         * We pass in for parsing only a copy of the original source. This allows us
-                         * to keep a strong reference to CallTarget while keeping the source
-                         * collectible. If the source is collected then the deadSources queue will
-                         * be updated and the call target entry will be removed to clean the cache.
-                         */
-                        Source weakSource = VMAccessor.SOURCE.copySource(source);
-                        return parseImpl(context, argumentNames, weakSource);
-                    }
-                });
+                Source weakSource = VMAccessor.SOURCE.copySource(source);
+                target = parseImpl(context, argumentNames, weakSource);
+                CallTarget prev = sourceCache.putIfAbsent(ref, target);
+                if (prev != null) {
+                    /*
+                     * Parsed twice -> discard the one not in the cache.
+                     */
+                    target = prev;
+                }
             }
         } else {
             target = parseImpl(context, argumentNames, source);
