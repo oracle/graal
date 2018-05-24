@@ -28,10 +28,7 @@ import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -42,7 +39,6 @@ final class PolyglotSourceCache {
 
     private final ConcurrentHashMap<Object, CallTarget> sourceCache;
     private final ReferenceQueue<Source> deadSources = new ReferenceQueue<>();
-    private final List<SourceReference> weakReferences = new LinkedList<>();
 
     PolyglotSourceCache() {
         this.sourceCache = new ConcurrentHashMap<>();
@@ -60,19 +56,13 @@ final class PolyglotSourceCache {
 
             target = sourceCache.get(sourceId);
             if (target == null) {
-                target = sourceCache.computeIfAbsent(sourceId, new Function<Object, CallTarget>() {
+                /*
+                 * We use a weak reference as key to get notified when sources are collected.
+                 */
+                SourceWeakReference ref = new SourceWeakReference(sourceId, source, deadSources);
+                target = sourceCache.computeIfAbsent(ref, new Function<Object, CallTarget>() {
                     @Override
                     public CallTarget apply(Object o) {
-                        /*
-                         * We need to capture every source as weak reference to get notified when
-                         * sources are collected. We also need to ensure that weak references
-                         * instances are not collected before the source reference hence the list of
-                         * weak references is needed here.
-                         */
-                        synchronized (weakReferences) {
-                            weakReferences.add(new SourceReference(o, source, deadSources));
-                        }
-
                         /*
                          * We pass in for parsing only a copy of the original source. This allows us
                          * to keep a strong reference to CallTarget while keeping the source
@@ -99,31 +89,36 @@ final class PolyglotSourceCache {
     }
 
     private void cleanupStaleEntries() {
-        List<SourceReference> references = null;
-        SourceReference sourceRef = null;
-        while ((sourceRef = (SourceReference) deadSources.poll()) != null) {
-            sourceCache.remove(sourceRef.key);
-            if (references == null) {
-                references = new ArrayList<>();
-            }
-            references.add(sourceRef);
-        }
-        if (references != null) {
-            synchronized (weakReferences) {
-                weakReferences.removeAll(references);
-            }
+        SourceWeakReference sourceRef = null;
+        while ((sourceRef = (SourceWeakReference) deadSources.poll()) != null) {
+            sourceCache.remove(sourceRef);
         }
     }
 
-    private static final class SourceReference extends WeakReference<Source> {
+    private static final class SourceWeakReference extends WeakReference<Source> {
 
         final Object key;
 
-        SourceReference(Object key, Source value, ReferenceQueue<? super Source> q) {
+        SourceWeakReference(Object key, Source value, ReferenceQueue<? super Source> q) {
             super(value, q);
             this.key = key;
         }
 
+        @Override
+        public int hashCode() {
+            return key.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            Object other;
+            if (!(obj instanceof SourceWeakReference)) {
+                other = obj;
+            } else {
+                other = ((SourceWeakReference) obj).key;
+            }
+            return key.equals(other);
+        }
     }
 
     private static class ArgumentSourceId {
