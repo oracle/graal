@@ -48,6 +48,7 @@ import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static org.graalvm.component.installer.CommonConstants.PATH_COMPONENT_STORAGE;
+import org.graalvm.component.installer.commands.AvailableCommand;
 import org.graalvm.component.installer.commands.InfoCommand;
 import org.graalvm.component.installer.commands.InstallCommand;
 import org.graalvm.component.installer.commands.ListInstalledCommand;
@@ -78,6 +79,7 @@ public final class ComponentInstaller {
         commands.put("install", new InstallCommand()); // NOI18N
         commands.put("uninstall", new UninstallCommand()); // NOI18N
         commands.put("list", new ListInstalledCommand()); // NOI18N
+        commands.put("available", new AvailableCommand()); // NOI18N
         commands.put("info", new InfoCommand()); // NOI18N
         commands.put("rebuild-images", new RebuildImageCommand()); // NOI18N
 
@@ -85,6 +87,7 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.OPTION_DEBUG, "");
         globalOptions.put(Commands.OPTION_HELP, "");
         globalOptions.put(Commands.OPTION_CATALOG, "");
+        globalOptions.put(Commands.OPTION_FILES, "");
         globalOptions.put(Commands.OPTION_FOREIGN_CATALOG, "s");
         globalOptions.put(Commands.OPTION_URLS, "");
         globalOptions.put(Commands.OPTION_NO_DOWNLOAD_PROGRESS, "");
@@ -92,6 +95,7 @@ public final class ComponentInstaller {
         globalOptions.put(Commands.LONG_OPTION_VERBOSE, Commands.OPTION_VERBOSE);
         globalOptions.put(Commands.LONG_OPTION_DEBUG, Commands.OPTION_DEBUG);
         globalOptions.put(Commands.LONG_OPTION_HELP, Commands.OPTION_HELP);
+        globalOptions.put(Commands.LONG_OPTION_FILES, Commands.OPTION_FILES);
         globalOptions.put(Commands.LONG_OPTION_CATALOG, Commands.OPTION_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_FOREIGN_CATALOG, Commands.OPTION_FOREIGN_CATALOG);
         globalOptions.put(Commands.LONG_OPTION_URLS, Commands.OPTION_URLS);
@@ -159,19 +163,35 @@ public final class ComponentInstaller {
             env.setLocalRegistry(new ComponentRegistry(env, new DirectoryStorage(
                             env, storagePath, graalHomePath)));
 
-            catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
-            if (catalogURL != null || optValues.containsKey(Commands.OPTION_CATALOG)) {
+            int srcCount = 0;
+            if (optValues.containsKey(Commands.OPTION_FILES)) {
+                srcCount++;
+            }
+            if (optValues.containsKey(Commands.OPTION_CATALOG)) {
+                srcCount++;
+            }
+            if (optValues.containsKey(Commands.OPTION_FOREIGN_CATALOG)) {
+                srcCount++;
+            }
+            if (optValues.containsKey(Commands.OPTION_URLS)) {
+                srcCount++;
+            }
+            if (srcCount > 1) {
+                err("ERROR_MultipleSourcesUnsupported");
+            }
+
+            if (optValues.containsKey(Commands.OPTION_FILES)) {
+                env.setFileIterable(new FileIterable(env, env));
+            } else if (optValues.containsKey(Commands.OPTION_URLS)) {
+                env.setFileIterable(new DownloadURLIterable(env, env));
+            } else {
+                catalogURL = optValues.get(Commands.OPTION_FOREIGN_CATALOG);
                 RemoteCatalogDownloader downloader = new RemoteCatalogDownloader(
                                 env,
                                 env.getLocalRegistry(),
                                 getCatalogURL(env));
                 env.setComponentRegistry(downloader);
                 env.setFileIterable(new CatalogIterable(env, env, downloader));
-                if (optValues.containsKey(Commands.OPTION_URLS)) {
-                    err("ERROR_MultipleSourcesUnsupported");
-                }
-            } else if (optValues.containsKey(Commands.OPTION_URLS)) {
-                env.setFileIterable(new DownloadURLIterable(env, env));
             }
             cmdHandler.init(env, env.withBundle(cmdHandler.getClass()));
             return cmdHandler.execute();

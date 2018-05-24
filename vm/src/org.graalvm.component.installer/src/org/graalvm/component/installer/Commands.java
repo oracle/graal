@@ -47,6 +47,12 @@ public interface Commands {
     String LONG_OPTION_FORCE = "force"; // NOI18N
 
     /**
+     * Interpret command line parameters as files.
+     */
+    String OPTION_FILES = "F"; // NOI18N
+    String LONG_OPTION_FILES = "file"; // NOI18N
+
+    /**
      * Replace different files.
      */
     String OPTION_REPLACE_DIFFERENT_FILES = "o"; // NOI18N
@@ -62,7 +68,7 @@ public interface Commands {
      * List files.
      */
     String OPTION_LIST_FILES = "l";
-    String LONG_OPTION_LIST_FILES = "filelist";
+    String LONG_OPTION_LIST_FILES = "list-files";
 
     /**
      * Display full paths in lists.
@@ -104,13 +110,13 @@ public interface Commands {
      * Validate only.
      */
     String OPTION_VALIDATE = "y";
-    String LONG_OPTION_VALIDATE = "validate-only";
+    String LONG_OPTION_VALIDATE = "only-validate";
 
     /**
      * Full validation, may require download of components.
      */
     String OPTION_VALIDATE_DOWNLOAD = "Y";
-    String LONG_OPTION_VALIDATE_DOWNLOAD = "full-validation";
+    String LONG_OPTION_VALIDATE_DOWNLOAD = "validate-before";
 
     /**
      * Print error stack traces.
@@ -140,7 +146,7 @@ public interface Commands {
      * Interpret parameters as URLs.
      */
     String OPTION_URLS = "u";
-    String LONG_OPTION_URLS = "urls";
+    String LONG_OPTION_URLS = "url";
 
     /**
      * When present on a command, will terminate option processing and all parameters will be passed
