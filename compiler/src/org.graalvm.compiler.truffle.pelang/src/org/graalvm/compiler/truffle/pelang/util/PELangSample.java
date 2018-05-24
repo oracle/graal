@@ -106,6 +106,22 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode simpleInvoke() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.return_(
+                b.invoke(
+                    b.lit(
+                        b.fn(
+                            b.header("a", "b"),
+                            b.return_(b.add(b.readLocal("a"), b.readLocal("b"))))),
+                    b.lit(5L),
+                    b.lit(5L))));
+        // @formatter:on
+    }
+
     public static PELangRootNode invalidBranch() {
         PELangBuilder b = new PELangBuilder();
 
