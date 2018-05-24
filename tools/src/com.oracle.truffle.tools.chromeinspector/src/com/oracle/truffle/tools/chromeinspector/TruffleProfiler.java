@@ -201,7 +201,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private Params getCoverage(Collection<CPUTracer.Payload> payloads) {
         JSONObject json = new JSONObject();
-        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new HashMap<>();
+        Map<Source, Map<String, Collection<CPUTracer.Payload>>> sourceToRoots = new LinkedHashMap<>();
         payloads.forEach(payload -> {
             Map<String, Collection<CPUTracer.Payload>> rootsToPayloads = sourceToRoots.computeIfAbsent(payload.getSourceSection().getSource(), s -> new LinkedHashMap<>());
             Collection<CPUTracer.Payload> pls = rootsToPayloads.computeIfAbsent(payload.getRootName(), t -> new LinkedList<>());
@@ -269,7 +269,7 @@ public final class TruffleProfiler extends ProfilerDomain {
 
     private Params getTypeProfile(Collection<TypeHandler.SectionTypeProfile> profiles) {
         JSONObject json = new JSONObject();
-        Map<Source, Collection<TypeHandler.SectionTypeProfile>> sourceToProfiles = new HashMap<>();
+        Map<Source, Collection<TypeHandler.SectionTypeProfile>> sourceToProfiles = new LinkedHashMap<>();
         profiles.forEach(profile -> {
             Collection<TypeHandler.SectionTypeProfile> pfs = sourceToProfiles.computeIfAbsent(profile.getSourceSection().getSource(), t -> new LinkedList<>());
             pfs.add(profile);
