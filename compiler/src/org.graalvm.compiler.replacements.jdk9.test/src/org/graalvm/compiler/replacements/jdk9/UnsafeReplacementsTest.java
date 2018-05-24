@@ -210,4 +210,104 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeCompareAndExchangeDouble");
         test("unsafeCompareAndExchangeObject");
     }
+
+    public static int unsafeGetAndAddByte() {
+        Container container = new Container();
+        return unsafe.getAndAddByte(container, byteOffset, (byte) 2);
+    }
+
+    public static int unsafeGetAndAddChar() {
+        Container container = new Container();
+        return unsafe.getAndAddChar(container, charOffset, (char) 250);
+    }
+
+    public static int unsafeGetAndAddShort() {
+        Container container = new Container();
+        return unsafe.getAndAddShort(container, shortOffset, (short) 1250);
+    }
+
+    public static int unsafeGetAndAddInt() {
+        Container container = new Container();
+        return unsafe.getAndAddInt(container, intOffset, 104501);
+    }
+
+    public static long unsafeGetAndAddLong() {
+        Container container = new Container();
+        return unsafe.getAndAddLong(container, longOffset, 0x123456abcdL);
+    }
+
+    @Test
+    public void testGetAndAdd() {
+        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
+        if (target.arch instanceof AMD64) {
+            testGraph("unsafeGetAndAddByte");
+            testGraph("unsafeGetAndAddChar");
+            testGraph("unsafeGetAndAddShort");
+            testGraph("unsafeGetAndAddInt");
+            testGraph("unsafeGetAndAddLong");
+        }
+        test("unsafeGetAndAddByte");
+        test("unsafeGetAndAddChar");
+        test("unsafeGetAndAddShort");
+        test("unsafeGetAndAddInt");
+        test("unsafeGetAndAddLong");
+    }
+
+    public static boolean unsafeGetAndSetBoolean() {
+        Container container = new Container();
+        return unsafe.getAndSetBoolean(container, booleanOffset, true);
+    }
+
+    public static byte unsafeGetAndSetByte() {
+        Container container = new Container();
+        return unsafe.getAndSetByte(container, byteOffset, (byte) 129);
+    }
+
+    public static char unsafeGetAndSetChar() {
+        Container container = new Container();
+        return unsafe.getAndSetChar(container, charOffset, (char) 21111);
+    }
+
+    public static short unsafeGetAndSetShort() {
+        Container container = new Container();
+        return unsafe.getAndSetShort(container, shortOffset, (short) 21111);
+    }
+
+    public static int unsafeGetAndSetInt() {
+        Container container = new Container();
+        return unsafe.getAndSetInt(container, intOffset, 0x1234af);
+    }
+
+    public static long unsafeGetAndSetLong() {
+        Container container = new Container();
+        return unsafe.getAndSetLong(container, longOffset, 0x12345678abL);
+    }
+
+    public static Object unsafeGetAndSetObject() {
+        Container container = new Container();
+        container.objectField = null;
+        Container other = new Container();
+        return unsafe.getAndSetObject(container, objectOffset, other);
+    }
+
+    @Test
+    public void testGetAndSet() {
+        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
+        if (target.arch instanceof AMD64) {
+            testGraph("unsafeGetAndSetBoolean");
+            testGraph("unsafeGetAndSetByte");
+            testGraph("unsafeGetAndSetChar");
+            testGraph("unsafeGetAndSetShort");
+            testGraph("unsafeGetAndSetInt");
+            testGraph("unsafeGetAndSetLong");
+            testGraph("unsafeGetAndSetObject");
+        }
+        test("unsafeGetAndSetBoolean");
+        test("unsafeGetAndSetByte");
+        test("unsafeGetAndSetChar");
+        test("unsafeGetAndSetShort");
+        test("unsafeGetAndSetInt");
+        test("unsafeGetAndSetLong");
+        test("unsafeGetAndSetObject");
+    }
 }
