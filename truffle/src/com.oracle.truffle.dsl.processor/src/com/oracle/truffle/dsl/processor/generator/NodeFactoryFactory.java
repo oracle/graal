@@ -37,6 +37,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.api.dsl.NodeFactory;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -141,7 +142,12 @@ class NodeFactoryFactory {
 
         builder.startStaticCall(context.getType(Arrays.class), "asList");
         for (NodeExecutionData execution : node.getChildExecutions()) {
-            builder.typeLiteral(execution.getNodeType());
+            TypeMirror nodeType = execution.getNodeType();
+            if (nodeType != null) {
+                builder.typeLiteral(nodeType);
+            } else {
+                builder.typeLiteral(context.getType(Node.class));
+            }
         }
         builder.end();
 
