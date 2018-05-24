@@ -398,17 +398,8 @@ public abstract class Source implements Cloneable {
         if (uri == null) {
             uri = computedURI;
             if (uri == null) {
-                uri = computeURI();
+                uri = computedURI = getNamedURI(getName(), getCharacters().toString().getBytes());
             }
-        }
-        return uri;
-    }
-
-    private URI computeURI() {
-        URI uri = computedURI;
-        if (uri == null) {
-            uri = getNamedURI(getName(), getCharacters().toString().getBytes());
-            this.computedURI = uri;
         }
         return uri;
     }
