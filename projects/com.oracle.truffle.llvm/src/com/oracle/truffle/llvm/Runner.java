@@ -101,6 +101,7 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativePointerIntoLibrary;
 import com.oracle.truffle.llvm.runtime.SystemContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeGen;
@@ -314,7 +315,7 @@ public final class Runner {
     /**
      * Parse bitcode data and do first initializations to prepare bitcode execution.
      */
-    public CallTarget parse(Source source) throws IOException {
+    public CallTarget parse(Source source) {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
             ParserInput input = getParserData(source);
@@ -322,56 +323,48 @@ public final class Runner {
         }
     }
 
-    private static ParserInput getParserData(Source source) throws IOException {
+    private static ParserInput getParserData(Source source) {
         ByteBuffer bytes;
         ExternalLibrary library;
-        try {
-            if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
-                bytes = ByteBuffer.wrap(decodeBase64(source.getCharacters()));
-                library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
-            } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
-                NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
-                String filename = descriptor.getFilename();
-                bytes = read(filename);
-                library = new ExternalLibrary(Paths.get(filename), false);
-            } else if (source.getPath() != null) {
-                bytes = read(source.getPath());
-                library = new ExternalLibrary(Paths.get(source.getPath()), false);
-            } else {
-                throw new IllegalStateException("Neither a valid path nor a valid mime-type were specified.");
-            }
-        } catch (Throwable t) {
-            throw new IOException("Error while preparing data for parsing: " + source.getName(), t);
+        if (source.getMimeType().equals(LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE)) {
+            bytes = ByteBuffer.wrap(decodeBase64(source.getCharacters()));
+            library = new ExternalLibrary("<STREAM-" + UUID.randomUUID().toString() + ">", false);
+        } else if (source.getMimeType().equals(LLVMLanguage.LLVM_SULONG_TYPE)) {
+            NativeLibraryDescriptor descriptor = Parser.parseLibraryDescriptor(source.getCharacters());
+            String filename = descriptor.getFilename();
+            bytes = read(filename);
+            library = new ExternalLibrary(Paths.get(filename), false);
+        } else if (source.getPath() != null) {
+            bytes = read(source.getPath());
+            library = new ExternalLibrary(Paths.get(source.getPath()), false);
+        } else {
+            throw new LLVMParserException("Neither a valid path nor a valid mime-type were specified.");
         }
         return new ParserInput(bytes, library);
     }
 
-    private CallTarget parse(Source source, ByteBuffer bytes, ExternalLibrary library) throws IOException {
+    private CallTarget parse(Source source, ByteBuffer bytes, ExternalLibrary library) {
         // process the bitcode file and its dependencies in the dynamic linking order
         // (breadth-first)
-        try {
-            List<LLVMParserResult> parserResults = new ArrayList<>();
-            ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
+        List<LLVMParserResult> parserResults = new ArrayList<>();
+        ArrayDeque<ExternalLibrary> dependencyQueue = new ArrayDeque<>();
 
-            parse(parserResults, dependencyQueue, source, library, bytes);
-            assert !library.isNative() && !parserResults.isEmpty();
+        parse(parserResults, dependencyQueue, source, library, bytes);
+        assert !library.isNative() && !parserResults.isEmpty();
 
-            ExternalLibrary[] sulongLibraries = parseDependencies(parserResults, dependencyQueue);
-            assert dependencyQueue.isEmpty();
+        ExternalLibrary[] sulongLibraries = parseDependencies(parserResults, dependencyQueue);
+        assert dependencyQueue.isEmpty();
 
-            addExternalSymbolsToScopes(parserResults);
-            bindUnresolvedSymbols(parserResults);
+        addExternalSymbolsToScopes(parserResults);
+        bindUnresolvedSymbols(parserResults);
 
-            InitializationOrder initializationOrder = computeInitializationOrder(parserResults, sulongLibraries);
-            overrideSulongLibraryFunctionsWithIntrinsics(initializationOrder.sulongLibraries);
+        InitializationOrder initializationOrder = computeInitializationOrder(parserResults, sulongLibraries);
+        overrideSulongLibraryFunctionsWithIntrinsics(initializationOrder.sulongLibraries);
 
-            parseFunctionsEagerly(parserResults);
-            registerDynamicLinkChain(parserResults);
-            callStructors(initializationOrder);
-            return createLibraryCallTarget(source.getName(), parserResults);
-        } catch (Throwable t) {
-            throw new IOException("Error while parsing " + library, t);
-        }
+        parseFunctionsEagerly(parserResults);
+        registerDynamicLinkChain(parserResults);
+        callStructors(initializationOrder);
+        return createLibraryCallTarget(source.getName(), parserResults);
     }
 
     /**
@@ -519,22 +512,23 @@ public final class Runner {
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, ExternalLibrary lib) {
         if (lib.getPath() == null || !lib.getPath().toFile().isFile()) {
             if (!lib.isNative()) {
-                throw new RuntimeException("'" + lib.getPath() + "' is not a file or does not exist.");
+                throw new LLVMParserException("'" + lib.getPath() + "' is not a file or does not exist.");
             } else {
                 // lets assume that this is not a bitcode file and the NFI is going to handle it
                 return null;
             }
         }
 
+        Path path = lib.getPath();
+        byte[] bytes;
         try {
-            Path path = lib.getPath();
-            byte[] bytes = Files.readAllBytes(path);
-            // at the moment, we don't need the bitcode as the content of the source
-            Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
-            return parse(parserResults, dependencyQueue, source, lib, ByteBuffer.wrap(bytes));
-        } catch (Throwable t) {
-            throw new RuntimeException("Error while trying to parse " + lib.getName(), t);
+            bytes = Files.readAllBytes(path);
+        } catch (IOException ex) {
+            throw new LLVMParserException("Error reading file " + path + ".");
         }
+        // at the moment, we don't need the bitcode as the content of the source
+        Source source = Source.newBuilder(path.toString()).mimeType(LLVMLanguage.LLVM_BITCODE_MIME_TYPE).name(path.getFileName().toString()).build();
+        return parse(parserResults, dependencyQueue, source, lib, ByteBuffer.wrap(bytes));
     }
 
     private LLVMParserResult parse(List<LLVMParserResult> parserResults, ArrayDeque<ExternalLibrary> dependencyQueue, Source source,
@@ -557,7 +551,7 @@ public final class Runner {
             parserResults.add(parserResult);
             return parserResult;
         } else if (!library.isNative()) {
-            throw new RuntimeException("The file is not a bitcode file nor an ELF File with a .llvmbc section.");
+            throw new LLVMParserException("The file is not a bitcode file nor an ELF File with a .llvmbc section.");
         } else {
             return null;
         }

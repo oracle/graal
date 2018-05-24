@@ -37,6 +37,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 import org.antlr.v4.runtime.atn.*;
@@ -345,7 +346,7 @@ public class InlineAssemblyParser extends Parser {
 	    @Override
 	    public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
 	        String location = "-- line " + line + " col " + (charPositionInLine + 1) + ": ";
-	        throw new RuntimeException(String.format("ASM error in %s:\n%s%s", snippet, location, msg), e);
+	        throw new LLVMParserException(String.format("ASM error in %s:\n%s%s", snippet, location, msg));
 	    }
 	}
 
