@@ -1023,14 +1023,16 @@ class InstallableComponentArchiver(mx.Archiver):
 Bundle-Symbolic-Name: org.graalvm.{id}
 Bundle-Version: {version}
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version={version})(os_name={os})(os_arch={arch}))"
-x-GraalVM-Polyglot-Part: {polyglot}""".format(
+x-GraalVM-Polyglot-Part: {polyglot}
+x-GraalVM-Working-Directories: {workdir}""".format(
             name=self.component.name,
             id=self.component.dir_name,
             version=_suite.release_version(),
             os=mx.get_os(),
             arch=mx.get_arch(),
             polyglot=isinstance(self.component, mx_sdk.GraalVmTruffleComponent) and self.component.include_in_polyglot
-                        and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default))
+                        and (not isinstance(self.component, mx_sdk.GraalVmTool) or self.component.include_by_default),
+            workdir=join('jre', 'languages', self.component.dir_name))
 
         _manifest_arc_name = 'META-INF/MANIFEST.MF'
 
