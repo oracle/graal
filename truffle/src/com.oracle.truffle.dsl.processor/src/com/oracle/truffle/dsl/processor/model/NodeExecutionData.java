@@ -59,6 +59,9 @@ public class NodeExecutionData {
     }
 
     public TypeMirror getNodeType() {
+        if (child == null) {
+            return null;
+        }
         TypeMirror type;
         if (child.getCardinality() == Cardinality.MANY && child.getNodeType().getKind() == TypeKind.ARRAY) {
             type = ((ArrayType) child.getNodeType()).getComponentType();
