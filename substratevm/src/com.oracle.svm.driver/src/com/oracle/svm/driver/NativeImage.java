@@ -168,7 +168,6 @@ class NativeImage {
 
     private final Path workDir;
     private final Path rootDir;
-    private final Path homeDir;
     private final Map<String, String> userConfigProperties = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
@@ -205,9 +204,6 @@ class NativeImage {
             }
         }
         assert rootDir != null;
-        String homeDirString = System.getProperty("user.home");
-        homeDir = Paths.get(homeDirString);
-        assert homeDir != null;
 
         String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
         String configFile = System.getenv(configFileEnvVarKey);
@@ -267,16 +263,17 @@ class NativeImage {
         return rootDir;
     }
 
-    protected Path getHomeDir() {
-        return homeDir;
-    }
-
     protected Map<String, String> getUserConfigProperties() {
         return userConfigProperties;
     }
 
     protected Path getUserConfigDir() {
-        return getHomeDir().resolve(".native-image");
+        String envVarKey = "NATIVE_IMAGE_USER_HOME";
+        String userHomeStr = System.getenv(envVarKey);
+        if (userHomeStr == null || userHomeStr.isEmpty()) {
+            return Paths.get(System.getProperty("user.home"), ".native-image");
+        }
+        return Paths.get(userHomeStr);
     }
 
     protected static void ensureDirectoryExists(Path dir) {
