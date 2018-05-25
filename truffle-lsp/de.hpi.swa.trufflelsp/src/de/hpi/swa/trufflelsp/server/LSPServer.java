@@ -41,6 +41,8 @@ import org.eclipse.lsp4j.Hover;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -347,12 +349,14 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params) {
         if ("harvest_types".equals(params.getCommand())) {
+            this.client.showMessage(new MessageParams(MessageType.Info, "Running Type Harvester..."));
             String uri = (String) params.getArguments().get(0);
             try {
                 this.truffle.exec(uri);
             } finally {
                 reportCollectedDiagnostics(uri, false);
             }
+            this.client.showMessage(new MessageParams(MessageType.Info, "Type Harvesting done."));
         }
 
         return CompletableFuture.completedFuture(new Object());

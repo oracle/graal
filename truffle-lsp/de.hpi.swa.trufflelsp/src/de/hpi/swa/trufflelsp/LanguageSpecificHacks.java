@@ -51,8 +51,7 @@ public class LanguageSpecificHacks {
         return null;
     }
 
-    public static boolean fillCompletions(TruffleAdapter adapter, CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId,
-                    boolean areObjectPropertiesPresent) {
+    public static boolean fillCompletions(TruffleAdapter adapter, CompletionList completions, VirtualFrame frame, Node nodeForLocalScoping, String langId) {
         if (enableLanguageSpecificHacks) {
             if (langId.equals("sl") && frame != null) {
                 // TODO(ds) SL supports no inline-parsing yet
@@ -70,10 +69,10 @@ public class LanguageSpecificHacks {
             } else if (langId.equals("python")) {
             }
         }
-        return areObjectPropertiesPresent;
+        return false;
     }
 
-    public static String fillCompletionsFromTruffleObject(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
+    public static String getDocumentationForTruffleObject(String langId, Entry<Object, Object> entry, CompletionItem completion, String documentation) {
         if (enableLanguageSpecificHacks) {
             if (langId.equals("python")) {
                 try {
