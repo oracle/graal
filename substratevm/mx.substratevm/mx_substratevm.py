@@ -67,9 +67,16 @@ IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyGraalGraphEdges', '
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
+orig_command_gate = mx.command_function('gate')
 orig_command_build = mx.command_function('build')
 
-allow_native_image_build = True
+native_image_build_veto = None
+gate_run = False
+
+def gate(args):
+    global gate_run
+    gate_run = True
+    orig_command_gate(args)
 
 def build(args, vm=None):
     if any([opt in args for opt in ['-h', '--help']]):
@@ -80,12 +87,15 @@ def build(args, vm=None):
     if not _host_os_supported():
         mx.abort('build: SubstrateVM can be built only on Darwin, Linux and Windows platforms')
 
-    global allow_native_image_build
-    if '--warning-as-error' in args and '--force-javac' not in args:
-        # --warning-as-error with ecj is buggy (GR-3969)
-        allow_native_image_build = False
+    global native_image_build_veto
+    if svm_suite().primary and not gate_run:
+        native_image_build_veto = 'No SVM gate-run'
+    elif mx.get_os() == 'windows':
+        native_image_build_veto = mx.get_os() + ' currently not supported'
+    elif '--warning-as-error' in args and '--force-javac' not in args:
+        native_image_build_veto = 'Building with ejc + --warning-as-error (see GR-3969)'
     else:
-        allow_native_image_build = True
+        native_image_build_veto = None
 
     orig_command_build(args, vm)
 
@@ -289,12 +299,6 @@ def native_image_extract_dependencies(args):
             deps += [language_suite_name + ':' + dep for dep in language_native_deps]
     return deps
 
-def native_image_symlink_path(native_image_root, platform_specific=True):
-    symlink_path = join(svm_suite().dir, basename(native_image_path(native_image_root)))
-    if platform_specific:
-        symlink_path += '-' + platform_subdir()
-    return symlink_path
-
 def native_image_on_jvm(args):
     driver_cp = [join(suite_native_image_root(), 'lib', subdir, '*.jar') for subdir in ['boot', 'jvmci', 'graalvm']]
     driver_cp += [join(suite_native_image_root(), 'lib', 'svm', tail) for tail in ['*.jar', join('builder', '*.jar')]]
@@ -302,10 +306,6 @@ def native_image_on_jvm(args):
     run_java(['-Dnative-image.root=' + suite_native_image_root(), '-cp', ":".join(driver_cp), mx.dependency('substratevm:SVM_DRIVER').mainClass] + args)
 
 def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution, librarySupportDistribution):
-    if not allow_native_image_build:
-        mx.logv('Detected building with ejc + --warning-as-error -> suppress bootstrap_native_image')
-        return
-
     bootstrap_command = list(GRAAL_COMPILER_FLAGS)
     bootstrap_command += locale_US_args()
     bootstrap_command += substratevm_version_args()
@@ -331,8 +331,8 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     if mx._opts.strip_jars:
         bootstrap_command += ['-H:-VerifyNamingConventions']
 
-    if mx.get_os() == 'windows':
-        mx.log('Skip building native-image executable on ' + mx.get_os())
+    if native_image_build_veto:
+        mx.log('Skip building native-image executable: ' + native_image_build_veto)
     else:
         run_java(bootstrap_command)
         mx.logv('Built ' + native_image_path(native_image_root))
@@ -375,13 +375,6 @@ def bootstrap_native_image(native_image_root, svmDistribution, graalDistribution
     for clibrary_path in clibrary_paths():
         copy_tree(clibrary_path, join(native_image_root, join(svm_subdir, 'clibraries')))
 
-    # Create platform-specific symlink to native-image in svm_suite().dir
-    symlink_path = remove_existing_symlink(native_image_symlink_path(native_image_root))
-    relsymlink(native_image_path(native_image_root), symlink_path)
-    # Finally create default symlink to native-image in svm_suite().dir
-    symlink_path = remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
-    relsymlink(native_image_path(native_image_root), symlink_path)
-
 class BootstrapNativeImage(mx.Project):
     def __init__(self, suite, name, deps, workingSets, theLicense=None, **kwargs):
         super(BootstrapNativeImage, self).__init__(suite, name, "", [], deps, workingSets, suite.dir, theLicense)
@@ -408,36 +401,14 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         self._newestOutput = None
 
     def _allow_bootstrapping(self):
-        return self.subject.suite == svm_suite()
+        task_suite_match = self.subject.suite == svm_suite()
+        return task_suite_match, ['Using ' + svm_suite().name + '. Skip ', ''][task_suite_match] + self.subject.name
 
     def __str__(self):
-        prefix = "Bootstrapping " if self._allow_bootstrapping() else "Skip bootstrapping "
-        return prefix + self.subject.name
-
-    def _shouldRebuildNativeImage(self):
-        # Only bootstrap native-image for the most-specific svm_suite
-        if not self._allow_bootstrapping():
-            return False, 'Skip bootstrapping'
-
-        supress = mx.get_env("SUPPRESS_NATIVE_IMAGE_REBUILD", 'false')
-        if supress.lower() in ('false', '0', 'no', ''):
-            supress = False
-        elif supress.lower() in ('true', '1', 'yes'):
-            supress = True
-        else:
-            mx.abort("Could not understand SUPPRESS_NATIVE_IMAGE_REBUILD=" + supress)
-        if supress:
-            # Only bootstrap if it doesn't already exist
-            symlink_path = native_image_symlink_path(self.subject.native_image_root)
-            if exists(symlink_path):
-                mx.log('Suppressed rebuilding native-image (delete ' + symlink_path + ' to allow rebuilding).')
-                return False, 'Already bootstrapped'
-
-        return True, ''
+        return self._allow_bootstrapping()[1]
 
     def build(self):
-        shouldRebuild = self._shouldRebuildNativeImage()[0]
-        if not shouldRebuild:
+        if not self._allow_bootstrapping()[0]:
             return
 
         bootstrap_native_image(
@@ -454,13 +425,11 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         native_image_root = self.subject.native_image_root
         if exists(native_image_root):
             remove_tree(native_image_root)
-        remove_existing_symlink(native_image_symlink_path(native_image_root))
-        remove_existing_symlink(native_image_symlink_path(native_image_root, platform_specific=False))
 
     def needsBuild(self, newestInput):
-        shouldRebuild, reason = self._shouldRebuildNativeImage()
-        if not shouldRebuild:
-            return False, reason
+        allow, message = self._allow_bootstrapping()
+        if not allow:
+            return False, message
 
         witness = self.newestOutput()
         if not self._newestOutput or witness.isNewerThan(self._newestOutput):
@@ -932,6 +901,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
 ))
 
 mx.update_commands(suite, {
+    'gate': [gate, '[options]'],
     'build': [build, ''],
     'helloworld' : [lambda args: native_image_context_run(helloworld, args), ''],
     'cinterfacetutorial' : [lambda args: native_image_context_run(cinterfacetutorial, args), ''],
