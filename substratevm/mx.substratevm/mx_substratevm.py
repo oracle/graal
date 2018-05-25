@@ -400,10 +400,17 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
         super(NativeImageBootstrapTask, self).__init__(args, min(8, mx.cpu_count()), project)
         self._newestOutput = None
 
+    def _allow_bootstrapping(self):
+        task_suite_match = self.subject.suite == svm_suite()
+        return task_suite_match, ['Using ' + svm_suite().name + '. Skip ', ''][task_suite_match] + self.subject.name
+
     def __str__(self):
-        return "Bootstrapping " + self.subject.name
+        return self._allow_bootstrapping()[1]
 
     def build(self):
+        if not self._allow_bootstrapping()[0]:
+            return
+
         bootstrap_native_image(
             native_image_root=self.subject.native_image_root,
             svmDistribution=self.subject.svmDistribution,
@@ -420,6 +427,10 @@ class NativeImageBootstrapTask(mx.ProjectBuildTask):
             remove_tree(native_image_root)
 
     def needsBuild(self, newestInput):
+        allow, message = self._allow_bootstrapping()
+        if not allow:
+            return False, message
+
         witness = self.newestOutput()
         if not self._newestOutput or witness.isNewerThan(self._newestOutput):
             self._newestOutput = witness
