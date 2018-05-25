@@ -47,4 +47,9 @@ public class CommonConstants {
     public static final String PATH_JRE_BIN = "jre/bin/"; // NOI18N
 
     public static final String SYSPROP_CATALOG_URL = "org.graalvm.component.catalog"; // NOI18N
+
+    /**
+     * Warns the user to rebuild the polyglot image and/or libraries.
+     */
+    public static final boolean WARN_REBUILD_IMAGES = true;
 }
