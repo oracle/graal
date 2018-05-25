@@ -209,15 +209,6 @@ public final class SourceSection {
     }
 
     /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link #getCharacters()} instead
-     */
-    @Deprecated
-    public String getCode() {
-        return getCharacters().toString();
-    }
-
-    /**
      * Returns the source code fragment described by this section. Returns an empty character
      * sequence for out of bounds or {@link #isAvailable() unavailable} source sections. Please note
      * that calling this method causes the {@link Source#getCharacters() code} of the

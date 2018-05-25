@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,69 +24,52 @@
  */
 package com.oracle.truffle.api.source;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
-import java.net.URI;
-import java.net.URL;
-import java.util.Objects;
+import java.util.Collection;
 
-final class LiteralSourceImpl extends Content implements Content.CreateURI {
+import com.oracle.truffle.api.impl.Accessor;
 
-    private final String name;
+final class SourceAccessor extends Accessor {
 
-    LiteralSourceImpl(String name, CharSequence code) {
-        this.name = name;
-        this.code = enforceCharSequenceContract(code);
+    static final SourceAccessor ACCESSOR = new SourceAccessor();
+
+    protected SourceAccessor() {
     }
 
     @Override
-    public String getName() {
-        return name;
+    protected SourceSupport sourceSupport() {
+        return new SourceSupportImpl();
     }
 
     @Override
-    public CharSequence getCharacters() {
-        return code;
+    protected LanguageSupport languageSupport() {
+        return super.languageSupport();
     }
 
-    @Override
-    public String getPath() {
-        return null;
+    static Collection<ClassLoader> allLoaders() {
+        return ACCESSOR.loaders();
     }
 
-    @Override
-    public URL getURL() {
-        return null;
+    static byte[] readTruffleFile(File file) throws IOException {
+        return ACCESSOR.languageSupport().truffleFileContent(file);
     }
 
-    @Override
-    URI getURI() {
-        return createURIOnce(this);
+    static boolean isTruffleFile(File file) {
+        return ACCESSOR.languageSupport().checkTruffleFile(file);
     }
 
-    @Override
-    public URI createURI() {
-        return getNamedURI(name, code.toString().getBytes());
-    }
+    static final class SourceSupportImpl extends Accessor.SourceSupport {
 
-    @Override
-    public Reader getReader() {
-        return new CharSequenceReader(code);
-    }
+        @Override
+        public Source copySource(Source source) {
+            return source.copy();
+        }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, code);
-    }
+        @Override
+        public Object getSourceIdentifier(Source source) {
+            return source.getSourceId();
+        }
 
-    @Override
-    String findMimeType() throws IOException {
-        return null;
     }
-
-    @Override
-    Object getHashKey() {
-        return code;
-    }
-
 }

@@ -38,6 +38,7 @@ suite = {
             "dependencies" : [
                 "com.oracle.truffle.tools.chromeinspector",
                 "truffle:TRUFFLE_TEST",
+                "truffle:TRUFFLE_SL",
                 "mx:JUNIT",
             ],
             "javaCompliance" : "1.8",

@@ -73,7 +73,7 @@ public class ContentDigestTest {
         byte[] result = MessageDigest.getInstance("MD2").digest(arr);
         String expecting = new BigInteger(1, result).toString(16);
 
-        Method m = Class.forName("com.oracle.truffle.api.source.Content").getDeclaredMethod("digest", byte[].class, int.class, int.class);
+        Method m = Class.forName("com.oracle.truffle.api.source.Source").getDeclaredMethod("digest", byte[].class, int.class, int.class);
         ReflectionUtils.setAccessible(m, true);
         String own = (String) m.invoke(null, arr, 0, arr.length);
 

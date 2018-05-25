@@ -26,22 +26,18 @@ package com.oracle.truffle.api.vm;
 
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
 
 @SuppressWarnings("deprecation")
@@ -60,7 +56,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     @CompilationFinal private ContextProfile profile;
 
-    volatile Map<Source, CallTarget> sourceCache;
+    volatile PolyglotSourceCache sourceCache;
     private volatile boolean initialized;
 
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
@@ -102,7 +98,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                 if (languageContext != null && languageContext.isInitialized()) {
                     this.sourceCache = languageContext.sourceCache;
                 } else {
-                    this.sourceCache = new ConcurrentHashMap<>();
+                    this.sourceCache = new PolyglotSourceCache();
                 }
                 assert this.sourceCache != null;
             } else {

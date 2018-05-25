@@ -67,19 +67,24 @@ public class LanguageSPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        getContext(); // We must have the context here
-        Object result = "null result";
-        if (runinside != null) {
-            try {
-                result = runinside.apply(getContext().env);
-            } finally {
-                runinside = null;
+        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                getContext(); // We must have the context here
+                Object result = "null result";
+                if (runinside != null) {
+                    try {
+                        result = runinside.apply(getContext().env);
+                    } finally {
+                        runinside = null;
+                    }
+                }
+                if (result == null) {
+                    result = "null result";
+                }
+                return result;
             }
-        }
-        if (result == null) {
-            result = "null result";
-        }
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(result));
+        });
     }
 
     @Override

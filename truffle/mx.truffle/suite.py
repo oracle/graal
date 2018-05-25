@@ -76,32 +76,15 @@ suite = {
 
     # ------------- Truffle -------------
 
-    "com.oracle.truffle.api.source" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-      ],
-      "uses" : [
-        "com.oracle.truffle.api.TruffleRuntimeAccess",
-        "java.nio.file.spi.FileTypeDetector"
-      ],
-      "exports" : [
-        "<package-info>", # exports all packages containing package-info.java
-      ],
-      "checkstyle" : "com.oracle.truffle.api",
-      "javaCompliance" : "1.8",
-      "workingSets" : "API,Truffle",
-    },
-
     "com.oracle.truffle.api" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.api.source",
         "sdk:GRAAL_SDK",
       ],
       "uses" : [
         "com.oracle.truffle.api.TruffleRuntimeAccess",
+         "java.nio.file.spi.FileTypeDetector"
       ],
       "exports" : [
         "<package-info>", # exports all packages containing package-info.java

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,45 @@
  */
 package com.oracle.truffle.api.source;
 
-import java.net.URI;
+/**
+ * Wrapper to enforce CharSequence contract is not violated by any language.
+ */
+class CharSequenceWrapper implements CharSequence {
 
-import com.oracle.truffle.api.source.impl.SourceAccessor;
+    private final CharSequence delegate;
 
-final class SourceImpl extends Source implements Cloneable {
-
-    SourceImpl(Content content) {
-        this(content, null, null, null, null, false, false);
+    CharSequenceWrapper(CharSequence delegate) {
+        this.delegate = delegate;
     }
 
-    SourceImpl(Content content, String mimeType, String language, URI uri, String name, boolean internal, boolean interactive) {
-        super(content, mimeType, language, uri, name, internal, interactive);
+    public int length() {
+        return delegate.length();
     }
 
-    @Override
-    protected SourceImpl clone() throws CloneNotSupportedException {
-        return (SourceImpl) super.clone();
+    public char charAt(int index) {
+        return delegate.charAt(index);
+    }
+
+    public CharSequence subSequence(int start, int end) {
+        return delegate.subSequence(start, end);
     }
 
     @Override
     public boolean equals(Object obj) {
-        SourceAccessor.neverPartOfCompilation("do not call Source.equals from compiled code");
-        if (obj instanceof Source) {
-            Source other = (Source) obj;
-            return content().equals(other.content()) && equalAttributes(other);
+        if (obj instanceof CharSequenceWrapper) {
+            return delegate.equals(((CharSequenceWrapper) obj).delegate);
+        } else {
+            return delegate.equals(obj);
         }
-        return false;
     }
 
     @Override
     public int hashCode() {
-        return content().hashCode();
+        return delegate.hashCode();
     }
 
+    @Override
+    public String toString() {
+        return delegate.toString();
+    }
 }

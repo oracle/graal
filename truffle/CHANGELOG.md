@@ -13,6 +13,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added an `InstrumentExceptionsAreThrown` engine option to propagate exceptions thrown by instruments.
 * Added [Instrumenter.visitLoadedSourceSections](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/Instrumenter.html#visitLoadedSourceSections-com.oracle.truffle.api.instrumentation.SourceSectionFilter-com.oracle.truffle.api.instrumentation.LoadSourceSectionListener-) to be notified about loaded source sections that corresponds to a filter.
 * Added [DebugValue#canExecute](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#canExecute--) to distinguish executable values and [DebugValue#getProperty](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#getProperty-java.lang.String-) to get a property value by its name.
+* Removed deprecated `TruffleLanguage.Env.lookupSymbol` method.
+* All Truffle source objects are now automatically weakly internalized when created using the source builder. The source builder will now return the same instance for every source where it was previously just equal.
+* Added `Source.Builder.cached(boolean)` and `Source.isCached()` to configure caching behavior by source.
+* Removed deprecated `Source.getCode()` and `SourceSection.getCode`.
 
 ## Version 1.0.0 RC1
 
