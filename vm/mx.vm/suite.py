@@ -17,7 +17,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "8dbbcfac7a77a909354f5a90c138ab521d32cb95",
+                "version": "58692da68706b64f85744ab70fdb4520069836e1",
                 "urls" : [
                     {"url" : "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -27,7 +27,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "8dbbcfac7a77a909354f5a90c138ab521d32cb95",
+                "version": "58692da68706b64f85744ab70fdb4520069836e1",
                 "urls": [
                     {"url": "https://github.com/oracle/js.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -35,7 +35,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "5d619db76f710a509250e0334611c6699594352b",
+                "version": "559b6e0bf4d1c47be82d73681509badbae06bd71",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -59,7 +59,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "bc21e6738013a9c47374af9955c2d8415856d62c",
+                "version": "3d498e2620f1635cfb107c5c38f6bdaf1778785a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -68,7 +68,7 @@ suite = {
             },
             {
                 "name": "sulong",
-                "version": "976246131e6146025b213f0c8d7eaf0a21aa09bc",
+                "version": "cb47708b29c7f33dbf822cb6a5e75c07af877817",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/sulong.git", "kind": "git"},
@@ -87,7 +87,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "9928c544319864aadbd1afc8adf5ea011d31e188",
+                "version": "bd6531bb11fd43c642769528e8e99c6eb4173a86",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/graalpython.git", "kind": "git"},
