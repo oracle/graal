@@ -433,11 +433,8 @@ public class SubstrateAMD64Backend extends Backend {
 
     public static final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
-        private final SharedMethod method;
-
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
-            this.method = (SharedMethod) graph.method();
         }
 
         @Override
@@ -517,14 +514,6 @@ public class SubstrateAMD64Backend extends Backend {
             Variable result = gen.newVariable(gen.getLIRKindTool().getWordKind());
             append(new AMD64CGlobalDataLoadAddressOp(node.getDataInfo(), result));
             setResult(node, result);
-        }
-
-        @Override
-        protected boolean allowObjectConstantToStackMove() {
-            if (method.isDeoptTarget()) {
-                return false;
-            }
-            return super.allowObjectConstantToStackMove();
         }
     }
 
@@ -659,7 +648,7 @@ public class SubstrateAMD64Backend extends Backend {
             if (constant instanceof SubstrateObjectConstant && method.isDeoptTarget()) {
                 return false;
             }
-            return true;
+            return super.allowConstantToStackMove(constant);
         }
 
         @Override
