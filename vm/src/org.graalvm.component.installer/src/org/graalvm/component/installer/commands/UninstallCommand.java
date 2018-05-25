@@ -118,7 +118,7 @@ public class UninstallCommand implements InstallerCommand {
         } finally {
             if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
                 Path p = Paths.get(CommonConstants.PATH_JRE_BIN);
-                feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p));
+                feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
             }
         }
         return 0;
