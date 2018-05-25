@@ -50,6 +50,14 @@ public class BytecodeLocation {
         return bci;
     }
 
+    public static boolean isValidBci(Object key) {
+        if (key instanceof Integer) {
+            int bci = (int) key;
+            return bci != EMPTY_BCI && bci != UNKNOWN_BCI;
+        }
+        return false;
+    }
+
     public static boolean hasValidBci(BytecodeLocation location) {
         return location.bci != EMPTY_BCI && location.bci != UNKNOWN_BCI;
     }

@@ -24,13 +24,16 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Groups are the top-most elements of regular expression ASTs.
@@ -59,6 +62,8 @@ public class Group extends Term implements RegexASTVisitorIterable {
     private byte groupNumber = -1;
     private byte enclosedCaptureGroupsLow;
     private byte enclosedCaptureGroupsHigh;
+    private SourceSection sourceSectionBegin;
+    private SourceSection sourceSectionEnd;
 
     /**
      * Creates an empty non-capturing group.
@@ -75,19 +80,23 @@ public class Group extends Term implements RegexASTVisitorIterable {
         setGroupNumber(groupNumber);
     }
 
-    private Group(Group copy, RegexAST ast) {
+    private Group(Group copy, RegexAST ast, boolean recursive) {
         super(copy);
         groupNumber = copy.groupNumber;
         enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
         enclosedCaptureGroupsHigh = copy.enclosedCaptureGroupsHigh;
-        for (Sequence s : copy.alternatives) {
-            add(s.copy(ast));
+        sourceSectionBegin = copy.sourceSectionBegin;
+        sourceSectionEnd = copy.sourceSectionEnd;
+        if (recursive) {
+            for (Sequence s : copy.alternatives) {
+                add(s.copy(ast, true));
+            }
         }
     }
 
     @Override
-    public Group copy(RegexAST ast) {
-        return ast.register(new Group(this, ast));
+    public Group copy(RegexAST ast, boolean recursive) {
+        return ast.register(new Group(this, ast, recursive));
     }
 
     /**
@@ -152,6 +161,40 @@ public class Group extends Term implements RegexASTVisitorIterable {
     }
 
     /**
+     * Returns the index corresponding to this capture group's BEGIN in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public int getBoundaryIndexStart() {
+        assert isCapturing();
+        return groupNumberToBoundaryIndexStart(groupNumber);
+    }
+
+    /**
+     * Returns the index corresponding to this capture group's END in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public int getBoundaryIndexEnd() {
+        assert isCapturing();
+        return groupNumberToBoundaryIndexEnd(groupNumber);
+    }
+
+    /**
+     * Returns the index corresponding to a capture group's BEGIN in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public static int groupNumberToBoundaryIndexStart(int groupNumber) {
+        return groupNumber * 2;
+    }
+
+    /**
+     * Returns the index corresponding to a capture group's END in a result array returned by a
+     * capture-group aware DFA.
+     */
+    public static int groupNumberToBoundaryIndexEnd(int groupNumber) {
+        return groupNumber * 2 + 1;
+    }
+
+    /**
      * Returns whether this group is a capturing group.
      * <p>
      * This is the case when this Group was built using the {@link #Group(int)} constructor or if
@@ -211,6 +254,45 @@ public class Group extends Term implements RegexASTVisitorIterable {
         return alternatives;
     }
 
+    @Override
+    public SourceSection getSourceSection() {
+        if (super.getSourceSection() == null && sourceSectionBegin != null && sourceSectionEnd != null) {
+            super.setSourceSection(sourceSectionBegin.getSource().createSection(sourceSectionBegin.getCharIndex(),
+                            sourceSectionEnd.getCharEndIndex() - sourceSectionBegin.getCharIndex()));
+        }
+        return super.getSourceSection();
+    }
+
+    /**
+     * Returns the {@link SourceSection} corresponding to this group's opening bracket and modifier
+     * symbols (like "?:", "?=", ...), or {@code null} if this group has no corresponding source
+     * (this is the case for groups inserted by the parser when expanding quantifiers etc.).
+     */
+    public SourceSection getSourceSectionBegin() {
+        return sourceSectionBegin;
+    }
+
+    public void setSourceSectionBegin(SourceSection sourceSectionBegin) {
+        this.sourceSectionBegin = sourceSectionBegin;
+    }
+
+    /**
+     * Returns the {@link SourceSection} corresponding to this group's closing bracket, or
+     * {@code null} if this group has no corresponding source (this is the case for groups inserted
+     * by the parser when expanding quantifiers etc.).
+     */
+    public SourceSection getSourceSectionEnd() {
+        return sourceSectionEnd;
+    }
+
+    public void setSourceSectionEnd(SourceSection sourceSectionEnd) {
+        this.sourceSectionEnd = sourceSectionEnd;
+    }
+
+    public int size() {
+        return alternatives.size();
+    }
+
     /**
      * Adds a new alternative to this group. The new alternative will be <em>appended to the
      * end</em>, meaning it will have the <em>lowest priority</em> among all the alternatives.
@@ -244,6 +326,10 @@ public class Group extends Term implements RegexASTVisitorIterable {
         Sequence sequence = ast.createSequence();
         add(sequence);
         return sequence;
+    }
+
+    public void removeLastSequence() {
+        alternatives.remove(alternatives.size() - 1);
     }
 
     public boolean isLiteral() {
@@ -281,7 +367,7 @@ public class Group extends Term implements RegexASTVisitorIterable {
         visitorIterationIndex = 0;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String alternativesToString() {
         return alternatives.stream().map(Sequence::toString).collect(Collectors.joining("|"));
     }
@@ -291,19 +377,19 @@ public class Group extends Term implements RegexASTVisitorIterable {
     }
 
     @Override
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public String toString() {
         return "(" + (isCapturing() ? "" : "?:") + alternativesToString() + ")" + loopToString();
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return toTable("Group").append(
-                        new DebugUtil.Value("groupNumber", groupNumber),
-                        new DebugUtil.Value("isCapturing", isCapturing()),
-                        new DebugUtil.Value("isLoop", isLoop()),
-                        new DebugUtil.Value("isExpandedLoop", isExpandedQuantifier()),
-                        new DebugUtil.Value("enclosedCaptureGroupsLow", enclosedCaptureGroupsLow),
-                        new DebugUtil.Value("enclosedCaptureGroupsHigh", enclosedCaptureGroupsHigh)).append(alternatives.stream().map(Sequence::toTable));
+    public JsonValue toJson() {
+        return toJson("Group").append(
+                        Json.prop("groupNumber", groupNumber),
+                        Json.prop("isCapturing", isCapturing()),
+                        Json.prop("isLoop", isLoop()),
+                        Json.prop("isExpandedLoop", isExpandedQuantifier()),
+                        Json.prop("alternatives", alternatives));
     }
 }

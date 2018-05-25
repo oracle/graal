@@ -31,6 +31,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.FileSystem;
@@ -178,7 +179,7 @@ public final class ImageClassLoader {
 
     static Stream<Path> toClassPathEntries(String classPathEntry) {
         Path entry = Paths.get(classPathEntry);
-        if (entry.endsWith("*")) {
+        if (entry.getFileName().toString().endsWith("*")) {
             return Arrays.stream(entry.getParent().toFile().listFiles()).filter(File::isFile).map(File::toPath);
         }
         return Stream.of(entry);
@@ -194,14 +195,19 @@ public final class ImageClassLoader {
 
     private void loadClassesFromPath(ForkJoinPool executor, Path path) {
         if (Files.exists(path)) {
-            if (path.getNameCount() > 0 && path.getFileName().toString().endsWith(".jar")) {
+            String name = path.toAbsolutePath().toString();
+            if (path.getNameCount() > 0 && name.endsWith(".jar")) {
                 try {
-                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(URI.create("jar:file:" + path), Collections.emptyMap())) {
+                    name = name.replace('\\', '/');
+                    URI jarURI = new URI("jar:file:///" + name);
+                    try (FileSystem jarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap())) {
                         initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
                     }
                 } catch (ClosedByInterruptException ignored) {
                     throw new InterruptImageBuilding();
                 } catch (IOException e) {
+                    throw shouldNotReachHere(e);
+                } catch (URISyntaxException e) {
                     throw shouldNotReachHere(e);
                 }
             } else {

@@ -183,8 +183,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         originalMethodFlows.addSource(sourceFlow);
     }
 
-    protected void addInstanceOf(InstanceOfTypeFlow instanceOf) {
-        originalMethodFlows.addInstanceOf(instanceOf);
+    protected void addInstanceOf(Object key, InstanceOfTypeFlow instanceOf) {
+        originalMethodFlows.addInstanceOf(key, instanceOf);
     }
 
     protected void addMiscEntry(TypeFlow<?> input) {
@@ -252,7 +252,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     }
 
     public Collection<InvokeTypeFlow> getInvokes() {
-        return originalMethodFlows.getInvokes();
+        return originalMethodFlows.getInvokeFlows();
     }
 
     public StructuredGraph getGraph() {

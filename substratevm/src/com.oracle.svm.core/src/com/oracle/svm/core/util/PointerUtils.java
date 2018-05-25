@@ -26,6 +26,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * Utility methods on Pointers.
  */
@@ -42,6 +44,7 @@ public final class PointerUtils {
      * @param multiple The multiple to which that Pointer should be decreased.
      * @return That Pointer, but rounded down.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static Pointer roundDown(PointerBase that, UnsignedWord multiple) {
         return (Pointer) UnsignedUtils.roundDown((UnsignedWord) that, multiple);
     }
@@ -53,6 +56,7 @@ public final class PointerUtils {
      * @param multiple The multiple to which that Pointer should be increased.
      * @return That Pointer, but rounded up.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static Pointer roundUp(PointerBase that, UnsignedWord multiple) {
         return (Pointer) UnsignedUtils.roundUp((UnsignedWord) that, multiple);
     }

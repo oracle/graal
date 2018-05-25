@@ -233,12 +233,13 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Unique string identifying the language version. This name will be exposed to users via
-         * the {@link org.graalvm.polyglot.Language#getVersion()} getter.
+         * the {@link org.graalvm.polyglot.Language#getVersion()} getter. It inherits from
+         * {@link org.graalvm.polyglot.Engine#getVersion()} by default.
          *
          * @return version of your language
          * @since 0.8 or earlier
          */
-        String version();
+        String version() default "inherit";
 
         /**
          * List of MIME types associated with your language.
@@ -2036,6 +2037,11 @@ public abstract class TruffleLanguage<C> {
             } else {
                 return trace.getInternalStackTrace();
             }
+        }
+
+        @Override
+        public void materializeHostFrames(Throwable original) {
+            TruffleStackTrace.materializeHostFrames(original);
         }
 
         @Override

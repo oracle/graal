@@ -40,7 +40,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -58,7 +58,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -75,7 +75,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -89,7 +89,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -107,7 +107,7 @@ suite = {
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -125,48 +125,27 @@ suite = {
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
         },
 
         "com.oracle.svm.native": {
-            "native": True,
             "subDir": "src",
-            "output": "clibraries",
-            "os_arch": {
-                "linux": {
-                    "amd64": {
-                        "results": [
-                            "linux-amd64/libstrictmath.a",
-                            "linux-amd64/liblibchelper.a",
-                            "linux-amd64/include/cpufeatures.h",
-                            "linux-amd64/include/jni.h",
-                            "linux-amd64/include/jni_md.h",
-                        ],
-                    },
-                    "<others>": {
-                        "results": [],
-                    },
-                },
-                "darwin": {
-                    "amd64": {
-                        "results": [
-                            "darwin-amd64/libstrictmath.a",
-                            "darwin-amd64/liblibchelper.a",
-                            "darwin-amd64/include/cpufeatures.h",
-                            "darwin-amd64/include/jni.h",
-                            "darwin-amd64/include/jni_md.h",
-                        ],
-                    },
-                },
-                "solaris": {
-                    "<others>": {
-                        "results": [],
-                    },
-                },
-            }
+            "native": True,
+            "vpath": True,
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
+            "results": [
+                "<os>-<arch>/libstrictmath.a",
+                "<os>-<arch>/liblibchelper.a",
+                "<os>-<arch>/include/cpufeatures.h",
+                "<os>-<arch>/include/jni.h",
+                "<os>-<arch>/include/jni_md.h",
+            ],
         },
 
         "com.oracle.svm.jni": {
@@ -179,7 +158,7 @@ suite = {
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "1.8",
@@ -202,7 +181,7 @@ suite = {
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "javaCompliance": "1.8",
@@ -248,7 +227,7 @@ suite = {
             "javaCompliance" : "1.8",
             "annotationProcessors" : [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
@@ -278,7 +257,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
         },
@@ -293,7 +272,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -309,8 +288,9 @@ suite = {
             "javaCompliance": "1.8",
             "checkstyleVersion" : "8.8",
             "annotationProcessors": [
+                "compiler:GRAAL_SERVICEPROVIDER_PROCESSOR",
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -364,7 +344,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -381,7 +361,7 @@ suite = {
             "javaCompliance": "1.8",
             "annotationProcessors": [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets": "SVM",
@@ -406,7 +386,7 @@ suite = {
             "javaCompliance" : "1.8",
             "annotationProcessors" : [
                 "compiler:GRAAL_NODEINFO_PROCESSOR",
-                "compiler:GRAAL_REPLACEMENTS_VERIFIER",
+                "compiler:GRAAL_REPLACEMENTS_PROCESSOR",
                 "compiler:GRAAL_OPTIONS_PROCESSOR",
             ],
             "workingSets" : "SVM",
@@ -416,8 +396,28 @@ suite = {
         "org.graalvm.polyglot.nativeapi.native" : {
             "subDir" : "src",
             "native" : True,
-            "output" : "mxbuild/org.graalvm.polyglot.nativeapi.native",
-            "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
+            "vpath": True,
+            "os_arch" : {
+                "linux": {
+                    "amd64" : {
+                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
+                    },
+                },
+                "darwin": {
+                    "amd64" : {
+                        "results" : ["<os>-<arch>/polyglot-nativeapi.o"],
+                    },
+                },
+                "windows": {
+                    "amd64" : {
+                        "results" : ["<os>-<arch>/polyglot-nativeapi.obj"],
+                    },
+                },
+            },
+            "buildEnv": {
+                "ARCH": "<arch>",
+                "OS": "<os>"
+            },
         },
 
         "bootstrap.native-image" : {
@@ -520,6 +520,7 @@ suite = {
                 "com.oracle.svm.libffi"
             ],
             "native": True,
+            "platformDependent" : True,
             "relpath": True,
             "output": "clibraries",
         },
@@ -529,6 +530,7 @@ suite = {
         #
         "SVM_DRIVER": {
             "subDir": "src",
+            "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
             ],
@@ -585,7 +587,6 @@ suite = {
             "layout" : {
                 "./" : [
                     "dependency:org.graalvm.polyglot.nativeapi.native/<os>-<arch>/*.o",
-                    "dependency:POLYGLOT_NATIVE_API",
                 ],
             },
         },
@@ -595,13 +596,7 @@ suite = {
             "platformDependent" : True,
             "description" : "SubstrateVM support distribution for the GraalVM",
             "layout" : {
-                "./" : "dependency:substratevm:LIBRARY_SUPPORT",
                 "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
-                "builder/" : [
-                    "dependency:substratevm:SVM",
-                    "dependency:substratevm:OBJECTFILE",
-                    "dependency:substratevm:POINTSTO",
-                ],
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
             },

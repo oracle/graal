@@ -320,7 +320,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     }
 
     private boolean isInstanceMissing(String receiverTypeFullClassName) {
-        for (Element elem : this.processingEnv.getElementUtils().getTypeElement(receiverTypeFullClassName).getEnclosedElements()) {
+        for (Element elem : ElementUtils.getTypeElement(this.processingEnv, receiverTypeFullClassName).getEnclosedElements()) {
             if (elem.getKind().equals(ElementKind.METHOD)) {
                 ExecutableElement method = (ExecutableElement) elem;
                 if (method.getSimpleName().toString().equals("isInstance")) {
@@ -332,7 +332,7 @@ public final class InteropDSLProcessor extends AbstractProcessor {
     }
 
     private boolean isInstanceHasWrongSignature(String receiverTypeFullClassName) {
-        for (Element elem : this.processingEnv.getElementUtils().getTypeElement(receiverTypeFullClassName).getEnclosedElements()) {
+        for (Element elem : ElementUtils.getTypeElement(this.processingEnv, receiverTypeFullClassName).getEnclosedElements()) {
             if (elem.getKind().equals(ElementKind.METHOD)) {
                 ExecutableElement method = (ExecutableElement) elem;
                 if (method.getSimpleName().toString().equals("isInstance") && method.getParameters().size() == 1 &&

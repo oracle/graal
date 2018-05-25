@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebuggerSession;
-import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
@@ -101,8 +100,7 @@ final class SuspendableLocationFinder {
         } else {
             sectionsCollector = new SectionsCollector(startIndex);
         }
-        EventBinding<SectionsCollector> binding = env.getInstrumenter().attachLoadSourceSectionListener(filter, sectionsCollector, true);
-        binding.dispose();
+        env.getInstrumenter().visitLoadedSourceSections(filter, sectionsCollector);
         return sectionsCollector;
     }
 

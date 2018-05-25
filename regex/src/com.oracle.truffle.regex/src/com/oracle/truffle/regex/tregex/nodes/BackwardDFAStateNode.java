@@ -29,8 +29,14 @@ import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id, boolean finalState, boolean anchoredFinalState, boolean findSingleChar, short loopToSelf, short[] successors, CharMatcher[] matchers) {
-        super(id, finalState, anchoredFinalState, findSingleChar, loopToSelf, successors, matchers);
+    public BackwardDFAStateNode(short id,
+                    boolean finalState,
+                    boolean anchoredFinalState,
+                    boolean hasBackwardPrefixState,
+                    short loopToSelf,
+                    short[] successors,
+                    CharMatcher[] matchers) {
+        super(id, finalState, anchoredFinalState, hasBackwardPrefixState, loopToSelf, successors, matchers);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {
@@ -40,10 +46,6 @@ public class BackwardDFAStateNode extends DFAStateNode {
     @Override
     public DFAStateNode createNodeSplitCopy(short copyID) {
         return new BackwardDFAStateNode(this, copyID);
-    }
-
-    private boolean hasBackwardPrefixState() {
-        return getSuccessors().length > getMatchers().length;
     }
 
     private int getBackwardPrefixStateIndex() {

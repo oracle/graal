@@ -27,18 +27,20 @@ package com.oracle.svm.core;
  */
 public enum OS {
 
-    DARWIN("Darwin"),
-    LINUX("Linux"),
-    SOLARIS("Solaris"),
-    WINDOWS("Windows"),;
+    DARWIN("Darwin", false),
+    LINUX("Linux", true),
+    SOLARIS("Solaris", true),
+    WINDOWS("Windows", false);
 
     /**
      * The identifier of this OS as part of a class name.
      */
     public final String className;
+    public final boolean hasProcFS;
 
-    OS(String className) {
+    OS(String className, boolean hasProcFS) {
         this.className = className;
+        this.hasProcFS = hasProcFS;
     }
 
     /**

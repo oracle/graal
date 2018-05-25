@@ -22,6 +22,9 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 
@@ -38,54 +41,67 @@ final class GraalHotSpotVMConfigVersioned extends HotSpotVMConfigAccess {
 
     GraalHotSpotVMConfigVersioned(HotSpotVMConfigStore store) {
         super(store);
+        assert check();
+    }
+
+    private boolean check() {
+        for (Field field : getClass().getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (!Modifier.isStatic(modifiers)) {
+                // javac inlines non-static final fields which means
+                // versioned values are ignored in non-flattened Graal
+                assert !Modifier.isFinal(modifiers) : "Non-static field in " + getClass().getName() + " must not be final: " + field.getName();
+            }
+        }
+        return true;
     }
 
     // JDK-8073583
-    final boolean useCRC32CIntrinsics = false;
+    boolean useCRC32CIntrinsics = false;
 
     // JDK-8075171
-    final boolean inlineNotify = false;
+    boolean inlineNotify = false;
 
     // JDK-8046936
-    final int javaThreadReservedStackActivationOffset = 0;
-    final int methodFlagsOffset = getFieldOffset("Method::_flags", Integer.class, "u1");
-    final long throwDelayedStackOverflowErrorEntry = 0;
-    final long enableStackReservedZoneAddress = 0;
+    int javaThreadReservedStackActivationOffset = 0;
+    int methodFlagsOffset = getFieldOffset("Method::_flags", Integer.class, "u1");
+    long throwDelayedStackOverflowErrorEntry = 0;
+    long enableStackReservedZoneAddress = 0;
 
     // JDK-8135085
-    final int methodIntrinsicIdOffset = getFieldOffset("Method::_intrinsic_id", Integer.class, "u1");
+    int methodIntrinsicIdOffset = getFieldOffset("Method::_intrinsic_id", Integer.class, "u1");
 
     // JDK-8151956
-    final int methodCodeOffset = getFieldOffset("Method::_code", Integer.class, "nmethod*");
+    int methodCodeOffset = getFieldOffset("Method::_code", Integer.class, "nmethod*");
 
     // JDK-8059606
-    final int invocationCounterIncrement = 0; // InvocationCounter::count_increment
-    final int invocationCounterShift = 0; // InvocationCounter::count_shift
+    int invocationCounterIncrement = 0; // InvocationCounter::count_increment
+    int invocationCounterShift = 0; // InvocationCounter::count_shift
 
     // JDK-8134994
-    final int dirtyCardQueueBufferOffset = getFieldOffset("PtrQueue::_buf", Integer.class, "void**");
-    final int dirtyCardQueueIndexOffset = getFieldOffset("PtrQueue::_index", Integer.class, "size_t");
-    final int satbMarkQueueBufferOffset = dirtyCardQueueBufferOffset;
-    final int satbMarkQueueIndexOffset = dirtyCardQueueIndexOffset;
-    final int satbMarkQueueActiveOffset = getFieldOffset("PtrQueue::_active", Integer.class, "bool");
+    int dirtyCardQueueBufferOffset = getFieldOffset("PtrQueue::_buf", Integer.class, "void**");
+    int dirtyCardQueueIndexOffset = getFieldOffset("PtrQueue::_index", Integer.class, "size_t");
+    int satbMarkQueueBufferOffset = dirtyCardQueueBufferOffset;
+    int satbMarkQueueIndexOffset = dirtyCardQueueIndexOffset;
+    int satbMarkQueueActiveOffset = getFieldOffset("PtrQueue::_active", Integer.class, "bool");
 
     // JDK-8195142
-    final byte dirtyCardValue = getFieldValue("CompilerToVM::Data::dirty_card", Byte.class, "int");
-    final byte g1YoungCardValue = getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int");
+    byte dirtyCardValue = getFieldValue("CompilerToVM::Data::dirty_card", Byte.class, "int");
+    byte g1YoungCardValue = getFieldValue("CompilerToVM::Data::g1_young_card", Byte.class, "int");
 
     // JDK-8201318
-    final int javaThreadDirtyCardQueueOffset = getFieldOffset("JavaThread::_dirty_card_queue", Integer.class, "DirtyCardQueue");
-    final int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
-    final int g1CardQueueIndexOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueIndexOffset;
-    final int g1CardQueueBufferOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueBufferOffset;
-    final int g1SATBQueueMarkingOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
-    final int g1SATBQueueIndexOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
-    final int g1SATBQueueBufferOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
+    int javaThreadDirtyCardQueueOffset = getFieldOffset("JavaThread::_dirty_card_queue", Integer.class, "DirtyCardQueue");
+    int javaThreadSatbMarkQueueOffset = getFieldOffset("JavaThread::_satb_mark_queue", Integer.class);
+    int g1CardQueueIndexOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueIndexOffset;
+    int g1CardQueueBufferOffset = javaThreadDirtyCardQueueOffset + dirtyCardQueueBufferOffset;
+    int g1SATBQueueMarkingOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueActiveOffset;
+    int g1SATBQueueIndexOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueIndexOffset;
+    int g1SATBQueueBufferOffset = javaThreadSatbMarkQueueOffset + satbMarkQueueBufferOffset;
 
     // JDK-8033552
-    final long heapTopAddress = getFieldValue("CompilerToVM::Data::_heap_top_addr", Long.class, "HeapWord**");
+    long heapTopAddress = getFieldValue("CompilerToVM::Data::_heap_top_addr", Long.class, "HeapWord**");
 
     // JDK-8015774
-    final long codeCacheLowBound = getFieldValue("CompilerToVM::Data::CodeCache_low_bound", Long.class, "address");
-    final long codeCacheHighBound = getFieldValue("CompilerToVM::Data::CodeCache_high_bound", Long.class, "address");
+    long codeCacheLowBound = getFieldValue("CompilerToVM::Data::CodeCache_low_bound", Long.class, "address");
+    long codeCacheHighBound = getFieldValue("CompilerToVM::Data::CodeCache_high_bound", Long.class, "address");
 }

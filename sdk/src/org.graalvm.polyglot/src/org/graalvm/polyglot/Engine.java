@@ -169,7 +169,7 @@ public final class Engine implements AutoCloseable {
      * @since 1.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.ensureClosed(cancelIfExecuting, false);
+        impl.close(this, cancelIfExecuting);
     }
 
     /**

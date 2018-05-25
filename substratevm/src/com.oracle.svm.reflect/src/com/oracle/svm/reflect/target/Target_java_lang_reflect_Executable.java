@@ -39,6 +39,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.DeclaredAnnotationsComputer.ExecutableDeclaredAnnotationsComputer;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(value = Executable.class, onlyWith = ReflectionFeature.IsEnabled.class)
@@ -47,7 +48,7 @@ public final class Target_java_lang_reflect_Executable {
     public static final class ParameterAnnotationsComputer implements CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Executable executable = (Executable) receiver;
             return executable.getParameterAnnotations();
         }

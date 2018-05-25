@@ -1088,7 +1088,6 @@ public class LanguageSPITest {
         c.close();
     }
 
-    @SuppressWarnings("deprecation")
     @Test
     public void testExportSymbolInCreate() {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -1101,7 +1100,7 @@ public class LanguageSPITest {
         });
         Context c = Context.create();
         c.initialize(ProxyLanguage.ID);
-        assertTrue(c.importSymbol("symbol").isHostObject());
+        assertTrue(c.getPolyglotBindings().getMember("symbol").isHostObject());
         c.close();
     }
 
@@ -1667,6 +1666,21 @@ public class LanguageSPITest {
             toString = res.toString();
             assertEquals(text, toString);
         }
+    }
+
+    static final String INHERITED_VERSION = "SPIInheritedVersionLanguage";
+
+    @TruffleLanguage.Registration(id = INHERITED_VERSION, name = "", mimeType = {INHERITED_VERSION})
+    public static class InheritedVersionLanguage extends LanguageSPIOrderTest.BaseLang {
+    }
+
+    @Test
+    public void testInheritedVersionLanguage() {
+        Context context = Context.create();
+        context.initialize(INHERITED_VERSION);
+        final Engine engine = context.getEngine();
+        assertEquals(engine.getVersion(), engine.getLanguages().get(INHERITED_VERSION).getVersion());
+        context.close();
     }
 
     private static class SourceHolder implements TruffleObject {

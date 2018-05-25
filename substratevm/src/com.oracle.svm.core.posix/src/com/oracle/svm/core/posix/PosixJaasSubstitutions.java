@@ -24,6 +24,8 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -39,7 +41,6 @@ import com.oracle.svm.core.posix.headers.Pwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwd;
 import com.oracle.svm.core.posix.headers.Pwd.passwdPointer;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.sun.security.auth.module.UnixSystem;
 
 /**
  * Substitutions for the Java Authentication and Authorization Service (JAAS,
@@ -50,7 +51,8 @@ public final class PosixJaasSubstitutions {
     }
 }
 
-@TargetClass(UnixSystem.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
+@TargetClass(className = "com.sun.security.auth.module.UnixSystem")
 final class Target_com_sun_security_auth_module_UnixSystem {
     @Alias String username;
     @Alias long uid;

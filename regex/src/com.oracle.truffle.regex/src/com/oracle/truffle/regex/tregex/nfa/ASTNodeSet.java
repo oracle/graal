@@ -50,6 +50,10 @@ public class ASTNodeSet<S extends RegexASTNode> extends StateSet<S> {
         super(copy);
     }
 
+    public RegexAST getAst() {
+        return (RegexAST) getStateIndex();
+    }
+
     @Override
     public ASTNodeSet<S> copy() {
         return new ASTNodeSet<>(this);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -49,7 +50,6 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import sun.misc.Unsafe;
 
 public class AArch64GraphBuilderPlugins {
@@ -64,7 +64,11 @@ public class AArch64GraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins);
                 registerStringLatin1Plugins(invocationPlugins, bytecodeProvider);
                 registerStringUTF16Plugins(invocationPlugins, bytecodeProvider);
-                registerUnsafePlugins(invocationPlugins, bytecodeProvider);
+                registerUnsafeReadAndAddPlugins(invocationPlugins, bytecodeProvider);
+                // This is temporarily disabled until we implement correct emitting of the CAS
+                // instructions of the proper width.
+                StandardGraphBuilderPlugins.registerPlatformSpecificUnsafePlugins(invocationPlugins, bytecodeProvider,
+                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }
@@ -145,7 +149,7 @@ public class AArch64GraphBuilderPlugins {
         }
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
+    private static void registerUnsafeReadAndAddPlugins(InvocationPlugins plugins, BytecodeProvider replacementsBytecodeProvider) {
         Registration r;
         if (Java8OrEarlier) {
             r = new Registration(plugins, Unsafe.class);
@@ -163,7 +167,7 @@ public class AArch64GraphBuilderPlugins {
                         // Emits a null-check for the otherwise unused receiver
                         unsafe.get();
                         AddressNode address = b.add(new OffsetAddressNode(object, offset));
-                        b.addPush(kind, new AtomicReadAndAddNode(address, delta, LocationIdentity.any()));
+                        b.addPush(kind, new AtomicReadAndAddNode(address, delta, kind, LocationIdentity.any()));
                         b.getGraph().markUnsafeAccess();
                         return true;
                     }
@@ -171,5 +175,4 @@ public class AArch64GraphBuilderPlugins {
             }
         }
     }
-
 }

@@ -24,21 +24,21 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.test.ReflectionUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+
+import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 /**
  * Base class for instrumentation tests.

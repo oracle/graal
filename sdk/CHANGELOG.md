@@ -2,7 +2,12 @@
 
 This changelog summarizes major changes between Graal SDK versions. The main focus is on APIs exported by Graal SDK.
 
-## Version 1.0
+## Version 1.0 RC2
+* Added `Value.asValue(Object)` to convert a Java object into its value representation using the currently entered context.
+* Added `Context.getCurrent()` to lookup the current context to allow Java methods called by a Graal guest language to evaluate additional code in the current context.
+* Removed deprecated `Context.exportSymbol` and `Context.importSymbol`.
+
+## Version 1.0 RC1
 * Added Context.Builder#allowHostClassLoading to allow loading of new classes by the guest language.
 * Added `Value.getSourceLocation()` to find a function `SourceSection`.
 

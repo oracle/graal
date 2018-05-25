@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.Message;
@@ -97,10 +98,15 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                     }
                     fallbackCompiler = (TruffleObject) args[1];
                 }
+                return createRegexEngine(receiver.language, options, fallbackCompiler);
+            }
+
+            @TruffleBoundary
+            private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
                 if (fallbackCompiler != null) {
-                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(receiver.language, options), fallbackCompiler)), options.isRegressionTestMode());
+                    return new RegexEngine(new CachingRegexCompiler(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler)), options.isRegressionTestMode());
                 } else {
-                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(receiver.language, options)), options.isRegressionTestMode());
+                    return new RegexEngine(new CachingRegexCompiler(new TRegexCompiler(regexLanguage, options)), options.isRegressionTestMode());
                 }
             }
         }

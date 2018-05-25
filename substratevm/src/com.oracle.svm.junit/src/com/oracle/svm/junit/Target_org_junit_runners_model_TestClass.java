@@ -26,6 +26,7 @@ package com.oracle.svm.junit;
 
 import java.lang.reflect.Constructor;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.RuntimeReflection;
 import org.junit.runners.model.TestClass;
 
@@ -44,7 +45,7 @@ public final class Target_org_junit_runners_model_TestClass {
     public static final class OnlyConstructorComputer implements CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             TestClass clazz = (TestClass) receiver;
             if (clazz.getJavaClass() != null) {
                 Constructor<?> constructor = clazz.getOnlyConstructor();

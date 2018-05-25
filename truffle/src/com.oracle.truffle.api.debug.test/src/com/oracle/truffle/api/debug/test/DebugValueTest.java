@@ -114,6 +114,10 @@ public class DebugValueTest extends AbstractDebugTest {
             assertTrue(attributesTOValue.isWritable());
             // Property is not internal by default
             assertFalse(attributesTOValue.isInternal());
+            // Test canExecute
+            assertFalse(attributesTOValue.canExecute());
+            DebugValue fvalue = event.getSession().getTopScope(InstrumentationTestLanguage.ID).getDeclaredValue("function");
+            assertTrue(fvalue.canExecute());
             event.prepareContinue();
             suspended[0] = true;
         });

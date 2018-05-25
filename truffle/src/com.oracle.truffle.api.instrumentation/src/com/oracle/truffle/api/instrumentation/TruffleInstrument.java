@@ -682,11 +682,12 @@ public abstract class TruffleInstrument {
         String name() default "";
 
         /**
-         * The version for instrument in an arbitrary format.
+         * The version for instrument in an arbitrary format. It inherits from
+         * {@link org.graalvm.polyglot.Engine#getVersion()} by default.
          *
          * @since 0.12
          */
-        String version() default "";
+        String version() default "inherit";
 
         /**
          * Specifies whether the instrument is accessible using the polyglot API. Internal

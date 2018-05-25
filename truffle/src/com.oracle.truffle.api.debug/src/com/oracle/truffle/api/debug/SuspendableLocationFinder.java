@@ -92,9 +92,9 @@ final class SuspendableLocationFinder {
         }
         NearestSections sectionsCollector = new NearestSections(elementTags, (column <= 0) ? line : 0, offset, anchor);
         // All SourceSections of the Source are loaded already when the source was executed
-        env.getInstrumenter().attachLoadSourceSectionListener(
+        env.getInstrumenter().visitLoadedSourceSections(
                         SourceSectionFilter.newBuilder().sourceIs(source).build(),
-                        sectionsCollector, true).dispose();
+                        sectionsCollector);
         SourceSection section = sectionsCollector.getExactSection();
         if (section != null) {
             return section;

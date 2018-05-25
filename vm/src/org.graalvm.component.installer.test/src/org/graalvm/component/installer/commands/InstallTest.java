@@ -195,7 +195,7 @@ public class InstallTest extends CommandTestBase {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
 
-        URL u = new URL("test://graal.us.oracle.com/download/catalog");
+        URL u = new URL("test://graalvm.io/download/catalog");
         URL u2 = new URL(u, "graalvm-ruby.zip");
 
         Handler.bind(u.toString(), getClass().getResource("catalog"));

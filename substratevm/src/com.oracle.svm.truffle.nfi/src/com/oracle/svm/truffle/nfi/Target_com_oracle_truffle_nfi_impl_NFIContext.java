@@ -43,6 +43,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.types.NativeSimpleType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
@@ -65,7 +66,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     private static class TypeMapResetter implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return new Target_com_oracle_truffle_nfi_impl_LibFFIType[NativeSimpleType.values().length];
         }
     }

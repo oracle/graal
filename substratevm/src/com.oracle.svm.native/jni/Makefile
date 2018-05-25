@@ -24,14 +24,6 @@
 INCLUDE_DIR = include
 HEADER_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
 
-TARGETOS ?= $(shell uname -s)
-ifeq ($(TARGETOS),Linux)
-    OS:=linux
-endif
-ifeq ($(TARGETOS),Darwin)
-    OS:=darwin
-endif
-TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET_HEADERS = $(patsubst %,$(TARGET_DIR)/%,$(HEADER_FILES))
 
 all : $(TARGET_HEADERS)

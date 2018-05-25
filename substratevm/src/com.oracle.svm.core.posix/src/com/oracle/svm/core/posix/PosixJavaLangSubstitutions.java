@@ -61,6 +61,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.posix.headers.Dirent;
 import com.oracle.svm.core.posix.headers.Dirent.DIR;
 import com.oracle.svm.core.posix.headers.Dirent.dirent;
@@ -173,6 +174,7 @@ final class Target_java_lang_ProcessEnvironment {
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "StringEnvironment")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessEnvironment_StringEnvironment {
     @Alias
     @SuppressWarnings("unused")
@@ -185,18 +187,21 @@ final class Target_java_lang_ProcessEnvironment_StringEnvironment {
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "Variable")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessEnvironment_Variable {
     @Alias
     public static native Target_java_lang_ProcessEnvironment_Variable valueOf(byte[] bytes);
 }
 
 @TargetClass(className = "java.lang.ProcessEnvironment", innerClass = "Value")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessEnvironment_Value {
     @Alias
     public static native Target_java_lang_ProcessEnvironment_Value valueOf(byte[] bytes);
 }
 
 @TargetClass(className = "java.lang.UNIXProcess")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess {
 
     // The reaper thread pool and thread groups (currently) confuse the analysis, so we launch
@@ -659,6 +664,7 @@ final class Java_lang_UNIXProcess_Supplement {
 }
 
 @TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeInputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
     @Alias
     Target_java_lang_UNIXProcess_ProcessPipeInputStream(@SuppressWarnings("unused") int fd) {
@@ -669,6 +675,7 @@ final class Target_java_lang_UNIXProcess_ProcessPipeInputStream {
 }
 
 @TargetClass(className = "java.lang.UNIXProcess", innerClass = "ProcessPipeOutputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
     @Alias
     Target_java_lang_UNIXProcess_ProcessPipeOutputStream(@SuppressWarnings("unused") int fd) {
@@ -679,11 +686,13 @@ final class Target_java_lang_UNIXProcess_ProcessPipeOutputStream {
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullInputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullInputStream {
     @Alias static final Target_java_lang_ProcessBuilder_NullInputStream INSTANCE = null;
 }
 
 @TargetClass(className = "java.lang.ProcessBuilder", innerClass = "NullOutputStream")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_lang_ProcessBuilder_NullOutputStream {
     @Alias static final Target_java_lang_ProcessBuilder_NullOutputStream INSTANCE = null;
 }
@@ -703,9 +712,16 @@ final class Target_java_lang_System {
         gettimeofday(timeval, timezone);
         return timeval.tv_sec() * 1_000L + timeval.tv_usec() / 1_000L;
     }
+
+    @Substitute
+    private static void exit(int status) {
+        RuntimeSupport.getRuntimeSupport().executeShutdownHooks();
+        LibC.exit(status);
+    }
 }
 
 @TargetClass(java.lang.Runtime.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
 

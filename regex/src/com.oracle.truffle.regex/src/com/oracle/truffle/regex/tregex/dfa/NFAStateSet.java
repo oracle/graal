@@ -24,15 +24,18 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Arrays;
 import java.util.PrimitiveIterator;
 
-public final class NFAStateSet extends StateSet<NFAState> {
+public final class NFAStateSet extends StateSet<NFAState> implements JsonConvertible {
 
     private int[] stateIndexMap;
 
@@ -96,11 +99,9 @@ public final class NFAStateSet extends StateSet<NFAState> {
         return Arrays.binarySearch(stateIndexMap, 0, size(), state.getId());
     }
 
-    public DebugUtil.Table toTable(String name) {
-        DebugUtil.Table table = new DebugUtil.Table(name);
-        for (NFAState state : this) {
-            table.append(state.toTable());
-        }
-        return table;
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        return Json.array(this);
     }
 }

@@ -167,6 +167,7 @@ public abstract class DebugValue {
      * @return a collection of property values, or </code>null</code> when the value does not have
      *         any concept of properties.
      * @throws DebugException when guest language code throws an exception
+     * @throws IllegalStateException if the value is not {@link #isReadable() readable}
      * @since 0.19
      */
     public final Collection<DebugValue> getProperties() throws DebugException {
@@ -197,11 +198,41 @@ public abstract class DebugValue {
         return properties;
     }
 
-    /*
-     * TODO future API: Find a property value based on a String name. In general, not all properties
-     * may have String names. Use this for lookup of a value of some known String-based property.
-     * DebugValue findProperty(String name)
+    /**
+     * Get a property value by its name.
+     *
+     * @param name name of a property
+     * @return the property value, or <code>null</code> if the property does not exist.
+     * @throws DebugException when guest language code throws an exception
+     * @throws IllegalStateException if the value is not {@link #isReadable() readable}
+     * @since 1.0
      */
+    public final DebugValue getProperty(String name) throws DebugException {
+        if (!isReadable()) {
+            throw new IllegalStateException("Value is not readable");
+        }
+        Object value = get();
+        if (value instanceof TruffleObject) {
+            TruffleObject object = (TruffleObject) value;
+            try {
+                int keyInfo = ForeignAccess.sendKeyInfo(getDebugger().getMessageNodes().keyInfo, object, name);
+                if (!KeyInfo.isExisting(keyInfo)) {
+                    return null;
+                } else {
+                    Map.Entry<Object, Object> entry = new ObjectStructures.TruffleEntry(getDebugger().getMessageNodes(), object, name);
+                    return new DebugValue.PropertyValue(getDebugger(), resolveLanguage(), keyInfo, entry, null);
+                }
+            } catch (Throwable ex) {
+                if (ex instanceof TruffleException) {
+                    throw new DebugException(getDebugger(), (TruffleException) ex, resolveLanguage(), null, true, null);
+                } else {
+                    throw ex;
+                }
+            }
+        } else {
+            return null;
+        }
+    }
 
     /**
      * Returns <code>true</code> if this value represents an array, <code>false</code> otherwise.
@@ -307,6 +338,22 @@ public abstract class DebugValue {
             return env.findSourceLocation(languageInfo, obj);
         } else {
             return null;
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if this value can be executed (represents a guest language
+     * function), else <code>false</code>.
+     *
+     * @since 1.0
+     */
+    public final boolean canExecute() throws DebugException {
+        Object value = get();
+        if (value instanceof TruffleObject) {
+            TruffleObject to = (TruffleObject) value;
+            return ObjectStructures.canExecute(getDebugger().getMessageNodes(), to);
+        } else {
+            return false;
         }
     }
 

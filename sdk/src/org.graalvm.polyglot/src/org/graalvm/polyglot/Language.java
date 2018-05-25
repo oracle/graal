@@ -107,8 +107,4 @@ public final class Language {
         return impl.getOptions();
     }
 
-    Engine getEngine() {
-        return impl.getEngineAPI();
-    }
-
 }

@@ -49,6 +49,10 @@ public class UninstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_DRY_RUN, "");
         OPTIONS.put(Commands.OPTION_FORCE, "");
         OPTIONS.put(Commands.OPTION_IGNORE_FAILURES, "");
+
+        OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
+        OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
+        OPTIONS.put(Commands.LONG_OPTION_IGNORE_FAILURES, Commands.OPTION_IGNORE_FAILURES);
     }
 
     private final Map<String, ComponentInfo> toUninstall = new LinkedHashMap<>();

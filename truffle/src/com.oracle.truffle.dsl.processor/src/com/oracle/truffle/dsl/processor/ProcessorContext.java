@@ -115,7 +115,7 @@ public class ProcessorContext {
     }
 
     private TypeMirror getType(String className) {
-        TypeElement element = environment.getElementUtils().getTypeElement(className);
+        TypeElement element = ElementUtils.getTypeElement(environment, className);
         if (element != null) {
             return element.asType();
         }

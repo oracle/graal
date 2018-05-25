@@ -128,7 +128,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue) {
         Variable prevValue = newVariable(expectedValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new CompareAndSwapOp(prevValue, loadReg(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
@@ -139,7 +139,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitValueCompareAndSwap(Value address, Value expectedValue, Value newValue) {
+    public Variable emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue) {
         Variable result = newVariable(newValue.getValueKind());
         Variable scratch = newVariable(LIRKind.value(AArch64Kind.WORD));
         append(new CompareAndSwapOp(result, loadNonCompareConst(expectedValue), loadReg(newValue), asAllocatable(address), scratch));
@@ -147,8 +147,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Value emitAtomicReadAndAdd(Value address, Value delta) {
-        ValueKind<?> kind = delta.getValueKind();
+    public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
         Variable result = newVariable(kind);
         Variable scratch1 = newVariable(kind);
         Variable scratch2 = newVariable(kind);

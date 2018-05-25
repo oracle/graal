@@ -24,12 +24,17 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.IndexedState;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public abstract class RegexASTNode implements IndexedState {
+public abstract class RegexASTNode implements IndexedState, JsonConvertible {
 
     private static final byte FLAG_PREFIX = 1;
     private static final byte FLAG_DEAD = 1 << 1;
@@ -37,13 +42,14 @@ public abstract class RegexASTNode implements IndexedState {
     private static final byte FLAG_DOLLAR = 1 << 3;
     protected static final byte FLAG_GROUP_LOOP = 1 << 4;
     protected static final byte FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 5;
-    protected static final byte FLAG_LOOK_AHEAD_NEGATED = 1 << 6;
+    protected static final byte FLAG_LOOK_AROUND_NEGATED = 1 << 6;
     protected static final byte FLAG_EMPTY_GUARD = (byte) (1 << 7);
 
     private short id = -1;
     private RegexASTNode parent;
     private byte flags;
     private short minPath = 0;
+    private SourceSection sourceSection;
 
     protected RegexASTNode() {
     }
@@ -51,17 +57,23 @@ public abstract class RegexASTNode implements IndexedState {
     protected RegexASTNode(RegexASTNode copy) {
         flags = copy.flags;
         minPath = copy.minPath;
+        sourceSection = copy.sourceSection;
     }
 
     /**
-     * Recursively copy this subtree. This method should be used instead of
-     * {@link com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor} if the copying
-     * process is required to be thread-safe.
-     * 
-     * @param ast RegexAST the new subtree should belong to.
-     * @return A deep copy of this subtree.
+     * Copy this node, in one of the following ways:
+     * <ul>
+     * <li>if {@code recursive} is {@code true}, recursively copy this subtree. This method should
+     * be used instead of {@link CopyVisitor} if the copying process is required to be thread-safe.
+     * </li>
+     * <li>else, copy this node only, without any child nodes.</li>
+     * </ul>
+     * In both cases, the ID and minPath of the copied nodes is left unset.
+     *
+     * @param ast RegexAST the new nodes should belong to.
+     * @return A shallow or deep copy of this node.
      */
-    public abstract RegexASTNode copy(RegexAST ast);
+    public abstract RegexASTNode copy(RegexAST ast, boolean recursive);
 
     public boolean idInitialized() {
         return id >= 0;
@@ -202,6 +214,14 @@ public abstract class RegexASTNode implements IndexedState {
         minPath += n;
     }
 
+    public void setSourceSection(SourceSection sourceSection) {
+        this.sourceSection = sourceSection;
+    }
+
+    public SourceSection getSourceSection() {
+        return sourceSection;
+    }
+
     /**
      * Returns the subtree root node that this node is a part of. If this node is nested inside
      * several look-around assertion nodes, returns the innermost one that contains this node. Every
@@ -224,18 +244,16 @@ public abstract class RegexASTNode implements IndexedState {
         return String.format("%d (%s)", id, toString());
     }
 
-    protected static String astNodeId(RegexASTNode astNode) {
-        return astNode == null ? "null" : String.valueOf(astNode.id);
+    protected static JsonValue astNodeId(RegexASTNode astNode) {
+        return astNode == null ? Json.nullValue() : Json.val(astNode.id);
     }
 
-    public abstract DebugUtil.Table toTable();
-
-    protected DebugUtil.Table toTable(String name) {
-        return new DebugUtil.Table(name,
-                        new DebugUtil.Value("id", id),
-                        new DebugUtil.Value("parent", astNodeId(parent)),
-                        new DebugUtil.Value("minPath", minPath),
-                        new DebugUtil.Value("isPrefix", isPrefix()),
-                        new DebugUtil.Value("isDead", isDead()));
+    protected JsonObject toJson(String typeName) {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("type", typeName),
+                        Json.prop("parent", astNodeId(parent)),
+                        Json.prop("minPath", minPath),
+                        Json.prop("isPrefix", isPrefix()),
+                        Json.prop("isDead", isDead()));
     }
 }

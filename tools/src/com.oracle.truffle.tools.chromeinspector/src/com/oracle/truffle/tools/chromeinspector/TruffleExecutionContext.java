@@ -95,7 +95,7 @@ public final class TruffleExecutionContext {
         }
     }
 
-    public ScriptsHandler getScriptsHandler() {
+    public ScriptsHandler acquireScriptsHandler() {
         if (sch == null) {
             InstrumentInfo instrumentInfo = getEnv().getInstruments().get(SourceLoadInstrument.ID);
             getEnv().lookup(instrumentInfo, Enabler.class).enable();
@@ -156,7 +156,7 @@ public final class TruffleExecutionContext {
         this.suspendThreadExecutor = suspendThreadExecutor;
     }
 
-    <T> T executeInSuspendThread(SuspendThreadExecutable<T> executable) throws NoSuspendedThreadException, GuestLanguageException, CommandProcessException {
+    <T> T executeInSuspendThread(SuspendThreadExecutable<T> executable) throws NoSuspendedThreadException, CommandProcessException {
         CompletableFuture<T> cf = new CompletableFuture<>();
         suspendThreadExecutor.execute(new CancellableRunnable() {
             @Override
@@ -168,6 +168,12 @@ public final class TruffleExecutionContext {
                 } catch (ThreadDeath td) {
                     cf.completeExceptionally(td);
                     throw td;
+                } catch (DebugException dex) {
+                    if (!dex.isInternalError()) {
+                        cf.complete(executable.processException(dex));
+                    } else {
+                        cf.completeExceptionally(dex);
+                    }
                 } catch (Throwable t) {
                     cf.completeExceptionally(t);
                 }
@@ -183,9 +189,6 @@ public final class TruffleExecutionContext {
             params = cf.get();
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
-            if (cause instanceof DebugException && !((DebugException) cause).isInternalError()) {
-                throw new GuestLanguageException((DebugException) cause);
-            }
             if (cause instanceof CommandProcessException) {
                 throw (CommandProcessException) cause;
             }
@@ -262,19 +265,11 @@ public final class TruffleExecutionContext {
         static void raiseResuming() throws NoSuspendedThreadException {
             throw new NoSuspendedThreadException("<Resuming...>");
         }
-    }
 
-    /** A checked variant of DebugException. */
-    static final class GuestLanguageException extends Exception {
-
-        private static final long serialVersionUID = 7386388514508637851L;
-
-        private GuestLanguageException(DebugException truffleException) {
-            super(truffleException);
-        }
-
-        DebugException getDebugException() {
-            return (DebugException) getCause();
+        @Override
+        public synchronized Throwable fillInStackTrace() {
+            return this;
         }
     }
+
 }

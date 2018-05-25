@@ -64,6 +64,14 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.OPTION_VALIDATE, "");
         OPTIONS.put(Commands.OPTION_VALIDATE_DOWNLOAD, "");
         OPTIONS.put(Commands.OPTION_IGNORE_FAILURES, "");
+
+        OPTIONS.put(Commands.LONG_OPTION_DRY_RUN, Commands.OPTION_DRY_RUN);
+        OPTIONS.put(Commands.LONG_OPTION_FORCE, Commands.OPTION_FORCE);
+        OPTIONS.put(Commands.LONG_OPTION_REPLACE_COMPONENTS, Commands.OPTION_REPLACE_COMPONENTS);
+        OPTIONS.put(Commands.LONG_OPTION_REPLACE_DIFFERENT_FILES, Commands.OPTION_REPLACE_DIFFERENT_FILES);
+        OPTIONS.put(Commands.LONG_OPTION_VALIDATE, Commands.OPTION_VALIDATE);
+        OPTIONS.put(Commands.LONG_OPTION_VALIDATE_DOWNLOAD, Commands.OPTION_VALIDATE_DOWNLOAD);
+        OPTIONS.put(Commands.LONG_OPTION_IGNORE_FAILURES, Commands.OPTION_IGNORE_FAILURES);
     }
 
     @Override

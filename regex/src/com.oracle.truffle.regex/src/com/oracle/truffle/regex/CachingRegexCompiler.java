@@ -24,9 +24,11 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.util.LRUCache;
+
 import java.util.Collections;
 import java.util.Map;
 
@@ -41,7 +43,7 @@ public class CachingRegexCompiler extends RegexCompiler {
     /**
      * Trying to parse and compile a regular expression can produce one of three results. This class
      * encodes the sum of these three possibilities.
-     * 
+     *
      * <ul>
      * <li>the regular expression is successfully compiled: compiledRegex is not null</li>
      * <li>there is a syntax error in the regular expression: syntaxException is not null</li>
@@ -78,10 +80,10 @@ public class CachingRegexCompiler extends RegexCompiler {
 
     @Override
     public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
-        CompilationResult result = cache.get(source);
+        CompilationResult result = cacheGet(source);
         if (result == null) {
             result = doCompile(source);
-            cache.put(source, result);
+            cachePut(source, result);
         }
         if (result.compiledRegexObject != null) {
             assert result.syntaxException == null;
@@ -108,5 +110,15 @@ public class CachingRegexCompiler extends RegexCompiler {
         } catch (UnsupportedRegexException e) {
             return new CompilationResult(e);
         }
+    }
+
+    @TruffleBoundary
+    private CompilationResult cacheGet(RegexSource source) {
+        return cache.get(source);
+    }
+
+    @TruffleBoundary
+    private CompilationResult cachePut(RegexSource source, CompilationResult result) {
+        return cache.put(source, result);
     }
 }

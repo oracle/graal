@@ -39,6 +39,7 @@ import org.graalvm.polyglot.Value;
 import com.oracle.truffle.tools.chromeinspector.TruffleExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.server.ConnectionWatcher;
 import com.oracle.truffle.tools.chromeinspector.server.InspectServerSession;
+import com.oracle.truffle.tools.chromeinspector.types.ExceptionDetails;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
 
 public final class InspectorTester {
@@ -51,6 +52,7 @@ public final class InspectorTester {
 
     public static InspectorTester start(boolean suspend) throws InterruptedException {
         RemoteObject.resetIDs();
+        ExceptionDetails.resetIDs();
         TruffleExecutionContext.resetIDs();
         InspectExecThread exec = new InspectExecThread(suspend);
         exec.start();
@@ -74,6 +76,7 @@ public final class InspectorTester {
         }
         exec.join();
         RemoteObject.resetIDs();
+        ExceptionDetails.resetIDs();
         TruffleExecutionContext.resetIDs();
         return exec.error;
     }
@@ -138,6 +141,52 @@ public final class InspectorTester {
             msg = "";
         }
         return true;
+    }
+
+    public String receiveMessages(String... messageParts) throws InterruptedException {
+        int part = 0;
+        int pos = 0;
+        StringBuilder allMessages = new StringBuilder();
+        synchronized (exec.receivedMessages) {
+            do {
+                String messages;
+                do {
+                    messages = exec.receivedMessages.toString();
+                    if (messages.isEmpty()) {
+                        exec.receivedMessages.wait();
+                    } else {
+                        break;
+                    }
+                } while (true);
+                allMessages.append(messages);
+                if (part == 0) {
+                    int l = messageParts[0].length();
+                    if (allMessages.length() < l) {
+                        continue;
+                    }
+                    assertEquals(messageParts[0], allMessages.substring(0, l));
+                    pos = l;
+                    part++;
+                }
+                while (part < messageParts.length) {
+                    int index = allMessages.indexOf(messageParts[part], pos);
+                    if (index >= pos) {
+                        pos = index + messageParts[part].length();
+                        part++;
+                    } else {
+                        break;
+                    }
+                }
+                if (part < messageParts.length) {
+                    continue;
+                }
+                int end = pos - allMessages.length() + messages.length();
+                exec.receivedMessages.delete(0, end);
+                allMessages.delete(pos, allMessages.length());
+                break;
+            } while (exec.receivedMessages.delete(0, exec.receivedMessages.length()) != null);
+        }
+        return allMessages.toString();
     }
 
     private static class InspectExecThread extends Thread implements InspectServerSession.MessageListener {

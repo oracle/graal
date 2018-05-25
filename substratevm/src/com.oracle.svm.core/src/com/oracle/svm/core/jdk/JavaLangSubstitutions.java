@@ -28,7 +28,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.unsafeCast;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
@@ -38,18 +37,23 @@ import java.io.PrintStream;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -69,16 +73,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.util.VMError;
-import java.util.Map;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 @TargetClass(java.lang.Object.class)
 final class Target_java_lang_Object {
@@ -118,84 +120,6 @@ final class Target_java_lang_Object {
     private void notifyAllSubst() {
         ImageSingletons.lookup(MonitorSupport.class).notify(this, true);
     }
-}
-
-@TargetClass(java.lang.ClassLoader.class)
-@Substitute
-@SuppressWarnings("static-method")
-final class Target_java_lang_ClassLoader {
-    /*
-     * Substituting the whole class allows us to have fields of declared type ClassLoader, but still
-     * get an error if anyone tries to access a field or call a method on it that we have not
-     * explicitly substituted below.
-     */
-
-    @Substitute
-    private InputStream getResourceAsStream(String name) {
-        return getSystemResourceAsStream(name);
-    }
-
-    @Substitute
-    private static InputStream getSystemResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
-    }
-
-    @Substitute
-    private URL getResource(String name) {
-        return getSystemResource(name);
-    }
-
-    @Substitute
-    private static URL getSystemResource(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : Resources.createURL(name, new ByteArrayInputStream(arr.get(0)));
-    }
-
-    @Substitute
-    private Enumeration<URL> getResources(String name) {
-        return getSystemResources(name);
-    }
-
-    @Substitute
-    private static Enumeration<URL> getSystemResources(String name) {
-        List<byte[]> arr = Resources.get(name);
-        if (arr == null) {
-            return Collections.emptyEnumeration();
-        }
-        List<URL> res = new ArrayList<>(arr.size());
-        for (byte[] data : arr) {
-            res.add(Resources.createURL(name, new ByteArrayInputStream(data)));
-        }
-        return Collections.enumeration(res);
-    }
-
-    @Substitute
-    public static ClassLoader getSystemClassLoader() {
-        /*
-         * ClassLoader.getSystemClassLoader() is used as a parameter for Class.forName(String,
-         * boolean, ClassLoader) which is implemented as ClassForNameSupport.forName(name) and
-         * ignores the class loader.
-         */
-        return null;
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
-        NativeLibrarySupport.singleton().loadLibrary(name, isAbsolute);
-    }
-
-    @Substitute
-    private Class<?> loadClass(String name) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name);
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
-    }
-
 }
 
 @TargetClass(className = "java.lang.ClassLoaderHelper")
@@ -266,7 +190,7 @@ final class Target_java_lang_Throwable {
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
         CodePointer ip = KnownIntrinsics.readReturnAddress();
 
-        StackTraceBuilder stackTraceBuilder = new StackTraceBuilder();
+        StackTraceBuilder stackTraceBuilder = new StackTraceBuilder(true);
         JavaStackWalker.walkCurrentThread(sp, ip, stackTraceBuilder);
         this.stackTrace = stackTraceBuilder.getTrace();
 
@@ -300,18 +224,7 @@ final class Target_java_lang_Throwable {
 }
 
 @TargetClass(java.lang.Runtime.class)
-@SuppressWarnings({"static-method"})
 final class Target_java_lang_Runtime {
-
-    @Substitute
-    private void addShutdownHook(java.lang.Thread hook) {
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(hook);
-    }
-
-    @Substitute
-    private boolean removeShutdownHook(java.lang.Thread hook) {
-        return RuntimeSupport.getRuntimeSupport().removeShutdownHook(hook);
-    }
 
     @Substitute
     public void loadLibrary(String libname) {
@@ -323,6 +236,10 @@ final class Target_java_lang_Runtime {
     public void load(String filename) {
         // Substituted because the original is caller-sensitive, which we don't support
         load0(null, filename);
+    }
+
+    @Substitute
+    public void runFinalization() {
     }
 
     // Checkstyle: stop
@@ -394,11 +311,6 @@ final class Target_java_lang_System {
     }
 
     @Substitute
-    private static void exit(int status) {
-        ConfigurationValues.getOSInterface().exit(status);
-    }
-
-    @Substitute
     private static int identityHashCode(Object obj) {
         if (obj == null) {
             return 0;
@@ -444,6 +356,12 @@ final class Target_java_lang_System {
     private static String getProperty(String key) {
         checkKey(key);
         return ImageSingletons.lookup(SystemPropertiesSupport.class).getProperty(key);
+    }
+
+    @Substitute
+    public static String clearProperty(String key) {
+        checkKey(key);
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).clearProperty(key);
     }
 
     @Substitute
@@ -627,16 +545,122 @@ final class Target_java_lang_ApplicationShutdownHooks {
 
     /**
      * Re-initialize the map of registered hooks, because any hooks registered during native image
-     * construction can not survive into the running image.
+     * construction can not survive into the running image. But `hooks` must be initialized to an
+     * IdentityHashMap, because 'null' means I am in the middle of shutting down.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = IdentityHashMap.class)//
     private static IdentityHashMap<Thread, Thread> hooks;
 
+    /**
+     * Instead of starting all the threads in {@link #hooks}, just run the {@link Runnable}s one
+     * after another.
+     *
+     * Run the hooks that were added via {@link RuntimeSupport#addShutdownHook(Runnable)}.
+     */
+    @Substitute
+    static void runHooks() {
+        /* Claim all the hooks. */
+        final Collection<Thread> threads;
+        /* Checkstyle: allow synchronization. */
+        synchronized (Target_java_lang_ApplicationShutdownHooks.class) {
+            threads = hooks.keySet();
+            hooks = null;
+        }
+        /* Checkstyle: disallow synchronization. */
+
+        /* Run all the hooks, catching anything that is thrown. */
+        final List<Throwable> hookExceptions = new ArrayList<>();
+        for (Thread hook : threads) {
+            try {
+                Util_java_lang_ApplicationShutdownHooks.callRunnableOfThread(hook);
+            } catch (Throwable ex) {
+                hookExceptions.add(ex);
+            }
+        }
+        /* Report any hook exceptions, but do not re-throw them. */
+        if (hookExceptions.size() > 0) {
+            for (Throwable ex : hookExceptions) {
+                ex.printStackTrace(Log.logStream());
+            }
+        }
+
+        /* Run all the hooks that were registered with RuntimeSupport. */
+        RuntimeSupport.getRuntimeSupport().executeShutdownHooks();
+    }
+
+    /**
+     * Interpose so that the first time someone adds an ApplicationShutdownHook, I set up a shutdown
+     * hook to run all the ApplicationShutdownHooks. Then the rest of this method is copied from
+     * {@code ApplicationShutdownHook.add(Thread)}.
+     */
+    @Substitute
+    /* Checkstyle: allow synchronization */
+    static synchronized void add(Thread hook) {
+        Util_java_lang_ApplicationShutdownHooks.initializeOnce();
+        if (hooks == null) {
+            throw new IllegalStateException("Shutdown in progress");
+        }
+        if (hook.isAlive()) {
+            throw new IllegalArgumentException("Hook already running");
+        }
+        if (hooks.containsKey(hook)) {
+            throw new IllegalArgumentException("Hook previously registered");
+        }
+        hooks.put(hook, hook);
+    }
+    /* Checkstyle: disallow synchronization */
+}
+
+class Util_java_lang_ApplicationShutdownHooks {
+
+    /** An initialization flag. */
+    private static volatile boolean initialized = false;
+
+    /** A lock to protect the initialization flag. */
+    private static ReentrantLock lock = new ReentrantLock();
+
+    public static void initializeOnce() {
+        if (!initialized) {
+            lock.lock();
+            try {
+                if (!initialized) {
+                    try {
+                        /*
+                         * Register a shutdown hook.
+                         *
+                         * Compare this code to the static initializations done in {@link
+                         * ApplicationShutdownHooks}.
+                         */
+                        Target_java_lang_Shutdown.add(1 /* shutdown hook invocation order */,
+                                        false /* not registered if shutdown in progress */,
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Target_java_lang_ApplicationShutdownHooks.runHooks();
+                                            }
+                                        });
+                    } catch (InternalError ie) {
+                        /* Someone else has registered the shutdown hook at slot 2. */
+                    } catch (IllegalStateException ise) {
+                        /* Too late to register this shutdown hook. */
+                    }
+                    /* Announce that initialization is complete. */
+                    initialized = true;
+                }
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    @SuppressFBWarnings(value = {"RU_INVOKE_RUN"}, justification = "Do not start a new thread, just call the run method.")
+    static void callRunnableOfThread(Thread thread) {
+        thread.run();
+    }
 }
 
 @TargetClass(className = "java.lang.Shutdown")
 final class Target_java_lang_Shutdown {
-
     /**
      * Re-initialize the map of registered hooks, because any hooks registered during native image
      * construction can not survive into the running image.
@@ -655,6 +679,10 @@ final class Target_java_lang_Shutdown {
         throw VMError.unsupportedFeature("java.lang.Shudown.runAllFinalizers()");
     }
 
+    /**
+     * Invoked by the JNI DestroyJavaVM procedure when the last non-daemon thread has finished.
+     * Unlike the exit method, this method does not actually halt the VM.
+     */
     @Alias
     static native void shutdown();
 
@@ -706,6 +734,12 @@ final class Target_java_lang_Package {
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static class ClassLoaderSupport {
+        public Map<ClassLoader, Target_java_lang_ClassLoader> classloaders = Collections.synchronizedMap(new IdentityHashMap<>());
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)//
     public static final class ClassValueSupport {
         final Map<ClassValue<?>, Map<Class<?>, Object>> values;
@@ -717,7 +751,7 @@ public final class JavaLangSubstitutions {
 
     static class ClassValueInitializer implements CustomFieldValueComputer {
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
             ClassValue<?> v = (ClassValue<?>) receiver;
             Map<Class<?>, Object> map = support.values.get(v);

@@ -56,8 +56,7 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         final int[] result = executorNode.getResultCaptureGroups(frame);
         if (CompilerDirectives.inInterpreter()) {
             RegexProfile profile = receiver.getCompiledRegex().getRegexProfile();
-            profile.incCaptureGroupAccesses();
-            profile.addMatchedPortionOfSearchSpace((double) (result[1] - result[0]) / (result[1] - (receiver.getFromIndex() + 1)));
+            profile.profileCaptureGroupAccess(result[1] - result[0], result[1] - (receiver.getFromIndex() + 1));
         }
         receiver.setResult(result);
         return null;

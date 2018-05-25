@@ -389,6 +389,8 @@ public abstract class Accessor {
 
         public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 
+        public abstract void materializeHostFrames(Throwable original);
+
     }
 
     public abstract static class InstrumentSupport {

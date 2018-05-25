@@ -859,11 +859,14 @@ public final class DebuggerSession implements Closeable {
         }
     }
 
-    private static void clearFrame(MaterializedFrame frame) {
+    private static void clearFrame(RootNode root, MaterializedFrame frame) {
         FrameDescriptor descriptor = frame.getFrameDescriptor();
-        Object value = descriptor.getDefaultValue();
-        for (FrameSlot slot : descriptor.getSlots()) {
-            frame.setObject(slot, value);
+        if (root.getFrameDescriptor() == descriptor) {
+            // Clear only those frames that correspond to the current root
+            Object value = descriptor.getDefaultValue();
+            for (FrameSlot slot : descriptor.getSlots()) {
+                frame.setObject(slot, value);
+            }
         }
     }
 
@@ -875,7 +878,8 @@ public final class DebuggerSession implements Closeable {
         assert s.isUnwind();
         assert s.step(this, null, null);
         s.consume();
-        clearFrame(frame); // Clear the frame that is to be re-entered
+        // Clear the frame that is to be re-entered
+        clearFrame(((Node) insertableNode).getRootNode(), frame);
         // Fake the caller context
         class Caller {
             final Node node;

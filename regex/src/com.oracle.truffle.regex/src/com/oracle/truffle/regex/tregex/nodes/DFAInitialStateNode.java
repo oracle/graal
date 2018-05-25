@@ -24,11 +24,13 @@
  */
 package com.oracle.truffle.regex.tregex.nodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Arrays;
+
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * This state node is responsible for selecting a DFA's initial state based on the index the search
@@ -39,19 +41,17 @@ import java.util.Arrays;
  */
 public class DFAInitialStateNode extends DFAAbstractStateNode {
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1) private final short[] captureGroupTransitions;
     private final boolean searching;
     private final boolean trackCaptureGroups;
 
-    public DFAInitialStateNode(short[] successors, short[] captureGroupTransitions, boolean searching, boolean trackCaptureGroups) {
+    public DFAInitialStateNode(short[] successors, boolean searching, boolean trackCaptureGroups) {
         super(successors);
-        this.captureGroupTransitions = captureGroupTransitions;
         this.searching = searching;
         this.trackCaptureGroups = trackCaptureGroups;
     }
 
     private DFAInitialStateNode(DFAInitialStateNode copy) {
-        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.captureGroupTransitions, copy.searching, copy.trackCaptureGroups);
+        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.searching, copy.trackCaptureGroups);
     }
 
     public int getPrefixLength() {
@@ -92,12 +92,13 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
             executor.setSuccessorIndex(frame, executor.getSuccessorIndex(frame) + (successors.length / 2));
         }
         if (trackCaptureGroups) {
-            executor.setLastTransition(frame, captureGroupTransitions[executor.getSuccessorIndex(frame)]);
+            executor.setLastTransition(frame, (short) 0);
         }
     }
 
+    @TruffleBoundary
     @Override
-    public DebugUtil.Table toTable() {
-        return new DebugUtil.Table("InitialState");
+    public JsonValue toJson() {
+        return Json.obj();
     }
 }

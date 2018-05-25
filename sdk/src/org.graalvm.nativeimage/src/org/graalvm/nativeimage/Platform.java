@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,6 +74,14 @@ public interface Platform {
     interface DARWIN extends Platform {
     }
 
+    /**
+     * Supported operating system: Windows.
+     *
+     * @since 1.0
+     */
+    interface WINDOWS extends Platform {
+    }
+
     /*
      * Standard leaf platforms, i.e., OS-architecture combinations that we support.
      */
@@ -107,6 +115,22 @@ public interface Platform {
          * @since 1.0
          */
         public DARWIN_AMD64() {
+        }
+    }
+
+    /**
+     * Supported leaf platform: Windows on x86 64-bit.
+     *
+     * @since 1.0
+     */
+    final class WINDOWS_AMD64 implements WINDOWS, AMD64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 1.0
+         */
+        public WINDOWS_AMD64() {
         }
     }
 

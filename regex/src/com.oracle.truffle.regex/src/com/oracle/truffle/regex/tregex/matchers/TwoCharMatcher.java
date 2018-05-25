@@ -54,6 +54,11 @@ public final class TwoCharMatcher extends ProfiledCharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        return 2;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         return modifiersToString() + DebugUtil.charToString(c1) + "||" + DebugUtil.charToString(c2);

@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
@@ -75,6 +76,8 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<String> LinkerRPath = new HostedOptionKey<>("");
 
+    @APIOption(name = "-ea", customHelp = "enable assertions in the generated image")//
+    @APIOption(name = "-da", kind = APIOption.APIOptionKind.Negated, customHelp = "disable assertions in the generated image")//
     @Option(help = "Enable or disable Java assert statements at run time", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> RuntimeAssertions = new HostedOptionKey<>(false);
 
@@ -191,13 +194,13 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial.")//
-    public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(15);
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialMethod = new HostedOptionKey<>(20);
 
     @Option(help = "Maximum number of invokes in a method so that it is considered trivial (for testing only).")//
     public static final HostedOptionKey<Integer> MaxInvokesInTrivialMethod = new HostedOptionKey<>(1);
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
-    public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(30);
+    public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     public static FoldedPredicate makeFilter(String definedFilter) {
         if (definedFilter != null) {

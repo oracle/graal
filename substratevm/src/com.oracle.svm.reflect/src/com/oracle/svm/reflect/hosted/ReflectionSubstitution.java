@@ -80,8 +80,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         imageClassLoader = classLoader;
     }
 
+    private static <T> String getSimpleNameSafe(Class<T> clazz) {
+        return clazz.getName().substring(clazz.getName().lastIndexOf('.') + 1);
+    }
+
     private static String getProxyClassname(Member member) {
-        String className = member.getDeclaringClass().getSimpleName();
+        String className = getSimpleNameSafe(member.getDeclaringClass());
         String memberName;
         if (member instanceof Constructor) {
             memberName = className;

@@ -589,7 +589,7 @@ public final class ProbeNode extends Node {
         ExecutionEventNode eventNode;
         try {
             eventNode = ((ExecutionEventNodeFactory) element).create(context);
-            if (eventNode.getParent() != null) {
+            if (eventNode != null && eventNode.getParent() != null) {
                 throw new IllegalStateException(String.format("Returned EventNode %s was already adopted by another AST.", eventNode));
             }
         } catch (Throwable t) {

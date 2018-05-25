@@ -1,12 +1,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -139,7 +141,7 @@ def add_jvmci_classpath_entry(entry):
     """
     _jvmci_classpath.append(entry)
 
-if jdk.javaCompliance != '9' and jdk.javaCompliance != '10':
+if jdk.javaCompliance != '9' and jdk.javaCompliance != '10' and mx.get_os() != 'windows':
     # The jdk.internal.vm.compiler.management module is
     # not available in 9 nor upgradeable in 10
     add_jvmci_classpath_entry(JVMCIClasspathEntry('GRAAL_MANAGEMENT'))
@@ -514,7 +516,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('MakeGraalJDK', tasks, tags=GraalTags.test) as t:
         if t and isJDK8:
             try:
-                makegraaljdk(['-a', 'graaljdk.tar', 'graaljdk'])
+                makegraaljdk(['-a', 'graaljdk.tar', '-b', 'graaljdk'])
             finally:
                 if exists('graaljdk'):
                     shutil.rmtree('graaljdk')
@@ -1045,6 +1047,7 @@ def makegraaljdk(args):
     parser = ArgumentParser(prog='mx makegraaljdk')
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
+    parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1063,8 +1066,10 @@ def makegraaljdk(args):
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
-        if mx.get_os() == 'darwin' or mx.get_os() == 'windows':
+        if mx.get_os() == 'darwin':
             jvmlibDir = join(dstJdk, 'jre', 'lib', 'server')
+        elif mx.get_os() == 'windows':
+            jvmlibDir = join(dstJdk, 'jre', 'bin', 'server')
         else:
             jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
         jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
@@ -1121,8 +1126,9 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
-        with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
-            mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
+        if args.bootstrap:
+            with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
+                mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
         if args.archive:
             mx.log('Archiving {}'.format(args.archive))
             create_archive(dstJdk, args.archive, basename(args.dest) + '/')
@@ -1313,7 +1319,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
     dir_name='graal',
     license_files=[],
     third_party_license_files=[],
-    jvmci_jars=['compiler:GRAAL'],
+    jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
     graal_compiler='graal',
 ))
 

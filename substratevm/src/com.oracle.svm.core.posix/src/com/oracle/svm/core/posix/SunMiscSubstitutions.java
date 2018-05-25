@@ -26,6 +26,8 @@ import java.io.Console;
 import java.nio.charset.Charset;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -45,6 +47,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(sun.misc.SharedSecrets.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_misc_SharedSecrets {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -85,6 +88,7 @@ final class Target_sun_misc_SharedSecrets {
 }
 
 @TargetClass(sun.misc.Signal.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_misc_Signal {
 
     @Substitute
@@ -370,6 +374,7 @@ final class Util_sun_misc_Signal {
 
 /** Translated from: jdk/src/share/native/sun/misc/NativeSignalHandler.c?v=Java_1.8.0_40_b10. */
 @TargetClass(className = "sun.misc.NativeSignalHandler")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_misc_NativeSignalHandler {
 
     /**

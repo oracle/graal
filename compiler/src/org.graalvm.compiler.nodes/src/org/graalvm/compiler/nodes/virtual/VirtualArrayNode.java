@@ -136,7 +136,7 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     }
 
     @Override
-    public ValueNode length() {
+    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
         return ConstantNode.forInt(length);
     }
 }

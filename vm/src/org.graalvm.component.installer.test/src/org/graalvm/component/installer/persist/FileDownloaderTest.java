@@ -33,6 +33,7 @@ import java.net.URLConnection;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.component.installer.persist.test.Handler;
+import org.junit.Assert;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -64,16 +65,15 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Before
     public void setUp() throws Exception {
         delegateFeedback(new FA());
-        System.setProperty("org.graalvm.component.installer.minDownloadFeedback", "10");
     }
 
     @Test
     public void testDownloadExistingFile() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        Handler.bind("test://graal.us.oracle.com/download/truffleruby.zip",
+        Handler.bind("test://graalvm.io/download/truffleruby.zip",
                         clu);
 
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         FileDownloader dn = new FileDownloader("test",
                         u, this);
         dn.download();
@@ -89,10 +89,10 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadComputeDigest() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        Handler.bind("test://graal.us.oracle.com/download/truffleruby.zip",
+        Handler.bind("test://graalvm.io/download/truffleruby.zip",
                         clu);
 
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         FileDownloader dn = new FileDownloader("test",
                         u, this);
         dn.setShaDigest(new byte[0]);
@@ -104,7 +104,7 @@ public class FileDownloaderTest extends NetworkTestBase {
 
     class Check extends FA {
         int state;
-
+        boolean verbose = true;
         int cnt = 0;
         StringBuilder bar = new StringBuilder("[                    ]");
         String bcksp = "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b";
@@ -122,8 +122,18 @@ public class FileDownloaderTest extends NetworkTestBase {
         }
 
         @Override
+        public void output(String bundleKey, Object... params) {
+            if (state == 0 && verbose) {
+                Assert.assertNotEquals("MSG_Downloading", bundleKey);
+            }
+        }
+
+        @Override
         public boolean verboseOutput(String bundleKey, Object... params) {
             switch (state) {
+                case 0:
+                    assertEquals("MSG_DownloadingVerbose", bundleKey);
+                    break;
                 case 5:
                     if ("MSG_DownloadingDone".equals(bundleKey)) {
                         state++;
@@ -167,41 +177,48 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadVerboseMessages() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        Handler.bind("test://graal.us.oracle.com/download/truffleruby.zip",
+        Handler.bind("test://graalvm.io/download/truffleruby.zip",
                         clu);
 
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
         Check check = new Check();
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
                         u, this);
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
+        dn.sizeThreshold = 10;
         verbose = true;
         dn.download();
 
         assertEquals(6, check.state);
     }
 
+    /**
+     * Checks that slow proxy will be used although the direct connection has failed already.
+     * 
+     * @throws Exception
+     */
     @Test
-    public void testDownloadFailedProxy() throws Exception {
+    public void testDownloadSlowProxy() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
 
-        ChunkedConnection conn = new ChunkedConnection(
+        ChunkedConnection proxyConnect = new ChunkedConnection(
                         u,
                         clu.openConnection()) {
             @Override
             public void connect() throws IOException {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(3000);
                 } catch (InterruptedException ex) {
                 }
                 super.connect();
             }
 
         };
-        Handler.bind(u.toString(), conn);
+
+        Handler.bindProxy(u.toString(), proxyConnect);
         Check check = new Check();
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
@@ -212,9 +229,54 @@ public class FileDownloaderTest extends NetworkTestBase {
         dn.envHttpProxy = "http://localhost:11111";
         dn.envHttpsProxy = "http://localhost:11111";
 
-        synchronized (conn) {
-            conn.nextChunk = 130 * 1024;
-            conn.readException = new FileNotFoundException();
+        synchronized (proxyConnect) {
+            proxyConnect.nextChunk = 130 * 1024;
+            proxyConnect.readException = new FileNotFoundException();
+        }
+
+        exception.expect(FileNotFoundException.class);
+        dn.download();
+    }
+
+    /**
+     * Checks that if proxy fails, the direct connection, although it connects later, will be used.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testDownloadFailedProxy() throws Exception {
+        URL clu = getClass().getResource("data/truffleruby2.jar");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+
+        ChunkedConnection directConnect = new ChunkedConnection(
+                        u,
+                        clu.openConnection()) {
+            @Override
+            public void connect() throws IOException {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException ex) {
+                }
+                super.connect();
+            }
+
+        };
+
+        Handler.bind(u.toString(), directConnect);
+        Check check = new Check();
+        check.verbose = false;
+        delegateFeedback(check);
+        FileDownloader dn = new FileDownloader("test",
+                        u, this);
+        dn.setVerbose(true);
+        dn.setDisplayProgress(true);
+
+        dn.envHttpProxy = "http://localhost:11111";
+        dn.envHttpsProxy = "http://localhost:11111";
+
+        synchronized (directConnect) {
+            directConnect.nextChunk = 130 * 1024;
+            directConnect.readException = new FileNotFoundException();
         }
 
         exception.expect(FileNotFoundException.class);
@@ -224,13 +286,14 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadFailure() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        URL u = new URL("test://graal.us.oracle.com/download/truffleruby.zip");
+        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
 
         ChunkedConnection conn = new ChunkedConnection(
                         u,
                         clu.openConnection());
         Handler.bind(u.toString(), conn);
         Check check = new Check();
+        check.verbose = false;
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
                         u, this);

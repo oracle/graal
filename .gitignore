@@ -10,6 +10,7 @@
 *.jar
 *.log
 *.o
+*.obj
 *.orig
 *.pdf
 *.pyc

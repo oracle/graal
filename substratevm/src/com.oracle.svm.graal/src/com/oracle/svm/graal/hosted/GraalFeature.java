@@ -238,7 +238,7 @@ public final class GraalFeature implements Feature {
 
         RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, false);
         }
 
         @Override

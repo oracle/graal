@@ -52,6 +52,27 @@ public abstract class UnaryOpLogicNode extends LogicNode implements LIRLowerable
     public void generate(NodeLIRBuilderTool gen) {
     }
 
+    /**
+     * In general the input stamp cannot be trusted, this method is reserved for the cases when it's
+     * "safe" to use the input stamp. To ensure safety use
+     * {@link #getSucceedingStampForValue(boolean)} instead.
+     */
+    public Stamp getSucceedingStampForValue(boolean negated, Stamp valueStamp) {
+        Stamp succStamp = getSucceedingStampForValue(negated);
+        if (succStamp != null) {
+            succStamp = succStamp.join(valueStamp);
+        }
+        return succStamp;
+    }
+
+    /**
+     * The input stamp cannot be trusted, the returned stamp cannot use the input stamp to narrow
+     * itself or derive any assumptions. This method does not use the input stamp and is considered
+     * safe.
+     *
+     * It's responsibility of the caller to determine when it's "safe" to "trust" the input stamp
+     * and use {@link #getSucceedingStampForValue(boolean, Stamp)} instead.
+     */
     public abstract Stamp getSucceedingStampForValue(boolean negated);
 
     public abstract TriState tryFold(Stamp valueStamp);

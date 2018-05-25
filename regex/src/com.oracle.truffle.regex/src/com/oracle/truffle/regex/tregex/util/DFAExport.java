@@ -25,13 +25,13 @@
 package com.oracle.truffle.regex.tregex.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.dfa.DFAStateNodeBuilder;
-import com.oracle.truffle.regex.tregex.dfa.NFATransitionSet;
+import com.oracle.truffle.regex.tregex.dfa.DFAStateTransitionBuilder;
 import com.oracle.truffle.regex.tregex.matchers.AnyMatcher;
 import com.oracle.truffle.regex.tregex.matchers.BitSetMatcher;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.EmptyMatcher;
-import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
 import com.oracle.truffle.regex.tregex.matchers.SingleCharMatcher;
 import com.oracle.truffle.regex.tregex.matchers.SingleRangeMatcher;
 import com.oracle.truffle.regex.tregex.nodes.DFAStateNode;
@@ -47,10 +47,14 @@ import java.util.stream.Collectors;
 public class DFAExport {
 
     @CompilerDirectives.TruffleBoundary
-    public static void exportDot(Map<NFATransitionSet, DFAStateNodeBuilder> stateMap, short[] entryStates, String path, boolean shortLabels) {
+    public static void exportDot(DFAGenerator dfaGenerator, String path, boolean shortLabels) {
+        DFAStateNodeBuilder[] entryStates = dfaGenerator.getEntryStates();
+        Map<DFAStateNodeBuilder, DFAStateNodeBuilder> stateMap = dfaGenerator.getStateMap();
         TreeSet<Short> entryIDs = new TreeSet<>();
-        for (short i : entryStates) {
-            entryIDs.add(i);
+        for (DFAStateNodeBuilder s : entryStates) {
+            if (s != null) {
+                entryIDs.add(s.getId());
+            }
         }
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(path))) {
             writer.write("digraph finite_state_machine {");
@@ -72,18 +76,20 @@ public class DFAExport {
             for (DFAStateNodeBuilder state : stateMap.values()) {
                 if (entryIDs.contains(state.getId())) {
                     for (int i = 0; i < entryStates.length; i++) {
-                        if (entryStates[i] == state.getId()) {
-                            DotExport.printConnection(writer, (i < entryStates.length / 2 ? "I^" : "I") + i, dotState(state, shortLabels), "");
+                        if (entryStates[i] == state) {
+                            String initStateLabel;
+                            if (i < entryStates.length / 2) {
+                                initStateLabel = "I^" + i;
+                            } else {
+                                initStateLabel = "I" + (i - entryStates.length / 2);
+                            }
+                            DotExport.printConnection(writer, initStateLabel, dotState(state, shortLabels), "");
                             break;
                         }
                     }
                 }
-                DFAStateNodeBuilder[] successors = state.getSuccessors();
-                MatcherBuilder[] matchers = state.getMatcherBuilders();
-                if (successors != null) {
-                    for (int i = 0; i < successors.length; i++) {
-                        DotExport.printConnection(writer, dotState(state, shortLabels), dotState(successors[i], shortLabels), matchers[i].toString());
-                    }
+                for (DFAStateTransitionBuilder t : state.getTransitions()) {
+                    DotExport.printConnection(writer, dotState(state, shortLabels), dotState(t.getTarget(), shortLabels), t.getMatcherBuilder().toString());
                 }
             }
             writer.write("}");

@@ -51,7 +51,6 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,18 +71,11 @@ import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
 /**
  * Tests class for {@link Context#asValue(Object)}.
  */
-public class ValueHostConversionTest {
-
-    private Context context;
+public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Before
     public void setUp() {
-        context = Context.newBuilder().allowHostAccess(true).build();
-    }
-
-    @After
-    public void tearDown() {
-        context.close();
+        setupEnv();
     }
 
     @Test

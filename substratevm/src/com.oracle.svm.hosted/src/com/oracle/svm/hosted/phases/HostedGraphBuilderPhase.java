@@ -85,7 +85,7 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     private Map<Long, DeoptProxyAnchorNode> deoptEntries = new HashMap<>();
 
     HostedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-        super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
+        super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true);
     }
 
     @Override
