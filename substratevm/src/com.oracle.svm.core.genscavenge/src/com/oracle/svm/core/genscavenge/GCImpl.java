@@ -1703,6 +1703,7 @@ final class GarbageCollectorManagementFactory {
 
     GarbageCollectorManagementFactory() {
         final List<GarbageCollectorMXBean> newList = new ArrayList<>();
+        /* Changing the order of this list will break assumptions we take in the object replacer. */
         newList.add(new IncrementalGarbageCollectorMXBean());
         newList.add(new CompleteGarbageCollectorMXBean());
         gcBeanList = newList;
@@ -1738,6 +1739,7 @@ final class GarbageCollectorManagementFactory {
 
         @Override
         public String getName() {
+            /* Changing this name will break assumptions we take in the object replacer. */
             return "young generation scavenger";
         }
 
@@ -1782,6 +1784,7 @@ final class GarbageCollectorManagementFactory {
 
         @Override
         public String getName() {
+            /* Changing this name will break assumptions we take in the object replacer. */
             return "complete scavenger";
         }
 

@@ -105,6 +105,11 @@ public abstract class SystemPropertiesSupport {
         return (String) properties.setProperty(key, value);
     }
 
+    public String clearProperty(String key) {
+        initializeLazyValue(key);
+        return (String) properties.remove(key);
+    }
+
     private void initializeLazyValue(String key) {
         if (!fullyInitialized && lazyRuntimeValues.containsKey(key) && properties.get(key) == null) {
             /*
