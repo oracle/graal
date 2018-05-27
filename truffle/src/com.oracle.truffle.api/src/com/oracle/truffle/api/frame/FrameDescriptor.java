@@ -366,6 +366,9 @@ public final class FrameDescriptor implements Cloneable {
         FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue);
         clonedFrameDescriptor.slots.addAll(slots);
         clonedFrameDescriptor.identifierToSlotMap.putAll(identifierToSlotMap);
+        for (FrameSlot slot : slots) {
+            slot.shareWith(clonedFrameDescriptor);
+        }
         clonedFrameDescriptor.size = this.size;
         return clonedFrameDescriptor;
     }
