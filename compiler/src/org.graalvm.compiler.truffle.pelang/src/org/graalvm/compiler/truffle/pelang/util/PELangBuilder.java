@@ -25,6 +25,7 @@ package org.graalvm.compiler.truffle.pelang.util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
@@ -78,14 +79,17 @@ public class PELangBuilder {
         return new PELangLiteralFunctionNode(function);
     }
 
-    public PELangFunction fn(FunctionHeader header, PELangStatementNode bodyNode) {
+    public PELangFunction fn(Function<PELangBuilder, FunctionHeader> headerFunction, Function<PELangBuilder, PELangStatementNode> bodyNodeFunction) {
         PELangBuilder builder = new PELangBuilder();
+        FunctionHeader header = headerFunction.apply(builder);
+
         List<PELangStatementNode> bodyNodes = new ArrayList<>();
 
         // read arguments and make them available as local variables
         for (int i = 0; i < header.getArgs().length; i++) {
             bodyNodes.add(builder.writeLocal(builder.readArgument(i), header.getArgs()[i]));
         }
+        PELangStatementNode bodyNode = bodyNodeFunction.apply(builder);
         bodyNodes.add(bodyNode);
 
         PELangRootNode rootNode = builder.root(builder.block(bodyNodes.stream().toArray(PELangStatementNode[]::new)));
