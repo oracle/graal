@@ -27,11 +27,14 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObjectBuilder;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.LinkedList;
@@ -40,7 +43,7 @@ import java.util.stream.Collectors;
 
 public final class LLVMSourceStaticMemberType extends LLVMSourceType {
 
-    static class CollectionType extends LLVMSourceType {
+    public static class CollectionType extends LLVMSourceType {
 
         static final String MEMBERNAME = "<static>";
 
@@ -60,11 +63,11 @@ public final class LLVMSourceStaticMemberType extends LLVMSourceType {
         }
 
         @TruffleBoundary
-        Object[] getIdentifiers() {
+        public Object[] getIdentifiers() {
             return members.stream().map(LLVMSourceStaticMemberType::getName).collect(Collectors.toList()).toArray(new Object[members.size()]);
         }
 
-        LLVMDebugObjectBuilder getMemberValue(String name) {
+        public LLVMDebugObjectBuilder getMemberValue(String name) {
             final LLVMSourceStaticMemberType member = getMember(name);
             return member != null ? member.getValue() : DEFAULT_VALUE;
         }

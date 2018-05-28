@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.debug;
 
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 
 public abstract class LLVMDebugObjectBuilder {
 

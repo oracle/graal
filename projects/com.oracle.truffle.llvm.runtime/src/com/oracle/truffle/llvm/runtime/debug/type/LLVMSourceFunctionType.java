@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import java.util.Collections;
 import java.util.List;
@@ -40,7 +40,7 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
     private final List<LLVMSourceType> types;
 
     public LLVMSourceFunctionType(List<LLVMSourceType> types) {
-        // function types do not require size or offset information since there are no concrete
+        // function type do not require size or offset information since there are no concrete
         // values of them in C/C++/Fortran. they are only used as basis for function pointers
         super(0L, 0L, 0L, null);
         assert types != null;

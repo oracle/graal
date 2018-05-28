@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,32 +27,66 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-import java.util.function.Function;
+import java.util.function.Supplier;
 
-public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
+public final class LLVMSourceArrayLikeType extends LLVMSourceType {
 
-    public static final String VALUE_KEY = "Unindexed Interop Value";
-    public static final Object[] KEYS = new Object[]{VALUE_KEY};
+    @CompilationFinal private LLVMSourceType baseType;
+    @CompilationFinal private long length;
 
-    public LLVMSourceForeignType(LLVMSourceType wrappedType) {
-        super(0, 0, 0, Function.identity(), wrappedType.getLocation());
-        setBaseType(wrappedType);
+    public LLVMSourceArrayLikeType(long size, long align, long offset, LLVMSourceLocation location) {
+        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, 1L, location);
+    }
+
+    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length, LLVMSourceLocation location) {
+        super(size, align, offset, location);
+        setName(name);
+        this.baseType = baseType;
+        this.length = length;
+    }
+
+    public LLVMSourceType getBaseType() {
+        return baseType;
+    }
+
+    public void setBaseType(LLVMSourceType baseType) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.baseType = baseType;
+    }
+
+    public long getLength() {
+        return length;
+    }
+
+    public void setLength(long length) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.length = length;
+    }
+
+    @Override
+    public LLVMSourceType getOffset(long newOffset) {
+        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, baseType, length, getLocation());
+    }
+
+    @Override
+    public boolean isAggregate() {
+        return true;
     }
 
     @Override
     public int getElementCount() {
-        return KEYS.length;
+        return (int) getLength();
     }
 
     @Override
-    @TruffleBoundary
     public String getElementName(long i) {
-        if (0 <= i && i < getElementCount()) {
+        if (0 <= i && i < getLength()) {
             return IndexedTypeBounds.toKey(i);
         }
         return null;
@@ -60,14 +94,13 @@ public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
 
     @Override
     public LLVMSourceType getElementType(long i) {
-        if (0 <= i && i < getElementCount()) {
-            return getBaseType();
+        if (0 <= i && i < getLength()) {
+            return baseType.getOffset(i * baseType.getSize());
         }
         return null;
     }
 
     @Override
-    @TruffleBoundary
     public LLVMSourceType getElementType(String key) {
         return getElementType(IndexedTypeBounds.toIndex(key));
     }
@@ -80,10 +113,5 @@ public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
     @Override
     public LLVMSourceLocation getElementDeclaration(String name) {
         return getLocation();
-    }
-
-    @Override
-    public LLVMSourceType getOffset(long newOffset) {
-        return this;
     }
 }

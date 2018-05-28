@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceArrayLikeType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceBasicType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceMemberType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourcePointerType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceStructLikeType;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import java.util.IdentityHashMap;
 
 /**

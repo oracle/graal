@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates.
+ * Copyright (c) 2018, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,66 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-public final class LLVMSourceBasicType extends LLVMSourceType {
+final class IndexedTypeBounds {
 
-    private final Kind kind;
+    private static final int KEY_MIN_LENGTH = "[0]".length();
 
-    public LLVMSourceBasicType(String name, long size, long align, long offset, Kind kind, LLVMSourceLocation location) {
-        super(() -> name, size, align, offset, location);
-        this.kind = kind;
+    @TruffleBoundary
+    static long toIndex(String key) {
+        if (key.length() >= KEY_MIN_LENGTH) {
+            try {
+                return Integer.parseInt(key.substring(1, key.length() - 1));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return -1;
     }
 
-    public Kind getKind() {
-        return kind;
+    @TruffleBoundary
+    static String toKey(long index) {
+        return String.format("[%d]", index);
     }
 
-    @Override
-    public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceBasicType(getName(), getSize(), getAlign(), newOffset, kind, getLocation());
+    private IndexedTypeBounds() {
     }
 
-    @Override
-    public String toString() {
-        return getName();
-    }
-
-    @Override
-    public boolean isAggregate() {
-        return false;
-    }
-
-    @Override
-    public int getElementCount() {
-        return 0;
-    }
-
-    @Override
-    public String getElementName(long i) {
-        return null;
-    }
-
-    @Override
-    public LLVMSourceType getElementType(long i) {
-        return null;
-    }
-
-    @Override
-    public LLVMSourceType getElementType(String name) {
-        return null;
-    }
-
-    public enum Kind {
-        UNKNOWN,
-        ADDRESS,
-        BOOLEAN,
-        FLOATING,
-        SIGNED,
-        SIGNED_CHAR,
-        UNSIGNED,
-        UNSIGNED_CHAR;
-    }
 }

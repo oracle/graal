@@ -46,7 +46,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.interop.LLVMFunctionMessageResolutionForeign;
@@ -291,7 +291,7 @@ public final class LLVMFunctionDescriptor implements LLVMSymbol, LLVMInternalTru
         RootCallTarget convert();
 
         /**
-         * Get an {@link com.oracle.truffle.llvm.runtime.debug.LLVMSourceFunctionType} for the
+         * Get an {@link com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType} for the
          * already converted function. Can be null if no debug information is available in the
          * bitcode file.
          *

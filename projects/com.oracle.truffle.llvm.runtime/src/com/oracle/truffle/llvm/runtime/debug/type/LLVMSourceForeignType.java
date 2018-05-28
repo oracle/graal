@@ -27,31 +27,63 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-final class IndexedTypeBounds {
+import java.util.function.Function;
 
-    private static final int KEY_MIN_LENGTH = "[0]".length();
+public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
 
+    public static final String VALUE_KEY = "Unindexed Interop Value";
+    public static final Object[] KEYS = new Object[]{VALUE_KEY};
+
+    public LLVMSourceForeignType(LLVMSourceType wrappedType) {
+        super(0, 0, 0, Function.identity(), wrappedType.getLocation());
+        setBaseType(wrappedType);
+    }
+
+    @Override
+    public int getElementCount() {
+        return KEYS.length;
+    }
+
+    @Override
     @TruffleBoundary
-    static long toIndex(String key) {
-        if (key.length() >= KEY_MIN_LENGTH) {
-            try {
-                return Integer.parseInt(key.substring(1, key.length() - 1));
-            } catch (NumberFormatException ignored) {
-            }
+    public String getElementName(long i) {
+        if (0 <= i && i < getElementCount()) {
+            return IndexedTypeBounds.toKey(i);
         }
-        return -1;
+        return null;
     }
 
+    @Override
+    public LLVMSourceType getElementType(long i) {
+        if (0 <= i && i < getElementCount()) {
+            return getBaseType();
+        }
+        return null;
+    }
+
+    @Override
     @TruffleBoundary
-    static String toKey(long index) {
-        return String.format("[%d]", index);
+    public LLVMSourceType getElementType(String key) {
+        return getElementType(IndexedTypeBounds.toIndex(key));
     }
 
-    private IndexedTypeBounds() {
+    @Override
+    public LLVMSourceLocation getElementDeclaration(long i) {
+        return getLocation();
     }
 
+    @Override
+    public LLVMSourceLocation getElementDeclaration(String name) {
+        return getLocation();
+    }
+
+    @Override
+    public LLVMSourceType getOffset(long newOffset) {
+        return this;
+    }
 }

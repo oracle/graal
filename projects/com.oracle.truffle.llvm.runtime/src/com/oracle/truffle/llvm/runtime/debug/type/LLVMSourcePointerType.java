@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug;
+package com.oracle.truffle.llvm.runtime.debug.type;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -35,20 +35,35 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
 import java.util.function.Supplier;
 
-public final class LLVMSourceArrayLikeType extends LLVMSourceType {
+public final class LLVMSourcePointerType extends LLVMSourceType {
+
+    private final boolean isReference;
+
+    private final boolean isSafeToDereference;
 
     @CompilationFinal private LLVMSourceType baseType;
-    @CompilationFinal private long length;
 
-    public LLVMSourceArrayLikeType(long size, long align, long offset, LLVMSourceLocation location) {
-        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, 1L, location);
+    public LLVMSourcePointerType(long size, long align, long offset, boolean isSafeToDereference, boolean isReference, LLVMSourceLocation location) {
+        this(LLVMSourceType.UNKNOWN::getName, size, align, offset, LLVMSourceType.UNKNOWN, isSafeToDereference, isReference, location);
     }
 
-    private LLVMSourceArrayLikeType(Supplier<String> name, long size, long align, long offset, LLVMSourceType baseType, long length, LLVMSourceLocation location) {
-        super(size, align, offset, location);
-        setName(name);
+    private LLVMSourcePointerType(Supplier<String> nameSupplier, long size, long align, long offset, LLVMSourceType baseType, boolean isSafeToDereference, boolean isReference,
+                    LLVMSourceLocation location) {
+        super(nameSupplier, size, align, offset, location);
         this.baseType = baseType;
-        this.length = length;
+        this.isSafeToDereference = isSafeToDereference | isReference;
+        this.isReference = isReference;
+    }
+
+    @Override
+    public boolean isReference() {
+        // references, in contrast to pointers that are known to be safe to dereference, should be
+        // displayed as values of the basetype to users
+        return isReference;
+    }
+
+    public boolean isSafeToDereference() {
+        return isSafeToDereference;
     }
 
     public LLVMSourceType getBaseType() {
@@ -60,58 +75,38 @@ public final class LLVMSourceArrayLikeType extends LLVMSourceType {
         this.baseType = baseType;
     }
 
-    public long getLength() {
-        return length;
-    }
-
-    public void setLength(long length) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.length = length;
-    }
-
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceArrayLikeType(this::getName, getSize(), getAlign(), newOffset, baseType, length, getLocation());
+        return new LLVMSourcePointerType(this::getName, getSize(), getAlign(), newOffset, baseType, isSafeToDereference, isReference, getLocation());
     }
 
     @Override
-    public boolean isAggregate() {
+    public boolean isPointer() {
         return true;
     }
 
     @Override
+    public boolean isAggregate() {
+        return false;
+    }
+
+    @Override
     public int getElementCount() {
-        return (int) getLength();
+        return 1;
     }
 
     @Override
     public String getElementName(long i) {
-        if (0 <= i && i < getLength()) {
-            return IndexedTypeBounds.toKey(i);
-        }
-        return null;
+        return getBaseType().getElementName(i);
     }
 
     @Override
     public LLVMSourceType getElementType(long i) {
-        if (0 <= i && i < getLength()) {
-            return baseType.getOffset(i * baseType.getSize());
-        }
-        return null;
+        return getBaseType().getElementType(i);
     }
 
     @Override
-    public LLVMSourceType getElementType(String key) {
-        return getElementType(IndexedTypeBounds.toIndex(key));
-    }
-
-    @Override
-    public LLVMSourceLocation getElementDeclaration(long i) {
-        return getLocation();
-    }
-
-    @Override
-    public LLVMSourceLocation getElementDeclaration(String name) {
-        return getLocation();
+    public LLVMSourceType getElementType(String name) {
+        return getBaseType().getElementType(name);
     }
 }
