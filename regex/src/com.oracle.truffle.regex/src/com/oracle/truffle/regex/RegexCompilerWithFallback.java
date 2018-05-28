@@ -43,7 +43,7 @@ public class RegexCompilerWithFallback extends RegexCompiler {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource regexSource) throws RegexSyntaxException, UnsupportedRegexException {
         TruffleObject regex;
         long elapsedTimeMain = 0;
         long elapsedTimeFallback = 0;

@@ -79,7 +79,7 @@ public class CachingRegexCompiler extends RegexCompiler {
     private final Map<RegexSource, CompilationResult> cache = Collections.synchronizedMap(new LRUCache<>(TRegexOptions.RegexMaxCacheSize));
 
     @Override
-    public TruffleObject compile(RegexSource source) throws RegexSyntaxException {
+    public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         CompilationResult result = cacheGet(source);
         if (result == null) {
             result = doCompile(source);

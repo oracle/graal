@@ -31,7 +31,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.CompiledRegex;
 import com.oracle.truffle.regex.CompiledRegexObject;
 import com.oracle.truffle.regex.RegexSource;
-import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.dead.DeadRegexExecRootNode;
 import com.oracle.truffle.regex.literal.LiteralRegexEngine;
@@ -86,7 +85,7 @@ final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    TruffleObject compile() throws RegexSyntaxException {
+    TruffleObject compile() {
         try {
             CompiledRegex compiledRegex = compileInternal();
             if (DebugUtil.LOG_AUTOMATON_SIZES) {
@@ -104,7 +103,7 @@ final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    private CompiledRegex compileInternal() throws RegexSyntaxException {
+    private CompiledRegex compileInternal() {
         // System.out.println("TRegex compiling " +
         // DebugUtil.jsStringEscape(source.toString()));
         // System.out.println(new RegexUnifier(pattern, flags).getUnifiedPattern());
@@ -197,7 +196,7 @@ final class TRegexCompilationRequest {
         }
     }
 
-    private void createAST() throws RegexSyntaxException {
+    private void createAST() {
         phaseStart("Parser");
         ast = new RegexParser(source, tRegexCompiler.getOptions()).parse();
         phaseEnd("Parser");
