@@ -61,6 +61,9 @@ public final class PELangState {
 
     private static final class PELangNull {
 
+        private PELangNull() {
+        }
+
         @Override
         public String toString() {
             return "PELangNull";
