@@ -78,7 +78,7 @@ public abstract class LLVMStoreNodeCommon extends LLVMStoreNode {
         return getLLVMMemoryCached().isDerefMemory(addr);
     }
 
-    protected LLVMMemory getLLVMMemoryCached() {
+    protected final LLVMMemory getLLVMMemoryCached() {
         if (llvmMemory == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             llvmMemory = getLLVMMemory();

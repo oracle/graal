@@ -33,9 +33,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
  * An statement node is a node that returns no result.
@@ -59,9 +56,5 @@ public abstract class LLVMStatementNode extends LLVMNode implements Instrumentab
 
     public String getSourceDescription() {
         return getRootNode().getName();
-    }
-
-    public static boolean notLLVM(TruffleObject object) {
-        return !(object instanceof LLVMInternalTruffleObject) && !LLVMPointer.isInstance(object);
     }
 }

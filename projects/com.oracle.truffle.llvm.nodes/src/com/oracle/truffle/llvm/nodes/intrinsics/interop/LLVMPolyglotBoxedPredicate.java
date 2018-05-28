@@ -375,10 +375,6 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
         return predicate.execute(prim.getValue());
     }
 
-    boolean enableStringSpecialization() {
-        return predicate instanceof IsString;
-    }
-
     @Specialization
     boolean matchString(String str) {
         return predicate.execute(str);
