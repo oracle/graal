@@ -108,17 +108,13 @@ public class PELangNCFTest extends PELangTest {
     @Test(expected = PELangException.class)
     public void testInvalidBranch() {
         PELangRootNode rootNode = PELangSample.invalidBranch();
-
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
     }
 
     @Test(expected = PELangException.class)
     public void testInvalidLoop() {
         PELangRootNode rootNode = PELangSample.invalidLoop();
-
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
     }
 
     @Test

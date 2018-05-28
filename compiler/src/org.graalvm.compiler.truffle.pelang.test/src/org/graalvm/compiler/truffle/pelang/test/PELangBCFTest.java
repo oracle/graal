@@ -92,18 +92,14 @@ public class PELangBCFTest extends PELangTest {
     public void testInvalidBranch() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.invalidBranch());
-
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
     }
 
     @Test(expected = PELangException.class)
     public void testInvalidLoop() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.invalidLoop());
-
         compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
     }
 
     @Test
