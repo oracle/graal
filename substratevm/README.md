@@ -23,8 +23,6 @@ mx native-image HelloWorld
 ./helloworld
 ```
 
-To speed up successive image-build requests, native-image launches background image-build servers. The last command ensures that all image-build servers are shut down. (If you build images only with `--no-server`, this step can be omitted.)
-
 ## Build Script
 
 Using Substrate VM requires the mx tool to be installed first, so that it is on your path.
