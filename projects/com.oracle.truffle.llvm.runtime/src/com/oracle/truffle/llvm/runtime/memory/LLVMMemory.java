@@ -617,9 +617,6 @@ public final class LLVMMemory {
         return basePointer;
     }
 
-    // current hack: we cannot directly store the LLVMFunction in the native memory due to GC
-    public static final int FUNCTION_PTR_SIZE_BYTE = 8;
-
     public void putFunctionPointer(LLVMNativePointer address, long functionIndex) {
         putI64(address, functionIndex);
     }

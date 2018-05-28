@@ -544,10 +544,6 @@ abstract class LLVMConstantValueProvider implements LLVMDebugValue {
             this.offset = offset;
         }
 
-        InteropValue(Object value) {
-            this(value, 0L);
-        }
-
         @Override
         @TruffleBoundary
         Object getBaseValue() {

@@ -107,8 +107,7 @@ public abstract class ForeignToLLVM extends LLVMNode {
         ARRAY,
         STRUCT,
         ANY,
-        VOID,
-        VARBIT;
+        VOID;
 
         public static ForeignToLLVMType getIntegerType(int bitWidth) {
             switch (bitWidth) {
