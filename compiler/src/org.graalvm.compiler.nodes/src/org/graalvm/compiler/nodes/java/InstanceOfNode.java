@@ -225,7 +225,12 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable, Virtu
         if (other instanceof InstanceOfNode) {
             InstanceOfNode instanceOfNode = (InstanceOfNode) other;
             if (instanceOfNode.getValue() == getValue()) {
-                if (!thisNegated) {
+                if (thisNegated) {
+                    // !X => Y
+                    if (this.getCheckedStamp().meet(instanceOfNode.getCheckedStamp()).equals(this.getCheckedStamp())) {
+                        return TriState.get(false);
+                    }
+                } else {
                     // X => Y
                     if (instanceOfNode.getCheckedStamp().meet(this.getCheckedStamp()).equals(instanceOfNode.getCheckedStamp())) {
                         return TriState.get(true);
