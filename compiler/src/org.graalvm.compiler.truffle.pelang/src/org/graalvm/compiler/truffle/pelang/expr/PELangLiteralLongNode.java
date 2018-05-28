@@ -35,6 +35,10 @@ public final class PELangLiteralLongNode extends PELangExpressionNode {
         this.value = value;
     }
 
+    public long getValue() {
+        return value;
+    }
+
     @Override
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return value;

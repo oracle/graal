@@ -24,17 +24,20 @@ package org.graalvm.compiler.truffle.pelang.expr;
 
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 
 public final class PELangLiteralObjectNode extends PELangExpressionNode {
 
-    @CompilationFinal private final DynamicObject object;
+    private final DynamicObject object;
 
     public PELangLiteralObjectNode(DynamicObject object) {
         this.object = object;
+    }
+
+    public DynamicObject getObject() {
+        return object;
     }
 
     @Override

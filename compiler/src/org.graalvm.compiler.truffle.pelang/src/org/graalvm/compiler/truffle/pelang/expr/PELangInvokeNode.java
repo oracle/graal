@@ -52,6 +52,10 @@ public final class PELangInvokeNode extends PELangExpressionNode {
         return argumentNodes;
     }
 
+    public IndirectCallNode getCallNode() {
+        return callNode;
+    }
+
     @ExplodeLoop
     @Override
     public Object executeGeneric(VirtualFrame frame) {

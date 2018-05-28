@@ -35,6 +35,10 @@ public final class PELangReadArgumentNode extends PELangExpressionNode {
         this.index = index;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         Object[] args = frame.getArguments();

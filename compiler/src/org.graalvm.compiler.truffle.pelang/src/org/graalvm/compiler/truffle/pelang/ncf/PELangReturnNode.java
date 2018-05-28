@@ -36,6 +36,10 @@ public final class PELangReturnNode extends PELangStatementNode {
         this.bodyNode = bodyNode;
     }
 
+    public PELangExpressionNode getBodyNode() {
+        return bodyNode;
+    }
+
     @Override
     public void executeVoid(VirtualFrame frame) {
         Object result = bodyNode.executeGeneric(frame);

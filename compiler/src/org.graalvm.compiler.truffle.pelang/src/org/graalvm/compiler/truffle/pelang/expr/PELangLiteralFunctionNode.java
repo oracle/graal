@@ -25,16 +25,19 @@ package org.graalvm.compiler.truffle.pelang.expr;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public final class PELangLiteralFunctionNode extends PELangExpressionNode {
 
-    @CompilationFinal private final PELangFunction function;
+    private final PELangFunction function;
 
     public PELangLiteralFunctionNode(PELangFunction function) {
         this.function = function;
+    }
+
+    public PELangFunction getFunction() {
+        return function;
     }
 
     @Override

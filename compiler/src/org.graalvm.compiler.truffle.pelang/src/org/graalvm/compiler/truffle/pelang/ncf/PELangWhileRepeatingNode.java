@@ -39,6 +39,14 @@ public final class PELangWhileRepeatingNode extends Node implements RepeatingNod
         this.bodyNode = bodyNode;
     }
 
+    public PELangExpressionNode getConditionNode() {
+        return conditionNode;
+    }
+
+    public PELangStatementNode getBodyNode() {
+        return bodyNode;
+    }
+
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
         if (conditionNode.evaluateCondition(frame) == 0L) {

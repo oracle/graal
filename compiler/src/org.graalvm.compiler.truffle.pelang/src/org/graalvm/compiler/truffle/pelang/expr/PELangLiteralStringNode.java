@@ -34,6 +34,10 @@ public final class PELangLiteralStringNode extends PELangExpressionNode {
         this.value = value;
     }
 
+    public String getValue() {
+        return value;
+    }
+
     @Override
     public String executeGeneric(VirtualFrame frame) {
         return value;

@@ -42,6 +42,10 @@ public final class PELangWhileNode extends PELangStatementNode {
         loopNode = Truffle.getRuntime().createLoopNode(new PELangWhileRepeatingNode(conditionNode, bodyNode));
     }
 
+    public LoopNode getLoopNode() {
+        return loopNode;
+    }
+
     public PELangExpressionNode getConditionNode() {
         return conditionNode;
     }

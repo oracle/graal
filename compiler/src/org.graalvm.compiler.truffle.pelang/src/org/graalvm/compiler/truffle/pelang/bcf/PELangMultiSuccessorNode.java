@@ -29,7 +29,8 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 public final class PELangMultiSuccessorNode extends PELangBasicBlockNode {
 
     @Child private PELangExpressionNode valueNode;
-    @Children private PELangExpressionNode[] caseValueNodes;
+    @Children private final PELangExpressionNode[] caseValueNodes;
+
     @CompilationFinal(dimensions = 1) private int[] caseBodySuccessors;
     @CompilationFinal private int defaultSuccessor;
 
@@ -52,16 +53,8 @@ public final class PELangMultiSuccessorNode extends PELangBasicBlockNode {
         return valueNode;
     }
 
-    public void setValueNode(PELangExpressionNode valueNode) {
-        this.valueNode = valueNode;
-    }
-
     public PELangExpressionNode[] getCaseValueNodes() {
         return caseValueNodes;
-    }
-
-    public void setCaseValueNodes(PELangExpressionNode[] caseValueNodes) {
-        this.caseValueNodes = caseValueNodes;
     }
 
     public int[] getCaseBodySuccessors() {
