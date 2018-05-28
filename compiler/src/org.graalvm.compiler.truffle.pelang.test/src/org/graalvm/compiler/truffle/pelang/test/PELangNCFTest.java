@@ -91,9 +91,7 @@ public class PELangNCFTest extends PELangTest {
     public void testSimpleInvoke() {
         PELangRootNode rootNode = PELangSample.simpleInvoke();
         assertCallResult(10L, rootNode);
-
-        compileHelper(rootNode.toString(), rootNode, new Object[0]);
-        // TODO: add partial evaluation asserts
+        assertPartialEvalEquals("constant10", rootNode);
     }
 
     @Test

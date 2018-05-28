@@ -27,21 +27,21 @@ import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 
 public final class PELangInvokeNode extends PELangExpressionNode {
 
     @Child private PELangExpressionNode expressionNode;
     @Children private final PELangExpressionNode[] argumentNodes;
-    @Child private IndirectCallNode callNode;
+    @Child private DirectCallNode callNode;
 
     public PELangInvokeNode(PELangExpressionNode expressionNode, PELangExpressionNode[] argumentNodes) {
         this.expressionNode = expressionNode;
         this.argumentNodes = argumentNodes;
-        callNode = Truffle.getRuntime().createIndirectCallNode();
     }
 
     public PELangExpressionNode getExpressionNode() {
@@ -52,7 +52,7 @@ public final class PELangInvokeNode extends PELangExpressionNode {
         return argumentNodes;
     }
 
-    public IndirectCallNode getCallNode() {
+    public DirectCallNode getCallNode() {
         return callNode;
     }
 
@@ -68,7 +68,11 @@ public final class PELangInvokeNode extends PELangExpressionNode {
             for (int i = 0; i < argumentNodes.length; i++) {
                 argumentValues[i] = argumentNodes[i].executeGeneric(frame);
             }
-            return callNode.call(function.getCallTarget(), argumentValues);
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callNode = insert(Truffle.getRuntime().createDirectCallNode(function.getCallTarget()));
+            }
+            return callNode.call(argumentValues);
         } else {
             throw new PELangException("length of function args does not match provided argument nodes", this);
         }
