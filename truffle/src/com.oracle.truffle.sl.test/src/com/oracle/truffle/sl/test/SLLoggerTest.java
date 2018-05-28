@@ -184,30 +184,6 @@ public class SLLoggerTest {
         final TestHandler handler3 = new TestHandler();
         try (Context ctx1 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler1).build()) {
             try (Context ctx2 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler2).build()) {
-                try (Context ctx3 = Context.newBuilder("sl").logHandler(handler3).build()) {
-                    executeSlScript(ctx1, ADD_SL, 2);
-                    executeSlScript(ctx2, MUL_SL, 1);
-                    executeSlScript(ctx3, ADD_SL, 2);
-                }
-            }
-        }
-        Set<String> functionNames = functionNames(handler1.getRecords());
-        Assert.assertTrue(functionNames.contains("add"));
-        Assert.assertFalse(functionNames.contains("mul"));
-        functionNames = functionNames(handler2.getRecords());
-        Assert.assertFalse(functionNames.contains("add"));
-        Assert.assertTrue(functionNames.contains("mul"));
-        functionNames = functionNames(handler3.getRecords());
-        Assert.assertTrue(functionNames.isEmpty());
-    }
-
-    @Test
-    public void testMultipleContextsNestedDifferentLogLevel() throws IOException {
-        final TestHandler handler1 = new TestHandler();
-        final TestHandler handler2 = new TestHandler();
-        final TestHandler handler3 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler1).build()) {
-            try (Context ctx2 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler2).build()) {
                 try (Context ctx3 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler3).build()) {
                     executeSlScript(ctx1, ADD_SL, 2);
                     executeSlScript(ctx2, MUL_SL, 1);
@@ -224,6 +200,30 @@ public class SLLoggerTest {
         functionNames = functionNames(handler3.getRecords());
         Assert.assertTrue(functionNames.contains("add"));
         Assert.assertFalse(functionNames.contains("mul"));
+    }
+
+    @Test
+    public void testMultipleContextsNestedDifferentLogLevel() throws IOException {
+        final TestHandler handler1 = new TestHandler();
+        final TestHandler handler2 = new TestHandler();
+        final TestHandler handler3 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler1).build()) {
+            try (Context ctx2 = Context.newBuilder("sl").options(createLoggingOptions("sl", "com.oracle.truffle.sl.runtime.SLFunction", "FINE")).logHandler(handler2).build()) {
+                try (Context ctx3 = Context.newBuilder("sl").logHandler(handler3).build()) {
+                    executeSlScript(ctx1, ADD_SL, 2);
+                    executeSlScript(ctx2, MUL_SL, 1);
+                    executeSlScript(ctx3, ADD_SL, 2);
+                }
+            }
+        }
+        Set<String> functionNames = functionNames(handler1.getRecords());
+        Assert.assertTrue(functionNames.contains("add"));
+        Assert.assertFalse(functionNames.contains("mul"));
+        functionNames = functionNames(handler2.getRecords());
+        Assert.assertFalse(functionNames.contains("add"));
+        Assert.assertTrue(functionNames.contains("mul"));
+        functionNames = functionNames(handler3.getRecords());
+        Assert.assertTrue(functionNames.isEmpty());
     }
 
     private static void executeSlScript(final Context context) throws IOException {
