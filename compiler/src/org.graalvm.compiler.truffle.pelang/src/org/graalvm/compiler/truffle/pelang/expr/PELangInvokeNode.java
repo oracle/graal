@@ -27,17 +27,21 @@ import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 
 public final class PELangInvokeNode extends PELangExpressionNode {
 
     @Child private PELangExpressionNode expressionNode;
     @Children private final PELangExpressionNode[] argumentNodes;
+    @Child private IndirectCallNode callNode;
 
     public PELangInvokeNode(PELangExpressionNode expressionNode, PELangExpressionNode[] argumentNodes) {
         this.expressionNode = expressionNode;
         this.argumentNodes = argumentNodes;
+        callNode = Truffle.getRuntime().createIndirectCallNode();
     }
 
     public PELangExpressionNode getExpressionNode() {
@@ -60,7 +64,7 @@ public final class PELangInvokeNode extends PELangExpressionNode {
             for (int i = 0; i < argumentNodes.length; i++) {
                 argumentValues[i] = argumentNodes[i].executeGeneric(frame);
             }
-            return function.getCallTarget().call(argumentValues);
+            return callNode.call(function.getCallTarget(), argumentValues);
         } else {
             throw new PELangException("length of function args does not match provided argument nodes", this);
         }
