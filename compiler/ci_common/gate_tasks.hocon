@@ -26,22 +26,22 @@ builds += [
 
   # Solaris SPARC
   ${gateTest}          ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-test-8-solaris-sparcv9",                    timelimit: "1:00:00"}
-  ${gateTest}          ${oraclejdk9}     ${gateSolarisSPARC} {name: "weekly-test-compiler-test-9-solaris-sparcv9",             timelimit: "1:00:00"} ${graalWeekly}
-  ${gateTest}          ${oraclejdk10}    ${gateSolarisSPARC} {name: "weekly-test-compiler-test-10-solaris-sparcv9",            timelimit: "1:00:00"} ${graalWeekly}
+  ${gateTest}          ${oraclejdk9}     ${gateSolarisSPARC} {name: "weekly-test-compiler-test-9-solaris-sparcv9",             timelimit: "1:20:00"} ${graalWeekly}
+  ${gateTest}          ${oraclejdk10}    ${gateSolarisSPARC} {name: "weekly-test-compiler-test-10-solaris-sparcv9",            timelimit: "1:20:00"} ${graalWeekly}
   ${gateTest}          ${oraclejdk11}    ${gateSolarisSPARC} {name: "gate-compiler-test-11-solaris-sparcv9",                   timelimit: "1:00:00"}
   ${gateTestCTW}       ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-ctw-8-solaris-sparcv9",                     timelimit: "1:00:00"}
-  ${gateTestCTW}       ${oraclejdk9}     ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-9-solaris-sparcv9",              timelimit: "1:00:00"} ${graalWeekly}
-  ${gateTestCTW}       ${oraclejdk10}    ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-10-solaris-sparcv9",             timelimit: "1:00:00"} ${graalWeekly}
-  ${gateTestCTW}       ${oraclejdk11}    ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-11-solaris-sparcv9",             timelimit: "1:00:00"} ${graalWeekly}
-  ${gateTest}          ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",   timelimit: "1:00:00"} ${graalWeekly}
+  ${gateTestCTW}       ${oraclejdk9}     ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-9-solaris-sparcv9",              timelimit: "1:20:00"} ${graalWeekly}
+  ${gateTestCTW}       ${oraclejdk10}    ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-10-solaris-sparcv9",             timelimit: "1:20:00"} ${graalWeekly}
+  ${gateTestCTW}       ${oraclejdk11}    ${gateSolarisSPARC} {name: "weekly-test-compiler-ctw-11-solaris-sparcv9",             timelimit: "1:20:00"} ${graalWeekly}
+  ${gateTest}          ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "weekly-test-compiler-test-8-solaris-sparcv9-fastdebug",   timelimit: "1:20:00"} ${graalWeekly}
   ${gateTestBenchmark} ${labsjdk8}       ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9",           timelimit: "1:00:00"}
-# ${gateTestBenchmark} ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:00:00"}
+# ${gateTestBenchmark} ${labsjdk8Debug}  ${gateSolarisSPARC} {name: "gate-compiler-benchmarktest-8-solaris-sparcv9-fastdebug", timelimit: "1:20:00"}
 
   # Linux SPARC
   ${gateTest}          ${labsjdk8}       ${gateLinuxSPARC}   {name: "weekly-test-compiler-test-8-linux-sparcv9",                      timelimit: "1:00:00"} ${graalWeekly}
 
   # Linux AArch64
-  ${gateTestLenient}                     ${gateLinuxAArch64} {name: "weekly-compiler-test-10-linux-aarch64", timelimit: "1:00:00"} ${graalWeekly}
+  ${gateTestLenient}                     ${gateLinuxAArch64} {name: "weekly-compiler-test-10-linux-aarch64", timelimit: "1:20:00"} ${graalWeekly}
   ${gateTestCTW}                         ${gateLinuxAArch64} {name: "weekly-test-compiler-ctw-10-linux-aarch64"} ${graalWeekly}
 
   # TraceRA
