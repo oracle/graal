@@ -196,6 +196,17 @@ public final class ShortCircuitOrNode extends LogicNode implements IterableNodeT
             }
         }
 
+        // !X => Y constant
+        TriState impliedForY = forX.implies(!isXNegated(), forY);
+        if (impliedForY.isKnown()) {
+            boolean yResult = impliedForY.toBoolean() ^ isYNegated();
+            return yResult
+                            ? LogicConstantNode.tautology()
+                            : (isXNegated()
+                                            ? LogicNegationNode.create(forX)
+                                            : forX);
+        }
+
         // if X >= 0:
         // u < 0 || X < u ==>> X |<| u
         if (!isXNegated() && !isYNegated()) {
