@@ -24,6 +24,7 @@ package org.graalvm.compiler.truffle.pelang;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.object.DynamicObject;
 
 public abstract class PELangExpressionNode extends PELangStatementNode {
 
@@ -46,6 +47,10 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
         return expectFunction(executeGeneric(frame));
     }
 
+    public DynamicObject executeObject(VirtualFrame frame) throws UnexpectedResultException {
+        return expectObject(executeGeneric(frame));
+    }
+
     public long evaluateCondition(VirtualFrame frame) {
         try {
             return executeLong(frame);
@@ -59,6 +64,14 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
             return executeFunction(frame);
         } catch (UnexpectedResultException ex) {
             throw new PELangException("expected value of type PELangFunction", this);
+        }
+    }
+
+    public DynamicObject evaluateObject(VirtualFrame frame) {
+        try {
+            return executeObject(frame);
+        } catch (UnexpectedResultException ex) {
+            throw new PELangException("expected value of type DynamicObject", this);
         }
     }
 
@@ -79,6 +92,13 @@ public abstract class PELangExpressionNode extends PELangStatementNode {
     private static PELangFunction expectFunction(Object value) throws UnexpectedResultException {
         if (value instanceof PELangFunction) {
             return (PELangFunction) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    private static DynamicObject expectObject(Object value) throws UnexpectedResultException {
+        if (value instanceof DynamicObject) {
+            return (DynamicObject) value;
         }
         throw new UnexpectedResultException(value);
     }

@@ -30,6 +30,7 @@ import java.util.function.Function;
 import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
 import org.graalvm.compiler.truffle.pelang.PELangFunction;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
+import org.graalvm.compiler.truffle.pelang.PELangState;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangInvokeNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralObjectNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangReadArgumentNode;
@@ -51,6 +53,8 @@ import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangSwitchNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
+import org.graalvm.compiler.truffle.pelang.obj.PELangPropertyReadNode;
+import org.graalvm.compiler.truffle.pelang.obj.PELangPropertyWriteNode;
 import org.graalvm.compiler.truffle.pelang.var.PELangGlobalReadNode;
 import org.graalvm.compiler.truffle.pelang.var.PELangGlobalWriteNode;
 import org.graalvm.compiler.truffle.pelang.var.PELangLocalReadNode;
@@ -58,6 +62,7 @@ import org.graalvm.compiler.truffle.pelang.var.PELangLocalWriteNode;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.object.DynamicObject;
 
 public class PELangBuilder {
 
@@ -79,6 +84,10 @@ public class PELangBuilder {
         return new PELangLiteralFunctionNode(function);
     }
 
+    public PELangExpressionNode lit(DynamicObject object) {
+        return new PELangLiteralObjectNode(object);
+    }
+
     public PELangFunction fn(Function<PELangBuilder, FunctionHeader> headerFunction, Function<PELangBuilder, PELangStatementNode> bodyNodeFunction) {
         PELangBuilder builder = new PELangBuilder();
         FunctionHeader header = headerFunction.apply(builder);
@@ -98,6 +107,10 @@ public class PELangBuilder {
 
     public FunctionHeader header(String... args) {
         return new FunctionHeader(args);
+    }
+
+    public DynamicObject object() {
+        return PELangState.createObject();
     }
 
     public PELangExpressionNode add(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
@@ -214,6 +227,14 @@ public class PELangBuilder {
 
     public PELangExpressionNode appendGlobal(String value, String identifier) {
         return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
+    }
+
+    public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode) {
+        return new PELangPropertyReadNode(receiverNode, nameNode);
+    }
+
+    public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode, PELangExpressionNode valueNode) {
+        return new PELangPropertyWriteNode(receiverNode, nameNode, valueNode);
     }
 
     public PELangExpressionNode invoke(PELangExpressionNode expressionNode, PELangExpressionNode... argumentNodes) {

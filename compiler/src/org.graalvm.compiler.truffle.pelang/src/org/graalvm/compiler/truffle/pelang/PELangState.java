@@ -24,10 +24,17 @@ package org.graalvm.compiler.truffle.pelang;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
+import com.oracle.truffle.api.object.ObjectType;
+import com.oracle.truffle.api.object.Shape;
+
 public final class PELangState {
 
     private static final Object NULL = new PELangNull();
     private static final EconomicMap<String, Object> GLOBALS = EconomicMap.create();
+    private static final Layout LAYOUT = Layout.createLayout();
+    private static final Shape EMPTY_SHAPE = LAYOUT.createShape(PELangObjectType.SINGLETON);
 
     public static Object getNullObject() {
         return NULL;
@@ -59,6 +66,14 @@ public final class PELangState {
         return GLOBALS.get(identifier, NULL);
     }
 
+    public static DynamicObject createObject() {
+        return EMPTY_SHAPE.newInstance();
+    }
+
+    public static boolean isPELangObject(Object object) {
+        return LAYOUT.getType().isInstance(object) && LAYOUT.getType().cast(object).getShape().getObjectType() == PELangObjectType.SINGLETON;
+    }
+
     private static final class PELangNull {
 
         private PELangNull() {
@@ -67,6 +82,15 @@ public final class PELangState {
         @Override
         public String toString() {
             return "PELangNull";
+        }
+
+    }
+
+    private static final class PELangObjectType extends ObjectType {
+
+        public static final ObjectType SINGLETON = new PELangObjectType();
+
+        private PELangObjectType() {
         }
 
     }
