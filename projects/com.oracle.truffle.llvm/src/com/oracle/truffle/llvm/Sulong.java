@@ -57,7 +57,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceScope;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
@@ -242,7 +242,7 @@ public final class Sulong extends LLVMLanguage {
         if (!context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI)) {
             return super.findLocalScopes(context, node, frame);
         } else {
-            return LLVMSourceScope.create(node, frame, context);
+            return LLVMDebuggerScopeFactory.create(node, frame, context);
         }
     }
 }

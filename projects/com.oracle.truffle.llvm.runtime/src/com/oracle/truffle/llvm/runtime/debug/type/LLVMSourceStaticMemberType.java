@@ -63,8 +63,8 @@ public final class LLVMSourceStaticMemberType extends LLVMSourceType {
         }
 
         @TruffleBoundary
-        public Object[] getIdentifiers() {
-            return members.stream().map(LLVMSourceStaticMemberType::getName).collect(Collectors.toList()).toArray(new Object[members.size()]);
+        public String[] getIdentifiers() {
+            return members.stream().map(LLVMSourceStaticMemberType::getName).collect(Collectors.toList()).toArray(new String[members.size()]);
         }
 
         public LLVMDebugObjectBuilder getMemberValue(String name) {

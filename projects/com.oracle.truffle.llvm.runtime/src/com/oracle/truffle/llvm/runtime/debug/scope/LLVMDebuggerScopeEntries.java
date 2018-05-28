@@ -27,63 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.type;
+package com.oracle.truffle.llvm.runtime.debug.scope;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
+import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 
-import java.util.function.Function;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-public class LLVMSourceForeignType extends LLVMSourceDecoratorType {
+public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
 
-    public static final String VALUE_KEY = "Unindexed Interop Value";
-    public static final String[] KEYS = new String[]{VALUE_KEY};
+    private final Map<String, LLVMDebugObject> entries;
 
-    public LLVMSourceForeignType(LLVMSourceType wrappedType) {
-        super(0, 0, 0, Function.identity(), wrappedType.getLocation());
-        setBaseType(wrappedType);
+    LLVMDebuggerScopeEntries() {
+        this.entries = new HashMap<>();
     }
 
-    @Override
-    public int getElementCount() {
-        return KEYS.length;
+    @TruffleBoundary
+    void add(LLVMSourceSymbol symbol, LLVMDebugObject value) {
+        entries.put(symbol.getName(), value);
+    }
+
+    @TruffleBoundary
+    boolean contains(LLVMSourceSymbol symbol) {
+        return entries.containsKey(symbol.getName());
     }
 
     @Override
     @TruffleBoundary
-    public String getElementName(long i) {
-        if (0 <= i && i < getElementCount()) {
-            return IndexedTypeBounds.toKey(i);
-        }
-        return null;
-    }
-
-    @Override
-    public LLVMSourceType getElementType(long i) {
-        if (0 <= i && i < getElementCount()) {
-            return getBaseType();
-        }
-        return null;
+    protected int getElementCountForDebugger() {
+        return entries.size();
     }
 
     @Override
     @TruffleBoundary
-    public LLVMSourceType getElementType(String key) {
-        return getElementType(IndexedTypeBounds.toIndex(key));
+    protected String[] getKeysForDebugger() {
+        final int count = getElementCountForDebugger();
+        if (count == 0) {
+            return NO_KEYS;
+        }
+        return new ArrayList<>(entries.keySet()).toArray(new String[count]);
     }
 
     @Override
-    public LLVMSourceLocation getElementDeclaration(long i) {
-        return getLocation();
-    }
-
-    @Override
-    public LLVMSourceLocation getElementDeclaration(String name) {
-        return getLocation();
-    }
-
-    @Override
-    public LLVMSourceType getOffset(long newOffset) {
-        return this;
+    @TruffleBoundary
+    protected Object getElementForDebugger(String key) {
+        return entries.get(key);
     }
 }

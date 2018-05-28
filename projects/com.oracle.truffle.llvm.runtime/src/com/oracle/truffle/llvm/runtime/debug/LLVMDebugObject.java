@@ -34,8 +34,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceArrayLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
@@ -49,13 +47,9 @@ import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
  * This class describes a source-level variable. Debuggers can use it to display the original
  * source-level state of an executed LLVM IR file.
  */
-public abstract class LLVMDebugObject implements TruffleObject {
+public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
-    public static boolean isInstance(TruffleObject object) {
-        return object instanceof LLVMDebugObject;
-    }
-
-    private static final Object[] NO_KEYS = new Object[0];
+    private static final String[] NO_KEYS = new String[0];
 
     protected final long offset;
 
@@ -90,16 +84,16 @@ public abstract class LLVMDebugObject implements TruffleObject {
      *
      * @return the keys or null
      */
-    public Object[] getKeys() {
+    public String[] getKeys() {
         if (value == null) {
-            return null;
+            return NO_KEYS;
 
         } else {
             return getKeysSafe();
         }
     }
 
-    protected abstract Object[] getKeysSafe();
+    protected abstract String[] getKeysSafe();
 
     /**
      * If this is a complex object return the member that is identified by the given key.
@@ -108,7 +102,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
      *
      * @return the member or {@code null} if the key does not identify a member
      */
-    public Object getMember(Object identifier) {
+    public Object getMember(String identifier) {
         if (identifier == null) {
             return null;
 
@@ -117,7 +111,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
-    protected abstract Object getMemberSafe(Object identifier);
+    protected abstract Object getMemberSafe(String identifier);
 
     /**
      * Return an object that represents the value of the referenced variable.
@@ -147,8 +141,20 @@ public abstract class LLVMDebugObject implements TruffleObject {
     }
 
     @Override
-    public ForeignAccess getForeignAccess() {
-        return LLVMDebugObjectMessageResolutionForeign.ACCESS;
+    protected int getElementCountForDebugger() {
+        final String[] keys = getKeys();
+        return keys == null ? 0 : keys.length;
+    }
+
+    @Override
+    protected String[] getKeysForDebugger() {
+        final String[] keys = getKeys();
+        return keys != null ? keys : NO_KEYS;
+    }
+
+    @Override
+    protected Object getElementForDebugger(String key) {
+        return getMember(key);
     }
 
     private static final class Enum extends LLVMDebugObject {
@@ -178,12 +184,12 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object[] getKeysSafe() {
+        public String[] getKeysSafe() {
             return NO_KEYS;
         }
 
         @Override
-        public Object getMemberSafe(Object identifier) {
+        public Object getMemberSafe(String identifier) {
             return null;
         }
     }
@@ -193,27 +199,24 @@ public abstract class LLVMDebugObject implements TruffleObject {
         private static final int STRING_MAX_LENGTH = 64;
 
         // in the order of their actual declaration in the containing type
-        private final Object[] memberIdentifiers;
+        private final String[] memberIdentifiers;
 
-        Structured(LLVMDebugValue value, long offset, LLVMSourceType type, Object[] memberIdentifiers, LLVMSourceLocation declaration) {
+        Structured(LLVMDebugValue value, long offset, LLVMSourceType type, String[] memberIdentifiers, LLVMSourceLocation declaration) {
             super(value, offset, type, declaration);
             this.memberIdentifiers = memberIdentifiers;
         }
 
         @Override
-        public Object[] getKeysSafe() {
+        public String[] getKeysSafe() {
             return memberIdentifiers;
         }
 
         @Override
-        public Object getMemberSafe(Object key) {
-            if (key instanceof String) {
-                final LLVMSourceType elementType = getType().getElementType((String) key);
-                final long newOffset = this.offset + elementType.getOffset();
-                final LLVMSourceLocation declaration = getType().getElementDeclaration((String) key);
-                return instantiate(elementType, newOffset, value, declaration);
-            }
-            return null;
+        public Object getMemberSafe(String key) {
+            final LLVMSourceType elementType = getType().getElementType(key);
+            final long newOffset = this.offset + elementType.getOffset();
+            final LLVMSourceLocation declaration = getType().getElementDeclaration(key);
+            return instantiate(elementType, newOffset, value, declaration);
         }
 
         @Override
@@ -290,12 +293,12 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object[] getKeysSafe() {
+        public String[] getKeysSafe() {
             return NO_KEYS;
         }
 
         @Override
-        public Object getMemberSafe(Object identifier) {
+        public Object getMemberSafe(String identifier) {
             return null;
         }
 
@@ -389,13 +392,13 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object[] getKeysSafe() {
+        public String[] getKeysSafe() {
             final LLVMDebugObject target = dereference();
             return target == null ? NO_KEYS : target.getKeys();
         }
 
         @Override
-        public Object getMemberSafe(Object identifier) {
+        public Object getMemberSafe(String identifier) {
             final LLVMDebugObject target = dereference();
             return target == null ? "Cannot dereference pointer!" : target.getMember(identifier);
         }
@@ -431,19 +434,16 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        public Object[] getKeysSafe() {
+        public String[] getKeysSafe() {
             return ((LLVMSourceStaticMemberType.CollectionType) getType()).getIdentifiers();
         }
 
         @Override
-        public Object getMemberSafe(Object key) {
-            if (key instanceof String) {
-                final LLVMSourceType elementType = getType().getElementType((String) key);
-                final LLVMSourceLocation declaration = getType().getElementDeclaration((String) key);
-                final LLVMDebugObjectBuilder debugValue = ((LLVMSourceStaticMemberType.CollectionType) getType()).getMemberValue((String) key);
-                return debugValue.getValue(elementType, declaration);
-            }
-            return null;
+        public Object getMemberSafe(String key) {
+            final LLVMSourceType elementType = getType().getElementType(key);
+            final LLVMSourceLocation declaration = getType().getElementDeclaration(key);
+            final LLVMDebugObjectBuilder debugValue = ((LLVMSourceStaticMemberType.CollectionType) getType()).getMemberValue(key);
+            return debugValue.getValue(elementType, declaration);
         }
 
         @Override
@@ -459,12 +459,12 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        protected Object[] getKeysSafe() {
+        protected String[] getKeysSafe() {
             return NO_KEYS;
         }
 
         @Override
-        protected Object getMemberSafe(Object identifier) {
+        protected Object getMemberSafe(String identifier) {
             return null;
         }
 
@@ -483,12 +483,12 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
 
         @Override
-        protected Object[] getKeysSafe() {
+        protected String[] getKeysSafe() {
             return LLVMSourceForeignType.KEYS;
         }
 
         @Override
-        protected Object getMemberSafe(Object identifier) {
+        protected Object getMemberSafe(String identifier) {
             if (LLVMSourceForeignType.VALUE_KEY.equals(identifier)) {
                 return value.asInteropValue();
             } else {
@@ -515,7 +515,7 @@ public abstract class LLVMDebugObject implements TruffleObject {
                 // happens for dynamically initialized arrays
                 elementCount = 0;
             }
-            final Object[] memberIdentifiers = new Object[elementCount];
+            final String[] memberIdentifiers = new String[elementCount];
             for (int i = 0; i < elementCount; i++) {
                 memberIdentifiers[i] = type.getElementName(i);
             }

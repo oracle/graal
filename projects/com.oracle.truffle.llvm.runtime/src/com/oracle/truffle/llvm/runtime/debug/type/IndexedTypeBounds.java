@@ -37,7 +37,7 @@ final class IndexedTypeBounds {
 
     @TruffleBoundary
     static long toIndex(String key) {
-        if (key.length() >= KEY_MIN_LENGTH) {
+        if (key != null && key.length() >= KEY_MIN_LENGTH) {
             try {
                 return Integer.parseInt(key.substring(1, key.length() - 1));
             } catch (NumberFormatException ignored) {
