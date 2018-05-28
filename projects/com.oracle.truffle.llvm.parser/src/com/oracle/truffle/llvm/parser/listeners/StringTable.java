@@ -68,6 +68,9 @@ final class StringTable implements ParserListener {
     }
 
     void requestName(int offset, int length, ValueSymbol target) {
+        if (length <= 0 || offset < 0) {
+            return;
+        }
         // the STRTAB block's content may be forward referenced
         if (table != null) {
             target.setName(get(offset, length));
