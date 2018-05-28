@@ -51,10 +51,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
 
     private static final Object[] NO_KEYS = new Object[0];
 
-    private static final String INTEROP_VALUE = "<interop value>";
-    private static final String INTEROP_VALUE_KEY = "Unindexed Interop Value";
-    private static final Object[] INTEROP_KEYS = new Object[]{INTEROP_VALUE_KEY};
-
     protected final long offset;
 
     protected final LLVMDebugValue value;
@@ -92,9 +88,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
         if (value == null) {
             return null;
 
-        } else if (value.isInteropValue()) {
-            return INTEROP_KEYS;
-
         } else {
             return getKeysSafe();
         }
@@ -113,9 +106,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
         if (identifier == null) {
             return null;
 
-        } else if (INTEROP_VALUE_KEY.equals(identifier)) {
-            return value.asInteropValue();
-
         } else {
             return getMemberSafe(identifier);
         }
@@ -131,9 +121,6 @@ public abstract class LLVMDebugObject implements TruffleObject {
     protected Object getValue() {
         if (value == null) {
             return "";
-
-        } else if (value.isInteropValue()) {
-            return INTEROP_VALUE;
 
         } else {
             return getValueSafe();
@@ -481,9 +468,40 @@ public abstract class LLVMDebugObject implements TruffleObject {
         }
     }
 
+    private static final class Foreign extends LLVMDebugObject {
+
+        private static final String VALUE = "<interop value>";
+
+        Foreign(LLVMDebugValue value, long offset, LLVMSourceType valueType, LLVMSourceLocation location) {
+            super(value, offset, new LLVMSourceForeignType(valueType), location);
+        }
+
+        @Override
+        protected Object[] getKeysSafe() {
+            return LLVMSourceForeignType.KEYS;
+        }
+
+        @Override
+        protected Object getMemberSafe(Object identifier) {
+            if (LLVMSourceForeignType.VALUE_KEY.equals(identifier)) {
+                return value.asInteropValue();
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        protected Object getValueSafe() {
+            return VALUE;
+        }
+    }
+
     public static LLVMDebugObject instantiate(LLVMSourceType type, long baseOffset, LLVMDebugValue value, LLVMSourceLocation declaration) {
         if (type.getActualType() == LLVMSourceType.UNKNOWN || type.getActualType() == LLVMSourceType.UNSUPPORTED) {
             return new Unsupported(value, baseOffset, LLVMSourceType.UNSUPPORTED, declaration);
+
+        } else if (value != null && value.isInteropValue()) {
+            return new Foreign(value, baseOffset, type, declaration);
 
         } else if (type.isAggregate()) {
             int elementCount = type.getElementCount();

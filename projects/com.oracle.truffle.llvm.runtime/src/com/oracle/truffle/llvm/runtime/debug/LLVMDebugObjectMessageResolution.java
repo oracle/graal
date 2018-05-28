@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.debug;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ForeignAccess;
+import com.oracle.truffle.api.interop.KeyInfo;
 import com.oracle.truffle.api.interop.MessageResolution;
 import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -84,6 +85,16 @@ public class LLVMDebugObjectMessageResolution {
         }
     }
 
+    @Resolve(message = "HAS_KEYS")
+    abstract static class HasKeys extends Node {
+
+        boolean access(LLVMDebugObject receiver) {
+            final Object[] keys = receiver.getKeys();
+            return keys != null && keys.length > 0;
+        }
+
+    }
+
     @Resolve(message = "KEYS")
     public abstract static class LLVMDebugObjectPropertiesNode extends Node {
 
@@ -103,7 +114,7 @@ public class LLVMDebugObjectMessageResolution {
 
         public int access(LLVMDebugObject receiver, Object key) {
             if (receiver.getMember(key) != null) {
-                return 0b11;
+                return KeyInfo.READABLE;
             } else {
                 return 0;
             }

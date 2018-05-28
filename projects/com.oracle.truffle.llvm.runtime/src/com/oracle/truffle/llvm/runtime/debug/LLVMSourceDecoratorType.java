@@ -37,7 +37,7 @@ import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public final class LLVMSourceDecoratorType extends LLVMSourceType {
+public class LLVMSourceDecoratorType extends LLVMSourceType {
 
     private final Function<String, String> nameDecorator;
 
