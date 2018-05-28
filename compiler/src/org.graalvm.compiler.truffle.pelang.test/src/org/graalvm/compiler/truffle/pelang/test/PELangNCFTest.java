@@ -96,6 +96,15 @@ public class PELangNCFTest extends PELangTest {
         // TODO: add partial evaluation asserts
     }
 
+    @Test
+    public void testSimpleObject() {
+        PELangRootNode rootNode = PELangSample.simpleObject();
+        assertCallResult(10L, rootNode);
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
     @Test(expected = PELangException.class)
     public void testInvalidBranch() {
         PELangRootNode rootNode = PELangSample.invalidBranch();
@@ -189,6 +198,15 @@ public class PELangNCFTest extends PELangTest {
     @Test
     public void testNestedLoopsWithMultipleBackEdges() {
         PELangRootNode rootNode = PELangSample.nestedLoopsWithMultipleBackEdges();
+        assertCallResult(10L, rootNode);
+
+        compileHelper(rootNode.toString(), rootNode, new Object[0]);
+        // TODO: add partial evaluation asserts
+    }
+
+    @Test
+    public void testInvokeObjectFunctionProperty() {
+        PELangRootNode rootNode = PELangSample.invokeObjectFunctionProperty();
         assertCallResult(10L, rootNode);
 
         compileHelper(rootNode.toString(), rootNode, new Object[0]);

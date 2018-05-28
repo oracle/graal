@@ -122,6 +122,26 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode simpleObject() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(
+                    b.lit(b.object()),
+                    "obj"),
+                b.writeProperty(
+                    b.readLocal("obj"),
+                    b.lit("p1"),
+                    b.lit(10L)),
+                b.return_(
+                    b.readProperty(
+                        b.readLocal("obj"),
+                        b.lit("p1")))));
+        // @formatter:on
+    }
+
     public static PELangRootNode invalidBranch() {
         PELangBuilder b = new PELangBuilder();
 
@@ -371,6 +391,35 @@ public class PELangSample {
                 /* 5 */ b.basicBlock(b.incrementLocal(1, "i"), 7),
                 /* 6 */ b.basicBlock(b.incrementLocal(1, "i"), 4),
                 /* 7 */ b.basicBlock(b.return_(b.readLocal("j")), PELangBasicBlockNode.NO_SUCCESSOR)));
+        // @formatter:on
+    }
+
+    public static PELangRootNode invokeObjectFunctionProperty() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(
+                    b.lit(b.object()),
+                    "obj"),
+                b.writeProperty(
+                    b.readLocal("obj"),
+                    b.lit("p1"),
+                    b.lit(
+                        b.fn(
+                            f -> f.header("a", "b"),
+                            f -> f.return_(
+                                f.add(
+                                    f.readLocal("a"),
+                                    f.readLocal("b")))))),
+                b.return_(
+                    b.invoke(
+                        b.readProperty(
+                            b.readLocal("obj"),
+                            b.lit("p1")),
+                        b.lit(5L),
+                        b.lit(5L)))));
         // @formatter:on
     }
 
