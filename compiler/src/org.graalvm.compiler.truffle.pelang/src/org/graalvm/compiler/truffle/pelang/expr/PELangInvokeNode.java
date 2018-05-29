@@ -35,17 +35,17 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 public final class PELangInvokeNode extends PELangExpressionNode {
 
-    @Child private PELangExpressionNode expressionNode;
+    @Child private PELangExpressionNode functionNode;
     @Children private final PELangExpressionNode[] argumentNodes;
     @Child private DirectCallNode callNode;
 
-    public PELangInvokeNode(PELangExpressionNode expressionNode, PELangExpressionNode[] argumentNodes) {
-        this.expressionNode = expressionNode;
+    public PELangInvokeNode(PELangExpressionNode functionNode, PELangExpressionNode[] argumentNodes) {
+        this.functionNode = functionNode;
         this.argumentNodes = argumentNodes;
     }
 
-    public PELangExpressionNode getExpressionNode() {
-        return expressionNode;
+    public PELangExpressionNode getFunctionNode() {
+        return functionNode;
     }
 
     public PELangExpressionNode[] getArgumentNodes() {
@@ -60,7 +60,7 @@ public final class PELangInvokeNode extends PELangExpressionNode {
     @Override
     public Object executeGeneric(VirtualFrame frame) {
         CompilerAsserts.compilationConstant(argumentNodes.length);
-        PELangFunction function = expressionNode.evaluateFunction(frame);
+        PELangFunction function = functionNode.evaluateFunction(frame);
 
         if (function.getHeader().getArgs().length == argumentNodes.length) {
             Object[] argumentValues = new Object[argumentNodes.length];

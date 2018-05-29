@@ -53,7 +53,7 @@ public final class PELangIfNode extends PELangStatementNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        if (conditionNode.evaluateCondition(frame) == 0L) {
+        if (conditionNode.evaluateLong(frame) == 0L) {
             thenNode.executeVoid(frame);
         } else {
             elseNode.executeVoid(frame);

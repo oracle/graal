@@ -59,7 +59,7 @@ public final class PELangBasicBlockDispatchNode extends PELangStatementNode {
                 blockIndex = node.getSuccessor();
             } else if (blockNode instanceof PELangDoubleSuccessorNode) {
                 PELangDoubleSuccessorNode node = (PELangDoubleSuccessorNode) blockNode;
-                blockIndex = (node.getBodyNode().evaluateCondition(frame) == 0L) ? node.getTrueSuccessor() : node.getFalseSuccessor();
+                blockIndex = (node.getBodyNode().evaluateLong(frame) == 0L) ? node.getTrueSuccessor() : node.getFalseSuccessor();
             } else if (blockNode instanceof PELangMultiSuccessorNode) {
                 PELangMultiSuccessorNode node = (PELangMultiSuccessorNode) blockNode;
                 CompilerAsserts.compilationConstant(node.getCaseValueNodes().length);
