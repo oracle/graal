@@ -380,4 +380,39 @@ you may extend this exception to your version of the library, but you are not
 obligated to do so. If you do not wish to do so, delete this exception 
 statement from your version.
 
+===========================================================================
+
+           WRITTEN OFFER FOR SOURCE CODE 
+For any software that you receive from Oracle in binary form which is licensed 
+under an open source license that gives you the right to receive the source 
+code for that binary, you can obtain a copy of the applicable source code by 
+visiting http://www.oracle.com/goto/opensourcecode. If the source code for the 
+binary was not provided to you with the binary, you can also receive a copy of 
+the source code on physical media by submitting a written request to the 
+address listed below or by sending an email to Oracle using the following link: 
+ http://www.oracle.com/goto/opensourcecode/request. 
+
+Oracle America, Inc. 
+Attn: Senior Vice President 
+Development and Engineering Legal 
+500 Oracle Parkway, 10th Floor 
+Redwood Shores, CA 94065 
+
+Your request should include: 
+    • The name of the binary for which you are requesting the source code
+    • The name and version number of the Oracle product containing the binary
+    • The date you received the Oracle product 
+    • Your name 
+    • Your company name (if applicable)
+    • Your return mailing address and email, and 
+    • A telephone number in the event we need to reach you. 
+
+We may charge you a fee to cover the cost of physical media and processing. 
+Your request must be sent 
+    a. within three (3) years of the date you received the Oracle product that 
+included the binary that is the subject of your request, or 
+    b. in the case of code licensed under the GPL v3 for as long as Oracle 
+offers spare parts or customer support for that product model. 
+
+===========================================================================
 
