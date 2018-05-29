@@ -242,7 +242,7 @@ public class NativeImage {
         addImageBuilderArg(oHPath + workDir);
 
         /* Discover supported MacroOptions */
-        optionRegistry = new MacroOption.Registry(canonicalize(getRootDir()));
+        optionRegistry = new MacroOption.Registry(canonicalize(rootDir));
 
         /* Default handler needs to be fist */
         registerOptionHandler(new DefaultOptionHandler(this));
@@ -257,10 +257,6 @@ public class NativeImage {
 
     protected void registerOptionHandler(OptionHandler<? extends NativeImage> handler) {
         optionHandlers.add(handler);
-    }
-
-    protected Path getRootDir() {
-        return rootDir;
     }
 
     protected Map<String, String> getUserConfigProperties() {
@@ -291,7 +287,7 @@ public class NativeImage {
     }
 
     private void prepareImageBuildArgs() {
-        Path svmDir = getRootDir().resolve(Paths.get("lib", "svm"));
+        Path svmDir = rootDir.resolve(Paths.get("lib", "svm"));
         getJars(svmDir.resolve("builder")).forEach(this::addImageBuilderClasspath);
         getJars(svmDir).forEach(this::addImageProvidedClasspath);
         Path clibrariesDir = svmDir.resolve("clibraries").resolve(platform);
@@ -300,7 +296,7 @@ public class NativeImage {
             addImageBuilderArg(oHInspectServerContentPath + svmDir.resolve("inspect"));
         }
 
-        Path jvmciDir = getRootDir().resolve(Paths.get("lib", "jvmci"));
+        Path jvmciDir = rootDir.resolve(Paths.get("lib", "jvmci"));
         getJars(jvmciDir).forEach((Consumer<? super Path>) this::addImageBuilderClasspath);
         try {
             addImageBuilderJavaArgs(Files.list(jvmciDir)
@@ -312,7 +308,7 @@ public class NativeImage {
             showError("Unable to use jar-files from directory " + jvmciDir, e);
         }
 
-        Path bootDir = getRootDir().resolve(Paths.get("lib", "boot"));
+        Path bootDir = rootDir.resolve(Paths.get("lib", "boot"));
         getJars(bootDir).forEach((Consumer<? super Path>) this::addImageBuilderBootClasspath);
     }
 
@@ -368,7 +364,7 @@ public class NativeImage {
     }
 
     private Stream<Path> getAbsoluteLauncherClassPath() {
-        return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> getRootDir().resolve(p));
+        return getRelativeLauncherClassPath().map(s -> Paths.get(s.replace('/', File.separatorChar))).map(p -> rootDir.resolve(p));
     }
 
     protected static String consolidateSingleValueArg(Collection<String> args, String argPrefix) {
@@ -530,7 +526,7 @@ public class NativeImage {
                     addImageClasspath(p);
                 }
             });
-            addImageClasspath(getRootDir().resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
+            addImageClasspath(rootDir.resolve(Paths.get("lib", "graalvm", "launcher-common.jar")));
         }
 
         if (!leftoverArgs.isEmpty()) {
@@ -647,7 +643,7 @@ public class NativeImage {
     }
 
     Path getJavaHome() {
-        Path javaHomePath = getRootDir().getParent();
+        Path javaHomePath = rootDir.getParent();
         Path binJava = Paths.get("bin", "java");
         if (Files.isExecutable(javaHomePath.resolve(binJava))) {
             return javaHomePath;
