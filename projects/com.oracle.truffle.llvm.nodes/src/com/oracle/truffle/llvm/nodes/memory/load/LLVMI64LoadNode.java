@@ -53,7 +53,7 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(addr)")
-    protected long doI64DerefHandle(LLVMNativePointer addr) {
+    protected Object doI64DerefHandle(LLVMNativePointer addr) {
         return doI64Managed(getDerefHandleGetReceiverNode().execute(addr));
     }
 
@@ -76,8 +76,8 @@ public abstract class LLVMI64LoadNode extends LLVMAbstractLoadNode {
     }
 
     @Specialization
-    protected long doI64Managed(LLVMManagedPointer addr) {
-        return (long) getForeignReadNode().execute(addr);
+    protected Object doI64Managed(LLVMManagedPointer addr) {
+        return getForeignReadNode().execute(addr);
     }
 
     @Specialization
