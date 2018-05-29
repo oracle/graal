@@ -873,8 +873,8 @@ public class LLVMInteropTest {
         try (Runner runner = new Runner("interop070")) {
             runner.run();
             try {
-                Value pointer = runner.findGlobalSymbol("returnPointerToGlobal");
-                pointer.execute().setArrayElement(0, 42);
+                Value pointer = runner.findGlobalSymbol("returnPointerToGlobal").execute();
+                runner.findGlobalSymbol("setPointer").execute(pointer, 42);
                 Value value = runner.findGlobalSymbol("returnGlobal");
                 Object result = value.execute().asInt();
                 Assert.assertTrue(result instanceof Integer && (int) result == 42);
@@ -890,9 +890,8 @@ public class LLVMInteropTest {
             runner.run();
             try {
                 Object obj = new Object();
-                Value function = runner.findGlobalSymbol("returnPointerToGlobal");
-                Value pointer = function.execute();
-                pointer.setArrayElement(0, obj);
+                Value pointer = runner.findGlobalSymbol("returnPointerToGlobal").execute();
+                runner.findGlobalSymbol("setPointer").execute(pointer, obj);
                 Value value = runner.findGlobalSymbol("returnGlobal");
                 Object result = value.execute().asHostObject();
                 Assert.assertTrue(result == obj);

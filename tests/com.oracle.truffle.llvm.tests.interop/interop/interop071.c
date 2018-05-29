@@ -33,6 +33,9 @@ void **returnPointerToGlobal() {
   return &global;
 }
 
+void setPointer(void** address, void* value) {
+  *address = value;
+}
 void *returnGlobal() {
   return global;
 }
