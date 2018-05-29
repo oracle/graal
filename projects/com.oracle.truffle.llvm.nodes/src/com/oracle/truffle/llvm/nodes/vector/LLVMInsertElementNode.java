@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
@@ -40,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 @NodeChildren({@NodeChild(type = LLVMExpressionNode.class), @NodeChild(type = LLVMExpressionNode.class, value = "element"),
                 @NodeChild(type = LLVMExpressionNode.class, value = "index")})
@@ -83,6 +85,20 @@ public abstract class LLVMInsertElementNode extends LLVMExpressionNode {
         protected LLVMI64Vector doI64(LLVMI64Vector vector, long element, int index) {
             return vector.insert(element, index);
         }
+    }
+
+    public abstract static class LLVMPointerInsertElementNode extends LLVMInsertElementNode {
+
+        @Specialization
+        protected LLVMPointerVector doPointer(LLVMPointerVector vector, LLVMNativePointer element, int index) {
+            return vector.insert(element, index);
+        }
+
+        @Specialization
+        protected LLVMPointerVector doPointer(LLVMPointerVector vector, long element, int index) {
+            return vector.insert(element, index);
+        }
+
     }
 
     public abstract static class LLVMFloatInsertElementNode extends LLVMInsertElementNode {

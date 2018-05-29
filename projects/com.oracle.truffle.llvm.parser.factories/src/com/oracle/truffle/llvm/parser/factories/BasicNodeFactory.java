@@ -323,11 +323,13 @@ import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI1I
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI32InsertElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI64InsertElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMI8InsertElementNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMInsertElementNodeFactory.LLVMPointerInsertElementNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleDoubleVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleFloatVectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI64VectorNodeGen;
 import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
+import com.oracle.truffle.llvm.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShufflePointerVectorNodeGen;
 import com.oracle.truffle.llvm.parser.NodeFactory;
 import com.oracle.truffle.llvm.parser.instructions.LLVMArithmeticInstructionType;
 import com.oracle.truffle.llvm.parser.instructions.LLVMConversionType;
@@ -390,27 +392,29 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element,
                     LLVMExpressionNode index) {
         VectorType resultType1 = (VectorType) resultType;
-        if (!(resultType1.getElementType() instanceof PrimitiveType)) {
-            throw new AssertionError(resultType1);
+        if (resultType1.getElementType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) resultType1.getElementType()).getPrimitiveKind()) {
+                case I1:
+                    return LLVMI1InsertElementNodeGen.create(vector, element, index);
+                case I8:
+                    return LLVMI8InsertElementNodeGen.create(vector, element, index);
+                case I16:
+                    return LLVMI16InsertElementNodeGen.create(vector, element, index);
+                case I32:
+                    return LLVMI32InsertElementNodeGen.create(vector, element, index);
+                case I64:
+                    return LLVMI64InsertElementNodeGen.create(vector, element, index);
+                case FLOAT:
+                    return LLVMFloatInsertElementNodeGen.create(vector, element, index);
+                case DOUBLE:
+                    return LLVMDoubleInsertElementNodeGen.create(vector, element, index);
+                default:
+                    throw new AssertionError("vector type " + resultType1 + "  not supported!");
+            }
+        } else if (resultType1.getElementType() instanceof PointerType) {
+            return LLVMPointerInsertElementNodeGen.create(vector, element, index);
         }
-        switch (((PrimitiveType) resultType1.getElementType()).getPrimitiveKind()) {
-            case I1:
-                return LLVMI1InsertElementNodeGen.create(vector, element, index);
-            case I8:
-                return LLVMI8InsertElementNodeGen.create(vector, element, index);
-            case I16:
-                return LLVMI16InsertElementNodeGen.create(vector, element, index);
-            case I32:
-                return LLVMI32InsertElementNodeGen.create(vector, element, index);
-            case I64:
-                return LLVMI64InsertElementNodeGen.create(vector, element, index);
-            case FLOAT:
-                return LLVMFloatInsertElementNodeGen.create(vector, element, index);
-            case DOUBLE:
-                return LLVMDoubleInsertElementNodeGen.create(vector, element, index);
-            default:
-                throw new AssertionError("vector type " + resultType1 + "  not supported!");
-        }
+        throw new AssertionError(resultType1);
     }
 
     @Override
@@ -440,23 +444,25 @@ public class BasicNodeFactory implements NodeFactory {
     public LLVMExpressionNode createShuffleVector(Type llvmType, LLVMExpressionNode vector1, LLVMExpressionNode vector2,
                     LLVMExpressionNode mask) {
         VectorType resultType = (VectorType) llvmType;
-        if (!(resultType.getElementType() instanceof PrimitiveType)) {
-            throw new AssertionError(resultType);
+        if (resultType.getElementType() instanceof PrimitiveType) {
+            switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
+                case I8:
+                    return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);
+                case I32:
+                    return LLVMShuffleI32VectorNodeGen.create(vector1, vector2, mask);
+                case I64:
+                    return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask);
+                case FLOAT:
+                    return LLVMShuffleFloatVectorNodeGen.create(vector1, vector2, mask);
+                case DOUBLE:
+                    return LLVMShuffleDoubleVectorNodeGen.create(vector1, vector2, mask);
+                default:
+                    throw new AssertionError(resultType);
+            }
+        } else if (resultType.getElementType() instanceof PointerType) {
+            return LLVMShufflePointerVectorNodeGen.create(vector1, vector2, mask);
         }
-        switch (((PrimitiveType) resultType.getElementType()).getPrimitiveKind()) {
-            case I8:
-                return LLVMShuffleI8VectorNodeGen.create(vector1, vector2, mask);
-            case I32:
-                return LLVMShuffleI32VectorNodeGen.create(vector1, vector2, mask);
-            case I64:
-                return LLVMShuffleI64VectorNodeGen.create(vector1, vector2, mask);
-            case FLOAT:
-                return LLVMShuffleFloatVectorNodeGen.create(vector1, vector2, mask);
-            case DOUBLE:
-                return LLVMShuffleDoubleVectorNodeGen.create(vector1, vector2, mask);
-            default:
-                throw new AssertionError(resultType);
-        }
+        throw new AssertionError(resultType);
     }
 
     @Override

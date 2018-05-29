@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public class LLVMShuffleVectorNode {
 
@@ -117,6 +118,22 @@ public class LLVMShuffleVectorNode {
             }
             return result;
         }
+    }
+
+    @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
+    public abstract static class LLVMShufflePointerVectorNode extends LLVMExpressionNode {
+
+        @Specialization
+        protected LLVMPointerVector doI64Vector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
+            long[] joinedValues = LLVMShuffleI64VectorNode.concat(leftVector.getValues(), rightVector.getValues());
+            long[] newValues = new long[maskVector.getLength()];
+            for (int i = 0; i < maskVector.getLength(); i++) {
+                int element = maskVector.getValue(i);
+                newValues[i] = joinedValues[element];
+            }
+            return LLVMPointerVector.create(newValues);
+        }
+
     }
 
     @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
