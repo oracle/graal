@@ -142,7 +142,7 @@ public class NodeClassFeature implements Feature {
                  * Unsafe in the NodeClass, e.g. when making changes in the graph.
                  */
                 // TODO register unsafe accessed Truffle nodes in a separate partition?
-                access.registerAsUnsafeWritten(field);
+                access.registerAsUnsafeAccessed(field);
             }
 
             if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA) {

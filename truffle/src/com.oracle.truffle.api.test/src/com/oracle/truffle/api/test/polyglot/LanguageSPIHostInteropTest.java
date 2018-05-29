@@ -24,7 +24,6 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
@@ -36,16 +35,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.hamcrest.CoreMatchers;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ForeignAccess;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.KeyInfo;
@@ -55,40 +52,22 @@ import com.oracle.truffle.api.interop.Resolve;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.ArrayTruffleObject;
 import com.oracle.truffle.api.test.polyglot.ValueHostInteropTest.Data;
 
-public class LanguageSPIHostInteropTest {
-
-    private Context context;
-    private Env env;
+public class LanguageSPIHostInteropTest extends AbstractPolyglotTest {
 
     @Before
     public void before() {
-        context = Context.newBuilder().allowAllAccess(true).build();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected LanguageContext createContext(Env contextEnv) {
-                env = contextEnv;
-                return super.createContext(contextEnv);
-            }
-        });
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
-        assertNotNull(env);
-    }
-
-    @After
-    public void after() {
-        context.leave();
-        context.close();
+        setupEnv();
     }
 
     @Test
     public void testSystemMethod() throws InteropException {
-        TruffleObject system = (TruffleObject) env.lookupHostSymbol(System.class.getName());
+        TruffleObject system = (TruffleObject) languageEnv.lookupHostSymbol(System.class.getName());
         Object value = ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), system, "getProperty", "file.separator");
         assertThat(value, CoreMatchers.instanceOf(String.class));
         assertThat(value, CoreMatchers.anyOf(CoreMatchers.equalTo("/"), CoreMatchers.equalTo("\\")));
@@ -106,8 +85,8 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void conversionToClassYieldsTheClass() {
-        Object javaValue = env.asHostObject(env.asGuestValue(TestClass.class));
-        Object javaSymbol = env.asHostObject(env.lookupHostSymbol(TestClass.class.getName()));
+        Object javaValue = languageEnv.asHostObject(languageEnv.asGuestValue(TestClass.class));
+        Object javaSymbol = languageEnv.asHostObject(languageEnv.lookupHostSymbol(TestClass.class.getName()));
 
         assertTrue(javaValue instanceof Class);
         assertSame("Both class objects are the same", javaValue, javaSymbol);
@@ -115,23 +94,23 @@ public class LanguageSPIHostInteropTest {
 
     @Test
     public void conversionToClassNull() {
-        Object meta = env.findMetaObject(env.asGuestValue(null));
+        Object meta = languageEnv.findMetaObject(languageEnv.asGuestValue(null));
         assertSame(Void.class,
-                        env.asHostObject(meta));
+                        languageEnv.asHostObject(meta));
     }
 
     @Test
     public void nullAsJavaObject() {
-        Object nullObject = env.asGuestValue(null);
-        assertTrue(env.isHostObject(nullObject));
-        assertNull(env.asHostObject(nullObject));
+        Object nullObject = languageEnv.asGuestValue(null);
+        assertTrue(languageEnv.isHostObject(nullObject));
+        assertNull(languageEnv.asHostObject(nullObject));
     }
 
     @SuppressWarnings("unchecked")
     @Test
     public void assertKeysAndProperties() {
         Data dataObj = new Data();
-        TruffleObject data = (TruffleObject) env.asGuestValue(dataObj);
+        TruffleObject data = (TruffleObject) languageEnv.asGuestValue(dataObj);
 
         TruffleObject keys = sendKeys(data);
         List<Object> list = context.asValue(keys).as(List.class);
@@ -152,12 +131,12 @@ public class LanguageSPIHostInteropTest {
     @Test
     public void invokeJavaLangObjectFields() throws InteropException {
         Data data = new Data();
-        TruffleObject obj = (TruffleObject) env.asGuestValue(data);
+        TruffleObject obj = (TruffleObject) languageEnv.asGuestValue(data);
 
         Object string = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "toString");
         assertTrue(string instanceof String && ((String) string).startsWith(Data.class.getName() + "@"));
         Object clazz = ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "getClass");
-        assertTrue(clazz instanceof TruffleObject && env.asHostObject(clazz) == Data.class);
+        assertTrue(clazz instanceof TruffleObject && languageEnv.asHostObject(clazz) == Data.class);
         assertEquals(true, ForeignAccess.sendInvoke(Message.createInvoke(1).createNode(), obj, "equals", obj));
         assertTrue(ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), obj, "hashCode") instanceof Integer);
 
@@ -169,7 +148,7 @@ public class LanguageSPIHostInteropTest {
     @Test
     public void indexJavaArrayWithNumberTypes() throws Exception {
         int[] a = new int[]{1, 2, 3};
-        TruffleObject truffleObject = (TruffleObject) env.asGuestValue(a);
+        TruffleObject truffleObject = (TruffleObject) languageEnv.asGuestValue(a);
 
         assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1));
         assertEquals(2, ForeignAccess.sendRead(Message.READ.createNode(), truffleObject, 1.0));
@@ -189,38 +168,38 @@ public class LanguageSPIHostInteropTest {
     public void testAsGuestValue() {
         Object object = new Object();
         // Test that asTruffleValue() returns the same as asTruffleObject() for non-primitive types:
-        assertEquals(env.asGuestValue(object), env.asGuestValue(object));
+        assertEquals(languageEnv.asGuestValue(object), languageEnv.asGuestValue(object));
 
         Data data = new Data();
-        Object obj = env.asGuestValue(data);
-        assertEquals(obj, env.asGuestValue(data));
+        Object obj = languageEnv.asGuestValue(data);
+        assertEquals(obj, languageEnv.asGuestValue(data));
         // Test that asTruffleValue() returns non-wraped primitives:
         object = 42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = (byte) 42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = (short) 42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = 424242424242L;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = 42.42;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = true;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = "42";
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = '4';
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
         object = true;
-        assertTrue(env.asGuestValue(object) == object);
+        assertTrue(languageEnv.asGuestValue(object) == object);
     }
 
     @Test
     public void notUnboxable() {
         Node unboxNode = Message.UNBOX.createNode();
-        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) env.asGuestValue(null)), UnsupportedMessageException.class);
-        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) env.asGuestValue(new Object())), UnsupportedMessageException.class);
-        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) env.asGuestValue(Object.class)), UnsupportedMessageException.class);
+        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) languageEnv.asGuestValue(null)), UnsupportedMessageException.class);
+        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) languageEnv.asGuestValue(new Object())), UnsupportedMessageException.class);
+        assertError(() -> ForeignAccess.sendUnbox(unboxNode, (TruffleObject) languageEnv.asGuestValue(Object.class)), UnsupportedMessageException.class);
     }
 
     @Test
@@ -284,7 +263,7 @@ public class LanguageSPIHostInteropTest {
 
         TruffleObject aobj = new ArrayTruffleObject(100);
         testArrayObject(aobj, 100);
-        aobj = (TruffleObject) env.asGuestValue(new String[]{"A", "B", "C", "D"});
+        aobj = (TruffleObject) languageEnv.asGuestValue(new String[]{"A", "B", "C", "D"});
         testArrayObject(aobj, 4);
     }
 
@@ -324,6 +303,115 @@ public class LanguageSPIHostInteropTest {
         assertTrue(hasKeys(hasKeysObj));
         hasKeysObj = new HasKeysObject(false);
         assertFalse(hasKeys(hasKeysObj));
+    }
+
+    @Test
+    public void testPrimitiveBoxing() {
+        assertNumberMembers((byte) 1, languageEnv.asBoxedGuestValue((byte) 1));
+        assertNumberMembers((short) 1, languageEnv.asBoxedGuestValue((short) 1));
+        assertNumberMembers(1, languageEnv.asBoxedGuestValue(1));
+        assertNumberMembers(1L, languageEnv.asBoxedGuestValue(1L));
+        assertNumberMembers(1F, languageEnv.asBoxedGuestValue(1F));
+        assertNumberMembers(1D, languageEnv.asBoxedGuestValue(1D));
+
+        assertStringMembers("foobarbaz", languageEnv.asBoxedGuestValue("foobarbaz"));
+        assertStringMembers("", languageEnv.asBoxedGuestValue(""));
+        assertBooleanMembers(false, languageEnv.asBoxedGuestValue(false));
+        assertBooleanMembers(true, languageEnv.asBoxedGuestValue(true));
+        assertCharacterMembers('a', languageEnv.asBoxedGuestValue('a'));
+
+    }
+
+    private void assertNumberMembers(Object unboxValue, Object numberObject) {
+        Number number = (Number) unbox(numberObject);
+        assertEquals(unboxValue, number);
+        assertInvocable(number.intValue(), numberObject, "intValue");
+        assertInvocable(number.longValue(), numberObject, "longValue");
+        assertInvocable(number.floatValue(), numberObject, "floatValue");
+        assertInvocable(number.doubleValue(), numberObject, "doubleValue");
+        assertInvocable(number.byteValue(), numberObject, "byteValue");
+        assertInvocable(number.shortValue(), numberObject, "shortValue");
+        assertInvocable(true, numberObject, "equals", number);
+        assertInvocable(number.hashCode(), numberObject, "hashCode");
+        assertInvocable(number.toString(), numberObject, "toString");
+
+        assertTrue(languageEnv.isHostObject(numberObject));
+        assertEquals(number, languageEnv.asHostObject(numberObject));
+    }
+
+    private static void assertInvocable(Object expectedValue, Object receiver, String method, Object... args) {
+        TruffleObject o = (TruffleObject) receiver;
+        int keyInfo = getKeyInfo(o, method);
+        assertTrue(KeyInfo.isReadable(keyInfo));
+        assertTrue(KeyInfo.isInvocable(keyInfo));
+        assertFalse(KeyInfo.isWritable(keyInfo));
+        assertFalse(KeyInfo.isInsertable(keyInfo));
+        assertFalse(KeyInfo.isRemovable(keyInfo));
+        assertFalse(KeyInfo.isInternal(keyInfo));
+        assertFalse(KeyInfo.isInsertable(keyInfo));
+
+        Object methodObject = read(o, method);
+        assertEquals(expectedValue, execute(methodObject, args));
+        assertEquals(expectedValue, invoke(receiver, method, args));
+        assertHasKey(o, method);
+    }
+
+    private static void assertHasKey(Object receiver, String key) {
+        TruffleObject o = (TruffleObject) receiver;
+        Object keys = sendKeys(o);
+        int size = getSize(keys);
+        List<String> allKeys = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            String search = (String) read(keys, i);
+            if (search.equals(key)) {
+                return;
+            }
+            allKeys.add(search);
+        }
+        throw new AssertionError("Key not found " + key + ". Keys are " + allKeys);
+    }
+
+    private void assertStringMembers(String unboxValue, Object stringObject) {
+        String string = (String) unbox(stringObject);
+        assertEquals(unboxValue, string);
+
+        assertInvocable(string.length(), stringObject, "length");
+        if (unboxValue.length() > 0) {
+            assertInvocable(string.charAt(0), stringObject, "charAt", 0);
+        }
+        assertInvocable(string.equals(unboxValue), stringObject, "equals", unboxValue);
+        assertInvocable(string.hashCode(), stringObject, "hashCode");
+        assertInvocable(string.toString(), stringObject, "toString");
+        assertTrue(languageEnv.isHostObject(stringObject));
+        assertEquals(string, languageEnv.asHostObject(stringObject));
+    }
+
+    private void assertBooleanMembers(Object unboxValue, Object booleanObject) {
+        Boolean b = (Boolean) unbox(booleanObject);
+        assertEquals(unboxValue, b);
+
+        assertInvocable(unboxValue, booleanObject, "booleanValue");
+        assertInvocable(b.equals(unboxValue), booleanObject, "equals", unboxValue);
+        assertInvocable(b.compareTo((Boolean) unboxValue), booleanObject, "compareTo", unboxValue);
+        assertInvocable(b.hashCode(), booleanObject, "hashCode");
+        assertInvocable(b.toString(), booleanObject, "toString");
+
+        assertTrue(languageEnv.isHostObject(booleanObject));
+        assertEquals(b, languageEnv.asHostObject(booleanObject));
+    }
+
+    private void assertCharacterMembers(Character unboxValue, Object charObject) {
+        Character b = (Character) unbox(charObject);
+        assertEquals(unboxValue, b);
+
+        assertInvocable(unboxValue, charObject, "charValue");
+        assertInvocable(b.equals(unboxValue), charObject, "equals", unboxValue);
+        assertInvocable(b.compareTo(unboxValue), charObject, "compareTo", unboxValue);
+        assertInvocable(b.hashCode(), charObject, "hashCode");
+        assertInvocable(b.toString(), charObject, "toString");
+
+        assertTrue(languageEnv.isHostObject(charObject));
+        assertEquals(b, languageEnv.asHostObject(charObject));
     }
 
     @Test
@@ -376,9 +464,33 @@ public class LanguageSPIHostInteropTest {
         return ForeignAccess.sendKeys(Message.KEYS.createNode(), (TruffleObject) value, includeInternal);
     }
 
+    private static Object read(Object value, int nindex) {
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), (TruffleObject) value, nindex);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object unbox(Object value) {
+        try {
+            return ForeignAccess.sendUnbox(Message.UNBOX.createNode(), (TruffleObject) value);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static int getSize(Object value) {
+        try {
+            return ((Number) ForeignAccess.sendGetSize(Message.GET_SIZE.createNode(), (TruffleObject) value)).intValue();
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @Test
     public void keyInfoJavaObject() {
-        TruffleObject d = (TruffleObject) env.asGuestValue(new TestJavaObject());
+        TruffleObject d = (TruffleObject) languageEnv.asGuestValue(new TestJavaObject());
         int keyInfo = getKeyInfo(d, "nnoonnee");
         assertFalse(KeyInfo.isExisting(keyInfo));
         keyInfo = getKeyInfo(d, "aField");
@@ -422,8 +534,8 @@ public class LanguageSPIHostInteropTest {
             callable.call();
             fail("Expected " + exception.getSimpleName() + " but no exception was thrown");
         } catch (Exception e) {
-            assertTrue(env.isHostException(e));
-            assertSame(exception, env.asHostException(e).getClass());
+            assertTrue(languageEnv.isHostException(e));
+            assertSame(exception, languageEnv.asHostException(e).getClass());
         }
     }
 
@@ -433,6 +545,30 @@ public class LanguageSPIHostInteropTest {
 
     private static int getKeyInfo(TruffleObject foreignObject, Object propertyName) {
         return ForeignAccess.sendKeyInfo(Message.KEY_INFO.createNode(), foreignObject, propertyName);
+    }
+
+    private static Object read(TruffleObject foreignObject, Object propertyName) {
+        try {
+            return ForeignAccess.sendRead(Message.READ.createNode(), foreignObject, propertyName);
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object invoke(Object foreignObject, String propertyName, Object... args) {
+        try {
+            return ForeignAccess.sendInvoke(Message.createInvoke(0).createNode(), (TruffleObject) foreignObject, propertyName, args);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static Object execute(Object foreignObject, Object... args) {
+        try {
+            return ForeignAccess.sendExecute(Message.createExecute(0).createNode(), (TruffleObject) foreignObject, args);
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw new AssertionError(e);
+        }
     }
 
     static final class NoKeysObject implements TruffleObject {

@@ -45,10 +45,9 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class ByteArrayBuffer {
+public class ByteArrayBuffer extends AbstractArrayBuffer {
 
     private byte[] buf;
-    private int size = 0;
 
     public ByteArrayBuffer() {
         this(16);
@@ -58,12 +57,14 @@ public class ByteArrayBuffer {
         buf = new byte[initialSize];
     }
 
-    public void clear() {
-        size = 0;
+    @Override
+    int getBufferSize() {
+        return buf.length;
     }
 
-    public int size() {
-        return size;
+    @Override
+    void grow(int newSize) {
+        buf = Arrays.copyOf(buf, newSize);
     }
 
     public byte get(int i) {
@@ -76,10 +77,6 @@ public class ByteArrayBuffer {
         }
         buf[size] = b;
         size++;
-    }
-
-    private void grow(int newSize) {
-        buf = Arrays.copyOf(buf, newSize);
     }
 
     public byte[] toArray() {

@@ -53,7 +53,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 
@@ -216,7 +215,6 @@ public class OptionProcessor extends AbstractProcessor {
         VariableElement field = (VariableElement) element;
         String fieldName = field.getSimpleName().toString();
 
-        Elements elements = processingEnv.getElementUtils();
         Types types = processingEnv.getTypeUtils();
 
         TypeMirror fieldType = field.asType();
@@ -224,7 +222,7 @@ public class OptionProcessor extends AbstractProcessor {
             error(element, elementAnnotation, "Option field must be of type " + OptionKey.class.getName());
             return false;
         }
-        TypeMirror optionKeyType = elements.getTypeElement(OptionKey.class.getName()).asType();
+        TypeMirror optionKeyType = ElementUtils.getTypeElement(processingEnv, OptionKey.class.getName()).asType();
         if (!types.isSubtype(fieldType, types.erasure(optionKeyType))) {
             error(element, elementAnnotation, "Option field type %s is not a subclass of %s", fieldType, optionKeyType);
             return false;

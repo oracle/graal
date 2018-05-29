@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +40,7 @@ public class ExpectError {
 
     public static void assertNoErrorExpected(ProcessingEnvironment processingEnv, Element element) {
         for (String errorType : EXPECT_ERROR_TYPES) {
-            assertNoErrorExpectedImpl(processingEnv, element, processingEnv.getElementUtils().getTypeElement(errorType));
+            assertNoErrorExpectedImpl(processingEnv, element, ElementUtils.getTypeElement(processingEnv, errorType));
         }
     }
 
@@ -55,7 +56,7 @@ public class ExpectError {
 
     public static boolean isExpectedError(ProcessingEnvironment processingEnv, Element element, String message) {
         for (String errorType : EXPECT_ERROR_TYPES) {
-            if (isExpectedErrorImpl(element, message, processingEnv.getElementUtils().getTypeElement(errorType))) {
+            if (isExpectedErrorImpl(element, message, ElementUtils.getTypeElement(processingEnv, errorType))) {
                 return true;
             }
         }

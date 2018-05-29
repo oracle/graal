@@ -113,9 +113,9 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
      * execution of code, but no wrong results.
      *
      * @param thread the thread that accesses the context for the first time.
-     * @param singleThreaded <code>true</code> if the access is considered single-threaded,
-     *            <code>false</code> if more than one thread is active at the same time.
-     * @return always <code>true</code>
+     * @param singleThreaded {@code true} if the access is considered single-threaded, {@code false}
+     *            if more than one thread is active at the same time.
+     * @return always {@code true}
      */
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {

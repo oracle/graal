@@ -53,6 +53,7 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -179,7 +180,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.os.OSInterface;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -262,29 +263,6 @@ public class NativeImageGenerator {
     private AbstractBootImage image;
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
-    private static OSInterface createOSInterface(ImageClassLoader loader) {
-        List<Class<? extends OSInterface>> osClasses = loader.findSubclasses(OSInterface.class);
-
-        OSInterface result = null;
-        for (Class<? extends OSInterface> osClass : osClasses) {
-            if (!osClass.isInterface() && !Modifier.isAbstract(osClass.getModifiers())) {
-                if (result != null) {
-                    throw VMError.shouldNotReachHere("More than one OSInterface implementation found: " + osClasses);
-                }
-
-                try {
-                    result = osClass.newInstance();
-                } catch (InstantiationException | IllegalAccessException ex) {
-                    throw VMError.shouldNotReachHere(ex);
-                }
-            }
-        }
-        if (result == null) {
-            throw VMError.shouldNotReachHere("No OSInterface implementation found");
-        }
-        return result;
-    }
-
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider) {
         this.loader = loader;
         this.featureHandler = new FeatureHandler();
@@ -305,6 +283,8 @@ public class NativeImageGenerator {
                 return new Platform.LINUX_AMD64();
             } else if (OS.getCurrent() == OS.DARWIN) {
                 return new Platform.DARWIN_AMD64();
+            } else if (OS.getCurrent() == OS.WINDOWS) {
+                return new Platform.WINDOWS_AMD64();
             } else {
                 throw VMError.shouldNotReachHere("Unsupported operating system: " + osName);
             }
@@ -455,12 +435,10 @@ public class NativeImageGenerator {
                     Platform platform = defaultPlatform();
 
                     TargetDescription target = createTarget(platform);
-                    OSInterface osInterface = createOSInterface(loader);
                     ObjectLayout objectLayout = new ObjectLayout(target, SubstrateAMD64Backend.getDeoptScatchSpace());
                     CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.UseHeapBaseRegister.getValue() ? 1 : 0, 0);
                     ImageSingletons.add(Platform.class, platform);
                     ImageSingletons.add(TargetDescription.class, target);
-                    ImageSingletons.add(OSInterface.class, osInterface);
                     ImageSingletons.add(ObjectLayout.class, objectLayout);
                     ImageSingletons.add(CompressEncoding.class, compressEncoding);
                     if (javaMainSupport != null) {
@@ -521,6 +499,10 @@ public class NativeImageGenerator {
                     nativeLibs = processNativeLibraryImports(aMetaAccess, aConstantReflection, aSnippetReflection);
 
                     ImageSingletons.add(NativeLibraries.class, nativeLibs);
+                    if (CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
+                        System.out.println("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(CAnnotationProcessorCache.Options.ExitAfterCAPCache, "+"));
+                        return;
+                    }
 
                     /*
                      * Install all snippets so that the types, methods, and fields used in the
@@ -1040,9 +1022,14 @@ public class NativeImageGenerator {
             SubstrateLoweringProvider lowerer = (SubstrateLoweringProvider) providers.getLowerer();
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
+            Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
+            if (hosted) {
+                mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
+            }
+
             Iterable<DebugHandlersFactory> factories = runtimeConfig != null ? runtimeConfig.getDebugHandlersFactories() : Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
             lowerer.setConfiguration(runtimeConfig, options, factories, providers, snippetReflection);
-            NonSnippetLowerings.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
+            NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, factories, providers, snippetReflection, lowerings);
             ArithmeticSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             MonitorSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
             TypeSnippets.registerLowerings(runtimeConfig, options, factories, providers, snippetReflection, lowerings);
@@ -1273,7 +1260,6 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     private NativeLibraries processNativeLibraryImports(MetaAccessProvider metaAccess, AnalysisConstantReflectionProvider aConstantReflection, SnippetReflectionProvider snippetReflection) {
-        CAnnotationProcessorCache.initialize();
         try (StopTimer t = new Timer("(cap)").start()) {
 
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, metaAccess, snippetReflection, ConfigurationValues.getTarget());

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -134,7 +135,7 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
     static class ClearImmutableCache implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             for (Class<?> c : DebugContext.class.getDeclaredClasses()) {
                 if (c.getSimpleName().equals("Immutable")) {
                     try {
@@ -168,7 +169,7 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return GraalSupport.get().debugHandlersFactories;
         }
     }
@@ -257,7 +258,7 @@ final class Target_org_graalvm_compiler_debug_KeyRegistry {
     static class EconomicMapResetter implements RecomputeFieldValue.CustomFieldValueComputer {
 
         @Override
-        public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             return EconomicMap.create();
         }
     }

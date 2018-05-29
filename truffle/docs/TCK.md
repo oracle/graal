@@ -42,3 +42,15 @@ example tests JavaScript with Java types:
 To run the TCK tests on the GraalVM it's enough to set the mx `--java-home` to point to the GraalVM:
 
 `mx --java-home=<path_to_graalvm> tck`
+
+To enable output and error output use the `tck.verbose` property:
+
+`mx tck -Dtck.verbose=true`
+
+To enable output and error output only for a certain test use the `tck.{TestSimpleName}.verbose` property:
+
+`mx tck -Dtck.ErrorTypeTest.verbose=true`
+
+You can also enable output and error output for all tests but one:
+
+`mx tck -Dtck.verbose=true -Dtck.ErrorTypeTest.verbose=false`

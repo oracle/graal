@@ -23,29 +23,36 @@
 
 # A list of all the libchelper source files.
 LIBC_HELPER_SRCS = $(wildcard *.c)
-# A list of all the libchelper object files.
-LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:%.c=%.o)
 
 LIBRARY_NAME = libchelper
 
 INCLUDE_DIR = include
 HEADER_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
 
-TARGETOS ?= $(shell uname -s)
-ifeq ($(TARGETOS),Linux)
-    OS:=linux
-endif
-ifeq ($(TARGETOS),Darwin)
-    OS:=darwin
-endif
-TARGET_DIR = ../../../clibraries/$(OS)-amd64
 TARGET_LIB = $(TARGET_DIR)/lib$(LIBRARY_NAME).a
 TARGET_HEADERS = $(patsubst %,$(TARGET_DIR)/%,$(HEADER_FILES))
 
+OBJ_DIR = $(TARGET_DIR)/$(LIBRARY_NAME)
+# The flags and options to be used when compiling C sources.
+ifeq (${OS},windows)
+# The flags to be used when compiling C sources.
+CFLAGS = /I $(INCLUDE_DIR) /Zi /O2 /D _LITTLE_ENDIAN
+# A list of all the libchelper object files.
+LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:%.c=$(OBJ_DIR)/%.obj)
+CC := CL
+else
+# The flags to be used when compiling C sources.
+CFLAGS = -I$(INCLUDE_DIR) -g -fPIC -O2 -D _LITTLE_ENDIAN
+# A list of all the libchelper object files.
+LIBC_HELPER_OBJS = $(LIBC_HELPER_SRCS:%.c=$(OBJ_DIR)/%.o)
+endif
+
 all : $(TARGET_LIB) $(TARGET_HEADERS)
 
-$(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR):
+$(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR) $(OBJ_DIR):
 	mkdir -p $@
+
+ifneq (${OS},windows)
 
 $(TARGET_LIB) : $(LIBC_HELPER_OBJS) | $(TARGET_DIR)
 	$(AR) -cr $@ $(LIBC_HELPER_OBJS)
@@ -53,11 +60,17 @@ $(TARGET_LIB) : $(LIBC_HELPER_OBJS) | $(TARGET_DIR)
 $(TARGET_DIR)/$(INCLUDE_DIR)/%.h : $(INCLUDE_DIR)/%.h | $(TARGET_DIR)/$(INCLUDE_DIR)
 	cp $< $@
 
-# The flags to be used when compiling C sources.
-CFLAGS = -fPIC -O2 -g
+$(OBJ_DIR)/%.o : %.c | $(OBJ_DIR)
+	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $@
 
-%.o : %.c
-	$(CC) -c $(CFLAGS) -I $(INCLUDE_DIR) $<
+else
+
+# For now just create empty files for Windows
+$(TARGET_LIB) $(TARGET_HEADERS):  $(TARGET_DIR) $(TARGET_DIR)/$(INCLUDE_DIR)
+	echo "libchelpers not imlemented on Windows"
+	$(shell touch $(TARGET_LIB) $(TARGET_HEADERS))
+
+endif
 
 clean :
 	$(RM) $(LIBC_HELPER_OBJS)

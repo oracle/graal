@@ -24,7 +24,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
@@ -32,6 +33,8 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.matchers.MatcherBuilder;
+import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
+import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
@@ -47,10 +50,13 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DeleteVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.Constants;
+
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Map;
 import java.util.function.Function;
 
 public final class RegexParser {
@@ -65,34 +71,30 @@ public final class RegexParser {
     private static final Group NO_TRAIL_SURROGATE_AHEAD;
 
     static {
-        try {
-            final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
-            final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
-            WORD_BOUNDARY_SUBSTITUTION = parseRootLess(wordBoundarySrc);
-            NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(nonWordBoundarySrc);
-            // The definitions of \w and \W depend on whether or not we are using the 'u' and 'i'
-            // regexp flags. This means that we cannot substitute \b and \B by the same regular
-            // expression all the time; we need an alternative for when both the Unicode and
-            // IgnoreCase flags are enabled. The straightforward way to do so would be to parse the
-            // expressions `wordBoundarySrc` and `nonWordBoundarySrc` with the 'u' and 'i' flags.
-            // However, the resulting expressions would be needlessly complicated (the unicode
-            // expansion for \W matches complete surrogate pairs, which we do not care about in
-            // these look-around assertions). More importantly, the engine currently does not
-            // support look-behind of length greater than 1 and so \W, which can match two code
-            // units in Unicode mode, would break the engine. Therefore, we make use of the fact
-            // that the difference between /\w/ and /\w/ui is only in the two characters \u017F and
-            // \u212A and we just slightly adjust the expressions `wordBoundarySrc` and
-            // `nonWordBoundarySrc` and parse them in non-Unicode mode.
-            final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
-            UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(wordBoundarySrc));
-            UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(nonWordBoundarySrc));
-            MULTI_LINE_CARET_SUBSTITUTION = parseRootLess("(?:^|(?<=[\\r\\n\\u2028\\u2029]))");
-            MULTI_LINE_DOLLAR_SUBSTITUTION = parseRootLess("(?:$|(?=[\\r\\n\\u2028\\u2029]))");
-            NO_LEAD_SURROGATE_BEHIND = parseRootLess("(?:^|(?<=[^\\uD800-\\uDBFF]))");
-            NO_TRAIL_SURROGATE_AHEAD = parseRootLess("(?:$|(?=[^\\uDC00-\\uDFFF]))");
-        } catch (RegexSyntaxException e) {
-            throw new RuntimeException(e);
-        }
+        final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
+        final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
+        WORD_BOUNDARY_SUBSTITUTION = parseRootLess(wordBoundarySrc);
+        NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(nonWordBoundarySrc);
+        // The definitions of \w and \W depend on whether or not we are using the 'u' and 'i'
+        // regexp flags. This means that we cannot substitute \b and \B by the same regular
+        // expression all the time; we need an alternative for when both the Unicode and
+        // IgnoreCase flags are enabled. The straightforward way to do so would be to parse the
+        // expressions `wordBoundarySrc` and `nonWordBoundarySrc` with the 'u' and 'i' flags.
+        // However, the resulting expressions would be needlessly complicated (the unicode
+        // expansion for \W matches complete surrogate pairs, which we do not care about in
+        // these look-around assertions). More importantly, the engine currently does not
+        // support complex lookbehind and so \W, which can match anywhere between one or two code
+        // units in Unicode mode, would break the engine. Therefore, we make use of the fact
+        // that the difference between /\w/ and /\w/ui is only in the two characters \u017F and
+        // \u212A and we just slightly adjust the expressions `wordBoundarySrc` and
+        // `nonWordBoundarySrc` and parse them in non-Unicode mode.
+        final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
+        UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(wordBoundarySrc));
+        UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION = parseRootLess(includeExtraCases.apply(nonWordBoundarySrc));
+        MULTI_LINE_CARET_SUBSTITUTION = parseRootLess("(?:^|(?<=[\\r\\n\\u2028\\u2029]))");
+        MULTI_LINE_DOLLAR_SUBSTITUTION = parseRootLess("(?:$|(?=[\\r\\n\\u2028\\u2029]))");
+        NO_LEAD_SURROGATE_BEHIND = parseRootLess("(?:^|(?<=[^\\uD800-\\uDBFF]))");
+        NO_TRAIL_SURROGATE_AHEAD = parseRootLess("(?:$|(?=[^\\uDC00-\\uDFFF]))");
     }
 
     private final RegexAST ast;
@@ -102,19 +104,22 @@ public final class RegexParser {
     private final Counter.ThresholdCounter groupCount;
     private final CopyVisitor copyVisitor;
     private final DeleteVisitor deleteVisitor;
+    private final SetSourceSectionVisitor setSourceSectionVisitor;
 
     private Sequence curSequence;
     private Group curGroup;
     private Term curTerm;
 
+    @TruffleBoundary
     public RegexParser(RegexSource source, RegexOptions options) {
         this.source = source;
         this.lexer = new RegexLexer(source, options);
-        this.ast = new RegexAST(source);
+        this.ast = new RegexAST(source, options);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
         this.deleteVisitor = new DeleteVisitor(ast);
+        this.setSourceSectionVisitor = DebugUtil.DEBUG ? new SetSourceSectionVisitor() : null;
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
@@ -127,15 +132,17 @@ public final class RegexParser {
         }
     }
 
+    @TruffleBoundary
     public static RegexAST parse(RegexSource source, RegexOptions options) throws RegexSyntaxException {
         return new RegexParser(source, options).parse();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexParser(source, RegexOptions.DEFAULT).parseDryRun();
+        new RegexParser(source, RegexOptions.DEFAULT).validate();
     }
 
+    @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         ast.setRoot(parse(true));
         final CalcMinPathsVisitor calcMinPathsVisitor = new CalcMinPathsVisitor();
@@ -150,6 +157,16 @@ public final class RegexParser {
         return ast;
     }
 
+    @TruffleBoundary
+    public void validate() throws RegexSyntaxException {
+        parseDryRun();
+    }
+
+    @TruffleBoundary
+    public Map<String, Integer> getNamedCaptureGroups() {
+        return lexer.getNamedCaptureGroups();
+    }
+
     /* AST manipulation */
 
     private void setComplexLookAround() {
@@ -161,15 +178,15 @@ public final class RegexParser {
         }
     }
 
-    private void createGroup() {
-        createGroup(true, false, null);
+    private void createGroup(Token token) {
+        createGroup(token, true, false, null);
     }
 
-    private void createCaptureGroup() {
-        createGroup(true, true, null);
+    private void createCaptureGroup(Token token) {
+        createGroup(token, true, true, null);
     }
 
-    private Group createGroup(boolean addToSeq, boolean capture, RegexASTSubtreeRootNode parent) {
+    private Group createGroup(Token token, boolean addToSeq, boolean capture, RegexASTSubtreeRootNode parent) {
         Group group = capture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup();
         if (parent != null) {
             parent.setGroup(group);
@@ -178,22 +195,43 @@ public final class RegexParser {
             setComplexLookAround();
             addTerm(group);
         }
+        if (token != null) {
+            group.setSourceSectionBegin(token.getSourceSection());
+        }
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        addSequence();
+        addSequence(token);
         return group;
     }
 
-    private void addSequence() {
+    /**
+     * Adds a new {@link Sequence} to the current {@link Group}.
+     * 
+     * @param token the opening bracket of the parent group ({@link Token.Kind#captureGroupBegin})
+     *            or the alternation symbol ({@link Token.Kind#alternation}) that opens the new
+     *            sequence.
+     */
+    private void addSequence(Token token) {
         if (!curGroup.getAlternatives().isEmpty()) {
             setComplexLookAround();
         }
         curSequence = curGroup.addSequence(ast);
+        if (DebugUtil.DEBUG) {
+            if (token != null) {
+                SourceSection src = token.getSourceSection();
+                // set source section to empty string, it will be updated by the Sequence object
+                // when new Terms are added to it
+                curSequence.setSourceSection(src.getSource().createSection(src.getCharEndIndex(), 0));
+            }
+        }
         curTerm = null;
     }
 
-    private void popGroup() throws RegexSyntaxException {
+    private void popGroup(Token token) throws RegexSyntaxException {
         curGroup.setEnclosedCaptureGroupsHigh(groupCount.getCount());
+        if (token != null) {
+            curGroup.setSourceSectionEnd(token.getSourceSection());
+        }
         curTerm = curGroup;
         RegexASTNode parent = curGroup.getParent();
         if (parent instanceof RegexASTRootNode) {
@@ -213,19 +251,21 @@ public final class RegexParser {
         curTerm = term;
     }
 
-    private void addLookBehindAssertion() {
-        LookBehindAssertion lookBehind = ast.createLookBehindAssertion();
+    private void addLookBehindAssertion(Token token, boolean negate) {
+        LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
         addTerm(lookBehind);
-        createGroup(false, false, lookBehind);
+        createGroup(token, false, false, lookBehind);
     }
 
-    private void addLookAheadAssertion(boolean negate) {
+    private void addLookAheadAssertion(Token token, boolean negate) {
         LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
         addTerm(lookAhead);
-        createGroup(false, false, lookAhead);
+        createGroup(token, false, false, lookAhead);
     }
 
-    private Term translateUnicodeCharClass(CodePointSet codePointSet) {
+    private Term translateUnicodeCharClass(Token.CharacterClass token) {
+        CodePointSet codePointSet = token.getCodePointSet();
+        SourceSection src = token.getSourceSection();
         Group group = ast.createGroup();
         group.setEnclosedCaptureGroupsLow(groupCount.getCount());
         group.setEnclosedCaptureGroupsHigh(groupCount.getCount());
@@ -236,20 +276,20 @@ public final class RegexParser {
 
         if (bmpRanges.matchesSomething()) {
             Sequence bmpAlternative = group.addSequence(ast);
-            bmpAlternative.add(ast.createCharacterClass(bmpRanges));
+            bmpAlternative.add(createCharClass(bmpRanges, src));
         }
 
         if (loneLeadSurrogateRanges.matchesSomething()) {
             Sequence loneLeadSurrogateAlternative = group.addSequence(ast);
-            loneLeadSurrogateAlternative.add(ast.createCharacterClass(loneLeadSurrogateRanges));
-            loneLeadSurrogateAlternative.add(NO_TRAIL_SURROGATE_AHEAD.copy(ast));
+            loneLeadSurrogateAlternative.add(createCharClass(loneLeadSurrogateRanges, src));
+            loneLeadSurrogateAlternative.add(NO_TRAIL_SURROGATE_AHEAD.copy(ast, true));
             properties.setAlternations();
         }
 
         if (loneTrailSurrogateRanges.matchesSomething()) {
             Sequence loneTrailSurrogateAlternative = group.addSequence(ast);
-            loneTrailSurrogateAlternative.add(NO_LEAD_SURROGATE_BEHIND.copy(ast));
-            loneTrailSurrogateAlternative.add(ast.createCharacterClass(loneTrailSurrogateRanges));
+            loneTrailSurrogateAlternative.add(NO_LEAD_SURROGATE_BEHIND.copy(ast, true));
+            loneTrailSurrogateAlternative.add(createCharClass(loneTrailSurrogateRanges, src));
             properties.setAlternations();
         }
 
@@ -269,8 +309,8 @@ public final class RegexParser {
                 if (startLead > curLead) {
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(ast.createCharacterClass(MatcherBuilder.create(curLead)));
-                        finishedAlternative.add(ast.createCharacterClass(curTrails));
+                        finishedAlternative.add(createCharClass(MatcherBuilder.create(curLead), src));
+                        finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = startLead;
                     curTrails = CodePointSet.createEmpty();
@@ -286,8 +326,8 @@ public final class RegexParser {
 
                     if (curTrails.matchesSomething()) {
                         Sequence finishedAlternative = group.addSequence(ast);
-                        finishedAlternative.add(ast.createCharacterClass(MatcherBuilder.create(curLead)));
-                        finishedAlternative.add(ast.createCharacterClass(curTrails));
+                        finishedAlternative.add(createCharClass(MatcherBuilder.create(curLead), src));
+                        finishedAlternative.add(createCharClass(curTrails, src));
                     }
                     curLead = endLead;
                     curTrails = CodePointSet.createEmpty();
@@ -306,16 +346,16 @@ public final class RegexParser {
             }
             if (curTrails.matchesSomething()) {
                 Sequence lastAlternative = group.addSequence(ast);
-                lastAlternative.add(ast.createCharacterClass(MatcherBuilder.create(curLead)));
-                lastAlternative.add(ast.createCharacterClass(curTrails));
+                lastAlternative.add(createCharClass(MatcherBuilder.create(curLead), src));
+                lastAlternative.add(createCharClass(curTrails, src));
             }
 
             if (completeRanges.matchesSomething()) {
                 // Complete ranges match more often and so we want them as an early alternative
                 Sequence completeRangesAlt = ast.createSequence();
                 group.insertFirst(completeRangesAlt);
-                completeRangesAlt.add(ast.createCharacterClass(completeRanges));
-                completeRangesAlt.add(ast.createCharacterClass(MatcherBuilder.createTrailSurrogateRange()));
+                completeRangesAlt.add(createCharClass(completeRanges, src));
+                completeRangesAlt.add(createCharClass(MatcherBuilder.createTrailSurrogateRange(), src));
             }
         }
 
@@ -334,21 +374,28 @@ public final class RegexParser {
         return group;
     }
 
-    private void addCharClass(CodePointSet codePointSet) {
+    private void addCharClass(Token.CharacterClass token) {
+        CodePointSet codePointSet = token.getCodePointSet();
         if (source.getFlags().isUnicode()) {
             if (codePointSet.matchesNothing()) {
                 // We need this branch because a Group with no alternatives is invalid
-                addCharClass(MatcherBuilder.createEmpty());
+                addTerm(createCharClass(MatcherBuilder.createEmpty(), token.getSourceSection()));
             } else {
-                addTerm(translateUnicodeCharClass(codePointSet));
+                addTerm(translateUnicodeCharClass(token));
             }
         } else {
-            addCharClass(MatcherBuilder.create(codePointSet));
+            addTerm(createCharClass(codePointSet, token.getSourceSection()));
         }
     }
 
-    private void addCharClass(MatcherBuilder matcherBuilder) {
-        addTerm(ast.createCharacterClass(matcherBuilder));
+    private CharacterClass createCharClass(CodePointSet codePointSet, SourceSection sourceSection) {
+        return createCharClass(MatcherBuilder.create(codePointSet), sourceSection);
+    }
+
+    private CharacterClass createCharClass(MatcherBuilder matcherBuilder, SourceSection sourceSection) {
+        CharacterClass characterClass = ast.createCharacterClass(matcherBuilder);
+        characterClass.setSourceSection(sourceSection);
+        return characterClass;
     }
 
     private void createOptionalBranch(Term term, boolean greedy, int recurse) throws RegexSyntaxException {
@@ -369,19 +416,19 @@ public final class RegexParser {
             return;
         }
         properties.setAlternations();
-        createGroup();
+        createGroup(null);
         if (term instanceof Group) {
             curGroup.setEnclosedCaptureGroupsLow(((Group) term).getEnclosedCaptureGroupsLow());
             curGroup.setEnclosedCaptureGroupsHigh(((Group) term).getEnclosedCaptureGroupsHigh());
         }
         if (greedy) {
             createOptionalBranch(term, greedy, recurse);
-            addSequence();
+            addSequence(null);
         } else {
-            addSequence();
+            addSequence(null);
             createOptionalBranch(term, greedy, recurse);
         }
-        popGroup();
+        popGroup(null);
     }
 
     private void setLoop() {
@@ -391,92 +438,107 @@ public final class RegexParser {
     }
 
     private boolean curTermIsAnchor(PositionAssertion.Type type) {
-        return curTerm != null && curTerm instanceof PositionAssertion && ((PositionAssertion) curTerm).type == type;
+        return curTerm instanceof PositionAssertion && ((PositionAssertion) curTerm).type == type;
     }
 
-    private void substitute(Group substitution) {
-        addTerm(substitution.copy(ast));
+    private void substitute(Token token, Group substitution) {
+        Group copy = substitution.copy(ast, true);
+        if (DebugUtil.DEBUG) {
+            setSourceSectionVisitor.run(copy, token.getSourceSection());
+        }
+        addTerm(copy);
     }
 
     /* parser */
 
     private Group parse(boolean rootCapture) throws RegexSyntaxException {
         RegexASTRootNode rootParent = ast.createRootNode();
-        Group root = createGroup(false, rootCapture, rootParent);
+        Group root = createGroup(null, false, rootCapture, rootParent);
+        if (DebugUtil.DEBUG) {
+            root.setSourceSectionBegin(ast.getSource().getSource().createSection(0, 1));
+            root.setSourceSectionEnd(ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1));
+        }
         while (lexer.hasNext()) {
             Token token = lexer.next();
             switch (token.kind) {
                 case caret:
                     if (source.getFlags().isMultiline()) {
-                        substitute(MULTI_LINE_CARET_SUBSTITUTION);
+                        substitute(token, MULTI_LINE_CARET_SUBSTITUTION);
                         properties.setAlternations();
                     } else if (!curTermIsAnchor(PositionAssertion.Type.CARET)) {
                         PositionAssertion caret = ast.createPositionAssertion(PositionAssertion.Type.CARET);
+                        caret.setSourceSection(token.getSourceSection());
                         addTerm(caret);
                     }
                     break;
                 case dollar:
                     if (source.getFlags().isMultiline()) {
-                        substitute(MULTI_LINE_DOLLAR_SUBSTITUTION);
+                        substitute(token, MULTI_LINE_DOLLAR_SUBSTITUTION);
                         properties.setAlternations();
                     } else if (!curTermIsAnchor(PositionAssertion.Type.DOLLAR)) {
                         PositionAssertion dollar = ast.createPositionAssertion(PositionAssertion.Type.DOLLAR);
+                        dollar.setSourceSection(token.getSourceSection());
                         addTerm(dollar);
                     }
                     break;
                 case wordBoundary:
                     if (source.getFlags().isUnicode() && source.getFlags().isIgnoreCase()) {
-                        substitute(UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION);
+                        substitute(token, UNICODE_IGNORE_CASE_WORD_BOUNDARY_SUBSTITUTION);
                     } else {
-                        substitute(WORD_BOUNDARY_SUBSTITUTION);
+                        substitute(token, WORD_BOUNDARY_SUBSTITUTION);
                     }
                     properties.setAlternations();
                     break;
                 case nonWordBoundary:
                     if (source.getFlags().isUnicode() && source.getFlags().isIgnoreCase()) {
-                        substitute(UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION);
+                        substitute(token, UNICODE_IGNORE_CASE_NON_WORD_BOUNDARY_SUBSTITUTION);
                     } else {
-                        substitute(NON_WORD_BOUNDARY_SUBSTITUTION);
+                        substitute(token, NON_WORD_BOUNDARY_SUBSTITUTION);
                     }
                     properties.setAlternations();
                     break;
                 case backReference:
-                    addTerm(ast.createBackReference(((Token.BackReference) token).getGroupNr()));
+                    BackReference backReference = ast.createBackReference(((Token.BackReference) token).getGroupNr());
+                    backReference.setSourceSection(token.getSourceSection());
+                    addTerm(backReference);
                     break;
                 case quantifier:
                     parseQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
-                    addSequence();
-                    properties.setAlternations();
+                    if (!tryMergeSingleCharClassAlternations()) {
+                        addSequence(token);
+                        properties.setAlternations();
+                    }
                     break;
                 case captureGroupBegin:
                     properties.setCaptureGroups();
-                    createCaptureGroup();
+                    createCaptureGroup(token);
                     break;
                 case nonCaptureGroupBegin:
-                    createGroup();
+                    createGroup(token);
                     break;
                 case lookAheadAssertionBegin:
-                    addLookAheadAssertion(false);
+                    addLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
                     break;
                 case lookBehindAssertionBegin:
-                    addLookBehindAssertion();
-                    break;
-                case negativeLookAheadAssertionBegin:
-                    addLookAheadAssertion(true);
+                    addLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
                     break;
                 case groupEnd:
-                    popGroup();
+                    if (tryMergeSingleCharClassAlternations()) {
+                        curGroup.removeLastSequence();
+                    }
+                    popGroup(token);
                     break;
                 case charClass:
-                    addCharClass(((Token.CharacterClass) token).getCodePointSet());
+                    addCharClass((Token.CharacterClass) token);
                     break;
             }
         }
         if (curGroup != root) {
             throw syntaxError(ErrorMessages.UNTERMINATED_GROUP);
         }
+        root.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         return root;
     }
 
@@ -491,14 +553,14 @@ public final class RegexParser {
         assert curTerm == curSequence.getLastTerm();
         if (quantifier.getMin() == -1) {
             deleteVisitor.run(curSequence.getLastTerm());
-            curSequence.removeLast();
-            addCharClass(MatcherBuilder.createEmpty());
+            curSequence.removeLastTerm();
+            addTerm(createCharClass(MatcherBuilder.createEmpty(), null));
             curSequence.markAsDead();
             return;
         }
         if (quantifier.getMin() == 0) {
             deleteVisitor.run(curSequence.getLastTerm());
-            curSequence.removeLast();
+            curSequence.removeLastTerm();
         }
         Term t = curTerm;
         if (!onAssertion) {
@@ -520,6 +582,37 @@ public final class RegexParser {
                 createOptional(t, quantifier.isGreedy(), (quantifier.getMax() - quantifier.getMin()) - 1);
             }
         }
+    }
+
+    /**
+     * This method should be called when {@code curSequence} is about to be closed. If the current
+     * {@link Sequence} <em>and</em> the last {@link Sequence} consist of a single
+     * {@link CharacterClass} each, the {@link CharacterClass} contained in the current
+     * {@link Sequence} will be removed and merged into the last {@link Sequence}'s
+     * {@link CharacterClass}, resulting in a smaller NFA.
+     * 
+     * @return {@code true} if the {@link CharacterClass} in the current sequence was merged with
+     *         the {@link CharacterClass} in the last Sequence.
+     */
+    private boolean tryMergeSingleCharClassAlternations() {
+        if (curGroup.size() > 1 && curSequence.isSingleCharClass()) {
+            assert curSequence == curGroup.getAlternatives().get(curGroup.size() - 1);
+            Sequence prevSequence = curGroup.getAlternatives().get(curGroup.size() - 2);
+            if (prevSequence.isSingleCharClass()) {
+                CharacterClass prevCC = (CharacterClass) prevSequence.getFirstTerm();
+                CharacterClass curCC = (CharacterClass) curSequence.getFirstTerm();
+                prevCC.setMatcherBuilder(prevCC.getMatcherBuilder().union(curCC.getMatcherBuilder()));
+                curSequence.removeLastTerm();
+                if (DebugUtil.DEBUG) {
+                    // set source section to cover both char classes and the "|" in between
+                    SourceSection prevCCSrc = prevCC.getSourceSection();
+                    prevCC.setSourceSection(prevCCSrc.getSource().createSection(
+                                    prevCCSrc.getCharIndex(), prevCCSrc.getCharLength() + curCC.getSourceSection().getCharLength() + 1));
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     private RegexSyntaxException syntaxError(String msg) {
@@ -591,7 +684,6 @@ public final class RegexParser {
                     break;
                 case lookAheadAssertionBegin:
                 case lookBehindAssertionBegin:
-                case negativeLookAheadAssertionBegin:
                     syntaxStack.add(RegexStackElem.LookAroundAssertion);
                     curTermState = CurTermState.Null;
                     break;

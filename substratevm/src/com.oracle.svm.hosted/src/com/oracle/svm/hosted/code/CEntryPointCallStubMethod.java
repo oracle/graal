@@ -360,11 +360,17 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
                                     targetMethod.format("%H.%n(%p)") + " -> " + handlerMethods[0].format("%H.%n(%p)"));
                 }
             }
+
+            /* The exception is handled, we can continue with the normal epilogue. */
+            InvokeNode epilogueInvoke = generateEpilogue(providers, kit);
+
             kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
             kit.append(new DeadEndNode());
             kit.endInvokeWithException();
+
+            kit.inline(epilogueInvoke, "Inline epilogue.", "GraphBuilding");
         }
     }
 
@@ -525,7 +531,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
     @Override
     public StackTraceElement asStackTraceElement(int bci) {
         if (stackTraceElement == null) {
-            stackTraceElement = new StackTraceElement(getDeclaringClass().getName(), getName(), "generated", 0);
+            stackTraceElement = new StackTraceElement(getDeclaringClass().toJavaName(true), getName(), "generated", 0);
         }
         return stackTraceElement;
     }

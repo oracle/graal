@@ -218,7 +218,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @ExpectError("Error parsing expression 'guard(': -- line 1 col 7: \")\" expected%")
+        @ExpectError("Error parsing expression 'guard(': line 1:6 mismatched input%")
         @Specialization(guards = "guard(")
         int do1() {
             return 42;
@@ -231,7 +231,7 @@ public class MethodGuardsWithArgumentsTest {
             return true;
         }
 
-        @ExpectError("Error parsing expression 'guard)': -- line 1 col 6: EOF expected%")
+        @ExpectError("Error parsing expression 'guard)': line 1:5 extraneous input%")
         @Specialization(guards = "guard)")
         int do1() {
             return 42;

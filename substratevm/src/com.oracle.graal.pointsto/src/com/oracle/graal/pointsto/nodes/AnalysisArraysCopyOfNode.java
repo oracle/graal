@@ -62,7 +62,7 @@ public class AnalysisArraysCopyOfNode extends FixedWithNextNode implements Array
     }
 
     @Override
-    public ValueNode length() {
+    public ValueNode findLength(ArrayLengthProvider.FindLengthMode mode) {
         return newLength;
     }
 

@@ -51,7 +51,7 @@ public class InlineExecutionTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<InlineTestRun> createScriptTests() {
-        context = new TestContext();
+        context = new TestContext(InlineExecutionTest.class);
         final Collection<InlineTestRun> res = new LinkedHashSet<>();
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (InlineSnippet snippet : context.getInlineScripts(lang)) {

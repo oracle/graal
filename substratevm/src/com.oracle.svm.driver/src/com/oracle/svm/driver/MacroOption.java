@@ -26,23 +26,24 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 final class MacroOption {
     enum MacroOptionKind {
         Language("languages"),
-        Tool("tools"),
-        Builtin("");
+        Tool("tools");
 
         final String subdir;
 
@@ -60,11 +61,8 @@ final class MacroOption {
         }
 
         static MacroOptionKind fromString(String kindName) {
-            /* TODO: Remove once all .properties files use lowercase */
-            String kindNameLowercase = kindName.toLowerCase();
-
             for (MacroOptionKind kind : MacroOptionKind.values()) {
-                if (kind.toString().equals(kindNameLowercase)) {
+                if (kind.toString().equals(kindName)) {
                     return kind;
                 }
             }
@@ -215,7 +213,7 @@ final class MacroOption {
         boolean forEachPropertyValue(String propertyKey, Consumer<String> target) {
             String propertyValueRaw = option.properties.get(propertyKey);
             if (propertyValueRaw != null) {
-                for (String propertyValue : Arrays.asList(propertyValueRaw.split(" "))) {
+                for (String propertyValue : propertyValueRaw.split(" ")) {
                     target.accept(resolvePropertyValue(propertyValue));
                 }
                 return true;
@@ -270,10 +268,8 @@ final class MacroOption {
             }
         }
 
-        MacroOption addBuiltin(String optionName) {
-            MacroOption builtin = new MacroOption(optionName);
-            supported.computeIfAbsent(MacroOptionKind.Builtin, key -> new HashMap<>()).put(optionName, builtin);
-            return builtin;
+        Set<String> getAvailableOptions(MacroOptionKind forKind) {
+            return supported.get(forKind).keySet();
         }
 
         void showOptions(MacroOptionKind forKind, boolean commandLineStyle, Consumer<String> lineOut) {
@@ -302,6 +298,10 @@ final class MacroOption {
                 lineOut.accept(sb.append("options are:").toString());
                 optionsToShow.forEach(lineOut);
             }
+        }
+
+        MacroOption getMacroOption(MacroOptionKind kindPart, String optionName) {
+            return supported.get(kindPart).get(optionName);
         }
 
         boolean enableOption(String optionString, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
@@ -343,7 +343,7 @@ final class MacroOption {
 
             String[] parts = specNameParts.split("=", 2);
             String optionName = parts[0];
-            MacroOption option = supported.get(kindPart).get(optionName);
+            MacroOption option = getMacroOption(kindPart, optionName);
             if (option != null) {
                 String optionArg = parts.length == 2 ? parts[1] : null;
                 enableResolved(option, optionArg, addedCheck, context, enabler);
@@ -355,10 +355,7 @@ final class MacroOption {
 
         private void enableResolved(MacroOption option, String optionArg, HashSet<MacroOption> addedCheck, MacroOption context, Consumer<EnabledOption> enabler) {
             if (addedCheck.contains(option)) {
-                if (option.kind.equals(MacroOptionKind.Builtin)) {
-                    return;
-                }
-                throw new AddedTwiceException(option, context);
+                return;
             }
             addedCheck.add(option);
             EnabledOption enabledOption = new EnabledOption(option, optionArg);
@@ -369,7 +366,7 @@ final class MacroOption {
                 }
             }
 
-            MacroOption truffleOption = supported.get(MacroOptionKind.Tool).get("truffle");
+            MacroOption truffleOption = getMacroOption(MacroOptionKind.Tool, "truffle");
             if (option.kind.equals(MacroOptionKind.Language) && !addedCheck.contains(truffleOption)) {
                 /*
                  * Every language requires Truffle. If it is not specified explicitly as a
@@ -383,6 +380,11 @@ final class MacroOption {
 
         LinkedHashSet<EnabledOption> getEnabledOptions(MacroOptionKind kind) {
             return enabled.stream().filter(eo -> kind.equals(eo.option.kind)).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+
+        Stream<EnabledOption> getEnabledOptionsStream(MacroOptionKind kind, MacroOptionKind... otherKinds) {
+            EnumSet<MacroOptionKind> kindSet = EnumSet.of(kind, otherKinds);
+            return enabled.stream().filter(eo -> kindSet.contains(eo.option.kind));
         }
 
         LinkedHashSet<EnabledOption> getEnabledOptions() {
@@ -413,13 +415,6 @@ final class MacroOption {
         this.optionName = optionDirectory.getFileName().toString();
         this.optionDirectory = optionDirectory;
         this.properties = NativeImage.loadProperties(optionDirectory.resolve("native-image.properties"));
-    }
-
-    private MacroOption(String optionName) {
-        this.kind = MacroOptionKind.Builtin;
-        this.optionName = optionName;
-        this.optionDirectory = null;
-        this.properties = Collections.emptyMap();
     }
 
     @Override

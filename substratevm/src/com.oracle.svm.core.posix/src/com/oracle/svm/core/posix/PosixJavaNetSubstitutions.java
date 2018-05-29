@@ -47,8 +47,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform.DARWIN;
-import org.graalvm.nativeimage.Platform.LINUX;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -65,7 +64,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.PosixOSInterface.Util_java_io_FileDescriptor;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Ifaddrs;
@@ -88,6 +86,7 @@ public final class PosixJavaNetSubstitutions {
 }
 
 @TargetClass(className = "java.net.PlainDatagramSocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainDatagramSocketImpl {
 
     @Substitute
@@ -171,6 +170,7 @@ final class Target_java_net_PlainDatagramSocketImpl {
 }
 
 @TargetClass(java.net.DatagramSocket.class)
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_DatagramSocket {
 
     @Substitute
@@ -192,7 +192,7 @@ final class Target_java_net_DatagramSocket {
 }
 
 @TargetClass(java.net.ServerSocket.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_ServerSocket {
 
     @Alias boolean oldImpl;
@@ -208,6 +208,7 @@ final class Target_java_net_ServerSocket {
 // Allow methods with non-standard names: Checkstyle: stop
 
 @TargetClass(className = "java.net.InetAddress")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress {
 
     /*
@@ -247,6 +248,7 @@ final class Target_java_net_InetAddress {
 }
 
 @TargetClass(className = "java.net.InetAddress", innerClass = "Cache")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_Cache {
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = LinkedHashMap.class)//
@@ -297,6 +299,7 @@ class Util_java_net_InetAddress {
 }
 
 @TargetClass(className = "java.net.InterfaceAddress")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InterfaceAddress {
 
     @Alias InetAddress address;
@@ -328,6 +331,7 @@ final class Util_java_net_InterfaceAddress {
  */
 /** Aliases to get visibility to fields. */
 @TargetClass(className = "java.net.InetAddress", innerClass = "InetAddressHolder")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_InetAddress_InetAddressHolder {
 
     /* Aliases to get visibility. */
@@ -348,6 +352,7 @@ final class Target_java_net_InetAddress_InetAddressHolder {
 }
 
 @TargetClass(className = "java.net.Inet4Address")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet4Address {
 
     @Alias
@@ -419,8 +424,13 @@ class Util_java_net_Inet4Address {
 /* branch */
 /** Substitutions for the code from src/solaris/native/java/net/Inet4AddressImpl.c?v=Java_1.8.0_40_b10 */
 @TargetClass(className = "java.net.Inet4AddressImpl")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet4AddressImpl {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    InetAddress anyLocalAddress;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    InetAddress loopbackAddress;
 
     @Substitute
     // 348 /*
@@ -780,6 +790,7 @@ final class Util_java_net_Inet4AddressImpl {
 
 /** Aliases to get visibility to fields. */
 @TargetClass(className = "java.net.Inet6Address")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet6Address {
 
     @Alias static int INADDRSZ;
@@ -853,6 +864,7 @@ class Util_java_net_Inet6Address {
 
 /** Aliases to get visibility to fields. */
 @TargetClass(className = "java.net.Inet6Address", innerClass = "Inet6AddressHolder")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet6Address_Inet6AddressHolder {
 
     // Aliases to get visibility for substituted methods.
@@ -873,8 +885,13 @@ final class Target_java_net_Inet6Address_Inet6AddressHolder {
 }
 
 @TargetClass(className = "java.net.Inet6AddressImpl")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Inet6AddressImpl {
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    InetAddress anyLocalAddress;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    InetAddress loopbackAddress;
 
     @Substitute
     @SuppressWarnings({"static-method"})
@@ -1199,7 +1216,6 @@ final class Target_java_net_Inet6AddressImpl {
 
 }
 
-@Platforms({LINUX.class, DARWIN.class})
 final class Util_java_net_Inet6AddressImpl {
 
     static InetAddress[] lookupIfLocalhost(CCharPointer hostname, boolean includeV6) throws SocketException, InterruptedException {
@@ -1315,7 +1331,7 @@ final class Util_java_net_Inet6AddressImpl {
 }
 
 @TargetClass(java.net.NetworkInterface.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_NetworkInterface {
 
     /* Aliases to get visibility to fields. */
@@ -1460,7 +1476,7 @@ class Util_java_net_NetworkInterface {
 }
 
 @TargetClass(java.net.Socket.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_Socket {
 
     @Alias boolean oldImpl;
@@ -1478,7 +1494,7 @@ final class Target_java_net_Socket {
  * class.
  */
 @TargetClass(className = "java.net.SocketInputStream")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketInputStream {
 
     /* Do not re-format commeted-out code: @formatter:off
@@ -1511,7 +1527,7 @@ final class Target_java_net_SocketInputStream {
             throw new SocketException("Socket closed");
         } else {
             // 075         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
             // 076         /* Bug 4086704 - If the Socket associated with this file descriptor
             // 077          * was closed (sysCloseFD), then the file descriptor is set to -1.
             // 078          */
@@ -1644,7 +1660,7 @@ final class Target_java_net_SocketInputStream {
 
 /** Translations from src/solaris/native/java/net/SocketOutputStream.c. */
 @TargetClass(className = "java.net.SocketOutputStream")
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketOutputStream {
 
     /* Do not re-format commented-out code: @formatter:off */
@@ -1679,7 +1695,7 @@ final class Target_java_net_SocketOutputStream {
             throw new SocketException("socket closed");
         } else {
             // 075         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
             // 076         /* Bug 4086704 - If the Socket associated with this file descriptor
             // 077          * was closed (sysCloseFD), the file descriptor is set to -1.
             // 078          */
@@ -1780,6 +1796,7 @@ final class Target_java_net_SocketOutputStream {
 }
 
 @TargetClass(className = "java.net.SocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_SocketImpl {
 
     /* Aliases to get visibility for substituted methods. */
@@ -1813,6 +1830,7 @@ class Util_java_net_SocketImpl {
 
 // 044 abstract class AbstractPlainSocketImpl extends SocketImpl
 @TargetClass(className = "java.net.AbstractPlainSocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_AbstractPlainSocketImpl {
 
     /* Aliases to get visibility for substituted methods. */
@@ -1826,8 +1844,8 @@ final class Target_java_net_AbstractPlainSocketImpl {
 }
 
 /** Translations from jdk/src/solaris/native/java/net/PlainSocketImpl.c */
-@Platforms({LINUX.class, DARWIN.class})
 @TargetClass(className = "java.net.PlainSocketImpl")
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_net_PlainSocketImpl {
 
     /* Substitutions for native methods. */
@@ -1941,7 +1959,7 @@ final class Target_java_net_PlainSocketImpl {
             }
         }
         // 243 (*env)->SetIntField(env, fdObj, IO_fd_fdID, fd);
-        PosixOSInterface.Util_java_io_FileDescriptor.setFD(fdObj, fd);
+        PosixUtils.setFD(fdObj, fd);
         /* @formatter:on */
     }
 
@@ -1970,7 +1988,7 @@ final class Target_java_net_PlainSocketImpl {
             // 813         return -1;
         } else {
             // 815         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 817     /* JVM_SocketAvailable returns 0 for failure, 1 for success */
         // 818     if (!JVM_SocketAvailable(fd, &ret)){
@@ -2021,7 +2039,7 @@ final class Target_java_net_PlainSocketImpl {
             throw new SocketException("Socket closed");
         } else {
         // 564         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 566     if (IS_NULL(iaObj)) {
         if (iaObj == null) {
@@ -2103,7 +2121,7 @@ final class Target_java_net_PlainSocketImpl {
             // 844         return;
         } else {
             // 846         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 848     if (fd != -1) {
         if (fd != -1) {
@@ -2113,7 +2131,7 @@ final class Target_java_net_PlainSocketImpl {
                 JavaNetNetUtilMD.NET_Dup2(Util_java_net_PlainSocketImpl.marker_fd, fd);
             } else {
                 // 852             (*env)->SetIntField(env, fdObj, IO_fd_fdID, -1);
-                Util_java_io_FileDescriptor.setFD(fdObj, -1);
+                PosixUtils.setFD(fdObj, -1);
                 // 853             NET_SocketClose(fd);
                 JavaNetNetUtilMD.NET_SocketClose(fd);
             }
@@ -2156,7 +2174,7 @@ final class Target_java_net_PlainSocketImpl {
             // 280    return;
         } else {
             // 282    fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 284    if (IS_NULL(iaObj)) {
         if (iaObj == null) {
@@ -2455,7 +2473,7 @@ final class Target_java_net_PlainSocketImpl {
             /* Elided return because the "throw"s above do that. */
         }
         // 517     (*env)->SetIntField(env, fdObj, IO_fd_fdID, fd);
-        Util_java_io_FileDescriptor.setFD(fdObj, fd);
+        PosixUtils.setFD(fdObj, fd);
         // 519     /* set the remote peer address and port */
         // 520     (*env)->SetObjectField(env, this, psi_addressID, iaObj);
         Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).address = iaObj;
@@ -2514,7 +2532,7 @@ final class Target_java_net_PlainSocketImpl {
             throw new SocketException("Socket closed");
         } else {
         // 628         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 631     /*
         // 632      * Workaround for bugid 4101691 in Solaris 2.6. See 4106600.
@@ -2587,7 +2605,7 @@ final class Target_java_net_PlainSocketImpl {
             throw new SocketException("Socket closed");
         } else {
             // 680         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 682     if (IS_NULL(socket)) {
         if (socket == null) {
@@ -2742,7 +2760,7 @@ final class Target_java_net_PlainSocketImpl {
         // 787     socketFdObj = (*env)->GetObjectField(env, socket, psi_fdID);
         socketFdObj = Util_java_net_SocketImpl.from_SocketImpl(socket).fd;
         // 788     (*env)->SetIntField(env, socketFdObj, IO_fd_fdID, newfd);
-        Util_java_io_FileDescriptor.setFD(socketFdObj, newfd);
+        PosixUtils.setFD(socketFdObj, newfd);
         // 789
         // 790     (*env)->SetObjectField(env, socket, psi_addressID, socketAddressObj);
         Util_java_net_SocketImpl.from_SocketImpl(socket).address = socketAddressObj;
@@ -2792,7 +2810,7 @@ final class Target_java_net_PlainSocketImpl {
             /* Unreachable! */
         } else {
             // 880         fd = (*env)->GetIntField(env, fdObj, IO_fd_fdID);
-            fd = Util_java_io_FileDescriptor.getFD(fdObj);
+            fd = PosixUtils.getFD(fdObj);
         }
         // 882     JVM_SocketShutdown(fd, howto);
         VmPrimsJVM.JVM_SocketShutdown(fd, howto);
@@ -2838,7 +2856,7 @@ final class Target_java_net_PlainSocketImpl {
         // 903      * Check that socket hasn't been closed
         // 904      */
         // 905     fd = getFD(env, this);
-        fd = Util_java_io_FileDescriptor.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
+        fd = PosixUtils.getFD(Util_java_net_PlainSocketImpl.as_Target_java_net_SocketImpl(this).fd);
         // 906     if (fd < 0) {
         if (fd < 0) {
         // 907         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
@@ -3017,7 +3035,7 @@ final class Util_java_net_PlainSocketImpl {
 }
 
 @TargetClass(sun.net.spi.DefaultProxySelector.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_net_spi_DefaultProxySelector {
 
     /** Private constructor: No instances. */
@@ -3034,7 +3052,7 @@ final class Target_sun_net_spi_DefaultProxySelector {
 }
 
 @TargetClass(sun.net.sdp.SdpSupport.class)
-@Platforms({LINUX.class, DARWIN.class})
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_sun_net_sdp_SdpSupport {
 
     /** Private constructor: No instances. */
@@ -3114,7 +3132,7 @@ final class Util_sun_net_sdp_SdpSupport {
     // 036 #define AF_INET_SDP 27
     // 037 #endif
     // 038 #endif
-    @Platforms({LINUX.class})
+    @Platforms({Platform.LINUX.class})
     static int AF_INET_SDP() {
         return 27;
     }

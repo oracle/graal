@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -154,7 +155,7 @@ public final class CPUTracer implements Closeable {
      * @return All the payloads the tracer has gathered as an unmodifiable collection
      * @since 0.30
      */
-    public synchronized Collection<Payload> getPayloads() {
+    public Collection<Payload> getPayloads() {
         return Collections.unmodifiableCollection(payloadMap.values());
     }
 
@@ -163,21 +164,18 @@ public final class CPUTracer implements Closeable {
      *
      * @since 0.30
      */
-    public synchronized void clearData() {
+    public void clearData() {
         payloadMap.clear();
     }
 
-    private synchronized Payload getCounter(EventContext context) {
+    private Payload getCounter(EventContext context) {
         SourceSection sourceSection = context.getInstrumentedSourceSection();
-        Payload payload = payloadMap.get(sourceSection);
-        if (payload == null) {
-            payload = new Payload(new SourceLocation(env.getInstrumenter(), context));
-            Payload otherPayload = payloadMap.putIfAbsent(sourceSection, payload);
-            if (otherPayload != null) {
-                payload = otherPayload;
+        return payloadMap.computeIfAbsent(sourceSection, new Function<SourceSection, Payload>() {
+            @Override
+            public Payload apply(SourceSection section) {
+                return new Payload(new SourceLocation(CPUTracer.this.env.getInstrumenter(), context));
             }
-        }
-        return payload;
+        });
     }
 
     private synchronized void verifyConfigAllowed() {

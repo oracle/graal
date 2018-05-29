@@ -24,6 +24,8 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -55,6 +57,7 @@ class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
 }
 
 @AutomaticFeature
+@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 class UnmanagedMemoryFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

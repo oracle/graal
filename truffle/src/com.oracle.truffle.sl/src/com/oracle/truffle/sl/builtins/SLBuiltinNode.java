@@ -42,7 +42,6 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -55,10 +54,6 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 /**
  * Base class for all builtin functions. It contains the Truffle DSL annotation {@link NodeChild}
  * that defines the function arguments.<br>
- * Builtin functions need access to the {@link SLContext}. Instead of defining a Java field manually
- * and setting it in a constructor, we use the Truffle DSL annotation {@link NodeField} that
- * generates the field and constructor automatically.
- * <p>
  * The builtin functions are registered in {@link SLContext#installBuiltins}. Every builtin node
  * subclass is instantiated there, wrapped into a function, and added to the
  * {@link SLFunctionRegistry}. This ensures that builtin functions can be called like user-defined
@@ -68,10 +63,6 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 @GenerateNodeFactory
 public abstract class SLBuiltinNode extends SLExpressionNode {
 
-    /**
-     * Accessor for the {@link SLContext}. The implementation of this method is generated
-     * automatically based on the {@link NodeField} annotation on the class.
-     */
     public final SLContext getContext() {
         return getRootNode().getLanguage(SLLanguage.class).getContextReference().get();
     }

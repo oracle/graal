@@ -28,12 +28,14 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 import com.oracle.truffle.regex.util.Constants;
-import java.math.BigInteger;
 
+import java.math.BigInteger;
 import java.util.EnumSet;
-import java.util.regex.Pattern;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class RegexLexer {
 
@@ -41,15 +43,21 @@ public final class RegexLexer {
     private static final CompilationFinalBitSet SYNTAX_CHARS = CompilationFinalBitSet.valueOf(
                     '^', '$', '/', '\\', '.', '*', '+', '?', '(', ')', '[', ']', '{', '}', '|');
 
+    private static final CodePointSet ID_START = UnicodeCharacterProperties.getProperty("ID_Start");
+    private static final CodePointSet ID_CONTINUE = UnicodeCharacterProperties.getProperty("ID_Continue");
+
+    private final RegexSource source;
     private final String pattern;
     private final RegexFlags flags;
     private final RegexOptions options;
     private Token lastToken;
     private int index = 0;
     private int nGroups = 1;
-    private boolean countedAllGroups = false;
+    private boolean identifiedAllGroups = false;
+    private Map<String, Integer> namedCaptureGroups = null;
 
     public RegexLexer(RegexSource source, RegexOptions options) {
+        this.source = source;
         this.pattern = source.getPattern();
         this.flags = source.getFlags();
         this.options = options;
@@ -60,9 +68,28 @@ public final class RegexLexer {
     }
 
     public Token next() throws RegexSyntaxException {
+        int startIndex = index;
         Token t = getNext();
+        setSourceSection(t, startIndex, index);
         lastToken = t;
         return t;
+    }
+
+    /**
+     * Sets the {@link com.oracle.truffle.api.source.SourceSection} of a given {@link Token} in
+     * respect of {@link RegexSource#getSource()}.
+     * 
+     * @param startIndex inclusive start index of the source section in respect of
+     *            {@link RegexSource#getPattern()}.
+     * @param endIndex exclusive end index of the source section in respect of
+     *            {@link RegexSource#getPattern()}.
+     */
+    private void setSourceSection(Token t, int startIndex, int endIndex) {
+        if (DebugUtil.DEBUG) {
+            // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
+            // offset of 1 here.
+            t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
+        }
     }
 
     /* input string access */
@@ -108,33 +135,63 @@ public final class RegexLexer {
         return index >= pattern.length();
     }
 
-    private int numberOfCaptureGroups() {
-        if (!countedAllGroups) {
-            countCaptureGroups();
-            countedAllGroups = true;
+    private int numberOfCaptureGroups() throws RegexSyntaxException {
+        if (!identifiedAllGroups) {
+            identifyCaptureGroups();
+            identifiedAllGroups = true;
         }
         return nGroups;
     }
 
+    public Map<String, Integer> getNamedCaptureGroups() throws RegexSyntaxException {
+        if (!identifiedAllGroups) {
+            identifyCaptureGroups();
+            identifiedAllGroups = true;
+        }
+        return namedCaptureGroups;
+    }
+
+    /**
+     * Checks whether this regular expression contains any named capture groups.
+     * <p>
+     * This method is a way to check whether we are parsing the goal symbol Pattern[~U, +N] or
+     * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
+     */
+    private boolean hasNamedCaptureGroups() throws RegexSyntaxException {
+        return getNamedCaptureGroups() != null;
+    }
+
     private void registerCaptureGroup() {
-        if (!countedAllGroups) {
+        if (!identifiedAllGroups) {
             nGroups++;
         }
     }
 
-    private void countCaptureGroups() {
+    private void registerNamedCaptureGroup(String name) {
+        if (!identifiedAllGroups) {
+            if (namedCaptureGroups == null) {
+                namedCaptureGroups = new HashMap<>();
+            }
+            if (namedCaptureGroups.containsKey(name)) {
+                throw syntaxError(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+            }
+            namedCaptureGroups.put(name, nGroups);
+        }
+        registerCaptureGroup();
+    }
+
+    private void identifyCaptureGroups() throws RegexSyntaxException {
         // We are counting capture groups, so we only care about '(' characters and special
         // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
         // character classes (where '(' stands for a literal '(') and any characters after the '('
         // which might turn into a non-capturing group or a look-around assertion.
         boolean insideCharClass = false;
-        Pattern nonCapturingGroup = Pattern.compile("\\((?:\\?[:=!]|\\<[=!])");
-        int i = index;
-        while (i < pattern.length()) {
-            switch (pattern.charAt(i)) {
+        final int restoreIndex = index;
+        while (!atEnd()) {
+            switch (consumeChar()) {
                 case '\\':
                     // skip escaped char
-                    i++;
+                    advance();
                     break;
                 case '[':
                     insideCharClass = true;
@@ -143,16 +200,15 @@ public final class RegexLexer {
                     insideCharClass = false;
                     break;
                 case '(':
-                    if (!insideCharClass && !nonCapturingGroup.matcher(pattern.substring(i)).matches()) {
-                        nGroups++;
+                    if (!insideCharClass) {
+                        parseGroupBegin();
                     }
                     break;
                 default:
                     break;
             }
-            // advance
-            i++;
         }
+        index = restoreIndex;
     }
 
     private Token charClass(CodePointSet codePointSet) {
@@ -225,11 +281,33 @@ public final class RegexLexer {
             if (backRefNumber < numberOfCaptureGroups()) {
                 return Token.createBackReference(backRefNumber);
             } else if (flags.isUnicode()) {
-                throw syntaxError("missing capture group for back-reference");
+                throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
             }
             index = restoreIndex;
         }
         switch (c) {
+            case 'k':
+                if (flags.isUnicode() || hasNamedCaptureGroups()) {
+                    if (atEnd()) {
+                        throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
+                    }
+                    if (consumeChar() != '<') {
+                        throw syntaxError(ErrorMessages.MISSING_GROUP_NAME);
+                    }
+                    String groupName = parseGroupName();
+                    // backward reference
+                    if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
+                        return Token.createBackReference(namedCaptureGroups.get(groupName));
+                    }
+                    // possible forward reference
+                    Map<String, Integer> allNamedCaptureGroups = getNamedCaptureGroups();
+                    if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
+                        return Token.createBackReference(allNamedCaptureGroups.get(groupName));
+                    }
+                    throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+                } else {
+                    return charClass(CodePointSet.create(c));
+                }
             case 'b':
                 return Token.create(Token.Kind.wordBoundary);
             case 'B':
@@ -250,19 +328,69 @@ public final class RegexLexer {
         }
     }
 
-    private Token parseGroupBegin() {
+    private Token parseGroupBegin() throws RegexSyntaxException {
         if (consumingLookahead("?=")) {
-            return Token.create(Token.Kind.lookAheadAssertionBegin);
+            return Token.createLookAheadAssertionBegin(false);
         } else if (consumingLookahead("?!")) {
-            return Token.create(Token.Kind.negativeLookAheadAssertionBegin);
+            return Token.createLookAheadAssertionBegin(true);
         } else if (consumingLookahead("?<=")) {
-            return Token.create(Token.Kind.lookBehindAssertionBegin);
+            return Token.createLookBehindAssertionBegin(false);
+        } else if (consumingLookahead("?<!")) {
+            return Token.createLookBehindAssertionBegin(true);
         } else if (consumingLookahead("?:")) {
             return Token.create(Token.Kind.nonCaptureGroupBegin);
+        } else if (consumingLookahead("?<")) {
+            String groupName = parseGroupName();
+            registerNamedCaptureGroup(groupName);
+            return Token.create(Token.Kind.captureGroupBegin);
         } else {
             registerCaptureGroup();
             return Token.create(Token.Kind.captureGroupBegin);
         }
+    }
+
+    private int parseCodePointInGroupName() throws RegexSyntaxException {
+        if (consumingLookahead("\\u")) {
+            final int unicodeEscape = parseUnicodeEscapeChar();
+            if (unicodeEscape < 0) {
+                throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
+            } else {
+                return unicodeEscape;
+            }
+        }
+        if (atEnd()) {
+            throw syntaxError(ErrorMessages.UNTERMINATED_GROUP_NAME);
+        }
+        if (consumingLookahead(">")) {
+            return -1;
+        }
+        final char c = consumeChar();
+        return flags.isUnicode() && Character.isHighSurrogate(c) ? finishSurrogatePair(c) : c;
+    }
+
+    /**
+     * Parse a {@code GroupName}, i.e. {@code <RegExpIdentifierName>}, assuming that the opening
+     * {@code <} bracket was already read.
+     * 
+     * @return the StringValue of the {@code RegExpIdentifierName}
+     */
+    private String parseGroupName() throws RegexSyntaxException {
+        StringBuilder groupName = new StringBuilder();
+        int codePoint = parseCodePointInGroupName();
+        if (codePoint == -1) {
+            throw syntaxError(ErrorMessages.EMPTY_GROUP_NAME);
+        }
+        if (!(ID_START.contains(codePoint) || codePoint == '$' || codePoint == '_')) {
+            throw syntaxError(ErrorMessages.INVALID_GROUP_NAME_START);
+        }
+        groupName.appendCodePoint(codePoint);
+        while ((codePoint = parseCodePointInGroupName()) != -1) {
+            if (!(ID_CONTINUE.contains(codePoint) || codePoint == '$' || codePoint == '\u200c' || codePoint == '\u200d')) {
+                throw syntaxError(ErrorMessages.INVALID_GROUP_NAME_PART);
+            }
+            groupName.appendCodePoint(codePoint);
+        }
+        return groupName.toString();
     }
 
     private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
@@ -449,6 +577,39 @@ public final class RegexLexer {
         }
     }
 
+    /**
+     * Parse a {@code RegExpUnicodeEscapeSequence}, assuming that the prefix '&#92;u' has already
+     * been read.
+     * 
+     * @return the code point of the escaped character, or -1 if the escape was malformed
+     */
+    private int parseUnicodeEscapeChar() throws RegexSyntaxException {
+        if (flags.isUnicode() && consumingLookahead("{")) {
+            final int value = parseHex(1, Integer.MAX_VALUE, 0x10ffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
+            if (!consumingLookahead("}")) {
+                throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
+            }
+            return value;
+        } else {
+            final int value = parseHex(4, 4, 0xffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
+            if (flags.isUnicode() && Character.isHighSurrogate((char) value)) {
+                final int resetIndex = index;
+                if (consumingLookahead("\\u") && !lookahead("{")) {
+                    final char lead = (char) value;
+                    final char trail = (char) parseHex(4, 4, 0xffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
+                    if (Character.isLowSurrogate(trail)) {
+                        return Character.toCodePoint(lead, trail);
+                    } else {
+                        index = resetIndex;
+                    }
+                } else {
+                    index = resetIndex;
+                }
+            }
+            return value;
+        }
+    }
+
     private int parseEscapeChar(char c, boolean inCharClass) throws RegexSyntaxException {
         if (inCharClass && c == 'b') {
             return '\b';
@@ -489,30 +650,8 @@ public final class RegexLexer {
                 advance();
                 return Character.toUpperCase(controlLetter) - ('A' - 1);
             case 'u':
-                if (flags.isUnicode() && consumingLookahead("{")) {
-                    final int value = parseHex(1, Integer.MAX_VALUE, 0x10ffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
-                    if (!consumingLookahead("}")) {
-                        throw syntaxError(ErrorMessages.INVALID_UNICODE_ESCAPE);
-                    }
-                    return value;
-                } else {
-                    final int value = parseHex(4, 4, 0xffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
-                    if (flags.isUnicode() && Character.isHighSurrogate((char) value)) {
-                        final int resetIndex = index;
-                        if (consumingLookahead("\\u") && !lookahead("{")) {
-                            final char lead = (char) value;
-                            final char trail = (char) parseHex(4, 4, 0xffff, ErrorMessages.INVALID_UNICODE_ESCAPE);
-                            if (Character.isLowSurrogate(trail)) {
-                                return Character.toCodePoint(lead, trail);
-                            } else {
-                                index = resetIndex;
-                            }
-                        } else {
-                            index = resetIndex;
-                        }
-                    }
-                    return value < 0 ? c : value;
-                }
+                final int unicodeEscape = parseUnicodeEscapeChar();
+                return unicodeEscape < 0 ? c : unicodeEscape;
             case 'x':
                 final int value = parseHex(2, 2, 0xff, ErrorMessages.INVALID_ESCAPE);
                 return value < 0 ? c : value;

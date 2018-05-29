@@ -190,7 +190,11 @@ public final class AllocationSite {
     }
 
     /** A shutdown hook to print the AllocationProfiling output. */
-    public static class AllocationProfilingShutdownHook implements Runnable {
+    public static class AllocationProfilingShutdownHook extends Thread {
+
+        public AllocationProfilingShutdownHook() {
+            super("AllocationProfilingShutdownHook");
+        }
 
         @Override
         public void run() {

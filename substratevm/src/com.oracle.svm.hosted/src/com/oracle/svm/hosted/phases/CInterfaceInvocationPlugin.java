@@ -68,6 +68,8 @@ import com.oracle.svm.core.graal.code.amd64.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -477,6 +479,8 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
              * introducing additional invokes without real BCIs in a BytecodeParser context, which
              * does not work too well.
              */
+
+            b.append(new CFunctionPrologueNode());
         }
 
         // We "discard" the receiver from the signature by pretending we are a static method
@@ -505,6 +509,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else {
                 b.add(invokeNode);
             }
+            b.append(new CFunctionEpilogueNode());
         } else {
             throw shouldNotReachHere("Unsupported type of call: " + callType);
         }

@@ -13,12 +13,9 @@ where options include:
     --class-path <class search path of directories and zip/jar files>
                           A %pathsep% separated list of directories, JAR archives,
                           and ZIP archives to search for class files.
-    --shared              build shared library
     -D<name>=<value>      set a system property
     -J<flag>              pass <flag> directly to the JVM running the image generator
-    -g                    enable debuginfo generation
     -O<level>             0 - no optimizations, 1 - basic optimizations (default).
-    -ea                   enable assertions in the generated image
     --verbose             enable verbose output
     --version             print product version and exit
     --help                print this help message

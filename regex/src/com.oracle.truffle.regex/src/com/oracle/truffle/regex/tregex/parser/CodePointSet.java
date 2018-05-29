@@ -25,6 +25,9 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.Constants;
 
 import java.util.ArrayList;
@@ -33,7 +36,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class CodePointSet {
+public final class CodePointSet implements JsonConvertible {
 
     private List<CodePointRange> ranges;
     private boolean normalized;
@@ -188,6 +191,24 @@ public final class CodePointSet {
         return this;
     }
 
+    public boolean contains(int codePoint) {
+        normalize();
+        int low = 0;
+        int high = ranges.size() - 1;
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            CodePointRange midRange = ranges.get(mid);
+            if (codePoint < midRange.lo) {
+                high = mid - 1;
+            } else if (codePoint > midRange.hi) {
+                low = mid + 1;
+            } else { // codePoint >= midRange.lo && codePoint <= midRange.hi
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean matchesNothing() {
         normalize();
         return ranges.isEmpty();
@@ -264,5 +285,12 @@ public final class CodePointSet {
     @Override
     public int hashCode() {
         return getRanges().hashCode();
+    }
+
+    @TruffleBoundary
+    @Override
+    public JsonValue toJson() {
+        normalize();
+        return Json.array(ranges);
     }
 }

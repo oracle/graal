@@ -56,11 +56,11 @@ public class HostedOptionParser implements HostedOptionProvider {
     private SortedMap<String, OptionDescriptor> allRuntimeOptions = new TreeMap<>();
 
     public HostedOptionParser(ImageClassLoader imageClassLoader) {
-        collectOptions(imageClassLoader, allHostedOptions, allRuntimeOptions);
+        collectOptions(imageClassLoader.findSubclasses(OptionDescriptors.class), allHostedOptions, allRuntimeOptions);
     }
 
-    public static void collectOptions(ImageClassLoader imageClassLoader, SortedMap<String, OptionDescriptor> allHostedOptions, SortedMap<String, OptionDescriptor> allRuntimeOptions) {
-        List<Class<? extends OptionDescriptors>> optionsClasses = imageClassLoader.findSubclasses(OptionDescriptors.class);
+    public static void collectOptions(List<Class<? extends OptionDescriptors>> optionsClasses, SortedMap<String, OptionDescriptor> allHostedOptions,
+                    SortedMap<String, OptionDescriptor> allRuntimeOptions) {
         for (Class<? extends OptionDescriptors> optionsClass : optionsClasses) {
             if (Modifier.isAbstract(optionsClass.getModifiers())) {
                 continue;

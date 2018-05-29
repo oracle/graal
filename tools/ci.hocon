@@ -12,6 +12,10 @@ toolsGateLite : ${toolsCommon} {
   ]
 }
 
+toolsWeekly: ${tools-weekly-notifications} {
+  targets: ["weekly"]
+}
+
 builds += [
   ${linux-amd64} ${labsjdk8}    ${toolsCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-8"},
   ${linux-amd64} ${oraclejdk9}  ${toolsCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-tools-9"},
@@ -24,28 +28,22 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
-  ${solaris-sparcv9} ${labsjdk8} ${toolsGateLite} {
-    targets : [ weekly ],
+  ${solaris-sparcv9} ${labsjdk8} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-solaris-lite-8"
   }
-  ${solaris-sparcv9} ${oraclejdk9} ${toolsGateLite} {
-    targets : [ weekly ],
+  ${solaris-sparcv9} ${oraclejdk9} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-solaris-lite-9"
   }
-  ${solaris-sparcv9} ${oraclejdk10} ${toolsGateLite} {
-    targets : [ weekly ],
+  ${solaris-sparcv9} ${oraclejdk10} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-solaris-lite-10"
   }
-  ${darwin-amd64} ${labsjdk8} ${toolsGateLite} {
-    targets : [ weekly ],
+  ${darwin-amd64} ${labsjdk8} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-8"
   }
-  ${darwin-amd64} ${oraclejdk9} ${toolsGateLite} {
-    targets : [ weekly ],
+  ${darwin-amd64} ${oraclejdk9} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-9"
   }
-  ${darwin-amd64} ${oraclejdk10} ${toolsGateLite} {
-    targets : [ weekly ],
+  ${darwin-amd64} ${oraclejdk10} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-10"
   }
 ]

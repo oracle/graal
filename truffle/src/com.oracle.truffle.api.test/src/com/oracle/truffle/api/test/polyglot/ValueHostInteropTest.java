@@ -52,13 +52,11 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.hamcrest.CoreMatchers;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -73,7 +71,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 
-public class ValueHostInteropTest {
+public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     public static class Data {
         public int x;
@@ -94,16 +92,9 @@ public class ValueHostInteropTest {
         }
     }
 
-    private Context context;
-
     @Before
     public void initObjects() {
-        context = Context.create();
-    }
-
-    @After
-    public void cleanup() {
-        context.close();
+        setupEnv();
     }
 
     @Test

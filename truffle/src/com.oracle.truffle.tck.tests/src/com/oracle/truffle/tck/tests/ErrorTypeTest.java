@@ -58,7 +58,7 @@ public class ErrorTypeTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<? extends TestRun> createErrorTypeTests() {
-        context = new TestContext();
+        context = new TestContext(ErrorTypeTest.class);
         final Set<? extends String> requiredLanguages = TestUtil.getRequiredLanguages(context);
         final Collection<TestRun> testRuns = new LinkedHashSet<>();
         for (String snippetLanguage : requiredLanguages) {
@@ -97,7 +97,7 @@ public class ErrorTypeTest {
                 if (snippetLanguage.equals(parLanguage)) {
                     continue;
                 }
-                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new HashSet<>();
+                final Collection<Map.Entry<String, ? extends Snippet>> valueConstructors = new ArrayList<>();
                 for (Snippet valueConstructor : context.getValueConstructors(null, parLanguage)) {
                     valueConstructors.add(new AbstractMap.SimpleImmutableEntry<>(parLanguage, valueConstructor));
                 }

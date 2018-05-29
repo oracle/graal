@@ -31,7 +31,6 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
-import com.oracle.truffle.api.TruffleException;
 
 @SuppressWarnings("deprecation")
 class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -167,7 +166,12 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     @Override
     public String getVersion() {
-        return cache.getVersion();
+        final String version = cache.getVersion();
+        if (version.equals("inherit")) {
+            return engine.getVersion();
+        } else {
+            return version;
+        }
     }
 
 }

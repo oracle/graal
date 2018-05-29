@@ -1,12 +1,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -90,10 +92,12 @@ def _create_temporary_workdir_parser():
     group.add_argument("--no-scratch", action="store_true", help="Do not execute benchmark in scratch directory.")
     return parser
 
+
 mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
     _create_temporary_workdir_parser(),
     "\n\nFlags for benchmark suites with temporary working directories:\n"
 )
+
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
@@ -331,7 +335,58 @@ class CounterBenchmarkMixin(DebugValueBenchmarkMixin):
         ] + super(CounterBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
 
 
-class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin):
+class MemUseTrackerBenchmarkMixin(DebugValueBenchmarkMixin):
+    trackers = [
+        # LIR stages
+        "LIRPhaseMemUse_AllocationStage",
+        "LIRPhaseMemUse_PostAllocationOptimizationStage",
+        "LIRPhaseMemUse_PreAllocationOptimizationStage",
+        # RA phases
+        "LIRPhaseMemUse_LinearScanPhase",
+        "LIRPhaseMemUse_GlobalLivenessAnalysisPhase",
+        "LIRPhaseMemUse_TraceBuilderPhase",
+        "LIRPhaseMemUse_TraceRegisterAllocationPhase",
+    ]
+    name_re = re.compile(r"(?P<name>\w+)_Accm")
+
+    @staticmethod
+    def counterArgs():
+        return "-Dgraal.MemUseTrackers=" + ','.join(MemUseTrackerBenchmarkMixin.trackers)
+
+    def vmArgs(self, bmSuiteArgs):
+        vmArgs = [MemUseTrackerBenchmarkMixin.counterArgs()] + super(MemUseTrackerBenchmarkMixin, self).vmArgs(bmSuiteArgs)
+        return vmArgs
+
+    @staticmethod
+    def filterResult(r):
+        m = MemUseTrackerBenchmarkMixin.name_re.match(r['name'])
+        if m:
+            name = m.groupdict()['name']
+            if name in MemUseTrackerBenchmarkMixin.trackers:
+                r['name'] = name
+                return r
+        return None
+
+    def shorten_vm_flags(self, args):
+        # not need for timer names
+        filtered_args = [x for x in args if not x.startswith("-Dgraal.MemUseTrackers=")]
+        return super(MemUseTrackerBenchmarkMixin, self).shorten_vm_flags(filtered_args)
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return [
+            DebugValueRule(
+                debug_value_file=self.get_csv_filename(),
+                benchmark=self.getBenchmarkName(),
+                bench_suite=self.benchSuiteName(),
+                metric_name="allocated-memory",
+                metric_unit="B",
+                vm_flags=self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
+                filter_fn=MemUseTrackerBenchmarkMixin.filterResult,
+            ),
+        ] + super(MemUseTrackerBenchmarkMixin, self).rules(out, benchmarks, bmSuiteArgs)
+
+
+class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, MemUseTrackerBenchmarkMixin):
 
     def host_vm_config_name(self, host_vm, vm):
         return super(DaCapoTimingBenchmarkMixin, self).host_vm_config_name(host_vm, vm) + "-timing"

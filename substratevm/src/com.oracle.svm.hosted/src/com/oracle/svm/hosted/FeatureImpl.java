@@ -224,12 +224,8 @@ public class FeatureImpl {
         }
 
         @Override
-        public void registerAsUnsafeWritten(Field field) {
+        public void registerAsUnsafeAccessed(Field field) {
             registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
-        }
-
-        public boolean registerAsUnsafeAccessed(Field field) {
-            return registerAsUnsafeAccessed(getMetaAccess().lookupJavaField(field));
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField) {

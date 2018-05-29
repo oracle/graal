@@ -34,6 +34,7 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyleVersion" : "8.8",
       "javaCompliance" : "1.8",
       "workingSets" : "Truffle,Regex",
     },
@@ -71,6 +72,14 @@ suite = {
         "TREGEX",
       ],
       "maven" : False,
+    },
+
+    "TREGEX_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "TRegex support distribution for the GraalVM",
+      "layout" : {
+        "native-image.properties" : "file:mx.regex/native-image.properties",
+      },
     },
   }
 }

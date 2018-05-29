@@ -101,6 +101,7 @@ public abstract class SectionName {
     private static String getFormatPrefix(ObjectFile.Format f) {
         switch (f) {
             case ELF:
+            case PECOFF:
                 return ".";
             case MACH_O:
                 return "__";
@@ -141,8 +142,7 @@ public abstract class SectionName {
              * format-dependent names, for all formats.
              */
             for (Format f : ObjectFile.Format.values()) {
-                SectionName replaced = NAMES_MAP.put(name.getFormatDependentName(f), name);
-                assert replaced == null;
+                NAMES_MAP.put(name.getFormatDependentName(f), name);
             }
         }
     }

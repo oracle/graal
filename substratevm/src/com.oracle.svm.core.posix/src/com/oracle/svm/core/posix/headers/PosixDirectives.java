@@ -91,6 +91,11 @@ public class PosixDirectives implements CContext.Directives {
     };
 
     @Override
+    public boolean isInConfiguration() {
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+    }
+
+    @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>(Arrays.asList(commonLibs));
         if (Platform.includedIn(Platform.LINUX.class)) {

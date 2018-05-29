@@ -74,7 +74,7 @@ public class TypeSystemParser extends AbstractParser<TypeSystemData> {
         TypeSystemData typeSystem = new TypeSystemData(context, templateType, templateTypeAnnotation, false);
 
         // annotation type on class path!?
-        TypeElement annotationTypeElement = processingEnv.getElementUtils().getTypeElement(getAnnotationType().getCanonicalName());
+        TypeElement annotationTypeElement = ElementUtils.getTypeElement(processingEnv, getAnnotationType().getCanonicalName());
         if (annotationTypeElement == null) {
             typeSystem.addError("Required class %s is not on the classpath.", getAnnotationType().getName());
         }

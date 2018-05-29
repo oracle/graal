@@ -63,7 +63,7 @@ public class IdentityFunctionTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<? extends TestRun> createExpressionTests() {
-        context = new TestContext();
+        context = new TestContext(IdentityFunctionTest.class);
         final Collection<? extends TestRun> testRuns = TestUtil.createTestRuns(
                         TestUtil.getRequiredLanguages(context),
                         TestUtil.getRequiredValueLanguages(context),
@@ -104,7 +104,7 @@ public class IdentityFunctionTest {
                 TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());
                 if (!resultType.isAssignable(parameterType) || !resultType.isAssignable(resultType)) {
                     throw new AssertionError(String.format(
-                                    "Identity function return type must parameter type. Expected %s got %s.",
+                                    "Identity function must return the same types as it was passed. Expected %s got %s.",
                                     parameterType,
                                     resultType));
                 }

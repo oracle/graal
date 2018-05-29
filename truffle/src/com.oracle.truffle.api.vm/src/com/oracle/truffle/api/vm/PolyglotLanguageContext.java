@@ -45,13 +45,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.ForeignAccess;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.KeyInfo;
-import com.oracle.truffle.api.interop.Message;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 
 @SuppressWarnings("deprecation")
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
@@ -60,7 +56,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     final PolyglotContextImpl context;
     final PolyglotLanguage language;
-    final Map<Object, CallTarget> sourceCache = new ConcurrentHashMap<>();
+    volatile PolyglotSourceCache sourceCache;
     final Map<String, Object> config;
     final boolean eventsEnabled;
     volatile Map<Class<?>, PolyglotValue> valueCache;
@@ -76,8 +72,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     @CompilationFinal private volatile Object polyglotGuestBindings;
     private volatile Value hostBindings;
     @CompilationFinal volatile Env env;
-    private final Node keyInfoNode = Message.KEY_INFO.createNode();
-    private final Node readNode = Message.READ.createNode();
+
     final Thread.UncaughtExceptionHandler uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
 
     PolyglotLanguageContext(PolyglotContextImpl context, PolyglotLanguage language, OptionValuesImpl optionValues, String[] applicationArguments, Map<String, Object> config, boolean eventsEnabled) {
@@ -98,6 +93,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         PolyglotValue.createDefaultValueCaches(this);
         nullValue = toHostValue(toGuestValue(null));
         defaultValueCache = new PolyglotValue.Default(this);
+
+        assert language.isInitialized();
+        PolyglotSourceCache languageSourceCache = language.sourceCache;
+        if (languageSourceCache != null) {
+            this.sourceCache = languageSourceCache;
+        } else {
+            this.sourceCache = new PolyglotSourceCache();
+        }
     }
 
     Object getContextImpl() {
@@ -148,17 +151,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return env != null && initialized;
     }
 
-    CallTarget parseCached(com.oracle.truffle.api.source.Source source) throws AssertionError {
-        CallTarget target = sourceCache.get(source);
-        if (target == null) {
-            ensureInitialized(null);
-            target = LANGUAGE.parse(requireEnv(), source, null);
-            if (target == null) {
-                throw new AssertionError(String.format("Parsing resulted in a null CallTarget for %s.", source));
-            }
-            sourceCache.put(source, target);
-        }
-        return target;
+    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
+        ensureInitialized(accessingLanguage);
+        PolyglotSourceCache cache = this.sourceCache;
+        assert cache != null;
+        return cache.parseCached(this, source, argumentNames);
     }
 
     Env requireEnv() {
@@ -310,6 +307,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 if (!initialized) {
                     initialized = true; // Allow language use during initialization
                     try {
+
                         if (!context.inContextPreInitialization) {
                             LANGUAGE.initializeThread(env, Thread.currentThread());
                         }
@@ -529,21 +527,23 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Override
         public Object apply(Object languageContext, Object receiver) {
-            if (cachedClass == null) {
+            Class<?> cachedClassLocal = this.cachedClass;
+            if (cachedClassLocal == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (receiver == null) {
                     // directly go to slow path for null
-                    cachedClass = Generic.class;
+                    cachedClass = cachedClassLocal = Generic.class;
                 } else {
-                    cachedClass = receiver.getClass();
+                    cachedClass = cachedClassLocal = receiver.getClass();
                 }
             }
-            if (cachedClass != Generic.class) {
-                if (cachedClass.isInstance(receiver)) {
-                    return toGuestValue(languageContext, cachedClass.cast(receiver));
+            if (cachedClassLocal != Generic.class) {
+                assert cachedClassLocal != null;
+                if (cachedClassLocal.isInstance(receiver)) {
+                    return toGuestValue(languageContext, cachedClassLocal.cast(receiver));
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    cachedClass = Generic.class; // switch to generic
+                    cachedClass = cachedClassLocal = Generic.class; // switch to generic
                 }
             }
             return slowPath(languageContext, receiver);
@@ -569,7 +569,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 CompilerDirectives.transferToInterpreter();
                 throw PolyglotImpl.engineError(new IllegalArgumentException(String.format("Values cannot be passed from one context to another. " +
                                 "The current value originates from context 0x%s and the argument originates from context 0x%s.",
-                                Integer.toHexString(languageContext.context.api.hashCode()), Integer.toHexString(valueImpl.languageContext.context.api.hashCode()))));
+                                Integer.toHexString(languageContext.context.hashCode()), Integer.toHexString(valueImpl.languageContext.context.hashCode()))));
             }
             return languageContext.getAPIAccess().getReceiver(receiverValue);
         } else if (PolyglotImpl.isGuestPrimitive(receiver)) {
@@ -629,7 +629,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         Value execute(Object value) {
             Object receiver = value;
-            if (cachedClass == null) {
+            Class<?> cachedClassLocal = cachedClass;
+            if (cachedClassLocal == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 cachedClass = receiver.getClass();
                 cachedValue = valueCache.get(cachedClass);
@@ -641,9 +642,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     cache = cachedFallbackValue;
                 }
                 return apiAccess.newValue(receiver, cache);
-            } else if (cachedClass != Generic.class) {
-                if (cachedClass.isInstance(value)) {
-                    receiver = cachedClass.cast(receiver);
+            } else if (cachedClassLocal != Generic.class) {
+                if (cachedClassLocal.isInstance(value)) {
+                    receiver = cachedClassLocal.cast(receiver);
                     PolyglotValue cache = cachedValue;
                     if (cache == null) {
                         receiver = convertToInterop(receiver);
@@ -690,34 +691,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             args[i] = toHostValue(values[i]);
         }
         return args;
-    }
-
-    Object lookupGuest(String symbolName) {
-        ensureInitialized(null);
-        Iterable<?> topScopes = VMAccessor.instrumentAccess().findTopScopes(env);
-        for (Object topScope : topScopes) {
-            Scope scope = (Scope) topScope;
-            TruffleObject variables = (TruffleObject) scope.getVariables();
-            int symbolInfo = ForeignAccess.sendKeyInfo(keyInfoNode, variables, symbolName);
-            if (KeyInfo.isExisting(symbolInfo) && KeyInfo.isReadable(symbolInfo)) {
-                try {
-                    return ForeignAccess.sendRead(readNode, variables, symbolName);
-                } catch (InteropException ex) {
-                    throw new AssertionError(symbolName, ex);
-                }
-            }
-        }
-        return null;
-    }
-
-    Value lookupHost(String symbolName) {
-        Object symbol = lookupGuest(symbolName);
-        Value resolvedSymbol = null;
-        if (symbol != null) {
-            assert PolyglotImpl.isGuestInteropValue(symbol);
-            resolvedSymbol = toHostValue(symbol);
-        }
-        return resolvedSymbol;
     }
 
     @Override

@@ -198,6 +198,22 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.lookupTypes = initLookupTypes(extraLookupTypes);
     }
 
+    @Override
+    public String getName() {
+        String compilerConfigurationName = getTruffleCompiler().getCompilerConfigurationName();
+        assert compilerConfigurationName != null;
+        String suffix;
+        if (compilerConfigurationName.equals("community")) {
+            suffix = "CE";
+        } else if (compilerConfigurationName.equals("enterprise")) {
+            suffix = "EE";
+        } else {
+            assert false : "unexpected compiler configuration name: " + compilerConfigurationName;
+            suffix = compilerConfigurationName;
+        }
+        return "GraalVM " + suffix;
+    }
+
     protected GraalTVMCI getTvmci() {
         return tvmci;
     }
@@ -696,7 +712,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         GraphOutput<Void, ?> output = null;
         try (Scope c = debug.scope("TruffleTree")) {
             if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-                output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
+                output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 0));
                 output.beginGroup(null, "Truffle::" + callTarget.toString(), "Truffle::" + callTarget.toString(), null, 0, DebugContext.addVersionProperties(null));
                 debug.dump(DebugContext.BASIC_LEVEL, new TruffleTreeDumpHandler.TruffleTreeDump(callTarget, inlining), "TruffleTree");
             }

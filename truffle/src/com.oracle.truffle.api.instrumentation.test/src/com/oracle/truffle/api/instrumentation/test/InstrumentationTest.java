@@ -193,7 +193,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     public void testDefaultId() {
         Instrument descriptor1 = engine.getInstruments().get(MetadataInstrument2.class.getSimpleName());
         Assert.assertEquals("", descriptor1.getName());
-        Assert.assertEquals("", descriptor1.getVersion());
+        Assert.assertEquals(engine.getVersion(), descriptor1.getVersion());
         Assert.assertEquals(MetadataInstrument2.class.getSimpleName(), descriptor1.getId());
         Assert.assertFalse(isInitialized(descriptor1));
     }
@@ -1492,6 +1492,60 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             onDisposeCalls++;
         }
 
+    }
+
+    @Test
+    public void testNullEventNode() throws IOException {
+        Instrument instrument = engine.getInstruments().get("testNullEventNode");
+        assureEnabled(instrument);
+        TestNullEventNode service = instrument.lookup(TestNullEventNode.class);
+
+        assertEquals(0, service.onNodeCreateCalls);
+        assertEquals(0, service.onNodeEnterCalls);
+
+        run("STATEMENT(EXPRESSION)");
+
+        assertTrue(Integer.toString(service.onNodeCreateCalls), service.onNodeCreateCalls >= 2);
+        assertEquals(1, service.onNodeEnterCalls);
+        service.onNodeCreateCalls = 0;
+        service.onNodeEnterCalls = 0;
+
+        run("ROOT(STATEMENT(), EXPRESSION(), STATEMENT(), EXPRESSION())");
+
+        assertTrue(Integer.toString(service.onNodeCreateCalls), service.onNodeCreateCalls >= 4);
+        assertEquals(2, service.onNodeEnterCalls);
+    }
+
+    @Registration(id = "testNullEventNode", services = {Instrumenter.class, TestNullEventNode.class, Object.class})
+    public static class TestNullEventNode extends TruffleInstrument {
+
+        int onNodeCreateCalls = 0;
+        int onNodeEnterCalls = 0;
+
+        @Override
+        protected void onCreate(final Env env) {
+            env.registerService(this);
+            env.registerService(env.getInstrumenter());
+            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(),
+                            new ExecutionEventNodeFactory() {
+
+                                public ExecutionEventNode create(EventContext context) {
+                                    onNodeCreateCalls++;
+                                    boolean isExpression = context.getInstrumentedSourceSection().getCharacters().toString().startsWith("EXPRESSION");
+                                    if (isExpression) {
+                                        return null;
+                                    } else {
+                                        return new ExecutionEventNode() {
+                                            @Override
+                                            protected void onEnter(VirtualFrame frame) {
+                                                onNodeEnterCalls++;
+                                                super.onEnter(frame);
+                                            }
+                                        };
+                                    }
+                                }
+                            });
+        }
     }
 
     private static void setupEngine(Source initSource, boolean runInitAfterExec) {

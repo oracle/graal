@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.parser.Parser;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.parser.SimpleLanguageParser;
 
 /**
  * Manages the mapping from function names to {@link SLFunction function objects}.
@@ -95,7 +95,7 @@ public final class SLFunctionRegistry {
     }
 
     public void register(Source newFunctions) {
-        register(Parser.parseSL(language, newFunctions));
+        register(SimpleLanguageParser.parseSL(language, newFunctions));
     }
 
     /**

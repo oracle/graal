@@ -46,6 +46,11 @@ public final class NullHighByteBitSetMatcher extends ProfiledCharMatcher {
     }
 
     @Override
+    public int estimatedCost() {
+        return 4;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         return modifiersToString() + "{ascii " + bitSet + "}";

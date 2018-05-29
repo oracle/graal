@@ -27,13 +27,16 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
@@ -59,8 +62,10 @@ import jdk.vm.ci.meta.JavaKind;
 public final class ArithmeticSnippets extends SubstrateTemplates implements Snippets {
 
     @Snippet
-    protected static int idivSnippet(int x, int y) {
-        zeroCheck(y);
+    protected static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         if (x == Integer.MIN_VALUE && y == -1) {
             return Integer.MIN_VALUE;
         }
@@ -68,8 +73,10 @@ public final class ArithmeticSnippets extends SubstrateTemplates implements Snip
     }
 
     @Snippet
-    protected static long ldivSnippet(long x, long y) {
-        zeroCheck(y);
+    protected static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         if (x == Long.MIN_VALUE && y == -1) {
             return Long.MIN_VALUE;
         }
@@ -77,8 +84,10 @@ public final class ArithmeticSnippets extends SubstrateTemplates implements Snip
     }
 
     @Snippet
-    protected static int iremSnippet(int x, int y) {
-        zeroCheck(y);
+    protected static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         if (x == Integer.MIN_VALUE && y == -1) {
             return 0;
         }
@@ -86,8 +95,10 @@ public final class ArithmeticSnippets extends SubstrateTemplates implements Snip
     }
 
     @Snippet
-    protected static long lremSnippet(long x, long y) {
-        zeroCheck(y);
+    protected static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         if (x == Long.MIN_VALUE && y == -1) {
             return 0;
         }
@@ -95,26 +106,34 @@ public final class ArithmeticSnippets extends SubstrateTemplates implements Snip
     }
 
     @Snippet
-    protected static int uidivSnippet(int x, int y) {
-        zeroCheck(y);
+    protected static int uidivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         return safeUDiv(x, y);
     }
 
     @Snippet
-    protected static long uldivSnippet(long x, long y) {
-        zeroCheck(y);
+    protected static long uldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         return safeUDiv(x, y);
     }
 
     @Snippet
-    protected static int uiremSnippet(int x, int y) {
-        zeroCheck(y);
+    protected static int uiremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         return safeURem(x, y);
     }
 
     @Snippet
-    protected static long ulremSnippet(long x, long y) {
-        zeroCheck(y);
+    protected static long ulremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
+        if (needsZeroCheck) {
+            zeroCheck(y);
+        }
         return safeURem(x, y);
     }
 
@@ -216,6 +235,10 @@ public final class ArithmeticSnippets extends SubstrateTemplates implements Snip
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("x", node.getX());
             args.add("y", node.getY());
+
+            IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
+            args.addConst("needsZeroCheck", node.getZeroCheck() == null && yStamp.contains(0));
+
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
@@ -233,7 +256,13 @@ class SafeSignedDivNode extends SignedDivNode {
     public static final NodeClass<SafeSignedDivNode> TYPE = NodeClass.create(SafeSignedDivNode.class);
 
     protected SafeSignedDivNode(ValueNode x, ValueNode y) {
-        super(TYPE, x, y);
+        /*
+         * All "safe" division nodes use null as the zeroCheck guard. Since the safe nodes are still
+         * fixed and no code in the backend depends on the guard information, so having an explicit
+         * guard is not necessary. Passing in the guard via a snippet would be tricky (it is not a
+         * GuardingNode but an arbitrary ValueNode until after snippet instantiation).
+         */
+        super(TYPE, x, y, null);
     }
 }
 
@@ -242,7 +271,7 @@ class SafeSignedRemNode extends SignedRemNode {
     public static final NodeClass<SafeSignedRemNode> TYPE = NodeClass.create(SafeSignedRemNode.class);
 
     protected SafeSignedRemNode(ValueNode x, ValueNode y) {
-        super(TYPE, x, y);
+        super(TYPE, x, y, null);
     }
 }
 
@@ -251,7 +280,7 @@ class SafeUnsignedDivNode extends UnsignedDivNode {
     public static final NodeClass<SafeUnsignedDivNode> TYPE = NodeClass.create(SafeUnsignedDivNode.class);
 
     protected SafeUnsignedDivNode(ValueNode x, ValueNode y) {
-        super(TYPE, x, y);
+        super(TYPE, x, y, null);
     }
 }
 
@@ -260,6 +289,6 @@ class SafeUnsignedRemNode extends UnsignedRemNode {
     public static final NodeClass<SafeUnsignedRemNode> TYPE = NodeClass.create(SafeUnsignedRemNode.class);
 
     protected SafeUnsignedRemNode(ValueNode x, ValueNode y) {
-        super(TYPE, x, y);
+        super(TYPE, x, y, null);
     }
 }

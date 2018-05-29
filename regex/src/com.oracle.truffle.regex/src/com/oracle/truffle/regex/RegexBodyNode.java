@@ -91,5 +91,4 @@ public abstract class RegexBodyNode extends ExecutableNode implements Instrument
     protected String getEngineLabel() {
         return "no_engine_label";
     }
-
 }

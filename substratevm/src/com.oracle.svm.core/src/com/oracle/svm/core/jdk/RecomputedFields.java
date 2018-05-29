@@ -41,7 +41,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinPool.ForkJoinWorkerThreadFactory;
-import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
@@ -69,6 +68,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /*
@@ -114,24 +114,168 @@ final class Target_java_nio_charset_CoderResult_Cache {
 final class Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_AtomicReferenceFieldUpdaterImpl {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
     private long offset;
+
+    @Alias private static sun.misc.Unsafe U;
+
+    /** the same as tclass, used for checks */
+    @Alias private final Class<?> cclass;
+
+    /** class holding the field */
+    @Alias private final Class<?> tclass;
+
+    /** field value type */
+    @Alias private final Class<?> vclass;
+
+    // simplified version of the original constructor
+    @SuppressWarnings("unused")
+    @Substitute
+    Target_java_util_concurrent_atomic_AtomicReferenceFieldUpdater_AtomicReferenceFieldUpdaterImpl(
+                    final Class<?> tclass, final Class<?> vclass, final String fieldName, final Class<?> caller) {
+        final Field field;
+        final Class<?> fieldClass;
+        final int modifiers;
+        try {
+            field = tclass.getDeclaredField(fieldName);
+
+            modifiers = field.getModifiers();
+            fieldClass = field.getType();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        if (vclass != fieldClass) {
+            throw new ClassCastException();
+        }
+        if (vclass.isPrimitive())
+            throw new IllegalArgumentException("Must be reference type");
+
+        if (!Modifier.isVolatile(modifiers))
+            throw new IllegalArgumentException("Must be volatile type");
+
+        // access checks are disabled
+        this.cclass = tclass;
+        this.tclass = tclass;
+        this.vclass = vclass;
+        this.offset = U.objectFieldOffset(field);
+    }
 }
 
 @TargetClass(className = "java.util.concurrent.atomic.AtomicIntegerFieldUpdater$AtomicIntegerFieldUpdaterImpl")
 final class Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicIntegerFieldUpdaterImpl {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
     private long offset;
+
+    @Alias private static sun.misc.Unsafe U;
+
+    /** the same as tclass, used for checks */
+    @Alias private final Class<?> cclass;
+    /** class holding the field */
+    @Alias private final Class<?> tclass;
+
+    // simplified version of the original constructor
+    @SuppressWarnings("unused")
+    @Substitute
+    Target_java_util_concurrent_atomic_AtomicIntegerFieldUpdater_AtomicIntegerFieldUpdaterImpl(final Class<?> tclass,
+                    final String fieldName, final Class<?> caller) {
+        final Field field;
+        final int modifiers;
+        try {
+            field = tclass.getDeclaredField(fieldName);
+            modifiers = field.getModifiers();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        if (field.getType() != int.class)
+            throw new IllegalArgumentException("Must be integer type");
+
+        if (!Modifier.isVolatile(modifiers))
+            throw new IllegalArgumentException("Must be volatile type");
+
+        // access checks are disabled
+        this.cclass = tclass;
+        this.tclass = tclass;
+        this.offset = U.objectFieldOffset(field);
+    }
 }
 
 @TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$CASUpdater")
 final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
     private long offset;
+
+    @Alias private static sun.misc.Unsafe U;
+
+    /** the same as tclass, used for checks */
+    @Alias private final Class<?> cclass;
+    /** class holding the field */
+    @Alias private final Class<?> tclass;
+
+    // simplified version of the original constructor
+    @SuppressWarnings("unused")
+    @Substitute
+    Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_CASUpdater(final Class<?> tclass,
+                    final String fieldName, final Class<?> caller) {
+        final Field field;
+        final int modifiers;
+        try {
+            field = tclass.getDeclaredField(fieldName);
+            modifiers = field.getModifiers();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        if (field.getType() != long.class)
+            throw new IllegalArgumentException("Must be long type");
+
+        if (!Modifier.isVolatile(modifiers))
+            throw new IllegalArgumentException("Must be volatile type");
+
+        // access checks are disabled
+        this.cclass = tclass;
+        this.tclass = tclass;
+        this.offset = U.objectFieldOffset(field);
+    }
+
 }
 
 @TargetClass(className = "java.util.concurrent.atomic.AtomicLongFieldUpdater$LockedUpdater")
 final class Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater {
     @Alias @RecomputeFieldValue(kind = AtomicFieldUpdaterOffset) //
     private long offset;
+
+    @Alias private static sun.misc.Unsafe U;
+
+    /** the same as tclass, used for checks */
+    @Alias private final Class<?> cclass;
+    /** class holding the field */
+    @Alias private final Class<?> tclass;
+
+    // simplified version of the original constructor
+    @SuppressWarnings("unused")
+    @Substitute
+    Target_java_util_concurrent_atomic_AtomicLongFieldUpdater_LockedUpdater(final Class<?> tclass,
+                    final String fieldName, final Class<?> caller) {
+        Field field = null;
+        int modifiers = 0;
+        try {
+            field = tclass.getDeclaredField(fieldName);
+            modifiers = field.getModifiers();
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        if (field.getType() != long.class)
+            throw new IllegalArgumentException("Must be long type");
+
+        if (!Modifier.isVolatile(modifiers))
+            throw new IllegalArgumentException("Must be volatile type");
+
+        // access checks are disabled
+        this.cclass = tclass;
+        this.tclass = tclass;
+        this.offset = U.objectFieldOffset(field);
+    }
 }
 
 /**
@@ -152,7 +296,7 @@ class AtomicFieldUpdaterFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        markAsUnsafeAccessed = (field -> access.registerAsUnsafeWritten(field));
+        markAsUnsafeAccessed = (field -> access.registerAsUnsafeAccessed(field));
     }
 
     @Override
@@ -314,18 +458,13 @@ final class Target_java_util_concurrent_ForkJoinTask {
     private static final ReferenceQueue<Object> exceptionTableRefQueue;
 
     static {
-        int exceptionMapCapacity;
-        try {
-            Field field = ForkJoinTask.class.getDeclaredField("EXCEPTION_MAP_CAPACITY");
-            field.setAccessible(true);
-            exceptionMapCapacity = field.getInt(null);
-        } catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-
         exceptionTableLock = new ReentrantLock();
         exceptionTableRefQueue = new ReferenceQueue<>();
-        exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[exceptionMapCapacity];
+        /*
+         * JDK 8 has a static final field EXCEPTION_MAP_CAPACITY with value 32, later versions just
+         * use 32 hardcoded. To be JDK version independent, we duplicate the hardcoded value.
+         */
+        exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[32];
     }
 
     @Substitute
@@ -354,7 +493,7 @@ final class Target_java_util_concurrent_Exchanger {
 class ExchangerABASEComputer implements RecomputeFieldValue.CustomFieldValueComputer {
 
     @Override
-    public Object compute(ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         try {
             ObjectLayout layout = ImageSingletons.lookup(ObjectLayout.class);
 

@@ -25,8 +25,6 @@ package com.oracle.svm.core.config;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.os.OSInterface;
-
 import jdk.vm.ci.code.TargetDescription;
 
 /**
@@ -38,11 +36,6 @@ public final class ConfigurationValues {
     @Fold
     public static TargetDescription getTarget() {
         return ImageSingletons.lookup(TargetDescription.class);
-    }
-
-    @Fold
-    public static OSInterface getOSInterface() {
-        return ImageSingletons.lookup(OSInterface.class);
     }
 
     @Fold

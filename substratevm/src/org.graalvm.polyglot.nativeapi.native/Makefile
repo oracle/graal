@@ -3,32 +3,31 @@
 # ORACLE PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
 #
 
-# This makefile builds the svmffi, javaframeanchor and svmjni libraries.
-TARGETOS ?= $(shell uname -s)
-ifeq ($(TARGETOS),Linux)
-    OS:=linux
-else
-ifeq ($(TARGETOS),Darwin)
-    OS:=darwin
-else
-    $(error Unsupported operating system $(TARGETOS). Currently supported: Linux and Darwin)
-endif
-endif
-
 # Binary directory
-SRC_DIR := src/
-OUT_DIR = ../../mxbuild/org.graalvm.polyglot.nativeapi.native/$(OS)-amd64
-POLYGLOT_NATIVE_CFLAGS := -c -fPIC -g -I ../org.graalvm.polyglot.nativeapi/resources
+SRC_DIR := $(VPATH)/src
+SRC_FILE := $(SRC_DIR)/polyglot-nativeapi/polyglot-nativeapi.c
+RESOURCE_DIR := $(VPATH)/../org.graalvm.polyglot.nativeapi/resources
+OUT_DIR := ${OS}-${ARCH}
+OUT_FILE := $(OUT_DIR)/polyglot-nativeapi
 
 .DEFAULT_GOAL := all
 
-$(OUT_DIR)/polyglot-nativeapi.o: $(SRC_DIR)/polyglot-nativeapi/polyglot-nativeapi.c
+ifneq (${OS},windows)
+POLYGLOT_NATIVE_CFLAGS := -c -fPIC -g -I $(RESOURCE_DIR)
+$(OUT_FILE).o: $(SRC_FILE)
 	mkdir -p $(OUT_DIR)
-	$(CC) $(POLYGLOT_NATIVE_CFLAGS) $(SRC_DIR)/polyglot-nativeapi/polyglot-nativeapi.c -o $(OUT_DIR)/polyglot-nativeapi.o
+	$(CC) $(POLYGLOT_NATIVE_CFLAGS) $(SRC_FILE) -o $(OUT_FILE).o
+
+all: $(OUT_FILE).o
+else
+$(OUT_FILE).obj: $(SRC_FILE)
+	mkdir -p $(OUT_DIR)
+	cl /c /Zi /I $(RESOURCE_DIR) /Fo$(OUT_FILE).obj $(SRC_FILE)
+
+all: $(OUT_FILE).obj
+endif
 
 clean :
 	$(RM) -r $(OUT_DIR)
-
-all: $(OUT_DIR)/polyglot-nativeapi.o
 
 .PHONY: all clean

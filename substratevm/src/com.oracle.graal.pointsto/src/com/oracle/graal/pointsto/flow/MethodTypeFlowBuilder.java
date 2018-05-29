@@ -68,7 +68,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
@@ -260,11 +259,6 @@ public class MethodTypeFlowBuilder {
                     assert arrayType.isArray();
                     arrayType.getComponentType().registerAsInTypeCheck();
                 }
-
-            } else if (n instanceof BytecodeExceptionNode) {
-                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
-                AnalysisType type = bb.getMetaAccess().lookupJavaType(node.getExceptionClass());
-                type.registerAsInHeap();
 
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
@@ -606,7 +600,7 @@ public class MethodTypeFlowBuilder {
                 BytecodeLocation location = BytecodeLocation.create(bciKey, method);
                 TypeFlowBuilder<?> instanceOfBuilder = TypeFlowBuilder.create(bb, node, InstanceOfTypeFlow.class, () -> {
                     InstanceOfTypeFlow instanceOf = new InstanceOfTypeFlow(node, location, declaredType);
-                    methodFlow.addInstanceOf(instanceOf);
+                    methodFlow.addInstanceOf(key, instanceOf);
                     return instanceOf;
                 });
                 /* InstanceOf must not be removed as it is reported by the analysis results. */
@@ -1011,7 +1005,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> loadBuilder;
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe load from an array object is essentially an array load since we
                          * don't have separate type flows for different array elements.
@@ -1045,7 +1039,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
                     TypeFlowBuilder<?> storeBuilder;
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe store to an array object is essentially an array store since we
                          * don't have separate type flows for different array elements.
@@ -1078,7 +1072,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                     TypeFlowBuilder<?> newValueBuilder = state.lookup(node.newValue());
                     TypeFlowBuilder<?> storeBuilder;
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Unsafe compare and swap is essentially unsafe store and unsafe store to
                          * an array object is essentially an array store since we don't have
@@ -1117,7 +1111,7 @@ public class MethodTypeFlowBuilder {
                     TypeFlowBuilder<?> storeBuilder;
                     TypeFlowBuilder<?> loadBuilder;
 
-                    if (objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
                         /*
                          * Atomic read and write is essentially unsafe store and unsafe store to an
                          * array object is essentially an array store since we don't have separate
@@ -1288,13 +1282,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisMethod targetMethod = (AnalysisMethod) target.targetMethod();
                     bb.isCallAllowed(bb, callerMethod, targetMethod, target.getNodeSourcePosition());
 
-                    Object key;
-                    if (invoke.bci() >= 0) {
-                        key = invoke.bci();
-                    } else {
-                        shouldNotReachHere("InvokeTypeFlow has a negative BCI");
-                        key = new Object();
-                    }
+                    Object key = uniqueKey(n);
                     BytecodeLocation location = BytecodeLocation.create(key, methodFlow.getMethod());
 
                     /*

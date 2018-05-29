@@ -58,17 +58,24 @@ final class TestContext implements Closeable {
     private final Map<String, Collection<? extends Snippet>> statements;
     private final Map<String, Collection<? extends Snippet>> scripts;
     private final Map<String, Collection<? extends InlineSnippet>> inlineScripts;
+    private final boolean printOutput;
     private Context context;
     private InlineVerifier inlineVerifier;
     private State state;
 
-    TestContext() {
+    TestContext(final Class<?> testClass) {
         state = State.NEW;
         this.valueConstructors = new HashMap<>();
         this.expressions = new HashMap<>();
         this.statements = new HashMap<>();
         this.scripts = new HashMap<>();
         this.inlineScripts = new HashMap<>();
+        boolean verbose = Boolean.getBoolean("tck.verbose");
+        final String propValue = System.getProperty(String.format("tck.%s.verbose", testClass.getSimpleName()));
+        if (propValue != null) {
+            verbose = Boolean.parseBoolean(propValue);
+        }
+        printOutput = verbose;
     }
 
     Map<String, ? extends LanguageProvider> getInstalledProviders() {
@@ -104,9 +111,15 @@ final class TestContext implements Closeable {
     Context getContext() {
         checkState(State.NEW, State.INITIALIZING, State.INITIALIZED);
         if (context == null) {
-            this.context = Context.newBuilder().out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE).allowAllAccess(true).build();
-            this.inlineVerifier = context.getEngine().getInstruments().get(InlineVerifier.ID).lookup(InlineVerifier.class);
-            Assert.assertNotNull(this.inlineVerifier);
+            final Context.Builder builder = Context.newBuilder().allowAllAccess(true);
+            if (!printOutput) {
+                builder.out(NullOutputStream.INSTANCE).err(NullOutputStream.INSTANCE);
+            }
+            this.context = builder.build();
+            if (!isTruffleCompileImmediately()) {
+                this.inlineVerifier = context.getEngine().getInstruments().get(InlineVerifier.ID).lookup(InlineVerifier.class);
+                Assert.assertNotNull(this.inlineVerifier);
+            }
         }
         return context;
     }
@@ -238,7 +251,13 @@ final class TestContext implements Closeable {
     }
 
     void setInlineSnippet(String languageId, InlineSnippet inlineSnippet, InlineVerifier.ResultVerifier verifier) {
-        inlineVerifier.setInlineSnippet(languageId, inlineSnippet, verifier);
+        if (inlineVerifier != null) {
+            inlineVerifier.setInlineSnippet(languageId, inlineSnippet, verifier);
+        }
+    }
+
+    private static boolean isTruffleCompileImmediately() {
+        return Boolean.getBoolean("graal.TruffleCompileImmediately");
     }
 
     private enum State {

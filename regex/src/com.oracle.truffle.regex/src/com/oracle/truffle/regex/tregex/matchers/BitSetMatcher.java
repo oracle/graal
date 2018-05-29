@@ -60,18 +60,24 @@ public final class BitSetMatcher extends ProfiledCharMatcher {
         return new BitSetMatcher(invert, highByte, bitSet);
     }
 
+    public CompilationFinalBitSet getBitSet() {
+        return bitSet;
+    }
+
     @Override
     public boolean matchChar(char c) {
         return highByte(c) == highByte && bitSet.get(lowByte(c));
     }
 
     @Override
+    public int estimatedCost() {
+        // 4 for the bit set + 1 for the high byte check
+        return 5;
+    }
+
+    @Override
     @CompilerDirectives.TruffleBoundary
     public String toString() {
         return modifiersToString() + "{hi " + DebugUtil.charToString(highByte) + " lo " + bitSet + "}";
-    }
-
-    public CompilationFinalBitSet getBitSet() {
-        return bitSet;
     }
 }

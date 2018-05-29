@@ -49,13 +49,22 @@ public final class ExceptionDetails {
     public JSONObject createJSON(TruffleExecutionContext context) {
         JSONObject json = new JSONObject();
         json.put("exceptionId", exceptionId);
-        json.put("text", debugException.getLocalizedMessage());
+        if (debugException.getCatchLocation() != null) {
+            json.put("text", "Caught");
+        } else {
+            json.put("text", "Uncaught");
+        }
         SourceSection throwLocation = debugException.getThrowLocation();
         if (throwLocation != null) {
             json.put("lineNumber", throwLocation.getStartLine() - 1);
             json.put("columnNumber", throwLocation.getStartColumn() - 1);
-            ScriptsHandler sch = context.getScriptsHandler();
-            int scriptId = sch.getScriptId(throwLocation.getSource());
+            int scriptId;
+            ScriptsHandler sch = context.acquireScriptsHandler();
+            try {
+                scriptId = sch.getScriptId(throwLocation.getSource());
+            } finally {
+                context.releaseScriptsHandler();
+            }
             if (scriptId >= 0) {
                 json.put("scriptId", Integer.toString(scriptId));
             } else {
@@ -63,11 +72,26 @@ public final class ExceptionDetails {
             }
         }
         StackTrace stackTrace = new StackTrace(context, debugException.getDebugStackTrace());
-        json.put("stackTrace", stackTrace);
+        json.put("stackTrace", stackTrace.toJSON());
         DebugValue exceptionObject = debugException.getExceptionObject();
-        RemoteObject ro = context.createAndRegister(exceptionObject);
-        json.put("exception", ro.toJSON());
+        if (exceptionObject != null) {
+            RemoteObject ro = context.createAndRegister(exceptionObject);
+            json.put("exception", ro.toJSON());
+        } else {
+            JSONObject ex = new JSONObject();
+            ex.put("description", debugException.getLocalizedMessage());
+            ex.put("value", debugException.getLocalizedMessage());
+            ex.put("type", "string");
+            json.put("exception", ex);
+        }
         json.put("executionContextId", context.getId());
         return json;
+    }
+
+    /**
+     * For test purposes only. Do not call from production code.
+     */
+    public static void resetIDs() {
+        LAST_ID.set(0);
     }
 }

@@ -29,14 +29,13 @@ import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.vm.LanguageCache.LoadedLanguage;
@@ -57,6 +56,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     @CompilationFinal private ContextProfile profile;
 
+    volatile PolyglotSourceCache sourceCache;
     private volatile boolean initialized;
 
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
@@ -90,6 +90,23 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return false;
     }
 
+    void initializeMultiContext(PolyglotLanguageContext languageContext) {
+        assert Thread.holdsLock(engine);
+        if (initialized) {
+            boolean allowsCaching = LANGUAGE.initializeMultiContext(info);
+            if (allowsCaching) {
+                if (languageContext != null && languageContext.isInitialized()) {
+                    this.sourceCache = languageContext.sourceCache;
+                } else {
+                    this.sourceCache = new PolyglotSourceCache();
+                }
+                assert this.sourceCache != null;
+            } else {
+                this.sourceCache = null;
+            }
+        }
+    }
+
     Object getCurrentContext() {
         Env env = PolyglotContextImpl.requireContext().contexts[index].env;
         if (env == null) {
@@ -116,11 +133,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return engine;
     }
 
-    @Override
-    public Engine getEngineAPI() {
-        return getEngine().api;
-    }
-
     void ensureInitialized() {
         if (!initialized) {
             synchronized (engine) {
@@ -134,6 +146,10 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                         throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
                     }
                     initialized = true;
+
+                    if (!engine.singleContext.isValid()) {
+                        initializeMultiContext(null);
+                    }
                 }
             }
         }
@@ -184,7 +200,12 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     @Override
     public String getVersion() {
-        return cache.getVersion();
+        final String version = cache.getVersion();
+        if (version.equals("inherit")) {
+            return engine.getVersion();
+        } else {
+            return version;
+        }
     }
 
     @Override
@@ -226,7 +247,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             if (context.engine != language.engine) {
                 throw new AssertionError(String.format("Context reference was used from an Engine that is currently not entered. " +
                                 "ContextReference of engine %s was used but engine %s is currently entered. " +
-                                "ContextReference must not be shared between multiple TruffleLanguage instances.", language.engine.api, context.engine.api));
+                                "ContextReference must not be shared between multiple TruffleLanguage instances.", language.engine.creatorApi, context.engine.creatorApi));
             }
             return true;
         }
@@ -271,4 +292,5 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             }
         }
     }
+
 }

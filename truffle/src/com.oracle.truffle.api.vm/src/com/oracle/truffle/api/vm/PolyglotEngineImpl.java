@@ -24,11 +24,9 @@
  */
 package com.oracle.truffle.api.vm;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import static com.oracle.truffle.api.vm.VMAccessor.INSTRUMENT;
 import static com.oracle.truffle.api.vm.VMAccessor.LANGUAGE;
 import static com.oracle.truffle.api.vm.VMAccessor.NODES;
-import static com.oracle.truffle.api.vm.VMAccessor.SPI;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -55,7 +53,10 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
@@ -71,7 +72,6 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.polyglot.io.FileSystem;
 
 @SuppressWarnings("deprecation")
 class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.api.vm.PolyglotImpl.VMObject {
@@ -88,7 +88,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private static volatile boolean shutdownHookInitialized = false;
     private static final boolean DEBUG_MISSING_CLOSE = Boolean.getBoolean("polyglotimpl.DebugMissingClose");
 
-    Engine api; // effectively final
+    Engine creatorApi; // effectively final
+    Engine currentApi;
     final Object instrumentationHandler;
     final PolyglotImpl impl;
     DispatchOutputStream out;       // effectively final
@@ -119,6 +120,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     private PolyglotContextImpl preInitializedContext;
 
     PolyglotLanguage hostLanguage;
+    final Assumption singleContext = Truffle.getRuntime().createAssumption();
 
     volatile OptionDescriptors allOptions;
     volatile boolean closed;
@@ -201,6 +203,10 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             language.getOptionValues().putAll(languagesOptions.get(language));
         }
 
+        if (!boundEngine) {
+            initializeMultiContext(null);
+        }
+
         ENGINES.put(this, null);
         if (!preInitialization) {
             createInstruments(instrumentsOptions);
@@ -266,6 +272,23 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
                     Runtime.getRuntime().addShutdownHook(new Thread(new PolyglotShutDownHook()));
                 }
             }
+        }
+    }
+
+    synchronized void initializeMultiContext(PolyglotContextImpl existingContext) {
+        if (singleContext.isValid()) {
+            Collection<PolyglotLanguage> languages = this.idToLanguage.values();
+            for (PolyglotLanguage language : languages) {
+                PolyglotLanguageContext existingLanguageContext = null;
+                if (existingContext != null) {
+                    existingLanguageContext = existingContext.contexts[language.index];
+                    if (existingLanguageContext.env == null) {
+                        existingLanguageContext = null;
+                    }
+                }
+                language.initializeMultiContext(existingLanguageContext);
+            }
+            singleContext.invalidate("More than one context introduced.");
         }
     }
 
@@ -355,7 +378,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
-        List<InstrumentCache> cachedInstruments = InstrumentCache.load(SPI.allLoaders());
+        List<InstrumentCache> cachedInstruments = InstrumentCache.load(VMAccessor.allLoaders());
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
@@ -591,7 +614,14 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
     }
 
     @Override
-    public synchronized void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
+    public void close(Engine sourceEngine, boolean cancelIfExecuting) {
+        if (sourceEngine != creatorApi) {
+            throw new IllegalStateException("Engine instances that were indirectly received using Context.get() cannot be closed.");
+        }
+        ensureClosed(cancelIfExecuting, false);
+    }
+
+    synchronized void ensureClosed(boolean cancelIfExecuting, boolean ignoreCloseFailure) {
         if (!closed) {
             PolyglotContextImpl[] localContexts = contexts.toArray(new PolyglotContextImpl[0]);
             /*
@@ -883,12 +913,7 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
 
     @Override
     public String getImplementationName() {
-        String name = Truffle.getRuntime().getName();
-        if (name.contains("Graal")) {
-            return "Graal Engine";
-        } else {
-            return "Default Engine";
-        }
+        return Truffle.getRuntime().getName();
     }
 
     @Override
@@ -937,7 +962,8 @@ class PolyglotEngineImpl extends org.graalvm.polyglot.impl.AbstractPolyglotImpl.
             addContext(contextImpl);
         }
         Context api = impl.getAPIAccess().newContext(contextImpl);
-        contextImpl.api = api;
+        contextImpl.creatorApi = api;
+        contextImpl.currentApi = impl.getAPIAccess().newContext(contextImpl);
         return api;
     }
 

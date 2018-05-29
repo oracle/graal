@@ -1,12 +1,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
 #
 # This code is distributed in the hope that it will be useful, but WITHOUT
 # ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -35,18 +37,22 @@ import tarfile
 import subprocess
 import tempfile
 import shutil
+
 import mx_truffle
+import mx_sdk
 
 import mx
+import mx_gate
 from mx_gate import Task
 
-from mx_unittest import unittest
-from mx_javamodules import as_java_module
-import mx_gate
 import mx_unittest
+from mx_unittest import unittest
+
+from mx_javamodules import as_java_module
 
 import mx_graal_benchmark # pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
+
 import argparse
 import shlex
 import glob
@@ -135,7 +141,7 @@ def add_jvmci_classpath_entry(entry):
     """
     _jvmci_classpath.append(entry)
 
-if jdk.javaCompliance != '9' and jdk.javaCompliance != '10':
+if jdk.javaCompliance != '9' and jdk.javaCompliance != '10' and mx.get_os() != 'windows':
     # The jdk.internal.vm.compiler.management module is
     # not available in 9 nor upgradeable in 10
     add_jvmci_classpath_entry(JVMCIClasspathEntry('GRAAL_MANAGEMENT'))
@@ -425,7 +431,7 @@ def _gate_java_benchmark(args, successRe):
     try:
         run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
     finally:
-        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\]hs_err_pid[0-9]+\.log)', out.data)
+        jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
@@ -510,7 +516,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
     with Task('MakeGraalJDK', tasks, tags=GraalTags.test) as t:
         if t and isJDK8:
             try:
-                makegraaljdk(['-a', 'graaljdk.tar', 'graaljdk'])
+                makegraaljdk(['-a', 'graaljdk.tar', '-b', 'graaljdk'])
             finally:
                 if exists('graaljdk'):
                     shutil.rmtree('graaljdk')
@@ -522,7 +528,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             ctw([
                     '--ctwopts', 'Inline=false CompilationFailureAction=ExitVM', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
-                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false',
+                    '-DCompileTheWorld.MultiThreaded=true', '-Dgraal.InlineDuringParsing=false', '-Dgraal.TrackNodeSourcePosition=true',
                     '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
                 ], _remove_empty_entries(extraVMarguments))
 
@@ -531,25 +537,33 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         b.run(tasks, extraVMarguments)
 
     # run selected DaCapo benchmarks
-    dacapos = {
+    # DaCapo benchmarks that can run with system assertions enabled
+    dacapos_with_sa = {
         'avrora':     1,
-        'batik':      1,
-        'fop':        8,
         'h2':         1,
         'jython':     2,
         'luindex':    1,
         'lusearch':   4,
-        'pmd':        1,
-        'sunflow':    2,
         'xalan':      1,
     }
-    for name, iterations in sorted(dacapos.iteritems()):
+    for name, iterations in sorted(dacapos_with_sa.iteritems()):
+        with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
+
+    # DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
+    dacapos_without_sa = {
+        'batik':      1,
+        'fop':        8,
+        'pmd':        1,
+        'sunflow':    2,
+    }
+    for name, iterations in sorted(dacapos_without_sa.iteritems()):
         with Task('DaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
     # run selected Scala DaCapo benchmarks
-    scala_dacapos = {
-        'actors':     1,
+    # Scala DaCapo benchmarks that can run with system assertions enabled
+    scala_dacapos_with_sa = {
         'apparat':    1,
         'factorie':   1,
         'kiama':      4,
@@ -561,10 +575,19 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         'scalaxb':    1,
         'tmt':        1
     }
+    for name, iterations in sorted(scala_dacapos_with_sa.iteritems()):
+        with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
+            if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Dgraal.TrackNodeSourcePosition=true', '-esa'])
+
+    # Scala DaCapo benchmarks for which system assertions cannot be enabled because of benchmark failures
+    scala_dacapos_without_sa = {
+        'actors':     1,
+    }
     if not _jdk_includes_corba(jdk):
         mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
-        del scala_dacapos['actors']
-    for name, iterations in sorted(scala_dacapos.iteritems()):
+        del scala_dacapos_without_sa['actors']
+
+    for name, iterations in sorted(scala_dacapos_without_sa.iteritems()):
         with Task('ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest) as t:
             if t: _gate_scala_dacapo(name, iterations, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler'])
 
@@ -679,6 +702,9 @@ def _unittest_config_participant(config):
             # ALL-UNNAMED.
             jvmci = [m for m in jdk.get_modules() if m.name == 'jdk.internal.vm.ci'][0]
             vmArgs.extend(['--add-exports=' + jvmci.name + '/' + p + '=jdk.internal.vm.compiler,ALL-UNNAMED' for p in jvmci.packages])
+
+    vmArgs.append('-Dgraal.TrackNodeSourcePosition=true')
+    vmArgs.append('-esa')
 
     if isJDK8:
         # Run the VM in a mode where application/test classes can
@@ -1021,6 +1047,7 @@ def makegraaljdk(args):
     parser = ArgumentParser(prog='mx makegraaljdk')
     parser.add_argument('-f', '--force', action='store_true', help='overwrite existing GraalJDK')
     parser.add_argument('-a', '--archive', action='store', help='name of archive to create', metavar='<path>')
+    parser.add_argument('-b', '--bootstrap', action='store_true', help='execute a bootstrap of the created GraalJDK')
     parser.add_argument('dest', help='destination directory for GraalJDK', metavar='<path>')
     args = parser.parse_args(args)
     if isJDK8:
@@ -1035,11 +1062,14 @@ def makegraaljdk(args):
         shutil.copytree(srcJdk, dstJdk)
 
         bootDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'boot'))
+        truffleDir = mx.ensure_dir_exists(join(dstJdk, 'jre', 'lib', 'truffle'))
         jvmciDir = join(dstJdk, 'jre', 'lib', 'jvmci')
         assert exists(jvmciDir), jvmciDir + ' does not exist'
 
-        if mx.get_os() == 'darwin' or mx.get_os() == 'windows':
+        if mx.get_os() == 'darwin':
             jvmlibDir = join(dstJdk, 'jre', 'lib', 'server')
+        elif mx.get_os() == 'windows':
+            jvmlibDir = join(dstJdk, 'jre', 'bin', 'server')
         else:
             jvmlibDir = join(dstJdk, 'jre', 'lib', mx.get_arch(), 'server')
         jvmlib = join(jvmlibDir, mx.add_lib_prefix(mx.add_lib_suffix('jvm')))
@@ -1063,7 +1093,11 @@ def makegraaljdk(args):
             shutil.copyfile(e.get_path(), join(jvmciDir, src))
         for e in _bootclasspath_appends:
             src = basename(e.classpath_repr())
-            mx.log('Copying {} to {}'.format(e.classpath_repr(), bootDir))
+            if e.suite.name == 'truffle':
+                dstDir = truffleDir
+            else:
+                dstDir = bootDir
+            mx.log('Copying {} to {}'.format(e.classpath_repr(), dstDir))
             candidate = e.classpath_repr() + '.map'
             if exists(candidate):
                 mapFiles.add(candidate)
@@ -1071,7 +1105,7 @@ def makegraaljdk(args):
             with open(join(dstJdk, 'release'), 'a') as fp:
                 s = e.suite
                 print >> fp, '{}={}'.format(e.name, s.vc.parent(s.dir))
-            shutil.copyfile(e.classpath_repr(), join(bootDir, src))
+            shutil.copyfile(e.classpath_repr(), join(dstDir, src))
 
         out = mx.LinesOutputCapture()
         mx.run([jdk.java, '-version'], err=out)
@@ -1092,8 +1126,9 @@ def makegraaljdk(args):
             mx.abort('Could not find "{}" in output of `java -version`:\n{}'.format(pattern.pattern, os.linesep.join(out.lines)))
 
         exe = join(dstJdk, 'bin', mx.exe_suffix('java'))
-        with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
-            mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
+        if args.bootstrap:
+            with StdoutUnstripping(args=[], out=None, err=None, mapFiles=mapFiles) as u:
+                mx.run([exe, '-XX:+BootstrapJVMCI', '-version'], out=u.out, err=u.err)
         if args.archive:
             mx.log('Archiving {}'.format(args.archive))
             create_archive(dstJdk, args.archive, basename(args.dest) + '/')
@@ -1260,8 +1295,8 @@ def updategraalinopenjdk(args):
         if out:
             mx.run(['hg', 'rm'] + out.split(), cwd=jdkrepo)
 
-    out = run_output(['git', 'tag', '-l', 'JDK*'], cwd=_suite.vc_dir)
-    last_jdk_tag = sorted(out.split())[0]
+    out = run_output(['git', 'tag', '-l', 'JDK-*'], cwd=_suite.vc_dir)
+    last_jdk_tag = sorted(out.split(), reverse=True)[0]
 
     pretty = args.pretty or 'format:%h %ad %>(20) %an %s'
     out = run_output(['git', '--no-pager', 'log', '--merges', '--abbrev-commit', '--pretty=' + pretty, '--first-parent', '-r', last_jdk_tag + '..HEAD'] +
@@ -1275,6 +1310,19 @@ def updategraalinopenjdk(args):
         with open(overwritten_file, 'w') as fp:
             fp.write(overwritten)
         mx.warn('Overwritten changes detected in OpenJDK Graal! See diffs in ' + os.path.abspath(overwritten_file))
+
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmJvmciComponent(
+    suite=_suite,
+    name='Graal compiler',
+    short_name='cmp',
+    dir_name='graal',
+    license_files=[],
+    third_party_license_files=[],
+    jvmci_jars=['compiler:GRAAL', 'compiler:GRAAL_MANAGEMENT'],
+    graal_compiler='graal',
+))
+
 
 mx.update_commands(_suite, {
     'sl' : [sl, '[SL args|@VM options]'],

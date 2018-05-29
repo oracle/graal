@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.dsl.processor.ExpectError;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 @SupportedAnnotationTypes({"com.oracle.truffle.api.CompilerDirectives.TruffleBoundary", "com.oracle.truffle.api.nodes.Node.Child"})
 public class VerifyTruffleProcessor extends AbstractProcessor {
@@ -104,7 +105,7 @@ public class VerifyTruffleProcessor extends AbstractProcessor {
             return false;
         }
 
-        TypeElement virtualFrameType = processingEnv.getElementUtils().getTypeElement("com.oracle.truffle.api.frame.VirtualFrame");
+        TypeElement virtualFrameType = ElementUtils.getTypeElement(processingEnv, "com.oracle.truffle.api.frame.VirtualFrame");
 
         for (Element element : roundEnv.getElementsAnnotatedWith(TruffleBoundary.class)) {
             scope = element;
