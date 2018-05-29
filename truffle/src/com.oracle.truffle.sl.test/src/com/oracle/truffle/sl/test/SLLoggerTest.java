@@ -83,9 +83,6 @@ public class SLLoggerTest {
 
     @After
     public void tearDown() throws IOException {
-        if (testHandler != null) {
-            testHandler.close();
-        }
         if (currentContext != null) {
             currentContext.close();
             currentContext = null;
@@ -253,6 +250,7 @@ public class SLLoggerTest {
 
     private static final class TestHandler extends Handler {
         private final Queue<LogRecord> records;
+        private volatile boolean closed;
 
         TestHandler() {
             this.records = new ArrayDeque<>();
@@ -260,11 +258,17 @@ public class SLLoggerTest {
 
         @Override
         public void publish(LogRecord record) {
+            if (closed) {
+                throw new IllegalStateException("Closed handler");
+            }
             records.offer(record);
         }
 
         @Override
         public void flush() {
+            if (closed) {
+                throw new IllegalStateException("Closed handler");
+            }
         }
 
         public List<? extends LogRecord> getRecords() {
@@ -273,7 +277,7 @@ public class SLLoggerTest {
 
         @Override
         public void close() throws SecurityException {
-            records.clear();
+            closed = true;
         }
     }
 }

@@ -35,6 +35,8 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.logging.Filter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -64,6 +66,7 @@ public class LoggingTest {
             final Level level = rootHandlerLevels.get(handler);
             handler.setLevel(level);
         }
+        AbstractLoggingLanguage.action = null;
     }
 
     @Test
@@ -260,6 +263,111 @@ public class LoggingTest {
         }
     }
 
+    @Test
+    public void testMultipleContextsNested2() {
+        final Level defaultLevel = min(Logger.getLogger("").getLevel(), Level.INFO);
+        final TestHandler handler1 = new TestHandler();
+        final TestHandler handler2 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINER.toString())).logHandler(handler1).build()) {
+            try (Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINE.toString())).logHandler(handler2).build()) {
+                ctx1.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINER)));
+                Assert.assertEquals(expected, handler1.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINE)));
+                Assert.assertEquals(expected, handler2.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testMultipleContextsNested3() {
+        final Level defaultLevel = min(Logger.getLogger("").getLevel(), Level.INFO);
+        final TestHandler handler1 = new TestHandler();
+        final TestHandler handler2 = new TestHandler();
+        final TestHandler handler3 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINE.toString())).logHandler(handler1).build()) {
+            Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler2).build();
+            try (Context ctx3 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a.a", Level.FINER.toString())).logHandler(handler3).build()) {
+                ctx2.close();
+                ctx1.eval(LoggingLanguageFirst.ID, "");
+                ctx3.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE)));
+                Assert.assertEquals(expected, handler1.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a.a", Level.FINER)));
+                Assert.assertEquals(expected, handler3.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testMultipleContextsNested4() {
+        final Level defaultLevel = min(Logger.getLogger("").getLevel(), Level.INFO);
+        final TestHandler handler1 = new TestHandler();
+        final TestHandler handler2 = new TestHandler();
+        final TestHandler handler3 = new TestHandler();
+        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINE.toString())).logHandler(handler1).build()) {
+            Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler2).build();
+            try (Context ctx3 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler3).build()) {
+                ctx2.close();
+                ctx1.eval(LoggingLanguageFirst.ID, "");
+                ctx3.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a", Level.FINE)));
+                Assert.assertEquals(expected, handler1.getLog());
+                expected = new ArrayList<>();
+                expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.singletonMap("a.a", Level.FINER)));
+                Assert.assertEquals(expected, handler3.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testLoggersImmutable() {
+        AbstractLoggingLanguage.action = new Consumer<Collection<Logger>>() {
+            @Override
+            public void accept(Collection<Logger> loggers) {
+                final Logger logger = loggers.iterator().next();
+                try {
+                    logger.setParent(Logger.getGlobal());
+                    Assert.fail("Should not reach here.");
+                } catch (SecurityException se) {
+                    // Expected
+                }
+                try {
+                    logger.setUseParentHandlers(false);
+                    Assert.fail("Should not reach here.");
+                } catch (SecurityException se) {
+                    // Expected
+                }
+                try {
+                    logger.setFilter(new Filter() {
+                        @Override
+                        public boolean isLoggable(LogRecord record) {
+                            return false;
+                        }
+                    });
+                    Assert.fail("Should not reach here.");
+                } catch (SecurityException se) {
+                    // Expected
+                }
+                try {
+                    logger.setLevel(Level.OFF);
+                    Assert.fail("Should not reach here.");
+                } catch (SecurityException se) {
+                    // Expected
+                }
+            }
+        };
+        try (Context ctx = Context.newBuilder().build()) {
+            ctx.eval(LoggingLanguageFirst.ID, "");
+        }
+    }
+
     private static Level min(Level a, Level b) {
         return a.intValue() < b.intValue() ? a : b;
     }
@@ -382,6 +490,7 @@ public class LoggingTest {
     public abstract static class AbstractLoggingLanguage extends TruffleLanguage<LoggingContext> {
         static final String[] LOGGER_NAMES = {"a", "a.a", "a.b", "a.a.a", "b", "b.a", "b.a.a.a"};
         static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
+        static Consumer<Collection<Logger>> action;
         private final Collection<Logger> allLoggers;
 
         AbstractLoggingLanguage(final String id) {
@@ -407,6 +516,9 @@ public class LoggingTest {
             final RootNode root = new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
+                    if (action != null) {
+                        action.accept(allLoggers);
+                    }
                     doLog();
                     return getContextReference().get().getEnv().asGuestValue(null);
                 }
