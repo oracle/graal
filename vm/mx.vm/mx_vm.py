@@ -48,6 +48,8 @@ import mx_vm_gate
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
 
+_vm_configs = {}
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmJreComponent(
     suite=_suite,
     name='Component installer',
@@ -296,13 +298,28 @@ GRAALVM_VERSION={version}""".format(
 class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistribution):  # pylint: disable=R0901
     def __init__(self, base_name, base_layout, theLicense=None, **kw_args):
         components = mx_sdk.graalvm_components()
-        name = base_name + '_' + '_'.join(sorted((component.short_name.upper() for component in components)))
+        components_set = set([c.short_name for c in components])
+
         if _polyglot_lib_project():
-            name += '_LIBPOLY'
+            components_set.add('libpoly')
         if _polyglot_launcher_project():
-            name += '_POLY'
+            components_set.add('poly')
         if _force_bash_launchers():
-            name += '_BASH'
+            components_set.add('bash')
+
+        # Use custom distribution name and base dir for registered vm configurations
+        vm_config_name = None
+        vm_config_additional_components = sorted(components_set)
+        for config_name, config_components in _vm_configs.items():
+            config_components_set = set(config_components)
+            config_additional_components = sorted(components_set - config_components_set)
+            if config_components_set <= components_set and len(config_additional_components) <= len(vm_config_additional_components):
+                vm_config_name = config_name
+                vm_config_additional_components = config_additional_components
+
+        name = (base_name + (('_' + vm_config_name) if vm_config_name else '') + ('_' if vm_config_additional_components else '') + '_'.join(vm_config_additional_components)).upper()
+        base_dir = name.lower().replace('_', '-') + '-{}'.format(_suite.release_version())
+
         layout = deepcopy(base_layout)
         super(GraalVmLayoutDistribution, self).__init__(
             suite=_suite,
@@ -315,7 +332,7 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, mx.LayoutTARDistr
             theLicense=theLicense,
             testDistribution=False,
             add_jdk_base=True,
-            base_dir='graalvm-{}'.format(_suite.release_version()),
+            base_dir=base_dir,
             layout=layout,
             path=None,
             **kw_args)
@@ -1122,7 +1139,7 @@ def get_graalvm_distribution():
     """:rtype: GraalVmLayoutDistribution"""
     global _graalvm_distribution
     if _graalvm_distribution == 'uninitialized':
-        _graalvm_distribution = GraalVmLayoutDistribution("GRAALVM", _base_graalvm_layout)
+        _graalvm_distribution = GraalVmLayoutDistribution("graalvm", _base_graalvm_layout)
         _graalvm_distribution.description = "GraalVM distribution"
     return _graalvm_distribution
 
@@ -1162,6 +1179,14 @@ def get_lib_polyglot_project():
                         _lib_polyglot_project.buildDependencies = []
                     _lib_polyglot_project.buildDependencies += polyglot_lib_build_dependencies
     return _lib_polyglot_project
+
+
+def register_vm_config(config_name, components):
+    '''
+    :type config_name: str
+    :type components: list[str]
+    '''
+    _vm_configs[config_name] = components
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
@@ -1269,6 +1294,7 @@ mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'p
 mx.add_argument('--force-bash-launchers', action='store_true', help='Force the use of bash launchers instead of native images')
 mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
+register_vm_config('ce', ['cmp', 'gu', 'gvm', 'ins', 'js', 'njs', 'polynative', 'pro', 'rgx', 'slg', 'svm', 'tfl', 'libpoly', 'poly'])
 
 def _polyglot_lib_project():
     return not (mx.get_opts().disable_libpolyglot or _env_var_to_bool('DISABLE_LIBPOLYGLOT'))
