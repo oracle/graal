@@ -25,11 +25,13 @@
 package org.graalvm.polyglot;
 
 import java.io.OutputStream;
+import java.util.logging.Level;
 import java.util.logging.StreamHandler;
 
 final class PolyglotStreamHandler extends StreamHandler {
     PolyglotStreamHandler(final OutputStream out) {
         super();
         setOutputStream(out);
+        setLevel(Level.ALL);
     }
 }

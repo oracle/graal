@@ -24,6 +24,11 @@
  */
 package org.graalvm.launcher;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -103,7 +108,18 @@ public abstract class AbstractLanguageLauncher extends Launcher {
             builder = Context.newBuilder(getDefaultLanguages()).options(polyglotOptions);
         }
         builder.allowAllAccess(true);
-
+        final OutputStream logOut;
+        final File logFile = getLogFile();
+        if (logFile != null) {
+            try {
+                logOut = new BufferedOutputStream(new FileOutputStream(logFile, true));
+            } catch (IOException ioe) {
+                throw abort(ioe);
+            }
+        } else {
+            logOut = System.out;
+        }
+        builder.logOut(logOut);
         launch(builder);
     }
 
