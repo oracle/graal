@@ -137,6 +137,10 @@ public final class LocalizationFeature implements Feature {
             /* These classes have a mutable hash code field. */
             return false;
         }
+        if (object instanceof java.util.Map) {
+            /* The maps have lazily initialized cache fields (see JavaUtilSubstitutions). */
+            return false;
+        }
         return true;
     }
 
