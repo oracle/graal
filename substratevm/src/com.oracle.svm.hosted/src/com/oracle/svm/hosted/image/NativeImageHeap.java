@@ -943,6 +943,8 @@ public final class NativeImageHeap {
         // Some hosted classes I know are not canonicalizable.
         knownNonCanonicalizableClasses.add(Enum.class);
         knownNonCanonicalizableClasses.add(Proxy.class);
+        // The classes implementing Map have lazily initialized caches, so must not be immutable.
+        knownNonCanonicalizableClasses.add(Map.class);
         // Some hosted classes I know to be canonicalizable.
         knownCanonicalizableClasses.add(DynamicHub.class);
     }
