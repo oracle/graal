@@ -176,34 +176,58 @@ public class NativeImage {
     final Registry optionRegistry;
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
-    protected NativeImage() {
-        workDir = Paths.get(".").toAbsolutePath().normalize();
-        assert workDir != null;
-        if (IS_AOT) {
-            Path executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
-            assert executablePath != null;
-            Path binDir = executablePath.getParent();
-            Path rootDirCandidate = binDir.getParent();
-            if (rootDirCandidate.endsWith(platform)) {
-                rootDirCandidate = rootDirCandidate.getParent();
-            }
-            if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
-                rootDirCandidate = rootDirCandidate.getParent().getParent();
-            }
-            rootDir = rootDirCandidate;
-        } else {
-            String rootDirProperty = "native-image.root";
-            String rootDirString = System.getProperty(rootDirProperty);
-            if (rootDirString == null) {
-                throw showError("Running on JVM requires setting " + rootDirProperty + " system property");
-            }
-            try {
-                rootDir = canonicalize(Paths.get(rootDirString));
-            } catch (NativeImageError e) {
-                throw showError("Invalid " + rootDirProperty + " setting " + rootDirString + "\n" + e.getMessage());
+    public interface PathFactory {
+        Path getWorkDir();
+
+        Path getRootDir();
+    }
+
+    private static class DefaultPathFactory implements PathFactory {
+        private final Path workDir;
+        private final Path rootDir;
+
+        DefaultPathFactory() {
+            workDir = Paths.get(".").toAbsolutePath().normalize();
+            if (IS_AOT) {
+                Path executablePath = Paths.get((String) Compiler.command(new Object[]{PosixExecutableName.getKey()}));
+                assert executablePath != null;
+                Path binDir = executablePath.getParent();
+                Path rootDirCandidate = binDir.getParent();
+                if (rootDirCandidate.endsWith(platform)) {
+                    rootDirCandidate = rootDirCandidate.getParent();
+                }
+                if (rootDirCandidate.endsWith(Paths.get("lib", "svm"))) {
+                    rootDirCandidate = rootDirCandidate.getParent().getParent();
+                }
+                rootDir = rootDirCandidate;
+            } else {
+                String rootDirProperty = "native-image.root";
+                String rootDirString = System.getProperty(rootDirProperty);
+                if (rootDirString == null) {
+                    throw showError("Running on JVM requires setting " + rootDirProperty + " system property");
+                }
+                rootDir = Paths.get(rootDirString);
             }
         }
-        assert rootDir != null;
+
+        @Override
+        public Path getWorkDir() {
+            return workDir;
+        }
+
+        @Override
+        public Path getRootDir() {
+            return rootDir;
+        }
+    }
+
+    protected NativeImage(PathFactory pathFactory) {
+        workDir = pathFactory.getWorkDir();
+        try {
+            rootDir = canonicalize(pathFactory.getRootDir());
+        } catch (NativeImageError e) {
+            throw showError("PathFactory provides invalid rootDir " + pathFactory.getRootDir() + "\n" + e.getMessage());
+        }
 
         String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
         String configFile = System.getenv(configFileEnvVarKey);
@@ -595,15 +619,7 @@ public class NativeImage {
 
     public static void main(String[] args) {
         try {
-            NativeImage nativeImage = IS_AOT ? new NativeImageServer() : new NativeImage();
-
-            if (args.length == 0) {
-                nativeImage.showMessage(usageText);
-                System.exit(0);
-            }
-
-            nativeImage.prepareImageBuildArgs();
-            nativeImage.completeImageBuildArgs(args);
+            build(new DefaultPathFactory(), args);
         } catch (NativeImageError e) {
             boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
             NativeImage.show(System.err::println, "Error: " + e.getMessage());
@@ -616,6 +632,16 @@ public class NativeImage {
                 e.printStackTrace();
             }
             System.exit(1);
+        }
+    }
+
+    public static void build(PathFactory pathFactory, String[] args) {
+        NativeImage nativeImage = IS_AOT ? new NativeImageServer(pathFactory) : new NativeImage(pathFactory);
+        if (args.length == 0) {
+            nativeImage.showMessage(usageText);
+        } else {
+            nativeImage.prepareImageBuildArgs();
+            nativeImage.completeImageBuildArgs(args);
         }
     }
 
@@ -748,7 +774,7 @@ public class NativeImage {
     }
 
     @SuppressWarnings("serial")
-    static final class NativeImageError extends Error {
+    public static final class NativeImageError extends Error {
         private NativeImageError(String message) {
             super(message);
         }
