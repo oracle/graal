@@ -117,14 +117,6 @@ public class PELangBuilder {
         return PELangAddNode.create(leftNode, rightNode);
     }
 
-    public PELangExpressionNode add(long left, long right) {
-        return add(lit(left), lit(right));
-    }
-
-    public PELangExpressionNode add(String left, String right) {
-        return add(lit(left), lit(right));
-    }
-
     public PELangExpressionNode eq(PELangExpressionNode leftNode, PELangExpressionNode rightNode) {
         return PELangEqualsNode.create(leftNode, rightNode);
     }
@@ -173,68 +165,44 @@ public class PELangBuilder {
         return PELangLocalReadNode.create(frameDescriptor.findOrAddFrameSlot(identifier));
     }
 
-    public PELangExpressionNode readArgument(int index) {
-        return new PELangReadArgumentNode(index);
-    }
-
-    public PELangExpressionNode writeLocal(PELangExpressionNode valueNode, String identifier) {
-        return PELangLocalWriteNode.create(valueNode, frameDescriptor.findOrAddFrameSlot(identifier));
-    }
-
-    public PELangExpressionNode writeLocal(long value, String identifier) {
-        return writeLocal(lit(value), identifier);
-    }
-
-    public PELangExpressionNode writeLocal(String value, String identifier) {
-        return writeLocal(lit(value), identifier);
-    }
-
-    public PELangExpressionNode writeLocal(PELangFunction function, String identifier) {
-        return writeLocal(lit(function), identifier);
-    }
-
-    public PELangExpressionNode incrementLocal(long value, String identifier) {
-        return writeLocal(add(lit(value), readLocal(identifier)), identifier);
-    }
-
-    public PELangExpressionNode appendLocal(String value, String identifier) {
-        return writeLocal(add(lit(value), readLocal(identifier)), identifier);
-    }
-
     public PELangExpressionNode readGlobal(String identifier) {
         return PELangGlobalReadNode.create(identifier);
     }
 
-    public PELangExpressionNode writeGlobal(PELangExpressionNode valueNode, String identifier) {
-        return PELangGlobalWriteNode.create(valueNode, identifier);
+    public PELangExpressionNode readArgument(int index) {
+        return new PELangReadArgumentNode(index);
     }
 
-    public PELangExpressionNode writeGlobal(long value, String identifier) {
-        return writeGlobal(lit(value), identifier);
     }
 
-    public PELangExpressionNode writeGlobal(String value, String identifier) {
-        return writeGlobal(lit(value), identifier);
-    }
-
-    public PELangExpressionNode writeGlobal(PELangFunction function, String identifier) {
-        return writeGlobal(lit(function), identifier);
-    }
-
-    public PELangExpressionNode incrementGlobal(long value, String identifier) {
-        return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
-    }
-
-    public PELangExpressionNode appendGlobal(String value, String identifier) {
-        return writeGlobal(add(lit(value), readGlobal(identifier)), identifier);
     }
 
     public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode) {
         return new PELangPropertyReadNode(receiverNode, nameNode);
     }
 
+    public PELangExpressionNode writeLocal(PELangExpressionNode valueNode, String identifier) {
+        return PELangLocalWriteNode.create(valueNode, frameDescriptor.findOrAddFrameSlot(identifier));
+    }
+
+    public PELangExpressionNode writeGlobal(PELangExpressionNode valueNode, String identifier) {
+        return PELangGlobalWriteNode.create(valueNode, identifier);
+    }
+
+    }
+
+    }
+
     public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode, PELangExpressionNode valueNode) {
         return new PELangPropertyWriteNode(receiverNode, nameNode, valueNode);
+    }
+
+    public PELangExpressionNode incrementLocal(PELangExpressionNode valueNode, String identifier) {
+        return writeLocal(add(valueNode, readLocal(identifier)), identifier);
+    }
+
+    public PELangExpressionNode incrementGlobal(PELangExpressionNode valueNode, String identifier) {
+        return writeGlobal(add(valueNode, readGlobal(identifier)), identifier);
     }
 
     public PELangExpressionNode invoke(PELangExpressionNode expressionNode, PELangExpressionNode... argumentNodes) {

@@ -38,9 +38,9 @@ public class PELangDispatchBenchmark extends PartialEvaluationBenchmark {
         // @formatter:off
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(b.root(
             b.dispatch(
-                /* block 0 */ b.basicBlock(b.writeLocal(0, "counter"), 1),
+                /* block 0 */ b.basicBlock(b.writeLocal(b.lit(0L), "counter"), 1),
                 /* block 1 */ b.basicBlock(b.lt(b.readLocal("counter"), b.lit(10L)), 2, 3),
-                /* block 2 */ b.basicBlock(b.incrementLocal(1, "counter"), 1),
+                /* block 2 */ b.basicBlock(b.incrementLocal(b.lit(1L), "counter"), 1),
                 /* block 3 */ b.basicBlock(b.return_(b.readLocal("counter")), PELangBasicBlockNode.NO_SUCCESSOR))));
         // @formatter:on
 
