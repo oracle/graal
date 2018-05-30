@@ -179,7 +179,7 @@ final class TRegexCompilationRequest {
         if (properties.hasNegativeLookAheadAssertions()) {
             throw new UnsupportedRegexException("negative lookahead assertions not supported");
         }
-        if (properties.hasComplexLookBehindAssertions()) {
+        if (properties.hasNonLiteralLookBehindAssertions()) {
             throw new UnsupportedRegexException("body of lookbehind assertion too complex");
         }
         if (properties.hasNegativeLookBehindAssertions()) {
