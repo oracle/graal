@@ -1271,6 +1271,14 @@ def graalvm_dist_name(args):
     mx.log(get_graalvm_distribution().name)
 
 
+def graalvm_version(args):
+    """print the GraalVM version"""
+    parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
+    args = parser.parse_args(args)
+
+    mx.log(_suite.release_version())
+
+
 def _env_var_to_bool(name, default='false'):
     val = mx.get_env(name, default).lower()
     if val in ('false', '0', 'no'):
@@ -1303,4 +1311,5 @@ def _include_sources():
 
 mx.update_commands(_suite, {
     'graalvm-dist-name': [graalvm_dist_name, ''],
+    'graalvm-version': [graalvm_version, ''],
 })
