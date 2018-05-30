@@ -120,7 +120,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution):
 
             mx.logvv("'Adding '{}: {}' to the layout'".format(dest, src))
             _layout_provenance[dest] = component
-            if with_sources:
+            if with_sources and _include_sources():
                 for _src in list(src):
                     src_dict = mx.LayoutDistribution._as_source_dict(_src, name, dest)
                     if src_dict['source_type'] == 'dependency' and src_dict['path'] is None:
@@ -1259,6 +1259,7 @@ mx_gate.add_gate_runner(_suite, mx_vm_gate.gate)
 mx.add_argument('--disable-libpolyglot', action='store_true', help='Disable the \'polyglot\' library project')
 mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'polyglot\' launcher project')
 mx.add_argument('--force-bash-launchers', action='store_true', help='Force the use of bash launchers instead of native images')
+mx.add_argument('--no-sources', action='store_true', help='Do not include the archives with the source files of open-source components')
 
 
 def _polyglot_lib_project():
@@ -1269,6 +1270,9 @@ def _polyglot_launcher_project():
 
 def _force_bash_launchers():
     return mx.get_opts().force_bash_launchers or _env_var_to_bool('FORCE_BASH_LAUNCHERS')
+
+def _include_sources():
+    return not (mx.get_opts().no_sources or _env_var_to_bool('NO_SOURCES'))
 
 
 mx.update_commands(_suite, {
