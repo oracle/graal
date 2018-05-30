@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
 public class LLVMShuffleVectorNode {
 
@@ -98,13 +99,17 @@ public class LLVMShuffleVectorNode {
 
         @Specialization
         protected LLVMI64Vector doI64Vector(LLVMI64Vector leftVector, LLVMI64Vector rightVector, LLVMI32Vector maskVector) {
-            long[] joinedValues = concat(leftVector.getValues(), rightVector.getValues());
+            return LLVMI64Vector.create(doI64Vector(leftVector.getValues(), rightVector.getValues(), maskVector));
+        }
+
+        private static long[] doI64Vector(long[] leftVector, long[] rightVector, LLVMI32Vector maskVector) {
+            long[] joinedValues = concat(leftVector, rightVector);
             long[] newValues = new long[maskVector.getLength()];
             for (int i = 0; i < maskVector.getLength(); i++) {
                 int element = maskVector.getValue(i);
                 newValues[i] = joinedValues[element];
             }
-            return LLVMI64Vector.create(newValues);
+            return newValues;
         }
 
         private static long[] concat(long[] first, long[] second) {
@@ -116,6 +121,15 @@ public class LLVMShuffleVectorNode {
                 result[i] = second[i - first.length];
             }
             return result;
+        }
+    }
+
+    @NodeChildren({@NodeChild(value = "left"), @NodeChild(value = "right"), @NodeChild(value = "mask")})
+    public abstract static class LLVMShufflePointerVectorNode extends LLVMExpressionNode {
+
+        @Specialization
+        protected LLVMPointerVector doI64Vector(LLVMPointerVector leftVector, LLVMPointerVector rightVector, LLVMI32Vector maskVector) {
+            return LLVMPointerVector.create(LLVMShuffleI64VectorNode.doI64Vector(leftVector.getValues(), rightVector.getValues(), maskVector));
         }
     }
 
