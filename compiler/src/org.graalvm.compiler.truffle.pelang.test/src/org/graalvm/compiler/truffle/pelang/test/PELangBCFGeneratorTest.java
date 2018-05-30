@@ -199,6 +199,39 @@ public class PELangBCFGeneratorTest {
     }
 
     @Test
+    public void testSimpleInvoke() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleInvoke());
+
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(1));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+
+        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
+        assertThat(b0.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
+    }
+
+    @Test
+    public void testSimpleObject() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleObject());
+
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(1));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+
+        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
+        assertThat(b0.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
+    }
+    @Test
     public void testInvalidBranch() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.invalidBranch());
@@ -428,48 +461,6 @@ public class PELangBCFGeneratorTest {
     }
 
     @Test
-    public void testNestedLoopsWithMultipleBackEdges() {
-        PELangBCFGenerator g = new PELangBCFGenerator();
-        PELangRootNode rootNode = g.generate(PELangSample.nestedLoopsWithMultipleBackEdges());
-
-        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
-
-        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
-        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
-
-        assertThat(basicBlocks.length, equalTo(8));
-        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
-        assertThat(basicBlocks[1], instanceOf(PELangDoubleSuccessorNode.class));
-        assertThat(basicBlocks[2], instanceOf(PELangSingleSuccessorNode.class));
-        assertThat(basicBlocks[3], instanceOf(PELangDoubleSuccessorNode.class));
-        assertThat(basicBlocks[4], instanceOf(PELangDoubleSuccessorNode.class));
-        assertThat(basicBlocks[5], instanceOf(PELangSingleSuccessorNode.class));
-        assertThat(basicBlocks[6], instanceOf(PELangSingleSuccessorNode.class));
-        assertThat(basicBlocks[7], instanceOf(PELangSingleSuccessorNode.class));
-
-        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
-        PELangDoubleSuccessorNode b1 = (PELangDoubleSuccessorNode) basicBlocks[1];
-        PELangSingleSuccessorNode b2 = (PELangSingleSuccessorNode) basicBlocks[2];
-        PELangDoubleSuccessorNode b3 = (PELangDoubleSuccessorNode) basicBlocks[3];
-        PELangDoubleSuccessorNode b4 = (PELangDoubleSuccessorNode) basicBlocks[4];
-        PELangSingleSuccessorNode b5 = (PELangSingleSuccessorNode) basicBlocks[5];
-        PELangSingleSuccessorNode b6 = (PELangSingleSuccessorNode) basicBlocks[6];
-        PELangSingleSuccessorNode b7 = (PELangSingleSuccessorNode) basicBlocks[7];
-
-        assertThat(b0.getSuccessor(), equalTo(1));
-        assertThat(b1.getTrueSuccessor(), equalTo(2));
-        assertThat(b1.getFalseSuccessor(), equalTo(7));
-        assertThat(b2.getSuccessor(), equalTo(3));
-        assertThat(b3.getTrueSuccessor(), equalTo(4));
-        assertThat(b3.getFalseSuccessor(), equalTo(1));
-        assertThat(b4.getTrueSuccessor(), equalTo(5));
-        assertThat(b4.getFalseSuccessor(), equalTo(6));
-        assertThat(b5.getSuccessor(), equalTo(3));
-        assertThat(b6.getSuccessor(), equalTo(3));
-        assertThat(b7.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
-    }
-
-    @Test
     public void testBranchWithGlobalReadWrite() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.branchWithGlobalReadWrite());
@@ -526,6 +517,65 @@ public class PELangBCFGeneratorTest {
         assertThat(b1.getFalseSuccessor(), equalTo(3));
         assertThat(b2.getSuccessor(), equalTo(1));
         assertThat(b3.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
+    }
+
+    @Test
+    public void testNestedLoopsWithMultipleBackEdges() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.nestedLoopsWithMultipleBackEdges());
+
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(8));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[1], instanceOf(PELangDoubleSuccessorNode.class));
+        assertThat(basicBlocks[2], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[3], instanceOf(PELangDoubleSuccessorNode.class));
+        assertThat(basicBlocks[4], instanceOf(PELangDoubleSuccessorNode.class));
+        assertThat(basicBlocks[5], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[6], instanceOf(PELangSingleSuccessorNode.class));
+        assertThat(basicBlocks[7], instanceOf(PELangSingleSuccessorNode.class));
+
+        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
+        PELangDoubleSuccessorNode b1 = (PELangDoubleSuccessorNode) basicBlocks[1];
+        PELangSingleSuccessorNode b2 = (PELangSingleSuccessorNode) basicBlocks[2];
+        PELangDoubleSuccessorNode b3 = (PELangDoubleSuccessorNode) basicBlocks[3];
+        PELangDoubleSuccessorNode b4 = (PELangDoubleSuccessorNode) basicBlocks[4];
+        PELangSingleSuccessorNode b5 = (PELangSingleSuccessorNode) basicBlocks[5];
+        PELangSingleSuccessorNode b6 = (PELangSingleSuccessorNode) basicBlocks[6];
+        PELangSingleSuccessorNode b7 = (PELangSingleSuccessorNode) basicBlocks[7];
+
+        assertThat(b0.getSuccessor(), equalTo(1));
+        assertThat(b1.getTrueSuccessor(), equalTo(2));
+        assertThat(b1.getFalseSuccessor(), equalTo(7));
+        assertThat(b2.getSuccessor(), equalTo(3));
+        assertThat(b3.getTrueSuccessor(), equalTo(4));
+        assertThat(b3.getFalseSuccessor(), equalTo(1));
+        assertThat(b4.getTrueSuccessor(), equalTo(5));
+        assertThat(b4.getFalseSuccessor(), equalTo(6));
+        assertThat(b5.getSuccessor(), equalTo(3));
+        assertThat(b6.getSuccessor(), equalTo(3));
+        assertThat(b7.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
+    }
+
+    @Test
+    public void testInvokeObjectFunctionProperty() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.invokeObjectFunctionProperty());
+
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(1));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+
+        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
+        assertThat(b0.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
     }
 
 }
