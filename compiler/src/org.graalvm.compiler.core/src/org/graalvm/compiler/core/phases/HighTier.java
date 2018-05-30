@@ -127,7 +127,6 @@ public class HighTier extends PhaseSuite<HighTierContext> {
         }
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER));
-
     }
 
     public LoopPolicies createLoopPolicies() {
