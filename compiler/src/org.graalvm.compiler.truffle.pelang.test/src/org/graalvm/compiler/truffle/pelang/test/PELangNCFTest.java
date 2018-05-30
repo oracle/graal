@@ -195,6 +195,18 @@ public class PELangNCFTest extends PELangTest {
         Assert.assertTrue(graph.isTrivial());
     }
 
+    @Test
+    public void testComplexStringArray() {
+        PELangRootNode rootNode = PELangSample.complexStringArray();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals("Foo", callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
     @Test(expected = PELangException.class)
     public void testInvalidBranch() {
         PELangRootNode rootNode = PELangSample.invalidBranch();

@@ -205,7 +205,7 @@ public class PELangSample {
     public static PELangRootNode simpleMultiArrayWrite() {
         PELangBuilder b = new PELangBuilder();
 
-     // @formatter:off
+        // @formatter:off
         return b.root(
             b.block(
                 b.writeLocal(
@@ -223,6 +223,39 @@ public class PELangSample {
                     b.readArray(
                         b.readLocal("var"),
                         b.lit(new long[] {1L, 2L})))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode complexStringArray() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(
+                    b.lit(new String[][][] {
+                        {
+                            {"Foo", "Bar"},
+                            {"Aaa", "Bbb"},
+                            {"Ccc", "Ddd"}
+                        },
+                        {
+                            {"Xxxx", "Yyyy"},
+                        },
+                        {
+                            {"ZZ", "AA"},
+                            {"AA", "ZZ"}
+                        }
+                    }),
+                    "var"),
+                b.writeArray(
+                    b.readLocal("var"),
+                    b.lit(new long[] {2L, 0L, 1L}),
+                    b.lit("Foo")),
+                b.return_(
+                    b.readArray(
+                        b.readLocal("var"),
+                        b.lit(new long[] {2L, 0L, 1L})))));
         // @formatter:on
     }
 

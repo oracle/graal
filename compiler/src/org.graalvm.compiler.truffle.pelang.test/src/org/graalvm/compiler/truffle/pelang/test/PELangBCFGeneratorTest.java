@@ -301,6 +301,23 @@ public class PELangBCFGeneratorTest {
     }
 
     @Test
+    public void testComplexStringArray() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.complexStringArray());
+
+        assertThat(rootNode.getBodyNode(), instanceOf(PELangBasicBlockDispatchNode.class));
+
+        PELangBasicBlockDispatchNode dispatchNode = (PELangBasicBlockDispatchNode) rootNode.getBodyNode();
+        PELangBasicBlockNode[] basicBlocks = dispatchNode.getBlockNodes();
+
+        assertThat(basicBlocks.length, equalTo(1));
+        assertThat(basicBlocks[0], instanceOf(PELangSingleSuccessorNode.class));
+
+        PELangSingleSuccessorNode b0 = (PELangSingleSuccessorNode) basicBlocks[0];
+        assertThat(b0.getSuccessor(), equalTo(PELangBasicBlockNode.NO_SUCCESSOR));
+    }
+
+    @Test
     public void testInvalidBranch() {
         PELangBCFGenerator g = new PELangBCFGenerator();
         PELangRootNode rootNode = g.generate(PELangSample.invalidBranch());
