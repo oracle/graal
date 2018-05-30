@@ -42,12 +42,15 @@ import org.graalvm.compiler.truffle.pelang.expr.PELangEqualsNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangGreaterThanNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangInvokeNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLessThanNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralArrayNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralLongNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralObjectNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralStringNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangNotNode;
 import org.graalvm.compiler.truffle.pelang.expr.PELangReadArgumentNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangReadArrayNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangWriteArrayNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
@@ -86,6 +89,10 @@ public class PELangBuilder {
 
     public PELangExpressionNode lit(DynamicObject object) {
         return new PELangLiteralObjectNode(object);
+    }
+
+    public PELangExpressionNode lit(Object array) {
+        return PELangLiteralArrayNode.create(array);
     }
 
     public PELangFunction fn(Function<PELangBuilder, FunctionHeader> headerFunction, Function<PELangBuilder, PELangStatementNode> bodyNodeFunction) {
@@ -173,8 +180,8 @@ public class PELangBuilder {
         return new PELangReadArgumentNode(index);
     }
 
-    }
-
+    public PELangExpressionNode readArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode) {
+        return new PELangReadArrayNode(arrayNode, indicesNode);
     }
 
     public PELangExpressionNode readProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode) {
@@ -189,8 +196,8 @@ public class PELangBuilder {
         return PELangGlobalWriteNode.create(valueNode, identifier);
     }
 
-    }
-
+    public PELangExpressionNode writeArray(PELangExpressionNode arrayNode, PELangExpressionNode indicesNode, PELangExpressionNode valueNode) {
+        return new PELangWriteArrayNode(arrayNode, indicesNode, valueNode);
     }
 
     public PELangExpressionNode writeProperty(PELangExpressionNode receiverNode, PELangExpressionNode nameNode, PELangExpressionNode valueNode) {
