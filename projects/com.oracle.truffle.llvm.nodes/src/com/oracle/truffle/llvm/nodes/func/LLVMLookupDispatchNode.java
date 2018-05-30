@@ -158,6 +158,7 @@ public abstract class LLVMLookupDispatchNode extends LLVMNode {
             try {
                 Object ret;
                 try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
+                    arguments[0] = save;
                     ret = ForeignAccess.sendExecute(crossLanguageCallNode, asForeign.execute(function), getForeignArguments(dataEscapeNodes, arguments));
                 }
                 return toLLVMNode.executeWithTarget(ret);
