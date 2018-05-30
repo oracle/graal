@@ -136,11 +136,11 @@ builds += [
   ${svm-common-linux} ${sulong_linux} ${truffleruby_linux} ${fastr_linux} ${graalpython_linux} ${gate_vm_linux} ${linux-deploy} {
     run: [
       [export, "SUITES="${vm_all_suites}]
-      [mx, --strip-jars, --dynamicimports, "$SUITES", build]
-      [mx, --strip-jars, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
       [export, "SUITES="${vm_base_suites}]
-      [mx, --strip-jars, --dynamicimports, "$SUITES", build]
-      [mx, --strip-jars, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", build]
+      [mx, --strip-jars, --no-sources, --dynamicimports, "$SUITES", --suite, vm, deploy-binary, ${binaries-repository}]
     ]
     timelimit: "45:00"
     name: gate-vm-build-linux-amd64
