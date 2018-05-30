@@ -151,7 +151,6 @@ import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMV
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI64LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.literals.LLVMVectorLiteralNodeFactory.LLVMVectorI8LiteralNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocConstInstruction;
-import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstruction.LLVMAllocaConstInstruction;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaConstInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMUniqueAllocConstInstructionNodeGen;
 import com.oracle.truffle.llvm.nodes.memory.LLVMAllocInstructionFactory.LLVMAllocaInstructionNodeGen;
@@ -1462,10 +1461,10 @@ public class BasicNodeFactory implements NodeFactory {
         Type[] retTypes = null;
         int[] retOffsets = null;
         if (retType instanceof StructureType) { // multiple out values
-            assert args[1] instanceof LLVMAllocaConstInstruction;
-            LLVMAllocaConstInstruction alloca = (LLVMAllocaConstInstruction) args[1];
-            retTypes = alloca.getTypes();
-            retOffsets = alloca.getOffsets();
+            assert args[1] instanceof LLVMAllocConstInstruction;
+            LLVMAllocConstInstruction alloc = (LLVMAllocConstInstruction) args[1];
+            retTypes = alloc.getTypes();
+            retOffsets = alloc.getOffsets();
         }
 
         LLVMInlineAssemblyRootNode assemblyRoot = InlineAssemblyParser.parseInlineAssembly(context.getLanguage(), sourceSection, asmExpression, asmFlags, argTypes, retType, retTypes, retOffsets);
