@@ -166,7 +166,7 @@ public final class LLVMSymbolReadResolver {
                 if (arraySize == 0) {
                     resolvedNode = null;
                 } else {
-                    final LLVMExpressionNode target = nodeFactory.createAlloca(context, type);
+                    final LLVMExpressionNode target = nodeFactory.createUniqueAlloc(context, type);
                     resolvedNode = nodeFactory.createZeroNode(target, arraySize);
                 }
             }
@@ -178,7 +178,7 @@ public final class LLVMSymbolReadResolver {
                     final LLVMNativePointer minusOneNode = LLVMNativePointer.create(-1);
                     resolvedNode = nodeFactory.createLiteral(minusOneNode, new PointerType(structureType));
                 } else {
-                    final LLVMExpressionNode addressnode = nodeFactory.createAlloca(context, structureType);
+                    final LLVMExpressionNode addressnode = nodeFactory.createUniqueAlloc(context, structureType);
                     resolvedNode = nodeFactory.createZeroNode(addressnode, structSize);
                 }
             }

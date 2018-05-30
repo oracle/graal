@@ -145,9 +145,9 @@ public interface NodeFactory extends InteropNodeFactory {
     /*
      * Stack allocations with type (LLVM's alloca instruction)
      */
-    LLVMExpressionNode createAlloca(LLVMContext context, Type type);
-
     LLVMExpressionNode createAlloca(LLVMContext context, Type type, int alignment);
+
+    LLVMExpressionNode createUniqueAlloc(LLVMContext context, Type type);
 
     LLVMExpressionNode createAllocaArray(LLVMContext context, Type elementType, LLVMExpressionNode numElements, int alignment);
 

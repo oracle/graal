@@ -63,7 +63,7 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
         return stackPointer;
     }
 
-    public abstract static class LLVMAllocaConstInstruction extends LLVMAllocInstruction {
+    public abstract static class LLVMAllocConstInstruction extends LLVMAllocInstruction {
 
         @CompilationFinal(dimensions = 1) private Type[] types = null;
         @CompilationFinal(dimensions = 1) private int[] offsets = null;
@@ -88,10 +88,23 @@ public abstract class LLVMAllocInstruction extends LLVMExpressionNode {
             return offsets.length;
         }
 
+    }
+
+    public abstract static class LLVMAllocaConstInstruction extends LLVMAllocConstInstruction {
+
         @Specialization
         protected LLVMNativePointer doOp(VirtualFrame frame,
                         @Cached("getLLVMMemory()") LLVMMemory memory) {
             return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), getSize(), getAlignment()));
+        }
+    }
+
+    public abstract static class LLVMUniqueAllocConstInstruction extends LLVMAllocConstInstruction {
+
+        @Specialization
+        protected LLVMNativePointer doOp(VirtualFrame frame,
+                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+            return LLVMNativePointer.create(LLVMStack.allocateUniqueStackMemory(frame, memory, this, getStackPointerSlot(), getSize(), getAlignment()));
         }
     }
 

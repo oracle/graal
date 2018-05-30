@@ -238,7 +238,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         if (targetType instanceof StructureType) {
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createAlloca(context, targetType);
+            argNodes[argIndex] = nodeFactory.createUniqueAlloc(context, targetType);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++) {
@@ -272,7 +272,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     @Override
     public void visit(LandingpadInstruction landingpadInstruction) {
         Type type = landingpadInstruction.getType();
-        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createAlloca(context, type);
+        LLVMExpressionNode allocateLandingPadValue = nodeFactory.createUniqueAlloc(context, type);
         LLVMExpressionNode[] entries = new LLVMExpressionNode[landingpadInstruction.getClauseSymbols().length];
         for (int i = 0; i < entries.length; i++) {
             entries[i] = symbols.resolve(landingpadInstruction.getClauseSymbols()[i]);
@@ -382,7 +382,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         argIndex++;
         if (targetType instanceof StructureType) {
             argTypes[argIndex] = new PointerType(targetType);
-            argNodes[argIndex] = nodeFactory.createAlloca(context, targetType);
+            argNodes[argIndex] = nodeFactory.createUniqueAlloc(context, targetType);
             argIndex++;
         }
         for (int i = 0; argIndex < argumentCount; i++, argIndex++) {
@@ -631,7 +631,7 @@ final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type valueType = insert.getValue().getType();
         final int targetIndex = insert.getIndex();
 
-        final LLVMExpressionNode resultAggregate = nodeFactory.createAlloca(context, sourceType);
+        final LLVMExpressionNode resultAggregate = nodeFactory.createUniqueAlloc(context, sourceType);
 
         final long offset = context.getIndexOffset(targetIndex, sourceType);
         final LLVMExpressionNode result = nodeFactory.createInsertValue(resultAggregate, sourceAggregate,

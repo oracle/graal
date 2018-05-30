@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.memory;
 
+import java.util.Map;
+import java.util.IdentityHashMap;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -60,11 +63,15 @@ public final class LLVMStack {
     }
 
     public final class StackPointer implements AutoCloseable {
-
+        private final Map<Object, Long> uniqueSlots = new IdentityHashMap<>();
         private long basePointer;
 
         private StackPointer(long basePointer) {
             this.basePointer = basePointer;
+        }
+
+        public Map<Object, Long> getUniqueSlots() {
+            return uniqueSlots;
         }
 
         public long get(LLVMMemory memory) {
@@ -129,9 +136,20 @@ public final class LLVMStack {
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
     public static long allocateStackMemory(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot, final long size, final int alignment) {
+        StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+        return allocateStackMemory(memory, basePointer, size, alignment);
+    }
+
+    public static long allocateUniqueStackMemory(VirtualFrame frame, LLVMMemory memory, Object slotKey, FrameSlot stackPointerSlot, int size,
+                    int alignment) {
+        StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+        return basePointer.getUniqueSlots().computeIfAbsent(slotKey, sk -> allocateStackMemory(memory, basePointer, size, alignment));
+    }
+
+    private static long allocateStackMemory(LLVMMemory memory, StackPointer basePointer, final long size, final int alignment) {
         assert size >= 0;
         assert alignment != 0 && powerOfTwo(alignment);
-        StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
+
         long stackPointer = basePointer.get(memory);
         assert stackPointer != 0;
         final long alignedAllocation = (stackPointer - size) & -alignment;
