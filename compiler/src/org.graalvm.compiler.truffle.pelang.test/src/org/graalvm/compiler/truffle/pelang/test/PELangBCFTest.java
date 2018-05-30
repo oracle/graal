@@ -149,6 +149,57 @@ public class PELangBCFTest extends PELangTest {
         compileGraph(graph, callTarget);
         // TODO: add partial evaluation asserts
     }
+
+    @Test
+    public void testSimpleArrayRead() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleArrayRead());
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
+    @Test
+    public void testSimpleMultiArrayRead() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleMultiArrayRead());
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
+    @Test
+    public void testSimpleArrayWrite() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleArrayWrite());
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
+    @Test
+    public void testSimpleMultiArrayWrite() {
+        PELangBCFGenerator g = new PELangBCFGenerator();
+        PELangRootNode rootNode = g.generate(PELangSample.simpleMultiArrayWrite());
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
     }
 
     @Test(expected = PELangException.class)

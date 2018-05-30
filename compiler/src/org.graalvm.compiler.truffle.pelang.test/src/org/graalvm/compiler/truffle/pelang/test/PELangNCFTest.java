@@ -147,6 +147,54 @@ public class PELangNCFTest extends PELangTest {
         // TODO: add partial evaluation asserts
     }
 
+    @Test
+    public void testSimpleArrayRead() {
+        PELangRootNode rootNode = PELangSample.simpleArrayRead();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
+    @Test
+    public void testSimpleMultiArrayRead() {
+        PELangRootNode rootNode = PELangSample.simpleMultiArrayRead();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
+    @Test
+    public void testSimpleArrayWrite() {
+        PELangRootNode rootNode = PELangSample.simpleArrayWrite();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
+    @Test
+    public void testSimpleMultiArrayWrite() {
+        PELangRootNode rootNode = PELangSample.simpleMultiArrayWrite();
+        OptimizedCallTarget callTarget = createCallTarget(rootNode);
+        assertCallResultEquals(10L, callTarget);
+
+        warmupCallTarget(callTarget);
+        StructuredGraph graph = partiallyEvaluate(callTarget);
+        compileGraph(graph, callTarget);
+        Assert.assertTrue(graph.isTrivial());
+    }
+
     @Test(expected = PELangException.class)
     public void testInvalidBranch() {
         PELangRootNode rootNode = PELangSample.invalidBranch();

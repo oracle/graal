@@ -154,6 +154,78 @@ public class PELangSample {
         // @formatter:on
     }
 
+    public static PELangRootNode simpleArrayRead() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.return_(
+                b.readArray(
+                    b.lit(new long[] {10L, 5L, 0L}),
+                    b.lit(new long[] {0L}))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode simpleMultiArrayRead() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.return_(
+                b.readArray(
+                    b.lit(new long[][] {
+                        {6L, 8L, 10L},
+                        {4L, 6L, 8L},
+                        {2L, 4L, 6L}
+                    }),
+                    b.lit(new long[] {0L, 2L}))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode simpleArrayWrite() {
+        PELangBuilder b = new PELangBuilder();
+
+        // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(
+                    b.lit(new long[] {0L, 5L, 10L}),
+                    "var"),
+                b.writeArray(
+                    b.readLocal("var"),
+                    b.lit(new long[] {0L}),
+                    b.lit(10L)),
+                b.return_(
+                    b.readArray(
+                        b.readLocal("var"),
+                        b.lit(new long[] {0L})))));
+        // @formatter:on
+    }
+
+    public static PELangRootNode simpleMultiArrayWrite() {
+        PELangBuilder b = new PELangBuilder();
+
+     // @formatter:off
+        return b.root(
+            b.block(
+                b.writeLocal(
+                    b.lit(new long[][] {
+                        {6L, 8L, 10L},
+                        {4L, 6L, 8L},
+                        {2L, 4L, 6L}
+                    }),
+                    "var"),
+                b.writeArray(
+                    b.readLocal("var"),
+                    b.lit(new long[] {1L, 2L}),
+                    b.lit(10L)),
+                b.return_(
+                    b.readArray(
+                        b.readLocal("var"),
+                        b.lit(new long[] {1L, 2L})))));
+        // @formatter:on
+    }
+
     public static PELangRootNode invalidBranch() {
         PELangBuilder b = new PELangBuilder();
 
