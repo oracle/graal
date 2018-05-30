@@ -28,7 +28,7 @@ import java.util.Deque;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.truffle.pelang.PELangExpressionNode;
+import org.graalvm.compiler.truffle.pelang.PELangFunction;
 import org.graalvm.compiler.truffle.pelang.PELangRootNode;
 import org.graalvm.compiler.truffle.pelang.PELangStatementNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockDispatchNode;
@@ -36,11 +36,14 @@ import org.graalvm.compiler.truffle.pelang.bcf.PELangBasicBlockNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangDoubleSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangMultiSuccessorNode;
 import org.graalvm.compiler.truffle.pelang.bcf.PELangSingleSuccessorNode;
+import org.graalvm.compiler.truffle.pelang.expr.PELangLiteralFunctionNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangBlockNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangIfNode;
-import org.graalvm.compiler.truffle.pelang.ncf.PELangReturnNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangSwitchNode;
 import org.graalvm.compiler.truffle.pelang.ncf.PELangWhileNode;
+
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 
 public class PELangBCFGenerator {
 
@@ -63,6 +66,9 @@ public class PELangBCFGenerator {
     }
 
     private void generate(PELangStatementNode node, Mode mode) {
+        if (node instanceof PELangBasicBlockDispatchNode) {
+            throw new IllegalArgumentException("can't convert an AST to bcf that already contains a dispatch node");
+        }
         if (node instanceof PELangBlockNode) {
             PELangBlockNode blockNode = (PELangBlockNode) node;
             generateBlock(blockNode, mode);
@@ -76,7 +82,19 @@ public class PELangBCFGenerator {
         } else if (node instanceof PELangSwitchNode) {
             PELangSwitchNode switchNode = (PELangSwitchNode) node;
             generateSwitch(switchNode, mode);
-        } else if (node instanceof PELangExpressionNode | node instanceof PELangReturnNode) {
+        } else if (node instanceof PELangLiteralFunctionNode) {
+            // convert function call target to BCF
+            PELangLiteralFunctionNode literalNode = (PELangLiteralFunctionNode) node;
+            PELangFunction function = literalNode.getFunction();
+            PELangRootNode rootNode = (PELangRootNode) function.getCallTarget().getRootNode();
+            PELangBCFGenerator generator = new PELangBCFGenerator();
+
+            PELangRootNode bcfRootNode = generator.generate(rootNode);
+            RootCallTarget bcfCallTarget = Truffle.getRuntime().createCallTarget(bcfRootNode);
+            PELangFunction bcfFunction = new PELangFunction(function.getHeader(), bcfCallTarget);
+            PELangLiteralFunctionNode bcfLiteralNode = new PELangLiteralFunctionNode(bcfFunction);
+            generateSingle(bcfLiteralNode, mode);
+        } else {
             generateSingle(node, mode);
         }
     }
