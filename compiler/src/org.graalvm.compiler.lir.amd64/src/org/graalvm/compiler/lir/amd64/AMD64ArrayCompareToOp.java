@@ -32,9 +32,6 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -54,7 +51,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
-import sun.misc.Unsafe;
 
 /**
  * Emits code which compares two arrays lexicographically. If the CPU supports any vector
@@ -87,10 +83,8 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         this.kind2 = kind2;
 
         // Both offsets should be the same but better be safe than sorry.
-        Class<?> array1Class = Array.newInstance(kind1.toJavaClass(), 0).getClass();
-        Class<?> array2Class = Array.newInstance(kind2.toJavaClass(), 0).getClass();
-        this.array1BaseOffset = UNSAFE.arrayBaseOffset(array1Class);
-        this.array2BaseOffset = UNSAFE.arrayBaseOffset(array2Class);
+        this.array1BaseOffset = tool.getProviders().getArrayOffsetProvider().arrayBaseOffset(kind1);
+        this.array2BaseOffset = tool.getProviders().getArrayOffsetProvider().arrayBaseOffset(kind2);
 
         this.resultValue = result;
         this.array1Value = array1;
@@ -582,22 +576,6 @@ public final class AMD64ArrayCompareToOp extends AMD64LIRInstruction {
         } else {
             masm.movzbl(elem1, new AMD64Address(str1, index, scale1, 0));
             masm.movzwl(elem2, new AMD64Address(str2, index, scale2, 0));
-        }
-    }
-
-    private static final Unsafe UNSAFE = initUnsafe();
-
-    private static Unsafe initUnsafe() {
-        try {
-            return Unsafe.getUnsafe();
-        } catch (SecurityException se) {
-            try {
-                Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafe.setAccessible(true);
-                return (Unsafe) theUnsafe.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe", e);
-            }
         }
     }
 }
