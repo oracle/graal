@@ -27,6 +27,8 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -51,12 +53,26 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
     public AMD64FloatConvertNode(FloatConvert op, ValueNode value) {
         super(TYPE, table -> table.getFloatConvert(op), value);
         this.op = op;
+        this.stamp = this.stamp.meet(createEdgeCaseStamp());
     }
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         // nothing to do
         return this;
+    }
+
+    @Override
+    public Stamp foldStamp(Stamp newStamp) {
+        // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special cases.
+        Stamp foldedStamp = super.foldStamp(newStamp);
+        return foldedStamp.meet(createEdgeCaseStamp());
+    }
+
+    private Stamp createEdgeCaseStamp() {
+        IntegerStamp intStamp = (IntegerStamp) this.stamp;
+        long edgeCaseUpMask = intStamp.getBits() <= 32 ? 0x8000_0000L : 0x8000_0000_0000_0000L;
+        return IntegerStamp.create(intStamp.getBits(), Integer.MIN_VALUE, Integer.MAX_VALUE, 0, edgeCaseUpMask);
     }
 
     @Override
