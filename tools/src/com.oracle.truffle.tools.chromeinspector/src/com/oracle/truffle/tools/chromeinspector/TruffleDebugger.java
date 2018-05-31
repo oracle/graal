@@ -657,6 +657,10 @@ public final class TruffleDebugger extends DebuggerDomain {
 
         @Override
         public void onSuspend(SuspendedEvent se) {
+            try {
+                context.waitForRunPermission();
+            } catch (InterruptedException ex) {
+            }
             SourceSection ss = se.getSourceSection();
             lock();
             onSuspendPhaser.register();
