@@ -38,6 +38,13 @@ common : ${mx} {
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
+  environment : {
+    TRUFFLE_LLVM_VERSION : "cb47708b29c7f33dbf822cb6a5e75c07af877817"
+    TRUFFLE_JS_VERSION : "58692da68706b64f85744ab70fdb4520069836e1"
+    TRUFFLE_RUBY_VERSION : "59a0190dba5bc9b83427b441cf6afd09e49ac4b3"
+    TRUFFLE_PYTHON_VERSION : "c30c0c8c737ba2f5ba59eb4c2eb701778d98c753"
+    TRUFFLE_R_VERSION : "9316f50732af45c54dbbe515fc9ef997dc672e1b"
+  }
 }
 
 linux : ${common} {
