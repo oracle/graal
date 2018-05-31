@@ -460,6 +460,10 @@ public final class Engine implements AutoCloseable {
             return e.new StackFrame(impl);
         }
 
+        @Override
+        public Handler newStreamLogHandler(OutputStream out) {
+            return new PolyglotStreamHandler(out);
+        }
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
