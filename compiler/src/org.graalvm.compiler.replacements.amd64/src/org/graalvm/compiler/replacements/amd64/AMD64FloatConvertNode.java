@@ -25,10 +25,12 @@ package org.graalvm.compiler.replacements.amd64;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -71,8 +73,8 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
 
     private Stamp createInexactCaseStamp() {
         IntegerStamp intStamp = (IntegerStamp) this.stamp;
-        long edgeCaseUpMask = intStamp.getBits() <= 32 ? 0x8000_0000L : 0x8000_0000_0000_0000L;
-        return IntegerStamp.create(intStamp.getBits(), Integer.MIN_VALUE, Integer.MAX_VALUE, 0, edgeCaseUpMask);
+        long inexactValue = intStamp.getBits() <= 32 ? 0x8000_0000L : 0x8000_0000_0000_0000L;
+        return StampFactory.forConstant(JavaConstant.forPrimitiveInt(intStamp.getBits(), inexactValue));
     }
 
     @Override
