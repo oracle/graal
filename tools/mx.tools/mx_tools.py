@@ -155,7 +155,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
     dir_name='chromeinspector',
     license_files=[],
     third_party_license_files=[],
-    truffle_jars=['tools:CHROMEINSPECTOR'],
+    truffle_jars=['tools:CHROMEINSPECTOR', 'tools:TruffleJSON'],
     support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))

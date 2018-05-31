@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.domains;
 
-import org.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONArray;
 
 import com.oracle.truffle.tools.chromeinspector.commands.Params;
 import com.oracle.truffle.tools.chromeinspector.events.Event;

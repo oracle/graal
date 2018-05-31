@@ -26,8 +26,8 @@ package com.oracle.truffle.tools.chromeinspector.types;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.json.JSONArray;
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class ProfileNode {
 
