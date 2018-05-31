@@ -279,7 +279,17 @@ public final class ComponentInstaller {
     }
 
     private URL getCatalogURL(Feedback f) {
-        String def = catalogURL != null ? catalogURL : f.l10n("Installer_BuiltingCatalogURL");
+        String def;
+        if (catalogURL != null) {
+            def = catalogURL;
+        } else {
+            String envVar = System.getenv(CommonConstants.ENV_CATALOG_URL);
+            if (envVar != null) {
+                def = envVar;
+            } else {
+                def = f.l10n("Installer_BuiltingCatalogURL");
+            }
+        }
         String s = System.getProperty(CommonConstants.SYSPROP_CATALOG_URL, def);
         try {
             return new URL(s);

@@ -223,6 +223,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
                         u, this);
+        verbose = true;
         dn.setVerbose(true);
         dn.setDisplayProgress(true);
 
