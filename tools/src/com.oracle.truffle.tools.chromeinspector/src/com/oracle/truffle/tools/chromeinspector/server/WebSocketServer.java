@@ -157,7 +157,8 @@ public final class WebSocketServer extends NanoWSD {
             log.flush();
         }
         if (context != null) {
-            boolean debugBreak = DEBUG_BRK.get(descriptor);
+            // Do the initial break for the first time only, do not break on reconnect
+            boolean debugBreak = Boolean.TRUE.equals(DEBUG_BRK.remove(descriptor));
             RuntimeDomain runtime = new TruffleRuntime(context);
             DebuggerDomain debugger = new TruffleDebugger(context, debugBreak);
             ProfilerDomain profiler = new TruffleProfiler(context, connectionWatcher);

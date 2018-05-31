@@ -233,6 +233,16 @@ public final class TruffleExecutionContext {
         LAST_ID.set(0);
     }
 
+    public void reset() {
+        this.suspendedInfo = null;
+        this.suspendThreadExecutor = null;
+        this.roh = null;
+        assert sch == null;
+        synchronized (runPermission) {
+            runPermission[0] = false;
+        }
+    }
+
     public interface Listener {
 
         void contextCreated(long id, String name);
