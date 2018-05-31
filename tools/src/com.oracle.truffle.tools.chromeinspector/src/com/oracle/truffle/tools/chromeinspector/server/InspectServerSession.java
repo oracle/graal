@@ -66,6 +66,7 @@ public final class InspectServerSession {
         runtime.disable();
         debugger.disable();
         profiler.disable();
+        context.reset();
         messageListener = null;
         processThread.dispose();
     }
