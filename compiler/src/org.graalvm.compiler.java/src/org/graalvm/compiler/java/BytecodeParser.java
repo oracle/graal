@@ -852,7 +852,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
             try (DebugCloseable context = openNodeContext()) {
                 if (method.isSynchronized()) {
-                    finishPrepare(lastInstr, BytecodeFrame.BEFORE_BCI);
+                    finishPrepare(lastInstr, BytecodeFrame.BEFORE_BCI, frameState);
 
                     // add a monitor enter to the start block
                     methodSynchronizedObject = synchronizedObject(frameState, method);
@@ -867,7 +867,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     profilingPlugin.profileInvoke(this, method, stateBefore);
                 }
 
-                finishPrepare(lastInstr, 0);
+                finishPrepare(lastInstr, 0, frameState);
 
                 genInfoPointNode(InfopointReason.METHOD_START, null);
             }
@@ -914,8 +914,9 @@ public class BytecodeParser implements GraphBuilderContext {
      *
      * @param instruction the current last instruction
      * @param bci the current bci
+     * @param state The current frame state.
      */
-    protected void finishPrepare(FixedWithNextNode instruction, int bci) {
+    protected void finishPrepare(FixedWithNextNode instruction, int bci, FrameStateBuilder state) {
     }
 
     protected void cleanupFinalGraph() {
@@ -2926,7 +2927,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     private void handleUnwindBlock(ExceptionDispatchBlock block) {
         if (parent == null) {
-            finishPrepare(lastInstr, block.deoptBci);
+            finishPrepare(lastInstr, block.deoptBci, frameState);
             frameState.setRethrowException(false);
             createUnwind();
         } else {
@@ -2966,7 +2967,7 @@ public class BytecodeParser implements GraphBuilderContext {
                 }
                 genMonitorExit(methodSynchronizedObject, currentReturnValue, bci);
                 assert !frameState.rethrowException();
-                finishPrepare(lastInstr, bci);
+                finishPrepare(lastInstr, bci, frameState);
             }
             if (frameState.lockDepth(false) != 0) {
                 throw bailout("unbalanced monitors: too few exits exiting frame");
