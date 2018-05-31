@@ -1,5 +1,6 @@
 package de.hpi.swa.trufflelsp;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -11,11 +12,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SourceProvider implements LoadSourceListener, LoadSourceSectionListener {
-    protected Map<String, Map<String, SourceWrapper>> langId2loadedSources = new LinkedHashMap<>();
+    protected Map<String, Map<URI, SourceWrapper>> langId2loadedSources = new LinkedHashMap<>();
 
-    public SourceWrapper getLoadedSource(String langId, String name) {
-        Map<String, SourceWrapper> name2sources = this.langId2loadedSources.get(langId);
-        return name2sources == null ? null : name2sources.get(name);
+    public SourceWrapper getLoadedSource(String langId, URI uri) {
+        Map<URI, SourceWrapper> uri2sources = this.langId2loadedSources.get(langId);
+        return uri2sources == null ? null : uri2sources.get(uri);
     }
 
     public void onLoad(LoadSourceEvent event) {
@@ -24,22 +25,23 @@ public class SourceProvider implements LoadSourceListener, LoadSourceSectionList
         // Source is then identical again to the previous Source
         Source source = event.getSource();
         initLang(source.getLanguage());
-        Map<String, SourceWrapper> name2SourceWrapper = this.langId2loadedSources.get(source.getLanguage());
-        name2SourceWrapper.put(source.getName(), new SourceWrapper(source));
+        Map<URI, SourceWrapper> uri2SourceWrapper = this.langId2loadedSources.get(source.getLanguage());
+        uri2SourceWrapper.put(source.getURI(), new SourceWrapper(source));
     }
 
     public void onLoad(LoadSourceSectionEvent event) {
         String langId = event.getNode().getRootNode().getLanguageInfo().getId();
-        System.out.println("\t" + event.getNode().getClass().getSimpleName() + " " + event.getSourceSection());
+// System.out.println("\t" + event.getNode().getClass().getSimpleName() + " " +
+// event.getSourceSection());
         SourceSection sourceSection = event.getSourceSection();
         Source source = sourceSection.getSource();
-        String name = source.getName();
-        Map<String, SourceWrapper> name2SourceWrapper = this.langId2loadedSources.get(langId);
-        SourceWrapper sourceWrapper = name2SourceWrapper.get(name);
+        URI uri = source.getURI();
+        Map<URI, SourceWrapper> uri2SourceWrapper = this.langId2loadedSources.get(langId);
+        SourceWrapper sourceWrapper = uri2SourceWrapper.get(uri);
         if (sourceWrapper == null || !sourceWrapper.getSource().equals(source)) {
             // TODO(ds) need this because of the previous TODO
             sourceWrapper = new SourceWrapper(source);
-            name2SourceWrapper.put(source.getName(), sourceWrapper);
+            uri2SourceWrapper.put(source.getURI(), sourceWrapper);
         }
         sourceWrapper.getNodes().add(event.getNode());
     }
@@ -50,9 +52,9 @@ public class SourceProvider implements LoadSourceListener, LoadSourceSectionList
         }
     }
 
-    public void remove(String langId, String name) {
-        if (this.langId2loadedSources.containsKey(langId) && this.langId2loadedSources.get(langId).containsKey(name)) {
-            this.langId2loadedSources.get(langId).remove(name);
+    public void remove(String langId, URI uri) {
+        if (this.langId2loadedSources.containsKey(langId) && this.langId2loadedSources.get(langId).containsKey(uri)) {
+            this.langId2loadedSources.get(langId).remove(uri);
         }
     }
 

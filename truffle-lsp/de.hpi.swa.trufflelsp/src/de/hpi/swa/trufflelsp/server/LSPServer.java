@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -75,7 +76,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     private final PrintWriter info;
 // private int shutdown = 1;
     private LanguageClient client;
-    private Map<String, String> openedFileUri2LangId = new HashMap<>();
+    private Map<URI, String> openedFileUri2LangId = new HashMap<>();
     private String trace_server = "off";
     private List<Diagnostic> diagnostics = new ArrayList<>();
     private ExecutorService executor;
@@ -166,7 +167,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(
                     TextDocumentPositionParams position) {
         try {
-            CompletionList result = this.truffle.getCompletions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+            CompletionList result = this.truffle.getCompletions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
             return CompletableFuture.supplyAsync(() -> Either.forRight(result));
         } finally {
             reportCollectedDiagnostics(position.getTextDocument().getUri(), false);
@@ -181,7 +182,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<Hover> hover(TextDocumentPositionParams position) {
-        Hover hover = this.truffle.getHover(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        Hover hover = this.truffle.getHover(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
         return CompletableFuture.completedFuture(hover);
     }
 
@@ -193,7 +194,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends Location>> definition(TextDocumentPositionParams position) {
-        List<? extends Location> result = this.truffle.getDefinitions(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        List<? extends Location> result = this.truffle.getDefinitions(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(), position.getPosition().getCharacter());
         return CompletableFuture.completedFuture(result);
     }
 
@@ -205,13 +206,14 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public CompletableFuture<List<? extends DocumentHighlight>> documentHighlight(TextDocumentPositionParams position) {
-        List<? extends DocumentHighlight> highlights = this.truffle.getHighlights(position.getTextDocument().getUri(), position.getPosition().getLine(), position.getPosition().getCharacter());
+        List<? extends DocumentHighlight> highlights = this.truffle.getHighlights(URI.create(position.getTextDocument().getUri()), position.getPosition().getLine(),
+                        position.getPosition().getCharacter());
         return CompletableFuture.supplyAsync(() -> highlights);
     }
 
     @Override
     public CompletableFuture<List<? extends SymbolInformation>> documentSymbol(DocumentSymbolParams params) {
-        List<? extends SymbolInformation> result = truffle.getSymbolInfo(params.getTextDocument().getUri());
+        List<? extends SymbolInformation> result = truffle.getSymbolInfo(URI.create(params.getTextDocument().getUri()));
         return CompletableFuture.completedFuture(result);
     }
 
@@ -270,9 +272,10 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
-        this.openedFileUri2LangId.put(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId());
+        URI uri = URI.create(params.getTextDocument().getUri());
+        this.openedFileUri2LangId.put(uri, params.getTextDocument().getLanguageId());
 
-        this.truffle.didOpen(params.getTextDocument().getUri(), params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
+        this.truffle.didOpen(uri, params.getTextDocument().getText(), params.getTextDocument().getLanguageId());
 
         parseDocument(params.getTextDocument().getUri(), params.getTextDocument().getLanguageId(),
                         params.getTextDocument().getText());
@@ -285,7 +288,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
 
     private void processChanges(final String documentUri,
                     final List<? extends TextDocumentContentChangeEvent> list) {
-        String langId = this.openedFileUri2LangId.get(documentUri);
+        String langId = this.openedFileUri2LangId.get(URI.create(documentUri));
         assert langId != null : documentUri;
 
         if (TEXT_DOCUMENT_SYNC_KIND.equals(TextDocumentSyncKind.Full)) {
@@ -300,18 +303,18 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
     }
 
     private void parseDocument(final String documentUri, final String langId, final String text) {
-        this.truffle.parse(text, langId, documentUri);
+        this.truffle.parse(text, langId, URI.create(documentUri));
         reportCollectedDiagnostics(documentUri, true);
     }
 
     private void processChangesAndParseDocument(String documentUri, List<? extends TextDocumentContentChangeEvent> list) {
-        this.truffle.processChangesAndParse(list, documentUri);
+        this.truffle.processChangesAndParse(list, URI.create(documentUri));
         reportCollectedDiagnostics(documentUri, true);
     }
 
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
-        String removed = this.openedFileUri2LangId.remove(params.getTextDocument().getUri());
+        String removed = this.openedFileUri2LangId.remove(URI.create(params.getTextDocument().getUri()));
         assert removed != null : params.getTextDocument().getUri();
     }
 
@@ -352,7 +355,7 @@ public class LSPServer implements LanguageServer, LanguageClientAware, TextDocum
             this.client.showMessage(new MessageParams(MessageType.Info, "Running Type Harvester..."));
             String uri = (String) params.getArguments().get(0);
             try {
-                this.truffle.exec(uri);
+                this.truffle.exec(URI.create(uri));
             } finally {
                 reportCollectedDiagnostics(uri, false);
             }

@@ -1,5 +1,6 @@
 package de.hpi.swa.trufflelsp;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +13,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public class TextDocumentSurrogate {
 
-    private final String uri;
+    private final URI uri;
     private final String langId;
     private final List<TextDocumentContentChangeEvent> changeEventsSinceLastSuccessfulParsing = new ArrayList<>();
     private final Map<SourceSection, MaterializedFrame> section2frame = new HashMap<>();
@@ -20,17 +21,17 @@ public class TextDocumentSurrogate {
     private Boolean typeHarvestingDone = Boolean.FALSE;
     private SourceWrapper parsedSourceWrapper;
 
-    public TextDocumentSurrogate(final String uri, final String langId) {
+    public TextDocumentSurrogate(final URI uri, final String langId) {
         this.uri = uri;
         this.langId = langId;
     }
 
-    public TextDocumentSurrogate(final String uri, final String langId, final String currentText) {
+    public TextDocumentSurrogate(final URI uri, final String langId, final String currentText) {
         this(uri, langId);
         this.currentText = currentText;
     }
 
-    public String getUri() {
+    public URI getUri() {
         return uri;
     }
 
