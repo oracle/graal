@@ -27,8 +27,9 @@ import org.junit.Test;
 public class NestedArithmeticTest extends GraalCompilerTest {
     public static int runNestedLoopTry() {
         int checksum = 0;
-        int i3 = 240, i4, i5 = 13485;
-        for (i4 = 303; i4 > 15; i4 -= 2) {
+        int i3 = 240;
+        int i5 = 13485;
+        for (int i4 = 303; i4 > 15; i4 -= 2) {
             int f = 1;
             do {
                 try {
@@ -59,12 +60,13 @@ public class NestedArithmeticTest extends GraalCompilerTest {
     }
 
     private static volatile FloatSupplier problematicFloatValue = new FloatSupplier() {
+        @Override
         public float get() {
             return Float.intBitsToFloat(1585051832);
         }
     };
 
-    private static volatile FloatSupplier normalFloatValue = new FloatSupplier() {
+    @SuppressWarnings("unused") private static volatile FloatSupplier normalFloatValue = new FloatSupplier() {
         @Override
         public float get() {
             return 0;
@@ -72,7 +74,11 @@ public class NestedArithmeticTest extends GraalCompilerTest {
     };
 
     public static int absConvert() {
-        int i2 = -51498, i16 = -12, i17 = -121, i18 = 1, i19 = 11;
+        int i2 = -51498;
+        int i16 = -12;
+        int i17 = -121;
+        int i18 = 1;
+        int i19 = 11;
         long l1 = -275151857L;
         for (int i1 = 21; 22 > i1; ++i1) {
             float f = problematicFloatValue.get();

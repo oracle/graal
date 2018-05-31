@@ -45,6 +45,9 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
  * This node has the semantics of the AMD64 floating point conversions. It is used in the lowering
  * of the {@link FloatConvertNode} which, on AMD64 needs a {@link AMD64FloatConvertNode} plus some
  * fixup code that handles the corner cases that differ between AMD64 and Java.
+ *
+ * Since this node evaluates to a special value if the conversion is inexact, its stamp must be
+ * modified to avoid optimizing away {@link AMD64ConvertSnippets}.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_1)
 public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> implements ArithmeticLIRLowerable {
@@ -66,7 +69,8 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
 
     @Override
     public Stamp foldStamp(Stamp newStamp) {
-        // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special cases.
+        // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special
+        // cases.
         Stamp foldedStamp = super.foldStamp(newStamp);
         return foldedStamp.meet(createInexactCaseStamp());
     }
