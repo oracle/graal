@@ -53,7 +53,7 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
     public AMD64FloatConvertNode(FloatConvert op, ValueNode value) {
         super(TYPE, table -> table.getFloatConvert(op), value);
         this.op = op;
-        this.stamp = this.stamp.meet(createEdgeCaseStamp());
+        this.stamp = this.stamp.meet(createInexactCaseStamp());
     }
 
     @Override
@@ -66,10 +66,10 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
     public Stamp foldStamp(Stamp newStamp) {
         // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special cases.
         Stamp foldedStamp = super.foldStamp(newStamp);
-        return foldedStamp.meet(createEdgeCaseStamp());
+        return foldedStamp.meet(createInexactCaseStamp());
     }
 
-    private Stamp createEdgeCaseStamp() {
+    private Stamp createInexactCaseStamp() {
         IntegerStamp intStamp = (IntegerStamp) this.stamp;
         long edgeCaseUpMask = intStamp.getBits() <= 32 ? 0x8000_0000L : 0x8000_0000_0000_0000L;
         return IntegerStamp.create(intStamp.getBits(), Integer.MIN_VALUE, Integer.MAX_VALUE, 0, edgeCaseUpMask);

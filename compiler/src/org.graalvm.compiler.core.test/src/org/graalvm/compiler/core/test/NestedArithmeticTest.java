@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,9 @@ package org.graalvm.compiler.core.test;
 
 import org.junit.Test;
 
-public class LoopArithmeticTest extends GraalCompilerTest {
-    public static final int N = 400;
-
+public class NestedArithmeticTest extends GraalCompilerTest {
     public static int runNestedLoopTry() {
+        int checksum = 0;
         int i3 = 240, i4, i5 = 13485;
         for (i4 = 303; i4 > 15; i4 -= 2) {
             int f = 1;
@@ -37,20 +36,56 @@ public class LoopArithmeticTest extends GraalCompilerTest {
                     i3 = (i4 % -21500);
                     i5 = (i3 % 787);
                 } catch (ArithmeticException a_e) {
-                    System.out.println("f=" + f + ", ERR i3 = " + i3 + ", i5 = " + i5);
-                    return 0;
+                    checksum += f + i3 + i5;
+                    return checksum;
                 }
                 i3 <<= i4;
                 i5 <<= i5;
                 i3 += (8 + (f * f));
                 i5 >>= i5;
+                checksum += f;
             } while (++f < 11);
         }
-        return 0;
+        return checksum;
     }
 
     @Test
     public void nestedLoopTryTest() {
         test("runNestedLoopTry");
+    }
+
+    private interface FloatSupplier {
+        float get();
+    }
+
+    private static volatile FloatSupplier problematicFloatValue = new FloatSupplier() {
+        public float get() {
+            return Float.intBitsToFloat(1585051832);
+        }
+    };
+
+    private static volatile FloatSupplier normalFloatValue = new FloatSupplier() {
+        @Override
+        public float get() {
+            return 0;
+        }
+    };
+
+    public static int absConvert() {
+        int i2 = -51498, i16 = -12, i17 = -121, i18 = 1, i19 = 11;
+        long l1 = -275151857L;
+        for (int i1 = 21; 22 > i1; ++i1) {
+            float f = problematicFloatValue.get();
+            float absolute = Math.abs(f);
+            i2 = (int) absolute;
+            i2 += i2;
+        }
+        long result = i2 + l1 + i16 + i17 + i18 + i19;
+        return (int) result;
+    }
+
+    @Test
+    public void absConvertTest() {
+        test("absConvert");
     }
 }
