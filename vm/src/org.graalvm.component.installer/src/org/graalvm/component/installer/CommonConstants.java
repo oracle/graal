@@ -46,7 +46,15 @@ public class CommonConstants {
 
     public static final String PATH_JRE_BIN = "jre/bin/"; // NOI18N
 
+    /**
+     * System property to specify catalog URL.
+     */
     public static final String SYSPROP_CATALOG_URL = "org.graalvm.component.catalog"; // NOI18N
+
+    /**
+     * Env variable that controls catalog URL.
+     */
+    public static final String ENV_CATALOG_URL = "GRAALVM_CATALOG"; // NOI18N
 
     /**
      * Warns the user to rebuild the polyglot image and/or libraries.
