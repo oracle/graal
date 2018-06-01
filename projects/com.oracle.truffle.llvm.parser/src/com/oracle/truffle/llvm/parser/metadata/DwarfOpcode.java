@@ -203,8 +203,30 @@ public final class DwarfOpcode {
     public static final long GNU_CONST_INDEX = 0xfc;
     public static final long LLVM_FRAGMENT = 0x1000;
 
+    public static int numElements(long op) {
+        if (op == PLUS_UCONST || op == PLUS || op == MINUS || (op >= CONST1U && op <= CONSTS)) {
+            return 2;
+        } else if (op == LLVM_FRAGMENT || op == BIT_PIECE) {
+            return 3;
+        }
+        return 1;
+    }
+
+    public static boolean hasOp(MDExpression expression, long operand) {
+        final int elementCount = expression.getElementCount();
+        int i = 0;
+        while (i < elementCount) {
+            final long op = expression.getOperand(i);
+            if (op == operand) {
+                return true;
+            }
+            i += numElements(op);
+        }
+        return false;
+    }
+
     public static boolean isDeref(MDExpression expression) {
-        return expression.getElementCount() == 1 && expression.getOperand(0) == DEREF;
+        return hasOp(expression, DEREF);
     }
 
     public static BigInteger toIntegerSymbol(MDExpression exp) {
@@ -222,8 +244,8 @@ public final class DwarfOpcode {
                     return null;
                 }
 
-                long arg = exp.getOperand(i++);
-                BigInteger res = BigInteger.ZERO;
+                final long arg = exp.getOperand(i++);
+                BigInteger res;
                 switch ((int) op) {
                     case (int) CONST1S:
                         res = BigInteger.valueOf((byte) arg);
@@ -261,19 +283,22 @@ public final class DwarfOpcode {
                     case (int) CONSTU: {
                         // in practice, CONSTU is used also for signed value and of max 64bit
                         res = BigInteger.valueOf(arg);
+                        break;
                     }
+
+                    default:
+                        return null;
                 }
 
                 dwStack.push(res);
 
+            } else if (op == STACK_VALUE) {
+                return !dwStack.isEmpty() ? dwStack.getFirst() : null;
+
             } else {
-
-                switch ((int) op) {
-
-                    case (int) STACK_VALUE:
-                        return !dwStack.isEmpty() ? dwStack.getFirst() : null;
-
-                }
+                // currently unsupported operation like PLUS_CONSTU which may expect the current
+                // value of the source-level symbol to be on the expression stack
+                return null;
             }
         }
 

@@ -29,22 +29,25 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
 import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 
 import java.util.List;
 
+import static com.oracle.truffle.llvm.parser.metadata.DwarfOpcode.LLVM_FRAGMENT;
+import static com.oracle.truffle.llvm.parser.metadata.DwarfOpcode.hasOp;
+import static com.oracle.truffle.llvm.parser.metadata.DwarfOpcode.numElements;
+
 public final class ValueFragment implements Comparable<ValueFragment> {
 
-    public static final ValueFragment COMPLETE_VALUE = new ValueFragment(-1, -1);
+    private static final ValueFragment COMPLETE_VALUE = new ValueFragment(-1, -1);
 
     private static final int EXPRESSION_SIZE = 3;
-    private static final int EXPRESSION_INDEX_KEY = 0;
     private static final int EXPRESSION_INDEX_OFFSET = 1;
     private static final int EXPRESSION_INDEX_LENGTH = 2;
 
     public static boolean describesFragment(MDExpression expression) {
-        return expression.getElementCount() >= EXPRESSION_SIZE && expression.getOperand(EXPRESSION_INDEX_KEY) == DwarfOpcode.LLVM_FRAGMENT;
+        // a DEREF can precede the LLVM_FRAGMENT
+        return hasOp(expression, LLVM_FRAGMENT);
     }
 
     public static ValueFragment create(int offset, int length) {
@@ -52,7 +55,20 @@ public final class ValueFragment implements Comparable<ValueFragment> {
     }
 
     public static ValueFragment parse(MDExpression expression) {
-        return new ValueFragment((int) expression.getOperand(EXPRESSION_INDEX_OFFSET), (int) expression.getOperand(EXPRESSION_INDEX_LENGTH));
+        final int elementCount = expression.getElementCount();
+        int i = 0;
+        while (i < elementCount) {
+            final long op = expression.getOperand(i);
+            if (op == LLVM_FRAGMENT) {
+                if (i + EXPRESSION_SIZE <= elementCount) {
+                    final int offset = (int) expression.getOperand(i + EXPRESSION_INDEX_OFFSET);
+                    final int length = (int) expression.getOperand(i + EXPRESSION_INDEX_LENGTH);
+                    return new ValueFragment(offset, length);
+                }
+            }
+            i += numElements(op);
+        }
+        return COMPLETE_VALUE;
     }
 
     public static int getPartIndex(ValueFragment fragment, List<ValueFragment> siblings, List<Integer> clearParts) {
