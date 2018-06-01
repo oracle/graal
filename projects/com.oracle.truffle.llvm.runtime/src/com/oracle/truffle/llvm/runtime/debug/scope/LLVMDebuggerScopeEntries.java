@@ -30,9 +30,8 @@
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.llvm.runtime.debug.LLVMDebugObject;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObject;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
-import com.oracle.truffle.llvm.runtime.debug.LLVMSourceSymbol;
 
 import java.util.ArrayList;
 import java.util.HashMap;
