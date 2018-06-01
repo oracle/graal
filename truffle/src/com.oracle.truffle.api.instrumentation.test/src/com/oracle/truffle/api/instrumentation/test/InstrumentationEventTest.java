@@ -53,54 +53,67 @@ public class InstrumentationEventTest {
     protected ExecutionEventNodeFactory factory;
     protected Error error;
 
+    protected class CollectEventsNode extends ExecutionEventNode {
+
+        final EventContext c;
+
+        CollectEventsNode(EventContext context) {
+            for (int i = 0; i < getInputCount(); i++) {
+                Assert.assertNotNull(getInputContext(i));
+            }
+            this.c = context;
+        }
+
+        @Override
+        protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+            saveInputValue(frame, inputIndex, inputValue);
+
+            assertTrue(inputIndex < getInputCount());
+            assertSame(inputContext, getInputContext(inputIndex));
+
+            events.add(new Event(EventKind.INPUT_VALUE, c, frame, null, null, inputIndex, inputValue, createInputContexts(), null));
+        }
+
+        @Override
+        protected Object onUnwind(VirtualFrame frame, Object info) {
+            events.add(new Event(EventKind.UNWIND, c, frame, null, null, -1, null, createInputContexts(), info));
+            return super.onUnwind(frame, info);
+        }
+
+        @Override
+        public void onEnter(VirtualFrame frame) {
+            events.add(new Event(EventKind.ENTER, c, frame, null, null, -1, null, createInputContexts(), null));
+        }
+
+        @Override
+        protected void onReturnValue(VirtualFrame frame, Object result) {
+            events.add(new Event(EventKind.RETURN_VALUE, c, frame, getSavedInputValues(frame), result, -1, null, createInputContexts(), null));
+        }
+
+        private EventContext[] createInputContexts() {
+            EventContext[] inputContexts = new EventContext[getInputCount()];
+            for (int i = 0; i < getInputCount(); i++) {
+                Assert.assertNotNull(getInputContext(i));
+                inputContexts[i] = getInputContext(i);
+            }
+            return inputContexts;
+        }
+    }
+
+    protected class CollectEventsFactory implements ExecutionEventNodeFactory {
+        @Override
+        public ExecutionEventNode create(EventContext c) {
+            return new CollectEventsNode(c);
+        }
+    }
+
     @Before
     public final void setUp() {
         this.context = Context.create();
         this.instrument = context.getEngine().getInstruments().get(InputFilterTestInstrument.ID).lookup(InputFilterTestInstrument.class);
         this.instrumenter = instrument.environment.getInstrumenter();
         this.events = new ArrayList<>();
-        this.factory = new ExecutionEventNodeFactory() {
-
-            public ExecutionEventNode create(EventContext c) {
-                return new ExecutionEventNode() {
-                    {
-                        for (int i = 0; i < getInputCount(); i++) {
-                            Assert.assertNotNull(getInputContext(i));
-                        }
-                    }
-
-                    @Override
-                    protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
-                        saveInputValue(frame, inputIndex, inputValue);
-
-                        assertTrue(inputIndex < getInputCount());
-                        assertSame(inputContext, getInputContext(inputIndex));
-
-                        events.add(new Event(EventKind.INPUT_VALUE, c, frame, null, null, inputIndex, inputValue, createInputContexts()));
-                    }
-
-                    @Override
-                    public void onEnter(VirtualFrame frame) {
-                        events.add(new Event(EventKind.ENTER, c, frame, null, null, -1, null, createInputContexts()));
-                    }
-
-                    @Override
-                    protected void onReturnValue(VirtualFrame frame, Object result) {
-                        events.add(new Event(EventKind.RETURN_VALUE, c, frame, getSavedInputValues(frame), result, -1, null, createInputContexts()));
-                    }
-
-                    private EventContext[] createInputContexts() {
-                        EventContext[] inputContexts = new EventContext[getInputCount()];
-                        for (int i = 0; i < getInputCount(); i++) {
-                            Assert.assertNotNull(getInputContext(i));
-                            inputContexts[i] = getInputContext(i);
-                        }
-                        return inputContexts;
-                    }
-
-                };
-            }
-        };
+        this.factory = new CollectEventsFactory();
     }
 
     protected final void execute(org.graalvm.polyglot.Source source) {
@@ -147,7 +160,8 @@ public class InstrumentationEventTest {
     enum EventKind {
         ENTER,
         INPUT_VALUE,
-        RETURN_VALUE
+        RETURN_VALUE,
+        UNWIND,
     }
 
     protected static class Event {
@@ -160,8 +174,9 @@ public class InstrumentationEventTest {
         public final int inputValueIndex;
         public final Object inputValue;
         public final EventContext[] inputContexts;
+        public final Object unwindValue;
 
-        Event(EventKind kind, EventContext context, VirtualFrame frame, Object[] inputs, Object result, int index, Object inputValue, EventContext[] inputContexts) {
+        Event(EventKind kind, EventContext context, VirtualFrame frame, Object[] inputs, Object result, int index, Object inputValue, EventContext[] inputContexts, Object unwindValue) {
             this.kind = kind;
             this.context = context;
             this.frame = frame;
@@ -170,6 +185,7 @@ public class InstrumentationEventTest {
             this.inputValue = inputValue;
             this.inputValueIndex = index;
             this.inputContexts = inputContexts;
+            this.unwindValue = unwindValue;
         }
 
         @Override

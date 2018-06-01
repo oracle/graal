@@ -27,6 +27,7 @@ package com.oracle.truffle.api.instrumentation.test;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.ENTER;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.INPUT_VALUE;
 import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.RETURN_VALUE;
+import static com.oracle.truffle.api.instrumentation.test.InstrumentationEventTest.EventKind.UNWIND;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertArrayEquals;
 
@@ -41,6 +42,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
@@ -515,7 +518,48 @@ public class InputFilterTest extends InstrumentationEventTest {
                 }
             });
         }
+    }
 
+    @Test
+    public void testUnwindInInputFilter() {
+        SourceSectionFilter expressionFilter = SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build();
+
+        EventBinding<?> binding1 = instrumenter.attachExecutionEventFactory(expressionFilter, expressionFilter, new ExecutionEventNodeFactory() {
+            public ExecutionEventNode create(EventContext c) {
+                return new CollectEventsNode(c) {
+
+                    @Override
+                    protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
+                        super.onInputValue(frame, inputContext, inputIndex, inputValue);
+                        throw c.createUnwind("unwindValue");
+                    }
+
+                    @Override
+                    protected Object onUnwind(VirtualFrame frame, Object info) {
+                        super.onUnwind(frame, info);
+                        return info;
+                    }
+
+                };
+            }
+        });
+
+        String code = "EXPRESSION(EXPRESSION, EXPRESSION)";
+        execute(code);
+
+        assertOn(ENTER, (e) -> assertEquals(code, e.context.getInstrumentedSourceSection().getCharacters()));
+        assertOn(ENTER, (e) -> assertEquals("EXPRESSION", e.context.getInstrumentedSourceSection().getCharacters()));
+        assertOn(RETURN_VALUE);
+        assertOn(INPUT_VALUE);
+        assertOn(UNWIND, (e) -> assertEquals("unwindValue", e.unwindValue));
+        assertOn(ENTER, (e) -> assertEquals("EXPRESSION", e.context.getInstrumentedSourceSection().getCharacters()));
+        assertOn(RETURN_VALUE);
+        assertOn(INPUT_VALUE);
+        assertOn(UNWIND);
+        assertOn(RETURN_VALUE);
+
+        binding1.dispose();
+        assertCleanedUp(code);
     }
 
 }
