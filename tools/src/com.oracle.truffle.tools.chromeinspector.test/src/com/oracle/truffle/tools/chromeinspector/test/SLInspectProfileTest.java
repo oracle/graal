@@ -31,7 +31,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.After;
 import org.junit.Test;
 
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import org.graalvm.polyglot.Source;
 

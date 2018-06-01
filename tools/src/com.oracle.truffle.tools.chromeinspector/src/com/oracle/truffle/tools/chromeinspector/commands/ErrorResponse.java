@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.commands;
 
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public final class ErrorResponse {
 

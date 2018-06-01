@@ -26,7 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.types;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugException;
 import com.oracle.truffle.api.debug.DebugValue;
