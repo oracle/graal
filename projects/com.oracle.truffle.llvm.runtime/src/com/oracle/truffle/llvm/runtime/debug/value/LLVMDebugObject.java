@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStaticMemberType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 
 /**
  * This class describes a source-level variable. Debuggers can use it to display the original
@@ -490,11 +491,15 @@ public abstract class LLVMDebugObject extends LLVMDebuggerValue {
 
         @Override
         protected Object getMemberSafe(String identifier) {
-            if (LLVMSourceForeignType.VALUE_KEY.equals(identifier)) {
-                return value.asInteropValue();
-            } else {
+            if (!LLVMSourceForeignType.VALUE_KEY.equals(identifier)) {
                 return null;
             }
+
+            Object obj = value.asInteropValue();
+            if (obj instanceof LLVMTypedForeignObject) {
+                obj = ((LLVMTypedForeignObject) obj).getForeign();
+            }
+            return obj;
         }
 
         @Override
