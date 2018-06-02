@@ -67,7 +67,7 @@ public final class UnsafeCompareAndExchangeNode extends AbstractMemoryCheckpoint
 
     private static Stamp meetInputs(Stamp expected, Stamp newValue) {
         assert expected.isCompatible(newValue);
-        return expected.meet(newValue).unrestricted();
+        return expected.unrestricted().meet(newValue.unrestricted());
     }
 
     public ValueNode object() {
