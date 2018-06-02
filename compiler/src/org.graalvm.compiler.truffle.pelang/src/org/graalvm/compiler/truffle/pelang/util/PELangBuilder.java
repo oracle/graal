@@ -144,27 +144,27 @@ public class PELangBuilder {
         return new PELangBlockNode(bodyNodes);
     }
 
-    public PELangStatementNode if_(PELangExpressionNode conditionNode, PELangStatementNode thenNode,
+    public PELangStatementNode if$(PELangExpressionNode conditionNode, PELangStatementNode thenNode,
                     PELangStatementNode elseNode) {
         return new PELangIfNode(conditionNode, thenNode, elseNode);
     }
 
-    public PELangStatementNode if_(PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
-        return if_(conditionNode, thenNode, block());
+    public PELangStatementNode if$(PELangExpressionNode conditionNode, PELangStatementNode thenNode) {
+        return if$(conditionNode, thenNode, block());
     }
 
-    public PELangStatementNode while_(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
+    public PELangStatementNode while$(PELangExpressionNode conditionNode, PELangStatementNode bodyNode) {
         return new PELangWhileNode(conditionNode, bodyNode);
     }
 
-    public PELangStatementNode switch_(PELangExpressionNode valueNode, Case... cases) {
+    public PELangStatementNode switch$(PELangExpressionNode valueNode, Case... cases) {
         PELangExpressionNode[] caseValueNodes = Arrays.stream(cases).map(Case::getValueNode).toArray(PELangExpressionNode[]::new);
         PELangStatementNode[] caseBodyNodes = Arrays.stream(cases).map(Case::getBodyNode).toArray(PELangStatementNode[]::new);
 
         return new PELangSwitchNode(valueNode, caseValueNodes, caseBodyNodes);
     }
 
-    public Case case_(PELangExpressionNode valueNode, PELangStatementNode bodyNode) {
+    public Case case$(PELangExpressionNode valueNode, PELangStatementNode bodyNode) {
         return new Case(valueNode, bodyNode);
     }
 
@@ -216,7 +216,7 @@ public class PELangBuilder {
         return new PELangInvokeNode(expressionNode, argumentNodes);
     }
 
-    public PELangStatementNode return_(PELangExpressionNode bodyNode) {
+    public PELangStatementNode return$(PELangExpressionNode bodyNode) {
         return new PELangReturnNode(bodyNode);
     }
 
