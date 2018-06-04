@@ -52,13 +52,6 @@ suite = {
       ],
       "sha1" : "2ab1825dc1f8bd5258204bab19e8fafad93fef26",
     },
-    "LTA_REF" : {
-      "path" : "tests/lifetime-analysis-ref-3.tar.gz",
-      "urls" : [
-        "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/lifetime-analysis-ref-3.tar.gz",
-      ],
-      "sha1" : "679f71fcf99674a0972b48740ca810dfc1ae2255",
-    },
     "ANTLR4": {
       "sha1" : "30b13b7efc55b7feea667691509cf59902375001",
       "maven" : {
