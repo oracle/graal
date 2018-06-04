@@ -554,8 +554,6 @@ final class Target_java_lang_ApplicationShutdownHooks {
     /**
      * Instead of starting all the threads in {@link #hooks}, just run the {@link Runnable}s one
      * after another.
-     *
-     * Run the hooks that were added via {@link RuntimeSupport#addShutdownHook(Runnable)}.
      */
     @Substitute
     static void runHooks() {
@@ -583,9 +581,6 @@ final class Target_java_lang_ApplicationShutdownHooks {
                 ex.printStackTrace(Log.logStream());
             }
         }
-
-        /* Run all the hooks that were registered with RuntimeSupport. */
-        RuntimeSupport.getRuntimeSupport().executeShutdownHooks();
     }
 
     /**
@@ -666,11 +661,16 @@ final class Target_java_lang_Shutdown {
      * construction can not survive into the running image.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
-    static Runnable[] hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
+    static Runnable[] hooks;
 
-    @Substitute
-    static void halt0(@SuppressWarnings("unused") int status) {
-        throw VMError.unsupportedFeature("java.lang.Shutdown.halt0(int)");
+    static {
+        hooks = new Runnable[Util_java_lang_Shutdown.MAX_SYSTEM_HOOKS];
+        /*
+         * We use the last system hook slot (index 9), which is currently not used by the JDK, for
+         * our own shutdown hooks that are registered during image generation. The JDK currently
+         * uses slots 0, 1, and 2.
+         */
+        hooks[hooks.length - 1] = RuntimeSupport::executeShutdownHooks;
     }
 
     /* Wormhole for invoking java.lang.ref.Finalizer.runAllFinalizers */

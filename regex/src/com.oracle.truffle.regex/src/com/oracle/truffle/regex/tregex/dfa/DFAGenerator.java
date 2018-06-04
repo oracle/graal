@@ -691,6 +691,6 @@ public final class DFAGenerator implements JsonConvertible {
                         Json.prop("dfa", Json.obj(
                                         Json.prop("states", Arrays.stream(getStateIndexMap())),
                                         Json.prop("transitions", Arrays.stream(transitionList)),
-                                        Json.prop("entryStates", Arrays.stream(entryStates).map(x -> Json.val(x.getId()))))));
+                                        Json.prop("entryStates", Arrays.stream(entryStates).filter(Objects::nonNull).map(x -> Json.val(x.getId()))))));
     }
 }

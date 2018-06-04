@@ -259,7 +259,7 @@ tools_map = {
     'junit' : ToolDescriptor(builder_deps=['mx:JUNIT_TOOL', 'JUNIT', 'HAMCREST']),
     'nfi' : ToolDescriptor(), # just an alias for truffle (to be removed soon)
     'regex' : ToolDescriptor(image_deps=['regex:TREGEX']),
-    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR']),
+    'chromeinspector' : ToolDescriptor(image_deps=['tools:CHROMEINSPECTOR', 'tools:TruffleJSON']),
     'profiler' : ToolDescriptor(image_deps=['tools:TRUFFLE_PROFILER']),
 }
 
@@ -597,7 +597,9 @@ def svm_gate_body(args, tasks):
 
         with Task('Ruby', tasks, tags=[GraalTags.ruby]) as t:
             if t:
-                ruby = build_ruby(native_image, debug_gr_8964=debug_gr_8964)
+                # Debug GR-9912 on Ruby gate runs.
+                debug_gr_9912 = 16
+                ruby = build_ruby(native_image, debug_gr_8964=debug_gr_8964, debug_gr_9912=debug_gr_9912)
                 test_ruby([ruby, 'release'])
 
         with Task('Python', tasks, tags=[GraalTags.python]) as t:
@@ -725,13 +727,13 @@ def test_python_smoke(args):
             mx.abort("Python smoke test failed")
         mx.log("Python binary says: " + out.data)
 
-def build_ruby(native_image, debug_gr_8964=False):
+def build_ruby(native_image, debug_gr_8964=False, debug_gr_9912=0):
     truffle_language_ensure('llvm', debug_gr_8964=debug_gr_8964) # ruby depends on sulong
     truffle_language_ensure('ruby', debug_gr_8964=debug_gr_8964)
 
     # The Ruby image should be under its bin/ dir to find the Ruby home automatically and mimic distributions
     ruby_bin_dir = join(suite_native_image_root(), 'languages', 'ruby', 'bin')
-    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir])
+    return native_image(['--language:ruby', '-H:Name=truffleruby', '-H:Path=' + ruby_bin_dir, '-H:GreyToBlackObjectVisitorDiagnosticHistory=' + str(debug_gr_9912)])
 
 def test_ruby(args):
     if len(args) < 1 or len(args) > 2:

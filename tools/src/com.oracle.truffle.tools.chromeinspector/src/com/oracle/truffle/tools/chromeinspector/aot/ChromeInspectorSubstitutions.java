@@ -24,18 +24,18 @@
  */
 package com.oracle.truffle.tools.chromeinspector.aot;
 
-import static org.json.JSONObject.NULL;
+import static com.oracle.truffle.tools.utils.json.JSONObject.NULL;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Map;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.json.JSONString;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONString;
 
-final class Target_org_json_JSONObject {
+final class Target_com_oracle_truffle_tools_utils_json_JSONObject {
     public static Object wrap(Object object) {
         try {
             if (object == null) {

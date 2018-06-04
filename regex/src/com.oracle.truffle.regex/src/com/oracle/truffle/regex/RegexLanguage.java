@@ -97,6 +97,11 @@ public final class RegexLanguage extends TruffleLanguage<Void> {
     }
 
     @Override
+    protected boolean patchContext(Void context, Env newEnv) {
+        return true;
+    }
+
+    @Override
     protected Iterable<Scope> findTopScopes(Void context) {
         return Collections.emptySet();
     }
