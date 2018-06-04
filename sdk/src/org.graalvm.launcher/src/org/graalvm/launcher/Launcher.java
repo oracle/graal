@@ -1159,7 +1159,7 @@ public abstract class Launcher {
         }
 
         private void printJvmHelp() {
-            System.out.print("JVM options:");
+            System.out.println("JVM options:");
             printOption("--jvm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
             printOption("--jvm.D<name>=<value>", "Set a system property");
             printOption("--jvm.esa", "Enable system assertions");
