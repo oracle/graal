@@ -56,12 +56,18 @@ install:
         fi
       fi
   - |
+      JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
+      wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+      tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
+      export JAVA8_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       if [ "${JDK}" == "jdk8" ]
       then
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/dougxc/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
+        export EXTRA_JAVA_HOMES=${JAVA_HOME} # JAVA_HOME is pointing to JDK9, which should be in EXTRA_JAVA_HOMES
+        export JAVA_HOME=${JAVA8_HOME} # JAVA_HOME should point to JDK8
+      fi
+      if [ "${JDK}" == "jdk9" ]
+      then
+        export EXTRA_JAVA_HOMES=${JAVA8_HOME} # JDK8 must be placed in EXTRA_JAVA_HOME
       fi
 
 script:
